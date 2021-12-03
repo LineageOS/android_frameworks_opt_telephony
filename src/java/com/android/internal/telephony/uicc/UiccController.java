@@ -723,8 +723,7 @@ public class UiccController extends Handler {
 
         SubscriptionInfoUpdater subInfoUpdator = PhoneFactory.getSubscriptionInfoUpdater();
         if (subInfoUpdator != null) {
-            // TODO: Rename API from InactiveSlot -> InactivePort
-            subInfoUpdator.updateInternalIccStateForInactiveSlot(prevActivePhoneId, iccId);
+            subInfoUpdator.updateInternalIccStateForInactivePort(prevActivePhoneId, iccId);
         } else {
             Rlog.e(LOG_TAG, "subInfoUpdate is null.");
         }
