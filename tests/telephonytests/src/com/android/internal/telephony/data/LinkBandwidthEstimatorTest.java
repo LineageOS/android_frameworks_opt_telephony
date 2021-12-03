@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.dataconnection;
+package com.android.internal.telephony.data;
 
 import static android.net.NetworkCapabilities.TRANSPORT_CELLULAR;
 
-import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.BW_STATS_COUNT_THRESHOLD;
-import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.LINK_RX;
-import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.LINK_TX;
-import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.MSG_ACTIVE_PHONE_CHANGED;
-import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.MSG_DEFAULT_NETWORK_CHANGED;
-import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.MSG_MODEM_ACTIVITY_RETURNED;
-import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.MSG_NR_FREQUENCY_CHANGED;
-import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.MSG_SCREEN_STATE_CHANGED;
-import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.MSG_SIGNAL_STRENGTH_CHANGED;
-import static com.android.internal.telephony.dataconnection.LinkBandwidthEstimator.UNKNOWN_TAC;
+import static com.android.internal.telephony.data.LinkBandwidthEstimator.BW_STATS_COUNT_THRESHOLD;
+import static com.android.internal.telephony.data.LinkBandwidthEstimator.LINK_RX;
+import static com.android.internal.telephony.data.LinkBandwidthEstimator.LINK_TX;
+import static com.android.internal.telephony.data.LinkBandwidthEstimator.MSG_ACTIVE_PHONE_CHANGED;
+import static com.android.internal.telephony.data.LinkBandwidthEstimator.MSG_DEFAULT_NETWORK_CHANGED;
+import static com.android.internal.telephony.data.LinkBandwidthEstimator.MSG_MODEM_ACTIVITY_RETURNED;
+import static com.android.internal.telephony.data.LinkBandwidthEstimator.MSG_NR_FREQUENCY_CHANGED;
+import static com.android.internal.telephony.data.LinkBandwidthEstimator.MSG_SCREEN_STATE_CHANGED;
+import static com.android.internal.telephony.data.LinkBandwidthEstimator.MSG_SIGNAL_STRENGTH_CHANGED;
+import static com.android.internal.telephony.data.LinkBandwidthEstimator.UNKNOWN_TAC;
 
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
