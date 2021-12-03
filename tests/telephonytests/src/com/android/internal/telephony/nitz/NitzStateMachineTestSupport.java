@@ -211,6 +211,7 @@ final class NitzStateMachineTestSupport {
         public boolean ignoreNitz;
         public int nitzUpdateDiffMillis;
         public int nitzUpdateSpacingMillis;
+        public int nitzNetworkDisconnectRetentionMillis;
         public long elapsedRealtime;
         public long currentTimeMillis;
 
@@ -219,6 +220,7 @@ final class NitzStateMachineTestSupport {
             ignoreNitz = false;
             nitzUpdateDiffMillis = 2000;
             nitzUpdateSpacingMillis = 1000 * 60 * 10;
+            nitzNetworkDisconnectRetentionMillis = 1000 * 60 * 5;
             elapsedRealtime = ARBITRARY_ELAPSED_REALTIME;
         }
 
@@ -238,6 +240,16 @@ final class NitzStateMachineTestSupport {
 
         public void setNitzUpdateDiffMillis(int nitzUpdateDiffMillis) {
             this.nitzUpdateDiffMillis = nitzUpdateDiffMillis;
+        }
+
+        @Override
+        public int getNitzNetworkDisconnectRetentionMillis() {
+            return nitzNetworkDisconnectRetentionMillis;
+        }
+
+        public void setNitzNetworkDisconnectRetentionMillis(
+                int nitzNetworkDisconnectRetectionMillis) {
+            this.nitzNetworkDisconnectRetentionMillis = nitzNetworkDisconnectRetectionMillis;
         }
 
         @Override

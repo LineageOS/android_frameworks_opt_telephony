@@ -90,7 +90,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         mRealTimeZoneSuggester = new TimeZoneSuggesterImpl(mFakeDeviceState, timeZoneLookupHelper);
 
         mNitzStateMachineImpl = new NitzStateMachineImpl(
-                SLOT_INDEX, mFakeNitzSignalInputFilter, mRealTimeZoneSuggester,
+                SLOT_INDEX, mFakeDeviceState, mFakeNitzSignalInputFilter, mRealTimeZoneSuggester,
                 mFakeTimeServiceHelper);
 
         TelephonyTest.logd("NewNitzStateMachineImplTest -Setup!");
@@ -298,7 +298,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         script.verifyTimeAndTimeZoneSuggestedAndReset(
                 expectedPreFlightTimeSuggestion, expectedPreFlightTimeZoneSuggestion);
 
-        // Check state that NitzStateMachine must expose.
+        // Check state that NitzStateMachineImpl exposes for tests.
         assertEquals(preFlightNitzSignal.getNitzData(), mNitzStateMachineImpl.getCachedNitzData());
 
         // Boarded flight: Airplane mode turned on / time zone detection still enabled.
@@ -316,7 +316,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         script.verifyTimeAndTimeZoneSuggestedAndReset(
                 EMPTY_TIME_SUGGESTION, EMPTY_TIME_ZONE_SUGGESTION);
 
-        // Check state that NitzStateMachine must expose.
+        // Check state that NitzStateMachineImpl exposes for tests.
         assertNull(mNitzStateMachineImpl.getCachedNitzData());
 
         // During flight: Airplane mode turned off / time zone detection still enabled.
@@ -332,7 +332,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         // Verify nothing was suggested: The last suggestion was empty so nothing has changed.
         script.verifyNothingWasSuggested();
 
-        // Check the state that NitzStateMachine must expose.
+        // Check the state that NitzStateMachineImpl exposes for tests.
         assertNull(mNitzStateMachineImpl.getCachedNitzData());
 
         // Post flight: Device has moved and receives new signals.
@@ -362,7 +362,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         script.verifyTimeAndTimeZoneSuggestedAndReset(
                 expectedPostFlightTimeSuggestion, expectedPostFlightTimeZoneSuggestion);
 
-        // Check state that NitzStateMachine must expose.
+        // Check state that NitzStateMachineImpl exposes for tests.
         assertEquals(postFlightNitzSignal.getNitzData(), mNitzStateMachineImpl.getCachedNitzData());
     }
 
@@ -370,10 +370,14 @@ public class NitzStateMachineImplTest extends TelephonyTest {
      * Confirm losing the network / NITZ doesn't clear country state.
      */
     @Test
-    public void test_handleNetworkUnavailableClearsNetworkState() throws Exception {
+    public void test_handleNetworkUnavailableClearsNetworkState_noRetention() throws Exception {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1.mutableCopy();
         int timeStepMillis = (int) TimeUnit.HOURS.toMillis(3);
         String countryIsoCode = scenario.getNetworkCountryIsoCode();
+
+        // Set retention threshold to zero to prevent NITZ being saved / restored when the network
+        // becomes unavailable / available again.
+        mFakeDeviceState.setNitzNetworkDisconnectRetentionMillis(0);
 
         Script script = new Script()
                 .initializeSystemClock(ARBITRARY_SYSTEM_CLOCK_TIME)
@@ -396,7 +400,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         script.verifyTimeAndTimeZoneSuggestedAndReset(
                 expectedInitialTimeSuggestion, expectedInitialTimeZoneSuggestion);
 
-        // Check state that NitzStateMachine must expose.
+        // Check state that NitzStateMachineImpl exposes for tests.
         assertEquals(initialNitzSignal.getNitzData(), mNitzStateMachineImpl.getCachedNitzData());
 
         // Simulate the passage of time and update the device realtime clock.
@@ -413,7 +417,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         script.verifyTimeAndTimeZoneSuggestedAndReset(
                 EMPTY_TIME_SUGGESTION, expectedMiddleTimeZoneSuggestion);
 
-        // Check state that NitzStateMachine must expose.
+        // Check state that NitzStateMachineImpl exposes for tests.
         assertNull(mNitzStateMachineImpl.getCachedNitzData());
 
         // Simulate the passage of time and update the device realtime clock.
@@ -424,7 +428,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         script.networkAvailable()
                 .verifyNothingWasSuggested();
 
-        // Check the state that NitzStateMachine must expose.
+        // Check the state that NitzStateMachineImpl exposes for tests.
         assertNull(mNitzStateMachineImpl.getCachedNitzData());
 
         // Simulate the passage of time and update the device realtime clock.
@@ -446,7 +450,97 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         script.verifyTimeAndTimeZoneSuggestedAndReset(
                 expectedFinalTimeSuggestion, expectedFinalTimeZoneSuggestion);
 
-        // Check state that NitzStateMachine must expose.
+        // Check state that NitzStateMachineImpl exposes for tests.
+        assertEquals(finalNitzSignal.getNitzData(), mNitzStateMachineImpl.getCachedNitzData());
+    }
+
+    /**
+     * Tests the NITZ retention / restore behavior when networkAvailable() is called after
+     * networkUnavailable() inside the retention threshold.
+     */
+    @Test
+    public void test_handleNetworkUnavailableClearsNetworkState_withinRetentionThreshold()
+            throws Exception {
+        Scenario scenario = UNIQUE_US_ZONE_SCENARIO1.mutableCopy();
+        int timeStepMillis = (int) TimeUnit.HOURS.toMillis(3);
+        String countryIsoCode = scenario.getNetworkCountryIsoCode();
+
+        // Set the retention threshold to effectively infinite.
+        mFakeDeviceState.setNitzNetworkDisconnectRetentionMillis(Integer.MAX_VALUE);
+
+        Script script = new Script()
+                .initializeSystemClock(ARBITRARY_SYSTEM_CLOCK_TIME)
+                .networkAvailable();
+
+        // Simulate a device receiving signals that allow it to detect time and time zone.
+        NitzSignal initialNitzSignal =
+                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtimeMillis(), ARBITRARY_AGE);
+        TelephonyTimeSuggestion expectedInitialTimeSuggestion =
+                createTimeSuggestionFromNitzSignal(SLOT_INDEX, initialNitzSignal);
+
+        // Simulate receiving the NITZ signal and country.
+        script.nitzReceived(initialNitzSignal)
+                .countryReceived(countryIsoCode);
+
+        // Verify the state machine did the right thing.
+        TelephonyTimeZoneSuggestion expectedInitialTimeZoneSuggestion =
+                mRealTimeZoneSuggester.getTimeZoneSuggestion(
+                        SLOT_INDEX, countryIsoCode, initialNitzSignal);
+        script.verifyTimeAndTimeZoneSuggestedAndReset(
+                expectedInitialTimeSuggestion, expectedInitialTimeZoneSuggestion);
+
+        // Check state that NitzStateMachineImpl exposes for tests.
+        assertEquals(initialNitzSignal.getNitzData(), mNitzStateMachineImpl.getCachedNitzData());
+
+        // Simulate the passage of time and update the device realtime clock.
+        scenario.incrementTime(timeStepMillis);
+        script.incrementTime(timeStepMillis);
+
+        // Simulate network being lost.
+        script.networkUnavailable();
+
+        // Check the "no NITZ" time and time zone suggestions are made.
+        TelephonyTimeZoneSuggestion expectedMiddleTimeZoneSuggestion =
+                mRealTimeZoneSuggester.getTimeZoneSuggestion(
+                        SLOT_INDEX, countryIsoCode, null /* nitzSignal */);
+        script.verifyTimeAndTimeZoneSuggestedAndReset(
+                EMPTY_TIME_SUGGESTION, expectedMiddleTimeZoneSuggestion);
+
+        // Check state that NitzStateMachineImpl exposes for tests.
+        assertNull(mNitzStateMachineImpl.getCachedNitzData());
+
+        // Simulate the passage of time and update the device realtime clock.
+        scenario.incrementTime(timeStepMillis);
+        script.incrementTime(timeStepMillis);
+
+        // Simulate the network being found. As we are inside the NITZ retention threshold, the
+        // initial NITZ signal should be restored, and the same suggestion made.
+        script.networkAvailable()
+                .verifyTimeAndTimeZoneSuggestedAndReset(
+                        expectedInitialTimeSuggestion, expectedInitialTimeZoneSuggestion);
+
+        // Check the state that NitzStateMachineImpl exposes for tests.
+        assertEquals(initialNitzSignal.getNitzData(), mNitzStateMachineImpl.getCachedNitzData());
+
+        // Simulate the passage of time and update the device realtime clock.
+        scenario.incrementTime(timeStepMillis);
+        script.incrementTime(timeStepMillis);
+
+        // Simulate the device receiving another NITZ signal.
+        NitzSignal finalNitzSignal =
+                scenario.createNitzSignal(mFakeDeviceState.elapsedRealtimeMillis(), ARBITRARY_AGE);
+        script.nitzReceived(finalNitzSignal);
+
+        // Verify the state machine did the right thing.
+        TelephonyTimeSuggestion expectedFinalTimeSuggestion =
+                createTimeSuggestionFromNitzSignal(SLOT_INDEX, finalNitzSignal);
+        TelephonyTimeZoneSuggestion expectedFinalTimeZoneSuggestion =
+                mRealTimeZoneSuggester.getTimeZoneSuggestion(
+                        SLOT_INDEX, countryIsoCode, finalNitzSignal);
+        script.verifyTimeAndTimeZoneSuggestedAndReset(
+                expectedFinalTimeSuggestion, expectedFinalTimeZoneSuggestion);
+
+        // Check state that NitzStateMachineImpl exposes for tests.
         assertEquals(finalNitzSignal.getNitzData(), mNitzStateMachineImpl.getCachedNitzData());
     }
 
@@ -477,7 +571,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         script.verifyTimeAndTimeZoneSuggestedAndReset(
                 expectedTimeSuggestion, expectedTimeZoneSuggestion2);
 
-        // Check state that NitzStateMachine must expose.
+        // Check state that NitzStateMachineImpl exposes for tests.
         assertEquals(nitzSignal.getNitzData(), mNitzStateMachineImpl.getCachedNitzData());
 
         // Simulate the country becoming unavailable and verify the state machine does the right
@@ -488,7 +582,7 @@ public class NitzStateMachineImplTest extends TelephonyTest {
                         SLOT_INDEX, null /* countryIsoCode */, nitzSignal);
         script.verifyOnlyTimeZoneWasSuggestedAndReset(expectedTimeZoneSuggestion3);
 
-        // Check state that NitzStateMachine must expose.
+        // Check state that NitzStateMachineImpl exposes for tests.
         assertEquals(nitzSignal.getNitzData(), mNitzStateMachineImpl.getCachedNitzData());
     }
 
