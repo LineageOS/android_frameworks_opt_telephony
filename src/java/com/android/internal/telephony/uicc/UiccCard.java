@@ -49,17 +49,14 @@ public class UiccCard {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private CardState mCardState;
     protected String mCardId;
-    private String mIccid;
 
-    protected HashMap<Integer, UiccPort> mUiccPorts;
-    private HashMap<Integer, Integer> mPhoneIdToPortIdx;
+    protected HashMap<Integer, UiccPort> mUiccPorts = new HashMap<>();
+    private HashMap<Integer, Integer> mPhoneIdToPortIdx = new HashMap<>();
 
     public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock) {
         if (DBG) log("Creating");
         mCardState = ics.mCardState;
         mLock = lock;
-        mUiccPorts = new HashMap<>();
-        mPhoneIdToPortIdx = new HashMap<>();
         update(c, ci, ics, phoneId);
     }
 
@@ -70,7 +67,9 @@ public class UiccCard {
         synchronized (mLock) {
             if (DBG) log("Disposing card");
             for (UiccPort uiccPort : mUiccPorts.values()) {
-                uiccPort.dispose();
+                if (uiccPort != null) {
+                    uiccPort.dispose();
+                }
             }
             mUiccPorts.clear();
             mUiccPorts = null;
@@ -80,15 +79,29 @@ public class UiccCard {
     }
 
     /**
+     * Dispose the port corresponding to the port index.
+     */
+    public void disposePort(int portIndex) {
+        synchronized (mLock) {
+            if (DBG) log("Disposing port for index " + portIndex);
+            UiccPort port = getUiccPort(portIndex);
+            if (port != null) {
+                mPhoneIdToPortIdx.remove(port.getPhoneId());
+                port.dispose();
+            }
+            mUiccPorts.remove(portIndex);
+        }
+    }
+
+    /**
      * Update card. The main trigger for this is a change in the ICC Card status.
      */
     public void update(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId) {
         synchronized (mLock) {
             mCardState = ics.mCardState;
-            mIccid = ics.iccid;
-            updateCardId();
+            updateCardId(ics.iccid);
             if (mCardState != CardState.CARDSTATE_ABSENT) {
-                int portIdx = 0; // TODO get ics.portId from IccCardStatus after new HAL changes
+                int portIdx = ics.mSlotPortMapping.mPortIndex;
                 UiccPort port = mUiccPorts.get(portIdx);
                 if (port == null) {
                     if (this instanceof EuiccCard) {
@@ -100,7 +113,7 @@ public class UiccCard {
                 } else {
                     port.update(c, ci, ics, this);
                 }
-                mPhoneIdToPortIdx.put(phoneId, 0/*ics.portId*/); //TODO modify after new HAL change
+                mPhoneIdToPortIdx.put(phoneId, portIdx);
             } else {
                 throw new RuntimeException("Card state is absent when updating!");
             }
@@ -118,26 +131,16 @@ public class UiccCard {
      * <p>Whenever the {@link UiccCard#update(Context, CommandsInterface, IccCardStatus, int)}
      * is called, this function needs to be called to update the card ID. Subclasses of
      * {@link UiccCard} could override this function to set the {@link UiccCard#mCardId} to be
-     * something else instead of {@link UiccCard#mIccid}.</p>
+     * something else instead of setting iccId.</p>
      */
-    protected void updateCardId() {
-        mCardId = mIccid;
+    protected void updateCardId(String iccId) {
+        mCardId = iccId;
     }
 
     @UnsupportedAppUsage
     public CardState getCardState() {
         synchronized (mLock) {
             return mCardState;
-        }
-    }
-
-    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    public String getIccId() {
-        //TODO As part of MEP refactor, check the caller and modify logic to call UiccPort getIccId
-        if (mIccid != null) {
-            return mIccid;
-        } else { //TODO if caller is not changed, modify else part logic to get iccId from UiccPort
-            return null;
         }
     }
 

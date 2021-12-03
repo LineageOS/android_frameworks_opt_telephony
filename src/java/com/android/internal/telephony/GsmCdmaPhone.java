@@ -4631,8 +4631,11 @@ public class GsmCdmaPhone extends Phone {
             return;
         }
 
-        String iccId = slot.getIccId();
-        if (iccId == null) return;
+        UiccPort port = mUiccController.getUiccPort(mPhoneId);
+        String iccId = (port == null) ? null : port.getIccId();
+        if (iccId == null) {
+            return;
+        }
 
         SubscriptionInfo info = SubscriptionController.getInstance().getSubInfoForIccId(
                 IccUtils.stripTrailingFs(iccId));
