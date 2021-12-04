@@ -63,9 +63,9 @@ public class EuiccCard extends UiccCard {
     }
 
     @Override
-    protected void updateCardId() {
+    protected void updateCardId(String iccId) {
         if (TextUtils.isEmpty(mEid)) {
-            super.updateCardId();
+            super.updateCardId(iccId);
         } else {
             mCardId = mEid;
         }

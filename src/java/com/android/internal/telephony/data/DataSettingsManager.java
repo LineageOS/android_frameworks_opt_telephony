@@ -69,6 +69,13 @@ public class DataSettingsManager extends Handler {
     }
 
     /**
+     * @return {@code true} if data is enabled.
+     */
+    public boolean isDataEnabled() {
+        return true;
+    }
+
+    /**
      * Log debug messages.
      * @param s debug messages
      */

@@ -29,7 +29,7 @@ import android.os.RegistrantList;
 import android.provider.Telephony;
 import android.telephony.Annotation;
 import android.telephony.Annotation.NetCapability;
-import android.telephony.NetworkRegistrationInfo;
+import android.telephony.Annotation.NetworkType;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
@@ -59,6 +59,9 @@ public class DataProfileManager extends Handler {
 
     /** Event for APN database changed. */
     private static final int EVENT_APN_DATABASE_CHANGED = 2;
+
+    /** Event for SIM refresh. */
+    private static final int EVENT_SIM_REFRESH = 3;
 
     private final Phone mPhone;
     private final String mLogTag;
@@ -126,6 +129,7 @@ public class DataProfileManager extends Handler {
                         sendEmptyMessage(EVENT_APN_DATABASE_CHANGED);
                     }
                 });
+        mPhone.mCi.registerForIccRefresh(this, EVENT_SIM_REFRESH, null);
     }
 
     @Override
@@ -134,8 +138,13 @@ public class DataProfileManager extends Handler {
             case EVENT_DATA_CONFIG_UPDATED:
                 onDataConfigUpdated();
                 break;
+            case EVENT_SIM_REFRESH:
+                log("SIM refreshed.");
+                updateDataProfiles();
+                break;
             case EVENT_APN_DATABASE_CHANGED:
-                onApnDatabaseChanged();
+                log("APN database changed.");
+                updateDataProfiles();
                 break;
         }
     }
@@ -305,7 +314,7 @@ public class DataProfileManager extends Handler {
         }
 
         if (initialAttachDataProfile == null) {
-            loge("Cannot find initial attach data profile. ANN database needs to be configured"
+            loge("Cannot find initial attach data profile. APN database needs to be configured"
                     + " correctly.");
             // return here as we can't push a null data profile to the modem as initial attach APN.
             return;
@@ -353,10 +362,11 @@ public class DataProfileManager extends Handler {
      * Get the data profile that can satisfy the network request.
      *
      * @param networkRequest The network request.
+     * @param networkType The current data network type.
      * @return The data profile. {@code null} if can't find any satisfiable data profile.
      */
     public @Nullable DataProfile getDataProfileForNetworkRequest(
-            @NonNull TelephonyNetworkRequest networkRequest) {
+            @NonNull TelephonyNetworkRequest networkRequest, @NetworkType int networkType) {
         // Step 1: Check if preferred data profile can satisfy the request.
         if (mPreferredDataProfile != null
                 && mPreferredDataProfile.canSatisfy(networkRequest.getCapabilities())) {
@@ -372,20 +382,14 @@ public class DataProfileManager extends Handler {
             return null;
         }
 
-        // Step 3: Check if the remaining data profiles can used in current data RAT.
-        int transport = mAccessNetworksManager.getPreferredTransportByNetworkCapability(
-                networkRequest.getHighestPriorityNetworkCapability());
-        NetworkRegistrationInfo nri = mPhone.getServiceState().getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, transport);
-        int dataRat = nri.getAccessNetworkTechnology();
-
+        // Step 3: Check if the remaining data profiles can used in current data network type.
         dataProfiles = dataProfiles.stream()
                 .filter(dp -> dp.getApnSetting() != null
-                        && dp.getApnSetting().canSupportNetworkType(dataRat))
+                        && dp.getApnSetting().canSupportNetworkType(networkType))
                 .collect(Collectors.toList());
         if (dataProfiles.size() == 0) {
-            log("Can't find any data profile for RAT "
-                    + TelephonyManager.getNetworkTypeName(dataRat));
+            log("Can't find any data profile for network type "
+                    + TelephonyManager.getNetworkTypeName(networkType));
             return null;
         }
 
