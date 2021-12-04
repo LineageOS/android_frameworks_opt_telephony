@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.data;
 
+import android.annotation.CallbackExecutor;
 import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -65,6 +66,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
+import com.android.internal.telephony.data.TelephonyNetworkAgent.TelephonyNetworkAgentCallback;
 import com.android.internal.telephony.dataconnection.AccessNetworksManager;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.IState;
@@ -79,7 +81,7 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
+import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 
 /**
@@ -125,9 +127,6 @@ public class DataNetwork extends StateMachine {
 
     /** Event for detaching a network request. */
     private static final int EVENT_DETACH_NETWORK_REQUEST = 3;
-
-    /** Event for network validation status result arrives. */
-    private static final int EVENT_VALIDATION_STATUS_RESULT = 4;
 
     /** Event for allocating PDU session id response. */
     private static final int EVENT_ALLOCATE_PDU_SESSION_ID_RESPONSE = 5;
@@ -315,11 +314,6 @@ public class DataNetwork extends StateMachine {
     private boolean mSuspended = false;
 
     /**
-     * The network validation result from connectivity service.
-     */
-    private @Nullable DataValidationResult mDataValidationResult;
-
-    /**
      * The current transport of the data network. For handover, the current transport will be set
      * after handover completes.
      */
@@ -332,9 +326,18 @@ public class DataNetwork extends StateMachine {
     private @TransportType int mPreferredTransport = AccessNetworkConstants.TRANSPORT_TYPE_INVALID;
 
     /**
-     * The interface for data network callback.
+     * Data network callback. Should only be used by {@link DataNetworkController}.
      */
-    public interface DataNetworkCallback {
+    public abstract static class DataNetworkCallback extends DataCallback {
+        /**
+         * Constructor
+         *
+         * @param executor The executor of the callback.
+         */
+        public DataNetworkCallback(@NonNull @CallbackExecutor Executor executor) {
+            super(executor);
+        }
+
         /**
          * Called when data setup failed.
          *
@@ -348,7 +351,7 @@ public class DataNetwork extends StateMachine {
          * data retry should not occur. {@link DataCallResponse#RETRY_DURATION_UNDEFINED} indicates
          * network did not suggest any retry duration.
          */
-        void onSetupDataFailed(@NonNull DataNetwork dataNetwork,
+        public abstract void onSetupDataFailed(@NonNull DataNetwork dataNetwork,
                 @NonNull NetworkRequestList requestList, @DataFailureCause int cause,
                 long retryDurationMillis);
 
@@ -357,16 +360,20 @@ public class DataNetwork extends StateMachine {
          *
          * @param dataNetwork The data network.
          */
-        void onConnected(@NonNull DataNetwork dataNetwork);
+        public abstract void onConnected(@NonNull DataNetwork dataNetwork);
 
         /**
          * Called when data network validation status changed.
          *
          * @param dataNetwork The data network.
-         * @param dataValidationResult Data validation result from connectivity service.
+         * @param status one of {@link NetworkAgent#VALIDATION_STATUS_VALID} or
+         * {@link NetworkAgent#VALIDATION_STATUS_NOT_VALID}.
+         * @param redirectUri If internet connectivity is being redirected (e.g., on a captive
+         * portal), this is the destination the probes are being redirected to, otherwise
+         * {@code null}.
          */
-        void onValidationStatusChanged(@NonNull DataNetwork dataNetwork,
-                @NonNull DataValidationResult dataValidationResult);
+        public abstract void onValidationStatusChanged(@NonNull DataNetwork dataNetwork,
+                @ValidationStatus int status, @Nullable Uri redirectUri);
 
         /**
          * Called when data network suspended state changed.
@@ -374,7 +381,8 @@ public class DataNetwork extends StateMachine {
          * @param dataNetwork The data network.
          * @param suspended {@code true} if data is suspended.
          */
-        void onSuspendedStateChanged(@NonNull DataNetwork dataNetwork, boolean suspended);
+        public abstract void onSuspendedStateChanged(@NonNull DataNetwork dataNetwork,
+                boolean suspended);
 
         /**
          * Called when network requests were failed to attach to the data network.
@@ -382,7 +390,7 @@ public class DataNetwork extends StateMachine {
          * @param dataNetwork The data network.
          * @param requestList The requests failed to attach.
          */
-        void onAttachFailed(@NonNull DataNetwork dataNetwork,
+        public abstract void onAttachFailed(@NonNull DataNetwork dataNetwork,
                 @NonNull NetworkRequestList requestList);
 
         /**
@@ -393,57 +401,8 @@ public class DataNetwork extends StateMachine {
          * @param dataNetwork The data network.
          * @param cause The disconnect cause.
          */
-        void onDisconnected(@NonNull DataNetwork dataNetwork, @DataFailureCause int cause);
-    }
-
-    /**
-     * The wrapper of the validation result from connectivity service.
-     */
-    public static class DataValidationResult {
-        /** Validation status */
-        private final @ValidationStatus int mValidationStatus;
-        /** Redirected URI */
-        private final @Nullable Uri mRedirectUri;
-
-        /**
-         * Constructor
-         *
-         * @param validationStatus The validation status.
-         * @param redirectUri The redirected URI.
-         */
-        public DataValidationResult(@ValidationStatus int validationStatus,
-                @Nullable Uri redirectUri) {
-            mValidationStatus = validationStatus;
-            mRedirectUri = redirectUri;
-        }
-
-        /**
-         * @return The validation status
-         */
-        public @ValidationStatus int getValidationStatus() {
-            return mValidationStatus;
-        }
-
-        /**
-         * @return The redirected URI.
-         */
-        public @Nullable Uri getRedirectUri() {
-            return mRedirectUri;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            DataValidationResult that = (DataValidationResult) o;
-            return mValidationStatus == that.mValidationStatus
-                    && Objects.equals(mRedirectUri, that.mRedirectUri);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(mValidationStatus, mRedirectUri);
-        }
+        public abstract void onDisconnected(@NonNull DataNetwork dataNetwork,
+                @DataFailureCause int cause);
     }
 
     /**
@@ -521,7 +480,16 @@ public class DataNetwork extends StateMachine {
         final NetworkProvider provider = (null == factory) ? null : factory.getProvider();
 
         return new TelephonyNetworkAgent(mPhone, getHandler().getLooper(), this,
-                getNetworkScore(), configBuilder.build(), provider);
+                getNetworkScore(), configBuilder.build(), provider,
+                new TelephonyNetworkAgentCallback(getHandler()::post) {
+                    @Override
+                    public void onValidationStatus(@ValidationStatus int status,
+                            @Nullable Uri redirectUri) {
+                        mDataNetworkCallback.invokeFromExecutor(
+                                () -> mDataNetworkCallback.onValidationStatusChanged(
+                                        DataNetwork.this, status, redirectUri));
+                    }
+                });
     }
 
     /**
@@ -601,7 +569,8 @@ public class DataNetwork extends StateMachine {
                                     + networkRequest);
                         }
                         if (failedList.size() > 0) {
-                            mDataNetworkCallback.onAttachFailed(DataNetwork.this, failedList);
+                            mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                                    .onAttachFailed(DataNetwork.this, failedList));
                         }
                     }
                     break;
@@ -619,11 +588,8 @@ public class DataNetwork extends StateMachine {
                         networkRequest.setAttachedNetwork(null);
                     }
                     mAttachedNetworkRequestList.clear();
-                }
-                case EVENT_VALIDATION_STATUS_RESULT:
-                    loge("Ignore the validation status: "
-                            + DataUtils.validationStatusToString(msg.arg1));
                     break;
+                }
                 case EVENT_DATA_STATE_CHANGED: {
                     AsyncResult ar = (AsyncResult) msg.obj;
                     int transport = (int) ar.userObj;
@@ -715,7 +681,8 @@ public class DataNetwork extends StateMachine {
             log("network connected.");
             notifyPreciseDataConnectionState();
             mNetworkAgent.markConnected();
-            mDataNetworkCallback.onConnected(DataNetwork.this);
+            mDataNetworkCallback.invokeFromExecutor(
+                    () -> mDataNetworkCallback.onConnected(DataNetwork.this));
             updateSuspendState();
         }
 
@@ -736,19 +703,6 @@ public class DataNetwork extends StateMachine {
                     removeDeferredMessages(EVENT_TEAR_DOWN_NETWORK);
                     transitionTo(mDisconnectingState);
                     onTearDown(msg.arg1);
-                    break;
-                case EVENT_VALIDATION_STATUS_RESULT:
-                    DataValidationResult result = new DataValidationResult(msg.arg1, (Uri) msg.obj);
-                    if (!result.equals(mDataValidationResult)) {
-                        mDataValidationResult = result;
-                        mDataNetworkCallback.onValidationStatusChanged(DataNetwork.this,
-                                mDataValidationResult);
-                        log("Validation status changed: "
-                                + DataUtils.validationStatusToString(msg.arg1));
-                    } else {
-                        log("Validation status not changed: "
-                                + DataUtils.validationStatusToString(msg.arg1));
-                    }
                     break;
                 default:
                     return NOT_HANDLED;
@@ -959,18 +913,6 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
-     * Set the validation result. This should be only called by {@link TelephonyNetworkAgent}.
-     *
-     * @param status one of {@link NetworkAgent#VALIDATION_STATUS_VALID} or
-     * {@link NetworkAgent#VALIDATION_STATUS_NOT_VALID}.
-     * @param redirectUri If internet connectivity is being redirected (e.g., on a captive portal),
-     * this is the destination the probes are being redirected to, otherwise {@code null}.
-     */
-    public void setValidationResult(@ValidationStatus int status, @Nullable Uri redirectUri) {
-        sendMessage(obtainMessage(EVENT_VALIDATION_STATUS_RESULT, status, 0, redirectUri));
-    }
-
-    /**
      * Update the preferred transport based on the attached network request.
      */
     private void updatePreferredTransports() {
@@ -1030,7 +972,8 @@ public class DataNetwork extends StateMachine {
             // To update NOT_SUSPENDED capability.
             updateNetworkCapabilities();
             notifyPreciseDataConnectionState();
-            mDataNetworkCallback.onSuspendedStateChanged(DataNetwork.this, mSuspended);
+            mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                    .onSuspendedStateChanged(DataNetwork.this, mSuspended));
         }
     }
 
@@ -1272,7 +1215,7 @@ public class DataNetwork extends StateMachine {
      */
     private void onSetupResponse(@DataServiceCallback.ResultCode int resultCode,
             @Nullable DataCallResponse response) {
-        log("onSetupResponse: resultCode=" + DataServiceCallback.resultCodeToString(resultCode)
+        logl("onSetupResponse: resultCode=" + DataServiceCallback.resultCodeToString(resultCode)
                 + ", response=" + response);
         int failCause = getFailCauseFromDataCallResponse(resultCode, response);
         if (failCause == DataFailCause.NONE) {
@@ -1304,8 +1247,8 @@ public class DataNetwork extends StateMachine {
             long retry = response != null ? response.getRetryDurationMillis()
                     : DataCallResponse.RETRY_DURATION_UNDEFINED;
             NetworkRequestList requestList = new NetworkRequestList(mAttachedNetworkRequestList);
-            mDataNetworkCallback.onSetupDataFailed(DataNetwork.this, requestList,
-                    failCause, retry);
+            mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback.onSetupDataFailed(
+                    DataNetwork.this, requestList, failCause, retry));
             transitionTo(mDisconnectedState);
         }
     }
@@ -1412,7 +1355,8 @@ public class DataNetwork extends StateMachine {
                     log("onDataStateChanged: PDN inactive reported by "
                             + AccessNetworkConstants.transportTypeToString(mTransport)
                             + " data service.");
-                    mDataNetworkCallback.onDisconnected(DataNetwork.this, response.getCause());
+                    mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                            .onDisconnected(DataNetwork.this, response.getCause()));
                     transitionTo(mDisconnectedState);
                 }
             }
@@ -1422,7 +1366,8 @@ public class DataNetwork extends StateMachine {
             // for that
             log("onDataStateChanged: PDN disconnected reported by "
                     + AccessNetworkConstants.transportTypeToString(mTransport) + " data service.");
-            mDataNetworkCallback.onDisconnected(DataNetwork.this, DataFailCause.LOST_CONNECTION);
+            mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                    .onDisconnected(DataNetwork.this, DataFailCause.LOST_CONNECTION));
             transitionTo(mDisconnectedState);
         }
     }
@@ -1645,8 +1590,6 @@ public class DataNetwork extends StateMachine {
                 return "EVENT_ATTACH_NETWORK_REQUEST";
             case EVENT_DETACH_NETWORK_REQUEST:
                 return "EVENT_DETACH_NETWORK_REQUEST";
-            case EVENT_VALIDATION_STATUS_RESULT:
-                return "EVENT_VALIDATION_STATUS_RESULT";
             case EVENT_ALLOCATE_PDU_SESSION_ID_RESPONSE:
                 return "EVENT_ALLOCATE_PDU_SESSION_ID_RESPONSE";
             case EVENT_SETUP_DATA_CALL_RESPONSE:

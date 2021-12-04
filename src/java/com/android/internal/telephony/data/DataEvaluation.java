@@ -169,10 +169,10 @@ public class DataEvaluation {
         DATA_PROFILES_CHANGED,
         /** When service state changes.(For now only considering data RAT and data registration). */
         DATA_SERVICE_STATE_CHANGED,
-        /** When data is enabled (by user, carrier, thermal, etc...) */
-        DATA_ENABLED,
-        /** When data roaming is enabled. */
-        ROAMING_ENABLED,
+        /** When data is enabled or disabled (by user, carrier, thermal, etc...) */
+        DATA_ENABLED_CHANGED,
+        /** When data roaming is enabled or disabled. */
+        ROAMING_ENABLED_CHANGED,
         /** When voice call ended (for concurrent voice/data not supported RAT). */
         VOICE_CALL_ENDED,
         /** When network restricts or no longer restricts mobile data. */
