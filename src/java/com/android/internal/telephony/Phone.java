@@ -467,6 +467,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     protected LinkBandwidthEstimator mLinkBandwidthEstimator;
 
+    // TODO: Temp code. Use cl/399526916 for future canary process. After rolling out to 100%
+    //  dogfooders, the code below should be completely removed.
+    private final boolean mNewDataStackEnabled;
+
     public IccRecords getIccRecords() {
         return mIccRecords.get();
     }
@@ -607,6 +611,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
         // Initialize SMS stats
         mSmsStats = new SmsStats(this);
+
+        mNewDataStackEnabled = false; /*(Boolean.parseBoolean(DeviceConfig.getProperty(
+                DeviceConfig.NAMESPACE_TELEPHONY,"new_telephony_data_enabled"));*/
 
         if (getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             return;
@@ -4900,10 +4907,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     // TODO: Temp code. Use cl/399526916 for future canary process. After rolling out to 100%
     //  dogfooders, the code below should be completely removed.
     public boolean isUsingNewDataStack() {
-        return false;
-        /*String configValue = DeviceConfig.getProperty(DeviceConfig.NAMESPACE_TELEPHONY,
-                "new_telephony_data_enabled");
-        return Boolean.parseBoolean(configValue);*/
+        return mNewDataStackEnabled;
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
