@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.data;
 
+import android.annotation.CallbackExecutor;
 import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.content.ContentResolver;
@@ -46,6 +47,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.concurrent.Executor;
 
 /**
  * DataStallRecoveryManager monitors the network validation result from connectivity service and
@@ -105,12 +107,21 @@ public class DataStallRecoveryManager extends Handler {
      * The data stall recovery manager callback. Note this is only used for passing information
      * internally in the data stack, should not be used externally.
      */
-    interface DataStallRecoveryManagerCallback {
+    public abstract static class DataStallRecoveryManagerCallback extends DataCallback {
+        /**
+         * Constructor
+         *
+         * @param executor The executor of the callback.
+         */
+        public DataStallRecoveryManagerCallback(@NonNull @CallbackExecutor Executor executor) {
+            super(executor);
+        }
+
         /**
          * Called when data stall occurs and needed to tear down / setup a new data network for
          * internet.
          */
-        void onDataStallReestablishInternet();
+        public abstract void onDataStallReestablishInternet();
     }
 
     /**
@@ -278,7 +289,8 @@ public class DataStallRecoveryManager extends Handler {
             return;
         }
         log("cleanUpDataCall: notify clean up data call");
-        mDataStallRecoveryManagerCallback.onDataStallReestablishInternet();
+        mDataStallRecoveryManagerCallback.invokeFromExecutor(
+                () -> mDataStallRecoveryManagerCallback.onDataStallReestablishInternet());
     }
 
     /** Recovery Action: RECOVERY_ACTION_RADIO_RESTART */
