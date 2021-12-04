@@ -83,6 +83,7 @@ import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccVmNotSupportedException;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.uicc.UiccSlot;
 
@@ -107,6 +108,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     private Handler mTestHandler;
     @Mock
     private UiccSlot mUiccSlot;
+    @Mock
+    private UiccPort mUiccPort;
     @Mock
     private CommandsInterface mMockCi;
 
@@ -1395,7 +1398,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         // Have IccId defined. But expected value and current value are the same. So no RIL command
         // should be sent.
         String iccId = "Fake iccId";
-        doReturn(iccId).when(mUiccSlot).getIccId();
+        doReturn(mUiccPort).when(mUiccController).getUiccPort(anyInt());
+        doReturn(iccId).when(mUiccPort).getIccId();
         Message.obtain(mPhoneUT, EVENT_ICC_CHANGED, null).sendToTarget();
         processAllMessages();
         verify(mSubscriptionController).getSubInfoForIccId(iccId);
@@ -1409,8 +1413,9 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         // Set SIM to be present, with a fake iccId, and notify enablement being false.
         doReturn(mUiccSlot).when(mUiccController).getUiccSlotForPhone(anyInt());
         doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mUiccSlot).getCardState();
+        doReturn(mUiccPort).when(mUiccController).getUiccPort(anyInt());
         String iccId = "Fake iccId";
-        doReturn(iccId).when(mUiccSlot).getIccId();
+        doReturn(iccId).when(mUiccPort).getIccId();
         Message.obtain(mPhoneUT, EVENT_UICC_APPS_ENABLEMENT_STATUS_CHANGED,
                 new AsyncResult(null, false, null)).sendToTarget();
         processAllMessages();
@@ -1461,8 +1466,9 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         // Set SIM to be present, with a fake iccId, and notify enablement being false.
         doReturn(mUiccSlot).when(mUiccController).getUiccSlotForPhone(anyInt());
         doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mUiccSlot).getCardState();
+        doReturn(mUiccPort).when(mUiccController).getUiccPort(anyInt());
         String iccId = "Fake iccId";
-        doReturn(iccId).when(mUiccSlot).getIccId();
+        doReturn(iccId).when(mUiccPort).getIccId();
         Message.obtain(mPhoneUT, EVENT_UICC_APPS_ENABLEMENT_STATUS_CHANGED,
                 new AsyncResult(null, false, null)).sendToTarget();
         processAllMessages();
