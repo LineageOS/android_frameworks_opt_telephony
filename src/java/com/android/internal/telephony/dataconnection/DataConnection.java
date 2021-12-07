@@ -94,6 +94,7 @@ import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.TelephonyStatsLog;
+import com.android.internal.telephony.data.DataConfigManager;
 import com.android.internal.telephony.dataconnection.DcTracker.ReleaseNetworkType;
 import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkType;
 import com.android.internal.telephony.metrics.DataCallSessionStats;
@@ -1581,12 +1582,8 @@ public class DataConnection extends StateMachine {
     }
 
     private void updateLinkBandwidthsFromCarrierConfig(int rilRat) {
-        String ratName = ServiceState.rilRadioTechnologyToString(rilRat);
-        if (rilRat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE && isNRConnected()) {
-            ratName = mPhone.getServiceState().getNrFrequencyRange()
-                    == ServiceState.FREQUENCY_RANGE_MMWAVE
-                    ? DctConstants.RAT_NAME_NR_NSA_MMWAVE : DctConstants.RAT_NAME_NR_NSA;
-        }
+        String ratName = DataConfigManager.getDataConfigNetworkType(
+                ServiceState.rilRadioTechnologyToNetworkType(rilRat), mPhone.getServiceState());
 
         if (DBG) log("updateLinkBandwidthsFromCarrierConfig: " + ratName);
 
