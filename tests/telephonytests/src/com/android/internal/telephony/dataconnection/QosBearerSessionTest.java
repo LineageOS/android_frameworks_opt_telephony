@@ -16,8 +16,8 @@
 
 package com.android.internal.telephony.dataconnection;
 
-import static com.android.internal.telephony.dataconnection.QosCallbackTrackerTest.createEpsQos;
-import static com.android.internal.telephony.dataconnection.QosCallbackTrackerTest.createIpv4QosFilter;
+import static com.android.internal.telephony.data.QosCallbackTrackerTest.createEpsQos;
+import static com.android.internal.telephony.data.QosCallbackTrackerTest.createIpv4QosFilter;
 
 import static com.google.common.truth.Truth.assertThat;
 
