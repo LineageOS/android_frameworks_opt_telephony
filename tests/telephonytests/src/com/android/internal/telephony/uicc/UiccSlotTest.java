@@ -271,7 +271,7 @@ public class UiccSlotTest extends TelephonyTest {
         assertEquals(IccCardStatus.CardState.CARDSTATE_ABSENT, mUiccSlot.getCardState());
 
         // assert that we tried to update subscriptions
-        verify(mSubInfoRecordUpdater).updateInternalIccStateForInactiveSlot(
+        verify(mSubInfoRecordUpdater).updateInternalIccStateForInactivePort(
                 activeIss.mSimPortInfos[0].mLogicalSlotIndex, inactiveIss.mSimPortInfos[0].mIccId);
     }
 

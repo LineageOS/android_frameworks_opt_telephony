@@ -200,7 +200,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 .getSubInfoUsingSlotIndexPrivileged(eq(FAKE_SUB_ID_1));
         doReturn(new int[]{FAKE_SUB_ID_1}).when(mSubscriptionController)
                 .getActiveSubIdList(/*visibleOnly*/false);
-        mUpdater.updateInternalIccStateForInactiveSlot(FAKE_SUB_ID_1, null);
+        mUpdater.updateInternalIccStateForInactivePort(FAKE_SUB_ID_1, null);
 
         processAllMessages();
         assertTrue(mUpdater.isSubInfoInitialized());
