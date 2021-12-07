@@ -56,6 +56,7 @@ import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.telephony.data.DataServiceCallback;
+import android.telephony.data.QosBearerSession;
 import android.telephony.data.TrafficDescriptor;
 import android.text.TextUtils;
 import android.util.IndentingPrintWriter;
@@ -345,6 +346,9 @@ public class DataNetwork extends StateMachine {
     /** The network agent associated with this data network. */
     private @NonNull TelephonyNetworkAgent mNetworkAgent;
 
+    /** QOS callback tracker. This is only created after network connected on WWAN. */
+    private @Nullable QosCallbackTracker mQosCallbackTracker;
+
     /** The data profile used to establish this data network. */
     private final @NonNull DataProfile mDataProfile;
 
@@ -394,6 +398,9 @@ public class DataNetwork extends StateMachine {
      * the current transport, then handover will happen.
      */
     private @TransportType int mPreferredTransport = AccessNetworkConstants.TRANSPORT_TYPE_INVALID;
+
+    /** The QOS bearer sessions. */
+    private @NonNull List<QosBearerSession> mQosBearerSessions = new ArrayList<>();
 
     /**
      * The network bandwidth.
@@ -779,6 +786,9 @@ public class DataNetwork extends StateMachine {
             mNetworkAgent.markConnected();
             mDataNetworkCallback.invokeFromExecutor(
                     () -> mDataNetworkCallback.onConnected(DataNetwork.this));
+
+            mQosCallbackTracker = new QosCallbackTracker(mNetworkAgent, mPhone);
+            mQosCallbackTracker.updateSessions(mQosBearerSessions);
             updateSuspendState();
 
             mPhone.getDisplayInfoController().registerForTelephonyDisplayInfoChanged(
@@ -1308,6 +1318,11 @@ public class DataNetwork extends StateMachine {
         // updateTcpBufferSizes
         linkProperties.setTcpBufferSizes(getTcpConfig());
 
+        mQosBearerSessions = response.getQosBearerSessions();
+        if (mQosCallbackTracker != null) {
+            mQosCallbackTracker.updateSessions(mQosBearerSessions);
+        }
+
         if (!linkProperties.equals(mLinkProperties)) {
             mLinkProperties = linkProperties;
             log("sendLinkProperties " + mLinkProperties);
@@ -1649,6 +1664,7 @@ public class DataNetwork extends StateMachine {
         // connection. In this case we assign a slightly higher score of 50. The intention is
         // it will not be replaced by other data networks accidentally in DSDS use case.
         int score = OTHER_NETWORK_SCORE;
+        // TODO: Should update the score when attached list changed.
         for (TelephonyNetworkRequest networkRequest : mAttachedNetworkRequestList) {
             if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                     && networkRequest.getNetworkSpecifier() == null) {
@@ -1916,9 +1932,12 @@ public class DataNetwork extends StateMachine {
         mNetworkAgent.dump(fd, pw, args);
 
         pw.println("Attached network requests:");
+        pw.increaseIndent();
         for (TelephonyNetworkRequest request : mAttachedNetworkRequestList) {
             pw.println(request);
         }
+        pw.decreaseIndent();
+        pw.println("mQosBearerSessions=" + mQosBearerSessions);
 
         pw.println("Local logs:");
         pw.increaseIndent();

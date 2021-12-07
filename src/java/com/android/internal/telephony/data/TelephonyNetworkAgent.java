@@ -26,8 +26,10 @@ import android.net.NetworkAgentConfig;
 import android.net.NetworkProvider;
 import android.net.NetworkScore;
 import android.net.QosFilter;
+import android.net.QosSessionAttributes;
 import android.net.Uri;
 import android.os.Looper;
+import android.util.ArraySet;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
@@ -37,6 +39,7 @@ import com.android.telephony.Rlog;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.time.Duration;
+import java.util.Set;
 import java.util.concurrent.Executor;
 
 /**
@@ -44,7 +47,7 @@ import java.util.concurrent.Executor;
  * for telephony to propagate network related information to the connectivity service. It always
  * has an associated parent {@link DataNetwork}.
  */
-public class TelephonyNetworkAgent extends NetworkAgent {
+public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSessionInterface {
     private final String mLogTag;
     private final Phone mPhone;
     private final LocalLog mLocalLog = new LocalLog(128);
@@ -55,8 +58,12 @@ public class TelephonyNetworkAgent extends NetworkAgent {
     /** This is the id from {@link NetworkAgent#register()}. */
     private final int mId;
 
-    /** The callback that is used to pass information to {@link DataNetwork}. */
-    private @NonNull TelephonyNetworkAgentCallback mTelephonyNetworkAgentCallback;
+    /**
+     * The callbacks that are used to pass information to {@link DataNetwork} and
+     * {@link QosCallbackTracker}.
+     */
+    private final @NonNull Set<TelephonyNetworkAgentCallback> mTelephonyNetworkAgentCallbacks =
+            new ArraySet<>();
 
     /**
      * Telephony network agent callback. This should be only used by {@link DataNetwork}.
@@ -82,9 +89,26 @@ public class TelephonyNetworkAgent extends NetworkAgent {
          *
          * @see NetworkAgent#onValidationStatus(int, Uri)
          */
-        public abstract void onValidationStatus(
-                @android.telephony.Annotation.ValidationStatus int status,
-                @Nullable Uri redirectUri);
+        public void onValidationStatus(@android.telephony.Annotation.ValidationStatus int status,
+                @Nullable Uri redirectUri) {}
+
+        /**
+         * Called when a qos callback is registered with a filter.
+         *
+         * @param qosCallbackId the id for the callback registered
+         * @param filter the filter being registered
+         */
+        public void onQosCallbackRegistered(int qosCallbackId, @NonNull QosFilter filter) {}
+
+        /**
+         * Called when a qos callback is registered with a filter.
+         *
+         * Any QoS events that are sent with the same callback id after this method is called are a
+         * no-op.
+         *
+         * @param qosCallbackId the id for the callback being unregistered.
+         */
+        public void onQosCallbackUnregistered(int qosCallbackId) {}
     }
 
     /**
@@ -107,7 +131,7 @@ public class TelephonyNetworkAgent extends NetworkAgent {
                 provider);
         register();
         mDataNetwork = dataNetwork;
-        mTelephonyNetworkAgentCallback = callback;
+        mTelephonyNetworkAgentCallbacks.add(callback);
         mPhone = phone;
         mId = getNetwork().getNetId();
         mLogTag = "TNA-" + mId;
@@ -144,8 +168,8 @@ public class TelephonyNetworkAgent extends NetworkAgent {
     @Override
     public void onValidationStatus(@android.telephony.Annotation.ValidationStatus int status,
             @Nullable Uri redirectUri) {
-        mTelephonyNetworkAgentCallback.invokeFromExecutor(()
-                -> mTelephonyNetworkAgentCallback.onValidationStatus(status, redirectUri));
+        mTelephonyNetworkAgentCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                () -> callback.onValidationStatus(status, redirectUri)));
     }
 
     /**
@@ -191,7 +215,8 @@ public class TelephonyNetworkAgent extends NetworkAgent {
      */
     @Override
     public void onQosCallbackRegistered(final int qosCallbackId, final @NonNull QosFilter filter) {
-
+        mTelephonyNetworkAgentCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                () -> callback.onQosCallbackRegistered(qosCallbackId, filter)));
     }
 
     /**
@@ -202,7 +227,50 @@ public class TelephonyNetworkAgent extends NetworkAgent {
      *
      * @param qosCallbackId the id for the callback being unregistered.
      */
+    @Override
     public void onQosCallbackUnregistered(final int qosCallbackId) {
+        mTelephonyNetworkAgentCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                () -> callback.onQosCallbackUnregistered(qosCallbackId)));
+    }
+
+    /**
+     * Sends the attributes of Qos Session back to the Application. This method is create for
+     * Mockito to mock since
+     * {@link NetworkAgent#sendQosSessionAvailable(int, int, QosSessionAttributes)} is
+     * {@code final} that can't be mocked.
+     *
+     * @param qosCallbackId the callback id that the session belongs to.
+     * @param sessionId the unique session id across all Qos Sessions.
+     * @param attributes the attributes of the Qos Session.
+     */
+    @Override
+    public void notifyQosSessionAvailable(final int qosCallbackId, final int sessionId,
+            @NonNull final QosSessionAttributes attributes) {
+        super.sendQosSessionAvailable(qosCallbackId, sessionId, attributes);
+    }
+
+    /**
+     * Sends event that the Qos Session was lost. This method is create for Mockito to mock
+     * since {@link NetworkAgent#sendQosSessionLost(int, int, int)} is {@code final} that can't be
+     * mocked..
+     *
+     * @param qosCallbackId the callback id that the session belongs to.
+     * @param sessionId the unique session id across all Qos Sessions.
+     * @param qosSessionType the session type {@code QosSession#QosSessionType}.
+     */
+    @Override
+    public void notifyQosSessionLost(final int qosCallbackId,
+            final int sessionId, final int qosSessionType) {
+        super.sendQosSessionLost(qosCallbackId, sessionId, qosSessionType);
+    }
+
+    /**
+     * Register the callback for receiving information from {@link TelephonyNetworkAgent}.
+     *
+     * @param callback The callback.
+     */
+    public void registerCallback(@NonNull TelephonyNetworkAgentCallback callback) {
+        mTelephonyNetworkAgentCallbacks.add(callback);
     }
 
     /**

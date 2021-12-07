@@ -45,6 +45,8 @@ import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.SlidingWindowEventCounter;
+import com.android.internal.telephony.data.NotifyQosSessionInterface;
+import com.android.internal.telephony.data.QosCallbackTracker;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
@@ -72,7 +74,7 @@ import java.util.concurrent.TimeUnit;
  * {@link DataConnection} so for a short window of time this object might be accessed by two
  * different {@link DataConnection}. Thus each method in this class needs to be synchronized.
  */
-public class DcNetworkAgent extends NetworkAgent {
+public class DcNetworkAgent extends NetworkAgent implements NotifyQosSessionInterface {
     private final String mTag;
 
     private final int mId;
@@ -118,7 +120,7 @@ public class DcNetworkAgent extends NetworkAgent {
         } else {
             loge("The connection does not have a valid link properties.");
         }
-        mQosCallbackTracker = new QosCallbackTracker(this, mPhone.getPhoneId());
+        mQosCallbackTracker = new QosCallbackTracker(this, mPhone);
     }
 
     private @NetworkType int getNetworkType() {
@@ -412,11 +414,13 @@ public class DcNetworkAgent extends NetworkAgent {
         mQosCallbackExecutor.execute(() -> mQosCallbackTracker.updateSessions(qosBearerSessions));
     }
 
+    @Override
     public void notifyQosSessionAvailable(final int qosCallbackId, final int sessionId,
             @NonNull final QosSessionAttributes attributes) {
         super.sendQosSessionAvailable(qosCallbackId, sessionId, attributes);
     }
 
+    @Override
     public void notifyQosSessionLost(final int qosCallbackId,
             final int sessionId, final int qosSessionType) {
         super.sendQosSessionLost(qosCallbackId, sessionId, qosSessionType);
