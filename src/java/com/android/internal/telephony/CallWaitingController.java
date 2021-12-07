@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_NONE;
+import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_USER_CHANGE;
 import static android.telephony.CarrierConfigManager.ImsSs.KEY_TERMINAL_BASED_CALL_WAITING_DEFAULT_ENABLED_BOOL;
 import static android.telephony.CarrierConfigManager.ImsSs.KEY_TERMINAL_BASED_CALL_WAITING_SYNC_TYPE_INT;
 import static android.telephony.CarrierConfigManager.ImsSs.KEY_UT_TERMINAL_BASED_SERVICES_INT_ARRAY;
@@ -33,6 +34,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.AsyncResult;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
@@ -46,7 +48,7 @@ import com.android.telephony.Rlog;
  *
  * {@hide}
  */
-public class CallWaitingController {
+public class CallWaitingController extends Handler {
 
     public static final String LOG_TAG = "CallWaiting";
     private static final boolean DBG = false; /* STOPSHIP if true */
@@ -57,6 +59,20 @@ public class CallWaitingController {
     public static final int TERMINAL_BASED_NOT_ACTIVATED = 0;
     // Terminal-based call waiting is supported and activated. */
     public static final int TERMINAL_BASED_ACTIVATED = 1;
+
+    private static final int EVENT_SET_CALL_WAITING_DONE = 1;
+    private static final int EVENT_GET_CALL_WAITING_DONE = 2;
+
+    // Class to pack mOnComplete object passed by the caller
+    private static class Cw {
+        final boolean mEnable;
+        final Message mOnComplete;
+
+        Cw(boolean enable, Message onComplete) {
+            mEnable = enable;
+            mOnComplete = onComplete;
+        }
+    }
 
     @VisibleForTesting
     public static final String PREFERENCE_TBCW = "terminal_based_call_waiting";
@@ -157,6 +173,11 @@ public class CallWaitingController {
         if (mSyncPreference == CALL_WAITING_SYNC_NONE) {
             sendGetCallWaitingResponse(onComplete);
             return true;
+        } else if (mSyncPreference == CALL_WAITING_SYNC_USER_CHANGE) {
+            Cw cw = new Cw(false, onComplete);
+            Message resp = obtainMessage(EVENT_GET_CALL_WAITING_DONE, 0, 0, cw);
+            mPhone.mCi.queryCallWaiting(SERVICE_CLASS_NONE, resp);
+            return true;
         }
 
         return false;
@@ -182,9 +203,54 @@ public class CallWaitingController {
 
             sendToTarget(onComplete, null, null);
             return true;
+        } else if (mSyncPreference == CALL_WAITING_SYNC_USER_CHANGE) {
+            Cw cw = new Cw(enable, onComplete);
+            Message resp = obtainMessage(EVENT_SET_CALL_WAITING_DONE, 0, 0, cw);
+            mPhone.mCi.setCallWaiting(enable, serviceClass, resp);
+            return true;
         }
 
         return false;
+    }
+
+    @Override
+    public void handleMessage(Message msg) {
+        switch (msg.what) {
+            case EVENT_SET_CALL_WAITING_DONE:
+                onSetCallWaitingDone((AsyncResult) msg.obj);
+                break;
+            case EVENT_GET_CALL_WAITING_DONE:
+                onGetCallWaitingDone((AsyncResult) msg.obj);
+                break;
+        }
+    }
+
+    private void onSetCallWaitingDone(AsyncResult ar) {
+        if (ar.userObj != null && ar.userObj instanceof Cw) {
+            if (DBG) Rlog.d(LOG_TAG, "onSetCallWaitingDone");
+            Cw cw = (Cw) ar.userObj;
+            if (ar.exception == null) {
+                updateState(
+                        cw.mEnable ? TERMINAL_BASED_ACTIVATED : TERMINAL_BASED_NOT_ACTIVATED);
+            }
+            sendToTarget(cw.mOnComplete, ar.result, ar.exception);
+        }
+    }
+
+    private void onGetCallWaitingDone(AsyncResult ar) {
+        if (ar.userObj != null && ar.userObj instanceof Cw) {
+            if (DBG) Rlog.d(LOG_TAG, "onGetCallWaitingDone");
+            Cw cw = (Cw) ar.userObj;
+            if (ar.exception == null) {
+                int[] resp = (int[]) ar.result;
+                if (resp != null && resp.length > 1) {
+                    boolean enabled =
+                            resp[0] == 1 && (resp[1] & SERVICE_CLASS_VOICE) == SERVICE_CLASS_VOICE;
+                    updateState(enabled ? TERMINAL_BASED_ACTIVATED : TERMINAL_BASED_NOT_ACTIVATED);
+                }
+            }
+            sendToTarget(cw.mOnComplete, ar.result, ar.exception);
+        }
     }
 
     private void sendToTarget(Message onComplete, Object result, Throwable exception) {

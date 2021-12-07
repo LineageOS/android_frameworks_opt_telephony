@@ -16,6 +16,7 @@
 package com.android.internal.telephony;
 
 import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_NONE;
+import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_USER_CHANGE;
 import static android.telephony.CarrierConfigManager.ImsSs.KEY_TERMINAL_BASED_CALL_WAITING_DEFAULT_ENABLED_BOOL;
 import static android.telephony.CarrierConfigManager.ImsSs.KEY_TERMINAL_BASED_CALL_WAITING_SYNC_TYPE_INT;
 import static android.telephony.CarrierConfigManager.ImsSs.KEY_UT_TERMINAL_BASED_SERVICES_INT_ARRAY;
@@ -220,6 +221,58 @@ public class CallWaitingControllerTest extends TelephonyTest {
         assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_NOT_ACTIVATED);
 
         assertFalse(mCWC.setCallWaiting(true, SERVICE_CLASS_NONE, null));
+        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_NOT_ACTIVATED);
+        assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_NOT_ACTIVATED);
+    }
+
+    @Test
+    @SmallTest
+    public void testSyncUserChange() {
+        mCWC.setTerminalBasedCallWaitingSupported(false);
+        setPreference(mPhone.getPhoneId(), FAKE_SUB_ID,
+                TERMINAL_BASED_ACTIVATED, CALL_WAITING_SYNC_USER_CHANGE);
+        mCWC.setTerminalBasedCallWaitingSupported(true);
+        PersistableBundle bundle = getBundle(true, CALL_WAITING_SYNC_USER_CHANGE, true);
+        mCWC.updateCarrierConfig(FAKE_SUB_ID, bundle, true);
+
+        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_ACTIVATED);
+        assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_ACTIVATED);
+
+        mHandler = new GetTestHandler();
+
+        mSimulatedCommands.setCallWaiting(false, SERVICE_CLASS_VOICE, null);
+
+        assertTrue(mCWC.getCallWaiting(mHandler.obtainMessage(GET_DONE)));
+        mTestableLooper.processAllMessages();
+
+        assertNotNull(mHandler.resp);
+        assertEquals(2, mHandler.resp.length);
+        assertEquals(TERMINAL_BASED_NOT_ACTIVATED, mHandler.resp[0]);
+        assertEquals(SERVICE_CLASS_NONE, mHandler.resp[1]);
+
+        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_NOT_ACTIVATED);
+        assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_NOT_ACTIVATED);
+
+        mHandler.reset();
+
+        mSimulatedCommands.setCallWaiting(true, SERVICE_CLASS_VOICE, null);
+
+        assertTrue(mCWC.getCallWaiting(mHandler.obtainMessage(GET_DONE)));
+        mTestableLooper.processAllMessages();
+
+        assertNotNull(mHandler.resp);
+        assertEquals(2, mHandler.resp.length);
+        assertEquals(TERMINAL_BASED_ACTIVATED, mHandler.resp[0]);
+        assertEquals(SERVICE_CLASS_VOICE, mHandler.resp[1]);
+
+        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_ACTIVATED);
+        assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_ACTIVATED);
+
+        mHandler.reset();
+
+        assertTrue(mCWC.setCallWaiting(false, SERVICE_CLASS_VOICE, null));
+        mTestableLooper.processAllMessages();
+
         assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_NOT_ACTIVATED);
         assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_NOT_ACTIVATED);
     }
