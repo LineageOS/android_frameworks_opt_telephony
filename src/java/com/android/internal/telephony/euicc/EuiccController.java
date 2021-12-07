@@ -1627,13 +1627,19 @@ public class EuiccController extends IEuiccController.Stub {
                 Manifest.permission.WRITE_EMBEDDED_SUBSCRIPTIONS)
                 == PackageManager.PERMISSION_GRANTED;
     }
+
     @Override
     public boolean isSimPortAvailable(int cardId, int portIndex, String callingPackage) {
-        List<UiccCardInfo> cardInfos = mTelephonyManager.getUiccCardsInfo();
+        List<UiccCardInfo> cardInfos;
+        final long token = Binder.clearCallingIdentity();
+        try {
+            cardInfos = mTelephonyManager.getUiccCardsInfo();
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
         if (ArrayUtils.isEmpty(cardInfos)) {
             return false;
         }
-        int result = TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED;
         for (UiccCardInfo info : cardInfos) {
             //return false if physical card
             if (info != null && info.getCardId() == cardId && (!info.isEuicc()
@@ -1645,9 +1651,9 @@ public class EuiccController extends IEuiccController.Stub {
                 if (port == null) {
                     return false;
                 }
-                // port is available if port is inactive and ICCID  or calling app has carrier
+                // port is available if port is inactive and ICCID or calling app has carrier
                 // privilege over the profile installed on the selected port.
-                result = port.getUiccProfile().getCarrierPrivilegeStatus(
+                int result = port.getUiccProfile().getCarrierPrivilegeStatus(
                         mContext.getPackageManager(), callingPackage);
                 if ((result == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS)
                         || (portInfo.getIccId() == null && portInfo.isActive())) {

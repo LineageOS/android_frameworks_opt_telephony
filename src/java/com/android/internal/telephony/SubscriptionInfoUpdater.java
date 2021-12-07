@@ -215,12 +215,12 @@ public class SubscriptionInfoUpdater extends Handler {
     }
 
     /**
-     * Update subscriptions if needed when there's a change in inactive slot.
-     * @param prevActivePhoneId is the corresponding phoneId of the slot if slot was previously
+     * Update subscriptions if needed when there's a change in inactive port.
+     * @param prevActivePhoneId is the corresponding phoneId of the port if port was previously
      *                          active. It could be INVALID if it was already inactive.
-     * @param iccId iccId in that slot, if any.
+     * @param iccId iccId in that port, if any.
      */
-    public void updateInternalIccStateForInactiveSlot(int prevActivePhoneId, String iccId) {
+    public void updateInternalIccStateForInactivePort(int prevActivePhoneId, String iccId) {
         sendMessage(obtainMessage(EVENT_INACTIVE_SLOT_ICC_STATE_CHANGED, prevActivePhoneId,
                 0, iccId));
     }
@@ -247,12 +247,13 @@ public class SubscriptionInfoUpdater extends Handler {
         for (int i = 0; i < TelephonyManager.getDefault().getActiveModemCount(); i++) {
             UiccSlot slot = UiccController.getInstance().getUiccSlotForPhone(i);
             int slotId = UiccController.getInstance().getSlotIdFromPhoneId(i);
-            if  (sIccId[i] == null || slot == null || !slot.isActive()) {
+            if  (sIccId[i] == null || UiccController.getInstance().getUiccPort(i) == null) {
                 if (sIccId[i] == null) {
                     logd("Wait for SIM " + i + " Iccid");
                 } else {
-                    logd(String.format("Wait for slot corresponding to phone %d to be active, "
-                            + "slotId is %d", i, slotId));
+                    logd(String.format("Wait for port corresponding to phone %d to be active, "
+                        + "slotId is %d" + " , portIndex is %d", i, slotId,
+                            slot.getPortIndexFromPhoneId(i)));
                 }
                 return false;
             }
@@ -289,7 +290,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 break;
 
             case EVENT_INACTIVE_SLOT_ICC_STATE_CHANGED:
-                handleInactiveSlotIccStateChange(msg.arg1, (String) msg.obj);
+                handleInactivePortIccStateChange(msg.arg1, (String) msg.obj);
                 break;
 
             case EVENT_SIM_LOCKED:
@@ -649,10 +650,10 @@ public class SubscriptionInfoUpdater extends Handler {
     }
 
     /**
-     * PhoneId is the corresponding phoneId of the slot if slot was previously active.
+     * PhoneId is the corresponding phoneId of the port if port was previously active.
      * It could be INVALID if it was already inactive.
      */
-    private void handleInactiveSlotIccStateChange(int phoneId, String iccId) {
+    private void handleInactivePortIccStateChange(int phoneId, String iccId) {
         if (SubscriptionManager.isValidPhoneId(phoneId)) {
             // If phoneId is valid, it means the physical slot was previously active in that
             // phoneId. In this case, found the subId and set its phoneId to invalid.
@@ -1190,15 +1191,15 @@ public class SubscriptionInfoUpdater extends Handler {
             SubscriptionManager.putPhoneIdAndSubIdExtra(i, phoneId);
             // TODO(b/130664115) we manually populate this intent with the slotId. In the future we
             // should do a review of whether to make this public
+            UiccSlot slot = UiccController.getInstance().getUiccSlotForPhone(phoneId);
             int slotId = UiccController.getInstance().getSlotIdFromPhoneId(phoneId);
             i.putExtra(PhoneConstants.SLOT_KEY, slotId);
-            UiccPort portInfo = UiccController.getInstance().getUiccPortForPhone(phoneId);
-            if (portInfo != null) {
-                int portId = portInfo.getPortIdx();
-                i.putExtra(PhoneConstants.PORT_KEY, portId);
+            if (slot != null) {
+                i.putExtra(PhoneConstants.PORT_KEY, slot.getPortIndexFromPhoneId(phoneId));
             }
             logd("Broadcasting intent ACTION_SIM_CARD_STATE_CHANGED " + simStateString(state)
-                    + " for phone: " + phoneId + " slot: " + slotId);
+                    + " for phone: " + phoneId + " slot: " + slotId + " port: "
+                    + slot.getPortIndexFromPhoneId(phoneId));
             sContext.sendBroadcast(i, Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
             TelephonyMetrics.getInstance().updateSimState(phoneId, state);
         }
@@ -1222,15 +1223,15 @@ public class SubscriptionInfoUpdater extends Handler {
             SubscriptionManager.putPhoneIdAndSubIdExtra(i, phoneId);
             // TODO(b/130664115) we populate this intent with the actual slotId. In the future we
             // should do a review of whether to make this public
+            UiccSlot slot = UiccController.getInstance().getUiccSlotForPhone(phoneId);
             int slotId = UiccController.getInstance().getSlotIdFromPhoneId(phoneId);
             i.putExtra(PhoneConstants.SLOT_KEY, slotId);
-            UiccPort portInfo = UiccController.getInstance().getUiccPortForPhone(phoneId);
-            if (portInfo != null) {
-                int portId = portInfo.getPortIdx();
-                i.putExtra(PhoneConstants.PORT_KEY, portId);
+            if (slot != null) {
+                i.putExtra(PhoneConstants.PORT_KEY, slot.getPortIndexFromPhoneId(phoneId));
             }
             logd("Broadcasting intent ACTION_SIM_APPLICATION_STATE_CHANGED " + simStateString(state)
-                    + " for phone: " + phoneId + " slot: " + slotId);
+                    + " for phone: " + phoneId + " slot: " + slotId + "port: "
+                    + slot.getPortIndexFromPhoneId(phoneId));
             sContext.sendBroadcast(i, Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
             TelephonyMetrics.getInstance().updateSimState(phoneId, state);
         }
