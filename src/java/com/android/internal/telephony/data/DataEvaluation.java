@@ -179,13 +179,14 @@ public class DataEvaluation {
         DATA_RESTRICTED_CHANGED,
         /** Network capabilities changed. The unsatisfied requests might have chances to attach. */
         DATA_NETWORK_CAPABILITIES_CHANGED,
+        /** When emergency call started or ended. */
+        EMERGENCY_CALL_CHANGED,
     }
 
     /** Disallowed reasons. There could be multiple reasons if data connection is not allowed. */
     public enum DataDisallowedReason {
         // Soft failure reasons. A soft reason means that in certain conditions, data is still
         // allowed. Normally those reasons are due to users settings.
-
         /** Data is disabled by the user or policy. */
         DATA_DISABLED(false),
         /** Data roaming is disabled by the user. */
@@ -214,7 +215,9 @@ public class DataEvaluation {
         /** Unable to find a suitable data profile. */
         NO_SUITABLE_DATA_PROFILE(true),
         /** Current data network type not allowed. */
-        DATA_NETWORK_TYPE_NOT_ALLOWED(true);
+        DATA_NETWORK_TYPE_NOT_ALLOWED(true),
+        /** Device is currently in an emergency call. */
+        EMERGENCY_CALL(true);
 
         private final boolean mIsHardReason;
 
@@ -257,6 +260,10 @@ public class DataEvaluation {
          * the user enables or disables data.
          */
         UNMETERED_USAGE,
+        /**
+         * The network request supports MMS and MMS is always allowed.
+         */
+        MMS_REQUEST,
         /**
          * The network request is restricted (i.e. Only privilege apps can access the network.)
          */
