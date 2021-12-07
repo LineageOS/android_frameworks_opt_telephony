@@ -196,6 +196,10 @@ public class DataNetworkTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        doAnswer(invocation -> {
+            ((Runnable) invocation.getArguments()[0]).run();
+            return null;
+        }).when(mDataNetworkCallback).invokeFromExecutor(any(Runnable.class));
         mDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 mWwanDataServiceManager);
         mDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
