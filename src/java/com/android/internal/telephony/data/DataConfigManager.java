@@ -398,6 +398,7 @@ public class DataConfigManager extends Handler {
      * @return The metered APN types when connected to a home network
      */
     public @NonNull @ApnType List<Integer> getMeteredApnTypes() {
+        // TODO: return as set instead of list
         return Collections.unmodifiableList(mMeteredApnTypes);
     }
 
@@ -405,6 +406,7 @@ public class DataConfigManager extends Handler {
      * @return The metered APN types when roaming
      */
     public @NonNull @ApnType List<Integer> getMeteredApnTypesWhenRoaming() {
+        // TODO: return as set instead of list
         return Collections.unmodifiableList(mRoamingMeteredApnTypes);
     }
 
