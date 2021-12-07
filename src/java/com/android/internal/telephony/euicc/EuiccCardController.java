@@ -212,6 +212,17 @@ public class EuiccCardController extends IEuiccCardController.Stub {
         return null;
     }
 
+    private EuiccPort getFirstActiveEuiccPort(String cardId) {
+        EuiccCard card = getEuiccCard(cardId);
+        if (card == null) {
+            return null;
+        }
+        if (card.getUiccPortList().length > 0 ) {
+            return (EuiccPort) card.getUiccPortList()[0]; // return first active port.
+        }
+        return null;
+    }
+
     private EuiccPort getEuiccPort(String cardId, int portIdx) {
         EuiccCard card = getEuiccCard(cardId);
         if (card == null) {
@@ -245,7 +256,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
@@ -294,7 +305,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
@@ -456,7 +467,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND);
@@ -504,7 +515,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND);
@@ -556,7 +567,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND);
@@ -608,7 +619,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
@@ -656,7 +667,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
@@ -704,7 +715,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND);
@@ -752,7 +763,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
@@ -801,7 +812,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
@@ -849,7 +860,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
@@ -897,7 +908,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
@@ -946,7 +957,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
@@ -996,7 +1007,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
@@ -1045,7 +1056,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
@@ -1097,7 +1108,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
@@ -1145,7 +1156,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
@@ -1194,7 +1205,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
@@ -1243,7 +1254,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
@@ -1292,7 +1303,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             return;
         }
 
-        EuiccPort port = getEuiccPort(cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+        EuiccPort port = getFirstActiveEuiccPort(cardId);
         if (port == null) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND);
