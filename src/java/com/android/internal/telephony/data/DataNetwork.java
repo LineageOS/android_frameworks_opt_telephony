@@ -49,7 +49,6 @@ import android.telephony.LinkCapacityEstimate;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
-import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
@@ -414,6 +413,12 @@ public class DataNetwork extends StateMachine {
         public NetworkBandwidth(int downlinkBandwidthKbps, int uplinkBandwidthKbps) {
             this.downlinkBandwidthKbps = downlinkBandwidthKbps;
             this.uplinkBandwidthKbps = uplinkBandwidthKbps;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("NetworkBandwidth=[downlink=%d, uplink=%d]",
+                    downlinkBandwidthKbps, uplinkBandwidthKbps);
         }
     }
 
@@ -1333,26 +1338,21 @@ public class DataNetwork extends StateMachine {
      *
      * @return The TCP config string used in {@link LinkProperties#setTcpBufferSizes(String)}.
      */
-    private @NonNull String getTcpConfig() {
+    private @Nullable String getTcpConfig() {
         ServiceState ss = mPhone.getServiceState();
         NetworkRegistrationInfo nrs = ss.getNetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, mTransport);
         int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
         if (nrs != null) {
             networkType = nrs.getAccessNetworkTechnology();
-            if (networkType == TelephonyManager.NETWORK_TYPE_LTE && isNrConnected()) {
-                // Use the 5G SA TCP config for 5G NSA.
-                networkType = TelephonyManager.NETWORK_TYPE_NR;
-            }
-
             if (networkType == TelephonyManager.NETWORK_TYPE_LTE
                     && nrs.isUsingCarrierAggregation()) {
-                // Although LTE_CA is not a real RAT, but since LTE CA gernally has higher speed,
-                // so we use a different network type to get a different TCP config for LTE CA.
+                // Although LTE_CA is not a real RAT, but since LTE CA generally has higher speed
+                // we use LTE_CA to get a different TCP config for LTE CA.
                 networkType = TelephonyManager.NETWORK_TYPE_LTE_CA;
             }
         }
-        return mDataConfigManager.getTcpConfigString(networkType);
+        return mDataConfigManager.getTcpConfigString(networkType, ss);
     }
 
     /**
@@ -1565,13 +1565,8 @@ public class DataNetwork extends StateMachine {
     private void onBandwidthUpdated(int uplinkBandwidthKbps, int downlinkBandwidthKbps) {
         log("onBandwidthUpdated: downlinkBandwidthKbps=" + downlinkBandwidthKbps
                 + ", uplinkBandwidthKbps=" + uplinkBandwidthKbps);
-        TelephonyDisplayInfo displayInfo = mPhone.getDisplayInfoController()
-                .getTelephonyDisplayInfo();
-        NetworkBandwidth bandwidthFromConfig = null;
-        if (displayInfo != null) {
-            bandwidthFromConfig = mDataConfigManager.getBandwidthForNetworkType(
-                    getDataNetworkType(), displayInfo.getOverrideNetworkType());
-        }
+        NetworkBandwidth bandwidthFromConfig =  mDataConfigManager.getBandwidthForNetworkType(
+                getDataNetworkType(), mPhone.getServiceState());
 
         if (downlinkBandwidthKbps == LinkCapacityEstimate.INVALID && bandwidthFromConfig != null) {
             // Fallback to carrier config.
@@ -1609,13 +1604,9 @@ public class DataNetwork extends StateMachine {
             return;
         }
         log("updateBandwidthFromDataConfig");
-        TelephonyDisplayInfo displayInfo = mPhone.getDisplayInfoController()
-                .getTelephonyDisplayInfo();
-        if (displayInfo != null) {
-            mNetworkBandwidth = mDataConfigManager.getBandwidthForNetworkType(
-                    getDataNetworkType(), displayInfo.getOverrideNetworkType());
-            updateNetworkCapabilities();
-        }
+        mNetworkBandwidth = mDataConfigManager.getBandwidthForNetworkType(
+                getDataNetworkType(), mPhone.getServiceState());
+        updateNetworkCapabilities();
     }
 
     /**
