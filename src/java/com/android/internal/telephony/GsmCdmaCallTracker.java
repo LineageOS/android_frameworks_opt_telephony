@@ -967,6 +967,11 @@ public class GsmCdmaCallTracker extends CallTracker {
                             } else {
                                 newUnknownConnectionCdma = mConnections[i];
                             }
+                        } else if (mPhone.getTerminalBasedCallWaitingState()
+                                    == CallWaitingController.TERMINAL_BASED_NOT_ACTIVATED
+                                && newRinging.getState() == Call.State.WAITING) {
+                            mCi.hangupWaitingOrBackground(obtainCompleteMessage());
+                            return;
                         }
                     }
                 }

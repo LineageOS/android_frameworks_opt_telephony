@@ -283,6 +283,7 @@ public class GsmCdmaPhone extends Phone {
     private final CarrierPrivilegesTracker mCarrierPrivilegesTracker;
 
     private final SubscriptionManager.OnSubscriptionsChangedListener mSubscriptionsChangedListener;
+    private final CallWaitingController mCallWaitingController;
 
     // Constructors
 
@@ -387,6 +388,8 @@ public class GsmCdmaPhone extends Phone {
         mLinkBandwidthEstimator = mTelephonyComponentFactory
                 .inject(LinkBandwidthEstimator.class.getName())
                 .makeLinkBandwidthEstimator(this);
+
+        mCallWaitingController = new CallWaitingController(this);
 
         loadTtyMode();
 
@@ -2728,6 +2731,8 @@ public class GsmCdmaPhone extends Phone {
             return;
         }
 
+        if (mCallWaitingController.getCallWaiting(onComplete)) return;
+
         Phone imsPhone = mImsPhone;
         if (useSsOverUt(SS_CW)) {
             if (useSsOverUt(onComplete)) {
@@ -2784,6 +2789,8 @@ public class GsmCdmaPhone extends Phone {
             return;
         }
 
+        if (mCallWaitingController.setCallWaiting(enable, serviceClass, onComplete)) return;
+
         Phone imsPhone = mImsPhone;
         if (useSsOverUt(SS_CW)) {
             if (useSsOverUt(onComplete)) {
@@ -2816,6 +2823,23 @@ public class GsmCdmaPhone extends Phone {
             AsyncResult.forMessage(onComplete, CommandsInterface.SS_STATUS_UNKNOWN, null);
             onComplete.sendToTarget();
         }
+    }
+
+    @Override
+    public int getTerminalBasedCallWaitingState() {
+        return mCallWaitingController.getTerminalBasedCallWaitingState();
+    }
+
+    @Override
+    public void setTerminalBasedCallWaitingStatus(int state) {
+        if (mImsPhone != null) {
+            mImsPhone.setTerminalBasedCallWaitingStatus(state);
+        }
+    }
+
+    @Override
+    public void setTerminalBasedCallWaitingSupported(boolean supported) {
+        mCallWaitingController.setTerminalBasedCallWaitingSupported(supported);
     }
 
     @Override
