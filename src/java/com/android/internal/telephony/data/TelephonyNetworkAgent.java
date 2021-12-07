@@ -153,7 +153,9 @@ public class TelephonyNetworkAgent extends NetworkAgent {
      */
     @Override
     public void onBandwidthUpdateRequested() {
-
+        // Drop the support for IRadio 1.0 and 1.1. On newer HAL, LCE should be reported from
+        // modem unsolicited.
+        loge("onBandwidthUpdateRequested: RIL.pullLceData is not supported anymore.");
     }
     /**
      * Called when connectivity service requests that the network hardware send the specified
