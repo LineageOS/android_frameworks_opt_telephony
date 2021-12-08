@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.data;
 
+import android.annotation.CallbackExecutor;
 import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -44,9 +45,11 @@ import android.telephony.Annotation.DataState;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.Annotation.ValidationStatus;
 import android.telephony.DataFailCause;
+import android.telephony.LinkCapacityEstimate;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
+import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
@@ -57,6 +60,7 @@ import android.telephony.data.TrafficDescriptor;
 import android.text.TextUtils;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
+import android.util.Pair;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 
@@ -65,6 +69,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
+import com.android.internal.telephony.data.TelephonyNetworkAgent.TelephonyNetworkAgentCallback;
 import com.android.internal.telephony.dataconnection.AccessNetworksManager;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.IState;
@@ -80,6 +85,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 
 /**
@@ -126,9 +132,6 @@ public class DataNetwork extends StateMachine {
     /** Event for detaching a network request. */
     private static final int EVENT_DETACH_NETWORK_REQUEST = 3;
 
-    /** Event for network validation status result arrives. */
-    private static final int EVENT_VALIDATION_STATUS_RESULT = 4;
-
     /** Event for allocating PDU session id response. */
     private static final int EVENT_ALLOCATE_PDU_SESSION_ID_RESPONSE = 5;
 
@@ -146,6 +149,15 @@ public class DataNetwork extends StateMachine {
 
     /** Event for detaching all network requests. */
     private static final int EVENT_DETACH_ALL_NETWORK_REQUESTS = 10;
+
+    /** Event for bandwidth estimation from the modem changed. */
+    private static final int EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED = 11;
+
+    /** Event for bandwidth estimation from the bandwidth estimator changed. */
+    private static final int EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED = 12;
+
+    /** Event for display info changed. This is for getting 5G NSA or mmwave information. */
+    private static final int EVENT_DISPLAY_INFO_CHANGED = 13;
 
     /** The default MTU for IPv4 network */
     private static final int DEFAULT_MTU_V4 = 1280;
@@ -216,6 +228,67 @@ public class DataNetwork extends StateMachine {
     /** Data network tear down due to radio turned off by the carrier. */
     public static final int TEAR_DOWN_REASON_POWER_OFF_BY_CARRIER = 11;
 
+    @IntDef(prefix = {"BANDWIDTH_SOURCE_"},
+            value = {
+                    BANDWIDTH_SOURCE_UNKNOWN,
+                    BANDWIDTH_SOURCE_MODEM,
+                    BANDWIDTH_SOURCE_CARRIER_CONFIG,
+                    BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR,
+            })
+    public @interface BandwidthEstimationSource {}
+
+    /** Indicates the bandwidth estimation source is unknown. This must be a configuration error. */
+    public static final int BANDWIDTH_SOURCE_UNKNOWN = 0;
+
+    /** Indicates the bandwidth estimation source is from the modem. */
+    public static final int BANDWIDTH_SOURCE_MODEM = 1;
+
+    /** Indicates the bandwidth estimation source is from the static carrier config. */
+    public static final int BANDWIDTH_SOURCE_CARRIER_CONFIG = 2;
+
+    /** Indicates the bandwidth estimation source is from {@link LinkBandwidthEstimator}. */
+    public static final int BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR = 3;
+
+    /** The parent state. Any messages not handled by the child state fallback to this. */
+    private final DefaultState mDefaultState = new DefaultState();
+
+    /**
+     * The connecting state. This is the initial state of a data network.
+     *
+     * @see DataNetwork for the state machine diagram.
+     */
+    private final ConnectingState mConnectingState = new ConnectingState();
+
+    /**
+     * The connected state. This is the state when data network becomes usable.
+     *
+     * @see DataNetwork for the state machine diagram.
+     */
+    private final ConnectedState mConnectedState = new ConnectedState();
+
+    /**
+     * The handover state. This is the state when data network handover between IWLAN and cellular.
+     *
+     * @see DataNetwork for the state machine diagram.
+     */
+    private final HandoverState mHandoverState = new HandoverState();
+
+    /**
+     * The disconnecting state. This is the state when data network is about to be disconnected.
+     * The network is still usable in this state, but the clients should be prepared to lose the
+     * network in any moment.
+     *
+     * @see DataNetwork for the state machine diagram.
+     */
+    private final DisconnectingState mDisconnectingState = new DisconnectingState();
+
+    /**
+     * The disconnected state. This is the final state of a data network.
+     *
+     * @see DataNetwork for the state machine diagram.
+     */
+    private final DisconnectedState mDisconnectedState = new DisconnectedState();
+
     /** The phone instance. */
     private final @NonNull Phone mPhone;
     /**
@@ -236,13 +309,6 @@ public class DataNetwork extends StateMachine {
 
     /** Local log. */
     private final LocalLog mLocalLog = new LocalLog(128);
-
-    private final DefaultState mDefaultState = new DefaultState();
-    private final ConnectingState mConnectingState = new ConnectingState();
-    private final ConnectedState mConnectedState = new ConnectedState();
-    private final HandoverState mHandoverState = new HandoverState();
-    private final DisconnectingState mDisconnectingState = new DisconnectingState();
-    private final DisconnectedState mDisconnectedState = new DisconnectedState();
 
     /** The callback to receives data network state update. */
     private final @NonNull DataNetworkCallback mDataNetworkCallback;
@@ -288,6 +354,9 @@ public class DataNetwork extends StateMachine {
     /** The link properties of this data network. */
     private @NonNull LinkProperties mLinkProperties;
 
+    /** The network bandwidth. */
+    private @NonNull NetworkBandwidth mNetworkBandwidth = new NetworkBandwidth(14, 14);
+
     /** The network requests associated with this data network */
     private @NonNull NetworkRequestList mAttachedNetworkRequestList = new NetworkRequestList();
 
@@ -315,11 +384,6 @@ public class DataNetwork extends StateMachine {
     private boolean mSuspended = false;
 
     /**
-     * The network validation result from connectivity service.
-     */
-    private @Nullable DataValidationResult mDataValidationResult;
-
-    /**
      * The current transport of the data network. For handover, the current transport will be set
      * after handover completes.
      */
@@ -332,9 +396,40 @@ public class DataNetwork extends StateMachine {
     private @TransportType int mPreferredTransport = AccessNetworkConstants.TRANSPORT_TYPE_INVALID;
 
     /**
-     * The interface for data network callback.
+     * The network bandwidth.
      */
-    public interface DataNetworkCallback {
+    public static class NetworkBandwidth {
+        /** The downlink bandwidth in Kbps. */
+        public final int downlinkBandwidthKbps;
+
+        /** The uplink Bandwidth in Kbps. */
+        public final int uplinkBandwidthKbps;
+
+        /**
+         * Constructor.
+         *
+         * @param downlinkBandwidthKbps The downlink bandwidth in Kbps.
+         * @param uplinkBandwidthKbps The uplink Bandwidth in Kbps.
+         */
+        public NetworkBandwidth(int downlinkBandwidthKbps, int uplinkBandwidthKbps) {
+            this.downlinkBandwidthKbps = downlinkBandwidthKbps;
+            this.uplinkBandwidthKbps = uplinkBandwidthKbps;
+        }
+    }
+
+    /**
+     * Data network callback. Should only be used by {@link DataNetworkController}.
+     */
+    public abstract static class DataNetworkCallback extends DataCallback {
+        /**
+         * Constructor
+         *
+         * @param executor The executor of the callback.
+         */
+        public DataNetworkCallback(@NonNull @CallbackExecutor Executor executor) {
+            super(executor);
+        }
+
         /**
          * Called when data setup failed.
          *
@@ -348,7 +443,7 @@ public class DataNetwork extends StateMachine {
          * data retry should not occur. {@link DataCallResponse#RETRY_DURATION_UNDEFINED} indicates
          * network did not suggest any retry duration.
          */
-        void onSetupDataFailed(@NonNull DataNetwork dataNetwork,
+        public abstract void onSetupDataFailed(@NonNull DataNetwork dataNetwork,
                 @NonNull NetworkRequestList requestList, @DataFailureCause int cause,
                 long retryDurationMillis);
 
@@ -357,16 +452,20 @@ public class DataNetwork extends StateMachine {
          *
          * @param dataNetwork The data network.
          */
-        void onConnected(@NonNull DataNetwork dataNetwork);
+        public abstract void onConnected(@NonNull DataNetwork dataNetwork);
 
         /**
          * Called when data network validation status changed.
          *
          * @param dataNetwork The data network.
-         * @param dataValidationResult Data validation result from connectivity service.
+         * @param status one of {@link NetworkAgent#VALIDATION_STATUS_VALID} or
+         * {@link NetworkAgent#VALIDATION_STATUS_NOT_VALID}.
+         * @param redirectUri If internet connectivity is being redirected (e.g., on a captive
+         * portal), this is the destination the probes are being redirected to, otherwise
+         * {@code null}.
          */
-        void onValidationStatusChanged(@NonNull DataNetwork dataNetwork,
-                @NonNull DataValidationResult dataValidationResult);
+        public abstract void onValidationStatusChanged(@NonNull DataNetwork dataNetwork,
+                @ValidationStatus int status, @Nullable Uri redirectUri);
 
         /**
          * Called when data network suspended state changed.
@@ -374,7 +473,8 @@ public class DataNetwork extends StateMachine {
          * @param dataNetwork The data network.
          * @param suspended {@code true} if data is suspended.
          */
-        void onSuspendedStateChanged(@NonNull DataNetwork dataNetwork, boolean suspended);
+        public abstract void onSuspendedStateChanged(@NonNull DataNetwork dataNetwork,
+                boolean suspended);
 
         /**
          * Called when network requests were failed to attach to the data network.
@@ -382,7 +482,7 @@ public class DataNetwork extends StateMachine {
          * @param dataNetwork The data network.
          * @param requestList The requests failed to attach.
          */
-        void onAttachFailed(@NonNull DataNetwork dataNetwork,
+        public abstract void onAttachFailed(@NonNull DataNetwork dataNetwork,
                 @NonNull NetworkRequestList requestList);
 
         /**
@@ -393,57 +493,8 @@ public class DataNetwork extends StateMachine {
          * @param dataNetwork The data network.
          * @param cause The disconnect cause.
          */
-        void onDisconnected(@NonNull DataNetwork dataNetwork, @DataFailureCause int cause);
-    }
-
-    /**
-     * The wrapper of the validation result from connectivity service.
-     */
-    public static class DataValidationResult {
-        /** Validation status */
-        private final @ValidationStatus int mValidationStatus;
-        /** Redirected URI */
-        private final @Nullable Uri mRedirectUri;
-
-        /**
-         * Constructor
-         *
-         * @param validationStatus The validation status.
-         * @param redirectUri The redirected URI.
-         */
-        public DataValidationResult(@ValidationStatus int validationStatus,
-                @Nullable Uri redirectUri) {
-            mValidationStatus = validationStatus;
-            mRedirectUri = redirectUri;
-        }
-
-        /**
-         * @return The validation status
-         */
-        public @ValidationStatus int getValidationStatus() {
-            return mValidationStatus;
-        }
-
-        /**
-         * @return The redirected URI.
-         */
-        public @Nullable Uri getRedirectUri() {
-            return mRedirectUri;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            DataValidationResult that = (DataValidationResult) o;
-            return mValidationStatus == that.mValidationStatus
-                    && Objects.equals(mRedirectUri, that.mRedirectUri);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(mValidationStatus, mRedirectUri);
-        }
+        public abstract void onDisconnected(@NonNull DataNetwork dataNetwork,
+                @DataFailureCause int cause);
     }
 
     /**
@@ -521,7 +572,16 @@ public class DataNetwork extends StateMachine {
         final NetworkProvider provider = (null == factory) ? null : factory.getProvider();
 
         return new TelephonyNetworkAgent(mPhone, getHandler().getLooper(), this,
-                getNetworkScore(), configBuilder.build(), provider);
+                getNetworkScore(), configBuilder.build(), provider,
+                new TelephonyNetworkAgentCallback(getHandler()::post) {
+                    @Override
+                    public void onValidationStatus(@ValidationStatus int status,
+                            @Nullable Uri redirectUri) {
+                        mDataNetworkCallback.invokeFromExecutor(
+                                () -> mDataNetworkCallback.onValidationStatusChanged(
+                                        DataNetwork.this, status, redirectUri));
+                    }
+                });
     }
 
     /**
@@ -580,6 +640,8 @@ public class DataNetwork extends StateMachine {
                     onDataConfigUpdated();
                     break;
                 case EVENT_SERVICE_STATE_CHANGED: {
+                    // TODO: Should update suspend state when CSS indicator changes.
+                    // TODO: Should update suspend state when call started/ended.
                     updateSuspendState();
                     // TODO: Update TCP buffer size
                     // TODO: Update Bandwidth
@@ -601,7 +663,8 @@ public class DataNetwork extends StateMachine {
                                     + networkRequest);
                         }
                         if (failedList.size() > 0) {
-                            mDataNetworkCallback.onAttachFailed(DataNetwork.this, failedList);
+                            mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                                    .onAttachFailed(DataNetwork.this, failedList));
                         }
                     }
                     break;
@@ -619,19 +682,18 @@ public class DataNetwork extends StateMachine {
                         networkRequest.setAttachedNetwork(null);
                     }
                     mAttachedNetworkRequestList.clear();
-                }
-                case EVENT_VALIDATION_STATUS_RESULT:
-                    loge("Ignore the validation status: "
-                            + DataUtils.validationStatusToString(msg.arg1));
                     break;
+                }
                 case EVENT_DATA_STATE_CHANGED: {
                     AsyncResult ar = (AsyncResult) msg.obj;
                     int transport = (int) ar.userObj;
                     onDataStateChanged(transport, (ArrayList<DataCallResponse>) ar.result);
                     break;
                 }
+                case EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED:
+                case EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED:
                 case EVENT_TEAR_DOWN_NETWORK:
-                    // Ignore the request when not in the correct state.
+                    // Ignore the events when not in the correct state.
                     break;
                 default:
                     loge("Unhandled event " + eventToString(msg.what));
@@ -715,12 +777,42 @@ public class DataNetwork extends StateMachine {
             log("network connected.");
             notifyPreciseDataConnectionState();
             mNetworkAgent.markConnected();
-            mDataNetworkCallback.onConnected(DataNetwork.this);
+            mDataNetworkCallback.invokeFromExecutor(
+                    () -> mDataNetworkCallback.onConnected(DataNetwork.this));
             updateSuspendState();
+
+            mPhone.getDisplayInfoController().registerForTelephonyDisplayInfoChanged(
+                    getHandler(), EVENT_DISPLAY_INFO_CHANGED, null);
+            // TODO: Register for the following events after handover from IWLAN to cellular.
+            if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
+                int bandwidthEstimateSource = mDataConfigManager.getBandwidthEstimateSource();
+                if (bandwidthEstimateSource == BANDWIDTH_SOURCE_MODEM) {
+                    mPhone.mCi.registerForLceInfo(getHandler(),
+                            EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED, null);
+                } else if (bandwidthEstimateSource == BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR) {
+                    mPhone.getLinkBandwidthEstimator().registerForBandwidthChanged(getHandler(),
+                            EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED, null);
+                } else {
+                    loge("Invalid bandwidth source configuration: " + bandwidthEstimateSource);
+                }
+            }
         }
 
         @Override
         public void exit() {
+            // TODO: Unregister for the following events after handover from cellular to IWLAN.
+            if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
+                int bandwidthEstimateSource = mDataConfigManager.getBandwidthEstimateSource();
+                if (bandwidthEstimateSource == BANDWIDTH_SOURCE_MODEM) {
+                    mPhone.mCi.unregisterForLceInfo(getHandler());
+                } else if (bandwidthEstimateSource == BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR) {
+                    mPhone.getLinkBandwidthEstimator().unregisterForBandwidthChanged(getHandler());
+                } else {
+                    loge("Invalid bandwidth source configuration: " + bandwidthEstimateSource);
+                }
+            }
+            mPhone.getDisplayInfoController().unregisterForTelephonyDisplayInfoChanged(
+                    getHandler());
         }
 
         @Override
@@ -737,18 +829,22 @@ public class DataNetwork extends StateMachine {
                     transitionTo(mDisconnectingState);
                     onTearDown(msg.arg1);
                     break;
-                case EVENT_VALIDATION_STATUS_RESULT:
-                    DataValidationResult result = new DataValidationResult(msg.arg1, (Uri) msg.obj);
-                    if (!result.equals(mDataValidationResult)) {
-                        mDataValidationResult = result;
-                        mDataNetworkCallback.onValidationStatusChanged(DataNetwork.this,
-                                mDataValidationResult);
-                        log("Validation status changed: "
-                                + DataUtils.validationStatusToString(msg.arg1));
-                    } else {
-                        log("Validation status not changed: "
-                                + DataUtils.validationStatusToString(msg.arg1));
+                case EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED:
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    if (ar.exception != null) {
+                        log("EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED: error ignoring, e="
+                                + ar.exception);
+                        break;
                     }
+                    onBandwidthUpdatedFromModem((List<LinkCapacityEstimate>) ar.result);
+                    break;
+                case EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED:
+                    ar = (AsyncResult) msg.obj;
+                    Pair<Integer, Integer> pair = (Pair<Integer, Integer>) ar.result;
+                    onBandwidthUpdated(pair.first, pair.second);
+                    break;
+                case EVENT_DISPLAY_INFO_CHANGED:
+                    onDisplayInfoChanged();
                     break;
                 default:
                     return NOT_HANDLED;
@@ -789,6 +885,8 @@ public class DataNetwork extends StateMachine {
 
     /**
      * The disconnecting state. This is the state when data network is about to be disconnected.
+     * The network is still usable in this state, but the clients should be prepared to lose the
+     * network in any moment.
      *
      * @see DataNetwork for the state machine diagram.
      */
@@ -927,6 +1025,10 @@ public class DataNetwork extends StateMachine {
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
         }
 
+        // Set the bandwidth information.
+        builder.setLinkDownstreamBandwidthKbps(mNetworkBandwidth.downlinkBandwidthKbps);
+        builder.setLinkUpstreamBandwidthKbps(mNetworkBandwidth.uplinkBandwidthKbps);
+
         NetworkCapabilities nc = builder.build();
         if (!nc.equals(mNetworkCapabilities)) {
             mNetworkCapabilities = nc;
@@ -956,18 +1058,6 @@ public class DataNetwork extends StateMachine {
      */
     public @NonNull DataProfile getDataProfile() {
         return mDataProfile;
-    }
-
-    /**
-     * Set the validation result. This should be only called by {@link TelephonyNetworkAgent}.
-     *
-     * @param status one of {@link NetworkAgent#VALIDATION_STATUS_VALID} or
-     * {@link NetworkAgent#VALIDATION_STATUS_NOT_VALID}.
-     * @param redirectUri If internet connectivity is being redirected (e.g., on a captive portal),
-     * this is the destination the probes are being redirected to, otherwise {@code null}.
-     */
-    public void setValidationResult(@ValidationStatus int status, @Nullable Uri redirectUri) {
-        sendMessage(obtainMessage(EVENT_VALIDATION_STATUS_RESULT, status, 0, redirectUri));
     }
 
     /**
@@ -1030,7 +1120,8 @@ public class DataNetwork extends StateMachine {
             // To update NOT_SUSPENDED capability.
             updateNetworkCapabilities();
             notifyPreciseDataConnectionState();
-            mDataNetworkCallback.onSuspendedStateChanged(DataNetwork.this, mSuspended);
+            mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                    .onSuspendedStateChanged(DataNetwork.this, mSuspended));
         }
     }
 
@@ -1272,7 +1363,7 @@ public class DataNetwork extends StateMachine {
      */
     private void onSetupResponse(@DataServiceCallback.ResultCode int resultCode,
             @Nullable DataCallResponse response) {
-        log("onSetupResponse: resultCode=" + DataServiceCallback.resultCodeToString(resultCode)
+        logl("onSetupResponse: resultCode=" + DataServiceCallback.resultCodeToString(resultCode)
                 + ", response=" + response);
         int failCause = getFailCauseFromDataCallResponse(resultCode, response);
         if (failCause == DataFailCause.NONE) {
@@ -1304,8 +1395,8 @@ public class DataNetwork extends StateMachine {
             long retry = response != null ? response.getRetryDurationMillis()
                     : DataCallResponse.RETRY_DURATION_UNDEFINED;
             NetworkRequestList requestList = new NetworkRequestList(mAttachedNetworkRequestList);
-            mDataNetworkCallback.onSetupDataFailed(DataNetwork.this, requestList,
-                    failCause, retry);
+            mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback.onSetupDataFailed(
+                    DataNetwork.this, requestList, failCause, retry));
             transitionTo(mDisconnectedState);
         }
     }
@@ -1412,7 +1503,8 @@ public class DataNetwork extends StateMachine {
                     log("onDataStateChanged: PDN inactive reported by "
                             + AccessNetworkConstants.transportTypeToString(mTransport)
                             + " data service.");
-                    mDataNetworkCallback.onDisconnected(DataNetwork.this, response.getCause());
+                    mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                            .onDisconnected(DataNetwork.this, response.getCause()));
                     transitionTo(mDisconnectedState);
                 }
             }
@@ -1422,7 +1514,8 @@ public class DataNetwork extends StateMachine {
             // for that
             log("onDataStateChanged: PDN disconnected reported by "
                     + AccessNetworkConstants.transportTypeToString(mTransport) + " data service.");
-            mDataNetworkCallback.onDisconnected(DataNetwork.this, DataFailCause.LOST_CONNECTION);
+            mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                    .onDisconnected(DataNetwork.this, DataFailCause.LOST_CONNECTION));
             transitionTo(mDisconnectedState);
         }
     }
@@ -1432,6 +1525,97 @@ public class DataNetwork extends StateMachine {
      */
     private void onDataConfigUpdated() {
         log("onDataConfigUpdated");
+
+        updateBandwidthFromDataConfig();
+    }
+
+    /**
+     * Called when receiving bandwidth update from the modem.
+     *
+     * @param linkCapacityEstimates The link capacity estimate list from the modem.
+     */
+    private void onBandwidthUpdatedFromModem(
+            @NonNull List<LinkCapacityEstimate> linkCapacityEstimates) {
+        Objects.requireNonNull(linkCapacityEstimates);
+        if (linkCapacityEstimates.isEmpty()) return;
+
+        int uplinkBandwidthKbps = 0, downlinkBandwidthKbps = 0;
+        for (LinkCapacityEstimate linkCapacityEstimate : linkCapacityEstimates) {
+            if (linkCapacityEstimate.getType() == LinkCapacityEstimate.LCE_TYPE_COMBINED) {
+                uplinkBandwidthKbps = linkCapacityEstimate.getUplinkCapacityKbps();
+                downlinkBandwidthKbps = linkCapacityEstimate.getDownlinkCapacityKbps();
+                break;
+            } else if (linkCapacityEstimate.getType() == LinkCapacityEstimate.LCE_TYPE_PRIMARY
+                    || linkCapacityEstimate.getType() == LinkCapacityEstimate.LCE_TYPE_SECONDARY) {
+                uplinkBandwidthKbps += linkCapacityEstimate.getUplinkCapacityKbps();
+                downlinkBandwidthKbps += linkCapacityEstimate.getDownlinkCapacityKbps();
+            } else {
+                loge("Invalid LinkCapacityEstimate type " + linkCapacityEstimate.getType());
+            }
+        }
+        onBandwidthUpdated(uplinkBandwidthKbps, downlinkBandwidthKbps);
+    }
+
+    /**
+     * Called when bandwidth estimation updated from either modem or the bandwidth estimator.
+     *
+     * @param uplinkBandwidthKbps Uplink bandwidth estimate in Kbps.
+     * @param downlinkBandwidthKbps Downlink bandwidth estimate in Kbps.
+     */
+    private void onBandwidthUpdated(int uplinkBandwidthKbps, int downlinkBandwidthKbps) {
+        log("onBandwidthUpdated: downlinkBandwidthKbps=" + downlinkBandwidthKbps
+                + ", uplinkBandwidthKbps=" + uplinkBandwidthKbps);
+        TelephonyDisplayInfo displayInfo = mPhone.getDisplayInfoController()
+                .getTelephonyDisplayInfo();
+        NetworkBandwidth bandwidthFromConfig = null;
+        if (displayInfo != null) {
+            bandwidthFromConfig = mDataConfigManager.getBandwidthForNetworkType(
+                    getDataNetworkType(), displayInfo.getOverrideNetworkType());
+        }
+
+        if (downlinkBandwidthKbps == LinkCapacityEstimate.INVALID && bandwidthFromConfig != null) {
+            // Fallback to carrier config.
+            downlinkBandwidthKbps = bandwidthFromConfig.downlinkBandwidthKbps;
+        }
+
+        if (uplinkBandwidthKbps == LinkCapacityEstimate.INVALID && bandwidthFromConfig != null) {
+            // Fallback to carrier config.
+            uplinkBandwidthKbps = bandwidthFromConfig.uplinkBandwidthKbps;
+        }
+
+        // Make sure uplink is not greater than downlink.
+        uplinkBandwidthKbps = Math.min(uplinkBandwidthKbps, downlinkBandwidthKbps);
+        mNetworkBandwidth = new NetworkBandwidth(downlinkBandwidthKbps, uplinkBandwidthKbps);
+
+        updateNetworkCapabilities();
+    }
+
+    /**
+     * Called when display info changed. This can happen when network types changed or override
+     * types (5G NSA, 5G MMWAVE) changes.
+     */
+    private void onDisplayInfoChanged() {
+        updateBandwidthFromDataConfig();
+
+        // TODO: Update meteredness flags.
+    }
+
+    /**
+     * Update the bandwidth from carrier config. Note this is no-op if the bandwidth source is not
+     * carrier config.
+     */
+    private void updateBandwidthFromDataConfig() {
+        if (mDataConfigManager.getBandwidthEstimateSource() != BANDWIDTH_SOURCE_CARRIER_CONFIG) {
+            return;
+        }
+        log("updateBandwidthFromDataConfig");
+        TelephonyDisplayInfo displayInfo = mPhone.getDisplayInfoController()
+                .getTelephonyDisplayInfo();
+        if (displayInfo != null) {
+            mNetworkBandwidth = mDataConfigManager.getBandwidthForNetworkType(
+                    getDataNetworkType(), displayInfo.getOverrideNetworkType());
+            updateNetworkCapabilities();
+        }
     }
 
     /**
@@ -1645,8 +1829,6 @@ public class DataNetwork extends StateMachine {
                 return "EVENT_ATTACH_NETWORK_REQUEST";
             case EVENT_DETACH_NETWORK_REQUEST:
                 return "EVENT_DETACH_NETWORK_REQUEST";
-            case EVENT_VALIDATION_STATUS_RESULT:
-                return "EVENT_VALIDATION_STATUS_RESULT";
             case EVENT_ALLOCATE_PDU_SESSION_ID_RESPONSE:
                 return "EVENT_ALLOCATE_PDU_SESSION_ID_RESPONSE";
             case EVENT_SETUP_DATA_CALL_RESPONSE:

@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.data;
 
+import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.database.ContentObserver;
@@ -25,7 +26,6 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.os.RegistrantList;
 import android.provider.Telephony;
 import android.telephony.Annotation;
 import android.telephony.Annotation.NetCapability;
@@ -47,6 +47,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 /**
@@ -91,8 +92,27 @@ public class DataProfileManager extends Handler {
     /** Preferred data profile set id. */
     private int mPreferredDataProfileSetId = Telephony.Carriers.NO_APN_SET_ID;
 
-    /** Registrant list for internet validation status changed. */
-    private final @NonNull RegistrantList mDataProfilesChangedRegistrants = new RegistrantList();
+    /** Data profile manager callback. */
+    private final @NonNull DataProfileManagerCallback mDataProfileManagerCallback;
+
+    /**
+     * Data profile manager callback. This should be only used by {@link DataNetworkController}.
+     */
+    public abstract static class DataProfileManagerCallback extends DataCallback {
+        /**
+         * Constructor
+         *
+         * @param executor The executor of the callback.
+         */
+        public DataProfileManagerCallback(@NonNull @CallbackExecutor Executor executor) {
+            super(executor);
+        }
+
+        /**
+         * Called when data profiles changed.
+         */
+        public abstract void onDataProfilesChanged();
+    }
 
     /**
      * Constructor
@@ -102,10 +122,12 @@ public class DataProfileManager extends Handler {
      * @param dataServiceManager WWAN data service manager.
      * @param looper The looper to be used by the handler. Currently the handler thread is the
      * phone process's main thread.
+     * @param callback Data profile manager callback.
      */
     public DataProfileManager(@NonNull Phone phone,
             @NonNull DataNetworkController dataNetworkController,
-            @NonNull DataServiceManager dataServiceManager, @NonNull Looper looper) {
+            @NonNull DataServiceManager dataServiceManager, @NonNull Looper looper,
+            @NonNull DataProfileManagerCallback callback) {
         super(looper);
         mPhone = phone;
         mLogTag = "DPM-" + mPhone.getPhoneId();
@@ -113,6 +135,7 @@ public class DataProfileManager extends Handler {
         mWwanDataServiceManager = dataServiceManager;
         mDataConfigManager = dataNetworkController.getDataConfigManager();
         mAccessNetworksManager = phone.getAccessNetworksManager();
+        mDataProfileManagerCallback = callback;
         registerAllEvents();
     }
 
@@ -225,7 +248,8 @@ public class DataProfileManager extends Handler {
             log("Data profiles changed.");
             mAllDataProfiles.clear();
             mAllDataProfiles.addAll(profiles);
-            mDataProfilesChangedRegistrants.notifyRegistrants();
+            mDataProfileManagerCallback.invokeFromExecutor(
+                    mDataProfileManagerCallback::onDataProfilesChanged);
         }
 
         mPreferredDataProfileSetId = getPreferredDataProfileSetId();
@@ -427,16 +451,6 @@ public class DataProfileManager extends Handler {
                 .sorted((dp1, dp2) ->
                         Long.compare(dp1.getLastSetupTimestamp(), dp2.getLastSetupTimestamp()))
                 .collect(Collectors.toList());
-    }
-
-    /**
-     * Register for data profiles changed changed event.
-     *
-     * @param handler The handler to handle the event.
-     * @param what The event.
-     */
-    public void registerForDataProfilesChanged(@NonNull Handler handler, int what) {
-        mDataProfilesChangedRegistrants.addUnique(handler, what, null);
     }
 
     /**

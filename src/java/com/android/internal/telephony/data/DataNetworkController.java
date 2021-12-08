@@ -26,6 +26,7 @@ import android.content.IntentFilter;
 import android.net.NetworkAgent;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
+import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
@@ -70,9 +71,12 @@ import com.android.internal.telephony.SubscriptionInfoUpdater;
 import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataEvaluation.DataDisallowedReason;
 import com.android.internal.telephony.data.DataEvaluation.DataEvaluationReason;
-import com.android.internal.telephony.data.DataNetwork.DataValidationResult;
 import com.android.internal.telephony.data.DataNetwork.TearDownReason;
+import com.android.internal.telephony.data.DataProfileManager.DataProfileManagerCallback;
 import com.android.internal.telephony.data.DataRetryManager.DataRetryEntry;
+import com.android.internal.telephony.data.DataRetryManager.DataRetryManagerCallback;
+import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
+import com.android.internal.telephony.data.DataStallRecoveryManager.DataStallRecoveryManagerCallback;
 import com.android.internal.telephony.dataconnection.AccessNetworksManager;
 import com.android.internal.telephony.ims.ImsResolver;
 import com.android.internal.telephony.util.TelephonyUtils;
@@ -133,9 +137,6 @@ public class DataNetworkController extends Handler {
 
     /** Event for data profile changed. */
     private static final int EVENT_DATA_PROFILES_CHANGED = 10;
-
-    /** Event for data retry. */
-    private static final int EVENT_DATA_RETRY = 11;
 
     /** Event for tearing down all data networks. */
     private static final int EVENT_TEAR_DOWN_ALL_DATA_NETWORKS = 12;
@@ -423,7 +424,7 @@ public class DataNetworkController extends Handler {
      */
     public static class DataNetworkControllerCallback {
         /** The executor of the callback. */
-        private Executor mExecutor;
+        private @NonNull Executor mExecutor;
 
         /**
          * Indicates the callback is automatically unregistered after first invocation. This is
@@ -454,7 +455,7 @@ public class DataNetworkController extends Handler {
         /**
          * @return The executor of the callback.
          */
-        final Executor getExecutor() {
+        final @NonNull Executor getExecutor() {
             return mExecutor;
         }
 
@@ -601,13 +602,54 @@ public class DataNetworkController extends Handler {
                             AccessNetworkConstants.TRANSPORT_TYPE_WWAN));
         }
         mDataConfigManager = new DataConfigManager(mPhone, looper);
-        mDataSettingsManager = new DataSettingsManager(mPhone, this, looper);
+        mDataSettingsManager = new DataSettingsManager(mPhone, this, looper,
+                new DataSettingsManagerCallback(this::post) {
+                    @Override
+                    public void onDataEnabledChanged(boolean enabled) {
+                        // If mobile data is enabled by the user, evaluate the unsatisfied network
+                        // requests and then attempt to setup data networks to satisfy them.
+                        // If mobile data is disabled, evaluate the existing data networks and
+                        // see if they need to be torn down.
+                        sendMessage(obtainMessage(enabled
+                                        ? EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS
+                                        : EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
+                                DataEvaluationReason.DATA_ENABLED_CHANGED));
+                    }
+                    @Override
+                    public void onRoamingEnabledChanged(boolean enabled) {
+                        // If data roaming is enabled by the user, evaluate the unsatisfied network
+                        // requests and then attempt to setup data networks to satisfy them.
+                        // If data roaming is disabled, evaluate the existing data networks and
+                        // see if they need to be torn down.
+                        sendMessage(obtainMessage(enabled
+                                        ? EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS
+                                        : EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
+                                DataEvaluationReason.ROAMING_ENABLED_CHANGED));
+                    }
+                });
         mDataProfileManager = new DataProfileManager(mPhone, this, mDataServiceManagers
-                .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), looper);
+                .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), looper,
+                new DataProfileManagerCallback(this::post) {
+                    @Override
+                    public void onDataProfilesChanged() {
+                        DataNetworkController.this.onDataStallReestablishInternet();
+                    }
+                });
         mDataStallRecoveryManager = new DataStallRecoveryManager(mPhone, this, mDataServiceManagers
                 .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), looper,
-                () -> post(this::onDataStallReestablishInternet));
-        mDataRetryManager = new DataRetryManager(mPhone, this, looper);
+                new DataStallRecoveryManagerCallback(this::post) {
+                    @Override
+                    public void onDataStallReestablishInternet() {
+                        DataNetworkController.this.onDataStallReestablishInternet();
+                    }
+                });
+        mDataRetryManager = new DataRetryManager(mPhone, this, looper,
+                new DataRetryManagerCallback(this::post) {
+                    @Override
+                    public void onDataRetry(@NonNull DataRetryEntry dataRetryEntry) {
+                        setupDataNetwork(dataRetryEntry.dataProfile, dataRetryEntry);
+                    }
+                });
         mImsManager = mPhone.getContext().getSystemService(ImsManager.class);
 
         // Use the raw one from ServiceStateTracker instead of the combined one from
@@ -631,10 +673,7 @@ public class DataNetworkController extends Handler {
         mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, this, EVENT_SERVICE_STATE_CHANGED,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        mDataRetryManager.registerForDataRetryCallback(dataRetryEntry ->
-                sendMessage(obtainMessage(EVENT_DATA_RETRY, dataRetryEntry)));
         mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
-        mDataProfileManager.registerForDataProfilesChanged(this, EVENT_DATA_PROFILES_CHANGED);
         mPhone.getServiceStateTracker().registerForPsRestrictedEnabled(this,
                 EVENT_PS_RESTRICT_ENABLED, null);
         mPhone.getServiceStateTracker().registerForPsRestrictedDisabled(this,
@@ -725,10 +764,6 @@ public class DataNetworkController extends Handler {
                         DataEvaluationReason.DATA_PROFILES_CHANGED));
                 sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
                         DataEvaluationReason.DATA_PROFILES_CHANGED));
-                break;
-            case EVENT_DATA_RETRY:
-                DataRetryEntry dataRetryEntry = (DataRetryEntry) msg.obj;
-                setupDataNetwork(dataRetryEntry.dataProfile, dataRetryEntry);
                 break;
             case EVENT_TEAR_DOWN_ALL_DATA_NETWORKS:
                 onTearDownAllDataNetworks(msg.arg1);
@@ -1436,64 +1471,52 @@ public class DataNetworkController extends Handler {
         logl("Creating data network with " + dataProfile + ", and attaching "
                 + networkRequestList.size() + " network requests to it.");
         mDataNetworkList.add(new DataNetwork(mPhone, getLooper(), mDataServiceManagers,
-                dataProfile, networkRequestList, new DataNetwork.DataNetworkCallback() {
+                dataProfile, networkRequestList, new DataNetwork.DataNetworkCallback(this::post) {
                     @Override
                     public void onSetupDataFailed(@NonNull DataNetwork dataNetwork,
                             @NonNull NetworkRequestList requestList, @DataFailureCause int cause,
                             long retryDurationMillis) {
-                        post(() -> {
-                            if (dataRetryEntry != null) {
-                                dataRetryEntry.setState(DataRetryEntry.RETRY_STATE_FAILED);
-                            }
-                            DataNetworkController.this.onDataNetworkSetupDataFailed(
-                                    dataNetwork, requestList, cause, retryDurationMillis);
-                        });
+                        if (dataRetryEntry != null) {
+                            dataRetryEntry.setState(DataRetryEntry.RETRY_STATE_FAILED);
+                        }
+                        DataNetworkController.this.onDataNetworkSetupDataFailed(
+                                dataNetwork, requestList, cause, retryDurationMillis);
                     }
 
                     @Override
                     public void onConnected(@NonNull DataNetwork dataNetwork) {
-                        post(() -> {
-                            if (dataRetryEntry != null) {
-                                dataRetryEntry.setState(DataRetryEntry.RETRY_STATE_SUCCEEDED);
-                            }
-                            DataNetworkController.this.onDataNetworkConnected(dataNetwork);
-                        });
+                        if (dataRetryEntry != null) {
+                            dataRetryEntry.setState(DataRetryEntry.RETRY_STATE_SUCCEEDED);
+                        }
+                        DataNetworkController.this.onDataNetworkConnected(dataNetwork);
                     }
 
                     @Override
                     public void onAttachFailed(@NonNull DataNetwork dataNetwork,
                             @NonNull NetworkRequestList requestList) {
-                        post(() -> {
-                            DataNetworkController.this.onAttachNetworkRequestsFailed(
-                                    dataNetwork, requestList);
-                        });
+                        DataNetworkController.this.onAttachNetworkRequestsFailed(
+                                dataNetwork, requestList);
                     }
 
                     @Override
                     public void onValidationStatusChanged(@NonNull DataNetwork dataNetwork,
-                            @NonNull DataValidationResult dataValidationResult) {
-                        post(() -> {
-                            DataNetworkController.this.onDataNetworkValidationStatusChanged(
-                                    dataNetwork, dataValidationResult);
-                        });
+                            @ValidationStatus int status, @Nullable Uri redirectUri) {
+                        DataNetworkController.this.onDataNetworkValidationStatusChanged(
+                                dataNetwork, status, redirectUri);
                     }
 
                     @Override
                     public void onSuspendedStateChanged(@NonNull DataNetwork dataNetwork,
                             boolean suspended) {
-                        post(() -> {
-                            DataNetworkController.this.onDataNetworkSuspendedStateChanged(
-                                    dataNetwork, suspended);
-                        });
+                        DataNetworkController.this.onDataNetworkSuspendedStateChanged(
+                                dataNetwork, suspended);
                     }
 
                     @Override
                     public void onDisconnected(@NonNull DataNetwork dataNetwork,
                             @DataFailureCause int cause) {
-                        post(() -> {
-                            DataNetworkController.this.onDataNetworkDisconnected(
-                                    dataNetwork, cause);
-                        });
+                        DataNetworkController.this.onDataNetworkDisconnected(
+                                dataNetwork, cause);
                     }
                 }));
     }
@@ -1547,24 +1570,35 @@ public class DataNetworkController extends Handler {
     /**
      * Called when data network validation status changed.
      *
+     * @param status one of {@link NetworkAgent#VALIDATION_STATUS_VALID} or
+     * {@link NetworkAgent#VALIDATION_STATUS_NOT_VALID}.
+     * @param redirectUri If internet connectivity is being redirected (e.g., on a captive portal),
+     * this is the destination the probes are being redirected to, otherwise {@code null}.
+     *
      * @param dataNetwork The data network.
-     * @param dataValidationResult Data validation result from connectivity service.
      */
     private void onDataNetworkValidationStatusChanged(@NonNull DataNetwork dataNetwork,
-            @NonNull DataValidationResult dataValidationResult) {
-        String redirectUrl = dataValidationResult.getRedirectUri().toString();
-        if (!TextUtils.isEmpty(redirectUrl)) {
+            @ValidationStatus int status, @Nullable Uri redirectUri) {
+        log("onDataNetworkValidationStatusChanged: " + dataNetwork + ", validation status="
+                + DataUtils.validationStatusToString(status)
+                + (redirectUri != null ? ", " + redirectUri : ""));
+        if (!TextUtils.isEmpty(redirectUri.toString())) {
             Intent intent = new Intent(TelephonyManager.ACTION_CARRIER_SIGNAL_REDIRECTED);
-            intent.putExtra(TelephonyManager.EXTRA_REDIRECTION_URL, redirectUrl);
+            intent.putExtra(TelephonyManager.EXTRA_REDIRECTION_URL, redirectUri);
             mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(intent);
-            log("Notify carrier signal receivers with redirectUrl: " + redirectUrl);
+            log("Notify carrier signal receivers with redirectUri: " + redirectUri);
+        }
+
+        if (status != NetworkAgent.VALIDATION_STATUS_VALID
+                && status != NetworkAgent.VALIDATION_STATUS_NOT_VALID) {
+            loge("Invalid validation status " + status + " received.");
+            return;
         }
 
         // TODO: Add DataConfigManager.isRecoveryOnBadNetworkEnabled()
         if (dataNetwork.isInternetSupported()) {
             mDataNetworkControllerCallbacks.notifyListeners(callback ->
-                    callback.onInternetDataNetworkValidationStatusChanged(
-                            dataValidationResult.getValidationStatus()));
+                    callback.onInternetDataNetworkValidationStatusChanged(status));
         }
     }
 
