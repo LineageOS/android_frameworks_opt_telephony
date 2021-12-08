@@ -18,7 +18,9 @@ package com.android.internal.telephony.data;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 
 import android.content.ContentValues;
@@ -38,6 +40,7 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.data.DataProfileManager.DataProfileManagerCallback;
 
 import org.junit.After;
 import org.junit.Before;
@@ -59,6 +62,9 @@ public class DataProfileManagerTest extends TelephonyTest {
 
     @Mock
     private DataServiceManager mDataServiceManager;
+
+    @Mock
+    private DataProfileManagerCallback mDataProfileManagerCallback;
 
     private DataProfileManager mDataProfileManagerUT;
 
@@ -349,8 +355,12 @@ public class DataProfileManagerTest extends TelephonyTest {
                 Telephony.Carriers.CONTENT_URI.getAuthority(), mApnSettingContentProvider);
 
         doReturn(true).when(mDataConfigManager).isConfigCarrierSpecific();
+        doAnswer(invocation -> {
+            ((Runnable) invocation.getArguments()[0]).run();
+            return null;
+        }).when(mDataProfileManagerCallback).invokeFromExecutor(any(Runnable.class));
         mDataProfileManagerUT = new DataProfileManager(mPhone, mDataNetworkController,
-                mDataServiceManager, Looper.myLooper());
+                mDataServiceManager, Looper.myLooper(), mDataProfileManagerCallback);
         mDataProfileManagerUT.obtainMessage(1).sendToTarget();
         processAllMessages();
 

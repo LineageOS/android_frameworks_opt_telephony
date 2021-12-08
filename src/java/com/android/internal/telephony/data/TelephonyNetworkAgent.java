@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.data;
 
+import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.net.KeepalivePacketData;
@@ -36,6 +37,8 @@ import com.android.telephony.Rlog;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.time.Duration;
+import java.util.concurrent.Executor;
+
 /**
  * TelephonyNetworkAgent class represents a single PDN (Packet Data Network). It is an agent
  * for telephony to propagate network related information to the connectivity service. It always
@@ -52,6 +55,38 @@ public class TelephonyNetworkAgent extends NetworkAgent {
     /** This is the id from {@link NetworkAgent#register()}. */
     private final int mId;
 
+    /** The callback that is used to pass information to {@link DataNetwork}. */
+    private @NonNull TelephonyNetworkAgentCallback mTelephonyNetworkAgentCallback;
+
+    /**
+     * Telephony network agent callback. This should be only used by {@link DataNetwork}.
+     */
+    public abstract static class TelephonyNetworkAgentCallback extends DataCallback {
+        /**
+         * Constructor
+         *
+         * @param executor The executor of the callback.
+         */
+        public TelephonyNetworkAgentCallback(@NonNull @CallbackExecutor Executor executor) {
+            super(executor);
+        }
+
+        /**
+         * Called when the system determines the usefulness of this network.
+         *
+         * @param status one of {@link NetworkAgent#VALIDATION_STATUS_VALID} or
+         * {@link NetworkAgent#VALIDATION_STATUS_NOT_VALID}.
+         * @param redirectUri If internet connectivity is being redirected (e.g., on a captive
+         * portal),
+         * this is the destination the probes are being redirected to, otherwise {@code null}.
+         *
+         * @see NetworkAgent#onValidationStatus(int, Uri)
+         */
+        public abstract void onValidationStatus(
+                @android.telephony.Annotation.ValidationStatus int status,
+                @Nullable Uri redirectUri);
+    }
+
     /**
      * Constructor
      *
@@ -65,15 +100,18 @@ public class TelephonyNetworkAgent extends NetworkAgent {
      */
     public TelephonyNetworkAgent(@NonNull Phone phone, @NonNull Looper looper,
             @NonNull DataNetwork dataNetwork, @NonNull NetworkScore score,
-            @NonNull NetworkAgentConfig config, @NonNull NetworkProvider provider) {
+            @NonNull NetworkAgentConfig config, @NonNull NetworkProvider provider,
+            @NonNull TelephonyNetworkAgentCallback callback) {
         super(phone.getContext(), looper, "TelephonyNetworkAgent",
                 dataNetwork.getNetworkCapabilities(), new LinkProperties(), score, config,
                 provider);
         register();
         mDataNetwork = dataNetwork;
+        mTelephonyNetworkAgentCallback = callback;
         mPhone = phone;
         mId = getNetwork().getNetId();
         mLogTag = "TNA-" + mId;
+
         log("TelephonyNetworkAgent created, nc="
                 + dataNetwork.getNetworkCapabilities() + ", score=" + score);
     }
@@ -106,7 +144,8 @@ public class TelephonyNetworkAgent extends NetworkAgent {
     @Override
     public void onValidationStatus(@android.telephony.Annotation.ValidationStatus int status,
             @Nullable Uri redirectUri) {
-        mDataNetwork.setValidationResult(status, redirectUri);
+        mTelephonyNetworkAgentCallback.invokeFromExecutor(()
+                -> mTelephonyNetworkAgentCallback.onValidationStatus(status, redirectUri));
     }
 
     /**
@@ -114,7 +153,9 @@ public class TelephonyNetworkAgent extends NetworkAgent {
      */
     @Override
     public void onBandwidthUpdateRequested() {
-
+        // Drop the support for IRadio 1.0 and 1.1. On newer HAL, LCE should be reported from
+        // modem unsolicited.
+        loge("onBandwidthUpdateRequested: RIL.pullLceData is not supported anymore.");
     }
     /**
      * Called when connectivity service requests that the network hardware send the specified
