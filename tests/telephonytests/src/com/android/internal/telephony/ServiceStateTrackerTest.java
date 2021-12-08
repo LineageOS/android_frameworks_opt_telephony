@@ -20,6 +20,7 @@ import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
@@ -2121,6 +2122,30 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
     }
 
+    private void sendRegStateUpdateForLteOnOos() throws Exception {
+        LteVopsSupportInfo lteVopsSupportInfo =
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
+                        LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
+        NetworkRegistrationInfo dataResult = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING,
+                TelephonyManager.NETWORK_TYPE_UNKNOWN, 0, false, null, null, "", 1, false, false,
+                false, lteVopsSupportInfo);
+        NetworkRegistrationInfo voiceResult = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING,
+                TelephonyManager.NETWORK_TYPE_UNKNOWN, 0, false, null, null, "", false, 0, 0, 0);
+        sst.mPollingContext[0] = 2;
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, dataResult, null)));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, voiceResult, null)));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+    }
+
     @Test
     public void testPhyChanBandwidthUpdatedOnDataRegState() throws Exception {
         // Cell ID change should trigger hasLocationChanged.
@@ -2499,6 +2524,28 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sst.obtainMessage(GsmCdmaPhone.EVENT_CARRIER_CONFIG_CHANGED, null).sendToTarget();
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         verify(mEriManager, times(1)).loadEriFile();
+    }
+
+    @Test
+    public void testLastKnownCellIdentity() throws Exception {
+        CellIdentityLte cellIdentity =
+                new CellIdentityLte(1, 1, 5, 1, new int[] {1, 2}, 5000, "001", "01", "test",
+                        "tst", Collections.emptyList(), null);
+
+        sendPhyChanConfigChange(new int[] {10000}, TelephonyManager.NETWORK_TYPE_LTE, 1);
+        sendRegStateUpdateForLteCellId(cellIdentity);
+        assertEquals(ServiceState.STATE_IN_SERVICE, sst.mSS.getState());
+        assertEquals(cellIdentity, sst.getLastKnownCellIdentity());
+        assertFalse(sst.hasMessages(sst.EVENT_RESET_LAST_KNOWN_CELL_IDENTITY));
+
+        sendRegStateUpdateForLteOnOos();
+        assertEquals(ServiceState.STATE_OUT_OF_SERVICE, sst.mSS.getState());
+        assertEquals(cellIdentity, sst.getLastKnownCellIdentity());
+        assertTrue(sst.hasMessages(sst.EVENT_RESET_LAST_KNOWN_CELL_IDENTITY));
+
+        sst.obtainMessage(sst.EVENT_RESET_LAST_KNOWN_CELL_IDENTITY, null).sendToTarget();
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertNull(sst.getLastKnownCellIdentity());
     }
 
     @Test
