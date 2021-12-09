@@ -4719,6 +4719,13 @@ public class GsmCdmaPhone extends Phone {
     }
 
     private void updateVoNrSettings(PersistableBundle config) {
+        UiccSlot slot = mUiccController.getUiccSlotForPhone(mPhoneId);
+
+        // If no card is present, do nothing.
+        if (slot == null || slot.getCardState() != IccCardStatus.CardState.CARDSTATE_PRESENT) {
+            return;
+        }
+
         if (config == null) {
             loge("didn't get the vonr_enabled_bool from the carrier config.");
             return;
