@@ -22,7 +22,7 @@ import android.hardware.radio.data.IRadioDataResponse;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.NetworkSlicingConfig;
 
-import com.android.internal.telephony.dataconnection.KeepaliveStatus;
+import com.android.internal.telephony.data.NetworkKeepaliveStatus;
 
 import java.util.ArrayList;
 
@@ -178,29 +178,30 @@ public class DataResponse extends IRadioDataResponse.Stub {
         RILRequest rr = mRil.processResponse(responseInfo);
         if (rr == null) return;
 
-        KeepaliveStatus ret = null;
+        NetworkKeepaliveStatus ret = null;
         try {
             switch(responseInfo.error) {
                 case RadioError.NONE:
                     int convertedStatus = RILUtils.convertHalKeepaliveStatusCode(
                             keepaliveStatus.code);
                     if (convertedStatus < 0) {
-                        ret = new KeepaliveStatus(KeepaliveStatus.ERROR_UNSUPPORTED);
+                        ret = new NetworkKeepaliveStatus(NetworkKeepaliveStatus.ERROR_UNSUPPORTED);
                     } else {
-                        ret = new KeepaliveStatus(keepaliveStatus.sessionHandle, convertedStatus);
+                        ret = new NetworkKeepaliveStatus(
+                                keepaliveStatus.sessionHandle, convertedStatus);
                     }
                     // If responseInfo.error is NONE, response function sends the response message
                     // even if result is actually an error.
                     RadioResponse.sendMessageResponse(rr.mResult, ret);
                     break;
                 case RadioError.REQUEST_NOT_SUPPORTED:
-                    ret = new KeepaliveStatus(KeepaliveStatus.ERROR_UNSUPPORTED);
+                    ret = new NetworkKeepaliveStatus(NetworkKeepaliveStatus.ERROR_UNSUPPORTED);
                     break;
                 case RadioError.NO_RESOURCES:
-                    ret = new KeepaliveStatus(KeepaliveStatus.ERROR_NO_RESOURCES);
+                    ret = new NetworkKeepaliveStatus(NetworkKeepaliveStatus.ERROR_NO_RESOURCES);
                     break;
                 default:
-                    ret = new KeepaliveStatus(KeepaliveStatus.ERROR_UNKNOWN);
+                    ret = new NetworkKeepaliveStatus(NetworkKeepaliveStatus.ERROR_UNKNOWN);
                     break;
             }
         } finally {

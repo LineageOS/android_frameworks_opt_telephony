@@ -75,6 +75,7 @@ import com.android.internal.R;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.data.NetworkKeepaliveStatus;
 import com.android.internal.telephony.dataconnection.DataConnection.ConnectionParams;
 import com.android.internal.telephony.dataconnection.DataConnection.DisconnectParams;
 import com.android.internal.telephony.dataconnection.DataConnection.SetupResult;
@@ -1092,8 +1093,8 @@ public class DataConnectionTest extends TelephonyTest {
             // activation is completed. This flow should be used if the keepalive offload request
             // is handled by a high-priority signalling path.
             AsyncResult.forMessage(
-                    kaStarted, new KeepaliveStatus(
-                            sessionHandle, KeepaliveStatus.STATUS_ACTIVE), null);
+                    kaStarted, new NetworkKeepaliveStatus(
+                            sessionHandle, NetworkKeepaliveStatus.STATUS_ACTIVE), null);
             kaStarted.sendToTarget();
         } else {
             // Send the sequential responses indicating first that the request was received and
@@ -1101,13 +1102,13 @@ public class DataConnectionTest extends TelephonyTest {
             // keepalive in DataConnection while permitting the status from a low priority or other
             // high-latency handler to activate the keepalive without blocking a request.
             AsyncResult.forMessage(
-                    kaStarted, new KeepaliveStatus(
-                            sessionHandle, KeepaliveStatus.STATUS_PENDING), null);
+                    kaStarted, new NetworkKeepaliveStatus(
+                            sessionHandle, NetworkKeepaliveStatus.STATUS_PENDING), null);
             kaStarted.sendToTarget();
             Message kaRunning = mDc.obtainMessage(DataConnection.EVENT_KEEPALIVE_STATUS);
             AsyncResult.forMessage(
-                    kaRunning, new KeepaliveStatus(
-                            sessionHandle, KeepaliveStatus.STATUS_ACTIVE), null);
+                    kaRunning, new NetworkKeepaliveStatus(
+                            sessionHandle, NetworkKeepaliveStatus.STATUS_ACTIVE), null);
             kaRunning.sendToTarget();
         }
         waitForMs(100);
@@ -1169,19 +1170,20 @@ public class DataConnectionTest extends TelephonyTest {
         if (useCondensedFlow) {
             // Indicate in the response that the keepalive has failed.
             AsyncResult.forMessage(
-                    kaStarted, new KeepaliveStatus(KeepaliveStatus.ERROR_UNSUPPORTED), null);
+                    kaStarted, new NetworkKeepaliveStatus(NetworkKeepaliveStatus.ERROR_UNSUPPORTED),
+                    null);
             kaStarted.sendToTarget();
         } else {
             // Indicate that the keepalive is queued, and then signal a failure from the modem
             // such that a pending keepalive fails to activate.
             AsyncResult.forMessage(
-                    kaStarted, new KeepaliveStatus(
-                            sessionHandle, KeepaliveStatus.STATUS_PENDING), null);
+                    kaStarted, new NetworkKeepaliveStatus(
+                            sessionHandle, NetworkKeepaliveStatus.STATUS_PENDING), null);
             kaStarted.sendToTarget();
             Message kaRunning = mDc.obtainMessage(DataConnection.EVENT_KEEPALIVE_STATUS);
             AsyncResult.forMessage(
-                    kaRunning, new KeepaliveStatus(
-                            sessionHandle, KeepaliveStatus.STATUS_INACTIVE), null);
+                    kaRunning, new NetworkKeepaliveStatus(
+                            sessionHandle, NetworkKeepaliveStatus.STATUS_INACTIVE), null);
             kaRunning.sendToTarget();
         }
         waitForMs(100);
