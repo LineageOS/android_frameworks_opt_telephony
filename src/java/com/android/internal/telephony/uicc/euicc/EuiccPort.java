@@ -1224,8 +1224,17 @@ public class EuiccPort extends UiccPort {
         }
 
         if (profileNode.hasChild(Tags.TAG_PROFILE_STATE)) {
-            // noinspection WrongConstant
-            profileBuilder.setState(profileNode.getChild(Tags.TAG_PROFILE_STATE).asInteger());
+            // In case of MEP capable eUICC, the profileState value returned SHALL only be Enabled
+            // if the Profile is in the Enabled state on the same eSIM Port as where this
+            // getProfilesInfo command was sent. So should check for enabledOnEsimPort(TAG_PORT)
+            // tag and verify its value is a valid port (means port value is >=0) or not.
+            if (profileNode.hasChild(Tags.TAG_PORT)
+                    && profileNode.getChild(Tags.TAG_PORT).asInteger() >= 0) {
+                profileBuilder.setState(EuiccProfileInfo.PROFILE_STATE_ENABLED);
+            } else {
+                // noinspection WrongConstant
+                profileBuilder.setState(profileNode.getChild(Tags.TAG_PROFILE_STATE).asInteger());
+            }
         } else {
             profileBuilder.setState(EuiccProfileInfo.PROFILE_STATE_DISABLED);
         }
