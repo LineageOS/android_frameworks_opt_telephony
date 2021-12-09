@@ -329,12 +329,23 @@ public class DataServiceManager extends Handler {
             sendCompleteMessage(msg, resultCode);
         }
 
+        @Override
         public void onApnUnthrottled(String apn) {
             if (apn != null) {
                 mApnUnthrottledRegistrants.notifyRegistrants(
                         new AsyncResult(null, apn, null));
             } else {
                 loge("onApnUnthrottled: apn is null");
+            }
+        }
+
+        @Override
+        public void onDataProfileUnthrottled(DataProfile dataProfile) {
+            if (dataProfile != null) {
+                mApnUnthrottledRegistrants.notifyRegistrants(
+                        new AsyncResult(null, dataProfile, null));
+            } else {
+                loge("onDataProfileUnthrottled: dataProfile is null");
             }
         }
     }
