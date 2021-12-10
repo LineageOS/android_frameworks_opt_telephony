@@ -333,7 +333,8 @@ import com.android.internal.telephony.cdma.SmsMessage;
 import com.android.internal.telephony.cdma.sms.CdmaSmsAddress;
 import com.android.internal.telephony.cdma.sms.CdmaSmsSubaddress;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
-import com.android.internal.telephony.data.NetworkKeepaliveStatus;
+import com.android.internal.telephony.data.KeepaliveStatus;
+import com.android.internal.telephony.data.KeepaliveStatus.KeepaliveStatusCode;
 import com.android.internal.telephony.uicc.AdnCapacity;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
@@ -3959,14 +3960,14 @@ public class RILUtils {
      * @param halCode KeepaliveStatus code defined in radio/1.1/types.hal or KeepaliveStatus.aidl
      * @return The converted KeepaliveStatus
      */
-    public static int convertHalKeepaliveStatusCode(int halCode) {
+    public static @KeepaliveStatusCode int convertHalKeepaliveStatusCode(int halCode) {
         switch (halCode) {
             case android.hardware.radio.V1_1.KeepaliveStatusCode.ACTIVE:
-                return NetworkKeepaliveStatus.STATUS_ACTIVE;
+                return KeepaliveStatus.STATUS_ACTIVE;
             case android.hardware.radio.V1_1.KeepaliveStatusCode.INACTIVE:
-                return NetworkKeepaliveStatus.STATUS_INACTIVE;
+                return KeepaliveStatus.STATUS_INACTIVE;
             case android.hardware.radio.V1_1.KeepaliveStatusCode.PENDING:
-                return NetworkKeepaliveStatus.STATUS_PENDING;
+                return KeepaliveStatus.STATUS_PENDING;
             default:
                 return -1;
         }
