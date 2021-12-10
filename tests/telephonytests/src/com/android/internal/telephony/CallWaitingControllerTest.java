@@ -15,6 +15,7 @@
  */
 package com.android.internal.telephony;
 
+import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_FIRST_POWER_UP;
 import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_NONE;
 import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_USER_CHANGE;
 import static android.telephony.CarrierConfigManager.ImsSs.KEY_TERMINAL_BASED_CALL_WAITING_DEFAULT_ENABLED_BOOL;
@@ -275,6 +276,23 @@ public class CallWaitingControllerTest extends TelephonyTest {
 
         assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_NOT_ACTIVATED);
         assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_NOT_ACTIVATED);
+    }
+
+    @Test
+    @SmallTest
+    public void testSyncFirstPowerUp() {
+        mCWC.setTerminalBasedCallWaitingSupported(false);
+        setPreference(mPhone.getPhoneId(), FAKE_SUB_ID,
+                TERMINAL_BASED_NOT_ACTIVATED, CALL_WAITING_SYNC_FIRST_POWER_UP);
+        mCWC.setTerminalBasedCallWaitingSupported(true);
+        PersistableBundle bundle = getBundle(true, CALL_WAITING_SYNC_FIRST_POWER_UP, true);
+        mCWC.updateCarrierConfig(FAKE_SUB_ID, bundle, true);
+        assertFalse(mCWC.getSyncState());
+
+        mCWC.notifyRegisteredToNetwork();
+        mTestableLooper.processAllMessages();
+
+        assertTrue(mCWC.getSyncState());
     }
 
     private PersistableBundle getBundle(boolean provisioned, int preference, boolean defaultState) {

@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_FIRST_POWER_UP;
 import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_NONE;
 import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_USER_CHANGE;
 import static android.telephony.CarrierConfigManager.ImsSs.KEY_TERMINAL_BASED_CALL_WAITING_DEFAULT_ENABLED_BOOL;
@@ -62,6 +63,7 @@ public class CallWaitingController extends Handler {
 
     private static final int EVENT_SET_CALL_WAITING_DONE = 1;
     private static final int EVENT_GET_CALL_WAITING_DONE = 2;
+    private static final int EVENT_REGISTERED_TO_NETWORK = 3;
 
     // Class to pack mOnComplete object passed by the caller
     private static class Cw {
@@ -119,12 +121,17 @@ public class CallWaitingController extends Handler {
     private int mSyncPreference = CALL_WAITING_SYNC_NONE;
     private int mLastSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
+    private boolean mCsEnabled = false;
+    private boolean mRegisteredForNetworkAttach = false;
+
     private GsmCdmaPhone mPhone;
+    private ServiceStateTracker mSST;
     private Context mContext;
 
     // Constructors
     public CallWaitingController(GsmCdmaPhone phone) {
         mPhone = phone;
+        mSST = phone.getServiceStateTracker();
         mContext = phone.getContext();
     }
 
@@ -142,7 +149,8 @@ public class CallWaitingController extends Handler {
 
         Rlog.i(LOG_TAG, "initialize phoneId=" + phoneId
                 + ", lastSubId=" + mLastSubId + ", subId=" + subId
-                + ", state=" + mCallWaitingState + ", sync=" + mSyncPreference);
+                + ", state=" + mCallWaitingState + ", sync=" + mSyncPreference
+                + ", csEnabled=" + mCsEnabled);
     }
 
     /**
@@ -170,7 +178,8 @@ public class CallWaitingController extends Handler {
 
         Rlog.i(LOG_TAG, "getCallWaiting " + mCallWaitingState);
 
-        if (mSyncPreference == CALL_WAITING_SYNC_NONE) {
+        if (mSyncPreference == CALL_WAITING_SYNC_NONE
+                || mSyncPreference == CALL_WAITING_SYNC_FIRST_POWER_UP) {
             sendGetCallWaitingResponse(onComplete);
             return true;
         } else if (mSyncPreference == CALL_WAITING_SYNC_USER_CHANGE) {
@@ -197,7 +206,8 @@ public class CallWaitingController extends Handler {
 
         Rlog.i(LOG_TAG, "setCallWaiting enable=" + enable + ", service=" + serviceClass);
 
-        if (mSyncPreference == CALL_WAITING_SYNC_NONE) {
+        if (mSyncPreference == CALL_WAITING_SYNC_NONE
+                || mSyncPreference == CALL_WAITING_SYNC_FIRST_POWER_UP) {
             updateState(
                     enable ? TERMINAL_BASED_ACTIVATED : TERMINAL_BASED_NOT_ACTIVATED);
 
@@ -222,35 +232,87 @@ public class CallWaitingController extends Handler {
             case EVENT_GET_CALL_WAITING_DONE:
                 onGetCallWaitingDone((AsyncResult) msg.obj);
                 break;
+            case EVENT_REGISTERED_TO_NETWORK:
+                onRegisteredToNetwork();
+                break;
         }
     }
 
     private void onSetCallWaitingDone(AsyncResult ar) {
-        if (ar.userObj != null && ar.userObj instanceof Cw) {
-            if (DBG) Rlog.d(LOG_TAG, "onSetCallWaitingDone");
-            Cw cw = (Cw) ar.userObj;
+        if (ar.userObj == null) {
+            // For the case, CALL_WAITING_SYNC_FIRST_POWER_UP
+            if (DBG) Rlog.d(LOG_TAG, "onSetCallWaitingDone to sync on network attached");
             if (ar.exception == null) {
-                updateState(
-                        cw.mEnable ? TERMINAL_BASED_ACTIVATED : TERMINAL_BASED_NOT_ACTIVATED);
+                updateSyncState(true);
+            } else {
+                Rlog.e(LOG_TAG, "onSetCallWaitingDone e=" + ar.exception);
             }
-            sendToTarget(cw.mOnComplete, ar.result, ar.exception);
+            return;
         }
+
+        if (!(ar.userObj instanceof Cw)) {
+            // Unexpected state
+            if (DBG) Rlog.d(LOG_TAG, "onSetCallWaitingDone unexpected result");
+            return;
+        }
+
+        if (DBG) Rlog.d(LOG_TAG, "onSetCallWaitingDone");
+        Cw cw = (Cw) ar.userObj;
+        if (ar.exception == null) {
+            updateState(
+                    cw.mEnable ? TERMINAL_BASED_ACTIVATED : TERMINAL_BASED_NOT_ACTIVATED);
+        }
+        sendToTarget(cw.mOnComplete, ar.result, ar.exception);
     }
 
     private void onGetCallWaitingDone(AsyncResult ar) {
-        if (ar.userObj != null && ar.userObj instanceof Cw) {
-            if (DBG) Rlog.d(LOG_TAG, "onGetCallWaitingDone");
-            Cw cw = (Cw) ar.userObj;
+        if (ar.userObj == null) {
+            // For the case, CALL_WAITING_SYNC_FIRST_POWER_UP
+            if (DBG) Rlog.d(LOG_TAG, "onGetCallWaitingDone to sync on network attached");
+            boolean enabled = false;
             if (ar.exception == null) {
+                //resp[0]: 1 if enabled, 0 otherwise
+                //resp[1]: bitwise ORs of SERVICE_CLASS_* constants
                 int[] resp = (int[]) ar.result;
                 if (resp != null && resp.length > 1) {
-                    boolean enabled =
-                            resp[0] == 1 && (resp[1] & SERVICE_CLASS_VOICE) == SERVICE_CLASS_VOICE;
-                    updateState(enabled ? TERMINAL_BASED_ACTIVATED : TERMINAL_BASED_NOT_ACTIVATED);
+                    enabled = (resp[0] == 1)
+                            && (resp[1] & SERVICE_CLASS_VOICE) == SERVICE_CLASS_VOICE;
+                } else {
+                    Rlog.e(LOG_TAG, "onGetCallWaitingDone unexpected response");
                 }
+            } else {
+                Rlog.e(LOG_TAG, "onGetCallWaitingDone e=" + ar.exception);
             }
-            sendToTarget(cw.mOnComplete, ar.result, ar.exception);
+            if (enabled) {
+                updateSyncState(true);
+            } else {
+                Rlog.i(LOG_TAG, "onGetCallWaitingDone enabling CW service in CS network");
+                mPhone.mCi.setCallWaiting(true, SERVICE_CLASS_VOICE,
+                        obtainMessage(EVENT_SET_CALL_WAITING_DONE));
+            }
+            unregisterForNetworkAttached();
+            return;
         }
+
+        if (!(ar.userObj instanceof Cw)) {
+            // Unexpected state
+            if (DBG) Rlog.d(LOG_TAG, "onGetCallWaitingDone unexpected result");
+            return;
+        }
+
+        if (DBG) Rlog.d(LOG_TAG, "onGetCallWaitingDone");
+        Cw cw = (Cw) ar.userObj;
+        if (ar.exception == null) {
+            int[] resp = (int[]) ar.result;
+            //resp[0]: 1 if enabled, 0 otherwise
+            //resp[1]: bitwise ORs of SERVICE_CLASS_
+            if (resp != null && resp.length > 1) {
+                boolean enabled =
+                        resp[0] == 1 && (resp[1] & SERVICE_CLASS_VOICE) == SERVICE_CLASS_VOICE;
+                updateState(enabled ? TERMINAL_BASED_ACTIVATED : TERMINAL_BASED_NOT_ACTIVATED);
+            }
+        }
+        sendToTarget(cw.mOnComplete, ar.result, ar.exception);
     }
 
     private void sendToTarget(Message onComplete, Object result, Throwable exception) {
@@ -270,12 +332,22 @@ public class CallWaitingController extends Handler {
         }
     }
 
+    private void onRegisteredToNetwork() {
+        if (mCsEnabled) return;
+
+        if (DBG) Rlog.d(LOG_TAG, "onRegisteredToNetwork");
+
+        mPhone.mCi.queryCallWaiting(SERVICE_CLASS_NONE,
+                obtainMessage(EVENT_GET_CALL_WAITING_DONE));
+    }
+
     private void onCarrierConfigChanged() {
         int subId = mPhone.getSubId();
         if (!SubscriptionManager.isValidSubscriptionId(subId)) {
             Rlog.i(LOG_TAG, "onCarrierConfigChanged invalid subId=" + subId);
 
             mValidSubscription = false;
+            unregisterForNetworkAttached();
             return;
         }
 
@@ -283,6 +355,14 @@ public class CallWaitingController extends Handler {
         PersistableBundle b = configManager.getConfigForSubId(subId);
 
         updateCarrierConfig(subId, b, false);
+
+        Rlog.i(LOG_TAG, "onCarrierConfigChanged cs_enabled=" + mCsEnabled);
+
+        if (mSyncPreference == CALL_WAITING_SYNC_FIRST_POWER_UP) {
+            if (!mCsEnabled) {
+                registerForNetworkAttached();
+            }
+        }
     }
 
     /**
@@ -321,6 +401,9 @@ public class CallWaitingController extends Handler {
         int desiredState = savedState;
 
         if (enforced) {
+            desiredState = defaultState;
+        } else if ((mLastSubId != subId)
+                && (syncPreference == CALL_WAITING_SYNC_FIRST_POWER_UP)) {
             desiredState = defaultState;
         } else {
             if (defaultState == TERMINAL_BASED_NOT_SUPPORTED) {
@@ -365,6 +448,9 @@ public class CallWaitingController extends Handler {
         mCallWaitingState = state;
         mLastSubId = subId;
         mSyncPreference = syncPreference;
+        if (mLastSubId != subId) {
+            mCsEnabled = false;
+        }
 
         mPhone.setTerminalBasedCallWaitingStatus(mCallWaitingState);
     }
@@ -378,6 +464,40 @@ public class CallWaitingController extends Handler {
 
         return state;
     }
+
+    private void updateSyncState(boolean enabled) {
+        int phoneId = mPhone.getPhoneId();
+
+        Rlog.i(LOG_TAG, "updateSyncState phoneId=" + phoneId + ", enabled=" + enabled);
+
+        mCsEnabled = enabled;
+    }
+
+    /**
+     * @return whether the service is enabled in the CS network
+     */
+    @VisibleForTesting
+    public boolean getSyncState() {
+        return mCsEnabled;
+    }
+
+    private void registerForNetworkAttached() {
+        Rlog.i(LOG_TAG, "registerForNetworkAttached");
+        if (mRegisteredForNetworkAttach) return;
+
+        mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
+        mRegisteredForNetworkAttach = true;
+    }
+
+    private void unregisterForNetworkAttached() {
+        Rlog.i(LOG_TAG, "unregisterForNetworkAttached");
+        if (!mRegisteredForNetworkAttach) return;
+
+        mSST.unregisterForNetworkAttached(this);
+        removeMessages(EVENT_REGISTERED_TO_NETWORK);
+        mRegisteredForNetworkAttach = false;
+    }
+
     /**
      * Sets whether the device supports the terminal-based call waiting.
      * Only for test
@@ -397,5 +517,14 @@ public class CallWaitingController extends Handler {
             mContext.unregisterReceiver(mReceiver);
             updateState(TERMINAL_BASED_NOT_SUPPORTED);
         }
+    }
+
+    /**
+     * Notifies that the UE has attached to the network
+     * Only for test
+     */
+    @VisibleForTesting
+    public void notifyRegisteredToNetwork() {
+        sendEmptyMessage(EVENT_REGISTERED_TO_NETWORK);
     }
 }
