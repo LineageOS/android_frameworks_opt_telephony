@@ -84,6 +84,7 @@ class Tags {
     static final int TAG_PROFILE_NAME = 0x92;
     static final int TAG_OPERATOR_ID = 0xB7;
     static final int TAG_CARRIER_PRIVILEGE_RULES = 0xBF76;
+    static final int TAG_PORT = 0x9F24;
 
     // Tags from the RefArDo data standard - https://source.android.com/devices/tech/config/uicc
     static final int TAG_REF_AR_DO = 0xE2;
@@ -106,6 +107,8 @@ class Tags {
             (byte) TAG_PROFILE_POLICY_RULE,
             (byte) (TAG_CARRIER_PRIVILEGE_RULES / 256),
             (byte) (TAG_CARRIER_PRIVILEGE_RULES % 256),
+            (byte) (TAG_PORT / 256),
+            (byte) (TAG_PORT % 256),
     };
 
     private Tags() {}
