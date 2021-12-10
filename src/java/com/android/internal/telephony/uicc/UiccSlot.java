@@ -241,6 +241,24 @@ public class UiccSlot extends Handler {
         }
     }
 
+    public boolean isIccIdMappedToPortIndex(String iccId) {
+        synchronized (mLock) {
+            return mIccIds.containsValue(iccId);
+        }
+    }
+
+    public int getPortIndexFromIccId(String iccId) {
+        synchronized (mLock) {
+            for (Map.Entry<Integer, String> entry : mIccIds.entrySet()) {
+                if (entry.getValue().equalsIgnoreCase(iccId)) {
+                    return entry.getKey();
+                }
+            }
+            // If iccId is not found, return invalid port index.
+            return TelephonyManager.INVALID_PORT_INDEX;
+        }
+    }
+
     public int getPhoneIdFromPortIndex(int portIndex) {
         synchronized (mLock) {
             return mPortIdxToPhoneId.getOrDefault(portIndex, INVALID_PHONE_ID);
