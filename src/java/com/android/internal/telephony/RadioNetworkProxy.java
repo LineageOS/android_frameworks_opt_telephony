@@ -23,7 +23,6 @@ import android.os.Message;
 import android.os.RemoteException;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.NetworkScanRequest;
-import android.telephony.RadioAccessFamily;
 import android.telephony.RadioAccessSpecifier;
 import android.telephony.SignalThresholdInfo;
 
@@ -363,19 +362,30 @@ public class RadioNetworkProxy extends RadioServiceProxy {
      */
     public void setAllowedNetworkTypesBitmap(int serial, int networkTypeBitmask)
             throws RemoteException {
-        if (isEmpty()) return;
+        if (isEmpty() || mHalVersion.less(RIL.RADIO_HAL_VERSION_1_6)) return;
         if (isAidl()) {
             mNetworkProxy.setAllowedNetworkTypesBitmap(serial,
                     RILUtils.convertToHalRadioAccessFamilyAidl(networkTypeBitmask));
-        } else if (mHalVersion.greaterOrEqual(RIL.RADIO_HAL_VERSION_1_6)) {
+        } else {
             ((android.hardware.radio.V1_6.IRadio) mRadioProxy).setAllowedNetworkTypesBitmap(
                     serial, RILUtils.convertToHalRadioAccessFamily(networkTypeBitmask));
-        } else if (mHalVersion.greaterOrEqual(RIL.RADIO_HAL_VERSION_1_4)) {
-            ((android.hardware.radio.V1_4.IRadio) mRadioProxy).setPreferredNetworkTypeBitmap(
-                    serial, networkTypeBitmask);
+        }
+    }
+
+    /**
+     * Call IRadioNetwork#setPreferredNetworkTypeBitmap
+     * @param serial Serial number of request
+     * @param networkTypesBitmask Preferred network types bitmask to set
+     * @throws RemoteException
+     */
+    public void setPreferredNetworkTypeBitmap(int serial, int networkTypesBitmask)
+            throws RemoteException {
+        if (isEmpty() || mHalVersion.greaterOrEqual(RIL.RADIO_HAL_VERSION_1_6)) return;
+        if (mHalVersion.greaterOrEqual(RIL.RADIO_HAL_VERSION_1_4)) {
+            ((android.hardware.radio.V1_4.IRadio) mRadioProxy).setPreferredNetworkTypeBitmap(serial,
+                    RILUtils.convertToHalRadioAccessFamily(networkTypesBitmask));
         } else {
-            mRadioProxy.setPreferredNetworkType(
-                    serial, RadioAccessFamily.getNetworkTypeFromRaf(networkTypeBitmask));
+            mRadioProxy.setPreferredNetworkType(serial, networkTypesBitmask);
         }
     }
 
