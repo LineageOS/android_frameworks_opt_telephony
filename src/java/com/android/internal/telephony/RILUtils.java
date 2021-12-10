@@ -332,7 +332,7 @@ import com.android.internal.telephony.cdma.SmsMessage;
 import com.android.internal.telephony.cdma.sms.CdmaSmsAddress;
 import com.android.internal.telephony.cdma.sms.CdmaSmsSubaddress;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
-import com.android.internal.telephony.dataconnection.KeepaliveStatus;
+import com.android.internal.telephony.data.NetworkKeepaliveStatus;
 import com.android.internal.telephony.uicc.AdnCapacity;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
@@ -3918,11 +3918,11 @@ public class RILUtils {
     public static int convertHalKeepaliveStatusCode(int halCode) {
         switch (halCode) {
             case android.hardware.radio.V1_1.KeepaliveStatusCode.ACTIVE:
-                return KeepaliveStatus.STATUS_ACTIVE;
+                return NetworkKeepaliveStatus.STATUS_ACTIVE;
             case android.hardware.radio.V1_1.KeepaliveStatusCode.INACTIVE:
-                return KeepaliveStatus.STATUS_INACTIVE;
+                return NetworkKeepaliveStatus.STATUS_INACTIVE;
             case android.hardware.radio.V1_1.KeepaliveStatusCode.PENDING:
-                return KeepaliveStatus.STATUS_PENDING;
+                return NetworkKeepaliveStatus.STATUS_PENDING;
             default:
                 return -1;
         }

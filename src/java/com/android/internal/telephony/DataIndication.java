@@ -27,7 +27,7 @@ import android.os.RemoteException;
 import android.telephony.PcoData;
 import android.telephony.data.DataCallResponse;
 
-import com.android.internal.telephony.dataconnection.KeepaliveStatus;
+import com.android.internal.telephony.data.NetworkKeepaliveStatus;
 
 import java.util.ArrayList;
 
@@ -72,7 +72,8 @@ public class DataIndication extends IRadioDataIndication.Stub {
                     + " code=" +  halStatus.code);
         }
 
-        KeepaliveStatus ks = new KeepaliveStatus(halStatus.sessionHandle, halStatus.code);
+        NetworkKeepaliveStatus ks = new NetworkKeepaliveStatus(
+                halStatus.sessionHandle, halStatus.code);
         mRil.mNattKeepaliveStatusRegistrants.notifyRegistrants(new AsyncResult(null, ks, null));
     }
 
