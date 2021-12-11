@@ -90,6 +90,7 @@ import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.data.DataConfigManager;
+import com.android.internal.telephony.data.KeepaliveStatus;
 import com.android.internal.telephony.dataconnection.DcTracker.ReleaseNetworkType;
 import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkType;
 import com.android.internal.telephony.metrics.DataCallSessionStats;
@@ -3236,7 +3237,8 @@ public class DataConnection extends StateMachine {
                     } else {
                         log("Keepalive Stop Requested for handle=" + handle);
                         mNetworkAgent.keepaliveTracker.handleKeepaliveStatus(
-                                new KeepaliveStatus(handle, KeepaliveStatus.STATUS_INACTIVE));
+                                new KeepaliveStatus(
+                                        handle, KeepaliveStatus.STATUS_INACTIVE));
                     }
                     retVal = HANDLED;
                     break;

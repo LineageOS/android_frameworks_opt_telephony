@@ -56,7 +56,7 @@ import android.telephony.data.DataCallResponse;
 import android.telephony.data.NetworkSlicingConfig;
 import android.text.TextUtils;
 
-import com.android.internal.telephony.dataconnection.KeepaliveStatus;
+import com.android.internal.telephony.data.KeepaliveStatus;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.AdnCapacity;
 import com.android.internal.telephony.uicc.IccCardStatus;
@@ -1792,7 +1792,8 @@ public class RadioResponse extends IRadioResponse.Stub {
                     if (convertedStatus < 0) {
                         ret = new KeepaliveStatus(KeepaliveStatus.ERROR_UNSUPPORTED);
                     } else {
-                        ret = new KeepaliveStatus(keepaliveStatus.sessionHandle, convertedStatus);
+                        ret = new KeepaliveStatus(
+                                keepaliveStatus.sessionHandle, convertedStatus);
                     }
                     // If responseInfo.error is NONE, response function sends the response message
                     // even if result is actually an error.
