@@ -75,6 +75,7 @@ import com.android.internal.R;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.data.KeepaliveStatus;
 import com.android.internal.telephony.dataconnection.DataConnection.ConnectionParams;
 import com.android.internal.telephony.dataconnection.DataConnection.DisconnectParams;
 import com.android.internal.telephony.dataconnection.DataConnection.SetupResult;
@@ -1169,7 +1170,8 @@ public class DataConnectionTest extends TelephonyTest {
         if (useCondensedFlow) {
             // Indicate in the response that the keepalive has failed.
             AsyncResult.forMessage(
-                    kaStarted, new KeepaliveStatus(KeepaliveStatus.ERROR_UNSUPPORTED), null);
+                    kaStarted, new KeepaliveStatus(KeepaliveStatus.ERROR_UNSUPPORTED),
+                    null);
             kaStarted.sendToTarget();
         } else {
             // Indicate that the keepalive is queued, and then signal a failure from the modem
