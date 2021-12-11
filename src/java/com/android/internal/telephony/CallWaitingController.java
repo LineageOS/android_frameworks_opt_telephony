@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_FIRST_CHANGE;
 import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_FIRST_POWER_UP;
 import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_NONE;
 import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_USER_CHANGE;
@@ -39,6 +40,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
+import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -69,10 +71,12 @@ public class CallWaitingController extends Handler {
     private static class Cw {
         final boolean mEnable;
         final Message mOnComplete;
+        final boolean mImsRegistered;
 
-        Cw(boolean enable, Message onComplete) {
+        Cw(boolean enable, boolean imsRegistered, Message onComplete) {
             mEnable = enable;
             mOnComplete = onComplete;
+            mImsRegistered = imsRegistered;
         }
     }
 
@@ -123,6 +127,7 @@ public class CallWaitingController extends Handler {
 
     private boolean mCsEnabled = false;
     private boolean mRegisteredForNetworkAttach = false;
+    private boolean mImsRegistered = false;
 
     private GsmCdmaPhone mPhone;
     private ServiceStateTracker mSST;
@@ -178,12 +183,26 @@ public class CallWaitingController extends Handler {
 
         Rlog.i(LOG_TAG, "getCallWaiting " + mCallWaitingState);
 
+        if (mSyncPreference == CALL_WAITING_SYNC_FIRST_CHANGE) {
+            // Interrogate CW in CS network
+            if (!mCsEnabled) {
+                // skip interrogation if CS is not available and IMS is registered
+                if (isCircuitSwitchedNetworkAvailable() || !isImsRegistered()) {
+                    Cw cw = new Cw(false, isImsRegistered(), onComplete);
+                    Message resp = obtainMessage(EVENT_GET_CALL_WAITING_DONE, 0, 0, cw);
+                    mPhone.mCi.queryCallWaiting(SERVICE_CLASS_NONE, resp);
+                    return true;
+                }
+            }
+        }
+
         if (mSyncPreference == CALL_WAITING_SYNC_NONE
+                || mSyncPreference == CALL_WAITING_SYNC_FIRST_CHANGE
                 || mSyncPreference == CALL_WAITING_SYNC_FIRST_POWER_UP) {
             sendGetCallWaitingResponse(onComplete);
             return true;
         } else if (mSyncPreference == CALL_WAITING_SYNC_USER_CHANGE) {
-            Cw cw = new Cw(false, onComplete);
+            Cw cw = new Cw(false, isImsRegistered(), onComplete);
             Message resp = obtainMessage(EVENT_GET_CALL_WAITING_DONE, 0, 0, cw);
             mPhone.mCi.queryCallWaiting(SERVICE_CLASS_NONE, resp);
             return true;
@@ -206,7 +225,24 @@ public class CallWaitingController extends Handler {
 
         Rlog.i(LOG_TAG, "setCallWaiting enable=" + enable + ", service=" + serviceClass);
 
+        if (mSyncPreference == CALL_WAITING_SYNC_FIRST_CHANGE) {
+            // Enable CW in the CS network
+            if (!mCsEnabled && enable) {
+                if (isCircuitSwitchedNetworkAvailable() || !isImsRegistered()) {
+                    Cw cw = new Cw(true, isImsRegistered(), onComplete);
+                    Message resp = obtainMessage(EVENT_SET_CALL_WAITING_DONE, 0, 0, cw);
+                    mPhone.mCi.setCallWaiting(true, serviceClass, resp);
+                    return true;
+                } else {
+                    // CS network is not available, however, IMS is registered.
+                    // Enabling the service in the CS network will be delayed.
+                    registerForNetworkAttached();
+                }
+            }
+        }
+
         if (mSyncPreference == CALL_WAITING_SYNC_NONE
+                || mSyncPreference == CALL_WAITING_SYNC_FIRST_CHANGE
                 || mSyncPreference == CALL_WAITING_SYNC_FIRST_POWER_UP) {
             updateState(
                     enable ? TERMINAL_BASED_ACTIVATED : TERMINAL_BASED_NOT_ACTIVATED);
@@ -214,7 +250,7 @@ public class CallWaitingController extends Handler {
             sendToTarget(onComplete, null, null);
             return true;
         } else if (mSyncPreference == CALL_WAITING_SYNC_USER_CHANGE) {
-            Cw cw = new Cw(enable, onComplete);
+            Cw cw = new Cw(enable, isImsRegistered(), onComplete);
             Message resp = obtainMessage(EVENT_SET_CALL_WAITING_DONE, 0, 0, cw);
             mPhone.mCi.setCallWaiting(enable, serviceClass, resp);
             return true;
@@ -259,8 +295,20 @@ public class CallWaitingController extends Handler {
         if (DBG) Rlog.d(LOG_TAG, "onSetCallWaitingDone");
         Cw cw = (Cw) ar.userObj;
         if (ar.exception == null) {
+            if (mSyncPreference == CALL_WAITING_SYNC_FIRST_CHANGE) {
+                // SYNC_FIRST_CHANGE implies cw.mEnable is true.
+                updateSyncState(true);
+            }
             updateState(
                     cw.mEnable ? TERMINAL_BASED_ACTIVATED : TERMINAL_BASED_NOT_ACTIVATED);
+        } else if (mSyncPreference == CALL_WAITING_SYNC_FIRST_CHANGE) {
+            if (cw.mImsRegistered) {
+                // IMS is registered. Do not notify error.
+                // SYNC_FIRST_CHANGE implies cw.mEnable is true.
+                updateState(TERMINAL_BASED_ACTIVATED);
+                sendToTarget(cw.mOnComplete, null, null);
+                return;
+            }
         }
         sendToTarget(cw.mOnComplete, ar.result, ar.exception);
     }
@@ -306,10 +354,42 @@ public class CallWaitingController extends Handler {
             int[] resp = (int[]) ar.result;
             //resp[0]: 1 if enabled, 0 otherwise
             //resp[1]: bitwise ORs of SERVICE_CLASS_
-            if (resp != null && resp.length > 1) {
-                boolean enabled =
-                        resp[0] == 1 && (resp[1] & SERVICE_CLASS_VOICE) == SERVICE_CLASS_VOICE;
-                updateState(enabled ? TERMINAL_BASED_ACTIVATED : TERMINAL_BASED_NOT_ACTIVATED);
+            if (resp == null || resp.length < 2) {
+                Rlog.i(LOG_TAG, "onGetCallWaitingDone unexpected response");
+                if (mSyncPreference == CALL_WAITING_SYNC_FIRST_CHANGE) {
+                    // no exception but unexpected response, local setting is preferred.
+                    sendGetCallWaitingResponse(cw.mOnComplete);
+                } else {
+                    sendToTarget(cw.mOnComplete, ar.result, ar.exception);
+                }
+                return;
+            }
+
+            boolean enabled = resp[0] == 1
+                    && (resp[1] & SERVICE_CLASS_VOICE) == SERVICE_CLASS_VOICE;
+
+            if (mSyncPreference == CALL_WAITING_SYNC_FIRST_CHANGE) {
+                updateSyncState(enabled);
+
+                if (!enabled && !cw.mImsRegistered) {
+                    // IMS is not registered, change the local setting
+                    Rlog.i(LOG_TAG, "onGetCallWaitingDone CW in CS network is disabled.");
+                    updateState(TERMINAL_BASED_NOT_ACTIVATED);
+                }
+
+                // return the user setting saved
+                sendGetCallWaitingResponse(cw.mOnComplete);
+                return;
+            }
+            updateState(enabled ? TERMINAL_BASED_ACTIVATED : TERMINAL_BASED_NOT_ACTIVATED);
+        } else if (mSyncPreference == CALL_WAITING_SYNC_FIRST_CHANGE) {
+            // Got an exception
+            if (cw.mImsRegistered) {
+                // queryCallWaiting failed. However, IMS is registered. Do not notify error.
+                // return the user setting saved
+                Rlog.i(LOG_TAG, "onGetCallWaitingDone get an exception, but IMS is registered");
+                sendGetCallWaitingResponse(cw.mOnComplete);
+                return;
             }
         }
         sendToTarget(cw.mOnComplete, ar.result, ar.exception);
@@ -384,7 +464,7 @@ public class CallWaitingController extends Handler {
             }
         }
         int syncPreference = b.getInt(KEY_TERMINAL_BASED_CALL_WAITING_SYNC_TYPE_INT,
-                CALL_WAITING_SYNC_NONE);
+                CALL_WAITING_SYNC_FIRST_CHANGE);
         boolean activated = b.getBoolean(KEY_TERMINAL_BASED_CALL_WAITING_DEFAULT_ENABLED_BOOL);
         int defaultState = supportsTerminalBased
                 ? (activated ? TERMINAL_BASED_ACTIVATED : TERMINAL_BASED_NOT_ACTIVATED)
@@ -403,7 +483,8 @@ public class CallWaitingController extends Handler {
         if (enforced) {
             desiredState = defaultState;
         } else if ((mLastSubId != subId)
-                && (syncPreference == CALL_WAITING_SYNC_FIRST_POWER_UP)) {
+                && (syncPreference == CALL_WAITING_SYNC_FIRST_POWER_UP
+                        || syncPreference == CALL_WAITING_SYNC_FIRST_CHANGE)) {
             desiredState = defaultState;
         } else {
             if (defaultState == TERMINAL_BASED_NOT_SUPPORTED) {
@@ -479,6 +560,26 @@ public class CallWaitingController extends Handler {
     @VisibleForTesting
     public boolean getSyncState() {
         return mCsEnabled;
+    }
+
+    private boolean isCircuitSwitchedNetworkAvailable() {
+        Rlog.i(LOG_TAG, "isCircuitSwitchedNetworkAvailable="
+                + (mSST.getServiceState().getState() == ServiceState.STATE_IN_SERVICE));
+        return mSST.getServiceState().getState() == ServiceState.STATE_IN_SERVICE;
+    }
+
+    private boolean isImsRegistered() {
+        Rlog.i(LOG_TAG, "isImsRegistered " + mImsRegistered);
+        return mImsRegistered;
+    }
+
+    /**
+     * Sets the registration state of IMS service.
+     */
+    public void setImsRegistrationState(boolean registered) {
+        Rlog.i(LOG_TAG, "setImsRegistrationState prev=" + mImsRegistered
+                + ", new=" + registered);
+        mImsRegistered = registered;
     }
 
     private void registerForNetworkAttached() {
