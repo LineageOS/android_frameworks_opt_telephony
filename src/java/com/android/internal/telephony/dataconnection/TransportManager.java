@@ -32,6 +32,7 @@ import android.util.SparseIntArray;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.data.AccessNetworksManager;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
