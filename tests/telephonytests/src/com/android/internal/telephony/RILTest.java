@@ -30,6 +30,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEVICE_IDE
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DTMF;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENABLE_UICC_APPLICATIONS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENTER_NETWORK_DEPERSONALIZATION;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENTER_SIM_DEPERSONALIZATION;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENTER_SIM_PIN;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENTER_SIM_PIN2;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENTER_SIM_PUK;
@@ -167,6 +168,8 @@ import android.testing.TestableLooper;
 import android.util.SparseArray;
 
 import androidx.test.filters.FlakyTest;
+
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 
 import org.junit.After;
 import org.junit.Before;
@@ -469,6 +472,78 @@ public class RILTest extends TelephonyTest {
                 mRILUnderTest,
                 mSerialNumberCaptor.getValue(),
                 RIL_REQUEST_ENTER_NETWORK_DEPERSONALIZATION);
+    }
+
+    @FlakyTest
+    @Test
+    public void testSupplySimDepersonalization() throws Exception {
+
+        String controlKey = "1234";
+        PersoSubState persoType = PersoSubState.PERSOSUBSTATE_SIM_NETWORK_PUK;
+
+        // Not supported on Radio 1.0.
+        mRILUnderTest.supplySimDepersonalization(persoType, controlKey, obtainMessage());
+        verify(mRadioProxy, never()).supplySimDepersonalization(anyInt(), anyInt(), eq(controlKey));
+        verify(mRadioProxy, never()).supplyNetworkDepersonalization(
+                anyInt(), eq(controlKey));
+
+        // Make radio version 1.5 to support the operation.
+        try {
+            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV15);
+        } catch (Exception e) {
+        }
+
+        mRILUnderTest.supplySimDepersonalization(persoType, controlKey, obtainMessage());
+        verify(mRadioProxy).supplySimDepersonalization(
+                mSerialNumberCaptor.capture(),
+                eq((int) invokeMethod(
+                        mRILInstance,
+                        "convertPersoTypeToHalPersoType",
+                        new Class<?>[] {PersoSubState.class},
+                        new Object[] {persoType})),
+                eq(controlKey));
+        verifyRILResponse(
+                mRILUnderTest,
+                mSerialNumberCaptor.getValue(),
+                RIL_REQUEST_ENTER_SIM_DEPERSONALIZATION);
+    }
+
+    @FlakyTest
+    @Test
+    public void testSupplySimDepersonalizationWithNetworkLock() throws Exception {
+
+        String controlKey = "1234";
+        PersoSubState persoType = PersoSubState.PERSOSUBSTATE_SIM_NETWORK;
+
+        // use supplyNetworkDepersonalization on Radio 1.0.
+        mRILUnderTest.supplySimDepersonalization(persoType, controlKey, obtainMessage());
+        verify(mRadioProxy, never()).supplySimDepersonalization(anyInt(), anyInt(), eq(controlKey));
+        verify(mRadioProxy).supplyNetworkDepersonalization(
+                mSerialNumberCaptor.capture(), eq(controlKey));
+        verifyRILResponse(
+                mRILUnderTest,
+                mSerialNumberCaptor.getValue(),
+                RIL_REQUEST_ENTER_NETWORK_DEPERSONALIZATION);
+
+        // Make radio version 1.5 to support the operation.
+        try {
+            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV15);
+        } catch (Exception e) {
+        }
+
+        mRILUnderTest.supplySimDepersonalization(persoType, controlKey, obtainMessage());
+        verify(mRadioProxy).supplySimDepersonalization(
+                mSerialNumberCaptor.capture(),
+                eq((int) invokeMethod(
+                        mRILInstance,
+                        "convertPersoTypeToHalPersoType",
+                        new Class<?>[] {PersoSubState.class},
+                        new Object[] {persoType})),
+                eq(controlKey));
+        verifyRILResponse(
+                mRILUnderTest,
+                mSerialNumberCaptor.getValue(),
+                RIL_REQUEST_ENTER_SIM_DEPERSONALIZATION);
     }
 
     @FlakyTest
