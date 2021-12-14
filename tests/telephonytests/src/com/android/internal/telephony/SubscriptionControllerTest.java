@@ -765,6 +765,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     @Test @SmallTest
     public void testInsertRemoteSim() {
         makeThisDeviceMultiSimCapable();
+        mContextFixture.addSystemFeature(PackageManager.FEATURE_AUTOMOTIVE);
 
         // verify there are no sim's in the system.
         assertEquals(0, mSubscriptionControllerUT.getAllSubInfoCount(mCallingPackage,
@@ -853,6 +854,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     @Test @SmallTest
     public void testInsertMultipleRemoteSims() {
         makeThisDeviceMultiSimCapable();
+        mContextFixture.addSystemFeature(PackageManager.FEATURE_AUTOMOTIVE);
 
         // verify that there are no subscription info records
         assertEquals(0, mSubscriptionControllerUT.getAllSubInfoCount(mCallingPackage,
