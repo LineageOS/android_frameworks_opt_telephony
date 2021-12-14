@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.dataconnection;
+package com.android.internal.telephony.data;
 
 import android.annotation.IntDef;
 import android.annotation.NonNull;
@@ -31,7 +31,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SubscriptionController;
-import com.android.internal.telephony.dataconnection.DataEnabledOverride.OverrideConditions.Condition;
+import com.android.internal.telephony.data.DataEnabledOverride.OverrideConditions.Condition;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
