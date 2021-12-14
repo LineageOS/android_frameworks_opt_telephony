@@ -789,4 +789,31 @@ public class RadioNetworkProxy extends RadioServiceProxy {
             mRadioProxy.supplyNetworkDepersonalization(serial, netPin);
         }
     }
+
+    /**
+     * Call IRadioNetwork#getUsageSetting()
+     * @param serial Serial number of request
+     * @throws RemoteException
+     */
+    public void getUsageSetting(int serial) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.getUsageSetting(serial);
+        }
+        // Only supported on AIDL.
+    }
+
+    /**
+     * Call IRadioNetwork#setUsageSetting()
+     * @param serial Serial number of request
+     * @throws RemoteException
+     */
+    public void setUsageSetting(int serial,
+            /* TelephonyManager.UsageSetting */ int usageSetting) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.setUsageSetting(serial, usageSetting);
+        }
+        // Only supported on AIDL.
+    }
 }

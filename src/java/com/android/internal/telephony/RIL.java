@@ -4849,6 +4849,76 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    /**
+     * Set the UE's usage setting.
+     *
+     * @param result Callback message containing the success or failure status.
+     * @param usageSetting the UE's usage setting, either VOICE_CENTRIC or DATA_CENTRIC.
+     */
+    @Override
+    public void setUsageSetting(Message result,
+            /* @TelephonyManager.UsageSetting */ int usageSetting) {
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        if (networkProxy.isEmpty()) return;
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_SET_USAGE_SETTING, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                networkProxy.setUsageSetting(rr.mSerial, usageSetting);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(NETWORK_SERVICE, "setUsageSetting", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "setUsageSetting: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    /**
+     * Get the UE's usage setting.
+     *
+     * @param result Callback message containing the usage setting (or a failure status).
+     */
+    @Override
+    public void getUsageSetting(Message result) {
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        if (networkProxy.isEmpty()) return;
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_GET_USAGE_SETTING, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                networkProxy.getUsageSetting(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(NETWORK_SERVICE, "getUsageSetting", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "getUsageSetting: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
     //***** Private Methods
     /**
      * This is a helper function to be called when an indication callback is called for any radio
