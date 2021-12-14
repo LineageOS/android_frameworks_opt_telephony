@@ -18,6 +18,7 @@ package com.android.internal.telephony.uicc;
 import static junit.framework.Assert.fail;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -447,6 +448,9 @@ public class UiccControllerTest extends TelephonyTest {
         ics.atr = "abcdef0123456789abcdef";
         ics.iccid = "123451234567890";
         // make it seem like EID is not supported by setting physical slot = -1 like on HAL < 1.2
+
+        mSimulatedCommands.setSupportsEid(false);
+
         ics.physicalSlotIndex = UiccController.INVALID_SLOT_ID;
         AsyncResult ar = new AsyncResult(null, ics, null);
         Message msg = Message.obtain(mUiccControllerUT, EVENT_GET_ICC_STATUS_DONE, ar);
@@ -455,6 +459,8 @@ public class UiccControllerTest extends TelephonyTest {
         // assert that the default eUICC card Id is UNSUPPORTED_CARD_ID
         assertEquals(TelephonyManager.UNSUPPORTED_CARD_ID,
                 mUiccControllerUT.getCardIdForDefaultEuicc());
+
+        mSimulatedCommands.setSupportsEid(true);
     }
 
     /**
@@ -633,5 +639,33 @@ public class UiccControllerTest extends TelephonyTest {
         // since EID is known and we've gotten card status, the default eUICC card ID should be set
         assertEquals(mUiccControllerUT.convertToPublicCardId(knownEidFromApdu),
                 mUiccControllerUT.getCardIdForDefaultEuicc());
+    }
+
+    @Test
+    public void testSlotStatusChanged() {
+        // simulate slot status loaded so that the UiccController sets the last slot status
+        IccSlotStatus iss1 = new IccSlotStatus();
+        iss1.setSlotState(1 /* active */);
+        iss1.eid = "eid1";
+        IccSlotStatus iss2 = new IccSlotStatus();
+        iss2.setSlotState(1 /* active */);
+        iss2.eid = "eid2";
+        ArrayList<IccSlotStatus> status = new ArrayList<IccSlotStatus>();
+        status.add(iss1);
+        status.add(iss2);
+        AsyncResult ar = new AsyncResult(null, status, null);
+        Message msg = Message.obtain(mUiccControllerUT, EVENT_GET_SLOT_STATUS_DONE, ar);
+        mUiccControllerUT.handleMessage(msg);
+        processAllMessages();
+
+        assertFalse(mUiccControllerUT.slotStatusChanged(status));
+
+        // change the order of the IccSlotStatus in the list
+        status = new ArrayList<>();
+        status.add(iss2);
+        status.add(iss1);
+
+        // status should be treated different from last status
+        assertTrue(mUiccControllerUT.slotStatusChanged(status));
     }
 }
