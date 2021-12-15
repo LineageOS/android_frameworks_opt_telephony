@@ -412,7 +412,7 @@ public class DataSettingsManager extends Handler {
 
     /**
      * Check whether the overall data is enabled for the device for the given APN type.
-     * @param apnType APN type to check data enabled for.
+     * @param apnType A single APN type to check data enabled for.
      * @return {@code true} if the overall data is enabled for the APN and {@code false} otherwise.
      */
     public boolean isDataEnabled(int apnType) {

@@ -397,9 +397,8 @@ public class DataProfileManager extends Handler {
         }
 
         // Step 2: Filter out the data profile that can't satisfy the request.
-        List<DataProfile> dataProfiles = mAllDataProfiles.stream()
-                .filter(dp -> dp.canSatisfy(networkRequest.getCapabilities()))
-                .collect(Collectors.toList());
+        List<DataProfile> dataProfiles = getDataProfilesForNetworkCapabilities(
+                networkRequest.getCapabilities());
         if (dataProfiles.size() == 0) {
             log("Can't find any data profile that can satisfy " + networkRequest);
             return null;
@@ -431,8 +430,7 @@ public class DataProfileManager extends Handler {
         }
 
         // TODO: Need a lot more works here.
-        //   1. Should rotate data profiles if multiple data profile can satisfy the request.
-        //   2. Should consider data throttling.
+        //   1. Should consider data throttling.
 
         return dataProfiles.get(0);
     }
