@@ -55,7 +55,7 @@ public class ImsRegistrationTests {
     @Before
     public void setup() throws RemoteException {
         MockitoAnnotations.initMocks(this);
-        mRegistration = new ImsRegistrationImplBase();
+        mRegistration = new ImsRegistrationImplBase(Runnable::run);
         mRegBinder = mRegistration.getBinder();
         mRegBinder.addRegistrationCallback(mCallback);
     }
