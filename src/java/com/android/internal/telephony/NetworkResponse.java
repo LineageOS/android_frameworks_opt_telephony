@@ -448,4 +448,20 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
             int retriesRemaining) {
         RadioResponse.responseInts(mRil, responseInfo, retriesRemaining);
     }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void setUsageSettingResponse(RadioResponseInfo responseInfo) {
+        RadioResponse.responseVoid(mRil, responseInfo);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param usageSetting the cellular usage setting
+     */
+    public void getUsageSettingResponse(RadioResponseInfo responseInfo,
+            /* @TelephonyManager.UsageSetting */ int usageSetting) {
+        RadioResponse.responseInts(mRil, responseInfo, usageSetting);
+    }
 }
