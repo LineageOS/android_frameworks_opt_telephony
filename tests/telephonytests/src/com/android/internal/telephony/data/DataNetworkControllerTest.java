@@ -21,6 +21,7 @@ import static com.android.internal.telephony.data.DataNetworkController.NetworkR
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -43,6 +44,7 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RegistrantList;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
@@ -61,6 +63,7 @@ import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneSwitcher;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.data.DataNetworkController.HandoverRule;
 
 import org.junit.After;
 import org.junit.Before;
@@ -105,7 +108,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
                     .setApnName("internet_supl_apn")
                     .setUser("user")
                     .setPassword("passwd")
-                    .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL)
+                    .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL
+                            | ApnSetting.TYPE_MMS)
                     .setProtocol(ApnSetting.PROTOCOL_IPV6)
                     .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
                     .setCarrierEnabled(true)
@@ -246,6 +250,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(true).when(mSST).getPowerStateFromCarrier();
         doReturn(true).when(mSST).isConcurrentVoiceAndDataAllowed();
         doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
+        doReturn("").when(mSubscriptionController).getDataEnabledOverrideRules(anyInt());
 
         for (int transport : new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN}) {
@@ -614,5 +619,178 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Verify data is restored.
         verifyInternetConnected();
+    }
+
+    @Test
+    public void testEmergencyCallChanged() throws Exception {
+        doReturn(PhoneConstants.PHONE_TYPE_CDMA).when(mPhone).getPhoneType();
+        doReturn(true).when(mPhone).isInEcm();
+        mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build());
+        processAllMessages();
+
+        // Data should not be allowed when the device is in an emergency call.
+        verifyNoInternetSetup();
+
+        // Emergency call ended
+        doReturn(false).when(mPhone).isInEcm();
+        mDataNetworkControllerUT.obtainMessage(20/*EVENT_EMERGENCY_CALL_CHANGED*/).sendToTarget();
+        processAllMessages();
+
+        // Verify data is restored.
+        verifyInternetConnected();
+    }
+
+    @Test
+    public void testRoamingDataChanged() throws Exception {
+        doReturn(true).when(mServiceState).getDataRoaming();
+        doReturn(false).when(mDataConfigManager).isDataRoamingEnabledByDefault();
+        mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build());
+        processAllMessages();
+
+        // Data should not be allowed when roaming data is disabled.
+        verifyNoInternetSetup();
+        Mockito.clearInvocations(mSpiedDataNetworkcallback);
+
+        // Roaming data enabled
+        mDataNetworkControllerUT.getDataSettingsManager().setDataRoamingEnabled(true);
+        processAllMessages();
+
+        // Verify data is restored.
+        verifyInternetConnected();
+        Mockito.clearInvocations(mSpiedDataNetworkcallback);
+
+        // Roaming data disabled
+        mDataNetworkControllerUT.getDataSettingsManager().setDataRoamingEnabled(false);
+        processAllMessages();
+
+        // Verify data is torn down.
+        verifyNoInternetSetup();
+    }
+
+    @Test
+    public void testDataEnabledChanged() throws Exception {
+        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(false);
+        mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build());
+        processAllMessages();
+
+        // Data should not be allowed when user data is disabled.
+        verifyNoInternetSetup();
+        Mockito.clearInvocations(mSpiedDataNetworkcallback);
+
+        // User data enabled
+        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(true);
+        processAllMessages();
+
+        // Verify data is restored.
+        verifyInternetConnected();
+        Mockito.clearInvocations(mSpiedDataNetworkcallback);
+
+        // User data disabled
+        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(false);
+        processAllMessages();
+
+        // Verify data is torn down.
+        verifyNoInternetSetup();
+    }
+
+    @Test
+    public void testMmsAlwaysAllowed() throws Exception {
+        doReturn(true).when(mServiceState).getDataRoaming();
+        doReturn(false).when(mDataConfigManager).isDataRoamingEnabledByDefault();
+        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(false);
+        mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_MMS)
+                .build());
+        processAllMessages();
+
+        // Data should not be allowed when roaming + user data are disabled (soft failure reasons)
+        verifyNoInternetSetup();
+
+        // Always allow MMS
+        mDataNetworkControllerUT.getDataSettingsManager().setAlwaysAllowMmsData(true);
+        // Enable user data to trigger data enabled changed and data reevaluation
+        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(true);
+        processAllMessages();
+
+        // Verify data is allowed
+        verifyInternetConnected();
+    }
+
+    @Test
+    public void testUnmeteredRequest() throws Exception {
+        doReturn(true).when(mServiceState).getDataRoaming();
+        doReturn(false).when(mDataConfigManager).isDataRoamingEnabledByDefault();
+        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(false);
+        mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build());
+        processAllMessages();
+
+        // Data should not be allowed when roaming + user data are disabled (soft failure reasons)
+        verifyNoInternetSetup();
+
+        // Set transport to WLAN (unmetered)
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(anyInt());
+        // Enable user data to trigger data enabled changed and data reevaluation
+        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(true);
+        processAllMessages();
+
+        // Verify data is allowed
+        verifyInternetConnected();
+    }
+
+    @Test
+    public void testHandoverRuleFromString() {
+        HandoverRule handoverRule = new HandoverRule("source=GERAN|UTRAN|EUTRAN|NGRAN|IWLAN, "
+                + "target=GERAN|UTRAN|EUTRAN|NGRAN|IWLAN, type=allowed");
+        assertThat(handoverRule.sourceAccessNetworks).containsExactly(AccessNetworkType.GERAN,
+                AccessNetworkType.UTRAN, AccessNetworkType.EUTRAN, AccessNetworkType.NGRAN,
+                AccessNetworkType.IWLAN);
+        assertThat(handoverRule.targetAccessNetworks).containsExactly(AccessNetworkType.GERAN,
+                AccessNetworkType.UTRAN, AccessNetworkType.EUTRAN, AccessNetworkType.NGRAN,
+                AccessNetworkType.IWLAN);
+        assertThat(handoverRule.ruleType).isEqualTo(HandoverRule.RULE_TYPE_ALLOWED);
+        assertThat(handoverRule.isRoaming).isFalse();
+
+        handoverRule = new HandoverRule("source=   NGRAN|     IWLAN, "
+                + "target  =    EUTRAN,    type  =    disallowed");
+        assertThat(handoverRule.sourceAccessNetworks).containsExactly(AccessNetworkType.NGRAN,
+                AccessNetworkType.IWLAN);
+        assertThat(handoverRule.targetAccessNetworks).containsExactly(AccessNetworkType.EUTRAN);
+        assertThat(handoverRule.ruleType).isEqualTo(HandoverRule.RULE_TYPE_DISALLOWED);
+        assertThat(handoverRule.isRoaming).isFalse();
+
+        handoverRule = new HandoverRule("source=   IWLAN, "
+                + "target  =    EUTRAN,    type  =    disallowed, roaming = true");
+        assertThat(handoverRule.sourceAccessNetworks).containsExactly(AccessNetworkType.IWLAN);
+        assertThat(handoverRule.targetAccessNetworks).containsExactly(AccessNetworkType.EUTRAN);
+        assertThat(handoverRule.ruleType).isEqualTo(HandoverRule.RULE_TYPE_DISALLOWED);
+        assertThat(handoverRule.isRoaming).isTrue();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new HandoverRule("V2hhdCBUaGUgRnVjayBpcyB0aGlzIQ=="));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new HandoverRule("target=GERAN|UTRAN|EUTRAN|NGRAN|IWLAN, type=allowed"));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new HandoverRule("source=GERAN|UTRAN|EUTRAN|NGRAN|IWLAN, type=allowed"));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new HandoverRule("source=GERAN, target=IWLAN, type=wtf"));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new HandoverRule("source=GERAN, target=NGRAN, type=allowed"));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new HandoverRule("source=IWLAN, target=WTFRAN, type=allowed"));
     }
 }

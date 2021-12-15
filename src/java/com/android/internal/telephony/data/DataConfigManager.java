@@ -44,6 +44,7 @@ import android.util.IndentingPrintWriter;
 
 import com.android.internal.R;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.data.DataNetworkController.HandoverRule;
 import com.android.internal.telephony.data.DataRetryManager.DataRetryRule;
 import com.android.telephony.Rlog;
 
@@ -214,6 +215,8 @@ public class DataConfigManager extends Handler {
     /** A map of network types to the TCP buffer sizes for that network type */
     private @NonNull final @DataConfigNetworkType Map<String, String> mTcpBufferSizeMap =
             new ConcurrentHashMap<>();
+    /** Rules for handover between IWLAN and cellular network. */
+    private @NonNull final List<HandoverRule> mHandoverRuleList = new ArrayList<>();
 
     /**
      * Constructor
@@ -289,6 +292,7 @@ public class DataConfigManager extends Handler {
         updateUnmeteredNetworkTypes();
         updateBandwidths();
         updateTcpBuffers();
+        updateHandoverRules();
 
         log("Data config updated. Config is " + (isConfigCarrierSpecific() ? "" : "not ")
                 + "carrier specific.");
@@ -348,9 +352,13 @@ public class DataConfigManager extends Handler {
             String[] dataRetryRulesStrings = mCarrierConfig.getStringArray(
                     CarrierConfigManager.KEY_TELEPHONY_DATA_RETRY_RULES_STRING_ARRAY);
             if (dataRetryRulesStrings != null) {
-                Arrays.stream(dataRetryRulesStrings)
-                        .map(DataRetryRule::new)
-                        .forEach(mDataRetryRules::add);
+                for (String ruleString : dataRetryRulesStrings) {
+                    try {
+                        mDataRetryRules.add(new DataRetryRule(ruleString));
+                    } catch (IllegalArgumentException e) {
+                        loge("updateDataRetryRules: " + e.getMessage());
+                    }
+                }
             }
         }
     }
@@ -398,6 +406,7 @@ public class DataConfigManager extends Handler {
      * @return The metered APN types when connected to a home network
      */
     public @NonNull @ApnType List<Integer> getMeteredApnTypes() {
+        // TODO: return as set instead of list
         return Collections.unmodifiableList(mMeteredApnTypes);
     }
 
@@ -405,6 +414,7 @@ public class DataConfigManager extends Handler {
      * @return The metered APN types when roaming
      */
     public @NonNull @ApnType List<Integer> getMeteredApnTypesWhenRoaming() {
+        // TODO: return as set instead of list
         return Collections.unmodifiableList(mRoamingMeteredApnTypes);
     }
 
@@ -442,8 +452,8 @@ public class DataConfigManager extends Handler {
     }
 
     /**
-     * @return Whether {@link NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED}
-     * is supported by the carrier
+     * @return Whether {@link NetworkCapabilities#NET_CAPABILITY_TEMPORARILY_NOT_METERED}
+     * is supported by the carrier.
      */
     public boolean isTempNotMeteredSupportedByCarrier() {
         return mCarrierConfig.getBoolean(
@@ -673,6 +683,33 @@ public class DataConfigManager extends Handler {
             return DATA_CONFIG_NETWORK_TYPE_NR_SA_MMWAVE;
         }
         return networkTypeToDataConfigNetworkType(networkType);
+    }
+
+    /** Update handover rules from carrier config. */
+    private void updateHandoverRules() {
+        synchronized (this) {
+            mHandoverRuleList.clear();
+            String[] handoverRulesStrings = mCarrierConfig.getStringArray(
+                    CarrierConfigManager.KEY_IWLAN_HANDOVER_POLICY_STRING_ARRAY);
+            if (handoverRulesStrings != null) {
+                for (String ruleString : handoverRulesStrings) {
+                    try {
+                        mHandoverRuleList.add(new HandoverRule(ruleString));
+                    } catch (IllegalArgumentException e) {
+                        loge("updateHandoverRules: " + e.getMessage());
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * @return Get rules for handover between IWLAN and cellular networks.
+     *
+     * @see CarrierConfigManager#KEY_IWLAN_HANDOVER_POLICY_STRING_ARRAY
+     */
+    public @NonNull List<HandoverRule> getHandoverRules() {
+        return Collections.unmodifiableList(mHandoverRuleList);
     }
 
     /**
