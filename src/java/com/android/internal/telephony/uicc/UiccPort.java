@@ -18,7 +18,6 @@ package com.android.internal.telephony.uicc;
 
 import android.annotation.NonNull;
 import android.content.Context;
-import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
@@ -440,21 +439,6 @@ public class UiccPort {
             return mUiccProfile.getCarrierPrivilegeStatusForCurrentTransaction(packageManager);
         } else {
             return TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED;
-        }
-    }
-
-    /**
-     * Exposes {@link UiccCarrierPrivilegeRules#getCarrierPackageNamesForIntent}.
-     * @deprecated Please use
-     * {@link UiccProfile#getCarrierPackageNamesForIntent(PackageManager, Intent)} instead.
-     */
-    @Deprecated
-    public List<String> getCarrierPackageNamesForIntent(
-            PackageManager packageManager, Intent intent) {
-        if (mUiccProfile != null) {
-            return mUiccProfile.getCarrierPackageNamesForIntent(packageManager, intent);
-        } else {
-            return null;
         }
     }
 
