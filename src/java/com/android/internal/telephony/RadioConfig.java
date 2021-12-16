@@ -215,6 +215,17 @@ public class RadioConfig extends Handler {
         return mRadioConfigProxy;
     }
 
+    /**
+     * Request to enable/disable the mock modem service.
+     * This is invoked from shell commands during CTS testing only.
+     *
+     * @param serviceName the service name we want to bind to
+     */
+    public boolean setModemService(String serviceName) {
+        loge("Overriding connected service to MockModemService");
+        return true;
+    }
+
     private void updateRadioConfigProxy() {
         IBinder service = ServiceManager.waitForDeclaredService(
                 android.hardware.radio.config.IRadioConfig.DESCRIPTOR + "/default");
