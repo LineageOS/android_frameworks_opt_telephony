@@ -62,9 +62,7 @@ import androidx.test.filters.FlakyTest;
 import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.uicc.IccCardStatus;
-import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
-import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.UiccSlot;
 
 import org.junit.After;
