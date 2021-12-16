@@ -327,11 +327,16 @@ public class RadioDataProxy extends RadioServiceProxy {
             }
         }
         if (isAidl()) {
-            mDataProxy.setupDataCall(serial, accessNetwork,
-                    RILUtils.convertToHalDataProfile(dataProfileInfo), roamingAllowed, reason,
-                    RILUtils.convertToHalLinkProperties(linkProperties), dnsesArr, pduSessionId,
-                    RILUtils.convertToHalSliceInfoAidl(sliceInfo),
-                    RILUtils.convertToHalTrafficDescriptorAidl(trafficDescriptor),
+            // Create a new DataProfile to set the TrafficDescriptor
+            DataProfile dp = new DataProfile.Builder()
+                    .setType(dataProfileInfo.getType())
+                    .setPreferred(dataProfileInfo.isPreferred())
+                    .setTrafficDescriptor(trafficDescriptor)
+                    .setApnSetting(dataProfileInfo.getApnSetting())
+                    .build();
+            mDataProxy.setupDataCall(serial, accessNetwork, RILUtils.convertToHalDataProfile(dp),
+                    roamingAllowed, reason, RILUtils.convertToHalLinkProperties(linkProperties),
+                    dnsesArr, pduSessionId, RILUtils.convertToHalSliceInfoAidl(sliceInfo),
                     matchAllRuleAllowed);
         } else if (mHalVersion.greaterOrEqual(RIL.RADIO_HAL_VERSION_1_6)) {
             ((android.hardware.radio.V1_6.IRadio) mRadioProxy).setupDataCall_1_6(serial,
