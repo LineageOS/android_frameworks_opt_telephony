@@ -57,7 +57,8 @@ public class RadioConfig extends Handler {
     private static final boolean VDBG = false; //STOPSHIP if true
     private static final Object sLock = new Object();
 
-    static final int EVENT_SERVICE_DEAD = 1;
+    static final int EVENT_HIDL_SERVICE_DEAD = 1;
+    static final int EVENT_AIDL_SERVICE_DEAD = 2;
     static final HalVersion RADIO_CONFIG_HAL_VERSION_UNKNOWN = new HalVersion(-1, -1);
     static final HalVersion RADIO_CONFIG_HAL_VERSION_1_0 = new HalVersion(1, 0);
     static final HalVersion RADIO_CONFIG_HAL_VERSION_1_1 = new HalVersion(1, 1);
@@ -71,6 +72,8 @@ public class RadioConfig extends Handler {
     private final int[] mDeviceNrCapabilities;
     private final AtomicLong mRadioConfigProxyCookie = new AtomicLong(0);
     private final RadioConfigProxy mRadioConfigProxy;
+    private MockModem mMockModem;
+    private static Context sContext;
 
     private static RadioConfig sRadioConfig;
 
@@ -127,6 +130,7 @@ public class RadioConfig extends Handler {
             if (sRadioConfig != null) {
                 throw new RuntimeException("RadioConfig.make() should only be called once");
             }
+            sContext = c;
             sRadioConfig = new RadioConfig(c, radioHalVersion);
             return sRadioConfig;
         }
@@ -134,12 +138,16 @@ public class RadioConfig extends Handler {
 
     @Override
     public void handleMessage(Message message) {
-        if (message.what == EVENT_SERVICE_DEAD) {
-            logd("handleMessage: EVENT_SERVICE_DEAD cookie = " + message.obj
+        if (message.what == EVENT_HIDL_SERVICE_DEAD) {
+            logd("handleMessage: EVENT_HIDL_SERVICE_DEAD cookie = " + message.obj
                     + " mRadioConfigProxyCookie = " + mRadioConfigProxyCookie.get());
             if ((long) message.obj == mRadioConfigProxyCookie.get()) {
-                resetProxyAndRequestList("EVENT_SERVICE_DEAD", null);
+                resetProxyAndRequestList("EVENT_HIDL_SERVICE_DEAD", null);
             }
+        } else if (message.what == EVENT_AIDL_SERVICE_DEAD) {
+            logd("handleMessage: EVENT_AIDL_SERVICE_DEAD mRadioConfigProxyCookie = "
+                    + mRadioConfigProxyCookie.get());
+            resetProxyAndRequestList("EVENT_AIDL_SERVICE_DEAD", null);
         }
     }
 
@@ -215,9 +223,71 @@ public class RadioConfig extends Handler {
         return mRadioConfigProxy;
     }
 
+    /**
+     * Request to enable/disable the mock modem service.
+     * This is invoked from shell commands during CTS testing only.
+     *
+     * @param serviceName the service name we want to bind to
+     */
+    public boolean setModemService(String serviceName) {
+        boolean serviceBound = true;
+
+        if (serviceName != null) {
+            logd("Overriding connected service to MockModemService");
+            mMockModem = null;
+
+            mMockModem = new MockModem(sContext, serviceName);
+            if (mMockModem == null) {
+                loge("MockModem creation failed.");
+                return false;
+            }
+
+            mMockModem.bindToMockModemService(MockModem.RADIOCONFIG_SERVICE);
+
+            int retryCount = 0;
+            IBinder binder;
+            do {
+                binder = mMockModem.getServiceBinder(MockModem.RADIOCONFIG_SERVICE);
+
+                retryCount++;
+                if (binder == null) {
+                    logd("Retry(" + retryCount + ") Mock RadioConfig");
+                    try {
+                        Thread.sleep(MockModem.BINDER_RETRY_MILLIS);
+                    } catch (InterruptedException e) {
+                    }
+                }
+            } while ((binder == null) && (retryCount < MockModem.BINDER_MAX_RETRY));
+
+            if (binder == null) {
+                loge("Mock RadioConfig bind fail");
+                serviceBound = false;
+            }
+
+            if (serviceBound) resetProxyAndRequestList("EVENT_HIDL_SERVICE_DEAD", null);
+        }
+
+        if ((serviceName == null) || (!serviceBound)) {
+            if (serviceBound) logd("Unbinding to mock RadioConfig service");
+
+            if (mMockModem != null) {
+                mMockModem.unbindMockModemService(MockModem.RADIOCONFIG_SERVICE);
+                mMockModem = null;
+            }
+        }
+
+        return serviceBound;
+    }
+
     private void updateRadioConfigProxy() {
-        IBinder service = ServiceManager.waitForDeclaredService(
+        IBinder service;
+        if (mMockModem == null) {
+            service = ServiceManager.waitForDeclaredService(
                 android.hardware.radio.config.IRadioConfig.DESCRIPTOR + "/default");
+        } else {
+            // Binds to Mock RadioConfig Service
+            service = mMockModem.getServiceBinder(MockModem.RADIOCONFIG_SERVICE);
+        }
 
         if (service != null) {
             mRadioConfigProxy.setAidl(
