@@ -71,6 +71,8 @@ public class RadioConfig extends Handler {
     private final int[] mDeviceNrCapabilities;
     private final AtomicLong mRadioConfigProxyCookie = new AtomicLong(0);
     private final RadioConfigProxy mRadioConfigProxy;
+    private MockModem mMockModem;
+    private static Context sContext;
 
     private static RadioConfig sRadioConfig;
 
@@ -127,6 +129,7 @@ public class RadioConfig extends Handler {
             if (sRadioConfig != null) {
                 throw new RuntimeException("RadioConfig.make() should only be called once");
             }
+            sContext = c;
             sRadioConfig = new RadioConfig(c, radioHalVersion);
             return sRadioConfig;
         }
@@ -222,13 +225,64 @@ public class RadioConfig extends Handler {
      * @param serviceName the service name we want to bind to
      */
     public boolean setModemService(String serviceName) {
-        loge("Overriding connected service to MockModemService");
-        return true;
+        boolean serviceBound = true;
+
+        if (serviceName != null) {
+            logd("Overriding connected service to MockModemService");
+            mMockModem = null;
+
+            mMockModem = new MockModem(sContext, serviceName);
+            if (mMockModem == null) {
+                loge("MockModem creation failed.");
+                return false;
+            }
+
+            mMockModem.bindToMockModemService(MockModem.RADIOCONFIG_SERVICE);
+
+            int retryCount = 0;
+            IBinder binder;
+            do {
+                binder = mMockModem.getServiceBinder(MockModem.RADIOCONFIG_SERVICE);
+
+                retryCount++;
+                if (binder == null) {
+                    logd("Retry(" + retryCount + ") Mock RadioConfig");
+                    try {
+                        Thread.sleep(MockModem.BINDER_RETRY_MILLIS);
+                    } catch (InterruptedException e) {
+                    }
+                }
+            } while ((binder == null) && (retryCount < MockModem.BINDER_MAX_RETRY));
+
+            if (binder == null) {
+                loge("Mock RadioConfig bind fail");
+                serviceBound = false;
+            }
+
+            if (serviceBound) resetProxyAndRequestList("EVENT_SERVICE_DEAD", null);
+        }
+
+        if ((serviceName == null) || (!serviceBound)) {
+            if (serviceBound) logd("Unbinding to mock RadioConfig service");
+
+            if (mMockModem != null) {
+                mMockModem.unbindMockModemService(MockModem.RADIOCONFIG_SERVICE);
+                mMockModem = null;
+            }
+        }
+
+        return serviceBound;
     }
 
     private void updateRadioConfigProxy() {
-        IBinder service = ServiceManager.waitForDeclaredService(
+        IBinder service;
+        if (mMockModem == null) {
+            service = ServiceManager.waitForDeclaredService(
                 android.hardware.radio.config.IRadioConfig.DESCRIPTOR + "/default");
+        } else {
+            // Binds to Mock RadioConfig Service
+            service = mMockModem.getServiceBinder(MockModem.RADIOCONFIG_SERVICE);
+        }
 
         if (service != null) {
             mRadioConfigProxy.setAidl(
