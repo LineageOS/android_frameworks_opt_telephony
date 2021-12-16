@@ -36,7 +36,7 @@ public class MessagingResponse extends IRadioMessagingResponse.Stub {
 
     private void responseSms(RadioResponseInfo responseInfo,
             android.hardware.radio.messaging.SendSmsResult sms) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse(RIL.MESSAGING_SERVICE, responseInfo);
 
         if (rr != null) {
             long messageId = RIL.getOutgoingSmsMessageId(rr.mResult);
@@ -62,42 +62,42 @@ public class MessagingResponse extends IRadioMessagingResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void acknowledgeIncomingGsmSmsWithPduResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.MESSAGING_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void acknowledgeLastIncomingCdmaSmsResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.MESSAGING_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void acknowledgeLastIncomingGsmSmsResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.MESSAGING_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void cancelPendingUssdResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.MESSAGING_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void deleteSmsOnRuimResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.MESSAGING_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void deleteSmsOnSimResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.MESSAGING_SERVICE, mRil, responseInfo);
     }
 
     /**
@@ -106,7 +106,7 @@ public class MessagingResponse extends IRadioMessagingResponse.Stub {
      */
     public void getCdmaBroadcastConfigResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.messaging.CdmaBroadcastSmsConfigInfo[] configs) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse(RIL.MESSAGING_SERVICE, responseInfo);
 
         if (rr != null) {
             int[] ret;
@@ -155,7 +155,7 @@ public class MessagingResponse extends IRadioMessagingResponse.Stub {
      */
     public void getGsmBroadcastConfigResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.messaging.GsmBroadcastSmsConfigInfo[] configs) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse(RIL.MESSAGING_SERVICE, responseInfo);
 
         if (rr != null) {
             ArrayList<SmsBroadcastConfigInfo> ret = new ArrayList<>();
@@ -175,14 +175,14 @@ public class MessagingResponse extends IRadioMessagingResponse.Stub {
      * @param smsc Short Message Service Center address on the device
      */
     public void getSmscAddressResponse(RadioResponseInfo responseInfo, String smsc) {
-        RadioResponse.responseString(mRil, responseInfo, smsc);
+        RadioResponse.responseString(RIL.MESSAGING_SERVICE, mRil, responseInfo, smsc);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void reportSmsMemoryStatusResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.MESSAGING_SERVICE, mRil, responseInfo);
     }
 
     /**
@@ -234,42 +234,42 @@ public class MessagingResponse extends IRadioMessagingResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void sendUssdResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.MESSAGING_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setCdmaBroadcastActivationResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.MESSAGING_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setCdmaBroadcastConfigResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.MESSAGING_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setGsmBroadcastActivationResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.MESSAGING_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setGsmBroadcastConfigResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.MESSAGING_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setSmscAddressResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.MESSAGING_SERVICE, mRil, responseInfo);
     }
 
     /**
@@ -277,7 +277,7 @@ public class MessagingResponse extends IRadioMessagingResponse.Stub {
      * @param index record index where the CDMA SMS message is stored
      */
     public void writeSmsToRuimResponse(RadioResponseInfo responseInfo, int index) {
-        RadioResponse.responseInts(mRil, responseInfo, index);
+        RadioResponse.responseInts(RIL.MESSAGING_SERVICE, mRil, responseInfo, index);
     }
 
     /**
@@ -285,6 +285,6 @@ public class MessagingResponse extends IRadioMessagingResponse.Stub {
      * @param index record index where the message is stored
      */
     public void writeSmsToSimResponse(RadioResponseInfo responseInfo, int index) {
-        RadioResponse.responseInts(mRil, responseInfo, index);
+        RadioResponse.responseInts(RIL.MESSAGING_SERVICE, mRil, responseInfo, index);
     }
 }

@@ -248,4 +248,9 @@ public class RILRequest {
             result.sendToTarget();
         }
     }
+
+    @Override
+    public String toString() {
+        return serialString() + ": " + RILUtils.requestToString(mRequest);
+    }
 }
