@@ -61,7 +61,7 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
             int halRadioAccessFamilyBitmap) {
         int networkTypeBitmask = RILUtils.convertHalNetworkTypeBitMask(halRadioAccessFamilyBitmap);
         mRil.mAllowedNetworkTypesBitmask = networkTypeBitmask;
-        RadioResponse.responseInts(mRil, responseInfo, networkTypeBitmask);
+        RadioResponse.responseInts(RIL.NETWORK_SERVICE, mRil, responseInfo, networkTypeBitmask);
     }
 
     /**
@@ -69,7 +69,7 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      * @param bandModes List of RadioBandMode listing supported modes
      */
     public void getAvailableBandModesResponse(RadioResponseInfo responseInfo, int[] bandModes) {
-        RadioResponse.responseIntArrayList(mRil, responseInfo,
+        RadioResponse.responseIntArrayList(RIL.NETWORK_SERVICE, mRil, responseInfo,
                 RILUtils.primitiveArrayToArrayList(bandModes));
     }
 
@@ -79,7 +79,7 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      */
     public void getAvailableNetworksResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.network.OperatorInfo[] networkInfos) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse(RIL.NETWORK_SERVICE, responseInfo);
 
         if (rr != null) {
             ArrayList<OperatorInfo> ret = new ArrayList<>();
@@ -102,7 +102,7 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
     public void getBarringInfoResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.network.CellIdentity cellIdentity,
             android.hardware.radio.network.BarringInfo[] barringInfos) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse(RIL.NETWORK_SERVICE, responseInfo);
 
         if (rr != null) {
             BarringInfo bi = new BarringInfo(RILUtils.convertHalCellIdentity(cellIdentity),
@@ -122,7 +122,7 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      * @param type CdmaRoamingType defined in types.hal
      */
     public void getCdmaRoamingPreferenceResponse(RadioResponseInfo responseInfo, int type) {
-        RadioResponse.responseInts(mRil, responseInfo, type);
+        RadioResponse.responseInts(RIL.NETWORK_SERVICE, mRil, responseInfo, type);
     }
 
     /**
@@ -131,7 +131,7 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      */
     public void getCellInfoListResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.network.CellInfo[] cellInfo) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse(RIL.NETWORK_SERVICE, responseInfo);
 
         if (rr != null) {
             ArrayList<CellInfo> ret = RILUtils.convertHalCellInfoList(cellInfo);
@@ -148,7 +148,7 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      */
     public void getDataRegistrationStateResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.network.RegStateResult dataRegResponse) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse(RIL.NETWORK_SERVICE, responseInfo);
 
         if (rr != null) {
             if (responseInfo.error == RadioError.NONE) {
@@ -165,7 +165,7 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      */
     public void getImsRegistrationStateResponse(RadioResponseInfo responseInfo,
             boolean isRegistered, int ratFamily) {
-        RadioResponse.responseInts(mRil, responseInfo, isRegistered ? 1 : 0,
+        RadioResponse.responseInts(RIL.NETWORK_SERVICE, mRil, responseInfo, isRegistered ? 1 : 0,
                 ratFamily == android.hardware.radio.RadioTechnologyFamily.THREE_GPP
                         ? PhoneConstants.PHONE_TYPE_GSM : PhoneConstants.PHONE_TYPE_CDMA);
     }
@@ -176,7 +176,7 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      */
     public void getNeighboringCidsResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.network.NeighboringCell[] cells) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse(RIL.NETWORK_SERVICE, responseInfo);
 
         if (rr != null) {
             ArrayList<NeighboringCellInfo> ret = new ArrayList<>();
@@ -201,7 +201,7 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      * @param selection false for automatic selection, true for manual selection
      */
     public void getNetworkSelectionModeResponse(RadioResponseInfo responseInfo, boolean selection) {
-        RadioResponse.responseInts(mRil, responseInfo, selection ? 1 : 0);
+        RadioResponse.responseInts(RIL.NETWORK_SERVICE, mRil, responseInfo, selection ? 1 : 0);
     }
 
     /**
@@ -212,7 +212,8 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      */
     public void getOperatorResponse(RadioResponseInfo responseInfo, String longName,
             String shortName, String numeric) {
-        RadioResponse.responseStrings(mRil, responseInfo, longName, shortName, numeric);
+        RadioResponse.responseStrings(
+                RIL.NETWORK_SERVICE, mRil, responseInfo, longName, shortName, numeric);
     }
 
     /**
@@ -221,7 +222,7 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      */
     public void getSignalStrengthResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.network.SignalStrength signalStrength) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse(RIL.NETWORK_SERVICE, responseInfo);
 
         if (rr != null) {
             SignalStrength ret = RILUtils.convertHalSignalStrength(signalStrength);
@@ -238,14 +239,14 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      */
     public void getSystemSelectionChannelsResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.network.RadioAccessSpecifier[] halSpecifiers) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse(RIL.NETWORK_SERVICE, responseInfo);
 
         if (rr != null) {
             ArrayList<RadioAccessSpecifier> specifiers = new ArrayList<>();
             for (android.hardware.radio.network.RadioAccessSpecifier specifier : halSpecifiers) {
                 specifiers.add(RILUtils.convertHalRadioAccessSpecifier(specifier));
             }
-            mRil.riljLog("getSystemSelectionChannelsResponse: from HIDL: " + specifiers);
+            mRil.riljLog("getSystemSelectionChannelsResponse: from AIDL: " + specifiers);
             if (responseInfo.error == RadioError.NONE) {
                 RadioResponse.sendMessageResponse(rr.mResult, specifiers);
             }
@@ -258,7 +259,7 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      * @param rat Current voice RAT
      */
     public void getVoiceRadioTechnologyResponse(RadioResponseInfo responseInfo, int rat) {
-        RadioResponse.responseInts(mRil, responseInfo, rat);
+        RadioResponse.responseInts(RIL.NETWORK_SERVICE, mRil, responseInfo, rat);
     }
 
     /**
@@ -267,7 +268,7 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      */
     public void getVoiceRegistrationStateResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.network.RegStateResult voiceRegResponse) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse(RIL.NETWORK_SERVICE, responseInfo);
         if (rr != null) {
             if (responseInfo.error == RadioError.NONE) {
                 RadioResponse.sendMessageResponse(rr.mResult, voiceRegResponse);
@@ -283,7 +284,7 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      */
     public void isNrDualConnectivityEnabledResponse(RadioResponseInfo responseInfo,
             boolean isEnabled) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse(RIL.NETWORK_SERVICE, responseInfo);
 
         if (rr != null) {
             if (responseInfo.error == RadioError.NONE) {
@@ -299,7 +300,7 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      */
     public void pullLceDataResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.network.LceDataInfo lceInfo) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse(RIL.NETWORK_SERVICE, responseInfo);
 
         if (rr != null) {
             List<LinkCapacityEstimate> ret = RILUtils.convertHalLceData(lceInfo);
@@ -314,105 +315,105 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setAllowedNetworkTypesBitmapResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setBandModeResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setBarringPasswordResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setCdmaRoamingPreferenceResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setCellInfoListRateResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setIndicationFilterResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setLinkCapacityReportingCriteriaResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setLocationUpdatesResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setNetworkSelectionModeAutomaticResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setNetworkSelectionModeManualResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setNrDualConnectivityStateResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setSignalStrengthReportingCriteriaResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setSuppServiceNotificationsResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial number and error.
      */
     public void setSystemSelectionChannelsResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void startNetworkScanResponse(RadioResponseInfo responseInfo) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse(RIL.NETWORK_SERVICE, responseInfo);
         if (rr != null) {
             NetworkScanResult nsr = null;
             if (responseInfo.error == RadioError.NONE) {
@@ -428,7 +429,7 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void stopNetworkScanResponse(RadioResponseInfo responseInfo) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse(RIL.NETWORK_SERVICE, responseInfo);
         if (rr != null) {
             NetworkScanResult nsr = null;
             if (responseInfo.error == RadioError.NONE) {
@@ -446,14 +447,14 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      */
     public void supplyNetworkDepersonalizationResponse(RadioResponseInfo responseInfo,
             int retriesRemaining) {
-        RadioResponse.responseInts(mRil, responseInfo, retriesRemaining);
+        RadioResponse.responseInts(RIL.NETWORK_SERVICE, mRil, responseInfo, retriesRemaining);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setUsageSettingResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
     }
 
     /**
@@ -462,6 +463,6 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
      */
     public void getUsageSettingResponse(RadioResponseInfo responseInfo,
             /* @TelephonyManager.UsageSetting */ int usageSetting) {
-        RadioResponse.responseInts(mRil, responseInfo, usageSetting);
+        RadioResponse.responseInts(RIL.NETWORK_SERVICE, mRil, responseInfo, usageSetting);
     }
 }

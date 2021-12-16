@@ -91,6 +91,7 @@ public class CellularNetworkService extends NetworkService {
                             int domain = (message.what == GET_CS_REGISTRATION_STATE_DONE)
                                     ? NetworkRegistrationInfo.DOMAIN_CS
                                     : NetworkRegistrationInfo.DOMAIN_PS;
+                            // TODO: move to RILUtils
                             NetworkRegistrationInfo netState =
                                     getRegistrationStateFromResult(ar.result, domain);
 
@@ -220,12 +221,13 @@ public class CellularNetworkService extends NetworkService {
             final int transportType = AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
             final int domain = NetworkRegistrationInfo.DOMAIN_CS;
 
-            if (result instanceof android.hardware.radio.V1_6.RegStateResult) {
+            if (result instanceof android.hardware.radio.network.RegStateResult) {
+                return getNetworkRegistrationInfoAidl(domain, transportType,
+                        (android.hardware.radio.network.RegStateResult) result);
+            } else if (result instanceof android.hardware.radio.V1_6.RegStateResult) {
                 return getNetworkRegistrationInfo1_6(domain, transportType,
                         (android.hardware.radio.V1_6.RegStateResult) result);
-            }
-            // 1.5 at the top so that we can do an "early exit" from the method
-            else if (result instanceof android.hardware.radio.V1_5.RegStateResult) {
+            } else if (result instanceof android.hardware.radio.V1_5.RegStateResult) {
                 return getNetworkRegistrationInfo(domain, transportType,
                         (android.hardware.radio.V1_5.RegStateResult) result);
             } else if (result instanceof android.hardware.radio.V1_0.VoiceRegStateResult) {
@@ -293,12 +295,13 @@ public class CellularNetworkService extends NetworkService {
                     new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
                             LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
 
-            if (result instanceof android.hardware.radio.V1_6.RegStateResult) {
+            if (result instanceof android.hardware.radio.network.RegStateResult) {
+                return getNetworkRegistrationInfoAidl(domain, transportType,
+                        (android.hardware.radio.network.RegStateResult) result);
+            } else if (result instanceof android.hardware.radio.V1_6.RegStateResult) {
                 return getNetworkRegistrationInfo1_6(domain, transportType,
                         (android.hardware.radio.V1_6.RegStateResult) result);
-            }
-            // 1.5 at the top so that we can do an "early exit" from the method
-            else if (result instanceof android.hardware.radio.V1_5.RegStateResult) {
+            } else if (result instanceof android.hardware.radio.V1_5.RegStateResult) {
                 return getNetworkRegistrationInfo(domain, transportType,
                         (android.hardware.radio.V1_5.RegStateResult) result);
             } else if (result instanceof android.hardware.radio.V1_0.DataRegStateResult) {
@@ -372,7 +375,6 @@ public class CellularNetworkService extends NetworkService {
             final boolean isEmergencyOnly = isEmergencyOnly(regResult.regState);
             final List<Integer> availableServices = getAvailableServices(
                     regState, domain, isEmergencyOnly);
-            final int rejectCause = regResult.reasonForDenial;
             final CellIdentity cellIdentity =
                     RILUtils.convertHalCellIdentity(regResult.cellIdentity);
             final String rplmn = regResult.registeredPlmn;
@@ -444,6 +446,82 @@ public class CellularNetworkService extends NetworkService {
             }
         }
 
+        private @NonNull NetworkRegistrationInfo getNetworkRegistrationInfoAidl(int domain,
+                int transportType, android.hardware.radio.network.RegStateResult regResult) {
+            // Perform common conversions that aren't domain specific
+            final int regState = getRegStateFromHalRegState(regResult.regState);
+            final boolean isEmergencyOnly = isEmergencyOnly(regResult.regState);
+            final List<Integer> availableServices = getAvailableServices(
+                    regState, domain, isEmergencyOnly);
+            final CellIdentity cellIdentity =
+                    RILUtils.convertHalCellIdentity(regResult.cellIdentity);
+            final String rplmn = regResult.registeredPlmn;
+            final int reasonForDenial = regResult.reasonForDenial;
+
+            int networkType = ServiceState.rilRadioTechnologyToNetworkType(regResult.rat);
+            if (networkType == TelephonyManager.NETWORK_TYPE_LTE_CA) {
+                networkType = TelephonyManager.NETWORK_TYPE_LTE;
+            }
+
+            // Conditional parameters for specific RANs
+            boolean cssSupported = false;
+            int roamingIndicator = 0;
+            int systemIsInPrl = 0;
+            int defaultRoamingIndicator = 0;
+            boolean isEndcAvailable = false;
+            boolean isNrAvailable = false;
+            boolean isDcNrRestricted = false;
+            VopsSupportInfo vopsInfo = null;
+
+            android.hardware.radio.network.AccessTechnologySpecificInfo info =
+                    regResult.accessTechnologySpecificInfo;
+
+            switch (info.getTag()) {
+                case android.hardware.radio.network.AccessTechnologySpecificInfo.cdmaInfo:
+                    cssSupported = info.getCdmaInfo().cssSupported;
+                    roamingIndicator = info.getCdmaInfo().roamingIndicator;
+                    systemIsInPrl = info.getCdmaInfo().systemIsInPrl;
+                    defaultRoamingIndicator = info.getCdmaInfo().defaultRoamingIndicator;
+                    break;
+                case android.hardware.radio.network.AccessTechnologySpecificInfo.eutranInfo:
+                    isDcNrRestricted = info.getEutranInfo().nrIndicators.isDcNrRestricted;
+                    isNrAvailable = info.getEutranInfo().nrIndicators.isNrAvailable;
+                    isEndcAvailable = info.getEutranInfo().nrIndicators.isEndcAvailable;
+                    vopsInfo = convertHalLteVopsSupportInfo(
+                            info.getEutranInfo().lteVopsInfo.isVopsSupported,
+                            info.getEutranInfo().lteVopsInfo.isEmcBearerSupported);
+                    break;
+                case android.hardware.radio.network.AccessTechnologySpecificInfo.ngranNrVopsInfo:
+                    vopsInfo = new NrVopsSupportInfo(info.getNgranNrVopsInfo().vopsSupported,
+                            info.getNgranNrVopsInfo().emcSupported,
+                            info.getNgranNrVopsInfo().emfSupported);
+                    break;
+                case android.hardware.radio.network.AccessTechnologySpecificInfo.geranDtmSupported:
+                    cssSupported = info.getGeranDtmSupported();
+                    break;
+                default:
+                    log("No access tech specific info passes for RegStateResult");
+                    break;
+            }
+
+            // build the result based on the domain for the request
+            switch (domain) {
+                case NetworkRegistrationInfo.DOMAIN_CS:
+                    return new NetworkRegistrationInfo(domain, transportType, regState,
+                            networkType, reasonForDenial, isEmergencyOnly, availableServices,
+                            cellIdentity, rplmn, cssSupported, roamingIndicator, systemIsInPrl,
+                            defaultRoamingIndicator);
+                default:
+                    loge("Unknown domain passed to CellularNetworkService= " + domain);
+                    // fall through
+                case NetworkRegistrationInfo.DOMAIN_PS:
+                    return new NetworkRegistrationInfo(domain, transportType, regState, networkType,
+                            reasonForDenial, isEmergencyOnly, availableServices, cellIdentity,
+                            rplmn, MAX_DATA_CALLS, isDcNrRestricted, isNrAvailable, isEndcAvailable,
+                            vopsInfo);
+            }
+        }
+
         private @NonNull NetworkRegistrationInfo getNetworkRegistrationInfo1_6(
                 int domain, int transportType,
                 android.hardware.radio.V1_6.RegStateResult regResult) {
@@ -453,7 +531,6 @@ public class CellularNetworkService extends NetworkService {
             final boolean isEmergencyOnly = isEmergencyOnly(regResult.regState);
             final List<Integer> availableServices = getAvailableServices(
                     regState, domain, isEmergencyOnly);
-            final int rejectCause = regResult.reasonForDenial;
             final CellIdentity cellIdentity =
                     RILUtils.convertHalCellIdentity(regResult.cellIdentity);
             final String rplmn = regResult.registeredPlmn;

@@ -23,6 +23,7 @@ import android.os.Message;
 import android.os.RemoteException;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.ImsiEncryptionInfo;
+import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
@@ -33,6 +34,7 @@ import com.android.internal.telephony.uicc.SimPhonebookRecord;
  * getAidl to get IRadioSim and call the AIDL implementations of the HAL APIs.
  */
 public class RadioSimProxy extends RadioServiceProxy {
+    private static final String TAG = "RadioSimProxy";
     private volatile android.hardware.radio.sim.IRadioSim mSimProxy = null;
 
     /**
@@ -44,6 +46,7 @@ public class RadioSimProxy extends RadioServiceProxy {
         mHalVersion = halVersion;
         mSimProxy = sim;
         mIsAidl = true;
+        Rlog.d(TAG, "AIDL initialized");
     }
 
     /**
