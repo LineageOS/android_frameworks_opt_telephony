@@ -47,42 +47,42 @@ public class VoiceResponse extends IRadioVoiceResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void acceptCallResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void conferenceResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void dialResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void emergencyDialResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void exitEmergencyCallbackModeResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void explicitCallTransferResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
@@ -92,7 +92,7 @@ public class VoiceResponse extends IRadioVoiceResponse.Stub {
      */
     public void getCallForwardStatusResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.voice.CallForwardInfo[] callForwardInfos) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse(RIL.VOICE_SERVICE, responseInfo);
         if (rr != null) {
             CallForwardInfo[] ret = new CallForwardInfo[callForwardInfos.length];
             for (int i = 0; i < callForwardInfos.length; i++) {
@@ -121,7 +121,8 @@ public class VoiceResponse extends IRadioVoiceResponse.Stub {
      */
     public void getCallWaitingResponse(RadioResponseInfo responseInfo, boolean enable,
             int serviceClass) {
-        RadioResponse.responseInts(mRil, responseInfo, enable ? 1 : 0, serviceClass);
+        RadioResponse.responseInts(
+                RIL.VOICE_SERVICE, mRil, responseInfo, enable ? 1 : 0, serviceClass);
     }
 
     /**
@@ -129,7 +130,7 @@ public class VoiceResponse extends IRadioVoiceResponse.Stub {
      * @param status indicates CLIP status
      */
     public void getClipResponse(RadioResponseInfo responseInfo, int status) {
-        RadioResponse.responseInts(mRil, responseInfo, status);
+        RadioResponse.responseInts(RIL.VOICE_SERVICE, mRil, responseInfo, status);
     }
 
     /**
@@ -138,7 +139,7 @@ public class VoiceResponse extends IRadioVoiceResponse.Stub {
      * @param m is "m" parameter from TS 27.007 7.7
      */
     public void getClirResponse(RadioResponseInfo responseInfo, int n, int m) {
-        RadioResponse.responseInts(mRil, responseInfo, n, m);
+        RadioResponse.responseInts(RIL.VOICE_SERVICE, mRil, responseInfo, n, m);
     }
 
     /**
@@ -147,7 +148,7 @@ public class VoiceResponse extends IRadioVoiceResponse.Stub {
      */
     public void getCurrentCallsResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.voice.Call[] calls) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse(RIL.VOICE_SERVICE, responseInfo);
 
         if (rr != null) {
             int num = calls.length;
@@ -190,7 +191,7 @@ public class VoiceResponse extends IRadioVoiceResponse.Stub {
      */
     public void getLastCallFailCauseResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.voice.LastCallFailCauseInfo fcInfo) {
-        RILRequest rr = mRil.processResponse(responseInfo);
+        RILRequest rr = mRil.processResponse(RIL.VOICE_SERVICE, responseInfo);
 
         if (rr != null) {
             LastCallFailCause ret = new LastCallFailCause();
@@ -208,7 +209,7 @@ public class VoiceResponse extends IRadioVoiceResponse.Stub {
      * @param enable true for "mute enabled" and false for "mute disabled"
      */
     public void getMuteResponse(RadioResponseInfo responseInfo, boolean enable) {
-        RadioResponse.responseInts(mRil, responseInfo, enable ? 1 : 0);
+        RadioResponse.responseInts(RIL.VOICE_SERVICE, mRil, responseInfo, enable ? 1 : 0);
     }
 
     /**
@@ -217,7 +218,7 @@ public class VoiceResponse extends IRadioVoiceResponse.Stub {
      *        true for Enhanced Privacy Mode (Private Long Code Mask)
      */
     public void getPreferredVoicePrivacyResponse(RadioResponseInfo responseInfo, boolean enable) {
-        RadioResponse.responseInts(mRil, responseInfo, enable ? 1 : 0);
+        RadioResponse.responseInts(RIL.VOICE_SERVICE, mRil, responseInfo, enable ? 1 : 0);
     }
 
     /**
@@ -225,35 +226,35 @@ public class VoiceResponse extends IRadioVoiceResponse.Stub {
      * @param mode TTY mode
      */
     public void getTtyModeResponse(RadioResponseInfo responseInfo, int mode) {
-        RadioResponse.responseInts(mRil, responseInfo, mode);
+        RadioResponse.responseInts(RIL.VOICE_SERVICE, mRil, responseInfo, mode);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void handleStkCallSetupRequestFromSimResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void hangupConnectionResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void hangupForegroundResumeBackgroundResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void hangupWaitingOrBackgroundResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
@@ -261,111 +262,111 @@ public class VoiceResponse extends IRadioVoiceResponse.Stub {
      * @param enable true for "vonr enabled" and false for "vonr disabled"
      */
     public void isVoNrEnabledResponse(RadioResponseInfo responseInfo, boolean enable) {
-        RadioResponse.responseInts(mRil, responseInfo, enable ? 1 : 0);
+        RadioResponse.responseInts(RIL.VOICE_SERVICE, mRil, responseInfo, enable ? 1 : 0);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void rejectCallResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void sendBurstDtmfResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void sendCdmaFeatureCodeResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void sendDtmfResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void separateConnectionResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setCallForwardResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setCallWaitingResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setClirResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setMuteResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setPreferredVoicePrivacyResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setTtyModeResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setVoNrEnabledResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void startDtmfResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void stopDtmfResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void switchWaitingOrHoldingAndActiveResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(mRil, responseInfo);
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 }
