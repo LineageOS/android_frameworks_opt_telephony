@@ -340,6 +340,76 @@ public class EuiccCardController extends IEuiccCardController.Stub {
     }
 
     @Override
+    public void getEnabledProfile(String callingPackage, String cardId, int portIndex,
+            IGetProfileCallback callback) {
+        try {
+            checkCallingPackage(callingPackage);
+        } catch (SecurityException se) {
+            try {
+                callback.onComplete(EuiccCardManager.RESULT_CALLER_NOT_ALLOWED, null);
+            } catch (RemoteException re) {
+                loge("callback onComplete failure after checkCallingPackage.", re);
+            }
+            return;
+        }
+
+        String iccId = null;
+
+        // get the iccid whether or not the port is active
+        for (UiccSlot slot : mUiccController.getUiccSlots()) {
+            if (slot.getEid().equals(cardId)) {
+                iccId = slot.getIccId(portIndex);
+            }
+        }
+        if (iccId.isEmpty()) {
+            try {
+                callback.onComplete(EuiccCardManager.RESULT_PROFILE_NOT_FOUND, null);
+            } catch (RemoteException exception) {
+                loge("getEnabledProfile callback failure.", exception);
+            }
+            return;
+        }
+
+        EuiccPort port = getEuiccPort(cardId, portIndex);
+        if (port == null) {
+            // If the port is inactive, send the APDU on the first active port
+            port = getFirstActiveEuiccPort(cardId);
+            if (port == null) {
+                try {
+                    callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
+                } catch (RemoteException exception) {
+                    loge("getEnabledProfile callback failure.", exception);
+                }
+                return;
+            }
+        }
+
+        AsyncResultCallback<EuiccProfileInfo> cardCb = new AsyncResultCallback<EuiccProfileInfo>() {
+            @Override
+            public void onResult(EuiccProfileInfo result) {
+                try {
+                    callback.onComplete(EuiccCardManager.RESULT_OK, result);
+                } catch (RemoteException exception) {
+                    loge("getEnabledProfile callback failure.", exception);
+                }
+            }
+
+            @Override
+            public void onException(Throwable e) {
+                try {
+                    loge("getEnabledProfile callback onException: ", e);
+                    callback.onComplete(getResultCode(e), null);
+                } catch (RemoteException exception) {
+                    loge("getEnabledProfile callback failure.", exception);
+                }
+            }
+        };
+
+        port.getProfile(iccId, cardCb, mEuiccMainThreadHandler);
+
+    }
+
+    @Override
     public void disableProfile(String callingPackage, String cardId, String iccid, int portIndex,
             boolean refresh, IDisableProfileCallback callback) {
         try {

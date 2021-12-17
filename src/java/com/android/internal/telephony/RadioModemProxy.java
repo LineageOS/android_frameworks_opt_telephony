@@ -17,12 +17,14 @@
 package com.android.internal.telephony;
 
 import android.os.RemoteException;
+import android.telephony.Rlog;
 
 /**
  * A holder for IRadioModem. Use getHidl to get IRadio 1.0 and call the HIDL implementations or
  * getAidl to get IRadioModem and call the AIDL implementations of the HAL APIs.
  */
 public class RadioModemProxy extends RadioServiceProxy {
+    private static final String TAG = "RadioModemProxy";
     private volatile android.hardware.radio.modem.IRadioModem mModemProxy = null;
 
     /**
@@ -35,6 +37,7 @@ public class RadioModemProxy extends RadioServiceProxy {
         mHalVersion = halVersion;
         mModemProxy = modem;
         mIsAidl = true;
+        Rlog.d(TAG, "AIDL initialized");
     }
 
     /**
