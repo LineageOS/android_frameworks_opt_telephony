@@ -305,16 +305,9 @@ public class RcsStats {
     private static final int SUBSCRIBE_SUCCESS = 1;
     private static final int SUBSCRIBE_NOTIFY = 2;
 
-    private enum QosEstablishStatus {none, establishing, established};
-    private final List<ImsDedicatedBearerListenerEvent> mImsDedicatedBearerListenerEvent =
-            new ArrayList<>();
-    private final Map<ImsDedicatedBearerListenerEvent, QosEstablishStatus>
-            mQosEstablishedStatusMap = new HashMap<>();
     @VisibleForTesting
-    protected final Map<Integer, ImsDedicatedBearerListenerEvent>
-            mDedicatedBearerListenerEventMap = new HashMap<>();
-
-
+    protected final Map<Integer, ImsDedicatedBearerListenerEvent> mDedicatedBearerListenerEventMap =
+            new HashMap<>();
     @VisibleForTesting
     protected final List<RcsAcsProvisioningStats> mRcsAcsProvisioningStatsList =
             new ArrayList<RcsAcsProvisioningStats>();
@@ -327,7 +320,8 @@ public class RcsStats {
             new ArrayList<>();
 
     // Maps service id -> ImsRegistrationServiceDescStats.
-    private final List<ImsRegistrationServiceDescStats> mImsRegistrationServiceDescStatsList =
+    @VisibleForTesting
+    protected final List<ImsRegistrationServiceDescStats> mImsRegistrationServiceDescStatsList =
             new ArrayList<>();
 
     private List<LastSipDelegateStat> mLastSipDelegateStatList = new ArrayList<>();
@@ -739,8 +733,12 @@ public class RcsStats {
         private synchronized void addSipMessageStat(
                 @NonNull int subId, @NonNull String sipMessageMethod,
                 int sipMessageResponse, int sipMessageDirection, int messageError) {
+            int carrierId = getCarrierId(subId);
+            if (!isValidCarrierId(carrierId)) {
+                return;
+            }
             SipMessageResponse proto = new SipMessageResponse();
-            proto.carrierId = getCarrierId(subId);
+            proto.carrierId = carrierId;
             proto.slotId = getSlotId(subId);
             proto.sipMessageMethod = convertMessageTypeToValue(sipMessageMethod);
             proto.sipMessageResponse = sipMessageResponse;
@@ -767,8 +765,12 @@ public class RcsStats {
         private synchronized void addSipTransportSessionStat(
                 @NonNull int subId, @NonNull String sessionMethod, int sipMessageDirection,
                 int sipResponse, boolean isEndedGracefully) {
+            int carrierId = getCarrierId(subId);
+            if (!isValidCarrierId(carrierId)) {
+                return;
+            }
             SipTransportSession proto = new SipTransportSession();
-            proto.carrierId = getCarrierId(subId);
+            proto.carrierId = carrierId;
             proto.slotId = getSlotId(subId);
             proto.sessionMethod = convertMessageTypeToValue(sessionMethod);
             proto.sipMessageDirection = sipMessageDirection;
@@ -809,6 +811,12 @@ public class RcsStats {
     public void onImsRegistrationFeatureTagStats(int subId, List<String> featureTagList,
             int registrationTech) {
         synchronized (mImsRegistrationFeatureTagStatsList) {
+            int carrierId = getCarrierId(subId);
+            if (!isValidCarrierId(carrierId)) {
+                flushImsRegistrationFeatureTagStatsInvalid();
+                return;
+            }
+
             // update cached atom if exists
             onStoreCompleteImsRegistrationFeatureTagStats(subId);
 
@@ -819,7 +827,7 @@ public class RcsStats {
 
             for (String featureTag : featureTagList) {
                 ImsRegistrationFeatureTagStats proto = new ImsRegistrationFeatureTagStats();
-                proto.carrierId = getCarrierId(subId);
+                proto.carrierId = carrierId;
                 proto.slotId = getSlotId(subId);
                 proto.featureTagName = convertTagNameToValue(featureTag);
                 proto.registrationTech = registrationTech;
@@ -865,8 +873,14 @@ public class RcsStats {
 
     /** Create a new atom when RCS client stat changed. */
     public synchronized void onRcsClientProvisioningStats(int subId, int event) {
+        int carrierId = getCarrierId(subId);
+
+        if (!isValidCarrierId(carrierId)) {
+            return;
+        }
+
         RcsClientProvisioningStats proto = new RcsClientProvisioningStats();
-        proto.carrierId = getCarrierId(subId);
+        proto.carrierId = carrierId;
         proto.slotId = getSlotId(subId);
         proto.event = event;
         proto.count = 1;
@@ -878,12 +892,18 @@ public class RcsStats {
             boolean enableSingleRegistration) {
 
         synchronized (mRcsAcsProvisioningStatsList) {
+            int carrierId = getCarrierId(subId);
+            if (!isValidCarrierId(carrierId)) {
+                flushRcsAcsProvisioningStatsInvalid();
+                return;
+            }
+
             // update cached atom if exists
             onStoreCompleteRcsAcsProvisioningStats(subId);
 
             // create new stats to cache
             RcsAcsProvisioningStats newStats = new RcsAcsProvisioningStats();
-            newStats.carrierId = getCarrierId(subId);
+            newStats.carrierId = carrierId;
             newStats.slotId = getSlotId(subId);
             newStats.responseCode = responseCode;
             newStats.responseType = responseType;
@@ -1054,16 +1074,20 @@ public class RcsStats {
     public synchronized void onImsDedicatedBearerListenerAdded(@NonNull final int listenerId,
             @NonNull final int slotId, @NonNull final int ratAtEnd, @NonNull final int qci) {
         int subId = getSubId(slotId);
-        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+        int carrierId = getCarrierId(subId);
+
+        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                || !isValidCarrierId(carrierId)) {
             return;
         }
+
         if (mDedicatedBearerListenerEventMap.containsKey(listenerId)) {
             return;
         }
 
         ImsDedicatedBearerListenerEvent preProto = new ImsDedicatedBearerListenerEvent();
-        preProto.carrierId = getCarrierId(subId);
-        preProto.slotId = getSlotId(subId);
+        preProto.carrierId = carrierId;
+        preProto.slotId = slotId;
         preProto.ratAtEnd = ratAtEnd;
         preProto.qci = qci;
         preProto.dedicatedBearerEstablished = false;
@@ -1078,7 +1102,10 @@ public class RcsStats {
             final int slotId, final int rat, final int qci,
             @NonNull final boolean dedicatedBearerEstablished) {
         int subId = getSubId(slotId);
-        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+        int carrierId = getCarrierId(subId);
+
+        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                || !isValidCarrierId(carrierId)) {
             return;
         }
 
@@ -1093,8 +1120,8 @@ public class RcsStats {
             mDedicatedBearerListenerEventMap.replace(listenerId, preProto);
         } else {
             ImsDedicatedBearerListenerEvent preProto = new ImsDedicatedBearerListenerEvent();
-            preProto.carrierId = getCarrierId(subId);
-            preProto.slotId = getSlotId(subId);
+            preProto.carrierId = carrierId;
+            preProto.slotId = slotId;
             preProto.ratAtEnd = rat;
             preProto.qci = qci;
             preProto.dedicatedBearerEstablished = dedicatedBearerEstablished;
@@ -1146,6 +1173,11 @@ public class RcsStats {
     public void onImsRegistrationServiceDescStats(int subId, List<String> serviceIdList,
             List<String> serviceIdVersionList, int registrationTech) {
         synchronized (mImsRegistrationServiceDescStatsList) {
+            int carrierId = getCarrierId(subId);
+            if (!isValidCarrierId(carrierId)) {
+                handleImsRegistrationServiceDescStats();
+                return;
+            }
             // update cached atom if exists
             onStoreCompleteImsRegistrationServiceDescStats(subId);
 
@@ -1153,15 +1185,14 @@ public class RcsStats {
                 Rlog.d(TAG, "serviceIds is null or empty");
                 return;
             }
-            int carrierid = getCarrierId(subId);
-            int slotid = getSlotId(subId);
+
             int index = 0;
             for (String serviceId : serviceIdList) {
                 ImsRegistrationServiceDescStats mImsRegistrationServiceDescStats =
                         new ImsRegistrationServiceDescStats();
 
-                mImsRegistrationServiceDescStats.carrierId = carrierid;
-                mImsRegistrationServiceDescStats.slotId = slotid;
+                mImsRegistrationServiceDescStats.carrierId = carrierId;
+                mImsRegistrationServiceDescStats.slotId = getSlotId(subId);
                 mImsRegistrationServiceDescStats.serviceIdName = convertServiceIdToValue(serviceId);
                 mImsRegistrationServiceDescStats.serviceIdVersion =
                         Float.parseFloat(serviceIdVersionList.get(index++));
@@ -1192,7 +1223,12 @@ public class RcsStats {
             int commandCode, int networkResponse) {
         UceEventStats proto = new UceEventStats();
 
-        proto.carrierId = getCarrierId(subId);
+        int carrierId = getCarrierId(subId);
+        if (!isValidCarrierId(carrierId)) {
+            handleImsRegistrationServiceDescStats();
+            return;
+        }
+        proto.carrierId = carrierId;
         proto.slotId = getSlotId(subId);
         proto.type = type;
         proto.successful = successful;
@@ -1221,7 +1257,13 @@ public class RcsStats {
             boolean contentBodyReceived, boolean rcsCaps, boolean mmtelCaps, boolean noCaps) {
         PresenceNotifyEvent proto = new PresenceNotifyEvent();
 
-        proto.carrierId = getCarrierId(subId);
+        int carrierId = getCarrierId(subId);
+        if (!isValidCarrierId(carrierId)) {
+            handleImsRegistrationServiceDescStats();
+            return;
+        }
+
+        proto.carrierId = carrierId;
         proto.slotId = getSlotId(subId);
         proto.reason = convertPresenceNotifyReason(reason);
         proto.contentBodyReceived = contentBodyReceived;
@@ -1252,8 +1294,13 @@ public class RcsStats {
 
     /** Create a new atom when GBA Success Event changed. */
     public synchronized void onGbaSuccessEvent(int subId) {
+        int carrierId = getCarrierId(subId);
+        if (!isValidCarrierId(carrierId)) {
+            return;
+        }
+
         GbaEvent proto = new GbaEvent();
-        proto.carrierId = getCarrierId(subId);
+        proto.carrierId = carrierId;
         proto.slotId = getSlotId(subId);
         proto.successful = true;
         proto.failedReason = -1;
@@ -1263,8 +1310,13 @@ public class RcsStats {
 
     /** Create a new atom when GBA Failure Event changed. */
     public synchronized void onGbaFailureEvent(int subId, int reason) {
+        int carrierId = getCarrierId(subId);
+        if (!isValidCarrierId(carrierId)) {
+            return;
+        }
+
         GbaEvent proto = new GbaEvent();
-        proto.carrierId = getCarrierId(subId);
+        proto.carrierId = carrierId;
         proto.slotId = getSlotId(subId);
         proto.successful = false;
         proto.failedReason = reason;
@@ -1363,6 +1415,26 @@ public class RcsStats {
         }
     }
 
+    private void handleImsRegistrationServiceDescStats() {
+        synchronized (mImsRegistrationServiceDescStatsList) {
+            List<ImsRegistrationServiceDescStats> deleteList = new ArrayList<>();
+            for (ImsRegistrationServiceDescStats proto : mImsRegistrationServiceDescStatsList) {
+                int subId = getSubId(proto.slotId);
+                int newCarrierId = getCarrierId(subId);
+                if (proto.carrierId != newCarrierId) {
+                    deleteList.add(proto);
+                    if (proto.publishedMillis != 0) {
+                        proto.publishedMillis = getWallTimeMillis() - proto.publishedMillis;
+                        mAtomsStorage.addImsRegistrationServiceDescStats(proto);
+                    }
+                }
+            }
+            for (ImsRegistrationServiceDescStats stats : deleteList) {
+                mImsRegistrationServiceDescStatsList.remove(stats);
+            }
+        }
+    }
+
     private RcsAcsProvisioningStats getRcsAcsProvisioningStats(int subId) {
         int carrierId = getCarrierId(subId);
         int slotId = getSlotId(subId);
@@ -1376,6 +1448,51 @@ public class RcsStats {
             }
         }
         return null;
+    }
+
+    private void flushRcsAcsProvisioningStatsInvalid() {
+        List<RcsAcsProvisioningStats> inValidList = new ArrayList<RcsAcsProvisioningStats>();
+
+        int subId;
+        int newCarrierId;
+
+        for (RcsAcsProvisioningStats stats : mRcsAcsProvisioningStatsList) {
+            subId = getSubId(stats.slotId);
+            newCarrierId = getCarrierId(subId);
+            if (stats.carrierId != newCarrierId) {
+                inValidList.add(stats);
+            }
+        }
+
+        for (RcsAcsProvisioningStats inValid : inValidList) {
+            inValid.stateTimerMillis = getWallTimeMillis() - inValid.stateTimerMillis;
+            mAtomsStorage.addRcsAcsProvisioningStats(inValid);
+            mRcsAcsProvisioningStatsList.remove(inValid);
+        }
+        inValidList.clear();
+    }
+
+    private void flushImsRegistrationFeatureTagStatsInvalid() {
+        List<ImsRegistrationFeatureTagStats> inValidList =
+                new ArrayList<ImsRegistrationFeatureTagStats>();
+
+        int subId;
+        int newCarrierId;
+
+        for (ImsRegistrationFeatureTagStats stats : mImsRegistrationFeatureTagStatsList) {
+            subId = getSubId(stats.slotId);
+            newCarrierId = getCarrierId(subId);
+            if (stats.carrierId != newCarrierId) {
+                inValidList.add(stats);
+            }
+        }
+
+        for (ImsRegistrationFeatureTagStats inValid : inValidList) {
+            inValid.registeredMillis = getWallTimeMillis() - inValid.registeredMillis;
+            mAtomsStorage.addImsRegistrationFeatureTagStats(inValid);
+            mImsRegistrationFeatureTagStatsList.remove(inValid);
+        }
+        inValidList.clear();
     }
 
     private LastSipDelegateStat getLastSipDelegateStat(int subId, Set<String> supportedTags) {
@@ -1419,8 +1536,8 @@ public class RcsStats {
         }
         return sipTransportFeatureTags;
     }
-
-    private boolean isValidCarrierId(int carrierId) {
+    @VisibleForTesting
+    protected boolean isValidCarrierId(int carrierId) {
         return carrierId > TelephonyManager.UNKNOWN_CARRIER_ID;
     }
 
