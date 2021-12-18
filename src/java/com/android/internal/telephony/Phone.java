@@ -236,8 +236,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_LINK_CAPACITY_CHANGED = 59;
     protected static final int EVENT_RESET_CARRIER_KEY_IMSI_ENCRYPTION = 60;
     protected static final int EVENT_SET_VONR_ENABLED_DONE = 61;
+    protected static final int EVENT_SUBSCRIPTIONS_CHANGED = 62;
+    protected static final int EVENT_GET_USAGE_SETTING_DONE = 63;
+    protected static final int EVENT_SET_USAGE_SETTING_DONE = 64;
 
-    protected static final int EVENT_LAST = EVENT_SET_VONR_ENABLED_DONE;
+    protected static final int EVENT_LAST = EVENT_SET_USAGE_SETTING_DONE;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
@@ -363,6 +366,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private static final boolean LCE_PULL_MODE = true;
     private int mLceStatus = RILConstants.LCE_NOT_AVAILABLE;
     protected TelephonyComponentFactory mTelephonyComponentFactory;
+
+    private int mPreferredUsageSetting = SubscriptionManager.USAGE_SETTING_UNKNOWN;
+    private int mUsageSettingFromModem = SubscriptionManager.USAGE_SETTING_UNKNOWN;
+    private boolean mIsUsageSettingSupported = true;
 
     //IMS
     /**
@@ -810,6 +817,48 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             case EVENT_ALL_DATA_DISCONNECTED:
                 if (areAllDataDisconnected()) {
                     mAllDataDisconnectedRegistrants.notifyRegistrants();
+                }
+                break;
+            case EVENT_GET_USAGE_SETTING_DONE:
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception == null) {
+                    try {
+                        int mUsageSettingFromModem = ((int[]) ar.result)[0];
+                    } catch (NullPointerException | ClassCastException e) {
+                        Rlog.e(LOG_TAG, "Invalid response for usage setting " + ar.result);
+                        break;
+                    }
+
+                    if (mUsageSettingFromModem != mPreferredUsageSetting) {
+                        mCi.setUsageSetting(obtainMessage(EVENT_SET_USAGE_SETTING_DONE),
+                                mPreferredUsageSetting);
+                    }
+                } else {
+                    try {
+                        CommandException ce = (CommandException) ar.exception;
+                        if (ce.getCommandError() == CommandException.Error.REQUEST_NOT_SUPPORTED) {
+                            mIsUsageSettingSupported = false;
+                        }
+                        Rlog.w(LOG_TAG, "Unexpected failure to retrieve usage setting " + ce);
+                    } catch (ClassCastException unused) {
+                        Rlog.e(LOG_TAG, "Invalid Exception for usage setting " + ar.exception);
+                        break; // technically extraneous, but good hygiene
+                    }
+                }
+                break;
+            case EVENT_SET_USAGE_SETTING_DONE:
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception != null) {
+                    try {
+                        CommandException ce = (CommandException) ar.exception;
+                        if (ce.getCommandError() == CommandException.Error.REQUEST_NOT_SUPPORTED) {
+                            mIsUsageSettingSupported = false;
+                        }
+                        Rlog.w(LOG_TAG, "Unexpected failure to set usage setting " + ce);
+                    } catch (ClassCastException unused) {
+                        Rlog.e(LOG_TAG, "Invalid Exception for usage setting " + ar.exception);
+                        break; // technically extraneous, but good hygiene
+                    }
                 }
                 break;
             default:
@@ -4435,7 +4484,59 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         if (restoreNetworkSelection) {
             restoreSavedNetworkSelection(null);
         }
+
+        updateUsageSetting();
     }
+
+    // Need a magic little helper function to avoid a static call via SubscriptionManager
+    private int getPreferredUsageSetting() {
+        String result = SubscriptionController.getInstance().getSubscriptionProperty(
+                getSubId(), SubscriptionManager.USAGE_SETTING);
+        try {
+            return Integer.parseInt(result);
+        } catch (NumberFormatException nfe) {
+        }
+        return SubscriptionManager.USAGE_SETTING_UNKNOWN;
+    }
+
+    /**
+     * Attempt to update the usage setting.
+     *
+     * @return whether the usage setting will be updated (used for test)
+     */
+    public boolean updateUsageSetting() {
+        if (!mIsUsageSettingSupported) return false;
+
+        final int subId = getSubId();
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) return false;
+
+        int lastPreferredUsageSetting = mPreferredUsageSetting;
+
+        int mPreferredUsageSetting = getPreferredUsageSetting();
+
+        // We might get a lot of requests to update, so definitely we don't want to hammer
+        // the modem with multiple duplicate requests for usage setting updates
+        if (mPreferredUsageSetting == lastPreferredUsageSetting) return false;
+
+        // If the user prefers the default setting, we now need to resolve that into a concrete
+        // value, since the modem will have a "concrete" value.
+        if (mPreferredUsageSetting == SubscriptionManager.USAGE_SETTING_DEFAULT) {
+            mPreferredUsageSetting = mContext.getResources().getInteger(
+                    com.android.internal.R.integer.config_default_cellular_usage_setting);
+        }
+
+        // If the modem value hasn't been updated, request it.
+        if (mUsageSettingFromModem == SubscriptionManager.USAGE_SETTING_UNKNOWN) {
+            mCi.getUsageSetting(obtainMessage(EVENT_GET_USAGE_SETTING_DONE));
+            // If the modem value is already known, and the value has changed, proceed to update.
+        } else if (mPreferredUsageSetting != mUsageSettingFromModem) {
+            mCi.setUsageSetting(obtainMessage(EVENT_SET_USAGE_SETTING_DONE),
+                    mPreferredUsageSetting);
+        }
+        return true;
+    }
+
+
 
     /**
      * Registers the handler when phone radio  capability is changed.

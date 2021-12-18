@@ -66,6 +66,8 @@ public class RcsStatsTest extends TelephonyTest {
     private static final int SLOT2_ID = 1;
     private static final int CARRIER_ID = 100;
     private static final int CARRIER2_ID = 200;
+    private static final int INVALID_CARRIER_ID = -1;
+    private static final int INVALID_SUB_ID = Integer.MIN_VALUE;
 
     private class TestResult {
         public String tagName;
@@ -105,10 +107,13 @@ public class RcsStatsTest extends TelephonyTest {
 
         @Override
         protected int getCarrierId(int subId) {
-            if (subId == mSubId) {
+            if (subId == INVALID_SUB_ID) {
+                return INVALID_CARRIER_ID;
+            } else if (subId == mSubId) {
                 return CARRIER_ID;
+            } else {
+                return CARRIER2_ID;
             }
-            return CARRIER2_ID;
         }
 
         @Override
@@ -611,6 +616,34 @@ public class RcsStatsTest extends TelephonyTest {
         }
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
+
+    @Test
+    @SmallTest
+    public void onSipTransportFeatureTagStats_addInvalidEntries() throws Exception {
+        final long timeGap = 6000L;
+        Set<FeatureTagState> deniedTags = new ArraySet<>();
+        Set<FeatureTagState> deRegiTags = new ArraySet<>();
+        Set<String> regiTags = new ArraySet<>();
+
+        final int invalidSubId = INVALID_SUB_ID;
+
+        // create new featureTags with an invalidId
+        regiTags.add(FeatureTags.FEATURE_TAG_STANDALONE_MSG);
+        deniedTags.add(new FeatureTagState(FeatureTags.FEATURE_TAG_FILE_TRANSFER,
+                SipDelegateManager.DENIED_REASON_IN_USE_BY_ANOTHER_DELEGATE));
+        mRcsStats.onSipTransportFeatureTagStats(invalidSubId, deniedTags, deRegiTags, regiTags);
+        mRcsStats.incTimeMillis(timeGap);
+
+        // change status of featureTags with an invalidId
+        regiTags.clear();
+        deRegiTags.add(new FeatureTagState(FeatureTags.FEATURE_TAG_STANDALONE_MSG,
+                DelegateRegistrationState.DEREGISTERED_REASON_NOT_REGISTERED));
+        mRcsStats.onSipTransportFeatureTagStats(invalidSubId, deniedTags, deRegiTags, regiTags);
+        mRcsStats.incTimeMillis(timeGap);
+
+        verify(mPersistAtomsStorage, never()).addSipTransportFeatureTagStats(any());
+    }
+
 
     @Test
     @SmallTest
