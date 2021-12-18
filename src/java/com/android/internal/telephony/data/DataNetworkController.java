@@ -773,7 +773,8 @@ public class DataNetworkController extends Handler {
         mDataSettingsManager = new DataSettingsManager(mPhone, this, looper,
                 new DataSettingsManagerCallback(this::post) {
                     @Override
-                    public void onDataEnabledChanged(boolean enabled) {
+                    public void onDataEnabledChanged(boolean enabled,
+                            @TelephonyManager.DataEnabledChangedReason int reason) {
                         // If mobile data is enabled by the user, evaluate the unsatisfied network
                         // requests and then attempt to setup data networks to satisfy them.
                         // If mobile data is disabled, evaluate the existing data networks and

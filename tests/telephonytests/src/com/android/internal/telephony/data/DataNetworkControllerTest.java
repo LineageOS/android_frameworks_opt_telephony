@@ -681,7 +681,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
     @Test
     public void testDataEnabledChanged() throws Exception {
-        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(false);
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false);
         mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build());
@@ -692,7 +693,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         Mockito.clearInvocations(mSpiedDataNetworkcallback);
 
         // User data enabled
-        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(true);
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, true);
         processAllMessages();
 
         // Verify data is restored.
@@ -700,7 +702,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         Mockito.clearInvocations(mSpiedDataNetworkcallback);
 
         // User data disabled
-        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(false);
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false);
         processAllMessages();
 
         // Verify data is torn down.
@@ -711,7 +714,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
     public void testMmsAlwaysAllowed() throws Exception {
         doReturn(true).when(mServiceState).getDataRoaming();
         doReturn(false).when(mDataConfigManager).isDataRoamingEnabledByDefault();
-        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(false);
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false);
         mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_MMS)
@@ -724,7 +728,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         // Always allow MMS
         mDataNetworkControllerUT.getDataSettingsManager().setAlwaysAllowMmsData(true);
         // Enable user data to trigger data enabled changed and data reevaluation
-        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(true);
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, true);
         processAllMessages();
 
         // Verify data is allowed
@@ -735,7 +740,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
     public void testUnmeteredRequest() throws Exception {
         doReturn(true).when(mServiceState).getDataRoaming();
         doReturn(false).when(mDataConfigManager).isDataRoamingEnabledByDefault();
-        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(false);
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false);
         mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build());
@@ -748,7 +754,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
                 .getPreferredTransportByNetworkCapability(anyInt());
         // Enable user data to trigger data enabled changed and data reevaluation
-        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(true);
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, true);
         processAllMessages();
 
         // Verify data is allowed
