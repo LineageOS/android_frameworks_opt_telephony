@@ -1096,4 +1096,10 @@ public interface PhoneInternalInterface {
      *  their mobile plan.
      */
     String getMobileProvisioningUrl();
+
+    /**
+     * Update the cellular usage setting if applicable.
+     */
+    boolean updateUsageSetting();
+
 }

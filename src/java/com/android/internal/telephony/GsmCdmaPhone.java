@@ -45,6 +45,7 @@ import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.HandlerExecutor;
 import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
@@ -274,6 +275,8 @@ public class GsmCdmaPhone extends Phone {
     private final ImsManagerFactory mImsManagerFactory;
     private final CarrierPrivilegesTracker mCarrierPrivilegesTracker;
 
+    private final SubscriptionManager.OnSubscriptionsChangedListener mSubscriptionsChangedListener;
+
     // Constructors
 
     public GsmCdmaPhone(Context context, CommandsInterface ci, PhoneNotifier notifier, int phoneId,
@@ -376,6 +379,19 @@ public class GsmCdmaPhone extends Phone {
         loadTtyMode();
 
         CallManager.getInstance().registerPhone(this);
+
+        mSubscriptionsChangedListener =
+                new SubscriptionManager.OnSubscriptionsChangedListener() {
+            @Override
+            public void onSubscriptionsChanged() {
+                sendEmptyMessage(EVENT_SUBSCRIPTIONS_CHANGED);
+            }
+        };
+
+        SubscriptionManager subMan = context.getSystemService(SubscriptionManager.class);
+        subMan.addOnSubscriptionsChangedListener(
+                new HandlerExecutor(this), mSubscriptionsChangedListener);
+
         logd("GsmCdmaPhone: constructor: sub = " + mPhoneId);
     }
 
@@ -3306,6 +3322,10 @@ public class GsmCdmaPhone extends Phone {
             }
             case EVENT_SET_VONR_ENABLED_DONE:
                 logd("EVENT_SET_VONR_ENABLED_DONE is done");
+                break;
+            case EVENT_SUBSCRIPTIONS_CHANGED:
+                logd("EVENT_SUBSCRIPTIONS_CHANGED");
+                updateUsageSetting();
                 break;
 
             default:
