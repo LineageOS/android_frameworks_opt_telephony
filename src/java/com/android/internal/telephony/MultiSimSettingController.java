@@ -790,8 +790,13 @@ public class MultiSimSettingController extends Handler {
                     && phone.isUserDataEnabled()
                     && !areSubscriptionsInSameGroup(defaultDataSub, phone.getSubId())) {
                 log("setting data to false on " + phone.getSubId());
-                phone.getDataEnabledSettings().setDataEnabled(
-                        TelephonyManager.DATA_ENABLED_REASON_USER, false);
+                if (phone.isUsingNewDataStack()) {
+                    phone.getDataSettingsManager().setDataEnabled(
+                            TelephonyManager.DATA_ENABLED_REASON_USER, false);
+                } else {
+                    phone.getDataEnabledSettings().setDataEnabled(
+                            TelephonyManager.DATA_ENABLED_REASON_USER, false);
+                }
             }
         }
     }
@@ -822,12 +827,17 @@ public class MultiSimSettingController extends Handler {
             int currentSubId = info.getSubscriptionId();
             // TODO: simplify when setUserDataEnabled becomes singleton
             if (mSubController.isActiveSubId(currentSubId)) {
-                // For active subscription, call setUserDataEnabled through DataEnabledSettings.
+                // For active subscription, call setUserDataEnabled through DataSettingsManager.
                 Phone phone = PhoneFactory.getPhone(mSubController.getPhoneId(currentSubId));
                 // If enable is true and it's not opportunistic subscription, we don't enable it,
-                // as there can't e two
+                // as there can't be two
                 if (phone != null) {
-                    phone.getDataEnabledSettings().setUserDataEnabled(enable, false);
+                    if (phone.isUsingNewDataStack()) {
+                        phone.getDataSettingsManager().setDataEnabled(
+                                TelephonyManager.DATA_ENABLED_REASON_USER, enable);
+                    } else {
+                        phone.getDataEnabledSettings().setUserDataEnabled(enable, false);
+                    }
                 }
             } else {
                 // For inactive subscription, directly write into global settings.
