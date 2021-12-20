@@ -1206,7 +1206,7 @@ public class DataNetworkController extends Handler {
             if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
                 evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
             } else if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
-                List<Integer> meteredApns = mServiceState.getDataRoaming()
+                Set<Integer> meteredApns = mServiceState.getDataRoaming()
                         ? mDataConfigManager.getMeteredApnTypesWhenRoaming()
                         : mDataConfigManager.getMeteredApnTypes();
                 boolean unmetered = !meteredApns.isEmpty() && apnTypes.length != 0;
