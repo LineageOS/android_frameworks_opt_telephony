@@ -2747,6 +2747,38 @@ public interface CommandsInterface {
      public void unregisterForSimPhonebookRecordsReceived(Handler h);
 
     /**
+     * Registers for notifications when connection setup fails.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForConnectionSetupFailure(Handler h, int what, Object obj) {}
+
+    /**
+     * Unregisters for notifications when connection setup fails.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForConnectionSetupFailure(Handler h) {}
+
+    /**
+     * Register for notifications when IMS traffic access is allowed
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForAccessAllowed(Handler h, int what, Object obj) {}
+
+    /**
+     * Unregister for notifications when IMS traffic access is allowed
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForAccessAllowed(Handler h) {}
+
+    /**
      * Set the UE's usage setting.
      *
      * @param result Callback message containing the success or failure status.
@@ -2777,4 +2809,39 @@ public interface CommandsInterface {
      * @param h Handler to be removed from the registrant list.
      */
     default void unregisterForEmergencyNetworkScan(Handler h) {}
+
+    /**
+     * Provides a list of SRVCC call information to radio
+     *
+     * @param srvccConnections the list of connections.
+     */
+    default void setSrvccCallInfo(SrvccConnection[] srvccConnections, Message result) {}
+
+    /**
+     * Updates the IMS registration information to the radio.
+     *
+     * @param state the current IMS registration state.
+     * @param ipcan the type of IP connectivity access network where IMS features are registered.
+     * @param reason a failure reason for IMS registration.
+     * @param features IMS features such as VOICE, VIDEO and SMS.
+     */
+    default void updateImsRegistrationInfo(int state,
+            int ipcan, int reason, int features, Message result) {}
+
+    /**
+     * Notifies the NAS and RRC layers of the radio the type of upcoming IMS traffic.
+     *
+     * @param token The token of the request.
+     * @param trafficType IMS traffic type like registration, voice, video, SMS, emergency, and etc.
+     * @param isStart true when the traffic flow starts, false when traffic flow stops.
+     */
+    default void notifyImsTraffic(int token, int trafficType, boolean isStart, Message result) {}
+
+    /**
+     * Checks access class barring checks based on ImsTrafficType.
+     *
+     * @param token The token of the request.
+     * @param trafficType IMS traffic type like registration, voice, video, SMS, emergency, and etc.
+     */
+    default void performAcbCheck(int token, int trafficType, Message result) {}
 }
