@@ -68,6 +68,7 @@ import java.util.stream.Collectors;
  * {@link CarrierConfigManager}. All the data config will be loaded once and stored here.
  */
 public class DataConfigManager extends Handler {
+    /** Event for carrier config changed. */
     private static final int EVENT_CARRIER_CONFIG_CHANGED = 1;
 
     /** Indicates the bandwidth estimation source is from the modem. */
@@ -199,15 +200,17 @@ public class DataConfigManager extends Handler {
     /** The data retry rules */
     private @NonNull final List<DataRetryRule> mDataRetryRules = new ArrayList<>();
     /** The metered APN types for home network */
-    private @NonNull final @ApnType List<Integer> mMeteredApnTypes = new ArrayList<>();
+    private @NonNull final @ApnType Set<Integer> mMeteredApnTypes = new HashSet<>();
     /** The metered APN types for roaming network */
-    private @NonNull final @ApnType List<Integer> mRoamingMeteredApnTypes =
-            new ArrayList<>();
+    private @NonNull final @ApnType Set<Integer> mRoamingMeteredApnTypes = new HashSet<>();
     /** The network types that only support single data networks */
     private @NonNull final @NetworkType List<Integer> mSingleDataNetworkTypeList =
             new ArrayList<>();
     /** The network types that support temporarily not metered */
     private @NonNull final @DataConfigNetworkType Set<String> mUnmeteredNetworkTypes =
+            new HashSet<>();
+    /** The network types that support temporarily not metered when roaming */
+    private @NonNull final @DataConfigNetworkType Set<String> mRoamingUnmeteredNetworkTypes =
             new HashSet<>();
     /** A map of network types to the downlink and uplink bandwidth values for that network type */
     private @NonNull final @DataConfigNetworkType Map<String, DataNetwork.NetworkBandwidth>
@@ -405,17 +408,15 @@ public class DataConfigManager extends Handler {
     /**
      * @return The metered APN types when connected to a home network
      */
-    public @NonNull @ApnType List<Integer> getMeteredApnTypes() {
-        // TODO: return as set instead of list
-        return Collections.unmodifiableList(mMeteredApnTypes);
+    public @NonNull @ApnType Set<Integer> getMeteredApnTypes() {
+        return Collections.unmodifiableSet(mMeteredApnTypes);
     }
 
     /**
      * @return The metered APN types when roaming
      */
-    public @NonNull @ApnType List<Integer> getMeteredApnTypesWhenRoaming() {
-        // TODO: return as set instead of list
-        return Collections.unmodifiableList(mRoamingMeteredApnTypes);
+    public @NonNull @ApnType Set<Integer> getMeteredApnTypesWhenRoaming() {
+        return Collections.unmodifiableSet(mRoamingMeteredApnTypes);
     }
 
     /**
@@ -436,12 +437,9 @@ public class DataConfigManager extends Handler {
                     CarrierConfigManager.KEY_ONLY_SINGLE_DC_ALLOWED_INT_ARRAY);
             if (singleDataNetworkTypeList != null) {
                 Arrays.stream(singleDataNetworkTypeList)
-                        .map(ServiceState::rilRadioTechnologyToNetworkType)
-                        .distinct()
                         .forEach(mSingleDataNetworkTypeList::add);
             }
         }
-
     }
 
     /**
@@ -471,28 +469,28 @@ public class DataConfigManager extends Handler {
             if (unmeteredNetworkTypes != null) {
                 mUnmeteredNetworkTypes.addAll(Arrays.asList(unmeteredNetworkTypes));
             }
+            mRoamingUnmeteredNetworkTypes.clear();
+            String[] roamingUnmeteredNetworkTypes = mCarrierConfig.getStringArray(
+                    CarrierConfigManager.KEY_ROAMING_UNMETERED_NETWORK_TYPES_STRING_ARRAY);
+            if (roamingUnmeteredNetworkTypes != null) {
+                mRoamingUnmeteredNetworkTypes.addAll(Arrays.asList(roamingUnmeteredNetworkTypes));
+            }
         }
     }
 
     /**
-     * Get the meteredness for the network type from the carrier config.
+     * Get whether the network type is unmetered from the carrier configs.
      *
      * @param networkType The network type to check meteredness for
      * @param serviceState The service state, used to determine NR state
      * @return Whether the carrier considers the given network type unmetered
      */
-    public boolean isNetworkTypeUnmeteredByCarrier(@NetworkType int networkType,
+    public boolean isNetworkTypeUnmetered(@NetworkType int networkType,
             @NonNull ServiceState serviceState) {
-        return mUnmeteredNetworkTypes.contains(
-                getDataConfigNetworkType(networkType, serviceState));
-    }
-
-    /**
-     * @return Whether NR is considered unmetered by the carrier when roaming
-     */
-    public boolean isNrUnmeteredWhenRoaming() {
-        return mCarrierConfig.getBoolean(
-                CarrierConfigManager.KEY_UNMETERED_NR_NSA_WHEN_ROAMING_BOOL);
+        String dataConfigNetworkType = getDataConfigNetworkType(networkType, serviceState);
+        return serviceState.getDataRoaming()
+                ? mRoamingUnmeteredNetworkTypes.contains(dataConfigNetworkType)
+                : mUnmeteredNetworkTypes.contains(dataConfigNetworkType);
     }
 
     /**
@@ -580,7 +578,6 @@ public class DataConfigManager extends Handler {
      * @return The default MTU value in bytes from the carrier config.
      */
     public int getDefaultMtu() {
-        // TODO: Move values from mcc/mnc overlays to carrier configs
         return mCarrierConfig.getInt(CarrierConfigManager.KEY_DEFAULT_MTU_INT);
     }
 
@@ -623,7 +620,6 @@ public class DataConfigManager extends Handler {
      */
     public @Nullable String getTcpConfigString(@NetworkType int networkType,
             @NonNull ServiceState serviceState) {
-        // TODO: Move values from mcc/mnc overlays to carrier configs
         return mTcpBufferSizeMap.get(getDataConfigNetworkType(networkType, serviceState));
     }
 
@@ -829,6 +825,8 @@ public class DataConfigManager extends Handler {
         pw.println("Single data network types=" + mSingleDataNetworkTypeList.stream()
                 .map(TelephonyManager::getNetworkTypeName).collect(Collectors.joining(",")));
         pw.println("Unmetered network types=" + String.join(",", mUnmeteredNetworkTypes));
+        pw.println("Roaming unmetered network types="
+                + String.join(",", mRoamingUnmeteredNetworkTypes));
         pw.println("Bandwidths:");
         pw.increaseIndent();
         mBandwidthMap.forEach((key, value) -> pw.println(key + ":" + value));
