@@ -47,6 +47,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.Arrays;
 import java.util.concurrent.Executor;
 
 /**
@@ -134,7 +135,12 @@ public class DataStallRecoveryManager extends Handler {
     /** Whether mobile data change to Enabled during data stall. */
     private boolean mMobileDataChangedToEnabledDuringDataStall;
 
-    private @NonNull DataStallRecoveryManagerCallback mDataStallRecoveryManagerCallback;
+    /** The array for the timers between recovery actions. */
+    private @NonNull long[] mDataStallRecoveryDelayMillisArray;
+    /** The boolean array for the flags. They are used to skip the recovery actions if needed. */
+    private @NonNull boolean[] mSkipRecoveryActionArray;
+
+    private DataStallRecoveryManagerCallback mDataStallRecoveryManagerCallback;
 
     /**
      * The data stall recovery manager callback. Note this is only used for passing information
@@ -193,6 +199,7 @@ public class DataStallRecoveryManager extends Handler {
                         });
         mDataStallRecoveryManagerCallback = callback;
         mRadioPowerState = mPhone.getRadioPowerState();
+        updateDataStallRecoveryConfigs();
 
         registerAllEvents();
     }
@@ -244,12 +251,42 @@ public class DataStallRecoveryManager extends Handler {
         }
     }
 
-    /** Called when data config was updated. */
-    private void onDataConfigUpdated() {
-        // TODO: (b/178670629): Get the new config from DataConfigManager.
+    /** Update the data stall recovery configs from DataConfigManager. */
+    private void updateDataStallRecoveryConfigs() {
+        mDataStallRecoveryDelayMillisArray = mDataConfigManager.getDataStallRecoveryDelayMillis();
+        mSkipRecoveryActionArray = mDataConfigManager.getDataStallRecoveryShouldSkipArray();
     }
 
-    /** Called when mobile data setting changed. */
+    /**
+     * Get the duration for specific data stall recovery action.
+     *
+     * @param recoveryAction The recovery action to query.
+     * @return the delay in milliseconds for the specific recovery action.
+     */
+    private long getDataStallRecoveryDelayMillis(@RecoveryAction int recoveryAction) {
+        return mDataStallRecoveryDelayMillisArray[recoveryAction];
+    }
+
+    /**
+     * Check if the recovery action needs to be skipped.
+     *
+     * @param recoveryAction The recovery action.
+     * @return {@code true} if the action needs to be skipped.
+     */
+    private boolean shouldSkipRecoveryAction(@RecoveryAction int recoveryAction) {
+        return mSkipRecoveryActionArray[recoveryAction];
+    }
+
+    /** Called when data config was updated. */
+    private void onDataConfigUpdated() {
+        updateDataStallRecoveryConfigs();
+    }
+
+    /**
+     * Called when mobile data setting changed.
+     *
+     * @param enabled true for mobile data settings enabled & false for disabled.
+     */
     private void onMobileDataEnabledChanged(boolean enabled) {
         logl("onMobileDataEnabledChanged: DataEnabled:" + enabled + ",DataStalled:" + mDataStalled);
         // Store the mobile data changed flag (from disabled to enabled) as TRUE
@@ -326,6 +363,23 @@ public class DataStallRecoveryManager extends Handler {
                 && mRadioPowerState == TelephonyManager.RADIO_POWER_ON) {
             mRecovryAction = RECOVERY_ACTION_RESET_MODEM;
         }
+        // To check the flag from DataConfigManager if we need to skip the step.
+        if (shouldSkipRecoveryAction(mRecovryAction)) {
+            switch (mRecovryAction) {
+                case RECOVERY_ACTION_GET_DATA_CALL_LIST:
+                    setRecoveryAction(RECOVERY_ACTION_CLEANUP);
+                    break;
+                case RECOVERY_ACTION_CLEANUP:
+                    setRecoveryAction(RECOVERY_ACTION_RADIO_RESTART);
+                    break;
+                case RECOVERY_ACTION_RADIO_RESTART:
+                    setRecoveryAction(RECOVERY_ACTION_RESET_MODEM);
+                    break;
+                case RECOVERY_ACTION_RESET_MODEM:
+                    resetAction();
+                    break;
+            }
+        }
 
         log("setRecoveryAction: " + recoveryActionToString(mRecovryAction));
     }
@@ -346,16 +400,6 @@ public class DataStallRecoveryManager extends Handler {
      */
     private long getElapsedTimeSinceRecoveryMs() {
         return (SystemClock.elapsedRealtime() - mTimeLastRecoveryStartMs);
-    }
-
-    /**
-     * Get duration between recovery from DataStallRecoveryConfig.
-     *
-     * @return the time in milliseconds between recovery action.
-     */
-    private long getMinDurationBetweenRecovery() {
-        // TODO: (b/178670629): Get the duration from DataConfigManager
-        return 3 * 60 * 1000;
     }
 
     /**
@@ -396,12 +440,19 @@ public class DataStallRecoveryManager extends Handler {
         mPhone.rebootModem(null);
     }
 
-    /** Initialize the network check timer. */
-    private void startNetworkCheckTimer() {
-        log("startNetworkCheckTimer()");
+    /**
+     * Initialize the network check timer.
+     *
+     * @param action The recovery action to start the network check timer.
+     */
+    private void startNetworkCheckTimer(@RecoveryAction int action) {
+        // Ignore send message delayed due to reached the last action.
+        if (action == RECOVERY_ACTION_RESET_MODEM) return;
+        log("startNetworkCheckTimer(): " + getDataStallRecoveryDelayMillis(action) + "ms");
         if (!mNetworkCheckTimerStarted) {
             mNetworkCheckTimerStarted = true;
-            sendMessageDelayed(obtainMessage(EVENT_DO_RECOVERY), getMinDurationBetweenRecovery());
+            sendMessageDelayed(
+                    obtainMessage(EVENT_DO_RECOVERY), getDataStallRecoveryDelayMillis(action));
         }
     }
 
@@ -423,7 +474,7 @@ public class DataStallRecoveryManager extends Handler {
     private boolean isRecoveryNeeded() {
         logv("enter: isRecoveryNeeded()");
         // To avoid back to back recovery, wait for a grace period
-        if (getElapsedTimeSinceRecoveryMs() < getMinDurationBetweenRecovery()) {
+        if (getElapsedTimeSinceRecoveryMs() < getDataStallRecoveryDelayMillis(mLastAction)) {
             log("skip back to back data stall recovery");
             return false;
         }
@@ -441,8 +492,6 @@ public class DataStallRecoveryManager extends Handler {
             resetAction();
             return false;
         }
-
-        // TODO: (b/178670629): check the customized carrier config to skip the recovery action
 
         return true;
     }
@@ -523,7 +572,7 @@ public class DataStallRecoveryManager extends Handler {
                                 + recoveryActionToString(recoveryAction));
         }
 
-        startNetworkCheckTimer();
+        startNetworkCheckTimer(mLastAction);
     }
 
     /**
@@ -563,13 +612,6 @@ public class DataStallRecoveryManager extends Handler {
                 return "RECOVERY_ACTION_RESET_MODEM";
             default:
                 return "Unknown(" + action + ")";
-        }
-    }
-
-    /** The data stall recovery config. */
-    public static final class DataStallRecoveryConfig {
-        DataStallRecoveryConfig(String stringConfig) {
-            // TODO: (b/178670629): Parsing the config string.
         }
     }
 
@@ -626,7 +668,6 @@ public class DataStallRecoveryManager extends Handler {
         pw.println("mIsValidNetwork=" + mIsValidNetwork);
         pw.println("mDataStalled=" + mDataStalled);
         pw.println("mDataStallStartMs=" + mDataStallStartMs);
-        pw.println("mMobileDataEnabled=" + mMobileDataEnabled);
         pw.println("mRadioPowerState=" + radioPowerStateToString(mRadioPowerState));
         pw.println("mLastActionReported=" + mLastActionReported);
         pw.println("mTimeLastRecoveryStartMs=" + mTimeLastRecoveryStartMs);
@@ -635,6 +676,11 @@ public class DataStallRecoveryManager extends Handler {
         pw.println(
                 "mMobileDataChangedToEnabledDuringDataStall="
                         + mMobileDataChangedToEnabledDuringDataStall);
+        pw.println(
+                "DataStallRecoveryDelayMillisArray="
+                        + Arrays.toString(mDataStallRecoveryDelayMillisArray));
+        pw.println("SkipRecoveryActionArray=" + Arrays.toString(mSkipRecoveryActionArray));
+        pw.decreaseIndent();
         pw.println("");
 
         pw.println("Local logs:");

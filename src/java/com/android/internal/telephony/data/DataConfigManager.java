@@ -794,6 +794,26 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * @return Get recovery action delay in milliseconds between recovery actions.
+     *
+     * @see CarrierConfigManager#KEY_DATA_STALL_RECOVERY_TIMERS_LONG_ARRAY
+     */
+    public @NonNull long[] getDataStallRecoveryDelayMillis() {
+        return mCarrierConfig.getLongArray(
+            CarrierConfigManager.KEY_DATA_STALL_RECOVERY_TIMERS_LONG_ARRAY);
+    }
+
+    /**
+     * @return Get the data stall recovery should skip boolean array.
+     *
+     * @see CarrierConfigManager#KEY_DATA_STALL_RECOVERY_SHOULD_SKIP_BOOL_ARRAY
+     */
+    public @NonNull boolean[] getDataStallRecoveryShouldSkipArray() {
+        return mCarrierConfig.getBooleanArray(
+            CarrierConfigManager.KEY_DATA_STALL_RECOVERY_SHOULD_SKIP_BOOL_ARRAY);
+    }
+
+    /**
      * Registration point for subscription info ready
      *
      * @param h handler to notify
