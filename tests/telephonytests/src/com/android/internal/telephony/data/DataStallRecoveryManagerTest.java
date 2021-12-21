@@ -21,6 +21,7 @@ import static com.android.internal.telephony.data.DataNetworkController.DataNetw
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
@@ -61,6 +62,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
                 })
                 .when(mDataStallRecoveryManagerCallback)
                 .invokeFromExecutor(any(Runnable.class));
+        doReturn("").when(mSubscriptionController).getDataEnabledOverrideRules(anyInt());
 
         mDataStallRecoveryManager =
                 new DataStallRecoveryManager(
