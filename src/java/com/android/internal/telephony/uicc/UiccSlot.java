@@ -65,6 +65,7 @@ public class UiccSlot extends Handler {
     private Context mContext;
     private UiccCard mUiccCard;
     private boolean mIsEuicc;
+    private boolean mIsEuiccSupportsMultipleEnabledProfiles;
     private String mEid;
     private AnswerToReset mAtr;
     private boolean mIsRemovable;
@@ -128,14 +129,16 @@ public class UiccSlot extends Handler {
                 }
 
                 if (!mIsEuicc) {
-                    mUiccCard = new UiccCard(mContext, ci, ics, phoneId, mLock);
+                    // Uicc does not support MEP, passing false by default.
+                    mUiccCard = new UiccCard(mContext, ci, ics, phoneId, mLock, false);
                 } else {
                     // The EID should be reported with the card status, but in case it's not we want
                     // to catch that here
                     if (TextUtils.isEmpty(ics.eid)) {
                         loge("update: eid is missing. ics.eid=" + ics.eid);
                     }
-                    mUiccCard = new EuiccCard(mContext, ci, ics, phoneId, mLock);
+                    mUiccCard = new EuiccCard(mContext, ci, ics, phoneId, mLock,
+                            mIsEuiccSupportsMultipleEnabledProfiles);
                 }
             } else {
                 if (mUiccCard != null) {
@@ -341,17 +344,22 @@ public class UiccSlot extends Handler {
         return true;
     }
 
-    private void checkIsEuiccSupported() {
-        if (mAtr != null && mAtr.isEuiccSupported()) {
-            mIsEuicc = true;
-        } else {
+    private void checkEuiccSupportedCapabilities() {
+        if (mAtr == null) {
             mIsEuicc = false;
+            mIsEuiccSupportsMultipleEnabledProfiles = false;
+            return;
         }
+        mIsEuicc = mAtr.isEuiccSupported();
+        mIsEuiccSupportsMultipleEnabledProfiles = mAtr.isMultipleEnabledProfilesSupported();
+        log(" checkEuiccSupportedCapabilities : isEuicc-> " + mIsEuicc
+                + " isMultipleEnabledProfilesSupported-> "
+                + mIsEuiccSupportsMultipleEnabledProfiles);
     }
 
     private void parseAtr(String atr) {
         mAtr = AnswerToReset.parseAtr(atr);
-        checkIsEuiccSupported();
+        checkEuiccSupportedCapabilities();
     }
 
     public boolean isEuicc() {
@@ -537,6 +545,8 @@ public class UiccSlot extends Handler {
         pw.println("UiccSlot:");
         pw.println(" mActive=" + mActive);
         pw.println(" mIsEuicc=" + mIsEuicc);
+        pw.println(" mIsEuiccSupportsMultipleEnabledProfiles="
+                + mIsEuiccSupportsMultipleEnabledProfiles);
         pw.println(" mIsRemovable=" + mIsRemovable);
         pw.println(" mLastRadioState=" + mLastRadioState);
         pw.println(" mIccIds=" + mIccIds.values());

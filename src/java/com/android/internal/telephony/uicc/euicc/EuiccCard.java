@@ -41,8 +41,9 @@ public class EuiccCard extends UiccCard {
     private volatile String mEid;
     private RegistrantList mEidReadyRegistrants;
 
-    public EuiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock) {
-        super(c, ci, ics, phoneId, lock);
+    public EuiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock,
+            boolean isSupportsMultipleEnabledProfiles) {
+        super(c, ci, ics, phoneId, lock, isSupportsMultipleEnabledProfiles);
         if (TextUtils.isEmpty(ics.eid)) {
             loge("no eid given in constructor for phone " + phoneId);
             loadEidAndNotifyRegistrants();
