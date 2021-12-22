@@ -412,10 +412,14 @@ public class RcsStats {
 
         private class LastFeatureTagState {
             public long timeStamp;
+            public int carrierId;
+            public int slotId;
             public int state;
             public int reason;
 
-            LastFeatureTagState(int state, int reason, long timeStamp) {
+            LastFeatureTagState(int carrierId, int slotId, int state, int reason, long timeStamp) {
+                this.carrierId = carrierId;
+                this.slotId = slotId;
                 this.state = state;
                 this.reason = reason;
                 this.timeStamp = timeStamp;
@@ -444,17 +448,19 @@ public class RcsStats {
         /*** Create or update featureTags whenever feature Tag states are changed */
         public synchronized void updateLastFeatureTagState(String tagName, int state, int reason,
                 long timeStamp) {
+            int carrierId = getCarrierId(mSubId);
+            int slotId = getSlotId(mSubId);
             if (mFeatureTagMap.containsKey(tagName)) {
                 LastFeatureTagState lastFeatureTagState = mFeatureTagMap.get(tagName);
                 if (lastFeatureTagState != null) {
                     addFeatureTagStat(tagName, lastFeatureTagState, timeStamp);
                     lastFeatureTagState.update(state, reason, timeStamp);
                 } else {
-                    create(tagName, state, reason, timeStamp);
+                    create(tagName, carrierId, slotId, state, reason, timeStamp);
                 }
 
             } else {
-                create(tagName, state, reason, timeStamp);
+                create(tagName, carrierId, slotId, state, reason, timeStamp);
             }
         }
 
@@ -474,8 +480,10 @@ public class RcsStats {
         private synchronized boolean addFeatureTagStat(@NonNull String tagName,
                 @NonNull LastFeatureTagState lastFeatureTagState, long now) {
             long duration = now - lastFeatureTagState.timeStamp;
-            if (duration < MIN_DURATION_MILLIS) {
-                logd("conclude: discarding transient stats, duration= " + duration);
+            if (duration < MIN_DURATION_MILLIS
+                    || !isValidCarrierId(lastFeatureTagState.carrierId)) {
+                logd("conclude: discarding transient stats, duration= " + duration
+                        + ", carrierId = " + lastFeatureTagState.carrierId);
             } else {
                 SipTransportFeatureTagStats sipFeatureTagStat = new SipTransportFeatureTagStats();
                 switch (lastFeatureTagState.state) {
@@ -494,8 +502,8 @@ public class RcsStats {
                         break;
                 }
 
-                sipFeatureTagStat.carrierId = getCarrierId(mSubId);
-                sipFeatureTagStat.slotId = getSlotId(mSubId);
+                sipFeatureTagStat.carrierId = lastFeatureTagState.carrierId;
+                sipFeatureTagStat.slotId = lastFeatureTagState.slotId;
                 sipFeatureTagStat.associatedMillis = duration;
                 sipFeatureTagStat.featureTagName = convertTagNameToValue(tagName);
                 mAtomsStorage.addSipTransportFeatureTagStats(sipFeatureTagStat);
@@ -518,9 +526,10 @@ public class RcsStats {
             }
         }
 
-        private LastFeatureTagState create(String tagName, int state, int reason, long timeStamp) {
-            LastFeatureTagState lastFeatureTagState = new LastFeatureTagState(state, reason,
-                    timeStamp);
+        private LastFeatureTagState create(String tagName, int carrierId, int slotId, int state,
+                int reason, long timeStamp) {
+            LastFeatureTagState lastFeatureTagState = new LastFeatureTagState(carrierId, slotId,
+                    state, reason, timeStamp);
             mFeatureTagMap.put(tagName, lastFeatureTagState);
             return lastFeatureTagState;
         }
@@ -1409,6 +1418,10 @@ public class RcsStats {
             mLastFeatureTagStatMap.put(subId, sipTransportFeatureTags);
         }
         return sipTransportFeatureTags;
+    }
+
+    private boolean isValidCarrierId(int carrierId) {
+        return carrierId > TelephonyManager.UNKNOWN_CARRIER_ID;
     }
 
     @VisibleForTesting
