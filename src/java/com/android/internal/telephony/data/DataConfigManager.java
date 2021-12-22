@@ -45,7 +45,8 @@ import android.util.IndentingPrintWriter;
 import com.android.internal.R;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.data.DataNetworkController.HandoverRule;
-import com.android.internal.telephony.data.DataRetryManager.DataRetryRule;
+import com.android.internal.telephony.data.DataRetryManager.DataHandoverRetryRule;
+import com.android.internal.telephony.data.DataRetryManager.DataSetupRetryRule;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -197,8 +198,10 @@ public class DataConfigManager extends Handler {
     /** The network capability priority map */
     private @NonNull final Map<Integer, Integer> mNetworkCapabilityPriorityMap =
             new ConcurrentHashMap<>();
-    /** The data retry rules */
-    private @NonNull final List<DataRetryRule> mDataRetryRules = new ArrayList<>();
+    /** The data setup retry rules */
+    private @NonNull final List<DataSetupRetryRule> mDataSetupRetryRules = new ArrayList<>();
+    /** The data handover retry rules */
+    private @NonNull final List<DataHandoverRetryRule> mDataHandoverRetryRules = new ArrayList<>();
     /** The metered APN types for home network */
     private @NonNull final @ApnType Set<Integer> mMeteredApnTypes = new HashSet<>();
     /** The metered APN types for roaming network */
@@ -351,13 +354,26 @@ public class DataConfigManager extends Handler {
      */
     private void updateDataRetryRules() {
         synchronized (this) {
-            mDataRetryRules.clear();
+            mDataSetupRetryRules.clear();
             String[] dataRetryRulesStrings = mCarrierConfig.getStringArray(
-                    CarrierConfigManager.KEY_TELEPHONY_DATA_RETRY_RULES_STRING_ARRAY);
+                    CarrierConfigManager.KEY_TELEPHONY_DATA_SETUP_RETRY_RULES_STRING_ARRAY);
             if (dataRetryRulesStrings != null) {
                 for (String ruleString : dataRetryRulesStrings) {
                     try {
-                        mDataRetryRules.add(new DataRetryRule(ruleString));
+                        mDataSetupRetryRules.add(new DataSetupRetryRule(ruleString));
+                    } catch (IllegalArgumentException e) {
+                        loge("updateDataRetryRules: " + e.getMessage());
+                    }
+                }
+            }
+
+            mDataHandoverRetryRules.clear();
+            dataRetryRulesStrings = mCarrierConfig.getStringArray(
+                    CarrierConfigManager.KEY_TELEPHONY_DATA_HANDOVER_RETRY_RULES_STRING_ARRAY);
+            if (dataRetryRulesStrings != null) {
+                for (String ruleString : dataRetryRulesStrings) {
+                    try {
+                        mDataHandoverRetryRules.add(new DataHandoverRetryRule(ruleString));
                     } catch (IllegalArgumentException e) {
                         loge("updateDataRetryRules: " + e.getMessage());
                     }
@@ -367,10 +383,17 @@ public class DataConfigManager extends Handler {
     }
 
     /**
-     * @return The data retry rules from carrier config.
+     * @return The data setup retry rules from carrier config.
      */
-    public @NonNull List<DataRetryRule> getDataRetryRules() {
-        return Collections.unmodifiableList(mDataRetryRules);
+    public @NonNull List<DataSetupRetryRule> getDataSetupRetryRules() {
+        return Collections.unmodifiableList(mDataSetupRetryRules);
+    }
+
+    /**
+     * @return The data handover retry rules from carrier config.
+     */
+    public @NonNull List<DataHandoverRetryRule> getDataHandoverRetryRules() {
+        return Collections.unmodifiableList(mDataHandoverRetryRules);
     }
 
     /**
@@ -709,6 +732,14 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * @return Get the delay in milliseconds for re-evaluating unsatisfied network requests.
+     */
+    public long getRetrySetupAfterDisconnectMillis() {
+        return mCarrierConfig.getLong(CarrierConfigManager
+                .KEY_CARRIER_DATA_CALL_APN_RETRY_AFTER_DISCONNECT_LONG);
+    }
+
+    /**
      * Get the data config network type for the given network type
      *
      * @param networkType The network type
@@ -814,9 +845,13 @@ public class DataConfigManager extends Handler {
                 DataUtils.networkCapabilityToString(key) + ":" + value + " "));
         pw.decreaseIndent();
         pw.println();
-        pw.println("Data retry rules:");
+        pw.println("Data setup retry rules:");
         pw.increaseIndent();
-        mDataRetryRules.forEach(pw::println);
+        mDataSetupRetryRules.forEach(pw::println);
+        pw.decreaseIndent();
+        pw.println("Data handover retry rules:");
+        pw.increaseIndent();
+        mDataHandoverRetryRules.forEach(pw::println);
         pw.decreaseIndent();
         pw.println("Metered APN types=" + mMeteredApnTypes.stream()
                 .map(ApnSetting::getApnTypeString).collect(Collectors.joining(",")));
