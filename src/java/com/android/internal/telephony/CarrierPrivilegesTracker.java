@@ -50,6 +50,7 @@ import android.os.UserManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyRegistryManager;
 import android.telephony.UiccAccessRule;
 import android.text.TextUtils;
 import android.util.ArrayMap;
@@ -135,10 +136,11 @@ public class CarrierPrivilegesTracker extends Handler {
 
     private final Context mContext;
     private final Phone mPhone;
-    private final CarrierConfigManager mCarrierConfigManager;
     private final PackageManager mPackageManager;
     private final UserManager mUserManager;
+    private final CarrierConfigManager mCarrierConfigManager;
     private final TelephonyManager mTelephonyManager;
+    private final TelephonyRegistryManager mTelephonyRegistryManager;
 
     private final LocalLog mLocalLog = new LocalLog(64);
     private final RegistrantList mRegistrantList = new RegistrantList();
@@ -262,12 +264,15 @@ public class CarrierPrivilegesTracker extends Handler {
             @NonNull Looper looper, @NonNull Phone phone, @NonNull Context context) {
         super(looper);
         mContext = context;
-        mCarrierConfigManager =
-                (CarrierConfigManager) mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        mPhone = phone;
         mPackageManager = mContext.getPackageManager();
         mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
+        mCarrierConfigManager =
+                (CarrierConfigManager) mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
         mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
-        mPhone = phone;
+        mTelephonyRegistryManager =
+                (TelephonyRegistryManager)
+                        mContext.getSystemService(Context.TELEPHONY_REGISTRY_SERVICE);
 
         IntentFilter certFilter = new IntentFilter();
         certFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
@@ -546,6 +551,12 @@ public class CarrierPrivilegesTracker extends Handler {
             mRegistrantList.notifyResult(
                     Arrays.copyOf(
                             mPrivilegedPackageInfo.mUids, mPrivilegedPackageInfo.mUids.length));
+            mTelephonyRegistryManager.notifyCarrierPrivilegesChanged(
+                    mPhone.getPhoneId(),
+                    Collections.unmodifiableList(
+                            new ArrayList<>(mPrivilegedPackageInfo.mPackageNames)),
+                    Arrays.copyOf(
+                            mPrivilegedPackageInfo.mUids, mPrivilegedPackageInfo.mUids.length));
         } finally {
             mPrivilegedPackageInfoLock.readLock().unlock();
         }
@@ -640,14 +651,23 @@ public class CarrierPrivilegesTracker extends Handler {
      *
      * <p>After being registered, the Registrant will be notified with the current Carrier
      * Privileged UIDs for this Phone.
+     *
+     * @deprecated Use {@link TelephonyManager#addCarrierPrivilegesListener} instead, which also
+     *     provides package names
+     *     <p>TODO(b/211658797) migrate callers, then delete all Registrant logic from CPT
      */
+    @Deprecated
     public void registerCarrierPrivilegesListener(Handler h, int what, Object obj) {
         sendMessage(obtainMessage(ACTION_REGISTER_LISTENER, new Registrant(h, what, obj)));
     }
 
     /**
      * Unregisters the given listener with this tracker.
+     *
+     * @deprecated Use {@link TelephonyManager#removeCarrierPrivilegesListener} instead
+     *     <p>TODO(b/211658797) migrate callers, then delete all Registrant logic from CPT
      */
+    @Deprecated
     public void unregisterCarrierPrivilegesListener(Handler handler) {
         sendMessage(obtainMessage(ACTION_UNREGISTER_LISTENER, handler));
     }
