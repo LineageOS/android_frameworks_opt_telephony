@@ -39,6 +39,7 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.SystemProperties;
 import android.provider.Settings;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierConfigManager;
@@ -636,6 +637,11 @@ public class DeviceStateMonitor extends Handler {
     }
 
     private void setSignalStrengthReportingCriteria() {
+        if (SystemProperties.getBoolean(
+            "ro.telephony.bypass.signalstrenthreporting", false)) {
+            return;
+        }
+
         mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI,
                 AccessNetworkThresholds.GERAN, AccessNetworkType.GERAN, true);
         mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSCP,

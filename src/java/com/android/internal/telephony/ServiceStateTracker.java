@@ -5250,6 +5250,11 @@ public class ServiceStateTracker extends Handler {
     }
 
     private void updateReportingCriteria(PersistableBundle config) {
+        if (SystemProperties.getBoolean(
+            "ro.telephony.bypass.signalstrenthreporting", false)) {
+            return;
+        }
+
         int lteMeasurementEnabled = config.getInt(CarrierConfigManager
                 .KEY_PARAMETERS_USED_FOR_LTE_SIGNAL_BAR_INT, CellSignalStrengthLte.USE_RSRP);
         mPhone.setSignalStrengthReportingCriteria(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSRP,
