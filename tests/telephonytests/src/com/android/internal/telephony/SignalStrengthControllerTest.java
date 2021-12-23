@@ -475,6 +475,54 @@ public class SignalStrengthControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testLteSignalStrengthReportingCriteria_convertRssnrUnitFromTenDbToDB() {
+        SignalStrength ss = new SignalStrength(
+                new CellSignalStrengthCdma(),
+                new CellSignalStrengthGsm(),
+                new CellSignalStrengthWcdma(),
+                new CellSignalStrengthTdscdma(),
+                new CellSignalStrengthLte(
+                        -110, /* rssi */
+                        -114, /* rsrp */
+                        -5, /* rsrq */
+                        CellSignalStrengthLte.convertRssnrUnitFromTenDbToDB(-34), /* rssnr */
+                        SignalStrength.INVALID, /* cqi */
+                        SignalStrength.INVALID /* ta */),
+                new CellSignalStrengthNr());
+
+        int[] lteThresholds = {
+                -3, // SIGNAL_STRENGTH_POOR
+                1, // SIGNAL_STRENGTH_MODERATE
+                5, // SIGNAL_STRENGTH_GOOD
+                13,  // SIGNAL_STRENGTH_GREAT
+        };
+        mBundle.putIntArray(CarrierConfigManager.KEY_LTE_RSSNR_THRESHOLDS_INT_ARRAY ,
+                lteThresholds);
+        mBundle.putInt(CarrierConfigManager.KEY_PARAMETERS_USED_FOR_LTE_SIGNAL_BAR_INT,
+                CellSignalStrengthLte.USE_RSSNR);
+        sendCarrierConfigUpdate();
+        sendSignalStrength(ss);
+        assertEquals(CellSignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN,
+                mSsc.getSignalStrength().getLevel());
+
+        ss = new SignalStrength(
+                new CellSignalStrengthCdma(),
+                new CellSignalStrengthGsm(),
+                new CellSignalStrengthWcdma(),
+                new CellSignalStrengthTdscdma(),
+                new CellSignalStrengthLte(
+                        -110, /* rssi */
+                        -114, /* rsrp */
+                        -5, /* rsrq */
+                        CellSignalStrengthLte.convertRssnrUnitFromTenDbToDB(129), /* rssnr */
+                        SignalStrength.INVALID, /* cqi */
+                        SignalStrength.INVALID /* ta */),
+                new CellSignalStrengthNr());
+        sendSignalStrength(ss);
+        assertEquals(CellSignalStrength.SIGNAL_STRENGTH_GOOD, mSsc.getSignalStrength().getLevel());
+    }
+
+    @Test
     public void test5gNrSignalStrengthReportingCriteria_UseSsRsrp() {
         SignalStrength ss = new SignalStrength(
                 new CellSignalStrengthCdma(),
