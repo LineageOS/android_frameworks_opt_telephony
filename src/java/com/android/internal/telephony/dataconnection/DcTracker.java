@@ -213,14 +213,14 @@ public class DcTracker extends Handler {
     public static final int RELEASE_TYPE_HANDOVER = 3;
 
     /** The extras for handover completion message */
-    static final String DATA_COMPLETE_MSG_EXTRA_NETWORK_REQUEST = "extra_network_request";
-    static final String DATA_COMPLETE_MSG_EXTRA_TRANSPORT_TYPE = "extra_transport_type";
-    static final String DATA_COMPLETE_MSG_EXTRA_SUCCESS = "extra_success";
+    public static final String DATA_COMPLETE_MSG_EXTRA_NETWORK_REQUEST = "extra_network_request";
+    public static final String DATA_COMPLETE_MSG_EXTRA_TRANSPORT_TYPE = "extra_transport_type";
+    public static final String DATA_COMPLETE_MSG_EXTRA_SUCCESS = "extra_success";
     /**
      * The flag indicates whether after handover failure, the data connection should remain on the
      * original transport.
      */
-    static final String DATA_COMPLETE_MSG_EXTRA_HANDOVER_FAILURE_FALLBACK =
+    public static final String DATA_COMPLETE_MSG_EXTRA_HANDOVER_FAILURE_FALLBACK =
             "extra_handover_failure_fallback";
 
     private final String mLogTag;
