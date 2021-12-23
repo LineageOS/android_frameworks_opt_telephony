@@ -78,6 +78,7 @@ import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.data.AccessNetworksManager;
 import com.android.internal.telephony.data.DataNetworkController;
+import com.android.internal.telephony.data.DataSettingsManager;
 import com.android.internal.telephony.data.LinkBandwidthEstimator;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
@@ -4988,6 +4989,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public @Nullable DataNetworkController getDataNetworkController() {
         return mDataNetworkController;
+    }
+
+    /**
+     * @return The data settings manager
+     */
+    public @Nullable DataSettingsManager getDataSettingsManager() {
+        if (mDataNetworkController == null) return null;
+        return mDataNetworkController.getDataSettingsManager();
     }
 
     /**
