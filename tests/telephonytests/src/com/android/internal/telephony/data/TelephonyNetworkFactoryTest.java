@@ -47,7 +47,6 @@ import android.util.ArraySet;
 
 import androidx.test.filters.FlakyTest;
 
-import com.android.internal.telephony.PhoneSwitcher;
 import com.android.internal.telephony.RadioConfig;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.dataconnection.DataConnection;
