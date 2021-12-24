@@ -72,6 +72,7 @@ import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.data.DataEnabledOverride;
+import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCard;
@@ -4677,7 +4678,7 @@ public class SubscriptionController extends ISub.Stub {
     /**
      * @hide
      */
-    protected static void invalidateActiveDataSubIdCaches() {
+    public static void invalidateActiveDataSubIdCaches() {
         if (sCachingEnabled) {
             SubscriptionManager.invalidateActiveDataSubIdCaches();
         }

@@ -61,6 +61,7 @@ import android.test.mock.MockContentResolver;
 import androidx.test.filters.FlakyTest;
 import androidx.test.filters.SmallTest;
 
+import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccSlot;
