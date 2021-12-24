@@ -91,6 +91,7 @@ import com.android.internal.telephony.data.DataConfigManager;
 import com.android.internal.telephony.data.DataEnabledOverride;
 import com.android.internal.telephony.data.DataNetworkController;
 import com.android.internal.telephony.data.DataProfileManager;
+import com.android.internal.telephony.data.DataSettingsManager;
 import com.android.internal.telephony.data.LinkBandwidthEstimator;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DataThrottler;
@@ -203,6 +204,8 @@ public abstract class TelephonyTest {
     protected DcTracker mDcTracker;
     @Mock
     protected DataNetworkController mDataNetworkController;
+    @Mock
+    protected DataSettingsManager mDataSettingsManager;
     @Mock
     protected DataConfigManager mDataConfigManager;
     @Mock
@@ -588,6 +591,7 @@ public abstract class TelephonyTest {
         doReturn(mDataEnabledSettings).when(mPhone).getDataEnabledSettings();
         doReturn(mDcTracker).when(mPhone).getDcTracker(anyInt());
         doReturn(mDataNetworkController).when(mPhone).getDataNetworkController();
+        doReturn(mDataSettingsManager).when(mPhone).getDataSettingsManager();
         doReturn(mCarrierPrivilegesTracker).when(mPhone).getCarrierPrivilegesTracker();
         doReturn(mSignalStrength).when(mPhone).getSignalStrength();
         doReturn(mVoiceCallSessionStats).when(mPhone).getVoiceCallSessionStats();

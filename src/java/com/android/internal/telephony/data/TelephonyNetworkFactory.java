@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.dataconnection;
-
-import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+package com.android.internal.telephony.data;
 
 import android.net.NetworkCapabilities;
 import android.net.NetworkFactory;
@@ -37,8 +35,12 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneSwitcher;
 import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.dataconnection.ApnContext;
+import com.android.internal.telephony.dataconnection.DataConnection;
+import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.DcTracker.ReleaseNetworkType;
 import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkType;
+import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.dataconnection.TransportManager.HandoverParams;
 import com.android.internal.telephony.metrics.NetworkRequestsStats;
 import com.android.internal.util.IndentingPrintWriter;
@@ -49,6 +51,10 @@ import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Telephony network factory is responsible for dispatching network requests from the connectivity
+ * service to the data network controller.
+ */
 public class TelephonyNetworkFactory extends NetworkFactory {
     public final String LOG_TAG;
     protected static final boolean DBG = true;
@@ -110,7 +116,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
         mTransportManager.registerForHandoverNeededEvent(mInternalHandler,
                 EVENT_DATA_HANDOVER_NEEDED);
 
-        mSubscriptionId = INVALID_SUBSCRIPTION_ID;
+        mSubscriptionId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         SubscriptionManager.from(mPhone.getContext()).addOnSubscriptionsChangedListener(
                 mSubscriptionsChangedListener);
 
@@ -162,7 +168,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
     }
 
     private class InternalHandler extends Handler {
-        public InternalHandler(Looper looper) {
+        InternalHandler(Looper looper) {
             super(looper);
         }
 
@@ -481,6 +487,13 @@ public class TelephonyNetworkFactory extends NetworkFactory {
         mLocalLog.log(s);
     }
 
+    /**
+     * Dump the state of telephony network factory
+     *
+     * @param fd File descriptor
+     * @param writer Print writer
+     * @param args Arguments
+     */
     public void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
         final IndentingPrintWriter pw = new IndentingPrintWriter(writer, "  ");
         pw.println("Network Requests:");

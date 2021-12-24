@@ -181,6 +181,10 @@ public class DataEvaluation {
         DATA_NETWORK_CAPABILITIES_CHANGED,
         /** When emergency call started or ended. */
         EMERGENCY_CALL_CHANGED,
+        /** When data disconnected, re-evaluate later to see if data could be brought up again. */
+        DATA_NETWORK_DISCONNECTED,
+        /** Data setup retry. */
+        DATA_RETRY,
     }
 
     /** Disallowed reasons. There could be multiple reasons if data connection is not allowed. */
@@ -217,7 +221,9 @@ public class DataEvaluation {
         /** Current data network type not allowed. */
         DATA_NETWORK_TYPE_NOT_ALLOWED(true),
         /** Device is currently in an emergency call. */
-        EMERGENCY_CALL(true);
+        EMERGENCY_CALL(true),
+        /** There is already a retry setup scheduled for this data profile. */
+        RETRY_SCHEDULED(true);
 
         private final boolean mIsHardReason;
 

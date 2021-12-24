@@ -246,6 +246,12 @@ public class DataNetworkControllerTest extends TelephonyTest {
                         "ims:40", "dun:30", "enterprise:20", "internet:20"
                 });
         mCarrierConfig.putBoolean(CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL, true);
+        mCarrierConfig.putStringArray(
+                CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{"default", "mms", "dun", "supl"});
+        mCarrierConfig.putStringArray(
+                CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS,
+                new String[]{"default", "mms", "dun", "supl"});
         doReturn(true).when(mSST).getDesiredPowerState();
         doReturn(true).when(mSST).getPowerStateFromCarrier();
         doReturn(true).when(mSST).isConcurrentVoiceAndDataAllowed();
@@ -288,7 +294,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         replaceInstance(DataNetworkController.class, "mAccessNetworksManager",
                 mDataNetworkControllerUT, mAccessNetworksManager);
         doReturn(mDataProfile1).when(mDataProfileManager).getDataProfileForNetworkRequest(
-                any(TelephonyNetworkRequest.class), anyInt());
+                any(TelephonyNetworkRequest.class), eq(TelephonyManager.NETWORK_TYPE_LTE));
 
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
                 .getPreferredTransportByNetworkCapability(anyInt());
@@ -579,14 +585,16 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verifyInternetConnected();
 
         // Now RAT changes from UMTS to GSM
+        doReturn(null).when(mDataProfileManager).getDataProfileForNetworkRequest(
+                any(TelephonyNetworkRequest.class), eq(TelephonyManager.NETWORK_TYPE_GSM));
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_GSM,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         verifyAllDataDisconnected();
 
-        doReturn(null).when(mDataProfileManager).getDataProfileForNetworkRequest(
-                any(TelephonyNetworkRequest.class), anyInt());
         Mockito.clearInvocations(mSpiedDataNetworkcallback);
         // Now RAT changes from GSM to UMTS
+        doReturn(null).when(mDataProfileManager).getDataProfileForNetworkRequest(
+                any(TelephonyNetworkRequest.class), eq(TelephonyManager.NETWORK_TYPE_UMTS));
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_UMTS,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         verifyNoInternetSetup();
@@ -673,7 +681,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
     @Test
     public void testDataEnabledChanged() throws Exception {
-        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(false);
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false);
         mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build());
@@ -684,7 +693,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         Mockito.clearInvocations(mSpiedDataNetworkcallback);
 
         // User data enabled
-        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(true);
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, true);
         processAllMessages();
 
         // Verify data is restored.
@@ -692,7 +702,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         Mockito.clearInvocations(mSpiedDataNetworkcallback);
 
         // User data disabled
-        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(false);
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false);
         processAllMessages();
 
         // Verify data is torn down.
@@ -703,7 +714,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
     public void testMmsAlwaysAllowed() throws Exception {
         doReturn(true).when(mServiceState).getDataRoaming();
         doReturn(false).when(mDataConfigManager).isDataRoamingEnabledByDefault();
-        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(false);
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false);
         mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_MMS)
@@ -716,7 +728,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         // Always allow MMS
         mDataNetworkControllerUT.getDataSettingsManager().setAlwaysAllowMmsData(true);
         // Enable user data to trigger data enabled changed and data reevaluation
-        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(true);
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, true);
         processAllMessages();
 
         // Verify data is allowed
@@ -727,7 +740,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
     public void testUnmeteredRequest() throws Exception {
         doReturn(true).when(mServiceState).getDataRoaming();
         doReturn(false).when(mDataConfigManager).isDataRoamingEnabledByDefault();
-        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(false);
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false);
         mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build());
@@ -740,7 +754,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
                 .getPreferredTransportByNetworkCapability(anyInt());
         // Enable user data to trigger data enabled changed and data reevaluation
-        mDataNetworkControllerUT.getDataSettingsManager().setUserDataEnabled(true);
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, true);
         processAllMessages();
 
         // Verify data is allowed
