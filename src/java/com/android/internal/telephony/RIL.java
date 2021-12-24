@@ -580,6 +580,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     /** Returns a {@link IRadio} instance or null if the service is not available. */
     @VisibleForTesting
     public synchronized IRadio getRadioProxy(Message result) {
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_0)) return null;
         if (!SubscriptionManager.isValidPhoneId(mPhoneId)) return null;
         if (!mIsCellularSupported) {
             if (RILJ_LOGV) riljLog("getRadioProxy: Not calling getService(): wifi-only");
@@ -838,7 +839,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         break;
                 }
 
-                if (serviceProxy.isEmpty()) {
+                if (serviceProxy.isEmpty() && mRadioVersion.less(RADIO_HAL_VERSION_2_0)) {
                     try {
                         mRadioVersion = RADIO_HAL_VERSION_1_6;
                         serviceProxy.setHidl(mRadioVersion,
@@ -848,7 +849,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     }
                 }
 
-                if (serviceProxy.isEmpty()) {
+                if (serviceProxy.isEmpty() && mRadioVersion.less(RADIO_HAL_VERSION_2_0)) {
                     try {
                         mRadioVersion = RADIO_HAL_VERSION_1_5;
                         serviceProxy.setHidl(mRadioVersion,
@@ -858,7 +859,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     }
                 }
 
-                if (serviceProxy.isEmpty()) {
+                if (serviceProxy.isEmpty() && mRadioVersion.less(RADIO_HAL_VERSION_2_0)) {
                     try {
                         mRadioVersion = RADIO_HAL_VERSION_1_4;
                         serviceProxy.setHidl(mRadioVersion,
@@ -868,7 +869,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     }
                 }
 
-                if (serviceProxy.isEmpty()) {
+                if (serviceProxy.isEmpty() && mRadioVersion.less(RADIO_HAL_VERSION_2_0)) {
                     try {
                         mRadioVersion = RADIO_HAL_VERSION_1_3;
                         serviceProxy.setHidl(mRadioVersion,
@@ -878,7 +879,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     }
                 }
 
-                if (serviceProxy.isEmpty()) {
+                if (serviceProxy.isEmpty() && mRadioVersion.less(RADIO_HAL_VERSION_2_0)) {
                     try {
                         mRadioVersion = RADIO_HAL_VERSION_1_2;
                         serviceProxy.setHidl(mRadioVersion,
@@ -888,7 +889,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     }
                 }
 
-                if (serviceProxy.isEmpty()) {
+                if (serviceProxy.isEmpty() && mRadioVersion.less(RADIO_HAL_VERSION_2_0)) {
                     try {
                         mRadioVersion = RADIO_HAL_VERSION_1_1;
                         serviceProxy.setHidl(mRadioVersion,
@@ -898,7 +899,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     }
                 }
 
-                if (serviceProxy.isEmpty()) {
+                if (serviceProxy.isEmpty() && mRadioVersion.less(RADIO_HAL_VERSION_2_0)) {
                     try {
                         mRadioVersion = RADIO_HAL_VERSION_1_0;
                         serviceProxy.setHidl(mRadioVersion,
@@ -949,6 +950,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
                                 break;
                         }
                     } else {
+                        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+                            throw new AssertionError("serviceProxy shouldn't be HIDL with HAL 2.0");
+                        }
                         serviceProxy.getHidl().linkToDeath(mRadioProxyDeathRecipient,
                                 mServiceCookies.get(service).incrementAndGet());
                         serviceProxy.getHidl().setResponseFunctions(
@@ -1022,6 +1026,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
         mPhoneId = instanceId == null ? 0 : instanceId;
         if (isRadioBugDetectionEnabled()) {
             mRadioBugDetector = new RadioBugDetector(context, mPhoneId);
+        }
+        try {
+            if (isRadioVersion2_0()) mRadioVersion = RADIO_HAL_VERSION_2_0;
+        } catch (SecurityException ex) {
+            /* TODO(b/211920208): instead of the following workaround (guessing if we're in a test
+             * based on proxies being populated), mock ServiceManager to not throw
+             * SecurityException and return correct value based on what HAL we're testing. */
+            if (proxies == null) throw ex;
         }
 
         TelephonyManager tm = (TelephonyManager) context.getSystemService(
@@ -1099,6 +1111,23 @@ public class RIL extends BaseCommands implements CommandsInterface {
         if (RILJ_LOGD) {
             riljLog("Radio HAL version: " + mRadioVersion);
         }
+    }
+
+    private boolean isRadioVersion2_0() {
+        final String[] serviceNames = new String[] {
+            android.hardware.radio.data.IRadioData.DESCRIPTOR,
+            android.hardware.radio.messaging.IRadioMessaging.DESCRIPTOR,
+            android.hardware.radio.modem.IRadioModem.DESCRIPTOR,
+            android.hardware.radio.network.IRadioNetwork.DESCRIPTOR,
+            android.hardware.radio.sim.IRadioSim.DESCRIPTOR,
+            android.hardware.radio.voice.IRadioVoice.DESCRIPTOR,
+        };
+        for (String serviceName : serviceNames) {
+            if (ServiceManager.isDeclared(serviceName + '/' + HIDL_SERVICE_NAME[mPhoneId])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isRadioBugDetectionEnabled() {
