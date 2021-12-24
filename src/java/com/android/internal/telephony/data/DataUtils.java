@@ -19,6 +19,7 @@ package com.android.internal.telephony.data;
 import android.annotation.CurrentTimeMillisLong;
 import android.annotation.ElapsedRealtimeLong;
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.net.NetworkAgent;
 import android.net.NetworkCapabilities;
 import android.os.SystemClock;
@@ -30,11 +31,20 @@ import android.telephony.Annotation.ValidationStatus;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnSetting.ApnType;
+import android.telephony.data.DataProfile;
 import android.telephony.ims.feature.ImsFeature;
+import android.util.ArrayMap;
+
+import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -120,6 +130,22 @@ public class DataUtils {
             default:
                 return "Unknown(" + Integer.toString(netCap) + ")";
         }
+    }
+
+    /**
+     * Convert network capabilities to string.
+     *
+     * This is for debugging and logging purposes only.
+     *
+     * @param netCaps Network capabilities.
+     * @return Network capabilities in string format.
+     */
+    public static @NonNull String networkCapabilitiesToString(
+            @NetCapability @Nullable List<Integer> netCaps) {
+        if (netCaps == null || netCaps.isEmpty()) return "";
+        return "[" + netCaps.stream()
+                .map(DataUtils::networkCapabilityToString)
+                .collect(Collectors.joining("|")) + "]";
     }
 
     /**
@@ -296,5 +322,47 @@ public class DataUtils {
             default:
                 return "Unknown(" + imsFeature + ")";
         }
+    }
+
+    /**
+     * Get the highest priority supported network capability from the specified data profile.
+     *
+     * @param dataConfigManager The data config that contains network priority information.
+     * @param dataProfile The data profile
+     * @return The highest priority network capability. -1 if cannot find one.
+     */
+    public static @NetCapability int getHighestPriorityNetworkCapabilityFromDataProfile(
+            @NonNull DataConfigManager dataConfigManager, @NonNull DataProfile dataProfile) {
+        if (dataProfile.getApnSetting() == null
+                || dataProfile.getApnSetting().getApnTypes().isEmpty()) return -1;
+        return dataProfile.getApnSetting().getApnTypes().stream()
+                .map(DataUtils::apnTypeToNetworkCapability)
+                .sorted(Comparator.comparing(dataConfigManager::getNetworkCapabilityPriority)
+                        .reversed())
+                .collect(Collectors.toList())
+                .get(0);
+    }
+
+    /**
+     * Group the network requests into several list that contains the same network capabilities.
+     *
+     * @param networkRequestList The provided network requests.
+     * @return The network requests after grouping.
+     */
+    public static @NonNull List<NetworkRequestList> getGroupedNetworkRequestList(
+            @NonNull NetworkRequestList networkRequestList) {
+        // Key is the capabilities set.
+        Map<Set<Integer>, NetworkRequestList> requestsMap = new ArrayMap<>();
+        for (TelephonyNetworkRequest networkRequest : networkRequestList) {
+            requestsMap.computeIfAbsent(Arrays.stream(networkRequest.getCapabilities())
+                            .boxed().collect(Collectors.toSet()),
+                    v -> new NetworkRequestList()).add(networkRequest);
+        }
+        // Sort the list, so the network request list contains higher priority will be in the front
+        // of the list.
+        return new ArrayList<>(requestsMap.values()).stream()
+                .sorted((list1, list2) -> Integer.compare(
+                        list2.get(0).getPriority(), list1.get(0).getPriority()))
+                .collect(Collectors.toList());
     }
 }

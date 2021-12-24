@@ -78,6 +78,7 @@ import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.data.AccessNetworksManager;
 import com.android.internal.telephony.data.DataNetworkController;
+import com.android.internal.telephony.data.DataSettingsManager;
 import com.android.internal.telephony.data.LinkBandwidthEstimator;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
@@ -4991,6 +4992,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * @return The data settings manager
+     */
+    public @Nullable DataSettingsManager getDataSettingsManager() {
+        if (mDataNetworkController == null) return null;
+        return mDataNetworkController.getDataSettingsManager();
+    }
+
+    /**
      * Used in unit tests to set whether the AllowedNetworkTypes is loaded from Db.  Should not
      * be used otherwise.
      *
@@ -5183,8 +5192,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             pw.println("++++++++++++++++++++++++++++++++");
         }
 
-        if (mTransportManager != null) {
-            mTransportManager.dump(fd, pw, args);
+        if (isUsingNewDataStack()) {
+            if (mAccessNetworksManager != null) {
+                mAccessNetworksManager.dump(fd, pw, args);
+            }
+        } else {
+            if (mTransportManager != null) {
+                mTransportManager.dump(fd, pw, args);
+            }
         }
 
         if (mCi != null && mCi instanceof RIL) {

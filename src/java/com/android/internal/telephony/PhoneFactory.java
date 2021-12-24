@@ -41,7 +41,7 @@ import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
-import com.android.internal.telephony.dataconnection.TelephonyNetworkFactory;
+import com.android.internal.telephony.data.TelephonyNetworkFactory;
 import com.android.internal.telephony.euicc.EuiccCardController;
 import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.imsphone.ImsPhone;

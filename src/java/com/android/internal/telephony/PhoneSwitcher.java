@@ -30,6 +30,7 @@ import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TE
 
 import static java.util.Arrays.copyOf;
 
+import android.annotation.NonNull;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -64,12 +65,14 @@ import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsRegistrationAttributes;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
+import android.util.ArrayMap;
 import android.util.LocalLog;
 
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.SubscriptionController.WatchedInt;
+import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
 import com.android.internal.telephony.dataconnection.ApnConfigTypeRepository;
 import com.android.internal.telephony.dataconnection.DcRequest;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
@@ -86,6 +89,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
@@ -309,6 +313,10 @@ public class PhoneSwitcher extends Handler {
 
     private List<Set<CommandException.Error>> mCurrentDdsSwitchFailure;
 
+    /** Data settings manager callback. Key is the phone id. */
+    private final @NonNull Map<Integer, DataSettingsManagerCallback> mDataSettingsManagerCallbacks =
+            new ArrayMap<>();
+
     private class DefaultNetworkCallback extends ConnectivityManager.NetworkCallback {
         public int mExpectedSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         public int mSwitchReason = TelephonyEvent.DataSwitch.Reason.DATA_SWITCH_REASON_UNKNOWN;
@@ -477,18 +485,32 @@ public class PhoneSwitcher extends Handler {
         mActivePhoneRegistrants = new RegistrantList();
         for (int i = 0; i < mActiveModemCount; i++) {
             mPhoneStates[i] = new PhoneState();
-            if (PhoneFactory.getPhone(i) != null) {
-                PhoneFactory.getPhone(i).registerForEmergencyCallToggle(
+            Phone phone = PhoneFactory.getPhone(i);
+            if (phone != null) {
+                phone.registerForEmergencyCallToggle(
                         this, EVENT_EMERGENCY_TOGGLE, null);
                 // TODO (b/135566422): combine register for both GsmCdmaPhone and ImsPhone.
-                PhoneFactory.getPhone(i).registerForPreciseCallStateChanged(
+                phone.registerForPreciseCallStateChanged(
                         this, EVENT_PRECISE_CALL_STATE_CHANGED, null);
-                if (PhoneFactory.getPhone(i).getImsPhone() != null) {
-                    PhoneFactory.getPhone(i).getImsPhone().registerForPreciseCallStateChanged(
+                if (phone.getImsPhone() != null) {
+                    phone.getImsPhone().registerForPreciseCallStateChanged(
                             this, EVENT_PRECISE_CALL_STATE_CHANGED, null);
                 }
-                PhoneFactory.getPhone(i).getDataEnabledSettings().registerForDataEnabledChanged(
-                        this, EVENT_DATA_ENABLED_CHANGED, null);
+                if (phone.isUsingNewDataStack()) {
+                    mDataSettingsManagerCallbacks.computeIfAbsent(phone.getPhoneId(),
+                            v -> new DataSettingsManagerCallback(this::post) {
+                                @Override
+                                public void onDataEnabledChanged(boolean enabled,
+                                        @TelephonyManager.DataEnabledChangedReason int reason) {
+                                    evaluateIfDataSwitchIsNeeded("EVENT_DATA_ENABLED_CHANGED");
+                                }});
+                    phone.getDataSettingsManager().registerCallback(
+                            mDataSettingsManagerCallbacks.get(phone.getPhoneId()));
+                } else {
+                    phone.getDataEnabledSettings().registerForDataEnabledChanged(
+                            this, EVENT_DATA_ENABLED_CHANGED, null);
+                }
+
                 registerForImsRadioTechChange(context, i);
             }
             Set<CommandException.Error> ddsFailure = new HashSet<CommandException.Error>();
@@ -837,8 +859,22 @@ public class PhoneSwitcher extends Handler {
                 phone.getImsPhone().registerForPreciseCallStateChanged(
                         this, EVENT_PRECISE_CALL_STATE_CHANGED, null);
             }
-            phone.getDataEnabledSettings().registerForDataEnabledChanged(
-                    this, EVENT_DATA_ENABLED_CHANGED, null);
+
+            if (phone.isUsingNewDataStack()) {
+                mDataSettingsManagerCallbacks.computeIfAbsent(phone.getPhoneId(),
+                        v -> new DataSettingsManagerCallback(this::post) {
+                            @Override
+                            public void onDataEnabledChanged(boolean enabled,
+                                    @TelephonyManager.DataEnabledChangedReason int reason) {
+                                evaluateIfDataSwitchIsNeeded("EVENT_DATA_ENABLED_CHANGED");
+                            }
+                        });
+                phone.getDataSettingsManager().registerCallback(
+                        mDataSettingsManagerCallbacks.get(phone.getPhoneId()));
+            } else {
+                phone.getDataEnabledSettings().registerForDataEnabledChanged(
+                        this, EVENT_DATA_ENABLED_CHANGED, null);
+            }
 
             Set<CommandException.Error> ddsFailure = new HashSet<CommandException.Error>();
             mCurrentDdsSwitchFailure.add(ddsFailure);
@@ -1262,6 +1298,17 @@ public class PhoneSwitcher extends Handler {
     // requests.
     protected void updatePreferredDataPhoneId() {
         Phone voicePhone = findPhoneById(mPhoneIdInVoiceCall);
+        boolean isDataEnabled = false;
+        if (voicePhone != null) {
+            if (voicePhone.isUsingNewDataStack()) {
+                isDataEnabled = voicePhone.getDataSettingsManager()
+                        .isDataEnabled(ApnSetting.TYPE_DEFAULT);
+            } else {
+                isDataEnabled = voicePhone.getDataEnabledSettings()
+                        .isDataEnabled(ApnSetting.TYPE_DEFAULT);
+            }
+        }
+
         if (mEmergencyOverride != null && findPhoneById(mEmergencyOverride.mPhoneId) != null) {
             // Override DDS for emergency even if user data is not enabled, since it is an
             // emergency.
@@ -1270,8 +1317,7 @@ public class PhoneSwitcher extends Handler {
             log("updatePreferredDataPhoneId: preferred data overridden for emergency."
                     + " phoneId = " + mEmergencyOverride.mPhoneId);
             mPreferredDataPhoneId = mEmergencyOverride.mPhoneId;
-        } else if (voicePhone != null && voicePhone.getDataEnabledSettings().isDataEnabled(
-                ApnSetting.TYPE_DEFAULT)) {
+        } else if (isDataEnabled) {
             // If a phone is in call and user enabled its mobile data, we
             // should switch internet connection to it. Because the other modem
             // will lose data connection anyway.

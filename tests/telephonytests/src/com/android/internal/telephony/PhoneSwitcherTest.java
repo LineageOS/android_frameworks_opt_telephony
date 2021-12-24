@@ -96,6 +96,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
     private Phone mPhone2; // mPhone as phone 1 is already defined in TelephonyTest.
     @Mock
     private Phone mImsPhone;
+    // TODO: Add logic for DataSettingsManager
     @Mock
     private DataEnabledSettings mDataEnabledSettings2;
     @Mock
