@@ -1414,7 +1414,7 @@ public class PhoneSwitcher extends Handler {
     }
 
     public synchronized boolean shouldApplyNetworkRequest(
-            NetworkRequest networkRequest, int phoneId) {
+            TelephonyNetworkRequest networkRequest, int phoneId) {
         if (!SubscriptionManager.isValidPhoneId(phoneId)) return false;
 
         // In any case, if phone state is inactive, don't apply the network request.
@@ -1429,7 +1429,7 @@ public class PhoneSwitcher extends Handler {
         return phoneId == phoneIdToHandle;
     }
 
-    boolean isEmergencyNetworkRequest(NetworkRequest networkRequest) {
+    boolean isEmergencyNetworkRequest(TelephonyNetworkRequest networkRequest) {
         return networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_EIMS);
     }
 

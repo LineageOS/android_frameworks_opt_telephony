@@ -1215,7 +1215,7 @@ public class DataNetwork extends StateMachine {
         TelephonyNetworkRequest networkRequest = mAttachedNetworkRequestList.get(0);
 
         mPreferredTransport = mAccessNetworksManager.getPreferredTransportByNetworkCapability(
-                networkRequest.getHighestPriorityNetworkCapability());
+                networkRequest.getApnTypeNetworkCapability());
         if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_INVALID) {
             mTransport = mPreferredTransport;
         }

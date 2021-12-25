@@ -26,7 +26,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.NetworkAgent;
 import android.net.NetworkCapabilities;
-import android.net.NetworkRequest;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -803,7 +802,7 @@ public class DataNetworkController extends Handler {
                 onReevaluateExistingDataNetworks(reason);
                 break;
             case EVENT_REMOVE_NETWORK_REQUEST:
-                onRemoveNetworkRequest((NetworkRequest) msg.obj);
+                onRemoveNetworkRequest((TelephonyNetworkRequest) msg.obj);
                 break;
             case EVENT_VOICE_CALL_ENDED:
                 sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
@@ -869,16 +868,13 @@ public class DataNetworkController extends Handler {
 
     /**
      * Add a network request, which is originated from the apps. Note that add a network request
-     * is not necessarily setting up a net {@link DataNetwork}.
+     * is not necessarily setting up a {@link DataNetwork}.
      *
      * @param networkRequest Network request
      *
      */
-    public void addNetworkRequest(@NonNull NetworkRequest networkRequest) {
-        // TODO: TelephonyNetworkRequest should be created in TelephonyNetworkFactory after
-        //       DcTracker and other legacy data stacks are removed.
-        sendMessage(obtainMessage(EVENT_ADD_NETWORK_REQUEST,
-                new TelephonyNetworkRequest(networkRequest, mPhone)));
+    public void addNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
+        sendMessage(obtainMessage(EVENT_ADD_NETWORK_REQUEST, networkRequest));
     }
 
     /**
@@ -1013,7 +1009,7 @@ public class DataNetworkController extends Handler {
             @NonNull TelephonyNetworkRequest networkRequest, DataEvaluationReason reason) {
         DataEvaluation evaluation = new DataEvaluation(reason);
         int transport = mAccessNetworksManager.getPreferredTransportByNetworkCapability(
-                networkRequest.getHighestPriorityNetworkCapability());
+                networkRequest.getApnTypeNetworkCapability());
 
         // Bypass all checks for emergency network request.
         if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)) {
@@ -1091,7 +1087,7 @@ public class DataNetworkController extends Handler {
 
 
         if (!mDataSettingsManager.isDataEnabled(DataUtils.networkCapabilityToApnType(
-                networkRequest.getHighestPriorityNetworkCapability()))) {
+                networkRequest.getApnTypeNetworkCapability()))) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_DISABLED);
         }
 
@@ -1110,7 +1106,7 @@ public class DataNetworkController extends Handler {
                 evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
             } else if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                 int apnType = DataUtils.networkCapabilityToApnType(
-                        networkRequest.getHighestPriorityNetworkCapability());
+                        networkRequest.getApnTypeNetworkCapability());
                 Set<Integer> meteredApns = mServiceState.getDataRoaming()
                         ? mDataConfigManager.getMeteredApnTypesWhenRoaming()
                         : mDataConfigManager.getMeteredApnTypes();
@@ -1349,24 +1345,11 @@ public class DataNetworkController extends Handler {
      *
      * @param networkRequest Network request
      */
-    // TODO: TelephonyNetworkRequest should be used after DcTracker and other legacy data stacks are
-    //  removed.
-    public void removeNetworkRequest(@NonNull NetworkRequest networkRequest) {
+    public void removeNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
         sendMessage(obtainMessage(EVENT_REMOVE_NETWORK_REQUEST, networkRequest));
     }
 
-    private void onRemoveNetworkRequest(@NonNull NetworkRequest request) {
-        // TODO: TelephonyNetworkRequest should be used after DcTracker and other legacy data stacks
-        //  are removed.
-        // temp solution: find the original telephony network request.
-        TelephonyNetworkRequest networkRequest = mAllNetworkRequestList.stream()
-                .filter(nr -> nr.getNativeNetworkRequest().equals(request))
-                .findFirst()
-                .orElse(null);
-        if (networkRequest == null) {
-            return;
-        }
-
+    private void onRemoveNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
         if (!mAllNetworkRequestList.remove(networkRequest)) {
             loge("onRemoveNetworkRequest: Network request does not exist. " + networkRequest);
             return;
@@ -1624,7 +1607,7 @@ public class DataNetworkController extends Handler {
         }
 
         int transport = mAccessNetworksManager.getPreferredTransportByNetworkCapability(
-                networkRequestList.get(0).getHighestPriorityNetworkCapability());
+                networkRequestList.get(0).getApnTypeNetworkCapability());
         logl("Creating data network on "
                 + AccessNetworkConstants.transportTypeToString(transport) + " with " + dataProfile
                 + ", and attaching " + networkRequestList.size() + " network requests to it.");
@@ -1759,7 +1742,7 @@ public class DataNetworkController extends Handler {
             dataSetupRetryEntry.setState(DataRetryEntry.RETRY_STATE_CANCELLED);
             return;
         }
-        int networkCapability = telephonyNetworkRequest.getHighestPriorityNetworkCapability();
+        int networkCapability = telephonyNetworkRequest.getApnTypeNetworkCapability();
         int preferredTransport = mAccessNetworksManager.getPreferredTransportByNetworkCapability(
                 networkCapability);
         if (preferredTransport != dataSetupRetryEntry.transport) {

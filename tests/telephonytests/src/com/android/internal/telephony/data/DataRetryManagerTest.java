@@ -129,6 +129,7 @@ public class DataRetryManagerTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("DataRetryManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
+        doReturn(true).when(mPhone).isUsingNewDataStack();
         doAnswer(invocation -> {
             ((Runnable) invocation.getArguments()[0]).run();
             return null;
