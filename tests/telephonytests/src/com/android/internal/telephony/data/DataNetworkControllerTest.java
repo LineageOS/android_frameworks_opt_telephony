@@ -61,7 +61,6 @@ import android.util.SparseArray;
 
 import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.PhoneSwitcher;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.DataNetworkController.HandoverRule;
 
@@ -98,7 +97,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
     private final SparseArray<RegistrantList> mDataCallListChangedRegistrants = new SparseArray<>();
     private DataNetworkController mDataNetworkControllerUT;
     private PersistableBundle mCarrierConfig;
-    private DataNetworkControllerCallback mSpiedDataNetworkcallback;
+    @Mock
+    private DataNetworkControllerCallback mMockedDataNetworkcallback;
 
     private DataProfile mDataProfile1 = new DataProfile.Builder()
             .setApnSetting(new ApnSetting.Builder()
@@ -126,20 +126,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
     /** Data call response map. The first key is the transport type, the second key is the cid. */
     private final Map<Integer, Map<Integer, DataCallResponse>> mDataCallResponses = new HashMap<>();
-
-    public static class DataNetworkControllerCallback1 extends DataNetworkControllerCallback {
-        @Override
-        public void onAllDataNetworksDisconnected() {}
-    }
-
-    public static class DataNetworkControllerCallback2 extends DataNetworkControllerCallback {
-        @Override
-        public void onInternetDataNetworkConnected() {}
-        @Override
-        public void onAllDataNetworksDisconnected() {}
-        @Override
-        public void onInternetDataNetworkDisconnected() {}
-    }
 
     private void setSuccessfulSetupDataResponse(DataServiceManager dsm, int cid) {
         doAnswer(invocation -> {
@@ -299,9 +285,11 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
                 .getPreferredTransportByNetworkCapability(anyInt());
 
-        mSpiedDataNetworkcallback = Mockito.spy(new DataNetworkControllerCallback2());
-        mDataNetworkControllerUT.registerDataNetworkControllerCallback(
-                Runnable::run, mSpiedDataNetworkcallback, false);
+        doAnswer(invocation -> {
+            ((Runnable) invocation.getArguments()[0]).run();
+            return null;
+        }).when(mMockedDataNetworkcallback).invokeFromExecutor(any(Runnable.class));
+        mDataNetworkControllerUT.registerDataNetworkControllerCallback(mMockedDataNetworkcallback);
 
         mDataNetworkControllerUT.obtainMessage(9/*EVENT_SIM_STATE_CHANGED*/,
                 10/*SIM_STATE_LOADED*/, 0).sendToTarget();
@@ -313,7 +301,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .sendToTarget();
 
         processAllMessages();
-        Mockito.clearInvocations(mSpiedDataNetworkcallback);
+        //Mockito.clearInvocations(mMockedDataNetworkcallback);
 
         logd("DataNetworkControllerTest -Setup!");
     }
@@ -427,12 +415,12 @@ public class DataNetworkControllerTest extends TelephonyTest {
         assertThat(dataNetworkList.get(0).isConnected()).isTrue();
         assertThat(dataNetworkList.get(0).getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_INTERNET)).isTrue();
-        verify(mSpiedDataNetworkcallback).onInternetDataNetworkConnected();
+        verify(mMockedDataNetworkcallback).onInternetDataNetworkConnected();
     }
 
     private void verifyNoInternetSetup() throws Exception {
         // Make sure internet is not connected.
-        verify(mSpiedDataNetworkcallback, never()).onInternetDataNetworkConnected();
+        verify(mMockedDataNetworkcallback, never()).onInternetDataNetworkConnected();
         List<DataNetwork> dataNetworkList = getDataNetworks();
         assertThat(dataNetworkList).isEmpty();
     }
@@ -443,8 +431,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         List<DataNetwork> dataNetworkList = getDataNetworks();
         assertThat(dataNetworkList).isEmpty();
 
-        verify(mSpiedDataNetworkcallback).onAllDataNetworksDisconnected();
-        verify(mSpiedDataNetworkcallback).onInternetDataNetworkDisconnected();
+        verify(mMockedDataNetworkcallback).onAnyDataNetworkExistingChanged(eq(false));
+        verify(mMockedDataNetworkcallback).onInternetDataNetworkDisconnected();
     }
 
     // To test the basic data setup. Copy this as example for other tests.
@@ -465,35 +453,20 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 InetAddresses.parseNumericAddress(IPV4_ADDRESS),
                 InetAddresses.parseNumericAddress(IPV6_ADDRESS));
 
-        verify(mSpiedDataNetworkcallback).onInternetDataNetworkConnected();
+        verify(mMockedDataNetworkcallback).onInternetDataNetworkConnected();
     }
 
     @Test
     public void testDataNetworkControllerCallback() throws Exception {
-        DataNetworkControllerCallback callback = Mockito.spy(new DataNetworkControllerCallback1());
-        mDataNetworkControllerUT.registerDataNetworkControllerCallback(
-                Runnable::run, callback, false);
+        mDataNetworkControllerUT.registerDataNetworkControllerCallback(mMockedDataNetworkcallback);
         processAllMessages();
-        verify(callback).onAllDataNetworksDisconnected();
-
         testSetupDataNetwork();
-        verify(callback).onInternetDataNetworkConnected();
+        verify(mMockedDataNetworkcallback).onAnyDataNetworkExistingChanged(eq(true));
+        verify(mMockedDataNetworkcallback).onInternetDataNetworkConnected();
 
-        mDataNetworkControllerUT.unregisterDataNetworkControllerCallback(callback);
+        mDataNetworkControllerUT.unregisterDataNetworkControllerCallback(
+                mMockedDataNetworkcallback);
         processAllMessages();
-    }
-
-    @Test
-    public void testDataNetworkControllerCallbackAutoUnregister() throws Exception {
-        DataNetworkControllerCallback callback = Mockito.spy(new DataNetworkControllerCallback1());
-        mDataNetworkControllerUT.registerDataNetworkControllerCallback(
-                Runnable::run, callback, true);
-        processAllMessages();
-        verify(callback).onAllDataNetworksDisconnected();
-
-        testSetupDataNetwork();
-        // Because the callback was auto-unregistered, there shouldn't be any further invocation.
-        verify(callback, never()).onInternetDataNetworkConnected();
     }
 
     @Test
@@ -508,7 +481,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
     @Test
     public void testSimRemovalAndThenInserted() throws Exception {
         testSimRemovalDataTearDown();
-        Mockito.clearInvocations(mSpiedDataNetworkcallback);
+        Mockito.clearInvocations(mMockedDataNetworkcallback);
 
         // Insert the SIM again.
         mDataNetworkControllerUT.obtainMessage(9/*EVENT_SIM_STATE_CHANGED*/,
@@ -555,7 +528,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
     @Test
     public void testPsRestrictedAndLifted() throws Exception {
         testSetupDataNetwork();
-        Mockito.clearInvocations(mSpiedDataNetworkcallback);
+        Mockito.clearInvocations(mMockedDataNetworkcallback);
 
         // PS restricted.
         mDataNetworkControllerUT.obtainMessage(6/*EVENT_PS_RESTRICT_ENABLED*/).sendToTarget();
@@ -563,7 +536,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         List<DataNetwork> dataNetworkList = getDataNetworks();
         assertThat(dataNetworkList).isEmpty();
-        verify(mSpiedDataNetworkcallback).onInternetDataNetworkDisconnected();
+        verify(mMockedDataNetworkcallback).onInternetDataNetworkDisconnected();
 
         // PS unrestricted.
         mDataNetworkControllerUT.obtainMessage(7/*EVENT_PS_RESTRICT_DISABLED*/).sendToTarget();
@@ -591,7 +564,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         verifyAllDataDisconnected();
 
-        Mockito.clearInvocations(mSpiedDataNetworkcallback);
+        Mockito.clearInvocations(mMockedDataNetworkcallback);
         // Now RAT changes from GSM to UMTS
         doReturn(null).when(mDataProfileManager).getDataProfileForNetworkRequest(
                 any(TelephonyNetworkRequest.class), eq(TelephonyManager.NETWORK_TYPE_UMTS));
@@ -661,7 +634,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Data should not be allowed when roaming data is disabled.
         verifyNoInternetSetup();
-        Mockito.clearInvocations(mSpiedDataNetworkcallback);
+        Mockito.clearInvocations(mMockedDataNetworkcallback);
 
         // Roaming data enabled
         mDataNetworkControllerUT.getDataSettingsManager().setDataRoamingEnabled(true);
@@ -669,7 +642,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Verify data is restored.
         verifyInternetConnected();
-        Mockito.clearInvocations(mSpiedDataNetworkcallback);
+        Mockito.clearInvocations(mMockedDataNetworkcallback);
 
         // Roaming data disabled
         mDataNetworkControllerUT.getDataSettingsManager().setDataRoamingEnabled(false);
@@ -690,7 +663,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Data should not be allowed when user data is disabled.
         verifyNoInternetSetup();
-        Mockito.clearInvocations(mSpiedDataNetworkcallback);
+        Mockito.clearInvocations(mMockedDataNetworkcallback);
 
         // User data enabled
         mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
@@ -699,7 +672,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Verify data is restored.
         verifyInternetConnected();
-        Mockito.clearInvocations(mSpiedDataNetworkcallback);
+        Mockito.clearInvocations(mMockedDataNetworkcallback);
 
         // User data disabled
         mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(

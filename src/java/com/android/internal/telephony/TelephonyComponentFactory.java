@@ -36,6 +36,7 @@ import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.data.AccessNetworksManager;
 import com.android.internal.telephony.data.DataNetworkController;
 import com.android.internal.telephony.data.LinkBandwidthEstimator;
+import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.TransportManager;
