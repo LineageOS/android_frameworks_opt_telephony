@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony;
+package com.android.internal.telephony.data;
 
 import static android.telephony.CarrierConfigManager.KEY_DATA_SWITCH_VALIDATION_TIMEOUT_LONG;
 import static android.telephony.TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED;
@@ -27,11 +27,11 @@ import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TE
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_LTE;
 
-import static com.android.internal.telephony.PhoneSwitcher.ECBM_DEFAULT_DATA_SWITCH_BASE_TIME_MS;
-import static com.android.internal.telephony.PhoneSwitcher.EVENT_DATA_ENABLED_CHANGED;
-import static com.android.internal.telephony.PhoneSwitcher.EVENT_IMS_RADIO_TECH_CHANGED;
-import static com.android.internal.telephony.PhoneSwitcher.EVENT_MULTI_SIM_CONFIG_CHANGED;
-import static com.android.internal.telephony.PhoneSwitcher.EVENT_PRECISE_CALL_STATE_CHANGED;
+import static com.android.internal.telephony.data.PhoneSwitcher.ECBM_DEFAULT_DATA_SWITCH_BASE_TIME_MS;
+import static com.android.internal.telephony.data.PhoneSwitcher.EVENT_DATA_ENABLED_CHANGED;
+import static com.android.internal.telephony.data.PhoneSwitcher.EVENT_IMS_RADIO_TECH_CHANGED;
+import static com.android.internal.telephony.data.PhoneSwitcher.EVENT_MULTI_SIM_CONFIG_CHANGED;
+import static com.android.internal.telephony.data.PhoneSwitcher.EVENT_PRECISE_CALL_STATE_CHANGED;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -69,6 +69,15 @@ import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
+import com.android.internal.telephony.Call;
+import com.android.internal.telephony.CommandException;
+import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.GsmCdmaCall;
+import com.android.internal.telephony.ISetOpportunisticDataCallback;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.TelephonyIntents;
+import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 
 import org.junit.After;
