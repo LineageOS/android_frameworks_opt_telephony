@@ -213,6 +213,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         logd("DataNetworkControllerTest +Setup!");
         super.setUp(getClass().getSimpleName());
 
+        doReturn(true).when(mPhone).isUsingNewDataStack();
         mMockedDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 mMockedWwanDataServiceManager);
         mMockedDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
@@ -311,6 +312,14 @@ public class DataNetworkControllerTest extends TelephonyTest {
         super.tearDown();
     }
 
+    private @NonNull TelephonyNetworkRequest createNetworkRequest(Integer... capabilities) {
+        NetworkRequest.Builder builder = new NetworkRequest.Builder();
+        for (int networkCapability : capabilities) {
+            builder.addCapability(networkCapability);
+        }
+        return new TelephonyNetworkRequest(builder.build(), mPhone);
+    }
+
     // The purpose of this test is to make sure the network request insertion/removal works as
     // expected, and make sure it is always sorted.
     @Test
@@ -323,9 +332,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 NetworkCapabilities.NET_CAPABILITY_EIMS,
                 NetworkCapabilities.NET_CAPABILITY_MMS};
         for (int netCap : netCaps) {
-            networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
-                    .addCapability(netCap)
-                    .build(), mPhone));
+            networkRequestList.add(createNetworkRequest(netCap));
         }
 
         // Check if emergency has the highest priority, then mms, then internet.
@@ -336,11 +343,9 @@ public class DataNetworkControllerTest extends TelephonyTest {
         assertThat(networkRequestList.get(2).getCapabilities()[0])
                 .isEqualTo(NetworkCapabilities.NET_CAPABILITY_INTERNET);
 
-
         // Add IMS
-        assertThat(networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
-                .build(), mPhone))).isTrue();
+        assertThat(networkRequestList.add(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS))).isTrue();
 
         assertThat(networkRequestList.get(0).getCapabilities()[0])
                 .isEqualTo(NetworkCapabilities.NET_CAPABILITY_EIMS);
@@ -352,16 +357,13 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .isEqualTo(NetworkCapabilities.NET_CAPABILITY_INTERNET);
 
         // Add IMS again
-        assertThat(networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
-                .build(), mPhone))).isFalse();
+        assertThat(networkRequestList.add(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS))).isFalse();
         assertThat(networkRequestList.size()).isEqualTo(4);
 
         // Remove MMS
-        assertThat(networkRequestList.remove(new TelephonyNetworkRequest(
-                new NetworkRequest.Builder()
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_MMS)
-                        .build(), mPhone))).isTrue();
+        assertThat(networkRequestList.remove(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_MMS))).isTrue();
         assertThat(networkRequestList.get(0).getCapabilities()[0])
                 .isEqualTo(NetworkCapabilities.NET_CAPABILITY_EIMS);
         assertThat(networkRequestList.get(1).getCapabilities()[0])
@@ -370,36 +372,28 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .isEqualTo(NetworkCapabilities.NET_CAPABILITY_INTERNET);
 
         // Remove EIMS
-        assertThat(networkRequestList.remove(new TelephonyNetworkRequest(
-                new NetworkRequest.Builder()
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)
-                        .build(), mPhone))).isTrue();
+        assertThat(networkRequestList.remove(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_EIMS))).isTrue();
         assertThat(networkRequestList.get(0).getCapabilities()[0])
                 .isEqualTo(NetworkCapabilities.NET_CAPABILITY_IMS);
         assertThat(networkRequestList.get(1).getCapabilities()[0])
                 .isEqualTo(NetworkCapabilities.NET_CAPABILITY_INTERNET);
 
         // Remove Internet
-        assertThat(networkRequestList.remove(new TelephonyNetworkRequest(
-                new NetworkRequest.Builder()
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        .build(), mPhone))).isTrue();
+        assertThat(networkRequestList.remove(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET))).isTrue();
         assertThat(networkRequestList.get(0).getCapabilities()[0])
                 .isEqualTo(NetworkCapabilities.NET_CAPABILITY_IMS);
 
         // Remove XCAP (which does not exist)
-        assertThat(networkRequestList.remove(new TelephonyNetworkRequest(
-                new NetworkRequest.Builder()
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_XCAP)
-                        .build(), mPhone))).isFalse();
+        assertThat(networkRequestList.remove(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_XCAP))).isFalse();
         assertThat(networkRequestList.get(0).getCapabilities()[0])
                 .isEqualTo(NetworkCapabilities.NET_CAPABILITY_IMS);
 
         // Remove IMS
-        assertThat(networkRequestList.remove(new TelephonyNetworkRequest(
-                new NetworkRequest.Builder()
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
-                        .build(), mPhone))).isTrue();
+        assertThat(networkRequestList.remove(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS))).isTrue();
         assertThat(networkRequestList).isEmpty();
     }
 
@@ -438,9 +432,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
     // To test the basic data setup. Copy this as example for other tests.
     @Test
     public void testSetupDataNetwork() throws Exception {
-        mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build());
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
         processAllMessages();
         List<DataNetwork> dataNetworkList = getDataNetworks();
         assertThat(dataNetworkList).hasSize(1);
@@ -496,9 +489,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING);
 
-        mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build());
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
         processAllMessages();
 
         verifyNoInternetSetup();
@@ -585,9 +577,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(false).when(mSST).isConcurrentVoiceAndDataAllowed();
         doReturn(PhoneConstants.State.OFFHOOK).when(mCT).getState();
 
-        mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build());
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
         processAllMessages();
 
         // Data should not be allowed when voice/data concurrent is not supported.
@@ -606,9 +597,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
     public void testEmergencyCallChanged() throws Exception {
         doReturn(PhoneConstants.PHONE_TYPE_CDMA).when(mPhone).getPhoneType();
         doReturn(true).when(mPhone).isInEcm();
-        mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build());
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
         processAllMessages();
 
         // Data should not be allowed when the device is in an emergency call.
@@ -627,9 +617,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
     public void testRoamingDataChanged() throws Exception {
         doReturn(true).when(mServiceState).getDataRoaming();
         doReturn(false).when(mDataConfigManager).isDataRoamingEnabledByDefault();
-        mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build());
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
         processAllMessages();
 
         // Data should not be allowed when roaming data is disabled.
@@ -656,9 +645,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
     public void testDataEnabledChanged() throws Exception {
         mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
                 TelephonyManager.DATA_ENABLED_REASON_USER, false);
-        mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build());
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
         processAllMessages();
 
         // Data should not be allowed when user data is disabled.
@@ -689,10 +677,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(false).when(mDataConfigManager).isDataRoamingEnabledByDefault();
         mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
                 TelephonyManager.DATA_ENABLED_REASON_USER, false);
-        mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_MMS)
-                .build());
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_MMS));
         processAllMessages();
 
         // Data should not be allowed when roaming + user data are disabled (soft failure reasons)
@@ -715,9 +701,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(false).when(mDataConfigManager).isDataRoamingEnabledByDefault();
         mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
                 TelephonyManager.DATA_ENABLED_REASON_USER, false);
-        mDataNetworkControllerUT.addNetworkRequest(new NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build());
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
         processAllMessages();
 
         // Data should not be allowed when roaming + user data are disabled (soft failure reasons)

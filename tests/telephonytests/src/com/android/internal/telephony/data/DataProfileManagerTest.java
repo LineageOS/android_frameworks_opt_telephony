@@ -350,7 +350,7 @@ public class DataProfileManagerTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("DataProfileManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
-
+        doReturn(true).when(mPhone).isUsingNewDataStack();
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
                 Telephony.Carriers.CONTENT_URI.getAuthority(), mApnSettingContentProvider);
 

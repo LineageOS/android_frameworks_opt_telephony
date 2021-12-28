@@ -196,6 +196,7 @@ public class DataNetworkTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        doReturn(true).when(mPhone).isUsingNewDataStack();
         doAnswer(invocation -> {
             ((Runnable) invocation.getArguments()[0]).run();
             return null;
