@@ -966,8 +966,7 @@ public class RILUtils {
         dpi.persistent = dp.isPersistent();
         dpi.preferred = dp.isPreferred();
         dpi.alwaysOn = dp.getApnSetting().isAlwaysOn();
-        dpi.trafficDescriptor = RILUtils.convertToHalTrafficDescriptorAidl(
-                dp.getTrafficDescriptor());
+        dpi.trafficDescriptor = convertToHalTrafficDescriptorAidl(dp.getTrafficDescriptor());
 
         // profile id is only meaningful when it's persistent on the modem.
         dpi.profileId = (dpi.persistent) ? dp.getProfileId()
@@ -1179,7 +1178,7 @@ public class RILUtils {
     public static android.hardware.radio.data.LinkAddress[] convertToHalLinkProperties(
             LinkProperties linkProperties) {
         if (linkProperties == null) {
-            return null;
+            return new android.hardware.radio.data.LinkAddress[0];
         }
         android.hardware.radio.data.LinkAddress[] addresses =
                 new android.hardware.radio.data.LinkAddress[
@@ -1358,6 +1357,8 @@ public class RILUtils {
             for (int i = 0; i < ras.getBands().length; i++) {
                 bands[i] = ras.getBands()[i];
             }
+        } else {
+            bands = new int[0];
         }
         switch (ras.getRadioAccessNetwork()) {
             case AccessNetworkConstants.AccessNetworkType.GERAN:
@@ -2520,8 +2521,8 @@ public class RILUtils {
     }
 
     /**
-     * Convert a CellInfo defined in radio/1.0, 1.2, 1.4, 1.5, 1.6/types.hal to CellInfo
-     * @param cellInfo CellInfo defined in radio/1.0, 1.2, 1.4, 1.5, 1.6/types.hal
+     * Convert a CellInfo defined in CellInfo.aidl to CellInfo
+     * @param cellInfo CellInfo defined in CellInfo.aidl
      * @param nanotime time the CellInfo was created
      * @return The converted CellInfo
      */
