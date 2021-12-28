@@ -404,6 +404,7 @@ public class ApnSettingTest extends TelephonyTest {
     @SmallTest
     public void testEquals() throws Exception {
         final int dummyInt = 1;
+        final int dummyLong = 1;
         final String dummyString = "dummy";
         final String[] dummyStringArr = new String[] {"dummy"};
         final InetAddress dummyProxyAddress = InetAddress.getByAddress(new byte[]{0, 0, 0, 0});
@@ -421,6 +422,9 @@ public class ApnSettingTest extends TelephonyTest {
             if (int.class.equals(f.getType())) {
                 testApn = ApnSetting.makeApnSetting(baseApn);
                 f.setInt(testApn, dummyInt + f.getInt(testApn));
+            } else if (long.class.equals(f.getType())) {
+                testApn = ApnSetting.makeApnSetting(baseApn);
+                f.setLong(testApn, dummyLong + f.getLong(testApn));
             } else if (boolean.class.equals(f.getType())) {
                 testApn = ApnSetting.makeApnSetting(baseApn);
                 f.setBoolean(testApn, !f.getBoolean(testApn));
