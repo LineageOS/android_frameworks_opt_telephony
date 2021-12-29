@@ -82,6 +82,7 @@ import com.android.internal.telephony.RadioConfig;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.SubscriptionController.WatchedInt;
 import com.android.internal.telephony.TelephonyIntents;
+import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
 import com.android.internal.telephony.dataconnection.ApnConfigTypeRepository;
 import com.android.internal.telephony.dataconnection.DcRequest;
@@ -183,6 +184,7 @@ public class PhoneSwitcher extends Handler {
     }
 
     protected final List<DcRequest> mPrioritizedDcRequests = new ArrayList<>();
+    private final @NonNull NetworkRequestList mNetworkRequestList = new NetworkRequestList();
     protected final RegistrantList mActivePhoneRegistrants;
     protected final SubscriptionController mSubscriptionController;
     protected final Context mContext;
@@ -930,6 +932,15 @@ public class PhoneSwitcher extends Handler {
     }
 
     private void onRequestNetwork(NetworkRequest networkRequest) {
+        if (PhoneFactory.getDefaultPhone().isUsingNewDataStack()) {
+            TelephonyNetworkRequest telephonyNetworkRequest = new TelephonyNetworkRequest(
+                    networkRequest, PhoneFactory.getDefaultPhone());
+            if (!mNetworkRequestList.contains(telephonyNetworkRequest)) {
+                mNetworkRequestList.add(telephonyNetworkRequest);
+                onEvaluate(REQUESTS_CHANGED, "netRequest");
+            }
+            return;
+        }
         final DcRequest dcRequest =
                 DcRequest.create(networkRequest, createApnRepository(networkRequest));
         if (dcRequest != null) {
@@ -944,6 +955,15 @@ public class PhoneSwitcher extends Handler {
     }
 
     private void onReleaseNetwork(NetworkRequest networkRequest) {
+        if (PhoneFactory.getDefaultPhone().isUsingNewDataStack()) {
+            TelephonyNetworkRequest telephonyNetworkRequest = new TelephonyNetworkRequest(
+                    networkRequest, PhoneFactory.getDefaultPhone());
+            if (mNetworkRequestList.remove(telephonyNetworkRequest)) {
+                onEvaluate(REQUESTS_CHANGED, "netReleased");
+                collectReleaseNetworkMetrics(networkRequest);
+            }
+            return;
+        }
         final DcRequest dcRequest =
                 DcRequest.create(networkRequest, createApnRepository(networkRequest));
         if (dcRequest != null) {
@@ -1118,12 +1138,22 @@ public class PhoneSwitcher extends Handler {
                     }
 
                     if (newActivePhones.size() < mMaxDataAttachModemCount) {
-                        for (DcRequest dcRequest : mPrioritizedDcRequests) {
-                            int phoneIdForRequest = phoneIdForRequest(dcRequest.networkRequest);
-                            if (phoneIdForRequest == INVALID_PHONE_INDEX) continue;
-                            if (newActivePhones.contains(phoneIdForRequest)) continue;
-                            newActivePhones.add(phoneIdForRequest);
-                            if (newActivePhones.size() >= mMaxDataAttachModemCount) break;
+                        if (PhoneFactory.getDefaultPhone().isUsingNewDataStack()) {
+                            for (TelephonyNetworkRequest networkRequest : mNetworkRequestList) {
+                                int phoneIdForRequest = phoneIdForRequest(networkRequest);
+                                if (phoneIdForRequest == INVALID_PHONE_INDEX) continue;
+                                if (newActivePhones.contains(phoneIdForRequest)) continue;
+                                newActivePhones.add(phoneIdForRequest);
+                                if (newActivePhones.size() >= mMaxDataAttachModemCount) break;
+                            }
+                        } else {
+                            for (DcRequest dcRequest : mPrioritizedDcRequests) {
+                                int phoneIdForRequest = phoneIdForRequest(dcRequest.networkRequest);
+                                if (phoneIdForRequest == INVALID_PHONE_INDEX) continue;
+                                if (newActivePhones.contains(phoneIdForRequest)) continue;
+                                newActivePhones.add(phoneIdForRequest);
+                                if (newActivePhones.size() >= mMaxDataAttachModemCount) break;
+                            }
                         }
                     }
 
@@ -1252,6 +1282,12 @@ public class PhoneSwitcher extends Handler {
         }
     }
 
+    // Merge phoneIdForRequest(NetworkRequest netRequest) after Phone.isUsingNewDataStack() is
+    // cleaned up.
+    private int phoneIdForRequest(TelephonyNetworkRequest networkRequest) {
+        return phoneIdForRequest(networkRequest.getNativeNetworkRequest());
+    }
+
     private int phoneIdForRequest(NetworkRequest netRequest) {
         int subId = getSubIdFromNetworkSpecifier(netRequest.getNetworkSpecifier());
 
@@ -1378,7 +1414,7 @@ public class PhoneSwitcher extends Handler {
     }
 
     public synchronized boolean shouldApplyNetworkRequest(
-            NetworkRequest networkRequest, int phoneId) {
+            TelephonyNetworkRequest networkRequest, int phoneId) {
         if (!SubscriptionManager.isValidPhoneId(phoneId)) return false;
 
         // In any case, if phone state is inactive, don't apply the network request.
@@ -1393,7 +1429,7 @@ public class PhoneSwitcher extends Handler {
         return phoneId == phoneIdToHandle;
     }
 
-    boolean isEmergencyNetworkRequest(NetworkRequest networkRequest) {
+    boolean isEmergencyNetworkRequest(TelephonyNetworkRequest networkRequest) {
         return networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_EIMS);
     }
 
@@ -1722,14 +1758,24 @@ public class PhoneSwitcher extends Handler {
         if (ddsPhoneId != INVALID_PHONE_INDEX && ddsPhoneId == phoneId) {
             return true;
         } else {
-            if (mPrioritizedDcRequests.size() == 0) {
-                return false;
-            }
-            for (DcRequest dcRequest : mPrioritizedDcRequests) {
-                if (dcRequest != null) {
-                    phoneIdForRequest = phoneIdForRequest(dcRequest.networkRequest);
+            if (PhoneFactory.getDefaultPhone().isUsingNewDataStack()) {
+                if (mNetworkRequestList.isEmpty()) return false;
+                for (TelephonyNetworkRequest networkRequest : mNetworkRequestList) {
+                    phoneIdForRequest = phoneIdForRequest(networkRequest);
                     if (phoneIdForRequest == phoneId) {
                         return true;
+                    }
+                }
+            } else {
+                if (mPrioritizedDcRequests.size() == 0) {
+                    return false;
+                }
+                for (DcRequest dcRequest : mPrioritizedDcRequests) {
+                    if (dcRequest != null) {
+                        phoneIdForRequest = phoneIdForRequest(dcRequest.networkRequest);
+                        if (phoneIdForRequest == phoneId) {
+                            return true;
+                        }
                     }
                 }
             }
