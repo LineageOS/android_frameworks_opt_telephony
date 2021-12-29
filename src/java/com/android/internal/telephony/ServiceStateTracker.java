@@ -2754,8 +2754,10 @@ public class ServiceStateTracker extends Handler {
         String wfcFlightSpnFormat = null;
         int combinedRegState = getCombinedRegState(mSS);
         if (mPhone.getImsPhone() != null && mPhone.getImsPhone().isWifiCallingEnabled()
-                && (combinedRegState == ServiceState.STATE_IN_SERVICE)) {
-            // In Wi-Fi Calling mode show SPN or PLMN + WiFi Calling
+                && (combinedRegState == ServiceState.STATE_IN_SERVICE
+                && mSS.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN)) {
+            // In Wi-Fi Calling mode (connected to WiFi and WFC enabled),
+            // show SPN or PLMN + WiFi Calling
             //
             // 1) Show SPN + Wi-Fi Calling If SIM has SPN and SPN display condition
             //    is satisfied or SPN override is enabled for this carrier
