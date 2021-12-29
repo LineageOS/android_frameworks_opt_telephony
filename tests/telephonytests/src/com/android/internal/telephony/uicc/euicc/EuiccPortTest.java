@@ -47,6 +47,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
+import com.android.internal.telephony.uicc.IccSlotPortMapping;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.asn1.Asn1Node;
 import com.android.internal.telephony.uicc.asn1.InvalidAsn1DataException;
@@ -113,6 +114,7 @@ public class EuiccPortTest extends TelephonyTest {
                 mMockIccCardStatus.mImsSubscriptionAppIndex =
                         mMockIccCardStatus.mGsmUmtsSubscriptionAppIndex = -1;
         mMockIccCardStatus.mCardState = IccCardStatus.CardState.CARDSTATE_PRESENT;
+        mMockIccCardStatus.mSlotPortMapping = new IccSlotPortMapping();
         mEuiccPort =
             new EuiccPort(mContext, mMockCi, mMockIccCardStatus,
                 0 /* phoneId */, new Object(), mEuiccCard) {

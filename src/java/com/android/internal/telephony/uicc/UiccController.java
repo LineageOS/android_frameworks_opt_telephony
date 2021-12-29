@@ -767,7 +767,7 @@ public class UiccController extends Handler {
 
         logWithLocalLog("onGetIccCardStatusDone: phoneId " + index + " IccCardStatus: " + status);
 
-        int slotId = status.physicalSlotIndex;
+        int slotId = status.mSlotPortMapping.mPhysicalSlotIndex;
         if (VDBG) log("onGetIccCardStatusDone: phoneId " + index + " physicalSlotIndex " + slotId);
         if (slotId == INVALID_SLOT_ID) {
             slotId = index;

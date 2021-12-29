@@ -54,7 +54,9 @@ public class UiccPortTest extends TelephonyTest {
                 mIccCardStatus.mImsSubscriptionAppIndex =
                         mIccCardStatus.mGsmUmtsSubscriptionAppIndex = -1;
         mIccCardStatus.mCardState = IccCardStatus.CardState.CARDSTATE_PRESENT;
-
+        mIccCardStatus.mSlotPortMapping = new IccSlotPortMapping();
+        mIccCardStatus.mSlotPortMapping.mPhysicalSlotIndex = 0;
+        mIccCardStatus.mSlotPortMapping.mPortIndex = 0;
         mIccIoResult = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes("FF40"));
         mSimulatedCommands.setIccIoResultForApduLogicalChannel(mIccIoResult);
         mUiccPort = new UiccPort(mContext, mSimulatedCommands, mIccCardStatus,

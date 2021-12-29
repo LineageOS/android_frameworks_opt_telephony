@@ -32,6 +32,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
+import com.android.internal.telephony.uicc.IccSlotPortMapping;
 import com.android.internal.telephony.uicc.euicc.apdu.LogicalChannelMocker;
 import com.android.internal.telephony.uicc.euicc.async.AsyncResultCallback;
 
@@ -88,6 +89,7 @@ public class EuiccCardTest extends TelephonyTest {
                 mMockIccCardStatus.mImsSubscriptionAppIndex =
                         mMockIccCardStatus.mGsmUmtsSubscriptionAppIndex = -1;
         mMockIccCardStatus.mCardState = IccCardStatus.CardState.CARDSTATE_PRESENT;
+        mMockIccCardStatus.mSlotPortMapping = new IccSlotPortMapping();
 
         mEuiccCard =
             new EuiccCard(mContext, mMockCi, mMockIccCardStatus,
