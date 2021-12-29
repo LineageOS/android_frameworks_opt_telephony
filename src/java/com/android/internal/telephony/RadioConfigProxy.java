@@ -180,7 +180,7 @@ public class RadioConfigProxy {
      * @return Set string capabilities
      */
     public Set<String> getFullCapabilitySet() {
-        return RILUtils.getCaps(mRadioConfigHalVersion, false);
+        return RILUtils.getCaps(mRadioHalVersion, false);
     }
 
     /**
