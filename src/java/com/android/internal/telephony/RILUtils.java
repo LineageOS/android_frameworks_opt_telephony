@@ -3632,7 +3632,8 @@ public class RILUtils {
                 .setPduSessionId(result.pduSessionId)
                 .setDefaultQos(convertHalQos(result.defaultQos))
                 .setQosBearerSessions(qosSessions)
-                .setSliceInfo(convertHalSliceInfo(result.sliceInfo))
+                .setSliceInfo(result.sliceInfo == null ? null
+                        : convertHalSliceInfo(result.sliceInfo))
                 .setTrafficDescriptors(trafficDescriptors)
                 .build();
     }
