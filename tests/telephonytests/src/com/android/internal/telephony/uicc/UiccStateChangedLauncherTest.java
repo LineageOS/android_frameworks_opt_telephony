@@ -63,6 +63,7 @@ public class UiccStateChangedLauncherTest extends TelephonyTest {
         status.mCdmaSubscriptionAppIndex = -1;
         status.mGsmUmtsSubscriptionAppIndex = -1;
         status.mImsSubscriptionAppIndex = -1;
+        status.mSlotPortMapping = new IccSlotPortMapping();
         return status;
     }
 
