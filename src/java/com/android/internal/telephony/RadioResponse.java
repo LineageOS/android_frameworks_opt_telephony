@@ -61,6 +61,7 @@ import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.AdnCapacity;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
+import com.android.internal.telephony.uicc.IccSlotPortMapping;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -1891,7 +1892,9 @@ public class RadioResponse extends IRadioResponse.Stub {
 
         if (rr != null) {
             IccCardStatus iccCardStatus = RILUtils.convertHalCardStatus(cardStatus.base);
-            iccCardStatus.physicalSlotIndex = cardStatus.physicalSlotId;
+            IccSlotPortMapping slotPortMapping = new IccSlotPortMapping();
+            slotPortMapping.mPhysicalSlotIndex = cardStatus.physicalSlotId;
+            iccCardStatus.mSlotPortMapping = slotPortMapping;
             iccCardStatus.atr = cardStatus.atr;
             iccCardStatus.iccid = cardStatus.iccid;
             mRil.riljLog("responseIccCardStatus: from HIDL: " + iccCardStatus);
@@ -1908,7 +1911,9 @@ public class RadioResponse extends IRadioResponse.Stub {
 
         if (rr != null) {
             IccCardStatus iccCardStatus = RILUtils.convertHalCardStatus(cardStatus.base.base);
-            iccCardStatus.physicalSlotIndex = cardStatus.base.physicalSlotId;
+            IccSlotPortMapping slotPortMapping = new IccSlotPortMapping();
+            slotPortMapping.mPhysicalSlotIndex = cardStatus.base.physicalSlotId;
+            iccCardStatus.mSlotPortMapping = slotPortMapping;
             iccCardStatus.atr = cardStatus.base.atr;
             iccCardStatus.iccid = cardStatus.base.iccid;
             iccCardStatus.eid = cardStatus.eid;
