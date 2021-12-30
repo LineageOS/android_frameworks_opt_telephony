@@ -35,6 +35,7 @@ import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
 import android.telephony.data.TrafficDescriptor;
+import android.util.ArraySet;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
@@ -46,6 +47,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
@@ -91,8 +93,9 @@ public class DataProfileManager extends Handler {
     /** Preferred data profile set id. */
     private int mPreferredDataProfileSetId = Telephony.Carriers.NO_APN_SET_ID;
 
-    /** Data profile manager callback. */
-    private final @NonNull DataProfileManagerCallback mDataProfileManagerCallback;
+    /** Data profile manager callbacks. */
+    private final @NonNull Set<DataProfileManagerCallback> mDataProfileManagerCallbacks =
+            new ArraySet<>();
 
     /**
      * Data profile manager callback. This should be only used by {@link DataNetworkController}.
@@ -134,7 +137,7 @@ public class DataProfileManager extends Handler {
         mWwanDataServiceManager = dataServiceManager;
         mDataConfigManager = dataNetworkController.getDataConfigManager();
         mAccessNetworksManager = phone.getAccessNetworksManager();
-        mDataProfileManagerCallback = callback;
+        mDataProfileManagerCallbacks.add(callback);
         registerAllEvents();
     }
 
@@ -247,8 +250,8 @@ public class DataProfileManager extends Handler {
             log("Data profiles changed.");
             mAllDataProfiles.clear();
             mAllDataProfiles.addAll(profiles);
-            mDataProfileManagerCallback.invokeFromExecutor(
-                    mDataProfileManagerCallback::onDataProfilesChanged);
+            mDataProfileManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                    callback::onDataProfilesChanged));
         }
 
         mPreferredDataProfileSetId = getPreferredDataProfileSetId();
@@ -429,9 +432,6 @@ public class DataProfileManager extends Handler {
             return null;
         }
 
-        // TODO: Need a lot more works here.
-        //   1. Should consider data throttling.
-
         return dataProfiles.get(0);
     }
 
@@ -448,6 +448,24 @@ public class DataProfileManager extends Handler {
                 .sorted((dp1, dp2) ->
                         Long.compare(dp1.getLastSetupTimestamp(), dp2.getLastSetupTimestamp()))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Register the callback for receiving information from {@link DataProfileManager}.
+     *
+     * @param callback The callback.
+     */
+    public void registerCallback(@NonNull DataProfileManagerCallback callback) {
+        mDataProfileManagerCallbacks.add(callback);
+    }
+
+    /**
+     * Unregister the previously registered {@link DataProfileManagerCallback}.
+     *
+     * @param callback The callback to unregister.
+     */
+    public void unregisterCallback(@NonNull DataProfileManagerCallback callback) {
+        mDataProfileManagerCallbacks.remove(callback);
     }
 
     /**

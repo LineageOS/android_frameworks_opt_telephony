@@ -46,7 +46,6 @@ import org.mockito.Mock;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class DataStallRecoveryManagerTest extends TelephonyTest {
-    @Mock private DataServiceManager mDataServiceManager;
     @Mock private DataStallRecoveryManagerCallback mDataStallRecoveryManagerCallback;
     private DataStallRecoveryManager mDataStallRecoveryManager;
 
@@ -78,7 +77,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
                 new DataStallRecoveryManager(
                         mPhone,
                         mDataNetworkController,
-                        mDataServiceManager,
+                        mMockedWwanDataServiceManager,
                         mTestableLooper.getLooper(),
                         mDataStallRecoveryManagerCallback);
         logd("DataStallRecoveryManagerTest -Setup!");
