@@ -16,17 +16,19 @@
 
 package com.android.internal.telephony.data;
 
-import static com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
+import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.net.NetworkAgent;
+import android.telephony.CarrierConfigManager;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -53,6 +55,15 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
         logd("DataStallRecoveryManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
         doReturn(true).when(mPhone).isUsingNewDataStack();
+        mCarrierConfigManager = mPhone.getContext().getSystemService(CarrierConfigManager.class);
+        long[] dataStallRecoveryTimersArray = new long[] {1, 1, 1};
+        boolean[] dataStallRecoveryStepsArray = new boolean[] {false, false, false, false};
+        doReturn(dataStallRecoveryTimersArray)
+                .when(mDataConfigManager)
+                .getDataStallRecoveryDelayMillis();
+        doReturn(dataStallRecoveryStepsArray)
+                .when(mDataConfigManager)
+                .getDataStallRecoveryShouldSkipArray();
         doReturn(mSST).when(mPhone).getServiceStateTracker();
         doAnswer(
                 invocation -> {
@@ -61,6 +72,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
                 })
                 .when(mDataStallRecoveryManagerCallback)
                 .invokeFromExecutor(any(Runnable.class));
+        doReturn("").when(mSubscriptionController).getDataEnabledOverrideRules(anyInt());
 
         mDataStallRecoveryManager =
                 new DataStallRecoveryManager(
