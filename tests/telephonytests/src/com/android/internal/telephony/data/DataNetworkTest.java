@@ -79,12 +79,6 @@ public class DataNetworkTest extends TelephonyTest {
 
     private DataNetwork mDataNetworkUT;
 
-    @Mock
-    private DataServiceManager mWwanDataServiceManager;
-
-    @Mock
-    private DataServiceManager mWlanDataServiceManager;
-
     private SparseArray<DataServiceManager> mDataServiceManagers = new SparseArray<>();
 
     private final ApnSetting mInternetApnSetting = new ApnSetting.Builder()
@@ -202,9 +196,9 @@ public class DataNetworkTest extends TelephonyTest {
             return null;
         }).when(mDataNetworkCallback).invokeFromExecutor(any(Runnable.class));
         mDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
-                mWwanDataServiceManager);
+                mMockedWwanDataServiceManager);
         mDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
-                mWlanDataServiceManager);
+                mMockedWlanDataServiceManager);
         doReturn(true).when(mSST).isConcurrentVoiceAndDataAllowed();
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
                 .getPreferredTransportByNetworkCapability(anyInt());
@@ -243,7 +237,7 @@ public class DataNetworkTest extends TelephonyTest {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build(), mPhone));
 
-        setSuccessfulSetupDataResponse(mWwanDataServiceManager, 123);
+        setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
 
         mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
                 mInternetDataProfile, networkRequestList,
@@ -252,7 +246,7 @@ public class DataNetworkTest extends TelephonyTest {
 
         processAllMessages();
         verify(mSimulatedCommandsVerifier, never()).allocatePduSessionId(any(Message.class));
-        verify(mWwanDataServiceManager).setupDataCall(eq(AccessNetworkType.EUTRAN),
+        verify(mMockedWwanDataServiceManager).setupDataCall(eq(AccessNetworkType.EUTRAN),
                 eq(mInternetDataProfile), eq(false), eq(false),
                 eq(DataService.REQUEST_REASON_NORMAL), nullable(LinkProperties.class),
                 eq(DataCallResponse.PDU_SESSION_ID_NOT_SET), nullable(NetworkSliceInfo.class),
@@ -308,7 +302,7 @@ public class DataNetworkTest extends TelephonyTest {
 
         verify(mSimulatedCommandsVerifier, never()).releasePduSessionId(nullable(Message.class),
                 anyInt());
-        verify(mWwanDataServiceManager).deactivateDataCall(eq(123),
+        verify(mMockedWwanDataServiceManager).deactivateDataCall(eq(123),
                 eq(DataService.REQUEST_REASON_NORMAL), eq(null));
         verify(mDataNetworkCallback).onDisconnected(eq(mDataNetworkUT), eq(
                 DataFailCause.EMM_DETACHED));
@@ -347,7 +341,7 @@ public class DataNetworkTest extends TelephonyTest {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
                 .build(), mPhone));
 
-        setSuccessfulSetupDataResponse(mWlanDataServiceManager, 123);
+        setSuccessfulSetupDataResponse(mMockedWlanDataServiceManager, 123);
 
         mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
                 mImsDataProfile, networkRequestList, AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
@@ -356,7 +350,7 @@ public class DataNetworkTest extends TelephonyTest {
 
         processAllMessages();
         verify(mSimulatedCommandsVerifier).allocatePduSessionId(any(Message.class));
-        verify(mWlanDataServiceManager).setupDataCall(eq(AccessNetworkType.IWLAN),
+        verify(mMockedWlanDataServiceManager).setupDataCall(eq(AccessNetworkType.IWLAN),
                 eq(mImsDataProfile), eq(false), eq(false),
                 eq(DataService.REQUEST_REASON_NORMAL), nullable(LinkProperties.class),
                 eq(1), nullable(NetworkSliceInfo.class),
@@ -407,7 +401,7 @@ public class DataNetworkTest extends TelephonyTest {
                 DataFailCause.EMM_DETACHED);
 
         verify(mSimulatedCommandsVerifier).releasePduSessionId(nullable(Message.class), eq(1));
-        verify(mWlanDataServiceManager).deactivateDataCall(eq(123),
+        verify(mMockedWlanDataServiceManager).deactivateDataCall(eq(123),
                 eq(DataService.REQUEST_REASON_NORMAL), eq(null));
         verify(mDataNetworkCallback).onDisconnected(eq(mDataNetworkUT), eq(
                 DataFailCause.EMM_DETACHED));
