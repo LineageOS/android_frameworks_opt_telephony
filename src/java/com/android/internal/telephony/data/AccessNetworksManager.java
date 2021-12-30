@@ -406,6 +406,24 @@ public class AccessNetworksManager extends Handler {
             }
             bindQualifiedNetworksService();
         }
+
+        if (phone.isUsingNewDataStack()) {
+            // Using post to delay the registering because data retry manager instance is created
+            // later than access networks manager.
+            post(() -> mPhone.getDataNetworkController().getDataRetryManager().registerCallback(
+                    new DataRetryManager.DataRetryManagerCallback(this::post) {
+                        @Override
+                        public void onThrottleStatusChanged(List<ThrottleStatus> throttleStatuses) {
+                            try {
+                                logl("onThrottleStatusChanged: " + throttleStatuses);
+                                mIQualifiedNetworksService.reportThrottleStatusChanged(
+                                        mPhone.getPhoneId(), throttleStatuses);
+                            } catch (Exception ex) {
+                                loge("onThrottleStatusChanged: ", ex);
+                            }
+                        }
+                    }));
+        }
     }
 
     /**

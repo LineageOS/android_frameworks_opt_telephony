@@ -87,10 +87,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
     @Mock
     private PhoneSwitcher mMockedPhoneSwitcher;
     @Mock
-    private DataServiceManager mMockedWwanDataServiceManager;
-    @Mock
-    private DataServiceManager mMockedWlanDataServiceManager;
-    @Mock
     protected ISub mIsub;
 
     private final SparseArray<DataServiceManager> mMockedDataServiceManagers = new SparseArray<>();

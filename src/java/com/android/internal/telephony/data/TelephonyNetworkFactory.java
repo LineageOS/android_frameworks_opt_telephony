@@ -457,9 +457,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
         // If it succeeded, or it failed without falling back to the original transport,
         // we should release the request from the original transport.
         if (!fallback) {
-            int originTransport = (targetTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                    ? AccessNetworkConstants.TRANSPORT_TYPE_WLAN
-                    : AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
+            int originTransport = DataUtils.getSourceTransport(targetTransport);
             int releaseType = success
                     ? DcTracker.RELEASE_TYPE_HANDOVER
                     // If handover fails, we need to tear down the existing connection, so the
