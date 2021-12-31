@@ -688,7 +688,8 @@ public class DataNetworkController extends Handler {
                         DataNetworkController.this.onDataStallReestablishInternet();
                     }
                 });
-        mDataRetryManager = new DataRetryManager(mPhone, this, looper,
+        mDataRetryManager = new DataRetryManager(mPhone, this,
+                mDataServiceManagers, looper,
                 new DataRetryManagerCallback(this::post) {
                     @Override
                     public void onDataNetworkSetupRetry(
@@ -1132,6 +1133,8 @@ public class DataNetworkController extends Handler {
             // other evaluation reasons, since they are all condition changes, so if there is any
             // retry scheduled, we still want to go ahead and setup the data network.
             evaluation.addDataDisallowedReason(DataDisallowedReason.RETRY_SCHEDULED);
+        } else if (mDataRetryManager.isDataProfileThrottled(dataProfile)) {
+            evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_THROTTLED);
         }
 
         if (evaluation.isDataAllowed()) {
@@ -1865,6 +1868,7 @@ public class DataNetworkController extends Handler {
                 + DataFailCause.toString(cause) + "(" + cause + ")");
         mDataNetworkList.remove(dataNetwork);
         mPendingImsDeregDataNetworks.remove(dataNetwork);
+        mDataRetryManager.cancelPendingHandoverRetry(dataNetwork);
         updateOverallInternetDataState();
 
         if (dataNetwork.getNetworkCapabilities().hasCapability(
@@ -1930,11 +1934,13 @@ public class DataNetworkController extends Handler {
         } else if (handoverFailureMode == DataCallResponse
                 .HANDOVER_FAILURE_MODE_NO_FALLBACK_RETRY_SETUP_NORMAL || handoverFailureMode
                 == DataCallResponse.HANDOVER_FAILURE_MODE_LEGACY) {
-            // Tear down the data network on source transport. After disconnected, a new data
-            // network will be brought up on the target transport.
+            int targetTransport = DataUtils.getTargetTransport(dataNetwork.getTransport());
+            mDataRetryManager.evaluateDataSetupRetry(dataNetwork.getDataProfile(), targetTransport,
+                    dataNetwork.getAttachedNetworkRequestList(), cause, retryDelayMillis);
+            // Tear down the data network on source transport. Retry manager will schedule
+            // setup a new data network on the target transport.
             tearDownGracefully(dataNetwork, DataNetwork.TEAR_DOWN_REASON_HANDOVER_FAILED);
         } else {
-            // Delegate to data retry manager to evaluate if handover retry should be performed.
             mDataRetryManager.evaluateDataHandoverRetry(dataNetwork, cause, retryDelayMillis);
         }
     }
@@ -1985,8 +1991,7 @@ public class DataNetworkController extends Handler {
                 }
             }
         } else {
-            // reset throttling after binding to data service
-            // mDataThrottler.reset();
+            mDataRetryManager.reset();
         }
         mDataServiceBound.put(transport, bound);
     }
@@ -2224,6 +2229,13 @@ public class DataNetworkController extends Handler {
      */
     public @NonNull DataSettingsManager getDataSettingsManager() {
         return mDataSettingsManager;
+    }
+
+    /**
+     * @return Data retry manager instance.
+     */
+    public @NonNull DataRetryManager getDataRetryManager() {
+        return mDataRetryManager;
     }
 
     /**

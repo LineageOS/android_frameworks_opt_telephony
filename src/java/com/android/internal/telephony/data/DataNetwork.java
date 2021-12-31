@@ -2039,9 +2039,7 @@ public class DataNetwork extends StateMachine {
             mDataServiceManagers.get(mTransport).deactivateDataCall(mCid.get(mTransport),
                     DataService.REQUEST_REASON_HANDOVER, null);
             // Switch the transport to the target.
-            mTransport = mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
-                    ? AccessNetworkConstants.TRANSPORT_TYPE_WLAN
-                    : AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
+            mTransport = DataUtils.getTargetTransport(mTransport);
             updateDataNetwork(response);
             if (retryEntry != null) retryEntry.setState(DataRetryEntry.RETRY_STATE_SUCCEEDED);
             mDataNetworkCallback.invokeFromExecutor(

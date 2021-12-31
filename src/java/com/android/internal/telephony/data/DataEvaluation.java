@@ -223,7 +223,9 @@ public class DataEvaluation {
         /** Device is currently in an emergency call. */
         EMERGENCY_CALL(true),
         /** There is already a retry setup scheduled for this data profile. */
-        RETRY_SCHEDULED(true);
+        RETRY_SCHEDULED(true),
+        /** Network has explicitly request to throttle setup attempt. */
+        DATA_THROTTLED(true);
 
         private final boolean mIsHardReason;
 
