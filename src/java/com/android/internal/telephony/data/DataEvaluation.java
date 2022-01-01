@@ -182,7 +182,7 @@ public class DataEvaluation {
         /** When emergency call started or ended. */
         EMERGENCY_CALL_CHANGED,
         /** When data disconnected, re-evaluate later to see if data could be brought up again. */
-        DATA_NETWORK_DISCONNECTED,
+        RETRY_AFTER_DISCONNECTED,
         /** Data setup retry. */
         DATA_RETRY,
     }
@@ -225,7 +225,11 @@ public class DataEvaluation {
         /** There is already a retry setup scheduled for this data profile. */
         RETRY_SCHEDULED(true),
         /** Network has explicitly request to throttle setup attempt. */
-        DATA_THROTTLED(true);
+        DATA_THROTTLED(true),
+        /** Data profile becomes invalid. (could be removed by the user, or SIM refresh, etc..) */
+        DATA_PROFILE_INVALID(true),
+        /** Data profile not preferred (i.e. users switch preferred profile in APN editor.) */
+        DATA_PROFILE_NOT_PREFERRED(true);
 
         private final boolean mIsHardReason;
 
