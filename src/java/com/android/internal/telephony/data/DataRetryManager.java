@@ -599,7 +599,7 @@ public class DataRetryManager extends Handler {
         public final @Nullable NetworkRequestList networkRequestList;
 
         /** The data profile that will be used for retry. */
-        public final @NonNull DataProfile dataProfile;
+        public final @Nullable DataProfile dataProfile;
 
         /** The transport to retry data setup. */
         public final @TransportType int transport;
@@ -992,21 +992,10 @@ public class DataRetryManager extends Handler {
 
                 for (DataSetupRetryRule retryRule : mDataSetupRetryRuleList) {
                     if (retryRule.canBeMatched(capability, cause)) {
-                        // Try a different data profile that hasn't been tried for the longest
-                        // time and see if that works.
-                        List<DataProfile> dataProfiles = mDataProfileManager
-                                .getDataProfilesForNetworkCapabilities(new int[]{capability});
-                        if (dataProfiles.isEmpty()) {
-                            loge("Cant find data profile for retrying "
-                                    + DataUtils.networkCapabilityToString(capability));
-                            break;
-                        }
-
-                        DataProfile candidateProfile = dataProfiles.get(0);
-
-                        // Check if there is already a retry entry for this data profile.
-                        if (isAnySetupRetryScheduled(candidateProfile)) {
-                            log(candidateProfile + " is already in the retry queue.");
+                        // Check if there is already a similar network request retry scheduled.
+                        if (isSimilarNetworkRequestRetryScheduled(networkRequestList.get(0))) {
+                            log(networkRequestList.get(0) + " already had similar retry "
+                                    + "scheduled.");
                             break;
                         }
 
@@ -1032,7 +1021,6 @@ public class DataRetryManager extends Handler {
                                 .setRetryDelay(retryDelayMillis)
                                 .setAppliedRetryRule(retryRule)
                                 .setSetupRetryType(DataSetupRetryEntry.RETRY_TYPE_NETWORK_REQUESTS)
-                                .setDataProfile(dataProfiles.get(0))
                                 .setTransport(transport)
                                 .setNetworkRequestList(networkRequestList)
                                 .build());
@@ -1306,7 +1294,7 @@ public class DataRetryManager extends Handler {
             retryType = ThrottleStatus.RETRY_TYPE_HANDOVER;
         }
 
-        // Make it final so it can be used in the lamda function below.
+        // Make it final so it can be used in the lambda function below.
         final int dataRetryType = retryType;
 
         if (unthrottledProfile != null && unthrottledProfile.getApnSetting() != null) {
@@ -1346,6 +1334,29 @@ public class DataRetryManager extends Handler {
     }
 
     /**
+     * Check if there is any similar network request scheduled to retry. The definition of similar
+     * is that network requests have same APN capability.
+     *
+     * @param networkRequest The network request to check.
+     * @return {@code true} if similar network request scheduled to retry.
+     */
+    public boolean isSimilarNetworkRequestRetryScheduled(
+            @NonNull TelephonyNetworkRequest networkRequest) {
+        for (int i = mDataRetryEntries.size() - 1; i >= 0; i--) {
+            if (mDataRetryEntries.get(i) instanceof DataSetupRetryEntry) {
+                DataSetupRetryEntry entry = (DataSetupRetryEntry) mDataRetryEntries.get(i);
+                if (entry.getState() == DataRetryEntry.RETRY_STATE_NOT_RETRIED
+                        && entry.setupRetryType == DataSetupRetryEntry.RETRY_TYPE_NETWORK_REQUESTS
+                        && entry.networkRequestList.get(0).getApnTypeNetworkCapability()
+                        == networkRequest.getApnTypeNetworkCapability()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Check if there is any data setup retry scheduled with specified data profile.
      *
      * @param dataProfile The data profile to retry.
@@ -1356,7 +1367,7 @@ public class DataRetryManager extends Handler {
                 .filter(DataSetupRetryEntry.class::isInstance)
                 .map(DataSetupRetryEntry.class::cast)
                 .anyMatch(entry -> entry.getState() == DataRetryEntry.RETRY_STATE_NOT_RETRIED
-                        && entry.dataProfile.equals(dataProfile));
+                        && dataProfile.equals(entry.dataProfile));
     }
 
     /**
