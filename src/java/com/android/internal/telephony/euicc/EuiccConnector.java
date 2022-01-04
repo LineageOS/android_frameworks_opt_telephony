@@ -1042,7 +1042,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         int slotId = SubscriptionManager.INVALID_SIM_SLOT_INDEX;
         for (UiccCardInfo info : infos) {
             if (info.getCardId() == cardId) {
-                slotId = info.getSlotIndex();
+                slotId = info.getPhysicalSlotIndex();
             }
         }
         return slotId;
