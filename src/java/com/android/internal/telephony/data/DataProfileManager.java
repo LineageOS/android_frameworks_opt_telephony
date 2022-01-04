@@ -271,8 +271,8 @@ public class DataProfileManager extends Handler {
         // Reload the latest preferred data profile from either database or config.
         profilesChanged |= updatePreferredDataProfile();
 
-        updateInitialAttachDataProfileAtModem();
         updateDataProfilesAtModem();
+        updateInitialAttachDataProfileAtModem();
 
         if (profilesChanged) {
             mDataProfileManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
