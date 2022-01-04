@@ -26,6 +26,7 @@ import android.os.AsyncResult;
 import android.os.RemoteException;
 import android.telephony.PcoData;
 import android.telephony.data.DataCallResponse;
+import android.telephony.data.DataProfile;
 
 import com.android.internal.telephony.dataconnection.KeepaliveStatus;
 
@@ -94,14 +95,16 @@ public class DataIndication extends IRadioDataIndication.Stub {
     /**
      * Stop throttling calls to setupDataCall for the given APN.
      * @param indicationType Type of radio indication
-     * @param apn APN to unthrottle
+     * @param dpi DataProfileInfo associated with the APN to unthrottle
      * @throws RemoteException
      */
-    public void unthrottleApn(int indicationType, String apn) throws RemoteException {
+    public void unthrottleApn(int indicationType, android.hardware.radio.data.DataProfileInfo dpi)
+            throws RemoteException {
         mRil.processIndication(RIL.DATA_SERVICE, indicationType);
+        DataProfile response = RILUtils.convertToDataProfile(dpi);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_UNTHROTTLE_APN, apn);
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_UNTHROTTLE_APN, response);
 
-        mRil.mApnUnthrottledRegistrants.notifyRegistrants(new AsyncResult(null, apn, null));
+        mRil.mApnUnthrottledRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
     }
 }
