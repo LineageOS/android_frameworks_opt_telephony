@@ -961,12 +961,50 @@ public class RILUtils {
         dpi.persistent = dp.isPersistent();
         dpi.preferred = dp.isPreferred();
         dpi.alwaysOn = dp.getApnSetting().isAlwaysOn();
+        dpi.trafficDescriptor = RILUtils.convertToHalTrafficDescriptorAidl(
+                dp.getTrafficDescriptor());
 
         // profile id is only meaningful when it's persistent on the modem.
         dpi.profileId = (dpi.persistent) ? dp.getProfileId()
                 : android.hardware.radio.data.DataProfileInfo.ID_INVALID;
 
         return dpi;
+    }
+
+    /**
+     * Convert from DataProfileInfo.aidl to DataProfile
+     * @param dpi DataProfileInfo
+     * @return The converted DataProfile
+     */
+    public static DataProfile convertToDataProfile(
+            android.hardware.radio.data.DataProfileInfo dpi) {
+        ApnSetting apnSetting = new ApnSetting.Builder()
+                .setEntryName(dpi.apn)
+                .setApnName(dpi.apn)
+                .setApnTypeBitmask(dpi.supportedApnTypesBitmap)
+                .setAuthType(dpi.authType)
+                .setMaxConnsTime(dpi.maxConnsTime)
+                .setMaxConns(dpi.maxConns)
+                .setWaitTime(dpi.waitTime)
+                .setCarrierEnabled(dpi.enabled)
+                .setModemCognitive(dpi.persistent)
+                .setMtuV4(dpi.mtuV4)
+                .setMtuV6(dpi.mtuV6)
+                .setNetworkTypeBitmask(ServiceState.convertBearerBitmaskToNetworkTypeBitmask(
+                        dpi.bearerBitmap) >> 1)
+                .setProfileId(dpi.profileId)
+                .setPassword(dpi.password)
+                .setProtocol(dpi.protocol)
+                .setRoamingProtocol(dpi.roamingProtocol)
+                .setUser(dpi.user)
+                .setAlwaysOn(dpi.alwaysOn)
+                .build();
+        return new DataProfile.Builder()
+                .setType(dpi.type)
+                .setPreferred(dpi.preferred)
+                .setTrafficDescriptor(convertHalTrafficDescriptor(dpi.trafficDescriptor))
+                .setApnSetting(apnSetting)
+                .build();
     }
 
     /**
