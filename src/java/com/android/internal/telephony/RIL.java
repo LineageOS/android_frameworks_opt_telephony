@@ -4180,21 +4180,20 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void startLceService(int reportIntervalMs, boolean pullMode, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-
-        if (radioProxy != null) {
-            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
-                // We have a 1.2 or later radio, so the LCE 1.0 LCE service control path is unused.
-                // Instead the LCE functionality is always-on and provides unsolicited indications.
-                if (RILJ_LOGD) Rlog.d(RILJ_LOG_TAG, "startLceService: REQUEST_NOT_SUPPORTED");
-                if (result != null) {
-                    AsyncResult.forMessage(result, null,
-                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
-                    result.sendToTarget();
-                }
-                return;
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
+            // We have a 1.2 or later radio, so the LCE 1.0 LCE service control path is unused.
+            // Instead the LCE functionality is always-on and provides unsolicited indications.
+            if (RILJ_LOGD) Rlog.d(RILJ_LOG_TAG, "startLceService: REQUEST_NOT_SUPPORTED");
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
             }
+            return;
+        }
 
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_START_LCE, result, mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
@@ -4212,21 +4211,20 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void stopLceService(Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-
-        if (radioProxy != null) {
-            if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
-                // We have a 1.2 or later radio, so the LCE 1.0 LCE service control is unused.
-                // Instead the LCE functionality is always-on and provides unsolicited indications.
-                if (RILJ_LOGD) Rlog.d(RILJ_LOG_TAG, "stopLceService: REQUEST_NOT_SUPPORTED");
-                if (result != null) {
-                    AsyncResult.forMessage(result, null,
-                            CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
-                    result.sendToTarget();
-                }
-                return;
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
+            // We have a 1.2 or later radio, so the LCE 1.0 LCE service control is unused.
+            // Instead the LCE functionality is always-on and provides unsolicited indications.
+            if (RILJ_LOGD) Rlog.d(RILJ_LOG_TAG, "stopLceService: REQUEST_NOT_SUPPORTED");
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
             }
+            return;
+        }
 
+        IRadio radioProxy = getRadioProxy(result);
+        if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_STOP_LCE, result, mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
@@ -4295,8 +4293,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Deprecated
     @Override
     public void pullLceData(Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-
         if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
             // We have a 1.2 or later radio, so the LCE 1.0 LCE service control path is unused.
             // Instead the LCE functionality is always-on and provides unsolicited indications.
@@ -4309,6 +4305,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             return;
         }
 
+        IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_PULL_LCEDATA, result, mRILDefaultWorkSource);
 
@@ -4685,8 +4682,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public boolean canToggleUiccApplicationsEnablement() {
-        return getRadioProxy(null) != null && mRadioVersion
-                .greaterOrEqual(RADIO_HAL_VERSION_1_5);
+        return !getRadioServiceProxy(RadioSimProxy.class, null).isEmpty()
+                && mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5);
     }
 
     @Override
@@ -5063,11 +5060,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
             rr = mRequestList.get(serial);
         }
         if (rr == null) {
-            Rlog.w(RIL.RILJ_LOG_TAG, "processRequestAck: Unexpected solicited ack response! "
+            Rlog.w(RILJ_LOG_TAG, "processRequestAck: Unexpected solicited ack response! "
                     + "serial: " + serial);
         } else {
             decrementWakeLock(rr);
-            if (RIL.RILJ_LOGD) {
+            if (RILJ_LOGD) {
                 riljLog(rr.serialString() + " Ack < " + RILUtils.requestToString(rr.mRequest));
             }
         }
@@ -5082,7 +5079,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @VisibleForTesting
     public RILRequest processResponse(RadioResponseInfo responseInfo) {
-        return processResponseInternal(responseInfo.serial, responseInfo.error, responseInfo.type);
+        return processResponseInternal(RADIO_SERVICE, responseInfo.serial, responseInfo.error,
+                responseInfo.type);
     }
 
     /**
@@ -5095,22 +5093,26 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @VisibleForTesting
     public RILRequest processResponse_1_6(
             android.hardware.radio.V1_6.RadioResponseInfo responseInfo) {
-        return processResponseInternal(responseInfo.serial, responseInfo.error, responseInfo.type);
+        return processResponseInternal(RADIO_SERVICE, responseInfo.serial, responseInfo.error,
+                responseInfo.type);
     }
 
     /**
      * This is a helper function for an AIDL RadioResponseInfo to be called when a RadioResponse
      * callback is called. It takes care of acks, wakelocks, and finds and returns RILRequest
      * corresponding to the response if one is found.
+     * @param service Radio service that received the response
      * @param responseInfo RadioResponseInfo received in response callback
      * @return RILRequest corresponding to the response
      */
     @VisibleForTesting
-    public RILRequest processResponse(android.hardware.radio.RadioResponseInfo responseInfo) {
-        return processResponseInternal(responseInfo.serial, responseInfo.error, responseInfo.type);
+    public RILRequest processResponse(int service,
+            android.hardware.radio.RadioResponseInfo responseInfo) {
+        return processResponseInternal(service, responseInfo.serial, responseInfo.error,
+                responseInfo.type);
     }
 
-    private RILRequest processResponseInternal(int serial, int error, int type) {
+    private RILRequest processResponseInternal(int service, int serial, int error, int type) {
         RILRequest rr;
 
         if (type == RadioResponseType.SOLICITED_ACK) {
@@ -5125,7 +5127,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     mRadioBugDetector.detectRadioBug(rr.mRequest, error);
                 }
                 if (RILJ_LOGD) {
-                    riljLog(rr.serialString() + " Ack < " + RILUtils.requestToString(rr.mRequest));
+                    riljLog(rr.serialString() + " Ack from " + serviceToString(service)
+                            + " < " + RILUtils.requestToString(rr.mRequest));
                 }
             }
             return rr;
@@ -5133,8 +5136,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         rr = findAndRemoveRequestFromList(serial);
         if (rr == null) {
-            Rlog.e(RIL.RILJ_LOG_TAG, "processResponse: Unexpected response! serial: " + serial
-                    + " error: " + error);
+            Rlog.e(RILJ_LOG_TAG, "processResponse: Unexpected response! serial: " + serial
+                    + " ,error: " + error);
             return null;
         }
 
@@ -5144,10 +5147,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
             mRadioBugDetector.detectRadioBug(rr.mRequest, error);
         }
         if (type == RadioResponseType.SOLICITED_ACK_EXP) {
-            sendAck(RADIO_SERVICE);
-            if (RIL.RILJ_LOGD) {
-                riljLog("Response received for " + rr.serialString() + " "
-                        + RILUtils.requestToString(rr.mRequest) + " Sending ack to ril.cpp");
+            sendAck(service);
+            if (RILJ_LOGD) {
+                riljLog("Response received from " + serviceToString(service) + " for "
+                        + rr.serialString() + " " + RILUtils.requestToString(rr.mRequest)
+                        + " Sending ack to ril.cpp");
             }
         } else {
             // ack sent for SOLICITED_ACK_EXP above; nothing to do for SOLICITED response
@@ -5299,7 +5303,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         // TODO: Remove rr and clean up acquireWakelock for response and ack
         RILRequest rr = RILRequest.obtain(RIL_RESPONSE_ACKNOWLEDGEMENT, null,
                 mRILDefaultWorkSource);
-        acquireWakeLock(rr, RIL.FOR_ACK_WAKELOCK);
+        acquireWakeLock(rr, FOR_ACK_WAKELOCK);
         if (service == RADIO_SERVICE) {
             IRadio radioProxy = getRadioProxy(null);
             if (radioProxy != null) {
