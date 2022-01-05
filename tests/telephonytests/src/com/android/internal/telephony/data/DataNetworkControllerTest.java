@@ -58,6 +58,7 @@ import android.telephony.SubscriptionPlan;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
+import android.telephony.data.DataCallResponse.LinkStatus;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataServiceCallback;
 import android.testing.AndroidTestingRunner;
@@ -103,7 +104,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
     private DataNetworkController mDataNetworkControllerUT;
     private PersistableBundle mCarrierConfig;
     @Mock
-    private DataNetworkControllerCallback mMockedDataNetworkCallback;
+    private DataNetworkControllerCallback mMockedDataNetworkControllerCallback;
 
     private DataProfile mDataProfile1 = new DataProfile.Builder()
             .setApnSetting(new ApnSetting.Builder()
@@ -133,36 +134,41 @@ public class DataNetworkControllerTest extends TelephonyTest {
     /** Data call response map. The first key is the transport type, the second key is the cid. */
     private final Map<Integer, Map<Integer, DataCallResponse>> mDataCallResponses = new HashMap<>();
 
+    private @NonNull DataCallResponse createDataCallResponse(int cid, @LinkStatus int linkStatus) {
+        return new DataCallResponse.Builder()
+                .setCause(0)
+                .setRetryDurationMillis(-1L)
+                .setId(cid)
+                .setLinkStatus(linkStatus)
+                .setProtocolType(ApnSetting.PROTOCOL_IPV4V6)
+                .setInterfaceName("ifname" + cid)
+                .setAddresses(Arrays.asList(
+                        new LinkAddress(InetAddresses.parseNumericAddress(IPV4_ADDRESS), 32),
+                        new LinkAddress(IPV6_ADDRESS + "/64")))
+                .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.3"),
+                        InetAddresses.parseNumericAddress("fd00:976a::9")))
+                .setGatewayAddresses(Arrays.asList(
+                        InetAddresses.parseNumericAddress("10.0.2.15"),
+                        InetAddresses.parseNumericAddress("fe80::2")))
+                .setPcscfAddresses(Arrays.asList(
+                        InetAddresses.parseNumericAddress("fd00:976a:c305:1d::8"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c202:1d::7"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c305:1d::5")))
+                .setMtu(1500)
+                .setMtuV4(1500)
+                .setMtuV6(1500)
+                .setPduSessionId(1)
+                .setQosBearerSessions(new ArrayList<>())
+                .setTrafficDescriptors(new ArrayList<>())
+                .build();
+    }
+
     private void setSuccessfulSetupDataResponse(DataServiceManager dsm, int cid) {
         doAnswer(invocation -> {
             final Message msg = (Message) invocation.getArguments()[10];
 
-            DataCallResponse response = new DataCallResponse.Builder()
-                    .setCause(0)
-                    .setRetryDurationMillis(-1L)
-                    .setId(cid)
-                    .setLinkStatus(DataCallResponse.LINK_STATUS_ACTIVE)
-                    .setProtocolType(ApnSetting.PROTOCOL_IPV4V6)
-                    .setInterfaceName("ifname" + cid)
-                    .setAddresses(Arrays.asList(
-                            new LinkAddress(InetAddresses.parseNumericAddress(IPV4_ADDRESS), 32),
-                            new LinkAddress(IPV6_ADDRESS + "/64")))
-                    .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.3"),
-                            InetAddresses.parseNumericAddress("fd00:976a::9")))
-                    .setGatewayAddresses(Arrays.asList(
-                            InetAddresses.parseNumericAddress("10.0.2.15"),
-                            InetAddresses.parseNumericAddress("fe80::2")))
-                    .setPcscfAddresses(Arrays.asList(
-                            InetAddresses.parseNumericAddress("fd00:976a:c305:1d::8"),
-                            InetAddresses.parseNumericAddress("fd00:976a:c202:1d::7"),
-                            InetAddresses.parseNumericAddress("fd00:976a:c305:1d::5")))
-                    .setMtu(1500)
-                    .setMtuV4(1500)
-                    .setMtuV6(1500)
-                    .setPduSessionId(1)
-                    .setQosBearerSessions(new ArrayList<>())
-                    .setTrafficDescriptors(new ArrayList<>())
-                    .build();
+            DataCallResponse response = createDataCallResponse(cid,
+                    DataCallResponse.LINK_STATUS_ACTIVE);
             int transport = AccessNetworkConstants.TRANSPORT_TYPE_INVALID;
             if (dsm == mMockedWwanDataServiceManager) {
                 transport = AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
@@ -309,8 +315,9 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doAnswer(invocation -> {
             ((Runnable) invocation.getArguments()[0]).run();
             return null;
-        }).when(mMockedDataNetworkCallback).invokeFromExecutor(any(Runnable.class));
-        mDataNetworkControllerUT.registerDataNetworkControllerCallback(mMockedDataNetworkCallback);
+        }).when(mMockedDataNetworkControllerCallback).invokeFromExecutor(any(Runnable.class));
+        mDataNetworkControllerUT.registerDataNetworkControllerCallback(
+                mMockedDataNetworkControllerCallback);
 
         mDataNetworkControllerUT.obtainMessage(9/*EVENT_SIM_STATE_CHANGED*/,
                 10/*SIM_STATE_LOADED*/, 0).sendToTarget();
@@ -428,12 +435,12 @@ public class DataNetworkControllerTest extends TelephonyTest {
         assertThat(dataNetworkList.get(0).isConnected()).isTrue();
         assertThat(dataNetworkList.get(0).getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_INTERNET)).isTrue();
-        verify(mMockedDataNetworkCallback).onInternetDataNetworkConnected(any());
+        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkConnected(any());
     }
 
     private void verifyNoInternetSetup() throws Exception {
         // Make sure internet is not connected.
-        verify(mMockedDataNetworkCallback, never()).onInternetDataNetworkConnected(any());
+        verify(mMockedDataNetworkControllerCallback, never()).onInternetDataNetworkConnected(any());
         List<DataNetwork> dataNetworkList = getDataNetworks();
         assertThat(dataNetworkList).isEmpty();
     }
@@ -444,8 +451,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         List<DataNetwork> dataNetworkList = getDataNetworks();
         assertThat(dataNetworkList).isEmpty();
 
-        verify(mMockedDataNetworkCallback).onAnyDataNetworkExistingChanged(eq(false));
-        verify(mMockedDataNetworkCallback).onInternetDataNetworkDisconnected();
+        verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(false));
+        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkDisconnected();
     }
 
     // To test the basic data setup. Copy this as example for other tests.
@@ -465,19 +472,20 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 InetAddresses.parseNumericAddress(IPV4_ADDRESS),
                 InetAddresses.parseNumericAddress(IPV6_ADDRESS));
 
-        verify(mMockedDataNetworkCallback).onInternetDataNetworkConnected(any());
+        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkConnected(any());
     }
 
     @Test
     public void testDataNetworkControllerCallback() throws Exception {
-        mDataNetworkControllerUT.registerDataNetworkControllerCallback(mMockedDataNetworkCallback);
+        mDataNetworkControllerUT.registerDataNetworkControllerCallback(
+                mMockedDataNetworkControllerCallback);
         processAllMessages();
         testSetupDataNetwork();
-        verify(mMockedDataNetworkCallback).onAnyDataNetworkExistingChanged(eq(true));
-        verify(mMockedDataNetworkCallback).onInternetDataNetworkConnected(any());
+        verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(true));
+        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkConnected(any());
 
         mDataNetworkControllerUT.unregisterDataNetworkControllerCallback(
-                mMockedDataNetworkCallback);
+                mMockedDataNetworkControllerCallback);
         processAllMessages();
     }
 
@@ -493,7 +501,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
     @Test
     public void testSimRemovalAndThenInserted() throws Exception {
         testSimRemovalDataTearDown();
-        Mockito.clearInvocations(mMockedDataNetworkCallback);
+        Mockito.clearInvocations(mMockedDataNetworkControllerCallback);
 
         // Insert the SIM again.
         mDataNetworkControllerUT.obtainMessage(9/*EVENT_SIM_STATE_CHANGED*/,
@@ -539,7 +547,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
     @Test
     public void testPsRestrictedAndLifted() throws Exception {
         testSetupDataNetwork();
-        Mockito.clearInvocations(mMockedDataNetworkCallback);
+        Mockito.clearInvocations(mMockedDataNetworkControllerCallback);
 
         // PS restricted.
         mDataNetworkControllerUT.obtainMessage(6/*EVENT_PS_RESTRICT_ENABLED*/).sendToTarget();
@@ -547,7 +555,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         List<DataNetwork> dataNetworkList = getDataNetworks();
         assertThat(dataNetworkList).isEmpty();
-        verify(mMockedDataNetworkCallback).onInternetDataNetworkDisconnected();
+        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkDisconnected();
 
         // PS unrestricted.
         mDataNetworkControllerUT.obtainMessage(7/*EVENT_PS_RESTRICT_DISABLED*/).sendToTarget();
@@ -575,7 +583,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         verifyAllDataDisconnected();
 
-        Mockito.clearInvocations(mMockedDataNetworkCallback);
+        Mockito.clearInvocations(mMockedDataNetworkControllerCallback);
         // Now RAT changes from GSM to UMTS
         doReturn(null).when(mDataProfileManager).getDataProfileForNetworkRequest(
                 any(TelephonyNetworkRequest.class), eq(TelephonyManager.NETWORK_TYPE_UMTS));
@@ -642,7 +650,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Data should not be allowed when roaming data is disabled.
         verifyNoInternetSetup();
-        Mockito.clearInvocations(mMockedDataNetworkCallback);
+        Mockito.clearInvocations(mMockedDataNetworkControllerCallback);
 
         // Roaming data enabled
         mDataNetworkControllerUT.getDataSettingsManager().setDataRoamingEnabled(true);
@@ -650,7 +658,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Verify data is restored.
         verifyInternetConnected();
-        Mockito.clearInvocations(mMockedDataNetworkCallback);
+        Mockito.clearInvocations(mMockedDataNetworkControllerCallback);
 
         // Roaming data disabled
         mDataNetworkControllerUT.getDataSettingsManager().setDataRoamingEnabled(false);
@@ -670,7 +678,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Data should not be allowed when user data is disabled.
         verifyNoInternetSetup();
-        Mockito.clearInvocations(mMockedDataNetworkCallback);
+        Mockito.clearInvocations(mMockedDataNetworkControllerCallback);
 
         // User data enabled
         mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
@@ -679,7 +687,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Verify data is restored.
         verifyInternetConnected();
-        Mockito.clearInvocations(mMockedDataNetworkCallback);
+        Mockito.clearInvocations(mMockedDataNetworkControllerCallback);
 
         // User data disabled
         mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
@@ -883,7 +891,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                         Period.ofMonths(1))
                 .setDataLimit(SubscriptionPlan.BYTES_UNLIMITED,
                         SubscriptionPlan.LIMIT_BEHAVIOR_THROTTLED)
-                .setNetworkTypes(new int[] {TelephonyManager.NETWORK_TYPE_NR})
+                .setNetworkTypes(new int[]{TelephonyManager.NETWORK_TYPE_NR})
                 .build();
         SubscriptionPlan generalMeteredPlan = SubscriptionPlan.Builder
                 .createRecurring(ZonedDateTime.parse("2007-03-14T00:00:00.000Z"),
@@ -918,5 +926,23 @@ public class DataNetworkControllerTest extends TelephonyTest {
         assertTrue(mDataNetworkControllerUT.getSubscriptionPlans().isEmpty());
         assertFalse(dataNetwork.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+    }
+
+    @Test
+    public void testLinkStatusChanged() throws Exception {
+        testSetupDataNetwork();
+        verify(mMockedDataNetworkControllerCallback).onPhysicalLinkStatusChanged(
+                eq(DataCallResponse.LINK_STATUS_ACTIVE));
+
+        DataNetwork dataNetwork = getDataNetworks().get(0);
+
+        DataCallResponse response = createDataCallResponse(1, DataCallResponse.LINK_STATUS_DORMANT);
+        dataNetwork.obtainMessage(8 /*EVENT_DATA_STATE_CHANGED */,
+                new AsyncResult(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                        List.of(response), null)).sendToTarget();
+
+        processAllMessages();
+        verify(mMockedDataNetworkControllerCallback).onPhysicalLinkStatusChanged(
+                eq(DataCallResponse.LINK_STATUS_DORMANT));
     }
 }
