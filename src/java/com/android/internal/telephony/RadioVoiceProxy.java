@@ -133,7 +133,7 @@ public class RadioVoiceProxy extends RadioServiceProxy {
                     emergencyNumberInfo.getEmergencyServiceCategoryBitmaskInternalDial(),
                     emergencyNumberInfo.getEmergencyUrns() != null
                             ? emergencyNumberInfo.getEmergencyUrns().stream().toArray(String[]::new)
-                            : null,
+                            : new String[0],
                     emergencyNumberInfo.getEmergencyCallRouting(),
                     hasKnownUserIntentEmergency,
                     emergencyNumberInfo.getEmergencyNumberSourceBitmask()

@@ -322,6 +322,8 @@ public class RadioDataProxy extends RadioServiceProxy {
                 dnses.add(linkProperties.getDnsServers().get(i).getHostAddress());
                 dnsesArr[i] = linkProperties.getDnsServers().get(i).getHostAddress();
             }
+        } else {
+            dnsesArr = new String[0];
         }
         if (isAidl()) {
             // Create a new DataProfile to set the TrafficDescriptor
