@@ -58,6 +58,7 @@ import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.telephony.Rlog;
 
@@ -1154,6 +1155,11 @@ public class SubscriptionInfoUpdater extends Handler {
             // should do a review of whether to make this public
             int slotId = UiccController.getInstance().getSlotIdFromPhoneId(phoneId);
             i.putExtra(PhoneConstants.SLOT_KEY, slotId);
+            UiccPort portInfo = UiccController.getInstance().getUiccPortForPhone(phoneId);
+            if (portInfo != null) {
+                int portId = portInfo.getPortIdx();
+                i.putExtra(PhoneConstants.PORT_KEY, portId);
+            }
             logd("Broadcasting intent ACTION_SIM_CARD_STATE_CHANGED " + simStateString(state)
                     + " for phone: " + phoneId + " slot: " + slotId);
             sContext.sendBroadcast(i, Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
@@ -1181,6 +1187,11 @@ public class SubscriptionInfoUpdater extends Handler {
             // should do a review of whether to make this public
             int slotId = UiccController.getInstance().getSlotIdFromPhoneId(phoneId);
             i.putExtra(PhoneConstants.SLOT_KEY, slotId);
+            UiccPort portInfo = UiccController.getInstance().getUiccPortForPhone(phoneId);
+            if (portInfo != null) {
+                int portId = portInfo.getPortIdx();
+                i.putExtra(PhoneConstants.PORT_KEY, portId);
+            }
             logd("Broadcasting intent ACTION_SIM_APPLICATION_STATE_CHANGED " + simStateString(state)
                     + " for phone: " + phoneId + " slot: " + slotId);
             sContext.sendBroadcast(i, Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
