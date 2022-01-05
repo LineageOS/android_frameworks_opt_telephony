@@ -21,6 +21,7 @@ import android.net.LinkProperties;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.RemoteException;
+import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
@@ -37,6 +38,7 @@ import java.util.ArrayList;
  * getAidl to get IRadioData and call the AIDL implementations of the HAL APIs.
  */
 public class RadioDataProxy extends RadioServiceProxy {
+    private static final String TAG = "RadioDataProxy";
     private volatile android.hardware.radio.data.IRadioData mDataProxy = null;
 
     /**
@@ -48,6 +50,7 @@ public class RadioDataProxy extends RadioServiceProxy {
         mHalVersion = halVersion;
         mDataProxy = data;
         mIsAidl = true;
+        Rlog.d(TAG, "AIDL initialized");
     }
 
     /**
