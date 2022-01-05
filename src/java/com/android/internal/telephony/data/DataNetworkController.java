@@ -55,6 +55,7 @@ import android.telephony.TelephonyManager.SimState;
 import android.telephony.TelephonyRegistryManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataCallResponse.HandoverFailureMode;
+import android.telephony.data.DataCallResponse.LinkStatus;
 import android.telephony.data.DataProfile;
 import android.telephony.ims.ImsException;
 import android.telephony.ims.ImsManager;
@@ -262,6 +263,9 @@ public class DataNetworkController extends Handler {
      * The IMS data network state. For now this is just for debugging purposes.
      */
     private @DataState int mImsDataNetworkState = TelephonyManager.DATA_DISCONNECTED;
+
+    /** Overall aggregated link status from internet data networks. */
+    private @LinkStatus int mInternetLinkStatus = DataCallResponse.LINK_STATUS_UNKNOWN;
 
     /** Data network controller callbacks. */
     private final @NonNull Set<DataNetworkControllerCallback> mDataNetworkControllerCallbacks =
@@ -508,6 +512,13 @@ public class DataNetworkController extends Handler {
          * override is set.
          */
         public void onSubscriptionPlanOverride() {}
+
+        /**
+         * Called when the physical link status changed.
+         *
+         * @param status The latest link status.
+         */
+        public void onPhysicalLinkStatusChanged(@LinkStatus int status) {}
     }
 
     /**
@@ -1668,21 +1679,6 @@ public class DataNetworkController extends Handler {
     }
 
     /**
-     * Find unsatisfied network requests that can be satisfied by the given network capabilities.
-     *
-     * @param capabilities The network capabilities.
-     * @return The network requests list.
-     */
-    private @NonNull NetworkRequestList findSatisfiableNetworkRequests(
-            @NonNull NetworkCapabilities capabilities) {
-        return new NetworkRequestList(mAllNetworkRequestList.stream()
-                .filter(request -> request.getState()
-                        == TelephonyNetworkRequest.REQUEST_STATE_UNSATISFIED)
-                .filter(request -> capabilities.satisfiedByNetworkCapabilities(capabilities))
-                .collect(Collectors.toList()));
-    }
-
-    /**
      * Setup data network.
      *
      * @param dataProfile The data profile to setup the data network.
@@ -1782,6 +1778,12 @@ public class DataNetworkController extends Handler {
                             @HandoverFailureMode int handoverFailureMode) {
                         DataNetworkController.this.onDataNetworkHandoverFailed(
                                 dataNetwork, cause, retryDelayMillis, handoverFailureMode);
+                    }
+
+                    @Override
+                    public void onLinkStatusChanged(@NonNull DataNetwork dataNetwork,
+                            @LinkStatus int linkStatus) {
+                        DataNetworkController.this.onLinkStatusChanged(dataNetwork, linkStatus);
                     }
                 }));
         if (!mAnyDataNetworkExisting) {
@@ -2187,6 +2189,31 @@ public class DataNetworkController extends Handler {
         mCongestedOverrideNetworkTypes.clear();
         mUnmeteredOverrideNetworkTypes.clear();
         log("Subscription plans initialized: " + mSubscriptionPlans);
+    }
+
+    /**
+     * Called when data network's link status changed.
+     *
+     * @param dataNetwork The data network that has link status changed.
+     * @param linkStatus The link status (i.e. RRC state).
+     */
+    private void onLinkStatusChanged(@NonNull DataNetwork dataNetwork, @LinkStatus int linkStatus) {
+        // TODO: Since this is only used for 5G icon display logic, so we only use internet data
+        //   data network's link status. Consider expanding to all data networks if needed, and
+        //   should use CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL
+        //   to determine if using all data networks or only internet data networks.
+        boolean anyActive = mDataNetworkList.stream()
+                .filter(DataNetwork::isInternetSupported)
+                .anyMatch(network -> network.getLinkStatus()
+                        == DataCallResponse.LINK_STATUS_ACTIVE);
+        int status = anyActive ? DataCallResponse.LINK_STATUS_ACTIVE
+                : DataCallResponse.LINK_STATUS_DORMANT;
+        if (mInternetLinkStatus != status) {
+            log("Internet link status changed to " + DataUtils.linkStatusToString(status));
+            mInternetLinkStatus = status;
+            mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                    () -> callback.onPhysicalLinkStatusChanged(mInternetLinkStatus)));
+        }
     }
 
     /**
