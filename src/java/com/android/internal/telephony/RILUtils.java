@@ -1931,6 +1931,8 @@ public class RILUtils {
             info.uusDcs = uusInfo.getDcs();
             info.uusData = new String(uusInfo.getUserData());
             dial.uusInfo = new android.hardware.radio.voice.UusInfo[] {info};
+        } else {
+            dial.uusInfo = new android.hardware.radio.voice.UusInfo[0];
         }
         return dial;
     }
