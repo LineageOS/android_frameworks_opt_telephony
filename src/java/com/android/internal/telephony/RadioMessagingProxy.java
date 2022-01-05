@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.os.RemoteException;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
@@ -28,6 +29,7 @@ import java.util.ArrayList;
  * getAidl to get IRadioMessaging and call the AIDL implementations of the HAL APIs.
  */
 public class RadioMessagingProxy extends RadioServiceProxy {
+    private static final String TAG = "RadioMessagingProxy";
     private volatile android.hardware.radio.messaging.IRadioMessaging mMessagingProxy = null;
 
     /**
@@ -40,6 +42,7 @@ public class RadioMessagingProxy extends RadioServiceProxy {
         mHalVersion = halVersion;
         mMessagingProxy = messaging;
         mIsAidl = true;
+        Rlog.d(TAG, "AIDL initialized");
     }
 
     /**
