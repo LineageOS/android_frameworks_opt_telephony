@@ -1880,7 +1880,7 @@ public class DataNetwork extends StateMachine {
     /**
      * @return {@code true} if in handover state.
      */
-    public boolean isUnderHandover() {
+    public boolean isHandoverInProgress() {
         return getCurrentState() == mHandoverState;
     }
 
@@ -1912,7 +1912,7 @@ public class DataNetwork extends StateMachine {
             return TelephonyManager.DATA_CONNECTED;
         } else if (isDisconnecting()) {
             return TelephonyManager.DATA_DISCONNECTING;
-        } else if (isUnderHandover()) {
+        } else if (isHandoverInProgress()) {
             return TelephonyManager.DATA_HANDOVER_IN_PROGRESS;
         }
 
