@@ -102,6 +102,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SLOT_S
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SMSC_ADDRESS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SYSTEM_SELECTION_CHANNELS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_USAGE_SETTING;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GSM_BROADCAST_ACTIVATION;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GSM_GET_BROADCAST_CONFIG;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GSM_SET_BROADCAST_CONFIG;
@@ -173,6 +174,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_TTY_MO
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_UICC_SUBSCRIPTION;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_UNSOLICITED_RESPONSE_FILTER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_USAGE_SETTING;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SHUTDOWN;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SIGNAL_STRENGTH;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SIM_AUTHENTICATION;
@@ -4934,6 +4936,10 @@ public class RILUtils {
                 return "ENABLE_VONR";
             case RIL_REQUEST_IS_VONR_ENABLED:
                 return "IS_VONR_ENABLED";
+            case RIL_REQUEST_SET_USAGE_SETTING:
+                return "SET_USAGE_SETTING";
+            case RIL_REQUEST_GET_USAGE_SETTING:
+                return "GET_USAGE_SETTING";
             default:
                 return "<unknown request " + request + ">";
         }

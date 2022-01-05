@@ -2750,4 +2750,20 @@ public interface CommandsInterface {
      * @param h Handler to be removed from the registrant list.
      */
      public void unregisterForSimPhonebookRecordsReceived(Handler h);
+
+    /**
+     * Set the UE's usage setting.
+     *
+     * @param result Callback message containing the success or failure status.
+     * @param usageSetting the UE's usage setting, either VOICE_CENTRIC or DATA_CENTRIC.
+     */
+    default void setUsageSetting(Message result,
+            /* @TelephonyManager.UsageSetting */ int usageSetting) {}
+
+    /**
+     * Get the UE's usage setting.
+     *
+     * @param result Callback message containing the usage setting (or a failure status).
+     */
+    default void getUsageSetting(Message result) {}
 }
