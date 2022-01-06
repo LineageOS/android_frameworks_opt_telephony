@@ -400,7 +400,7 @@ public class DataRetryManagerTest extends TelephonyTest {
 
         assertThat(entry.setupRetryType)
                 .isEqualTo(DataSetupRetryEntry.RETRY_TYPE_NETWORK_REQUESTS);
-        assertThat(entry.dataProfile).isEqualTo(mDataProfile2);
+        assertThat(entry.dataProfile).isNull();
         assertThat(entry.retryDelayMillis).isEqualTo(2000);
         assertThat(entry.networkRequestList).isEqualTo(networkRequestList);
         assertThat(entry.appliedDataRetryRule).isEqualTo(retryRule);
@@ -422,7 +422,7 @@ public class DataRetryManagerTest extends TelephonyTest {
 
         assertThat(entry.setupRetryType)
                 .isEqualTo(DataSetupRetryEntry.RETRY_TYPE_NETWORK_REQUESTS);
-        assertThat(entry.dataProfile).isEqualTo(mDataProfile1);
+        assertThat(entry.dataProfile).isNull();
         assertThat(entry.retryDelayMillis).isEqualTo(2000);
         assertThat(entry.networkRequestList).isEqualTo(networkRequestList);
         assertThat(entry.appliedDataRetryRule).isEqualTo(retryRule);
@@ -473,7 +473,7 @@ public class DataRetryManagerTest extends TelephonyTest {
 
         assertThat(entry.setupRetryType)
                 .isEqualTo(DataSetupRetryEntry.RETRY_TYPE_NETWORK_REQUESTS);
-        assertThat(entry.dataProfile).isEqualTo(mDataProfile3);
+        assertThat(entry.dataProfile).isNull();
         assertThat(entry.retryDelayMillis).isEqualTo(3000L);
         assertThat(entry.networkRequestList).isEqualTo(networkRequestList);
         assertThat(entry.appliedDataRetryRule).isEqualTo(retryRule2);
@@ -494,7 +494,7 @@ public class DataRetryManagerTest extends TelephonyTest {
 
         assertThat(entry.setupRetryType)
                 .isEqualTo(DataSetupRetryEntry.RETRY_TYPE_NETWORK_REQUESTS);
-        assertThat(entry.dataProfile).isEqualTo(mDataProfile3);
+        assertThat(entry.dataProfile).isNull();
         assertThat(entry.retryDelayMillis).isEqualTo(3000L);
         assertThat(entry.networkRequestList).isEqualTo(networkRequestList);
         assertThat(entry.appliedDataRetryRule).isEqualTo(retryRule2);
@@ -540,7 +540,7 @@ public class DataRetryManagerTest extends TelephonyTest {
 
             assertThat(entry.setupRetryType)
                     .isEqualTo(DataSetupRetryEntry.RETRY_TYPE_NETWORK_REQUESTS);
-            assertThat(entry.dataProfile).isEqualTo(mDataProfile3);
+            assertThat(entry.dataProfile).isNull();
             assertThat(entry.retryDelayMillis).isEqualTo(delay);
             assertThat(entry.networkRequestList).isEqualTo(networkRequestList);
             assertThat(entry.appliedDataRetryRule).isEqualTo(retryRule3);
@@ -600,5 +600,37 @@ public class DataRetryManagerTest extends TelephonyTest {
     public void testDataHandoverRetryInvalidRulesFromString() {
         assertThrows(IllegalArgumentException.class,
                 () -> new DataHandoverRetryRule("V2hhdCBUaGUgRnVjayBpcyB0aGlzIQ=="));
+    }
+
+    @Test
+    public void testIsSimilarNetworkRequestRetryScheduled() {
+        DataSetupRetryRule retryRule = new DataSetupRetryRule(
+                "capabilities=internet, retry_interval=2000, maximum_retries=2");
+        doReturn(Collections.singletonList(retryRule)).when(mDataConfigManager)
+                .getDataSetupRetryRules();
+        mDataRetryManagerUT.obtainMessage(1/*EVENT_DATA_CONFIG_UPDATED*/).sendToTarget();
+        processAllMessages();
+
+        NetworkRequest request = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build();
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+        DataNetworkController.NetworkRequestList
+                networkRequestList = new DataNetworkController.NetworkRequestList(tnr);
+
+        // failed and retry.
+        doReturn(List.of(mDataProfile2, mDataProfile1)).when(mDataProfileManager)
+                .getDataProfilesForNetworkCapabilities((int[]) any());
+        mDataRetryManagerUT.evaluateDataSetupRetry(mDataProfile1,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, networkRequestList, 123,
+                DataCallResponse.RETRY_DURATION_UNDEFINED);
+        processAllFutureMessages();
+
+        tnr = new TelephonyNetworkRequest(new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+                .build(), mPhone);
+        assertThat(mDataRetryManagerUT.isSimilarNetworkRequestRetryScheduled(tnr)).isTrue();
     }
 }

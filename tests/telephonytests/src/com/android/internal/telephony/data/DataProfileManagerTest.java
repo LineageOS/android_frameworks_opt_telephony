@@ -22,7 +22,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.verify;
 
+import android.annotation.NonNull;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.MatrixCursor;
@@ -40,12 +42,14 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.data.DataProfileManager.DataProfileManagerCallback;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 import java.util.Arrays;
@@ -56,6 +60,7 @@ import java.util.Objects;
 @TestableLooper.RunWithLooper
 public class DataProfileManagerTest extends TelephonyTest {
     private static final String GENERAL_PURPOSE_APN = "GP_APN";
+    private static final String GENERAL_PURPOSE_APN1 = "GP_APN1";
     private static final String IMS_APN = "IMS_APN";
     private static final String TETHERING_APN = "DUN_APN";
     private static final String PLMN = "330123";
@@ -67,6 +72,10 @@ public class DataProfileManagerTest extends TelephonyTest {
 
     private final ApnSettingContentProvider mApnSettingContentProvider =
             new ApnSettingContentProvider();
+
+    private int mPreferredApnId = 0;
+
+    private DataNetworkControllerCallback mDataNetworkControllerCallback;
 
     private class ApnSettingContentProvider extends MockContentProvider {
         public final String[] APN_COLUMNS = new String[]{
@@ -218,8 +227,8 @@ public class DataProfileManagerTest extends TelephonyTest {
             return new Object[]{
                     4,                      // id
                     PLMN,                   // numeric
-                    GENERAL_PURPOSE_APN,    // name
-                    GENERAL_PURPOSE_APN,    // apn
+                    GENERAL_PURPOSE_APN1,   // name
+                    GENERAL_PURPOSE_APN1,   // apn
                     "",                     // proxy
                     "",                     // port
                     "",                     // mmsc
@@ -314,6 +323,10 @@ public class DataProfileManagerTest extends TelephonyTest {
 
         @Override
         public Uri insert(Uri uri, ContentValues values) {
+            logd("ApnSettingContentProvider: uri=" + uri + ", values=" + values);
+            if (uri.isPathPrefixMatch(Telephony.Carriers.PREFERRED_APN_URI)) {
+                mPreferredApnId = values.getAsInteger(Telephony.Carriers.APN_ID);
+            }
             return null;
         }
     }
@@ -358,6 +371,11 @@ public class DataProfileManagerTest extends TelephonyTest {
         }).when(mDataProfileManagerCallback).invokeFromExecutor(any(Runnable.class));
         mDataProfileManagerUT = new DataProfileManager(mPhone, mDataNetworkController,
                 mMockedWwanDataServiceManager, Looper.myLooper(), mDataProfileManagerCallback);
+        ArgumentCaptor<DataNetworkControllerCallback> dataNetworkControllerCallbackCaptor =
+                ArgumentCaptor.forClass(DataNetworkControllerCallback.class);
+        verify(mDataNetworkController).registerDataNetworkControllerCallback(
+                        dataNetworkControllerCallbackCaptor.capture());
+        mDataNetworkControllerCallback = dataNetworkControllerCallbackCaptor.getValue();
         mDataProfileManagerUT.obtainMessage(1).sendToTarget();
         processAllMessages();
 
@@ -367,6 +385,11 @@ public class DataProfileManagerTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         super.tearDown();
+    }
+
+    private void setPreferredDataProfile(@NonNull DataProfile dataProfile) throws Exception {
+        replaceInstance(DataProfileManager.class, "mPreferredDataProfile",
+                mDataProfileManagerUT, dataProfile);
     }
 
     @Test
@@ -425,7 +448,7 @@ public class DataProfileManagerTest extends TelephonyTest {
     }
 
     @Test
-    public void testGetDataProfileForNetworkCapabilities() {
+    public void testGetDataProfileForNetworkCapabilities() throws Exception {
         List<DataProfile> dataProfiles = mDataProfileManagerUT
                 .getDataProfilesForNetworkCapabilities(
                         new int[]{NetworkCapabilities.NET_CAPABILITY_INTERNET});
@@ -455,5 +478,46 @@ public class DataProfileManagerTest extends TelephonyTest {
         // Make sure the profiles that haven't been used for longest time gets returned at the head
         // of list.
         assertThat(dataProfiles).containsExactly(dp2, dp1).inOrder();
+
+        // Now dp1 becomes the preferred data profile, so it should be in the top of the list.
+        setPreferredDataProfile(dp1);
+        dataProfiles = mDataProfileManagerUT
+                .getDataProfilesForNetworkCapabilities(
+                        new int[]{NetworkCapabilities.NET_CAPABILITY_INTERNET});
+        // Preferred data profile should be at the top of the list.
+        assertThat(dataProfiles).containsExactly(dp1, dp2).inOrder();
+
+        // Now dp2 becomes the preferred data profile, so it should be in the top of the list.
+        setPreferredDataProfile(dp2);
+        dataProfiles = mDataProfileManagerUT
+                .getDataProfilesForNetworkCapabilities(
+                        new int[]{NetworkCapabilities.NET_CAPABILITY_INTERNET});
+        // Preferred data profile should be at the top of the list.
+        assertThat(dataProfiles).containsExactly(dp2, dp1).inOrder();
+
+        dp1.setLastSetupTimestamp(9876);
+        dp2.setLastSetupTimestamp(15432);
+        dataProfiles = mDataProfileManagerUT
+                .getDataProfilesForNetworkCapabilities(
+                        new int[]{NetworkCapabilities.NET_CAPABILITY_INTERNET});
+        // Preferred data profile should still be at the top of the list no matter the timestamp is.
+        assertThat(dataProfiles).containsExactly(dp2, dp1).inOrder();
+    }
+
+    @Test
+    public void testSetPreferredDataProfile() {
+        List<DataProfile> dataProfiles = mDataProfileManagerUT
+                .getDataProfilesForNetworkCapabilities(
+                        new int[]{NetworkCapabilities.NET_CAPABILITY_INTERNET});
+        assertThat(dataProfiles.size()).isEqualTo(2);
+
+        DataProfile dp1 = dataProfiles.get(0);
+        DataProfile dp2 = dataProfiles.get(1);
+        dp1.setLastSetupTimestamp(9234);
+        dp2.setLastSetupTimestamp(5678);
+
+        mDataNetworkControllerCallback.onInternetDataNetworkConnected(List.of(dp1, dp2));
+        // The small timestamp profile should be returned.
+        assertThat(mPreferredApnId).isEqualTo(dp2.getApnSetting().getId());
     }
 }
