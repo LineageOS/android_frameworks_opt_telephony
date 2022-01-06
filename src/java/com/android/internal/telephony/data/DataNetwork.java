@@ -1082,9 +1082,11 @@ public class DataNetwork extends StateMachine {
     private void registerForBandwidthUpdate() {
         int bandwidthEstimateSource = mDataConfigManager.getBandwidthEstimateSource();
         if (bandwidthEstimateSource == BANDWIDTH_SOURCE_MODEM) {
-            mPhone.mCi.unregisterForLceInfo(getHandler());
+            mPhone.mCi.registerForLceInfo(
+                    getHandler(), EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED, null);
         } else if (bandwidthEstimateSource == BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR) {
-            mPhone.getLinkBandwidthEstimator().unregisterForBandwidthChanged(getHandler());
+            mPhone.getLinkBandwidthEstimator().registerForBandwidthChanged(
+                    getHandler(), EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED, null);
         } else {
             loge("Invalid bandwidth source configuration: " + bandwidthEstimateSource);
         }
@@ -1880,7 +1882,7 @@ public class DataNetwork extends StateMachine {
     /**
      * @return {@code true} if in handover state.
      */
-    public boolean isUnderHandover() {
+    public boolean isHandoverInProgress() {
         return getCurrentState() == mHandoverState;
     }
 
@@ -1912,7 +1914,7 @@ public class DataNetwork extends StateMachine {
             return TelephonyManager.DATA_CONNECTED;
         } else if (isDisconnecting()) {
             return TelephonyManager.DATA_DISCONNECTING;
-        } else if (isUnderHandover()) {
+        } else if (isHandoverInProgress()) {
             return TelephonyManager.DATA_HANDOVER_IN_PROGRESS;
         }
 
