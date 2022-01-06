@@ -1099,9 +1099,13 @@ public class RILUtils {
         android.hardware.radio.data.TrafficDescriptor td =
                 new android.hardware.radio.data.TrafficDescriptor();
         td.dnn = trafficDescriptor.getDataNetworkName();
-        android.hardware.radio.data.OsAppId osAppId = new android.hardware.radio.data.OsAppId();
-        osAppId.osAppId = trafficDescriptor.getOsAppId();
-        td.osAppId = osAppId;
+        if (trafficDescriptor.getOsAppId() == null) {
+            td.osAppId = null;
+        } else {
+            android.hardware.radio.data.OsAppId osAppId = new android.hardware.radio.data.OsAppId();
+            osAppId.osAppId = trafficDescriptor.getOsAppId();
+            td.osAppId = osAppId;
+        }
         return td;
     }
 
