@@ -342,8 +342,10 @@ public class RILTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
-        mRILUnderTest.mWakeLock.release();
-        mRILUnderTest.mAckWakeLock.release();
+        if (mRILUnderTest != null) {
+            mRILUnderTest.mWakeLock.release();
+            mRILUnderTest.mAckWakeLock.release();
+        }
         super.tearDown();
     }
 
