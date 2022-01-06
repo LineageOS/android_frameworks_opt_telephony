@@ -65,7 +65,6 @@ public class UiccSlot extends Handler {
     private Context mContext;
     private UiccCard mUiccCard;
     private boolean mIsEuicc;
-    private boolean mIsEuiccSupportsMultipleEnabledProfiles;
     private String mEid;
     private AnswerToReset mAtr;
     private boolean mIsRemovable;
@@ -138,7 +137,7 @@ public class UiccSlot extends Handler {
                         loge("update: eid is missing. ics.eid=" + ics.eid);
                     }
                     mUiccCard = new EuiccCard(mContext, ci, ics, phoneId, mLock,
-                            mIsEuiccSupportsMultipleEnabledProfiles);
+                            isMultipleEnabledProfileSupported());
                 }
             } else {
                 if (mUiccCard != null) {
@@ -203,6 +202,11 @@ public class UiccSlot extends Handler {
                 // If port is not active, update with invalid phone id(i.e. -1)
                 mPortIdxToPhoneId.put(i, simPortInfos[i].mPortActive ?
                         simPortInfos[i].mLogicalSlotIndex : INVALID_PHONE_ID);
+            }
+            // Since the MEP capability is related with number ports reported, thus need to
+            // update the flag after UiccCard creation.
+            if (mUiccCard != null) {
+                mUiccCard.updateSupportMultipleEnabledProfile(isMultipleEnabledProfileSupported());
             }
         }
     }
@@ -280,8 +284,10 @@ public class UiccSlot extends Handler {
 
     /* Returns true if multiple enabled profiles are supported */
     public boolean isMultipleEnabledProfileSupported() {
-        // True if num of port indexes are more than 1
-        return mPortIdxToPhoneId.size() > 1;
+        // even ATR suggest UICC supports multiple enabled profiles, MEP can be disabled per
+        // carrier restrictions, so checking the real number of ports reported from modem is
+        // necessary.
+        return mPortIdxToPhoneId.size() > 1 && mAtr.isMultipleEnabledProfilesSupported();
     }
 
     private boolean absentStateUpdateNeeded(CardState oldState) {
@@ -344,22 +350,18 @@ public class UiccSlot extends Handler {
         return true;
     }
 
-    private void checkEuiccSupportedCapabilities() {
+    private void checkIsEuiccSupported() {
         if (mAtr == null) {
             mIsEuicc = false;
-            mIsEuiccSupportsMultipleEnabledProfiles = false;
             return;
         }
         mIsEuicc = mAtr.isEuiccSupported();
-        mIsEuiccSupportsMultipleEnabledProfiles = mAtr.isMultipleEnabledProfilesSupported();
-        log(" checkEuiccSupportedCapabilities : isEuicc-> " + mIsEuicc
-                + " isMultipleEnabledProfilesSupported-> "
-                + mIsEuiccSupportsMultipleEnabledProfiles);
+        log(" checkIsEuiccSupported : " + mIsEuicc);
     }
 
     private void parseAtr(String atr) {
         mAtr = AnswerToReset.parseAtr(atr);
-        checkEuiccSupportedCapabilities();
+        checkIsEuiccSupported();
     }
 
     public boolean isEuicc() {
@@ -545,8 +547,8 @@ public class UiccSlot extends Handler {
         pw.println("UiccSlot:");
         pw.println(" mActive=" + mActive);
         pw.println(" mIsEuicc=" + mIsEuicc);
-        pw.println(" mIsEuiccSupportsMultipleEnabledProfiles="
-                + mIsEuiccSupportsMultipleEnabledProfiles);
+        pw.println(" isEuiccSupportsMultipleEnabledProfiles="
+                + isMultipleEnabledProfileSupported());
         pw.println(" mIsRemovable=" + mIsRemovable);
         pw.println(" mLastRadioState=" + mLastRadioState);
         pw.println(" mIccIds=" + mIccIds.values());
