@@ -212,6 +212,7 @@ public class DataNetwork extends StateMachine {
                     TEAR_DOWN_REASON_POWER_OFF_BY_CARRIER,
                     TEAR_DOWN_REASON_DATA_STALL,
                     TEAR_DOWN_REASON_HANDOVER_FAILED,
+                    TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED,
             })
     public @interface TearDownReason {}
 
@@ -253,6 +254,9 @@ public class DataNetwork extends StateMachine {
 
     /** Data network tear down due to handover failed. */
     public static final int TEAR_DOWN_REASON_HANDOVER_FAILED = 13;
+
+    /** Data network tear down due to handover not allowed. */
+    public static final int TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED = 14;
 
     @IntDef(prefix = {"BANDWIDTH_SOURCE_"},
             value = {
@@ -2192,6 +2196,8 @@ public class DataNetwork extends StateMachine {
                 return "TEAR_DOWN_REASON_DATA_STALL";
             case TEAR_DOWN_REASON_HANDOVER_FAILED:
                 return "TEAR_DOWN_REASON_HANDOVER_FAILED";
+            case TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED:
+                return "TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED";
             default:
                 return "UNKNOWN(" + reason + ")";
         }
