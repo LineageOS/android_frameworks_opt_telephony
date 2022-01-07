@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.dataconnection;
+package com.android.internal.telephony.data;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -38,7 +38,6 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import com.android.internal.telephony.TelephonyTest;
-import com.android.internal.telephony.data.AccessNetworksManager;
 
 import org.junit.After;
 import org.junit.Before;
