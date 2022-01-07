@@ -2297,6 +2297,28 @@ message TelephonyCallSession {
       // after call is connected
       optional bool tx_silence_detected = 14;
 
+      // the number of Voice frames sent by jitter buffer to audio
+      optional int32 voice_frames = 15;
+
+      // the number of NO_DATA frames sent by jitter buffer to audio
+      optional int32 no_data_frames = 16;
+
+      // the number of RTP voice packets dropped by jitter buffer
+      optional int32 rtp_dropped_packets = 17;
+
+      // the minimum playout delay in the reporting interval, in milliseconds
+      optional int64 min_playout_delay_millis = 18;
+
+      // the maximum playout delay in the reporting interval, in milliseconds
+      optional int64 max_playout_delay_millis = 19;
+
+      // the total number of RTP SID packets received by this device
+      // for an ongoing call
+      optional int32 rx_rtp_sid_packets = 20;
+
+      // the total number of RTP duplicate packets received by this device
+      // for an ongoing call
+      optional int32 rtp_duplicate_packets = 21;
     }
 
     message CallQualitySummary {
