@@ -50,10 +50,12 @@ import android.telephony.LinkCapacityEstimate;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionPlan;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataCallResponse.HandoverFailureMode;
+import android.telephony.data.DataCallResponse.LinkStatus;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.telephony.data.DataServiceCallback;
@@ -171,6 +173,9 @@ public class DataNetwork extends StateMachine {
 
     /** Event for setup data call (for handover) response from the data service. */
     private static final int EVENT_HANDOVER_RESPONSE = 15;
+
+    /** Event for subscription plan changed or unmetered/congested override set. */
+    private static final int EVENT_SUBSCRIPTION_PLAN_OVERRIDE = 16;
 
     /** The default MTU for IPv4 network. */
     private static final int DEFAULT_MTU_V4 = 1280;
@@ -389,6 +394,9 @@ public class DataNetwork extends StateMachine {
     /** The network slice info. */
     private @Nullable NetworkSliceInfo mNetworkSliceInfo;
 
+    /** The link status (i.e. RRC state). */
+    private @LinkStatus int mLinkStatus = DataCallResponse.LINK_STATUS_UNKNOWN;
+
     /** The network bandwidth. */
     private @NonNull NetworkBandwidth mNetworkBandwidth = new NetworkBandwidth(14, 14);
 
@@ -574,6 +582,15 @@ public class DataNetwork extends StateMachine {
         public abstract void onHandoverFailed(@NonNull DataNetwork dataNetwork,
                 @DataFailureCause int cause, long retryDurationMillis,
                 @HandoverFailureMode int handoverFailureMode);
+
+        /**
+         * Called when data network link status (i.e. RRC state) changed.
+         *
+         * @param dataNetwork The data network.
+         * @param linkStatus The link status (i.e. RRC state).
+         */
+        public abstract void onLinkStatusChanged(@NonNull DataNetwork dataNetwork,
+                @LinkStatus int linkStatus);
     }
 
     /**
@@ -602,6 +619,12 @@ public class DataNetwork extends StateMachine {
         mDataServiceManagers = dataServiceManagers;
         mAccessNetworksManager = phone.getAccessNetworksManager();
         mDataNetworkController = phone.getDataNetworkController();
+        mDataNetworkController.registerDataNetworkControllerCallback(
+                new DataNetworkController.DataNetworkControllerCallback(getHandler()::post) {
+                    @Override
+                    public void onSubscriptionPlanOverride() {
+                        sendMessage(EVENT_SUBSCRIPTION_PLAN_OVERRIDE);
+                    }});
         mDataConfigManager = mDataNetworkController.getDataConfigManager();
         mDataNetworkCallback = callback;
         mDataProfile = dataProfile;
@@ -773,7 +796,7 @@ public class DataNetwork extends StateMachine {
                 case EVENT_DATA_STATE_CHANGED: {
                     AsyncResult ar = (AsyncResult) msg.obj;
                     int transport = (int) ar.userObj;
-                    onDataStateChanged(transport, (ArrayList<DataCallResponse>) ar.result);
+                    onDataStateChanged(transport, (List<DataCallResponse>) ar.result);
                     break;
                 }
                 case EVENT_START_HANDOVER:
@@ -925,6 +948,9 @@ public class DataNetwork extends StateMachine {
                     break;
                 case EVENT_START_HANDOVER:
                     onStartHandover(msg.arg1, (DataHandoverRetryEntry) msg.obj);
+                    break;
+                case EVENT_SUBSCRIPTION_PLAN_OVERRIDE:
+                    updateMeteredAndCongested();
                     break;
                 default:
                     return NOT_HANDLED;
@@ -1138,12 +1164,10 @@ public class DataNetwork extends StateMachine {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
         }
         // TODO: Support NET_CAPABILITY_NOT_RESTRICTED
-        // TODO: Support NET_CAPABILITY_NOT_CONGESTED correctly
         if (!mCongested) {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
         }
 
-        // TODO: Support NET_CAPABILITY_TEMPORARILY_NOT_METERED correctly
         if (mTempNotMeteredSupported && mTempNotMetered) {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED);
         }
@@ -1371,8 +1395,16 @@ public class DataNetwork extends StateMachine {
 
         // Set PDU session id
         if (mPduSessionId != response.getPduSessionId()) {
-            log("PDU session id updated to " + mPduSessionId);
             mPduSessionId = response.getPduSessionId();
+            log("PDU session id updated to " + mPduSessionId);
+        }
+
+        // Set the link status
+        if (mLinkStatus != response.getLinkStatus()) {
+            mLinkStatus = response.getLinkStatus();
+            log("Link status updated to " + DataUtils.linkStatusToString(mLinkStatus));
+            mDataNetworkCallback.invokeFromExecutor(
+                    () -> mDataNetworkCallback.onLinkStatusChanged(DataNetwork.this, mLinkStatus));
         }
 
         // Set link addresses
@@ -1762,9 +1794,66 @@ public class DataNetwork extends StateMachine {
      * Update the metered and congested values from carrier configs and subscription overrides
      */
     private void updateMeteredAndCongested() {
-        log("updateMeteredAndCongested");
-        mTempNotMeteredSupported = mDataConfigManager.isTempNotMeteredSupportedByCarrier();
-        // TODO: set mTempNotMetered and mCongested based on SubscriptionPlans and overrides
+        int networkType = isNrConnected() ? TelephonyManager.NETWORK_TYPE_NR : getDataNetworkType();
+        log("updateMeteredAndCongested: networkType="
+                + TelephonyManager.getNetworkTypeName(networkType));
+        boolean changed = false;
+        if (mDataConfigManager.isTempNotMeteredSupportedByCarrier() != mTempNotMeteredSupported) {
+            mTempNotMeteredSupported = !mTempNotMeteredSupported;
+            changed = true;
+            log("updateMeteredAndCongested: mTempNotMeteredSupported changed to "
+                    + mTempNotMeteredSupported);
+        }
+        if ((mDataNetworkController.getUnmeteredOverrideNetworkTypes().contains(networkType)
+                || isNetworkTypeUnmetered(networkType)) != mTempNotMetered) {
+            mTempNotMetered = !mTempNotMetered;
+            changed = true;
+            log("updateMeteredAndCongested: mTempNotMetered changed to " + mTempNotMetered);
+        }
+        if (mDataNetworkController.getCongestedOverrideNetworkTypes().contains(networkType)
+                != mCongested) {
+            mCongested = !mCongested;
+            changed = true;
+            log("updateMeteredAndCongested: mCongested changed to " + mCongested);
+        }
+        if (changed) {
+            updateNetworkCapabilities();
+        }
+    }
+
+    /**
+     * Get whether the network type is unmetered from SubscriptionPlans, from either an unmetered
+     * general plan or specific plan for the given network type.
+     *
+     * @param networkType The network type to check meteredness for
+     * @return Whether the given network type is unmetered based on SubscriptionPlans
+     */
+    private boolean isNetworkTypeUnmetered(@NetworkType int networkType) {
+        List<SubscriptionPlan> plans = mDataNetworkController.getSubscriptionPlans();
+        if (plans.isEmpty()) return false;
+        boolean isGeneralUnmetered = true;
+        Set<Integer> allNetworkTypes = Arrays.stream(TelephonyManager.getAllNetworkTypes())
+                .boxed().collect(Collectors.toSet());
+        for (SubscriptionPlan plan : plans) {
+            // Check if plan is general (applies to all network types) or specific
+            if (Arrays.stream(plan.getNetworkTypes()).boxed().collect(Collectors.toSet())
+                    .containsAll(allNetworkTypes)) {
+                if (plan.getDataLimitBytes() != SubscriptionPlan.BYTES_UNLIMITED) {
+                    // Metered takes precedence over unmetered for safety
+                    isGeneralUnmetered = false;
+                }
+            } else {
+                // Check if plan applies to given network type
+                if (networkType != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
+                    for (int planNetworkType : plan.getNetworkTypes()) {
+                        if (planNetworkType == networkType) {
+                            return plan.getDataLimitBytes() == SubscriptionPlan.BYTES_UNLIMITED;
+                        }
+                    }
+                }
+            }
+        }
+        return isGeneralUnmetered;
     }
 
     /**
@@ -1796,6 +1885,13 @@ public class DataNetwork extends StateMachine {
             return nrs.getAccessNetworkTechnology();
         }
         return TelephonyManager.NETWORK_TYPE_UNKNOWN;
+    }
+
+    /**
+     * @return The physical link status (i.e. RRC state).
+     */
+    public @LinkStatus int getLinkStatus() {
+        return mLinkStatus;
     }
 
     /**
@@ -2137,6 +2233,8 @@ public class DataNetwork extends StateMachine {
                 return "EVENT_START_HANDOVER";
             case EVENT_HANDOVER_RESPONSE:
                 return "EVENT_HANDOVER_RESPONSE";
+            case EVENT_SUBSCRIPTION_PLAN_OVERRIDE:
+                return "EVENT_SUBSCRIPTION_PLAN_OVERRIDE";
             default:
                 return "Unknown(" + event + ")";
         }
