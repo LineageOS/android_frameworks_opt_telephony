@@ -29,7 +29,6 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.Bundle;
-import android.os.RemoteException;
 import android.provider.Settings;
 import android.service.euicc.DownloadSubscriptionResult;
 import android.service.euicc.EuiccService;
@@ -184,6 +183,9 @@ public class EuiccController extends IEuiccController.Stub {
             int portIndex = resolutionIntent.getIntExtra(
                     EuiccService.EXTRA_RESOLUTION_PORT_INDEX, 0);
             resolutionExtras.putInt(EuiccService.EXTRA_RESOLUTION_PORT_INDEX, portIndex);
+            boolean usePortIndex = resolutionIntent.getBooleanExtra(
+                    EuiccService.EXTRA_RESOLUTION_USE_PORT_INDEX, false);
+            resolutionExtras.putBoolean(EuiccService.EXTRA_RESOLUTION_USE_PORT_INDEX, usePortIndex);
             op.continueOperation(cardId, resolutionExtras, callbackIntent);
         } finally {
             Binder.restoreCallingIdentity(token);
@@ -554,7 +556,7 @@ public class EuiccController extends IEuiccController.Stub {
 
             // Without WRITE_EMBEDDED_SUBSCRIPTIONS, we first check whether the caller can manage
             // subscription on the target SIM (see comments below). If yes, the caller *must* be
-            // whitelisted per the metadata of the profile to be downloaded, so check the metadata;
+            // allowlisted per the metadata of the profile to be downloaded, so check the metadata;
             // If no, ask the user's consent before proceed.
             // On a multi-active SIM device, if the caller can manage the active subscription on the
             // target SIM, or there is no active subscription on the target SIM and the caller can
@@ -966,20 +968,20 @@ public class EuiccController extends IEuiccController.Stub {
     public void switchToSubscription(int cardId, int subscriptionId, String callingPackage,
             PendingIntent callbackIntent) {
         // convert PendingIntent to callback if no callback provided
-        IResultCallback callback = getCallbackFromPendingIntent(callbackIntent);
-        switchToSubscription(cardId, 0,
-                subscriptionId, false /* forceDeactivateSim */, callingPackage, callback);
+        switchToSubscription(cardId, 0, subscriptionId, false /* forceDeactivateSim */,
+                callingPackage, callbackIntent, false);
     }
 
     @Override
     public void switchToSubscriptionWithPort(int cardId, int portIndex, int subscriptionId,
-            String callingPackage, IResultCallback callback) {
-        switchToSubscription(cardId, portIndex,
-                subscriptionId, false /* forceDeactivateSim */, callingPackage, callback);
+            String callingPackage, PendingIntent callbackIntent) {
+        switchToSubscription(cardId, portIndex, subscriptionId, false /* forceDeactivateSim */,
+                callingPackage, callbackIntent, true);
     }
 
     void switchToSubscription(int cardId, int portIndex, int subscriptionId,
-            boolean forceDeactivateSim, String callingPackage, IResultCallback callback) {
+            boolean forceDeactivateSim, String callingPackage, PendingIntent callbackIntent,
+            boolean usePortIndex) {
         boolean callerCanWriteEmbeddedSubscriptions = callerCanWriteEmbeddedSubscriptions();
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
 
@@ -1000,7 +1002,7 @@ public class EuiccController extends IEuiccController.Stub {
                     passConsent = true;
                 } else {
                     Log.e(TAG, "Not permitted to switch to empty subscription");
-                    callback.onComplete(ERROR, null);
+                    sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                     return;
                 }
                 iccid = null;
@@ -1008,7 +1010,7 @@ public class EuiccController extends IEuiccController.Stub {
                 SubscriptionInfo sub = getSubscriptionForSubscriptionId(subscriptionId);
                 if (sub == null) {
                     Log.e(TAG, "Cannot switch to nonexistent sub: " + subscriptionId);
-                    callback.onComplete(ERROR, null);
+                    sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                     return;
                 }
                 if (callerCanWriteEmbeddedSubscriptions) {
@@ -1016,7 +1018,7 @@ public class EuiccController extends IEuiccController.Stub {
                 } else {
                     if (!mSubscriptionManager.canManageSubscription(sub, callingPackage)) {
                         Log.e(TAG, "Not permitted to switch to sub: " + subscriptionId);
-                        callback.onComplete(ERROR, null);
+                        sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                         return;
                     }
 
@@ -1037,52 +1039,33 @@ public class EuiccController extends IEuiccController.Stub {
                         false /* confirmationCodeRetried */,
                         EuiccOperation.forSwitchNoPrivileges(
                                 token, subscriptionId, callingPackage),
-                        cardId, portIndex);
-                callback.onComplete(RESOLVABLE_ERROR, extrasIntent);
+                        cardId, portIndex, usePortIndex);
+                sendResult(callbackIntent, RESOLVABLE_ERROR, extrasIntent);
                 return;
             }
 
             switchToSubscriptionPrivileged(cardId, portIndex, token, subscriptionId, iccid,
-                    forceDeactivateSim, callingPackage, callback);
-        } catch (RemoteException e) {
-            Log.e(TAG, "Cannot run callback.onComplete due to RemoteException e=" + e);
+                    forceDeactivateSim, callingPackage, callbackIntent, usePortIndex);
         } finally {
             Binder.restoreCallingIdentity(token);
         }
     }
 
-    /**
-     *
-     * Create callback object which sends a given PendingIntent in the onComplete method.
-     * This is used for compatibility between the old API which uses PendingIntents, and the new
-     * API which uses Executors and Callbacks.
-     * @param pi the PendingIntent to send
-     * @return the callback
-     */
-    public IResultCallback getCallbackFromPendingIntent(PendingIntent pi) {
-        return new IResultCallback.Stub() {
-            @Override
-            public void onComplete(int result, Intent resultIntent) {
-                sendResult(pi, result, resultIntent);
-            }
-        };
-    }
-
     void switchToSubscriptionPrivileged(int cardId, int portIndex, final long callingToken,
             int subscriptionId, boolean forceDeactivateSim, final String callingPackage,
-            final IResultCallback callback) {
+            final PendingIntent callbackIntent, boolean usePortIndex) {
         String iccid = null;
         SubscriptionInfo sub = getSubscriptionForSubscriptionId(subscriptionId);
         if (sub != null) {
             iccid = sub.getIccId();
         }
         switchToSubscriptionPrivileged(cardId, portIndex, callingToken, subscriptionId, iccid,
-                forceDeactivateSim, callingPackage, callback);
+                forceDeactivateSim, callingPackage, callbackIntent, usePortIndex);
     }
 
     void switchToSubscriptionPrivileged(int cardId, int portIndex, final long callingToken,
             int subscriptionId, @Nullable String iccid, boolean forceDeactivateSim,
-            final String callingPackage, final IResultCallback callback) {
+            final String callingPackage, final PendingIntent callbackIntent, boolean usePortIndex) {
         mConnector.switchToSubscription(
                 cardId,
                 portIndex,
@@ -1106,33 +1089,22 @@ public class EuiccController extends IEuiccController.Stub {
                                         false /* confirmationCodeRetried */,
                                         EuiccOperation.forSwitchDeactivateSim(
                                                 callingToken, subscriptionId, callingPackage),
-                                        cardId, portIndex);
+                                        cardId, portIndex, usePortIndex);
                                 break;
                             default:
                                 resultCode = ERROR;
                                 addExtrasToResultIntent(extrasIntent, result);
                                 break;
                         }
-                        try {
-                            callback.onComplete(resultCode, extrasIntent);
-                        } catch (RemoteException e) {
-                            Log.e(TAG, "onSwitchComplete: "
-                                    + "Cannot run callback.onComplete due to RemoteException e="
-                                    + e);
-                        }
+                        sendResult(callbackIntent, resultCode, extrasIntent);
                     }
 
                     @Override
                     public void onEuiccServiceUnavailable() {
-                        try {
-                            callback.onComplete(ERROR, null);
-                        } catch (RemoteException e) {
-                            Log.e(TAG, "EuiccService is unavailable. "
-                                    + "Cannot run callback.onComplete due to RemoteException e="
-                                    + e);
-                        }
+                        sendResult(callbackIntent, ERROR, null /* extrasIntent */);
                     }
-                });
+                },
+                usePortIndex);
     }
 
     @Override
@@ -1331,14 +1303,15 @@ public class EuiccController extends IEuiccController.Stub {
             EuiccOperation op, int cardId) {
         // use the default port 0 when not specified
         addResolutionIntent(extrasIntent, resolutionAction, callingPackage, resolvableErrors,
-                confirmationCodeRetried, op, cardId, TelephonyManager.DEFAULT_PORT_INDEX);
+                confirmationCodeRetried, op, cardId, TelephonyManager.DEFAULT_PORT_INDEX,
+                false /* usePortIndex */);
     }
 
     /** Add a resolution intent to the given extras intent. */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     public void addResolutionIntent(Intent extrasIntent, String resolutionAction,
             String callingPackage, int resolvableErrors, boolean confirmationCodeRetried,
-            EuiccOperation op, int cardId, int portIndex) {
+            EuiccOperation op, int cardId, int portIndex, boolean usePortIndex) {
         Intent intent = new Intent(EuiccManager.ACTION_RESOLVE_ERROR);
         intent.setPackage(RESOLUTION_ACTIVITY_PACKAGE_NAME);
         intent.setComponent(new ComponentName(
@@ -1349,6 +1322,7 @@ public class EuiccController extends IEuiccController.Stub {
         intent.putExtra(EuiccService.EXTRA_RESOLVABLE_ERRORS, resolvableErrors);
         intent.putExtra(EuiccService.EXTRA_RESOLUTION_CARD_ID, cardId);
         intent.putExtra(EuiccService.EXTRA_RESOLUTION_PORT_INDEX, portIndex);
+        intent.putExtra(EuiccService.EXTRA_RESOLUTION_USE_PORT_INDEX, usePortIndex);
         intent.putExtra(EuiccService.EXTRA_RESOLUTION_CONFIRMATION_CODE_RETRIED,
                 confirmationCodeRetried);
         intent.putExtra(EXTRA_OPERATION, op);

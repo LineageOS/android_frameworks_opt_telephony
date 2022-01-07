@@ -26,6 +26,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.NetworkAgent;
 import android.net.NetworkCapabilities;
+import android.net.NetworkPolicyManager;
+import android.net.NetworkPolicyManager.SubscriptionCallback;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -46,12 +48,14 @@ import android.telephony.NetworkRegistrationInfo.RegistrationState;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
+import android.telephony.SubscriptionPlan;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyManager.DataState;
 import android.telephony.TelephonyManager.SimState;
 import android.telephony.TelephonyRegistryManager;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataCallResponse.HandoverFailureMode;
+import android.telephony.data.DataCallResponse.LinkStatus;
 import android.telephony.data.DataProfile;
 import android.telephony.ims.ImsException;
 import android.telephony.ims.ImsManager;
@@ -175,6 +179,12 @@ public class DataNetworkController extends Handler {
     /** Event for re-evaluating preferred transport. */
     private static final int EVENT_REEVALUATE_PREFERRED_TRANSPORT = 21;
 
+    /** Event for subscription plans changed. */
+    private static final int EVENT_SUBSCRIPTION_PLANS_CHANGED = 22;
+
+    /** Event for unmetered or congested subscription override. */
+    private static final int EVENT_SUBSCRIPTION_OVERRIDE = 23;
+
     /** The supported IMS features. This is for IMS graceful tear down support. */
     private static final Collection<Integer> SUPPORTED_IMS_FEATURES =
             List.of(ImsFeature.FEATURE_MMTEL, ImsFeature.FEATURE_RCS);
@@ -197,6 +207,7 @@ public class DataNetworkController extends Handler {
     private final @NonNull AccessNetworksManager mAccessNetworksManager;
     private final @NonNull DataRetryManager mDataRetryManager;
     private final @NonNull ImsManager mImsManager;
+    private final @NonNull NetworkPolicyManager mNetworkPolicyManager;
     private final @NonNull SparseArray<DataServiceManager> mDataServiceManagers =
             new SparseArray<>();
 
@@ -207,6 +218,21 @@ public class DataNetworkController extends Handler {
     // Note that keeping a copy here instead of directly using ServiceStateTracker.getServiceState()
     // is intended for detecting the delta.
     private @NonNull ServiceState mServiceState;
+
+    /** The list of SubscriptionPlans, updated when initialized and when plans are changed. */
+    private @NonNull List<SubscriptionPlan> mSubscriptionPlans = new ArrayList<>();
+
+    /**
+     * The set of network types an unmetered override applies to, set by onSubscriptionOverride
+     * and cleared when the device is rebooted or the override expires.
+     */
+    private @NonNull @NetworkType Set<Integer> mUnmeteredOverrideNetworkTypes = new ArraySet<>();
+
+    /**
+     * The set of network types a congested override applies to, set by onSubscriptionOverride
+     * and cleared when the device is rebooted or the override expires.
+     */
+    private @NonNull @NetworkType Set<Integer> mCongestedOverrideNetworkTypes = new ArraySet<>();
 
     /**
      * The list of all network requests.
@@ -237,6 +263,9 @@ public class DataNetworkController extends Handler {
      * The IMS data network state. For now this is just for debugging purposes.
      */
     private @DataState int mImsDataNetworkState = TelephonyManager.DATA_DISCONNECTED;
+
+    /** Overall aggregated link status from internet data networks. */
+    private @LinkStatus int mInternetLinkStatus = DataCallResponse.LINK_STATUS_UNKNOWN;
 
     /** Data network controller callbacks. */
     private final @NonNull Set<DataNetworkControllerCallback> mDataNetworkControllerCallbacks =
@@ -477,6 +506,19 @@ public class DataNetworkController extends Handler {
          * disconnected.
          */
         public void onAnyDataNetworkExistingChanged(boolean anyDataExisting) {}
+
+        /**
+         * Called when {@link SubscriptionPlan}s change or an unmetered or congested subscription
+         * override is set.
+         */
+        public void onSubscriptionPlanOverride() {}
+
+        /**
+         * Called when the physical link status changed.
+         *
+         * @param status The latest link status.
+         */
+        public void onPhysicalLinkStatusChanged(@LinkStatus int status) {}
     }
 
     /**
@@ -718,6 +760,7 @@ public class DataNetworkController extends Handler {
                     }
                 });
         mImsManager = mPhone.getContext().getSystemService(ImsManager.class);
+        mNetworkPolicyManager = mPhone.getContext().getSystemService(NetworkPolicyManager.class);
 
         // Use the raw one from ServiceStateTracker instead of the combined one from
         // mPhone.getServiceState().
@@ -743,6 +786,23 @@ public class DataNetworkController extends Handler {
                 DataNetworkController.this.onReevaluatePreferredTransport(capability);
             }
         });
+
+        mNetworkPolicyManager.registerSubscriptionCallback(new SubscriptionCallback() {
+            @Override
+            public void onSubscriptionPlansChanged(int subId, SubscriptionPlan[] plans) {
+                if (mSubId != subId) return;
+                obtainMessage(EVENT_SUBSCRIPTION_PLANS_CHANGED, plans).sendToTarget();
+            }
+
+            @Override
+            public void onSubscriptionOverride(int subId, int overrideMask, int overrideValue,
+                    int[] networkTypes) {
+                if (mSubId != subId) return;
+                obtainMessage(EVENT_SUBSCRIPTION_OVERRIDE, overrideMask, overrideValue,
+                        networkTypes).sendToTarget();
+            }
+        });
+        updateSubscriptionPlans();
 
         mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, this, EVENT_SERVICE_STATE_CHANGED,
@@ -771,6 +831,7 @@ public class DataNetworkController extends Handler {
                         sendEmptyMessage(EVENT_SUBSCRIPTION_CHANGED);
                     }
                 }, this::post);
+
         // Register for call ended event for voice/data concurrent not supported case. It is
         // intended to only listen for events from the same phone as most of the telephony modules
         // are designed as per-SIM basis. For DSDS call ended on non-DDS sub, the frameworks relies
@@ -860,6 +921,50 @@ public class DataNetworkController extends Handler {
                 break;
             case EVENT_REEVALUATE_PREFERRED_TRANSPORT:
                 onReevaluatePreferredTransport(msg.arg1);
+                break;
+            case EVENT_SUBSCRIPTION_PLANS_CHANGED:
+                SubscriptionPlan[] plans = (SubscriptionPlan[]) msg.obj;
+                log("Subscription plans changed: " + Arrays.toString(plans));
+                mSubscriptionPlans = Arrays.asList(plans);
+                mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                        () -> callback.onSubscriptionPlanOverride()));
+                break;
+            case EVENT_SUBSCRIPTION_OVERRIDE:
+                int overrideMask = msg.arg1;
+                boolean override = msg.arg2 != 0;
+                int[] networkTypes = (int[]) msg.obj;
+
+                if (overrideMask == NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_UNMETERED) {
+                    log("Unmetered subscription override: override=" + override
+                            + ", networkTypes=" + Arrays.stream(networkTypes)
+                            .mapToObj(TelephonyManager::getNetworkTypeName)
+                            .collect(Collectors.joining(",")));
+                    for (int networkType : networkTypes) {
+                        if (override) {
+                            mUnmeteredOverrideNetworkTypes.add(networkType);
+                        } else {
+                            mUnmeteredOverrideNetworkTypes.remove(networkType);
+                        }
+                    }
+                    mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                            () -> callback.onSubscriptionPlanOverride()));
+                } else if (overrideMask == NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_CONGESTED) {
+                    log("Congested subscription override: override=" + override
+                            + ", networkTypes=" + Arrays.stream(networkTypes)
+                            .mapToObj(TelephonyManager::getNetworkTypeName)
+                            .collect(Collectors.joining(",")));
+                    for (int networkType : networkTypes) {
+                        if (override) {
+                            mCongestedOverrideNetworkTypes.add(networkType);
+                        } else {
+                            mCongestedOverrideNetworkTypes.remove(networkType);
+                        }
+                    }
+                    mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                            () -> callback.onSubscriptionPlanOverride()));
+                } else {
+                    loge("Unknown override mask: " + overrideMask);
+                }
                 break;
             default:
                 loge("Unexpected event " + msg.what);
@@ -1531,6 +1636,7 @@ public class DataNetworkController extends Handler {
                 }
             }
             mSubId = mPhone.getSubId();
+            updateSubscriptionPlans();
         }
     }
 
@@ -1569,21 +1675,6 @@ public class DataNetworkController extends Handler {
                 .filter(request -> request.getState()
                         == TelephonyNetworkRequest.REQUEST_STATE_UNSATISFIED)
                 .filter(request -> dataProfile.canSatisfy(request.getCapabilities()))
-                .collect(Collectors.toList()));
-    }
-
-    /**
-     * Find unsatisfied network requests that can be satisfied by the given network capabilities.
-     *
-     * @param capabilities The network capabilities.
-     * @return The network requests list.
-     */
-    private @NonNull NetworkRequestList findSatisfiableNetworkRequests(
-            @NonNull NetworkCapabilities capabilities) {
-        return new NetworkRequestList(mAllNetworkRequestList.stream()
-                .filter(request -> request.getState()
-                        == TelephonyNetworkRequest.REQUEST_STATE_UNSATISFIED)
-                .filter(request -> capabilities.satisfiedByNetworkCapabilities(capabilities))
                 .collect(Collectors.toList()));
     }
 
@@ -1687,6 +1778,12 @@ public class DataNetworkController extends Handler {
                             @HandoverFailureMode int handoverFailureMode) {
                         DataNetworkController.this.onDataNetworkHandoverFailed(
                                 dataNetwork, cause, retryDelayMillis, handoverFailureMode);
+                    }
+
+                    @Override
+                    public void onLinkStatusChanged(@NonNull DataNetwork dataNetwork,
+                            @LinkStatus int linkStatus) {
+                        DataNetworkController.this.onLinkStatusChanged(dataNetwork, linkStatus);
                     }
                 }));
         if (!mAnyDataNetworkExisting) {
@@ -2084,6 +2181,42 @@ public class DataNetworkController extends Handler {
     }
 
     /**
+     * Update {@link SubscriptionPlan}s from {@link NetworkPolicyManager}.
+     */
+    private void updateSubscriptionPlans() {
+        mSubscriptionPlans = Arrays.asList(mNetworkPolicyManager.getSubscriptionPlans(
+                mSubId, mPhone.getContext().getOpPackageName()));
+        mCongestedOverrideNetworkTypes.clear();
+        mUnmeteredOverrideNetworkTypes.clear();
+        log("Subscription plans initialized: " + mSubscriptionPlans);
+    }
+
+    /**
+     * Called when data network's link status changed.
+     *
+     * @param dataNetwork The data network that has link status changed.
+     * @param linkStatus The link status (i.e. RRC state).
+     */
+    private void onLinkStatusChanged(@NonNull DataNetwork dataNetwork, @LinkStatus int linkStatus) {
+        // TODO: Since this is only used for 5G icon display logic, so we only use internet data
+        //   data network's link status. Consider expanding to all data networks if needed, and
+        //   should use CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL
+        //   to determine if using all data networks or only internet data networks.
+        boolean anyActive = mDataNetworkList.stream()
+                .filter(DataNetwork::isInternetSupported)
+                .anyMatch(network -> network.getLinkStatus()
+                        == DataCallResponse.LINK_STATUS_ACTIVE);
+        int status = anyActive ? DataCallResponse.LINK_STATUS_ACTIVE
+                : DataCallResponse.LINK_STATUS_DORMANT;
+        if (mInternetLinkStatus != status) {
+            log("Internet link status changed to " + DataUtils.linkStatusToString(status));
+            mInternetLinkStatus = status;
+            mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                    () -> callback.onPhysicalLinkStatusChanged(mInternetLinkStatus)));
+        }
+    }
+
+    /**
      * Check if needed to re-evaluate the existing data networks.
      *
      * @param oldNri Previous network registration info.
@@ -2262,6 +2395,30 @@ public class DataNetworkController extends Handler {
      */
     public @NonNull DataRetryManager getDataRetryManager() {
         return mDataRetryManager;
+    }
+
+    /**
+     * @return The list of SubscriptionPlans
+     */
+    @VisibleForTesting
+    public @NonNull List<SubscriptionPlan> getSubscriptionPlans() {
+        return mSubscriptionPlans;
+    }
+
+    /**
+     * @return The set of network types an unmetered override applies to
+     */
+    @VisibleForTesting
+    public @NonNull @NetworkType Set<Integer> getUnmeteredOverrideNetworkTypes() {
+        return mUnmeteredOverrideNetworkTypes;
+    }
+
+    /**
+     * @return The set of network types a congested override applies to
+     */
+    @VisibleForTesting
+    public @NonNull @NetworkType Set<Integer> getCongestedOverrideNetworkTypes() {
+        return mCongestedOverrideNetworkTypes;
     }
 
     /**
@@ -2536,6 +2693,14 @@ public class DataNetworkController extends Handler {
         pw.println("mDataServiceBound=" + mDataServiceBound);
         pw.println("mSimState=" + SubscriptionInfoUpdater.simStateString(mSimState));
         pw.println("mDataNetworkControllerCallbacks=" + mDataNetworkControllerCallbacks);
+        pw.println("Subscription plans:");
+        pw.increaseIndent();
+        mSubscriptionPlans.forEach(pw::println);
+        pw.decreaseIndent();
+        pw.println("Unmetered override network types=" + mUnmeteredOverrideNetworkTypes.stream()
+                .map(TelephonyManager::getNetworkTypeName).collect(Collectors.joining(",")));
+        pw.println("Congested override network types=" + mCongestedOverrideNetworkTypes.stream()
+                .map(TelephonyManager::getNetworkTypeName).collect(Collectors.joining(",")));
         pw.println("Local logs:");
         pw.increaseIndent();
         mLocalLog.dump(fd, pw, args);

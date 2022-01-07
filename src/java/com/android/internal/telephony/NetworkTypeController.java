@@ -35,8 +35,10 @@ import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
+import android.telephony.data.DataCallResponse.LinkStatus;
 import android.text.TextUtils;
 
+import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.dataconnection.DataConnection;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.util.ArrayUtils;
@@ -147,7 +149,7 @@ public class NetworkTypeController extends StateMachine {
     private String mPrimaryTimerState;
     private String mSecondaryTimerState;
     private String mPreviousState;
-    private @DataCallResponse.LinkStatus int mPhysicalLinkStatus;
+    private @LinkStatus int mPhysicalLinkStatus;
     private boolean mIsPhysicalChannelConfig16Supported;
     private Boolean mIsNrAdvancedAllowedByPco = false;
     private int mNrAdvancedCapablePcoId = 0;
@@ -207,11 +209,6 @@ public class NetworkTypeController extends StateMachine {
         mIsPhysicalChannelConfig16Supported = mPhone.getContext().getSystemService(
                 TelephonyManager.class).isRadioInterfaceCapabilitySupported(
                 TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
-        if (!mIsPhysicalChannelConfig16Supported) {
-            mPhone.getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                    .registerForPhysicalLinkStatusChanged(getHandler(),
-                            EVENT_PHYSICAL_LINK_STATUS_CHANGED);
-        }
         mPhone.getServiceStateTracker().registerForNrStateChanged(getHandler(),
                 EVENT_NR_STATE_CHANGED, null);
         mPhone.getServiceStateTracker().registerForNrFrequencyChanged(getHandler(),
@@ -295,10 +292,22 @@ public class NetworkTypeController extends StateMachine {
                         CarrierConfigManager.KEY_ENABLE_NR_ADVANCED_WHILE_ROAMING_BOOL);
                 mIsUsingUserDataForRrcDetection = b.getBoolean(
                         CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL);
-                if (mIsPhysicalChannelConfig16Supported && mIsUsingUserDataForRrcDetection) {
-                    mPhone.getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                            .registerForPhysicalLinkStatusChanged(getHandler(),
-                                    EVENT_PHYSICAL_LINK_STATUS_CHANGED);
+                if (!mIsPhysicalChannelConfig16Supported || mIsUsingUserDataForRrcDetection) {
+                    if (mPhone.isUsingNewDataStack()) {
+                        mPhone.getDataNetworkController().registerDataNetworkControllerCallback(
+                                new DataNetworkControllerCallback(getHandler()::post) {
+                                    @Override
+                                    public void onPhysicalLinkStatusChanged(
+                                            @LinkStatus int status) {
+                                        sendMessage(obtainMessage(
+                                                EVENT_PHYSICAL_LINK_STATUS_CHANGED,
+                                                new AsyncResult(null, status, null)));
+                                    }});
+                    } else {
+                        mPhone.getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                                .registerForPhysicalLinkStatusChanged(getHandler(),
+                                        EVENT_PHYSICAL_LINK_STATUS_CHANGED);
+                    }
                 }
             }
         }
