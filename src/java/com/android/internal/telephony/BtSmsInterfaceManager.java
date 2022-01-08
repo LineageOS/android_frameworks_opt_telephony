@@ -29,6 +29,9 @@ import android.telephony.SmsManager;
 import android.telephony.SubscriptionInfo;
 import android.util.Log;
 
+import java.util.Collection;
+import java.util.Collections;
+
 
 /**
  * BtSmsInterfaceManager to provide a mechanism for sending SMS over Bluetooth
@@ -77,7 +80,7 @@ public class BtSmsInterfaceManager {
 
     private class MapMessageSender implements BluetoothProfile.ServiceListener {
 
-        final Uri[] mDestAddr;
+        final Collection<Uri> mDestAddr;
         private String mMessage;
         final BluetoothDevice mDevice;
         final PendingIntent mSentIntent;
@@ -86,10 +89,10 @@ public class BtSmsInterfaceManager {
         MapMessageSender(final String destAddr, final String message, final BluetoothDevice device,
                 final PendingIntent sentIntent, final PendingIntent deliveryIntent) {
             super();
-            mDestAddr = new Uri[]{new Uri.Builder()
+            mDestAddr = Collections.singleton(new Uri.Builder()
                     .appendPath(destAddr)
                     .scheme(PhoneAccount.SCHEME_TEL)
-                    .build()};
+                    .build());
             mMessage = message;
             mDevice = device;
             mSentIntent = sentIntent;
