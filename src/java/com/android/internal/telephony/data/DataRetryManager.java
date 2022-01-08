@@ -128,10 +128,15 @@ public class DataRetryManager extends Handler {
      */
     public static class DataThrottlingEntry {
         /**
-         * The data profile that is being throttled for setup retry. Should be {@code null} when
-         * retryType is {@link ThrottleStatus#RETRY_TYPE_HANDOVER}.
+         * The data profile that is being throttled for setup/handover retry.
          */
-        public final @Nullable DataProfile dataProfile;
+        public final @NonNull DataProfile dataProfile;
+
+        /**
+         * The associated network request list when throttling happened. Should be {@code null} when
+         * retry type is {@link ThrottleStatus#RETRY_TYPE_HANDOVER}.
+         */
+        public final @Nullable NetworkRequestList networkRequestList;
 
         /**
          * @param dataNetwork The data network that is being throttled for handover retry. Should be
@@ -154,8 +159,9 @@ public class DataRetryManager extends Handler {
         /**
          * Constructor.
          *
-         * @param dataProfile The data profile that is being throttled for setup retry. Should be
-         * {@code null} when retryType is {@link ThrottleStatus#RETRY_TYPE_HANDOVER}.
+         * @param dataProfile The data profile that is being throttled for setup/handover retry.
+         * @param networkRequestList The associated network request list when throttling happened.
+         * Should be {@code null} when retry type is {@link ThrottleStatus#RETRY_TYPE_HANDOVER}.
          * @param dataNetwork The data network that is being throttled for handover retry.
          * Should be {@code null} when retryType is
          * {@link ThrottleStatus#RETRY_TYPE_NEW_CONNECTION}.
@@ -163,10 +169,12 @@ public class DataRetryManager extends Handler {
          * @param retryType The retry type when throttling expires.
          * @param expirationTimeMillis The expiration elapsed time of data throttling.
          */
-        public DataThrottlingEntry(@Nullable DataProfile dataProfile,
+        public DataThrottlingEntry(@NonNull DataProfile dataProfile,
+                @Nullable NetworkRequestList networkRequestList,
                 @Nullable DataNetwork dataNetwork, @TransportType int transport,
                 @RetryType int retryType, @ElapsedRealtimeLong long expirationTimeMillis) {
             this.dataProfile = dataProfile;
+            this.networkRequestList = networkRequestList;
             this.dataNetwork = dataNetwork;
             this.transport = transport;
             this.retryType = retryType;
@@ -175,8 +183,8 @@ public class DataRetryManager extends Handler {
 
         @Override
         public @NonNull String toString() {
-            return "[DataThrottlingEntry: dataProfile=" + dataProfile + ", dataNetwork="
-                    + dataNetwork + ", transport="
+            return "[DataThrottlingEntry: dataProfile=" + dataProfile + ", request list="
+                    + networkRequestList + ", dataNetwork=" + dataNetwork + ", transport="
                     + AccessNetworkConstants.transportTypeToString(transport) + ", expiration time="
                     + DataUtils.elapsedTimeToString(expirationTimeMillis) + "]";
         }
@@ -575,6 +583,10 @@ public class DataRetryManager extends Handler {
      */
     public static class DataSetupRetryEntry extends DataRetryEntry {
         /**
+         * Retry type is unknown. This should be only used for initialized value.
+         */
+        public static final int RETRY_TYPE_UNKNOWN = 0;
+        /**
          * To retry setup data with the same data profile.
          */
         public static final int RETRY_TYPE_DATA_PROFILE = 1;
@@ -587,6 +599,7 @@ public class DataRetryManager extends Handler {
 
         @IntDef(prefix = {"RETRY_TYPE_"},
                 value = {
+                        RETRY_TYPE_UNKNOWN,
                         RETRY_TYPE_DATA_PROFILE,
                         RETRY_TYPE_NETWORK_REQUESTS,
                 })
@@ -596,7 +609,7 @@ public class DataRetryManager extends Handler {
         public final @SetupRetryType int setupRetryType;
 
         /** The network requests to satisfy when retry happens. */
-        public final @Nullable NetworkRequestList networkRequestList;
+        public final @NonNull NetworkRequestList networkRequestList;
 
         /** The data profile that will be used for retry. */
         public final @Nullable DataProfile dataProfile;
@@ -658,16 +671,16 @@ public class DataRetryManager extends Handler {
          */
         public static class Builder<T extends Builder<T>> extends DataRetryEntry.Builder<T> {
             /** Data setup retry type. Could be retry by same data profile or same capabilities. */
-            private @SetupRetryType int mSetupRetryType;
+            private @SetupRetryType int mSetupRetryType = RETRY_TYPE_UNKNOWN;
 
             /** The network requests to satisfy when retry happens. */
-            private @Nullable NetworkRequestList mNetworkRequestList;
+            private @NonNull NetworkRequestList mNetworkRequestList;
 
             /** The data profile that will be used for retry. */
-            private @NonNull DataProfile mDataProfile;
+            private @Nullable DataProfile mDataProfile;
 
             /** The transport to retry data setup. */
-            private @TransportType int mTransport;
+            private @TransportType int mTransport = AccessNetworkConstants.TRANSPORT_TYPE_INVALID;
 
             /**
              * Set the data retry type.
@@ -721,6 +734,18 @@ public class DataRetryManager extends Handler {
              * @return The instance of {@link DataSetupRetryEntry}.
              */
             public @NonNull DataSetupRetryEntry build() {
+                if (mNetworkRequestList == null) {
+                    throw new IllegalArgumentException("network request list is not specified.");
+                }
+                if (mTransport != AccessNetworkConstants.TRANSPORT_TYPE_WWAN
+                        && mTransport != AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+                    throw new IllegalArgumentException("Invalid transport type " + mTransport);
+                }
+                if (mSetupRetryType != RETRY_TYPE_DATA_PROFILE
+                        && mSetupRetryType != RETRY_TYPE_NETWORK_REQUESTS) {
+                    throw new IllegalArgumentException("Invalid setup retry type "
+                            + mSetupRetryType);
+                }
                 return new DataSetupRetryEntry(mSetupRetryType, mNetworkRequestList, mDataProfile,
                         mTransport, (DataSetupRetryRule) mAppliedDataRetryRule, mRetryDelayMillis);
             }
@@ -923,6 +948,8 @@ public class DataRetryManager extends Handler {
         reset();
         mDataSetupRetryRuleList = mDataConfigManager.getDataSetupRetryRules();
         mDataHandoverRetryRuleList = mDataConfigManager.getDataHandoverRetryRules();
+        log("onDataConfigUpdated: mDataSetupRetryRuleList=" + mDataSetupRetryRuleList
+                + ", mDataHandoverRetryRuleList=" + mDataHandoverRetryRuleList);
     }
 
     /**
@@ -968,21 +995,24 @@ public class DataRetryManager extends Handler {
             // when unthrottling happens, we still want to retry and we'll need
             // a type there so we know what to retry. Using RETRY_TYPE_NONE
             // ThrottleStatus is just for API backwards compatibility reason.
-            updateThrottleStatus(dataProfile, null, ThrottleStatus.RETRY_TYPE_NEW_CONNECTION,
-                    transport, Long.MAX_VALUE);
+            updateThrottleStatus(dataProfile, requestList, null,
+                    ThrottleStatus.RETRY_TYPE_NEW_CONNECTION, transport, Long.MAX_VALUE);
         } else if (retryDelayMillis != DataCallResponse.RETRY_DURATION_UNDEFINED) {
             // Network specifically asks retry the previous data profile again.
             DataSetupRetryEntry dataSetupRetryEntry = new DataSetupRetryEntry.Builder<>()
                     .setRetryDelay(retryDelayMillis)
                     .setSetupRetryType(DataSetupRetryEntry.RETRY_TYPE_DATA_PROFILE)
+                    .setNetworkRequestList(requestList)
                     .setDataProfile(dataProfile)
                     .setTransport(transport)
                     .build();
-            updateThrottleStatus(dataProfile, null, ThrottleStatus.RETRY_TYPE_NEW_CONNECTION,
-                    transport, dataSetupRetryEntry.retryElapsedTime);
+            updateThrottleStatus(dataProfile, requestList, null,
+                    ThrottleStatus.RETRY_TYPE_NEW_CONNECTION, transport,
+                    dataSetupRetryEntry.retryElapsedTime);
             schedule(dataSetupRetryEntry);
         } else {
             // Network did not suggest any retry. Use the configured rules to perform retry.
+            logv("mDataSetupRetryRuleList=" + mDataSetupRetryRuleList);
 
             boolean retryScheduled = false;
             List<NetworkRequestList> groupedNetworkRequestLists =
@@ -996,7 +1026,7 @@ public class DataRetryManager extends Handler {
                         if (isSimilarNetworkRequestRetryScheduled(networkRequestList.get(0))) {
                             log(networkRequestList.get(0) + " already had similar retry "
                                     + "scheduled.");
-                            break;
+                            return;
                         }
 
                         int failedCount = getRetryFailedCount(capability, retryRule);
@@ -1009,7 +1039,7 @@ public class DataRetryManager extends Handler {
                                     + DataUtils.networkCapabilityToString(capability)
                                     + ". Condition-based retry will still happen when condition "
                                     + "changes.");
-                            break;
+                            return;
                         }
 
                         retryDelayMillis = retryRule.getRetryIntervalsMillis().get(
@@ -1063,7 +1093,8 @@ public class DataRetryManager extends Handler {
             // when unthrottling happens, we still want to retry and we'll need
             // a type there so we know what to retry. Using RETRY_TYPE_NONE
             // ThrottleStatus is just for API backwards compatibility reason.
-            updateThrottleStatus(dataNetwork.getDataProfile(), dataNetwork,
+            updateThrottleStatus(dataNetwork.getDataProfile(),
+                    dataNetwork.getAttachedNetworkRequestList(), dataNetwork,
                     ThrottleStatus.RETRY_TYPE_HANDOVER, targetTransport, Long.MAX_VALUE);
         } else if (retryDelayMillis != DataCallResponse.RETRY_DURATION_UNDEFINED) {
             // Network specifically asks retry the previous data profile again.
@@ -1072,7 +1103,8 @@ public class DataRetryManager extends Handler {
                     .setDataNetwork(dataNetwork)
                     .build();
 
-            updateThrottleStatus(dataNetwork.getDataProfile(), dataNetwork,
+            updateThrottleStatus(dataNetwork.getDataProfile(),
+                    dataNetwork.getAttachedNetworkRequestList(), dataNetwork,
                     ThrottleStatus.RETRY_TYPE_HANDOVER, targetTransport,
                     dataHandoverRetryEntry.retryElapsedTime);
             schedule(dataHandoverRetryEntry);
@@ -1108,7 +1140,7 @@ public class DataRetryManager extends Handler {
 
     /** Cancel all retries and throttling entries. */
     private void onReset() {
-        logl("onReset");
+        logl("Remove all retry and throttling entries.");
         removeMessages(EVENT_DATA_SETUP_RETRY);
         removeMessages(EVENT_DATA_HANDOVER_RETRY);
         mDataRetryEntries.stream()
@@ -1199,35 +1231,38 @@ public class DataRetryManager extends Handler {
     /**
      * Add the latest throttling request and report it to the clients.
      *
-     * @param dataProfile The data profile that is being throttled for setup retry. Should be
-     * {@code null} when retryType is {@link ThrottleStatus#RETRY_TYPE_HANDOVER}.
+     * @param dataProfile The data profile that is being throttled for setup/handover retry.
+     * @param networkRequestList The associated network request list when throttling happened.
+     * Can be {@code null} when retry type is {@link ThrottleStatus#RETRY_TYPE_HANDOVER}.
      * @param dataNetwork The data network that is being throttled for handover retry.
-     * Should be {@code null} when retryType is
+     * Must be {@code null} when retryType is
      * {@link ThrottleStatus#RETRY_TYPE_NEW_CONNECTION}.
      * @param retryType The retry type when throttling expires.
      * @param transport The transport that the data profile has been throttled on.
      * @param expirationTime The expiration time of data throttling. This is the time retrieved from
      * {@link SystemClock#elapsedRealtime()}.
      */
-    private void updateThrottleStatus(@Nullable DataProfile dataProfile,
+    private void updateThrottleStatus(@NonNull DataProfile dataProfile,
+            @Nullable NetworkRequestList networkRequestList,
             @Nullable DataNetwork dataNetwork, @RetryType int retryType,
             @TransportType int transport, @ElapsedRealtimeLong long expirationTime) {
-        DataThrottlingEntry entry = new DataThrottlingEntry(dataProfile, dataNetwork, transport,
-                retryType, expirationTime);
+        DataThrottlingEntry entry = new DataThrottlingEntry(dataProfile, networkRequestList,
+                dataNetwork, transport, retryType, expirationTime);
         if (mDataThrottlingEntries.size() >= MAXIMUM_HISTORICAL_ENTRIES) {
             mDataThrottlingEntries.remove(0);
         }
 
         // Remove previous entry that contains the same data profile.
         mDataThrottlingEntries.removeIf(
-                throttlingEntry -> throttlingEntry.dataProfile.equals(dataProfile));
+                throttlingEntry -> dataProfile.equals(throttlingEntry.dataProfile));
+
+
         logl("Add throttling entry " + entry);
         mDataThrottlingEntries.add(entry);
 
         // For backwards compatibility, we use RETRY_TYPE_NONE if network suggests never retry.
         final int dataRetryType = expirationTime == Long.MAX_VALUE
-                ? ThrottleStatus.RETRY_TYPE_NONE
-                : retryType;
+                ? ThrottleStatus.RETRY_TYPE_NONE : retryType;
 
         // Report to the clients.
         final List<ThrottleStatus> throttleStatusList = new ArrayList<>();
@@ -1321,6 +1356,7 @@ public class DataRetryManager extends Handler {
                         .setDataProfile(entry.dataProfile)
                         .setTransport(entry.transport)
                         .setSetupRetryType(DataSetupRetryEntry.RETRY_TYPE_DATA_PROFILE)
+                        .setNetworkRequestList(entry.networkRequestList)
                         .setRetryDelay(0)
                         .build());
             } else if (entry.retryType == ThrottleStatus.RETRY_TYPE_HANDOVER) {
