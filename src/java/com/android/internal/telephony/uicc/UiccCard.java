@@ -141,6 +141,17 @@ public class UiccCard {
         mCardId = iccId;
     }
 
+
+    /**
+     * Updates MEP(Multiple Enabled Profile) support flag.
+     *
+     * <p>If IccSlotStatus comes later, the number of ports reported is only known after the
+     * UiccCard creation which will impact UICC MEP capability.
+     */
+    public void updateSupportMultipleEnabledProfile(boolean supported) {
+        mIsSupportsMultipleEnabledProfiles = supported;
+    }
+
     @UnsupportedAppUsage
     public CardState getCardState() {
         synchronized (mLock) {

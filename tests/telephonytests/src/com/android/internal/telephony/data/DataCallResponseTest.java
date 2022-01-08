@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.dataconnection;
+package com.android.internal.telephony.data;
 
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_ADDRESS;
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_DNS;
