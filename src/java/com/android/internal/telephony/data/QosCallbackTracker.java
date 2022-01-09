@@ -280,26 +280,30 @@ public class QosCallbackTracker extends Handler {
 
     private boolean matchesByLocalAddress(final @NonNull QosBearerFilter sessionFilter,
             final @NonNull IFilter filter) {
+        if (sessionFilter.getLocalPortRange() == null) return false;
         for (final LinkAddress qosAddress : sessionFilter.getLocalAddresses()) {
             return filter.matchesLocalAddress(qosAddress.getAddress(),
-                  sessionFilter.getLocalPortRange().getStart(),
-                  sessionFilter.getLocalPortRange().getEnd());
+                    sessionFilter.getLocalPortRange().getStart(),
+                    sessionFilter.getLocalPortRange().getEnd());
         }
         return false;
     }
 
     private boolean matchesByRemoteAddress(@NonNull QosBearerFilter sessionFilter,
             final @NonNull IFilter filter) {
+        if (sessionFilter.getRemotePortRange() == null) return false;
         for (final LinkAddress qosAddress : sessionFilter.getRemoteAddresses()) {
             return filter.matchesRemoteAddress(qosAddress.getAddress(),
-                  sessionFilter.getRemotePortRange().getStart(),
-                  sessionFilter.getRemotePortRange().getEnd());
+                    sessionFilter.getRemotePortRange().getStart(),
+                    sessionFilter.getRemotePortRange().getEnd());
         }
         return false;
     }
 
     private boolean matchesByRemoteAndLocalAddress(@NonNull QosBearerFilter sessionFilter,
             final @NonNull IFilter filter) {
+        if (sessionFilter.getLocalPortRange() == null
+                || sessionFilter.getRemotePortRange() == null) return false;
         for (final LinkAddress remoteAddress : sessionFilter.getRemoteAddresses()) {
             for (final LinkAddress localAddress : sessionFilter.getLocalAddresses()) {
                 return filter.matchesRemoteAddress(remoteAddress.getAddress(),
@@ -327,17 +331,21 @@ public class QosCallbackTracker extends Handler {
         for (final QosBearerFilter sessionFilter : qosBearerSession.getQosBearerFilterList()) {
             if (!sessionFilter.getLocalAddresses().isEmpty()
                     && !sessionFilter.getRemoteAddresses().isEmpty()
+                    && sessionFilter.getLocalPortRange() != null
                     && sessionFilter.getLocalPortRange().isValid()
+                    && sessionFilter.getRemotePortRange() != null
                     && sessionFilter.getRemotePortRange().isValid()) {
                 if (matchesByRemoteAndLocalAddress(sessionFilter, filter)) {
                     qosFilter = getFilterByPrecedence(qosFilter, sessionFilter);
                 }
             } else if (!sessionFilter.getRemoteAddresses().isEmpty()
+                    && sessionFilter.getRemotePortRange() != null
                     && sessionFilter.getRemotePortRange().isValid()) {
                 if (matchesByRemoteAddress(sessionFilter, filter)) {
                     qosFilter = getFilterByPrecedence(qosFilter, sessionFilter);
                 }
             } else if (!sessionFilter.getLocalAddresses().isEmpty()
+                    && sessionFilter.getLocalPortRange() != null
                     && sessionFilter.getLocalPortRange().isValid()) {
                 if (matchesByLocalAddress(sessionFilter, filter)) {
                     qosFilter = getFilterByPrecedence(qosFilter, sessionFilter);
@@ -351,7 +359,8 @@ public class QosCallbackTracker extends Handler {
             @NonNull IFilter filter) {
         QosBearerFilter qosBearerFilter = getMatchingQosBearerFilter(session, filter);
         List<InetSocketAddress> remoteAddresses = new ArrayList<>();
-        if (qosBearerFilter.getRemoteAddresses().size() > 0) {
+        if (qosBearerFilter.getRemoteAddresses().size() > 0
+                && qosBearerFilter.getRemotePortRange() != null) {
             remoteAddresses.add(
                     new InetSocketAddress(qosBearerFilter.getRemoteAddresses().get(0).getAddress(),
                             qosBearerFilter.getRemotePortRange().getStart()));
@@ -437,6 +446,7 @@ public class QosCallbackTracker extends Handler {
     private boolean doesLocalConnectionInfoExist(final QosBearerSession qosBearerSession) {
         for (final QosBearerFilter sessionFilter : qosBearerSession.getQosBearerFilterList()) {
             if (!sessionFilter.getLocalAddresses().isEmpty()
+                    && sessionFilter.getLocalPortRange() != null
                     && sessionFilter.getLocalPortRange().isValid()) {
                 return true;
             }
@@ -447,6 +457,7 @@ public class QosCallbackTracker extends Handler {
     private boolean doesRemoteConnectionInfoExist(final QosBearerSession qosBearerSession) {
         for (final QosBearerFilter sessionFilter : qosBearerSession.getQosBearerFilterList()) {
             if (!sessionFilter.getRemoteAddresses().isEmpty()
+                    && sessionFilter.getRemotePortRange() != null
                     && sessionFilter.getRemotePortRange().isValid()) {
                 return true;
             }
