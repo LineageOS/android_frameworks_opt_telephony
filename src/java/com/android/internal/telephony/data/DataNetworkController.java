@@ -100,6 +100,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -2248,8 +2249,9 @@ public class DataNetworkController extends Handler {
      * Update {@link SubscriptionPlan}s from {@link NetworkPolicyManager}.
      */
     private void updateSubscriptionPlans() {
-        mSubscriptionPlans = Arrays.asList(mNetworkPolicyManager.getSubscriptionPlans(
-                mSubId, mPhone.getContext().getOpPackageName()));
+        SubscriptionPlan[] plans = mNetworkPolicyManager.getSubscriptionPlans(
+                mSubId, mPhone.getContext().getOpPackageName());
+        mSubscriptionPlans = plans != null ? Arrays.asList(plans) : Collections.emptyList();
         mCongestedOverrideNetworkTypes.clear();
         mUnmeteredOverrideNetworkTypes.clear();
         log("Subscription plans initialized: " + mSubscriptionPlans);
