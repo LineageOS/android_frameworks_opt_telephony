@@ -18,6 +18,7 @@ package com.android.internal.telephony.ims;
 
 import android.content.ComponentName;
 import android.content.Context;
+import android.os.Handler;
 import android.os.IBinder;
 import android.os.IInterface;
 import android.os.RemoteException;
@@ -36,6 +37,7 @@ import com.android.ims.ImsFeatureBinderRepository;
 import com.android.ims.internal.IImsFeatureStatusCallback;
 import com.android.ims.internal.IImsMMTelFeature;
 import com.android.ims.internal.IImsServiceController;
+import com.android.internal.annotations.VisibleForTesting;
 
 /**
  * Manages the Binding lifecycle of one ImsService as well as the relevant ImsFeatures that the
@@ -57,10 +59,33 @@ public class ImsServiceControllerCompat extends ImsServiceController {
     private final SparseArray<ImsRegistrationCompatAdapter> mRegCompatAdapters =
             new SparseArray<>();
 
+    private final MmTelFeatureCompatFactory mMmTelFeatureFactory;
+
+    /**
+     * Used to inject test instances of MmTelFeatureCompatAdapter
+     */
+    @VisibleForTesting
+    public interface MmTelFeatureCompatFactory {
+        /**
+         * @return A new instance of {@link MmTelFeatureCompatAdapter}
+         */
+        MmTelFeatureCompatAdapter create(Context context, int slotId,
+                MmTelInterfaceAdapter compatFeature);
+    }
+
     public ImsServiceControllerCompat(Context context, ComponentName componentName,
             ImsServiceController.ImsServiceControllerCallbacks callbacks,
             ImsFeatureBinderRepository repo) {
         super(context, componentName, callbacks, repo);
+        mMmTelFeatureFactory = MmTelFeatureCompatAdapter::new;
+    }
+
+    @VisibleForTesting
+    public ImsServiceControllerCompat(Context context, ComponentName componentName,
+            ImsServiceControllerCallbacks callbacks, Handler handler, RebindRetry rebindRetry,
+            ImsFeatureBinderRepository repo, MmTelFeatureCompatFactory factory) {
+        super(context, componentName, callbacks, handler, rebindRetry, repo);
+        mMmTelFeatureFactory = factory;
     }
 
     @Override
@@ -186,6 +211,10 @@ public class ImsServiceControllerCompat extends ImsServiceController {
     protected final void removeImsFeature(int slotId, int featureType)
             throws RemoteException {
         if (featureType == ImsFeature.MMTEL) {
+            MmTelFeatureCompatAdapter adapter = mMmTelCompatAdapters.get(slotId, null);
+            // Need to manually call onFeatureRemoved here, since this is normally called by the
+            // ImsService itself.
+            if (adapter != null) adapter.onFeatureRemoved();
             mMmTelCompatAdapters.remove(slotId);
             mRegCompatAdapters.remove(slotId);
             mConfigCompatAdapters.remove(slotId);
@@ -218,7 +247,7 @@ public class ImsServiceControllerCompat extends ImsServiceController {
     private IImsMmTelFeature createMMTelCompat(int slotId)
             throws RemoteException {
         MmTelInterfaceAdapter interfaceAdapter = getInterface(slotId);
-        MmTelFeatureCompatAdapter mmTelAdapter = new MmTelFeatureCompatAdapter(mContext, slotId,
+        MmTelFeatureCompatAdapter mmTelAdapter = mMmTelFeatureFactory.create(mContext, slotId,
                 interfaceAdapter);
         mMmTelCompatAdapters.put(slotId, mmTelAdapter);
         ImsRegistrationCompatAdapter regAdapter = new ImsRegistrationCompatAdapter();
