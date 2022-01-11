@@ -994,6 +994,15 @@ public class EuiccController extends IEuiccController.Stub {
                 forceDeactivateSim = true;
             }
 
+            // if the caller is not privileged caller and does not have the carrier privilege over
+            // any active subscription, do not continue.
+            if (!callerCanWriteEmbeddedSubscriptions && usePortIndex
+                    && (mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(callingPackage)
+                    != TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS)) {
+                Log.e(TAG, "Not permitted to use switchToSubscription with portIndex");
+                throw new SecurityException(
+                        "Must have carrier privileges to use switchToSubscription with portIndex");
+            }
             final String iccid;
             boolean passConsent = false;
             if (subscriptionId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
