@@ -130,6 +130,7 @@ public class DataUtils {
             case NetworkCapabilities.NET_CAPABILITY_VSIM:                 return "VSIM";
             case NetworkCapabilities.NET_CAPABILITY_BIP:                  return "BIP";
             case NetworkCapabilities.NET_CAPABILITY_HEAD_UNIT:            return "HEAD_UNIT";
+            case NetworkCapabilities.NET_CAPABILITY_MMTEL:                return "MMTEL";
             default:
                 return "Unknown(" + Integer.toString(netCap) + ")";
         }
