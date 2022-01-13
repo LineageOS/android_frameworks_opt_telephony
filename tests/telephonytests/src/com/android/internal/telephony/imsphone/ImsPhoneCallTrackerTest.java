@@ -770,6 +770,71 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 "Call answered elsewhere.")));
     }
 
+    private void clearCarrierConfig() {
+        PersistableBundle bundle = new PersistableBundle();
+        mCTUT.updateCarrierConfigCache(bundle);
+    }
+
+    private void loadReasonCodeRemapCarrierConfig() {
+        PersistableBundle bundle = new PersistableBundle();
+        String[] mappings = new String[] {
+                // These shall be equivalent to the remappings added in setUp():
+                "*|Wifi signal lost.|1407",
+                "501|Call answered elsewhere.|1014",
+                "510|Call answered elsewhere.|1014",
+                "510||332",
+                "352|emergency calls over wifi not allowed in this location|1622",
+                "332|service not allowed in this location|1623",
+                };
+        bundle.putStringArray(CarrierConfigManager.KEY_IMS_REASONINFO_MAPPING_STRING_ARRAY,
+                mappings);
+        mCTUT.updateCarrierConfigCache(bundle);
+    }
+
+    @Test
+    @SmallTest
+    public void testReasonCodeRemapCarrierConfig() {
+        clearCarrierConfig();
+        // The map shall become empty now
+
+        assertEquals(510, // ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE
+                mCTUT.maybeRemapReasonCode(new ImsReasonInfo(510, 1, "Call answered elsewhere.")));
+
+        loadReasonCodeRemapCarrierConfig();
+        testReasonCodeRemap();
+        testNumericOnlyRemap();
+        testRemapEmergencyCallsOverWfc();
+        testRemapWfcNotAvailable();
+    }
+
+    private void loadReasonCodeRemapCarrierConfigWithWildcardMessage() {
+        PersistableBundle bundle = new PersistableBundle();
+        String[] mappings = new String[]{
+                "1014|call completed elsewhere|1014",
+                "1014|*|510",
+                };
+        bundle.putStringArray(CarrierConfigManager.KEY_IMS_REASONINFO_MAPPING_STRING_ARRAY,
+                mappings);
+        mCTUT.updateCarrierConfigCache(bundle);
+    }
+
+    @Test
+    @SmallTest
+    public void testReasonCodeRemapCarrierConfigWithWildcardMessage() {
+        clearCarrierConfig();
+        // The map shall become empty now
+
+        loadReasonCodeRemapCarrierConfigWithWildcardMessage();
+        assertEquals(ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, mCTUT.maybeRemapReasonCode(
+                new ImsReasonInfo(1014, 200, "Call Rejected By User"))); // 1014 -> 510
+        assertEquals(ImsReasonInfo.CODE_ANSWERED_ELSEWHERE, mCTUT.maybeRemapReasonCode(
+                new ImsReasonInfo(1014, 200, "Call completed elsewhere"))); // 1014 -> 1014
+
+        // Simulate that after SIM swap the new carrier config doesn't have the mapping for 1014
+        loadReasonCodeRemapCarrierConfig();
+        assertEquals(ImsReasonInfo.CODE_ANSWERED_ELSEWHERE, mCTUT.maybeRemapReasonCode(
+                new ImsReasonInfo(1014, 200, "Call Rejected By User"))); // 1014 -> 1014
+    }
 
     @Test
     @SmallTest
