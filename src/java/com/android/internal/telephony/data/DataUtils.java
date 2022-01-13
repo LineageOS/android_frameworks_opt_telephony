@@ -211,6 +211,8 @@ public class DataUtils {
                 return ApnSetting.TYPE_MCX;
             case NetworkCapabilities.NET_CAPABILITY_IA:
                 return ApnSetting.TYPE_IA;
+            case NetworkCapabilities.NET_CAPABILITY_ENTERPRISE:
+                return ApnSetting.TYPE_ENTERPRISE;
             default:
                 return ApnSetting.TYPE_NONE;
         }
@@ -247,7 +249,8 @@ public class DataUtils {
             case ApnSetting.TYPE_IA:
                 return NetworkCapabilities.NET_CAPABILITY_IA;
             // Do not add TYPE_VSIM, TYPE_BIP, TYPE_HIPRI
-            // TODO: Add ENTERPRISE here if needed.
+            case ApnSetting.TYPE_ENTERPRISE:
+                return NetworkCapabilities.NET_CAPABILITY_ENTERPRISE;
             default:
                 return -1;
         }
