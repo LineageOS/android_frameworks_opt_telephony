@@ -249,7 +249,8 @@ public class TelephonyTester {
 
             filter.addAction(ACTION_TEST_CHANGE_NUMBER);
             log("register for intent action=" + ACTION_TEST_CHANGE_NUMBER);
-            phone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone.getHandler());
+            phone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone.getHandler(),
+                    Context.RECEIVER_EXPORTED);
         }
     }
 
