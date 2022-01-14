@@ -90,6 +90,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
 
     private static final String PACKAGE_1 = "android.test.package1";
     private static final String PACKAGE_2 = "android.test.package2";
+    private static final String PACKAGE_3 = "android.test.package3";
     private static final Set<String> PRIVILEGED_PACKAGES = Set.of(PACKAGE_1, PACKAGE_2);
 
     private static final String CERT_1 = "11223344";
@@ -100,6 +101,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
 
     private static final int UID_1 = 10000001;
     private static final int UID_2 = 10000002;
+    private static final int UID_3 = 10000003;
     private static final int[] PRIVILEGED_UIDS = {UID_1, UID_2};
 
     private static final int PM_FLAGS =
@@ -175,16 +177,21 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
             pkg.signatures = new Signature[] {new Signature(pkgCertInfo.cert)};
 
             when(mPackageManager.getPackageInfo(
-                            eq(pkgCertInfo.pkgName), eq(GET_SIGNING_CERTIFICATES)))
+                    eq(pkgCertInfo.pkgName), eq(GET_SIGNING_CERTIFICATES)))
                     .thenReturn(pkg);
             when(mPackageManager.getPackageUidAsUser(
-                            eq(pkgCertInfo.pkgName), eq(pkgCertInfo.userInfo.id)))
+                    eq(pkgCertInfo.pkgName), eq(pkgCertInfo.userInfo.id)))
                     .thenReturn(pkgCertInfo.uid);
             installedPackages.add(pkg);
         }
         when(mUserManager.getUsers()).thenReturn(new ArrayList<>(users));
         when(mPackageManager.getInstalledPackagesAsUser(eq(PM_FLAGS), eq(SYSTEM.getIdentifier())))
                 .thenReturn(installedPackages);
+    }
+
+    private void setupInstalledPackagesWithFlags(int flags, PackageCertInfo... pkgCertInfos)
+            throws Exception {
+
     }
 
     /**
@@ -213,7 +220,8 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
                 carrierConfigRuleString(getHash(CERT_1)), carrierConfigRuleString(getHash(CERT_2)));
         setupInstalledPackages(
                 new PackageCertInfo(PACKAGE_1, CERT_1, USER_1, UID_1),
-                new PackageCertInfo(PACKAGE_2, CERT_2, USER_1, UID_2));
+                new PackageCertInfo(PACKAGE_2, CERT_2, USER_1, UID_2),
+                new PackageCertInfo(PACKAGE_3, CERT_3, USER_1, UID_3));
         mCarrierPrivilegesTracker = createCarrierPrivilegesTracker();
     }
 
@@ -221,7 +229,8 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         setupSimLoadedRules(ruleWithHashOnly(getHash(CERT_1)), ruleWithHashOnly(getHash(CERT_2)));
         setupInstalledPackages(
                 new PackageCertInfo(PACKAGE_1, CERT_1, USER_1, UID_1),
-                new PackageCertInfo(PACKAGE_2, CERT_2, USER_1, UID_2));
+                new PackageCertInfo(PACKAGE_2, CERT_2, USER_1, UID_2),
+                new PackageCertInfo(PACKAGE_3, CERT_3, USER_1, UID_3));
         mCarrierPrivilegesTracker = createCarrierPrivilegesTracker();
     }
 
@@ -658,6 +667,59 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
 
         verifyRegistrantUpdates(null /* expectedUidUpdates */, 0 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(List.of());
+    }
+
+    @Test
+    public void testSetCarrierTestOverrideWithEmptyRule() throws Exception {
+        // Start with PACKAGE_1 & PACKAGE_2 installed and have privileges from CarrierConfig
+        setupCarrierPrivilegesTrackerWithCarrierConfigUids();
+
+        // Set test override with EMPTY rule
+        mCarrierPrivilegesTracker.setTestOverrideCarrierPrivilegeRules("");
+        mTestableLooper.processAllMessages();
+
+        // Expect no package will have privilege at last
+        verifyRegistrantUpdates(new int[0], 1 /* expectedUidUpdates */);
+        verifyCarrierPrivilegesChangedUpdates(
+                List.of(
+                        new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS),
+                        new Pair<>(Set.of(), new int[0])));
+
+        // Set test override with null rule to revoke previous test override
+        mCarrierPrivilegesTracker.setTestOverrideCarrierPrivilegeRules(null);
+        mTestableLooper.processAllMessages();
+
+        // Expect all privileges from Carrier Config come back
+        verifyRegistrantUpdates(PRIVILEGED_UIDS, 2 /* expectedUidUpdates */);
+        verifyCarrierPrivilegesChangedUpdates(
+                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS)));
+    }
+
+    @Test
+    public void testSetCarrierTestOverrideWithNonEmptyRule() throws Exception {
+        // Start with PACKAGE_1 & PACKAGE_2 installed and have privileges from UICC
+        setupCarrierPrivilegesTrackerWithSimLoadedUids();
+
+        // Set test override with non-EMPTY rule (PACKAGE_3)
+        mCarrierPrivilegesTracker.setTestOverrideCarrierPrivilegeRules(getHash(CERT_3));
+        mTestableLooper.processAllMessages();
+
+        // Expect only PACKAGE_3 will have privilege at last
+        verifyRegistrantUpdates(new int[]{UID_3}, 1 /* expectedUidUpdates */);
+        verifyCarrierPrivilegesChangedUpdates(
+                List.of(
+                        new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS),
+                        new Pair<>(Set.of(PACKAGE_3), new int[]{UID_3})));
+
+
+        // Set test override with null rule to revoke previous test override
+        mCarrierPrivilegesTracker.setTestOverrideCarrierPrivilegeRules(null);
+        mTestableLooper.processAllMessages();
+
+        // Expect all privileges from UICC come back
+        verifyRegistrantUpdates(PRIVILEGED_UIDS, 2 /* expectedUidUpdates */);
+        verifyCarrierPrivilegesChangedUpdates(
+                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS)));
     }
 
     private void sendCarrierConfigChangedIntent(int subId, int phoneId) {
