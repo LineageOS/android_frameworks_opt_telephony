@@ -392,6 +392,17 @@ public class ContextFixture implements TestFixture<Context> {
             return registerReceiverFakeImpl(receiver, filter);
         }
 
+        @Override
+        public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter, int flags) {
+            return registerReceiverFakeImpl(receiver, filter);
+        }
+
+        @Override
+        public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter,
+                String broadcastPermission, Handler scheduler, int flags) {
+            return registerReceiverFakeImpl(receiver, filter);
+        }
+
         private Intent registerReceiverFakeImpl(BroadcastReceiver receiver, IntentFilter filter) {
             Intent result = null;
             synchronized (mBroadcastReceiversByAction) {
