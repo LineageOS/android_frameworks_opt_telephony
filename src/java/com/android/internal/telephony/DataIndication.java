@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_DATA_CALL_LIST_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_KEEPALIVE_STATUS;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_PCO_DATA;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SLICING_CONFIG_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UNTHROTTLE_APN;
 
 import android.hardware.radio.data.IRadioDataIndication;
@@ -27,6 +28,7 @@ import android.os.RemoteException;
 import android.telephony.PcoData;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
+import android.telephony.data.NetworkSlicingConfig;
 
 import com.android.internal.telephony.dataconnection.KeepaliveStatus;
 
@@ -106,5 +108,19 @@ public class DataIndication extends IRadioDataIndication.Stub {
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_UNTHROTTLE_APN, response);
 
         mRil.mApnUnthrottledRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
+    }
+
+    /**
+     * Current slicing configuration including URSP rules and NSSAIs
+     * (configured, allowed and rejected).
+     * @param indicationType Type of radio indication
+     * @param slicingConfig Current slicing configuration
+     */
+    public void slicingConfigChanged(int indicationType,
+            android.hardware.radio.data.SlicingConfig slicingConfig) throws RemoteException {
+        mRil.processIndication(RIL.DATA_SERVICE, indicationType);
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_SLICING_CONFIG_CHANGED, slicingConfig);
+        NetworkSlicingConfig ret = RILUtils.convertHalSlicingConfig(slicingConfig);
+        mRil.mApnUnthrottledRegistrants.notifyRegistrants(new AsyncResult(null, ret, null));
     }
 }
