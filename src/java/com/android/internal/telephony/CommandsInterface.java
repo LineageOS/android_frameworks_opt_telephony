@@ -228,6 +228,10 @@ public interface CommandsInterface {
     void registerForApnUnthrottled(Handler h, int what, Object obj);
     /** Unregister for apn unthrottled event */
     void unregisterForApnUnthrottled(Handler h);
+    /** Register for the slicing config changed event */
+    void registerForSlicingConfigChanged(Handler h, int what, Object obj);
+    /** Unregister for slicing config changed event */
+    void unregisterForSlicingConfigChanged(Handler h);
 
     /** InCall voice privacy notifications */
     void registerForInCallVoicePrivacyOn(Handler h, int what, Object obj);
