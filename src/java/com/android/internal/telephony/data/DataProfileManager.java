@@ -445,18 +445,15 @@ public class DataProfileManager extends Handler {
                     .orElse(null);
         }
 
-        if (initialAttachDataProfile == null) {
-            loge("Cannot find initial attach data profile. APN database needs to be configured"
-                    + " correctly.");
-            // return here as we can't push a null data profile to the modem as initial attach APN.
-            return;
-        }
-
         if (!Objects.equals(mInitialAttachDataProfile, initialAttachDataProfile)) {
             mInitialAttachDataProfile = initialAttachDataProfile;
             logl("Initial attach data profile updated as " + mInitialAttachDataProfile);
-            mWwanDataServiceManager.setInitialAttachApn(mInitialAttachDataProfile,
-                    mPhone.getServiceState().getDataRoamingFromRegistration(), null);
+            // TODO: Push the null data profile to modem on new AIDL HAL. Modem should clear the IA
+            //  APN.
+            if (mInitialAttachDataProfile != null) {
+                mWwanDataServiceManager.setInitialAttachApn(mInitialAttachDataProfile,
+                        mPhone.getServiceState().getDataRoamingFromRegistration(), null);
+            }
         }
     }
 
