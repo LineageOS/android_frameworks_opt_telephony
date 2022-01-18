@@ -98,7 +98,7 @@ public class ImsServiceControllerCompat extends ImsServiceController {
      * Converts the new command to {@link MMTelFeature#turnOnIms()}.
      */
     @Override
-    public final void enableIms(int slotId) {
+    public final void enableIms(int slotId, int subId) {
         MmTelFeatureCompatAdapter adapter = mMmTelCompatAdapters.get(slotId);
         if (adapter == null) {
             Log.w(TAG, "enableIms: adapter null for slot :" + slotId);
@@ -115,7 +115,7 @@ public class ImsServiceControllerCompat extends ImsServiceController {
      * Converts the new command to {@link MMTelFeature#turnOffIms()}.
      */
     @Override
-    public final void disableIms(int slotId) {
+    public final void disableIms(int slotId, int subId) {
         MmTelFeatureCompatAdapter adapter = mMmTelCompatAdapters.get(slotId);
         if (adapter == null) {
             Log.w(TAG, "enableIms: adapter null for slot :" + slotId);
@@ -132,7 +132,7 @@ public class ImsServiceControllerCompat extends ImsServiceController {
      * @return the IImsRegistration that corresponds to the slot id specified.
      */
     @Override
-    public final IImsRegistration getRegistration(int slotId) {
+    public final IImsRegistration getRegistration(int slotId, int subId) {
         ImsRegistrationCompatAdapter adapter = mRegCompatAdapters.get(slotId);
         if (adapter == null) {
             Log.w(TAG, "getRegistration: Registration does not exist for slot " + slotId);
@@ -145,7 +145,7 @@ public class ImsServiceControllerCompat extends ImsServiceController {
      * @return the IImsConfig that corresponds to the slot id specified.
      */
     @Override
-    public final IImsConfig getConfig(int slotId) {
+    public final IImsConfig getConfig(int slotId, int subId) {
         ImsConfigCompatAdapter adapter = mConfigCompatAdapters.get(slotId);
         if (adapter == null) {
             Log.w(TAG, "getConfig: Config does not exist for slot " + slotId);
@@ -176,8 +176,8 @@ public class ImsServiceControllerCompat extends ImsServiceController {
     }
 
     @Override
-    protected final IInterface createImsFeature(int slotId, int featureType)
-            throws RemoteException {
+    protected final IInterface createImsFeature(int slotId, int subId, int featureType,
+            long capabilities) throws RemoteException {
         switch (featureType) {
             case ImsFeature.MMTEL: {
                 return createMMTelCompat(slotId);
@@ -208,7 +208,7 @@ public class ImsServiceControllerCompat extends ImsServiceController {
     }
 
     @Override
-    protected final void removeImsFeature(int slotId, int featureType)
+    protected final void removeImsFeature(int slotId, int featureType, boolean changeSubId)
             throws RemoteException {
         if (featureType == ImsFeature.MMTEL) {
             MmTelFeatureCompatAdapter adapter = mMmTelCompatAdapters.get(slotId, null);

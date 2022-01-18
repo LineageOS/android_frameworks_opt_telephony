@@ -1002,7 +1002,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         mImsManagerConnector = mConnectorFactory.create(mPhone.getContext(), mPhone.getPhoneId(),
                 LOG_TAG, new FeatureConnector.Listener<ImsManager>() {
-                    public void connectionReady(ImsManager manager) throws ImsException {
+                    public void connectionReady(ImsManager manager, int subId) throws ImsException {
                         mImsManager = manager;
                         startListeningForCalls();
                     }
