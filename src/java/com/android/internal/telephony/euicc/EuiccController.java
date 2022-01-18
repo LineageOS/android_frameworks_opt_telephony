@@ -1625,8 +1625,8 @@ public class EuiccController extends IEuiccController.Stub {
                 if (port == null) {
                     return false;
                 }
-                // port is available if port is inactive and ICCID or calling app has carrier
-                // privilege over the profile installed on the selected port.
+                //A port is available if it has no profiles enabled on it or calling app has
+                //carrier privilege over the profile installed on the selected port.
                 int result = port.getUiccProfile().getCarrierPrivilegeStatus(
                         mContext.getPackageManager(), callingPackage);
                 if ((result == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS)
