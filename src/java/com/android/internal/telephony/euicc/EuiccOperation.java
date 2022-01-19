@@ -508,8 +508,8 @@ public class EuiccOperation implements Parcelable {
             EuiccController euiccController = EuiccController.get();
             euiccController.switchToSubscription(
                     cardId,
-                    portIndex,
                     mSubscriptionId,
+                    portIndex,
                     true /* forceDeactivateSim */,
                     mCallingPackage,
                     callbackIntent,

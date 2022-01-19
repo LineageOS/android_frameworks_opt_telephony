@@ -931,19 +931,9 @@ public class UiccController extends Handler {
             List<UiccPortInfo> portInfos = new ArrayList<>();
             int[] portIndexes = slot.getPortList();
             for (int portIdx : portIndexes) {
-                if (slot.isPortActive(portIdx)) {
-                    UiccPort port = slot.getUiccCard().getUiccPort(portIdx);
-                    portInfos.add(new UiccPortInfo(IccUtils.stripTrailingFs(port.getIccId()),
-                            port.getPortIdx(),
-                            port.getPhoneId(),
-                            true));
-                } else {
-                    // If port is inactive, use slot.getIccId API to get iccid value.
-                    portInfos.add(new UiccPortInfo(IccUtils.stripTrailingFs(slot.getIccId(portIdx)),
-                            portIdx,
-                            -1/*Invalid phoneId*/,
-                            false));
-                }
+                String iccId = IccUtils.stripTrailingFs(slot.getIccId(portIdx));
+                portInfos.add(new UiccPortInfo(iccId, portIdx,
+                        slot.getPhoneIdFromPortIndex(portIdx), slot.isPortActive(portIdx)));
             }
             UiccCardInfo info = new UiccCardInfo(
                     isEuicc, cardId, eid, slotIndex, isRemovable,
