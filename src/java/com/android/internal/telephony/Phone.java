@@ -1867,6 +1867,15 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Override to merge into {@link #getServiceState} when telecom has registered a SIM call
+     * manager that supports over-the-top SIM-based calling (e.g. carrier-provided wi-fi calling
+     * implementation).
+     *
+     * @param hasService Whether or not the SIM call manager currently provides over-the-top voice
+     */
+    public void setVoiceServiceStateOverride(boolean hasService) {}
+
+    /**
      * Check whether the radio is off for thermal reason.
      *
      * @return {@code true} only if thermal mitigation is one of the reason for which radio is off.
@@ -4059,19 +4068,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public int getPhoneId() {
         return mPhoneId;
-    }
-
-    /**
-     * Return the service state of mImsPhone if it is STATE_IN_SERVICE
-     * otherwise return the current voice service state
-     */
-    public int getVoicePhoneServiceState() {
-        Phone imsPhone = mImsPhone;
-        if (imsPhone != null
-                && imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE) {
-            return ServiceState.STATE_IN_SERVICE;
-        }
-        return getServiceState().getState();
     }
 
     /**
