@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2022 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,10 +26,10 @@ import android.telephony.ims.stub.ImsFeatureConfiguration;
 import org.mockito.MockitoAnnotations;
 
 /**
- * Test ImsService used by mockito to verify functionality.
+ * Test ImsService compatibility used by mockito to verify functionality.
  */
 
-public class TestImsService extends android.telephony.ims.ImsService {
+public class TestImsServiceCompat extends android.telephony.ims.ImsService {
 
     public TestMmTelFeature mSpyMmTelFeature;
     public TestMmTelFeature mTestMmTelFeature;
@@ -37,8 +37,9 @@ public class TestImsService extends android.telephony.ims.ImsService {
     public ImsFeatureConfiguration testFeatureConfig;
 
     public long testCaps;
+    public int createMmtelfeatureCount = 0;
 
-    public TestImsService(Context context) {
+    public TestImsServiceCompat(Context context) {
         attachBaseContext(context);
         MockitoAnnotations.initMocks(this);
         // Must create real MMTelFeature to initialize ImsFeature objects.
@@ -47,12 +48,13 @@ public class TestImsService extends android.telephony.ims.ImsService {
     }
 
     @Override
-    public MmTelFeature createMmTelFeatureForSubscription(int slotId, int subId) {
+    public MmTelFeature createMmTelFeature(int slotId) {
+        createMmtelfeatureCount++;
         return mSpyMmTelFeature;
     }
 
     @Override
-    public RcsFeature createRcsFeatureForSubscription(int slotId, int subId) {
+    public RcsFeature createRcsFeature(int slotId) {
         return null;
     }
 
