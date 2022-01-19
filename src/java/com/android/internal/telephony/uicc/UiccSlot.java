@@ -257,7 +257,7 @@ public class UiccSlot extends Handler {
     public int getPortIndexFromIccId(String iccId) {
         synchronized (mLock) {
             for (Map.Entry<Integer, String> entry : mIccIds.entrySet()) {
-                if (entry.getValue().equalsIgnoreCase(iccId)) {
+                if (IccUtils.compareIgnoreTrailingFs(entry.getValue(), iccId)) {
                     return entry.getKey();
                 }
             }
