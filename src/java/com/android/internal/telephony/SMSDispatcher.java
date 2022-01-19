@@ -913,7 +913,7 @@ public abstract class SMSDispatcher extends Handler {
 
             int ss = mPhone.getServiceState().getState();
             int error = rilErrorToSmsManagerResult(
-                    ((CommandException) (ar.exception)).getCommandError());
+                    ((CommandException) (ar.exception)).getCommandError(), tracker);
 
             if (tracker.mImsRetry > 0 && ss != ServiceState.STATE_IN_SERVICE) {
                 // This is retry after failure over IMS but voice is not available.
@@ -978,7 +978,8 @@ public abstract class SMSDispatcher extends Handler {
     }
 
     @SmsManager.Result
-    private static int rilErrorToSmsManagerResult(CommandException.Error rilError) {
+    private static int rilErrorToSmsManagerResult(CommandException.Error rilError,
+            SmsTracker tracker) {
         switch (rilError) {
             case RADIO_NOT_AVAILABLE:
                 return SmsManager.RESULT_RIL_RADIO_NOT_AVAILABLE;
@@ -1029,7 +1030,9 @@ public abstract class SMSDispatcher extends Handler {
             case BLOCKED_DUE_TO_CALL:
                 return SmsManager.RESULT_RIL_BLOCKED_DUE_TO_CALL;
             default:
-                return SmsManager.RESULT_ERROR_GENERIC_FAILURE;
+                Rlog.d(TAG, "rilErrorToSmsManagerResult: " + rilError + " "
+                        + SmsController.formatCrossStackMessageId(tracker.mMessageId));
+                return SmsManager.RESULT_RIL_GENERIC_ERROR;
         }
     }
 
