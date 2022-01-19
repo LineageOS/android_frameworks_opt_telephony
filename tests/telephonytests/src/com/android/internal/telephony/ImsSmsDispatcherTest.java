@@ -61,6 +61,7 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
     private FeatureConnector.Listener<ImsManager> mImsManagerListener;
     private HashMap<String, Object> mTrackerData;
     private ImsSmsDispatcher mImsSmsDispatcher;
+    private static final int SUB_0 = 0;
 
     @Before
     public void setUp() throws Exception {
@@ -76,7 +77,7 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
         processAllMessages();
         // set the ImsManager instance
         verify(mMockConnector).connect();
-        mImsManagerListener.connectionReady(mImsManager);
+        mImsManagerListener.connectionReady(mImsManager, SUB_0);
         when(mSmsDispatchersController.isIms()).thenReturn(true);
         mTrackerData = new HashMap<>(1);
         when(mSmsTracker.getData()).thenReturn(mTrackerData);
