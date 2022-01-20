@@ -1,11 +1,16 @@
 package {
     // See: http://go/android-license-faq
-    // A large-scale-change added 'default_applicable_licenses' to import
-    // all of the 'license_kinds' from "frameworks_opt_telephony_license"
-    // to get the below license kinds:
-    //   SPDX-license-identifier-Apache-2.0
-    //   SPDX-license-identifier-BSD
-    default_applicable_licenses: ["frameworks_opt_telephony_license"],
+    default_applicable_licenses: [
+        "frameworks_opt_telephony_tests_telephonytests_license",
+        "Android-Apache-2.0",
+    ],
+}
+
+license {
+    name: "frameworks_opt_telephony_tests_telephonytests_license",
+    package_name: "Android Telephone Tests",
+    license_kinds: ["SPDX-license-identifier-BSD"],
+    license_text: ["LICENSE_BSD"],
 }
 
 android_test {
