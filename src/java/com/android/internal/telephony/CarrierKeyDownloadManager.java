@@ -549,7 +549,8 @@ public class CarrierKeyDownloadManager extends Handler {
         try {
             // register the broadcast receiver to listen for download complete
             IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
-            mContext.registerReceiver(mDownloadReceiver, filter, null, mPhone);
+            mContext.registerReceiver(mDownloadReceiver, filter, null, mPhone,
+                    Context.RECEIVER_EXPORTED);
 
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(mURL));
 
