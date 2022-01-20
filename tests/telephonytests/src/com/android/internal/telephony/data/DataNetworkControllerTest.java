@@ -281,25 +281,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
     }
 
-    @Before
-    public void setUp() throws Exception {
-        logd("DataNetworkControllerTest +Setup!");
-        super.setUp(getClass().getSimpleName());
-
-        doReturn(true).when(mPhone).isUsingNewDataStack();
-        mMockedDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
-                mMockedWwanDataServiceManager);
-        mMockedDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
-                mMockedWlanDataServiceManager);
-
-        replaceInstance(PhoneSwitcher.class, "sPhoneSwitcher", null, mMockedPhoneSwitcher);
-        doReturn(1).when(mIsub).getDefaultDataSubId();
-        doReturn(mIsub).when(mIBinder).queryLocalInterface(anyString());
-        doReturn(mPhone).when(mPhone).getImsPhone();
-        mServiceManagerMockedServices.put("isub", mIBinder);
-        doReturn(new SubscriptionPlan[]{}).when(mNetworkPolicyManager)
-                .getSubscriptionPlans(anyInt(), any());
-
+    private void initializeConfig() {
         mCarrierConfig = mContextFixture.getCarrierConfigBundle();
         mCarrierConfig.putStringArray(
                 CarrierConfigManager.KEY_TELEPHONY_NETWORK_CAPABILITY_PRIORITIES_STRING_ARRAY,
@@ -326,6 +308,31 @@ public class DataNetworkControllerTest extends TelephonyTest {
                                 + "5000|10000|15000|20000|40000|60000|120000|240000|"
                                 + "600000|1200000|1800000, maximum_retries=20"
                 });
+        mCarrierConfig.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 1234);
+
+        mContextFixture.putResource(com.android.internal.R.string.config_bandwidthEstimateSource,
+                "bandwidth_estimator");
+    }
+
+    @Before
+    public void setUp() throws Exception {
+        logd("DataNetworkControllerTest +Setup!");
+        super.setUp(getClass().getSimpleName());
+
+        initializeConfig();
+        doReturn(true).when(mPhone).isUsingNewDataStack();
+        mMockedDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                mMockedWwanDataServiceManager);
+        mMockedDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
+                mMockedWlanDataServiceManager);
+
+        replaceInstance(PhoneSwitcher.class, "sPhoneSwitcher", null, mMockedPhoneSwitcher);
+        doReturn(1).when(mIsub).getDefaultDataSubId();
+        doReturn(mIsub).when(mIBinder).queryLocalInterface(anyString());
+        doReturn(mPhone).when(mPhone).getImsPhone();
+        mServiceManagerMockedServices.put("isub", mIBinder);
+        doReturn(new SubscriptionPlan[]{}).when(mNetworkPolicyManager)
+                .getSubscriptionPlans(anyInt(), any());
         doReturn(true).when(mSST).getDesiredPowerState();
         doReturn(true).when(mSST).getPowerStateFromCarrier();
         doReturn(true).when(mSST).isConcurrentVoiceAndDataAllowed();
@@ -1188,5 +1195,19 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .isEqualTo(ThrottleStatus.RETRY_TYPE_NEW_CONNECTION);
         assertThat(throttleStatus.getTransportType())
                 .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+    }
+
+    @Test
+    public void testNrAdvancedByPco() throws Exception {
+        testSetupDataNetwork();
+        verify(mMockedDataNetworkControllerCallback, never())
+                .onNrAdvancedCapableByPcoChanged(anyBoolean());
+        mSimulatedCommands.triggerPcoData(1, "IPV6", 1234, new byte[]{1});
+        processAllMessages();
+        verify(mMockedDataNetworkControllerCallback).onNrAdvancedCapableByPcoChanged(eq(true));
+
+        mSimulatedCommands.triggerPcoData(1, "IPV6", 1234, new byte[]{0});
+        processAllMessages();
+        verify(mMockedDataNetworkControllerCallback).onNrAdvancedCapableByPcoChanged(eq(false));
     }
 }

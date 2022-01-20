@@ -792,6 +792,14 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * @return The PCO id used for determine if data networks are using NR advanved networks. 0
+     * indicates this feature is disabled.
+     */
+    public int getNrAdvancedCapablePcoId() {
+        return mCarrierConfig.getInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT);
+    }
+
+    /**
      * Registration point for subscription info ready
      *
      * @param h handler to notify

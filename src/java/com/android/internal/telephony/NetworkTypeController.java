@@ -100,8 +100,9 @@ public class NetworkTypeController extends StateMachine {
     private static final int EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED = 13;
     private static final int EVENT_PCO_DATA_CHANGED = 14;
     private static final int EVENT_BANDWIDTH_CHANGED = 15;
+    private static final int EVENT_UPDATE_NR_ADVANCED_STATE = 16;
 
-    private static final String[] sEvents = new String[EVENT_PCO_DATA_CHANGED + 1];
+    private static final String[] sEvents = new String[EVENT_UPDATE_NR_ADVANCED_STATE + 1];
     static {
         sEvents[EVENT_UPDATE] = "EVENT_UPDATE";
         sEvents[EVENT_QUIT] = "EVENT_QUIT";
@@ -119,6 +120,7 @@ public class NetworkTypeController extends StateMachine {
         sEvents[EVENT_INITIALIZE] = "EVENT_INITIALIZE";
         sEvents[EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED] = "EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED";
         sEvents[EVENT_PCO_DATA_CHANGED] = "EVENT_PCO_DATA_CHANGED";
+        sEvents[EVENT_UPDATE_NR_ADVANCED_STATE] = "EVENT_UPDATE_NR_ADVANCED_STATE";
     }
 
     private final Phone mPhone;
@@ -218,7 +220,9 @@ public class NetworkTypeController extends StateMachine {
         IntentFilter filter = new IntentFilter();
         filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
-        mPhone.mCi.registerForPcoData(getHandler(), EVENT_PCO_DATA_CHANGED, null);
+        if (!mPhone.isUsingNewDataStack()) {
+            mPhone.mCi.registerForPcoData(getHandler(), EVENT_PCO_DATA_CHANGED, null);
+        }
     }
 
     private void unRegisterForAllEvents() {
@@ -230,7 +234,9 @@ public class NetworkTypeController extends StateMachine {
         mPhone.getServiceStateTracker().unregisterForNrFrequencyChanged(getHandler());
         mPhone.getDeviceStateMonitor().unregisterForPhysicalChannelConfigNotifChanged(getHandler());
         mPhone.getContext().unregisterReceiver(mIntentReceiver);
-        mPhone.mCi.unregisterForPcoData(getHandler());
+        if (!mPhone.isUsingNewDataStack()) {
+            mPhone.mCi.unregisterForPcoData(getHandler());
+        }
     }
 
     private void parseCarrierConfigs() {
@@ -288,6 +294,18 @@ public class NetworkTypeController extends StateMachine {
                         CarrierConfigManager.KEY_ADDITIONAL_NR_ADVANCED_BANDS_INT_ARRAY);
                 mNrAdvancedCapablePcoId = b.getInt(
                         CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT);
+                if (mNrAdvancedCapablePcoId > 0 && mPhone.isUsingNewDataStack()) {
+                    mPhone.getDataNetworkController().registerDataNetworkControllerCallback(
+                            new DataNetworkControllerCallback(getHandler()::post) {
+                                @Override
+                                public void onNrAdvancedCapableByPcoChanged(
+                                        boolean nrAdvancedCapable) {
+                                    log("mIsNrAdvancedAllowedByPco=" + nrAdvancedCapable);
+                                    mIsNrAdvancedAllowedByPco = nrAdvancedCapable;
+                                    sendMessage(EVENT_UPDATE_NR_ADVANCED_STATE);
+                                }
+                            });
+                }
                 mEnableNrAdvancedWhileRoaming = b.getBoolean(
                         CarrierConfigManager.KEY_ENABLE_NR_ADVANCED_WHILE_ROAMING_BOOL);
                 mIsUsingUserDataForRrcDetection = b.getBoolean(
@@ -531,6 +549,7 @@ public class NetworkTypeController extends StateMachine {
                 case EVENT_NR_FREQUENCY_CHANGED:
                 case EVENT_PCO_DATA_CHANGED:
                 case EVENT_BANDWIDTH_CHANGED:
+                case EVENT_UPDATE_NR_ADVANCED_STATE:
                     // ignored
                     break;
                 case EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED:
@@ -884,6 +903,9 @@ public class NetworkTypeController extends StateMachine {
                     break;
                 case EVENT_PCO_DATA_CHANGED:
                     handlePcoData((AsyncResult) msg.obj);
+                    break;
+                case EVENT_UPDATE_NR_ADVANCED_STATE:
+                    updateNrAdvancedState();
                     break;
                 case EVENT_NR_FREQUENCY_CHANGED:
                 case EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED:
