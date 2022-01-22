@@ -273,12 +273,9 @@ public class UiccSlot extends Handler {
     }
 
     public boolean isPortActive(int portIdx) {
-        UiccPort uiccPort = null;
         synchronized (mLock) {
-            if (mUiccCard != null) {
-                uiccPort = mUiccCard.getUiccPort(portIdx);
-            }
-            return uiccPort != null;
+            return SubscriptionManager.isValidPhoneId(
+                    mPortIdxToPhoneId.getOrDefault(portIdx, INVALID_PHONE_ID));
         }
     }
 

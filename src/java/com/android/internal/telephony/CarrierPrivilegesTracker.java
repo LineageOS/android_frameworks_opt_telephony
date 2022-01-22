@@ -28,6 +28,7 @@ import static android.telephony.TelephonyManager.SIM_STATE_NOT_READY;
 import static android.telephony.TelephonyManager.SIM_STATE_UNKNOWN;
 
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -134,6 +135,12 @@ public class CarrierPrivilegesTracker extends Handler {
      */
     private static final int ACTION_INITIALIZE_TRACKER = 7;
 
+    /**
+     * Action to set the test override rule through {@link TelephonyManager#setCarrierTestOverride}.
+     * obj: String of the carrierPrivilegeRules from method setCarrierTestOverride.
+     */
+    private static final int ACTION_SET_TEST_OVERRIDE_RULE = 8;
+
     private final Context mContext;
     private final Phone mPhone;
     private final PackageManager mPackageManager;
@@ -148,6 +155,11 @@ public class CarrierPrivilegesTracker extends Handler {
     private final List<UiccAccessRule> mCarrierConfigRules = new ArrayList<>();
     // Stores rules for SIM-loaded rules.
     private final List<UiccAccessRule> mUiccRules = new ArrayList<>();
+    // Stores rule from test override (through TelephonyManager#setCarrierTestOverride).
+    // - Null list indicates no test override (CC and UICC rules are respected)
+    // - Empty list indicates test override to simulate no rules (CC and UICC rules are ignored)
+    // - Non-empty list indicates test override with specific rules (CC and UICC rules are ignored)
+    @Nullable private List<UiccAccessRule> mTestOverrideRules = null;
     // Map of PackageName -> Certificate hashes for that Package
     private final Map<String, Set<String>> mInstalledPackageCerts = new ArrayMap<>();
     // Map of PackageName -> UIDs for that Package
@@ -328,6 +340,11 @@ public class CarrierPrivilegesTracker extends Handler {
                 handleInitializeTracker();
                 break;
             }
+            case ACTION_SET_TEST_OVERRIDE_RULE: {
+                String carrierPrivilegeRules = (String) msg.obj;
+                handleSetTestOverrideRules(carrierPrivilegeRules);
+                break;
+            }
             default: {
                 Rlog.e(TAG, "Received unknown msg type: " + msg.what);
                 break;
@@ -478,19 +495,7 @@ public class CarrierPrivilegesTracker extends Handler {
         mUiccRules.addAll(getSimRules());
 
         // Cache all installed packages and their certs
-        int flags =
-                PackageManager.MATCH_DISABLED_COMPONENTS
-                        | PackageManager.MATCH_DISABLED_UNTIL_USED_COMPONENTS
-                        | PackageManager.GET_SIGNING_CERTIFICATES;
-        List<PackageInfo> installedPackages =
-                mPackageManager.getInstalledPackagesAsUser(
-                        flags, UserHandle.SYSTEM.getIdentifier());
-        for (PackageInfo pkg : installedPackages) {
-            updateCertsForPackage(pkg);
-            // We shouldn't have any events coming in before initialization, but invalidate the
-            // cache just in case to ensure consistency.
-            getUidsForPackage(pkg.packageName, /* invalidateCache= */ true);
-        }
+        refreshInstalledPackageCache();
 
         // Okay because no registrants exist yet
         maybeUpdatePrivilegedPackagesAndNotifyRegistrants();
@@ -506,6 +511,22 @@ public class CarrierPrivilegesTracker extends Handler {
                                     e -> "pkg(" + Rlog.pii(TAG, e.getKey()) + ")=" + e.getValue());
         }
         mLocalLog.log(msg);
+    }
+
+    private void refreshInstalledPackageCache() {
+        int flags =
+                PackageManager.MATCH_DISABLED_COMPONENTS
+                        | PackageManager.MATCH_DISABLED_UNTIL_USED_COMPONENTS
+                        | PackageManager.GET_SIGNING_CERTIFICATES;
+        List<PackageInfo> installedPackages =
+                mPackageManager.getInstalledPackagesAsUser(
+                        flags, UserHandle.SYSTEM.getIdentifier());
+        for (PackageInfo pkg : installedPackages) {
+            updateCertsForPackage(pkg);
+            // This may be unnecessary before initialization, but invalidate the cache all the time
+            // just in case to ensure consistency.
+            getUidsForPackage(pkg.packageName, /* invalidateCache= */ true);
+        }
     }
 
     private static <T> String getObfuscatedPackages(
@@ -576,21 +597,30 @@ public class CarrierPrivilegesTracker extends Handler {
 
     /**
      * Returns true iff there is an overlap between the provided certificate hashes and the
-     * certificate hashes stored in mCarrierConfigRules and mUiccRules.
+     * certificate hashes stored in mTestOverrideRules, mCarrierConfigRules and mUiccRules.
      */
     private boolean isPackagePrivileged(String pkgName, Set<String> certs) {
         // Double-nested for loops, but each collection should contain at most 2 elements in nearly
         // every case.
         // TODO(b/184382310) find a way to speed this up
         for (String cert : certs) {
-            for (UiccAccessRule rule : mCarrierConfigRules) {
-                if (rule.matches(cert, pkgName)) {
-                    return true;
+            // Non-null (whether empty or not) test override rule will ignore the UICC and CC rules
+            if (mTestOverrideRules != null) {
+                for (UiccAccessRule rule : mTestOverrideRules) {
+                    if (rule.matches(cert, pkgName)) {
+                        return true;
+                    }
                 }
-            }
-            for (UiccAccessRule rule : mUiccRules) {
-                if (rule.matches(cert, pkgName)) {
-                    return true;
+            } else {
+                for (UiccAccessRule rule : mCarrierConfigRules) {
+                    if (rule.matches(cert, pkgName)) {
+                        return true;
+                    }
+                }
+                for (UiccAccessRule rule : mUiccRules) {
+                    if (rule.matches(cert, pkgName)) {
+                        return true;
+                    }
                 }
             }
         }
@@ -635,6 +665,7 @@ public class CarrierPrivilegesTracker extends Handler {
         } finally {
             mPrivilegedPackageInfoLock.readLock().unlock();
         }
+        pw.println("CarrierPrivilegesTracker - Test-override rules: " + mTestOverrideRules);
         pw.println("CarrierPrivilegesTracker - SIM-loaded rules: " + mUiccRules);
         pw.println("CarrierPrivilegesTracker - Carrier config rules: " + mCarrierConfigRules);
         if (VDBG) {
@@ -670,5 +701,36 @@ public class CarrierPrivilegesTracker extends Handler {
     @Deprecated
     public void unregisterCarrierPrivilegesListener(Handler handler) {
         sendMessage(obtainMessage(ACTION_UNREGISTER_LISTENER, handler));
+    }
+
+    /**
+     * Set test carrier privilege rules which will override the actual rules on both Carrier Config
+     * and SIM.
+     *
+     * <p>{@code carrierPrivilegeRules} can be null, in which case the rules on the Carrier Config
+     * and SIM will be used and any previous overrides will be cleared.
+     *
+     * @see TelephonyManager#setCarrierTestOverride
+     */
+    public void setTestOverrideCarrierPrivilegeRules(@Nullable String carrierPrivilegeRules) {
+        sendMessage(obtainMessage(ACTION_SET_TEST_OVERRIDE_RULE, carrierPrivilegeRules));
+    }
+
+    private void handleSetTestOverrideRules(@Nullable String carrierPrivilegeRules) {
+        if (carrierPrivilegeRules == null) {
+            mTestOverrideRules = null;
+        } else if (carrierPrivilegeRules.isEmpty()) {
+            mTestOverrideRules = Collections.emptyList();
+        } else {
+            mTestOverrideRules = Arrays.asList(UiccAccessRule.decodeRulesFromCarrierConfig(
+                    new String[]{carrierPrivilegeRules}));
+            // TODO(b/215239409): remove the additional cache refresh for test override cases.
+            // Test override doesn't respect if the package for the specified cert has been removed
+            // or hidden since initialization. Refresh the cache again to get the pkg/uid with the
+            // best effort.
+            refreshInstalledPackageCache();
+        }
+
+        maybeUpdatePrivilegedPackagesAndNotifyRegistrants();
     }
 }
