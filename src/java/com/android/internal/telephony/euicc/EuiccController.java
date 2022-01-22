@@ -968,23 +968,24 @@ public class EuiccController extends IEuiccController.Stub {
     public void switchToSubscription(int cardId, int subscriptionId, String callingPackage,
             PendingIntent callbackIntent) {
         // convert PendingIntent to callback if no callback provided
-        switchToSubscription(cardId, 0, subscriptionId, false /* forceDeactivateSim */,
+        switchToSubscription(cardId, subscriptionId, 0, false /* forceDeactivateSim */,
                 callingPackage, callbackIntent, false);
     }
 
     @Override
-    public void switchToSubscriptionWithPort(int cardId, int portIndex, int subscriptionId,
+    public void switchToSubscriptionWithPort(int cardId, int subscriptionId, int portIndex,
             String callingPackage, PendingIntent callbackIntent) {
-        switchToSubscription(cardId, portIndex, subscriptionId, false /* forceDeactivateSim */,
+        switchToSubscription(cardId, subscriptionId, portIndex, false /* forceDeactivateSim */,
                 callingPackage, callbackIntent, true);
     }
 
-    void switchToSubscription(int cardId, int portIndex, int subscriptionId,
+    void switchToSubscription(int cardId, int subscriptionId, int portIndex,
             boolean forceDeactivateSim, String callingPackage, PendingIntent callbackIntent,
             boolean usePortIndex) {
         boolean callerCanWriteEmbeddedSubscriptions = callerCanWriteEmbeddedSubscriptions();
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
-
+        Log.d(TAG, " subId: " + subscriptionId + " portIndex: " + portIndex
+                + " forceDeactivateSim: " + forceDeactivateSim + " usePortIndex: " + usePortIndex);
         long token = Binder.clearCallingIdentity();
         try {
             if (callerCanWriteEmbeddedSubscriptions) {
