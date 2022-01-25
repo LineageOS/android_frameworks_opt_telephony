@@ -2430,24 +2430,29 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *
      * @param reason reason to configure allowed network type
      * @param networkTypes one of the network types
+     * @param response callback Message
      */
     public void setAllowedNetworkTypes(@TelephonyManager.AllowedNetworkTypesReason int reason,
-            @TelephonyManager.NetworkTypeBitMask long networkTypes, Message response) {
+            @TelephonyManager.NetworkTypeBitMask long networkTypes, @Nullable Message response) {
         int subId = getSubId();
         if (!TelephonyManager.isValidAllowedNetworkTypesReason(reason)) {
             loge("setAllowedNetworkTypes: Invalid allowed network type reason: " + reason);
-            AsyncResult.forMessage(response, null,
-                    new CommandException(CommandException.Error.INVALID_ARGUMENTS));
-            response.sendToTarget();
+            if (response != null) {
+                AsyncResult.forMessage(response, null,
+                        new CommandException(CommandException.Error.INVALID_ARGUMENTS));
+                response.sendToTarget();
+            }
             return;
         }
         if (!SubscriptionManager.isUsableSubscriptionId(subId)
                 || !mIsAllowedNetworkTypesLoadedFromDb) {
             loge("setAllowedNetworkTypes: no sim or network type is not loaded. SubscriptionId: "
                     + subId + ", isNetworkTypeLoaded" + mIsAllowedNetworkTypesLoadedFromDb);
-            AsyncResult.forMessage(response, null,
-                    new CommandException(CommandException.Error.MISSING_RESOURCE));
-            response.sendToTarget();
+            if (response != null) {
+                AsyncResult.forMessage(response, null,
+                        new CommandException(CommandException.Error.MISSING_RESOURCE));
+                response.sendToTarget();
+            }
             return;
         }
         String mapAsString = "";
