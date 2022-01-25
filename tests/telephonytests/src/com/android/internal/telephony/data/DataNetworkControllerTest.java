@@ -41,9 +41,12 @@ import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.InetAddresses;
 import android.net.LinkAddress;
+import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.NetworkPolicyManager;
 import android.net.NetworkRequest;
+import android.net.vcn.VcnManager.VcnNetworkPolicyChangeListener;
+import android.net.vcn.VcnNetworkPolicyResult;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
@@ -95,6 +98,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executor;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -281,11 +285,28 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
     }
 
+    private void setVcnManagerPolicy(boolean vcnManaged, boolean shouldTearDown) {
+        doAnswer(invocation -> {
+            final NetworkCapabilities networkCapabilities =
+                    (NetworkCapabilities) invocation.getArguments()[0];
+            if (vcnManaged) {
+                networkCapabilities.removeCapability(
+                        NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+            } else {
+                networkCapabilities.addCapability(
+                        NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+            }
+            return new VcnNetworkPolicyResult(
+                    shouldTearDown, networkCapabilities);
+        }).when(mVcnManager).applyVcnNetworkPolicy(any(NetworkCapabilities.class),
+                any(LinkProperties.class));
+    }
+
     private void initializeConfig() {
         mCarrierConfig = mContextFixture.getCarrierConfigBundle();
         mCarrierConfig.putStringArray(
                 CarrierConfigManager.KEY_TELEPHONY_NETWORK_CAPABILITY_PRIORITIES_STRING_ARRAY,
-                new String[] {
+                new String[]{
                         "eims:90", "supl:80", "mms:70", "xcap:70", "cbs:50", "mcx:50", "fota:50",
                         "ims:40", "dun:30", "enterprise:20", "internet:20"
                 });
@@ -299,7 +320,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         mCarrierConfig.putStringArray(
                 CarrierConfigManager.KEY_TELEPHONY_DATA_SETUP_RETRY_RULES_STRING_ARRAY,
-                new String[] {
+                new String[]{
                         "capabilities=eims, retry_interval=1000, maximum_retries=20",
                         "fail_causes=8|27|28|29|30|32|33|35|50|51|111|-5|-6|65537|65538|-3|2253|"
                                 + "2254, maximum_retries=0", // No retry for those causes
@@ -309,6 +330,9 @@ public class DataNetworkControllerTest extends TelephonyTest {
                                 + "600000|1200000|1800000, maximum_retries=20"
                 });
         mCarrierConfig.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 1234);
+
+        mCarrierConfig.putBoolean(CarrierConfigManager.KEY_NETWORK_TEMP_NOT_METERED_SUPPORTED_BOOL,
+                true);
 
         mContextFixture.putResource(com.android.internal.R.string.config_bandwidthEstimateSource,
                 "bandwidth_estimator");
@@ -362,7 +386,14 @@ public class DataNetworkControllerTest extends TelephonyTest {
                     Handler.class), anyInt());
         }
 
+        // Note that creating a "real" data network controller will also result in creating
+        // real DataRetryManager, DataConfigManager, etc...Normally in unit test we should isolate
+        // other modules and make them mocked, but only focusing on testing the unit we would like
+        // to test, in this case, DataNetworkController. But since there are too many interactions
+        // between DataNetworkController and its sub-modules, we intend to make those modules "real"
+        // as well, except some modules below we replaced with mocks.
         mDataNetworkControllerUT = new DataNetworkController(mPhone, Looper.myLooper());
+        doReturn(mDataNetworkControllerUT).when(mPhone).getDataNetworkController();
         processAllMessages();
         // Clear the callbacks created by the real sub-modules created by DataNetworkController.
         clearCallbacks();
@@ -431,6 +462,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        logd("tearDown");
         super.tearDown();
     }
 
@@ -450,8 +482,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
     // expected, and make sure it is always sorted.
     @Test
     public void testNetworkRequestList() {
-        doReturn(mDataNetworkControllerUT.getDataConfigManager())
-                .when(mDataNetworkController).getDataConfigManager();
         NetworkRequestList networkRequestList = new NetworkRequestList();
 
         int[] netCaps = new int[]{NetworkCapabilities.NET_CAPABILITY_INTERNET,
@@ -762,7 +792,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
     @Test
     public void testRoamingDataChanged() throws Exception {
         doReturn(true).when(mServiceState).getDataRoaming();
-        doReturn(false).when(mDataConfigManager).isDataRoamingEnabledByDefault();
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
         mDataNetworkControllerUT.addNetworkRequest(
@@ -822,7 +851,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
     @Test
     public void testMmsAlwaysAllowed() throws Exception {
         doReturn(true).when(mServiceState).getDataRoaming();
-        doReturn(false).when(mDataConfigManager).isDataRoamingEnabledByDefault();
         mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
                 TelephonyManager.DATA_ENABLED_REASON_USER, false);
         mDataNetworkControllerUT.addNetworkRequest(
@@ -846,7 +874,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
     @Test
     public void testUnmeteredRequest() throws Exception {
         doReturn(true).when(mServiceState).getDataRoaming();
-        doReturn(false).when(mDataConfigManager).isDataRoamingEnabledByDefault();
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
         mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
@@ -962,7 +989,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
     @Test
     public void testIsNetworkTypeUnmeteredViaSubscriptionOverride() throws Exception {
-        doReturn(true).when(mDataConfigManager).isTempNotMeteredSupportedByCarrier();
         Set<Integer> unmeteredNetworkTypes = new ArraySet<>();
         doReturn(unmeteredNetworkTypes).when(mDataNetworkController)
                 .getUnmeteredOverrideNetworkTypes();
@@ -1004,7 +1030,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
     @Test
     public void testIsNetworkTypeUnmeteredViaSubscriptionPlans() throws Exception {
-        doReturn(true).when(mDataConfigManager).isTempNotMeteredSupportedByCarrier();
         List<SubscriptionPlan> subscriptionPlans = new ArrayList<>();
         doReturn(subscriptionPlans).when(mDataNetworkController).getSubscriptionPlans();
         testSetupDataNetwork();
@@ -1209,5 +1234,68 @@ public class DataNetworkControllerTest extends TelephonyTest {
         mSimulatedCommands.triggerPcoData(1, "IPV6", 1234, new byte[]{0});
         processAllMessages();
         verify(mMockedDataNetworkControllerCallback).onNrAdvancedCapableByPcoChanged(eq(false));
+    }
+
+    @Test
+    public void testSetupDataNetworkVcnManaged() throws Exception {
+        // VCN managed
+        setVcnManagerPolicy(true, false);
+        NetworkRequest request = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
+                .build();
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+
+        mDataNetworkControllerUT.addNetworkRequest(tnr);
+        processAllMessages();
+
+        // VCN managed network won't trigger onInternetDataNetworkConnected.
+        // DataNetwork.isInternetSupported() is false for VCN managed network.
+        verify(mMockedDataNetworkControllerCallback, never())
+                .onInternetDataNetworkConnected(any());
+        List<DataNetwork> dataNetworks = getDataNetworks();
+        assertThat(dataNetworks).hasSize(1);
+        assertThat(dataNetworks.get(0).getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)).isFalse();
+        assertThat(dataNetworks.get(0).isInternetSupported()).isFalse();
+        assertThat(dataNetworks.get(0).getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_INTERNET)).isTrue();
+    }
+
+    @Test
+    public void testSetupDataNetworkVcnRequestedTeardown() throws Exception {
+        // VCN managed, tear down on setup.
+        setVcnManagerPolicy(true, true);
+        NetworkRequest request = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
+                .build();
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+
+        mDataNetworkControllerUT.addNetworkRequest(tnr);
+        processAllMessages();
+
+        // Should not be any data network created.
+        List<DataNetwork> dataNetworks = getDataNetworks();
+        assertThat(dataNetworks).hasSize(0);
+    }
+
+    @Test
+    public void testVcnManagedNetworkPolicyChanged() throws Exception {
+        testSetupDataNetworkVcnManaged();
+
+        setVcnManagerPolicy(true, true);
+        ArgumentCaptor<VcnNetworkPolicyChangeListener> listenerCaptor =
+                ArgumentCaptor.forClass(VcnNetworkPolicyChangeListener.class);
+        verify(mVcnManager).addVcnNetworkPolicyChangeListener(any(Executor.class),
+                listenerCaptor.capture());
+
+        // Trigger policy changed event
+        VcnNetworkPolicyChangeListener listener = listenerCaptor.getValue();
+        listener.onPolicyChanged();
+        processAllMessages();
+
+        List<DataNetwork> dataNetworks = getDataNetworks();
+        assertThat(dataNetworks).hasSize(0);
     }
 }
