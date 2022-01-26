@@ -998,6 +998,14 @@ public class PersistAtomsStorage {
         }
     }
 
+    /** Saves a pending {@link PersistAtoms} to a file in private storage immediately. */
+    public void flushAtoms() {
+        if (mHandler.hasCallbacks(mSaveRunnable)) {
+            mHandler.removeCallbacks(mSaveRunnable);
+            saveAtomsToFileNow();
+        }
+    }
+
     /** Loads {@link PersistAtoms} from a file in private storage. */
     private PersistAtoms loadAtomsFromFile() {
         try {
