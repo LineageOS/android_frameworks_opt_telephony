@@ -4338,16 +4338,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         // Since the modem only reports the total vt data usage rather than rx/tx separately,
         // the only thing we can do here is splitting the usage into half rx and half tx.
         // Uid -1 indicates this is for the overall device data usage.
-        vtDataUsageSnapshot.combineValues(new NetworkStats.Entry(
+        mVtDataUsageSnapshot = vtDataUsageSnapshot.addEntry(new NetworkStats.Entry(
                 getVtInterface(), -1, NetworkStats.SET_FOREGROUND,
                 NetworkStats.TAG_NONE, NetworkStats.METERED_YES, isRoaming,
                 NetworkStats.DEFAULT_NETWORK_YES, delta / 2, 0, delta / 2, 0, 0));
-        mVtDataUsageSnapshot = vtDataUsageSnapshot;
 
         // Create the snapshot of video call data usage per dialer. combineValues will create
         // a separate entry if uid is different from the previous snapshot.
         NetworkStats vtDataUsageUidSnapshot = new NetworkStats(currentTime, 1);
-        vtDataUsageUidSnapshot.combineAllValues(mVtDataUsageUidSnapshot);
+        vtDataUsageUidSnapshot = vtDataUsageUidSnapshot.add(mVtDataUsageUidSnapshot);
 
         // The dialer uid might not be initialized correctly during boot up due to telecom service
         // not ready or its default dialer cache not ready. So we double check again here to see if
@@ -4361,11 +4360,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         // Since the modem only reports the total vt data usage rather than rx/tx separately,
         // the only thing we can do here is splitting the usage into half rx and half tx.
-        vtDataUsageUidSnapshot.combineValues(new NetworkStats.Entry(
+        mVtDataUsageUidSnapshot = vtDataUsageUidSnapshot.addEntry(new NetworkStats.Entry(
                 getVtInterface(), mDefaultDialerUid.get(),
                 NetworkStats.SET_FOREGROUND, NetworkStats.TAG_NONE, NetworkStats.METERED_YES,
                 isRoaming, NetworkStats.DEFAULT_NETWORK_YES, delta / 2, 0, delta / 2, 0, 0));
-        mVtDataUsageUidSnapshot = vtDataUsageUidSnapshot;
     }
 
     @VisibleForTesting(visibility = PRIVATE)
