@@ -1048,6 +1048,9 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 throw new RuntimeException ("Invalid or Unsupported MMI Code");
             } else if (mSc != null && mSc.equals(SC_CLIP)) {
                 Rlog.d(LOG_TAG, "processCode: is CLIP");
+                if (!mPhone.supportCsfbForSs()) {
+                    throw new RuntimeException("No network to support supplementary services");
+                }
                 if (isInterrogate()) {
                     mPhone.mCi.queryCLIP(
                             obtainMessage(EVENT_QUERY_COMPLETE, this));
@@ -1056,6 +1059,9 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 }
             } else if (mSc != null && mSc.equals(SC_CLIR)) {
                 Rlog.d(LOG_TAG, "processCode: is CLIR");
+                if (!mPhone.supportCsfbForSs()) {
+                    throw new RuntimeException("No network to support supplementary services");
+                }
                 if (isActivate() && !mPhone.isClirActivationAndDeactivationPrevented()) {
                     mPhone.mCi.setCLIR(CommandsInterface.CLIR_INVOCATION,
                         obtainMessage(EVENT_SET_COMPLETE, this));
@@ -1070,6 +1076,9 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 }
             } else if (isServiceCodeCallForwarding(mSc)) {
                 Rlog.d(LOG_TAG, "processCode: is CF");
+                if (!mPhone.supportCsfbForSs()) {
+                    throw new RuntimeException("No network to support supplementary services");
+                }
 
                 String dialingNumber = mSia;
                 int serviceClass = siToServiceClass(mSib);
@@ -1117,6 +1126,9 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                                     isEnableDesired, this));
                 }
             } else if (isServiceCodeCallBarring(mSc)) {
+                if (!mPhone.supportCsfbForSs()) {
+                    throw new RuntimeException("No network to support supplementary services");
+                }
                 // sia = password
                 // sib = basic service group
 
@@ -1164,6 +1176,9 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 }
 
             } else if (mSc != null && mSc.equals(SC_WAIT)) {
+                if (!mPhone.supportCsfbForSs()) {
+                    throw new RuntimeException("No network to support supplementary services");
+                }
                 // sia = basic service group
                 int serviceClass = siToServiceClass(mSia);
 

@@ -4865,7 +4865,17 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return null;
     }
 
-    public boolean useSsOverIms(Message onComplete) {
+    /**
+     * Returns the instance of SsDomainController
+     */
+    public SsDomainController getSsDomainController() {
+        return null;
+    }
+
+    /**
+     * Returns whether it will be served with Ut or not.
+     */
+    public boolean useSsOverUt(Message onComplete) {
         return false;
     }
 
