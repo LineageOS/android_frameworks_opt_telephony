@@ -386,8 +386,6 @@ public class DataRetryManagerTest extends TelephonyTest {
                 networkRequestList = new DataNetworkController.NetworkRequestList(tnr);
 
         // 1st failed and retry.
-        doReturn(List.of(mDataProfile2, mDataProfile1)).when(mDataProfileManager)
-                .getDataProfilesForNetworkCapabilities((int[]) any());
         mDataRetryManagerUT.evaluateDataSetupRetry(mDataProfile1,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, networkRequestList, 123,
                 DataCallResponse.RETRY_DURATION_UNDEFINED);
@@ -408,8 +406,6 @@ public class DataRetryManagerTest extends TelephonyTest {
         logd("retry entry: (" + entry.hashCode() + ")=" + entry);
 
         // 2nd failed and retry.
-        doReturn(List.of(mDataProfile1, mDataProfile2)).when(mDataProfileManager)
-                .getDataProfilesForNetworkCapabilities((int[]) any());
         Mockito.clearInvocations(mDataRetryManagerCallbackMock);
         mDataRetryManagerUT.evaluateDataSetupRetry(mDataProfile2,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, networkRequestList, 123,
@@ -459,8 +455,6 @@ public class DataRetryManagerTest extends TelephonyTest {
                 networkRequestList = new DataNetworkController.NetworkRequestList(tnr);
 
         // 1st failed and retry.
-        doReturn(List.of(mDataProfile3)).when(mDataProfileManager)
-                .getDataProfilesForNetworkCapabilities((int[]) any());
         mDataRetryManagerUT.evaluateDataSetupRetry(mDataProfile3,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, networkRequestList, 123,
                 DataCallResponse.RETRY_DURATION_UNDEFINED);
@@ -523,8 +517,6 @@ public class DataRetryManagerTest extends TelephonyTest {
                 networkRequestList = new DataNetworkController.NetworkRequestList(tnr);
 
         // 1st/2nd/3rd/4th failed and retry.
-        doReturn(List.of(mDataProfile3)).when(mDataProfileManager)
-                .getDataProfilesForNetworkCapabilities((int[]) any());
         for (long delay : List.of(2000, 4000, 8000, 8000)) {
             Mockito.clearInvocations(mDataRetryManagerCallbackMock);
             mDataRetryManagerUT.evaluateDataSetupRetry(mDataProfile3,
@@ -619,8 +611,6 @@ public class DataRetryManagerTest extends TelephonyTest {
                 networkRequestList = new DataNetworkController.NetworkRequestList(tnr);
 
         // failed and retry.
-        doReturn(List.of(mDataProfile2, mDataProfile1)).when(mDataProfileManager)
-                .getDataProfilesForNetworkCapabilities((int[]) any());
         mDataRetryManagerUT.evaluateDataSetupRetry(mDataProfile1,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, networkRequestList, 123,
                 DataCallResponse.RETRY_DURATION_UNDEFINED);
