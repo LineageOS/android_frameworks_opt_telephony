@@ -356,6 +356,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -1003,10 +1004,19 @@ public class RILUtils {
                 .setUser(dpi.user)
                 .setAlwaysOn(dpi.alwaysOn)
                 .build();
+
+        TrafficDescriptor td;
+        try {
+            td = convertHalTrafficDescriptor(dpi.trafficDescriptor);
+        } catch (IllegalArgumentException e) {
+            loge("convertToDataProfile: Failed to convert traffic descriptor. e=" + e);
+            td = null;
+        }
+
         return new DataProfile.Builder()
                 .setType(dpi.type)
                 .setPreferred(dpi.preferred)
-                .setTrafficDescriptor(convertHalTrafficDescriptor(dpi.trafficDescriptor))
+                .setTrafficDescriptor(td)
                 .setApnSetting(apnSetting)
                 .build();
     }
@@ -3483,8 +3493,13 @@ public class RILUtils {
             sliceInfo = result.sliceInfo.getDiscriminator()
                     == android.hardware.radio.V1_6.OptionalSliceInfo.hidl_discriminator.noinit
                     ? null : convertHalSliceInfo(result.sliceInfo.value());
-            trafficDescriptors = result.trafficDescriptors.stream().map(
-                    RILUtils::convertHalTrafficDescriptor).collect(Collectors.toList());
+            for (android.hardware.radio.V1_6.TrafficDescriptor td : result.trafficDescriptors) {
+                try {
+                    trafficDescriptors.add(RILUtils.convertHalTrafficDescriptor(td));
+                } catch (IllegalArgumentException e) {
+                    loge("convertHalDataCallResult: Failed to convert traffic descriptor. e=" + e);
+                }
+            }
         } else {
             loge("Unsupported SetupDataCallResult " + dcResult);
             return null;
@@ -3617,7 +3632,11 @@ public class RILUtils {
         }
         List<TrafficDescriptor> trafficDescriptors = new ArrayList<>();
         for (android.hardware.radio.data.TrafficDescriptor td : result.trafficDescriptors) {
-            trafficDescriptors.add(convertHalTrafficDescriptor(td));
+            try {
+                trafficDescriptors.add(convertHalTrafficDescriptor(td));
+            } catch (IllegalArgumentException e) {
+                loge("convertHalDataCallResult: Failed to convert traffic descriptor. e=" + e);
+            }
         }
 
         return new DataCallResponse.Builder()
@@ -3667,33 +3686,34 @@ public class RILUtils {
     }
 
     private static TrafficDescriptor convertHalTrafficDescriptor(
-            android.hardware.radio.V1_6.TrafficDescriptor td) {
+            android.hardware.radio.V1_6.TrafficDescriptor td) throws IllegalArgumentException {
         String dnn = td.dnn.getDiscriminator()
                 == android.hardware.radio.V1_6.OptionalDnn.hidl_discriminator.noinit
                 ? null : td.dnn.value();
-        String osAppId = td.osAppId.getDiscriminator()
+        byte[] osAppId = td.osAppId.getDiscriminator()
                 == android.hardware.radio.V1_6.OptionalOsAppId.hidl_discriminator.noinit
-                ? null : new String(arrayListToPrimitiveArray(td.osAppId.value().osAppId));
+                ? null : arrayListToPrimitiveArray(td.osAppId.value().osAppId);
+
         TrafficDescriptor.Builder builder = new TrafficDescriptor.Builder();
         if (dnn != null) {
             builder.setDataNetworkName(dnn);
         }
         if (osAppId != null) {
-            builder.setOsAppId(osAppId.getBytes());
+            builder.setOsAppId(osAppId);
         }
         return builder.build();
     }
 
     private static TrafficDescriptor convertHalTrafficDescriptor(
-            android.hardware.radio.data.TrafficDescriptor td) {
+            android.hardware.radio.data.TrafficDescriptor td) throws IllegalArgumentException {
         String dnn = td.dnn;
-        String osAppId = td.osAppId == null ? null : new String(td.osAppId.osAppId);
+        byte[] osAppId = td.osAppId == null ? null : td.osAppId.osAppId;
         TrafficDescriptor.Builder builder = new TrafficDescriptor.Builder();
         if (dnn != null) {
             builder.setDataNetworkName(dnn);
         }
         if (osAppId != null) {
-            builder.setOsAppId(osAppId.getBytes());
+            builder.setOsAppId(osAppId);
         }
         return builder.build();
     }
@@ -3706,7 +3726,17 @@ public class RILUtils {
     public static NetworkSlicingConfig convertHalSlicingConfig(
             android.hardware.radio.V1_6.SlicingConfig sc) {
         List<UrspRule> urspRules = sc.urspRules.stream().map(ur -> new UrspRule(ur.precedence,
-                ur.trafficDescriptors.stream().map(RILUtils::convertHalTrafficDescriptor)
+                ur.trafficDescriptors.stream()
+                        .map(td -> {
+                            try {
+                                return convertHalTrafficDescriptor(td);
+                            } catch (IllegalArgumentException e) {
+                                loge("convertHalSlicingConfig: Failed to convert traffic descriptor"
+                                        + ". e=" + e);
+                                return null;
+                            }
+                        })
+                        .filter(Objects::nonNull)
                         .collect(Collectors.toList()),
                 ur.routeSelectionDescriptor.stream().map(rsd -> new RouteSelectionDescriptor(
                         rsd.precedence, rsd.sessionType.value(), rsd.sscMode.value(),
@@ -3729,7 +3759,11 @@ public class RILUtils {
         for (android.hardware.radio.data.UrspRule ur : sc.urspRules) {
             List<TrafficDescriptor> tds = new ArrayList<>();
             for (android.hardware.radio.data.TrafficDescriptor td : ur.trafficDescriptors) {
-                tds.add(convertHalTrafficDescriptor(td));
+                try {
+                    tds.add(convertHalTrafficDescriptor(td));
+                } catch (IllegalArgumentException e) {
+                    loge("convertHalTrafficDescriptor: " + e);
+                }
             }
             List<RouteSelectionDescriptor> rsds = new ArrayList<>();
             for (android.hardware.radio.data.RouteSelectionDescriptor rsd
@@ -4469,7 +4503,7 @@ public class RILUtils {
 
     /**
      * Convert List<UiccSlotMapping> list to SlotPortMapping[]
-     * @param list List<UiccSlotMapping> of slots mapping
+     * @param slotMapping List<UiccSlotMapping> of slots mapping
      * @return SlotPortMapping[] of slots mapping
      */
     public static android.hardware.radio.config.SlotPortMapping[] convertSimSlotsMapping(

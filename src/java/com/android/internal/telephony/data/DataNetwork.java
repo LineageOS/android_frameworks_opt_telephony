@@ -64,6 +64,7 @@ import android.telephony.data.DataServiceCallback;
 import android.telephony.data.NetworkSliceInfo;
 import android.telephony.data.QosBearerSession;
 import android.telephony.data.TrafficDescriptor;
+import android.telephony.data.TrafficDescriptor.OsAppId;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.IndentingPrintWriter;
@@ -89,6 +90,7 @@ import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -398,6 +400,9 @@ public class DataNetwork extends StateMachine {
 
     /** The network capabilities of this data network. */
     private @NonNull NetworkCapabilities mNetworkCapabilities;
+
+    /** The matched traffic descriptor returned from setup data call request. */
+    private final @NonNull List<TrafficDescriptor> mTrafficDescriptors = new ArrayList<>();
 
     /** The link properties of this data network. */
     private @NonNull LinkProperties mLinkProperties;
@@ -1196,6 +1201,31 @@ public class DataNetwork extends StateMachine {
             }
         }
 
+        // Extract network capabilities from the traffic descriptor.
+        for (TrafficDescriptor trafficDescriptor : mTrafficDescriptors) {
+            try {
+                OsAppId osAppId = new OsAppId(trafficDescriptor.getOsAppId());
+                if (!osAppId.getOsId().equals(OsAppId.ANDROID_OS_ID)) {
+                    loge("Received non-Android OS id " + osAppId.getOsId());
+                    continue;
+                }
+                int networkCapability = DataUtils.getNetworkCapabilityFromString(
+                        osAppId.getAppId());
+                if (networkCapability > 0) {
+                    builder.addCapability(networkCapability);
+                    // Enterprise is the only capability supporting differentiator.
+                    if (networkCapability == NetworkCapabilities.NET_CAPABILITY_ENTERPRISE) {
+                        builder.addEnterpriseId(osAppId.getDifferentiator());
+                    }
+                } else {
+                    loge("Invalid app id " + osAppId.getAppId());
+                }
+            } catch (IllegalArgumentException e) {
+                loge("Exception: " + e + ". Failed to create osAppId from "
+                        + new BigInteger(1, trafficDescriptor.getOsAppId()).toString(16));
+            }
+        }
+
         // TODO: Support NET_CAPABILITY_NOT_METERED when non-restricted data is for unmetered use
         if (!meteredApn) {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
@@ -1242,17 +1272,6 @@ public class DataNetwork extends StateMachine {
      */
     public @NonNull NetworkCapabilities getNetworkCapabilities() {
         return mNetworkCapabilities;
-    }
-
-    /**
-     * Get the capabilities that can be translated to APN types.
-     *
-     * @return The capabilities that can be translated to APN types.
-     */
-    public @NonNull @NetCapability Set<Integer> getApnTypesCapabilities() {
-        return Arrays.stream(mNetworkCapabilities.getCapabilities()).boxed()
-                .filter(cap -> DataUtils.networkCapabilityToApnType(cap) != ApnSetting.TYPE_NONE)
-                .collect(Collectors.toSet());
     }
 
     /**
@@ -1507,6 +1526,9 @@ public class DataNetwork extends StateMachine {
         linkProperties.setTcpBufferSizes(mDataConfigManager.getTcpConfigString());
 
         mNetworkSliceInfo = response.getSliceInfo();
+
+        mTrafficDescriptors.clear();
+        mTrafficDescriptors.addAll(response.getTrafficDescriptors());
 
         mQosBearerSessions.clear();
         mQosBearerSessions.addAll(response.getQosBearerSessions());
