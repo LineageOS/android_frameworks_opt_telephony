@@ -9,7 +9,7 @@
 public *;
 }
 -keepclasseswithmembers class android.telephony.gsm.SmsMessage,android.telephony.gsm.SmsMessage$* {
-public *;
+public protected *;
 }
 
 # Keep telephony sysprop
@@ -17,9 +17,9 @@ public *;
 public *;
 }
 
-# Keep public classes and members
+# Keep public classes and public/protected members
 -keepclasseswithmembers class com.android.internal.telephony.** {
-public *;
+public protected *;
 }
 
 # Keep classes and members that have the @UnsupportedAppUsage annotation
