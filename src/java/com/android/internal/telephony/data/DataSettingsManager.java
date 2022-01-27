@@ -171,6 +171,12 @@ public class DataSettingsManager extends Handler {
                 EVENT_PROVISIONING_DATA_ENABLED_CHANGED);
         mPhone.getCallTracker().registerForVoiceCallStarted(this, EVENT_CALL_STATE_CHANGED, null);
         mPhone.getCallTracker().registerForVoiceCallEnded(this, EVENT_CALL_STATE_CHANGED, null);
+        if (mPhone.getImsPhone() != null) {
+            mPhone.getImsPhone().getCallTracker().registerForVoiceCallStarted(
+                    this, EVENT_CALL_STATE_CHANGED, null);
+            mPhone.getImsPhone().getCallTracker().registerForVoiceCallEnded(
+                    this, EVENT_CALL_STATE_CHANGED, null);
+        }
         mPhone.getContext().getSystemService(TelephonyRegistryManager.class)
                 .addOnSubscriptionsChangedListener(new OnSubscriptionsChangedListener() {
                     @Override
