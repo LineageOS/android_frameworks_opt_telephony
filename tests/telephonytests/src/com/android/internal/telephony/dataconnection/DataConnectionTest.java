@@ -100,6 +100,7 @@ import java.util.function.Consumer;
 
 public class DataConnectionTest extends TelephonyTest {
     private static final int DEFAULT_DC_CID = 10;
+    private static final ArrayList<TrafficDescriptor> DEFAULT_TD_LIST = new ArrayList<>();
 
     @Mock
     DcTesterFailBringUpAll mDcTesterFailBringUpAll;
@@ -209,7 +210,7 @@ public class DataConnectionTest extends TelephonyTest {
         }
     }
 
-    private void setSuccessfulSetupDataResponse(int cid) {
+    private void setSuccessfulSetupDataResponse(int cid, ArrayList<TrafficDescriptor> tds) {
         doAnswer(invocation -> {
             final Message msg = (Message) invocation.getArguments()[10];
 
@@ -237,7 +238,7 @@ public class DataConnectionTest extends TelephonyTest {
                     .setMtuV6(1500)
                     .setPduSessionId(1)
                     .setQosBearerSessions(new ArrayList<>())
-                    .setTrafficDescriptors(new ArrayList<>())
+                    .setTrafficDescriptors(tds)
                     .build();
             msg.getData().putParcelable("data_call_response", response);
             msg.arg1 = DataServiceCallback.RESULT_SUCCESS;
@@ -292,7 +293,7 @@ public class DataConnectionTest extends TelephonyTest {
 
         mDcp.mApnContext = mApnContext;
 
-        setSuccessfulSetupDataResponse(DEFAULT_DC_CID);
+        setSuccessfulSetupDataResponse(DEFAULT_DC_CID, DEFAULT_TD_LIST);
 
         doAnswer(invocation -> {
             final Message msg = (Message) invocation.getArguments()[2];
@@ -485,12 +486,33 @@ public class DataConnectionTest extends TelephonyTest {
         assertTrue(mDc.isInactive());
 
         // Change the CID
-        setSuccessfulSetupDataResponse(DEFAULT_DC_CID + 1);
+        setSuccessfulSetupDataResponse(DEFAULT_DC_CID + 1, DEFAULT_TD_LIST);
 
         // Verify that ENTERPRISE was set up
         connectEvent(true);
         assertTrue(mDc.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_ENTERPRISE));
+    }
+
+    @Test
+    public void testConnectEventDuplicateContextIdsDifferentTDs() throws Exception {
+        setUpDefaultData(DEFAULT_DC_CID);
+
+        // Try to connect ENTERPRISE with the same CID as default but different TrafficDescriptors
+        replaceInstance(ConnectionParams.class, "mApnContext", mCp, mEnterpriseApnContext);
+        doReturn(mApn1).when(mEnterpriseApnContext).getApnSetting();
+        doReturn(ApnSetting.TYPE_ENTERPRISE_STRING).when(mEnterpriseApnContext).getApnType();
+        doReturn(ApnSetting.TYPE_ENTERPRISE).when(mEnterpriseApnContext).getApnTypeBitmask();
+        ArrayList<TrafficDescriptor> tdList = new ArrayList<>();
+        tdList.add(new TrafficDescriptor("dnn", DataConnection.getEnterpriseOsAppId()));
+        setSuccessfulSetupDataResponse(DEFAULT_DC_CID, tdList);
+
+        // Verify that ENTERPRISE wasn't set up but the TD list was updated
+        connectEvent(false);
+        assertTrue(mDc.isInactive());
+        ArgumentCaptor<DataCallResponse> captor = ArgumentCaptor.forClass(DataCallResponse.class);
+        verify(mDefaultDc).updateTrafficDescriptors(captor.capture());
+        assertEquals(tdList, captor.getValue().getTrafficDescriptors());
     }
 
     @Test
