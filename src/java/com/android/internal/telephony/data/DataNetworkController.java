@@ -1078,7 +1078,8 @@ public class DataNetworkController extends Handler {
      * of the satisfiable requests to the network). All requests must be satisfied so they can be
      * attached.
      *
-     * @param requestList The network request list to attach.
+     * @param requestList The network request list to attach. It is expected that every network
+     * request in this list has the same network capabilities.
      *
      * @return {@code false} if can't find the data network to to satisfy the network requests, even
      * if only one of network request can't be satisfied. {@code true} if the network request
@@ -1117,6 +1118,7 @@ public class DataNetworkController extends Handler {
      */
     private boolean shouldCheckRegistrationState() {
         // Always don't check registration state on non-DDS sub.
+        log("shouldCheckRegistrationState: phoneSwitcher=" + PhoneSwitcher.getInstance());
         if (mPhone.getPhoneId() != PhoneSwitcher.getInstance().getPreferredDataPhoneId()) {
             return false;
         }
@@ -1877,7 +1879,13 @@ public class DataNetworkController extends Handler {
                     public void onPcoDataChanged(@NonNull DataNetwork dataNetwork) {
                         DataNetworkController.this.onPcoDataChanged(dataNetwork);
                     }
-                }));
+
+                    @Override
+                    public void onNetworkCapabilitiesChanged(@NonNull DataNetwork dataNetwork) {
+                        DataNetworkController.this.onNetworkCapabilitiesChanged(dataNetwork);
+                    }
+                }
+        ));
         if (!mAnyDataNetworkExisting) {
             mAnyDataNetworkExisting = true;
             mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
@@ -2290,12 +2298,18 @@ public class DataNetworkController extends Handler {
         //   data network's link status. Consider expanding to all data networks if needed, and
         //   should use CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL
         //   to determine if using all data networks or only internet data networks.
-        boolean anyActive = mDataNetworkList.stream()
-                .filter(DataNetwork::isInternetSupported)
-                .anyMatch(network -> network.getLinkStatus()
-                        == DataCallResponse.LINK_STATUS_ACTIVE);
-        int status = anyActive ? DataCallResponse.LINK_STATUS_ACTIVE
-                : DataCallResponse.LINK_STATUS_DORMANT;
+        int status = DataCallResponse.LINK_STATUS_INACTIVE;
+        boolean anyInternet = mDataNetworkList.stream()
+                .anyMatch(network -> network.isInternetSupported() && network.isConnected());
+        if (anyInternet) {
+            status = mDataNetworkList.stream()
+                    .anyMatch(network -> network.isInternetSupported()
+                            && network.isConnected() && network.getLinkStatus()
+                            == DataCallResponse.LINK_STATUS_ACTIVE)
+                    ? DataCallResponse.LINK_STATUS_ACTIVE
+                    : DataCallResponse.LINK_STATUS_DORMANT;
+        }
+
         if (mInternetLinkStatus != status) {
             log("Internet link status changed to " + DataUtils.linkStatusToString(status));
             mInternetLinkStatus = status;
@@ -2329,6 +2343,29 @@ public class DataNetworkController extends Handler {
                 mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                         () -> callback.onNrAdvancedCapableByPcoChanged(mNrAdvancedCapableByPco)));
             }
+        }
+    }
+
+    /**
+     * Called when network capabilities changed.
+     *
+     * @param dataNetwork The data network.
+     */
+    private void onNetworkCapabilitiesChanged(@NonNull DataNetwork dataNetwork) {
+        // The network capabilities changed. See if there are unsatisfied network requests that
+        // become satisfiable.
+        NetworkRequestList networkRequestList = new NetworkRequestList();
+        for (TelephonyNetworkRequest networkRequest : mAllNetworkRequestList) {
+            if (networkRequest.getState() == TelephonyNetworkRequest.REQUEST_STATE_UNSATISFIED) {
+                if (networkRequest.canBeSatisfiedBy(dataNetwork.getNetworkCapabilities())) {
+                    networkRequestList.add(networkRequest);
+                }
+            }
+        }
+
+        if (!networkRequestList.isEmpty()) {
+            log("Found more network requests that can be satisfied. " + networkRequestList);
+            dataNetwork.attachNetworkRequests(networkRequestList);
         }
     }
 
