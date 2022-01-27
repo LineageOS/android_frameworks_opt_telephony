@@ -44,12 +44,13 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
+
+import java.io.PrintWriter;
 
 /**
  * Controls the change of the user setting of the call waiting service
- *
- * {@hide}
  */
 public class CallWaitingController extends Handler {
 
@@ -129,9 +130,9 @@ public class CallWaitingController extends Handler {
     private boolean mRegisteredForNetworkAttach = false;
     private boolean mImsRegistered = false;
 
-    private GsmCdmaPhone mPhone;
-    private ServiceStateTracker mSST;
-    private Context mContext;
+    private final GsmCdmaPhone mPhone;
+    private final ServiceStateTracker mSST;
+    private final Context mContext;
 
     // Constructors
     public CallWaitingController(GsmCdmaPhone phone) {
@@ -627,5 +628,23 @@ public class CallWaitingController extends Handler {
     @VisibleForTesting
     public void notifyRegisteredToNetwork() {
         sendEmptyMessage(EVENT_REGISTERED_TO_NETWORK);
+    }
+
+    /**
+     * Dump this instance into a readable format for dumpsys usage.
+     */
+    public void dump(PrintWriter printWriter) {
+        IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
+        pw.increaseIndent();
+        pw.println("CallWaitingController:");
+        pw.println(" mSupportedByImsService=" + mSupportedByImsService);
+        pw.println(" mValidSubscription=" + mValidSubscription);
+        pw.println(" mCallWaitingState=" + mCallWaitingState);
+        pw.println(" mSyncPreference=" + mSyncPreference);
+        pw.println(" mLastSubId=" + mLastSubId);
+        pw.println(" mCsEnabled=" + mCsEnabled);
+        pw.println(" mRegisteredForNetworkAttach=" + mRegisteredForNetworkAttach);
+        pw.println(" mImsRegistered=" + mImsRegistered);
+        pw.decreaseIndent();
     }
 }

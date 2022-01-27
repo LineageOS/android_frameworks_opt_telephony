@@ -4533,6 +4533,13 @@ public class GsmCdmaPhone extends Phone {
             e.printStackTrace();
         }
         pw.flush();
+
+        try {
+            mCallWaitingController.dump(pw);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
     }
 
     @Override
