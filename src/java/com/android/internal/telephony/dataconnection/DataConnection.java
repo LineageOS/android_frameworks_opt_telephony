@@ -682,6 +682,8 @@ public class DataConnection extends StateMachine {
      */
     public void updateTrafficDescriptors(DataCallResponse response) {
         mTrafficDescriptors = response.getTrafficDescriptors();
+        mDcController.updateTrafficDescriptorsForCid(response.getId(),
+                response.getTrafficDescriptors());
     }
 
     @VisibleForTesting
@@ -1406,6 +1408,12 @@ public class DataConnection extends StateMachine {
             }
         } else if (cp.mApnContext.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE
                 && mDcController.getActiveDcByCid(response.getId()) != null) {
+            if (!mDcController.getTrafficDescriptorsForCid(response.getId())
+                    .equals(response.getTrafficDescriptors())) {
+                if (DBG) log("Updating traffic descriptors: " + response.getTrafficDescriptors());
+                mDcController.getActiveDcByCid(response.getId()).updateTrafficDescriptors(response);
+                mDct.obtainMessage(DctConstants.EVENT_TRAFFIC_DESCRIPTORS_UPDATED).sendToTarget();
+            }
             if (DBG) log("DataConnection already exists for cid: " + response.getId());
             result = SetupResult.ERROR_DUPLICATE_CID;
             result.mFailCause = DataFailCause.DUPLICATE_CID;
@@ -1807,14 +1815,8 @@ public class DataConnection extends StateMachine {
      * @return True if this data connection supports enterprise use.
      */
     private boolean isEnterpriseUse() {
-        boolean enterpriseTrafficDescriptor = mTrafficDescriptors
-                .stream()
-                .anyMatch(td -> td.getOsAppId() != null && Arrays.equals(td.getOsAppId(),
-                        getEnterpriseOsAppId()));
-        boolean enterpriseApnContext = mApnContexts.keySet()
-                .stream()
-                .anyMatch(ac -> ac.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE);
-        return enterpriseTrafficDescriptor || enterpriseApnContext;
+        return  mApnContexts.keySet().stream().anyMatch(
+                ac -> ac.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE);
     }
 
     /**
