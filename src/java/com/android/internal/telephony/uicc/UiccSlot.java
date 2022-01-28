@@ -28,6 +28,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.UserHandle;
+import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -46,6 +47,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * This class represents a physical slot on the device.
@@ -317,7 +319,6 @@ public class UiccSlot extends Handler {
         }
         mStateIsUnknown = stateUnknown;
         mUiccCard = null;
-        mPortIdxToPhoneId.clear();
     }
 
     public boolean isStateUnknown() {
@@ -537,6 +538,13 @@ public class UiccSlot extends Handler {
         Rlog.e(TAG, msg);
     }
 
+    private Map<Integer, String> getPrintableIccIds() {
+        Map<Integer, String> printableIccIds = mIccIds.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey,
+                        e -> SubscriptionInfo.givePrintableIccid(e.getValue())));
+        return printableIccIds;
+    }
+
     /**
      * Dump
      */
@@ -548,7 +556,8 @@ public class UiccSlot extends Handler {
                 + isMultipleEnabledProfileSupported());
         pw.println(" mIsRemovable=" + mIsRemovable);
         pw.println(" mLastRadioState=" + mLastRadioState);
-        pw.println(" mIccIds=" + mIccIds.values());
+        pw.println(" mIccIds=" + getPrintableIccIds());
+        pw.println(" mPortIdxToPhoneId=" + mPortIdxToPhoneId);
         pw.println(" mEid=" + mEid);
         pw.println(" mCardState=" + mCardState);
         if (mUiccCard != null) {
