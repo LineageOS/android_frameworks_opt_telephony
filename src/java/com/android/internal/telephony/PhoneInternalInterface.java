@@ -208,6 +208,7 @@ public interface PhoneInternalInterface {
     static final String REASON_IWLAN_DATA_SERVICE_DIED = "iwlanDataServiceDied";
     static final String REASON_VCN_REQUESTED_TEARDOWN = "vcnRequestedTeardown";
     static final String REASON_DATA_UNTHROTTLED = "dataUnthrottled";
+    static final String REASON_TRAFFIC_DESCRIPTORS_UPDATED = "trafficDescriptorsUpdated";
 
     // Reasons for Radio being powered off
     int RADIO_POWER_REASON_USER = 0;
