@@ -132,20 +132,6 @@ public class RadioMessagingProxy extends RadioServiceProxy {
     }
 
     /**
-     * Call IRadioMessaging#cancelPendingUssd
-     * @param serial Serial number of request
-     * @throws RemoteException
-     */
-    public void cancelPendingUssd(int serial) throws RemoteException {
-        if (isEmpty()) return;
-        if (isAidl()) {
-            mMessagingProxy.cancelPendingUssd(serial);
-        } else {
-            mRadioProxy.cancelPendingUssd(serial);
-        }
-    }
-
-    /**
      * Call IRadioMessaging#deleteSmsOnRuim
      * @param serial Serial number of request
      * @param index Record index of the message to delete
@@ -370,21 +356,6 @@ public class RadioMessagingProxy extends RadioServiceProxy {
                     RILUtils.convertToHalGsmSmsMessage(smscPdu, pdu));
         } else {
             mRadioProxy.sendSMSExpectMore(serial, RILUtils.convertToHalGsmSmsMessage(smscPdu, pdu));
-        }
-    }
-
-    /**
-     * Call IRadioMessaging#sendUssd
-     * @param serial Serial number of request
-     * @param ussd String containing the USSD request in UTF-8 format
-     * @throws RemoteException
-     */
-    public void sendUssd(int serial, String ussd) throws RemoteException {
-        if (isEmpty()) return;
-        if (isAidl()) {
-            mMessagingProxy.sendUssd(serial, ussd);
-        } else {
-            mRadioProxy.sendUssd(serial, ussd);
         }
     }
 
