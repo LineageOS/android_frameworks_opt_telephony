@@ -17,7 +17,6 @@
 package com.android.internal.telephony;
 
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_RUIM_SMS_STORAGE_FULL;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_USSD;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_CDMA_NEW_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NEW_SMS;
@@ -140,25 +139,6 @@ public class MessagingIndication extends IRadioMessagingIndication.Stub {
 
         if (mRil.mSmsStatusRegistrant != null) {
             mRil.mSmsStatusRegistrant.notifyRegistrant(new AsyncResult(null, pdu, null));
-        }
-    }
-
-    /**
-     * Indicates when a new USSD message is received. The USSD session is assumed to persist if the
-     * type code is REQUEST, otherwise the current session (if any) is assumed to have terminated.
-     * @param indicationType Type of radio indication
-     * @param ussdModeType USSD type code
-     * @param msg Message string in UTF-8, if applicable
-     */
-    public void onUssd(int indicationType, int ussdModeType, String msg) {
-        mRil.processIndication(RIL.MESSAGING_SERVICE, indicationType);
-
-        if (RIL.RILJ_LOGD) mRil.unsljLogMore(RIL_UNSOL_ON_USSD, "" + ussdModeType);
-
-        // TODO: Clean this up with a parcelable class for better self-documentation
-        String[] resp = new String[]{"" + ussdModeType, msg};
-        if (mRil.mUSSDRegistrant != null) {
-            mRil.mUSSDRegistrant.notifyRegistrant(new AsyncResult(null, resp, null));
         }
     }
 

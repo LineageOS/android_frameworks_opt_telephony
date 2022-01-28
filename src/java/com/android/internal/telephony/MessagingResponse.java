@@ -82,13 +82,6 @@ public class MessagingResponse extends IRadioMessagingResponse.Stub {
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
-    public void cancelPendingUssdResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.MESSAGING_SERVICE, mRil, responseInfo);
-    }
-
-    /**
-     * @param responseInfo Response info struct containing response type, serial no. and error
-     */
     public void deleteSmsOnRuimResponse(RadioResponseInfo responseInfo) {
         RadioResponse.responseVoid(RIL.MESSAGING_SERVICE, mRil, responseInfo);
     }
@@ -228,13 +221,6 @@ public class MessagingResponse extends IRadioMessagingResponse.Stub {
     public void sendSmsResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.messaging.SendSmsResult sms) {
         responseSms(responseInfo, sms);
-    }
-
-    /**
-     * @param responseInfo Response info struct containing response type, serial no. and error
-     */
-    public void sendUssdResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.MESSAGING_SERVICE, mRil, responseInfo);
     }
 
     /**
