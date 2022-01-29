@@ -459,7 +459,7 @@ public class DataProfileManagerTest extends TelephonyTest {
     }
 
     @Test
-    public void testGetDataProfileForTrafficDescriptorTypeNetworkRequest() {
+    public void testGetDataProfileForEnterpriseNetworkRequest() {
         TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)
@@ -486,6 +486,39 @@ public class DataProfileManagerTest extends TelephonyTest {
         assertThat(osAppId.getAppId()).isEqualTo("ENTERPRISE");
         assertThat(osAppId.getDifferentiator()).isEqualTo(2);
     }
+
+    @Test
+    public void testGetDataProfileForUrllcNetworkRequest() {
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY)
+                        .build(), mPhone);
+        DataProfile dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
+                tnr, TelephonyManager.NETWORK_TYPE_LTE);
+        assertThat(dataProfile.getApnSetting()).isNull();
+        OsAppId osAppId = new OsAppId(dataProfile.getTrafficDescriptor().getOsAppId());
+
+        assertThat(osAppId.getOsId()).isEqualTo(OsAppId.ANDROID_OS_ID);
+        assertThat(osAppId.getAppId()).isEqualTo("PRIORITIZE_LATENCY");
+        assertThat(osAppId.getDifferentiator()).isEqualTo(1);
+    }
+
+    @Test
+    public void testGetDataProfileForEmbbNetworkRequest() {
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH)
+                        .build(), mPhone);
+        DataProfile dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
+                tnr, TelephonyManager.NETWORK_TYPE_LTE);
+        assertThat(dataProfile.getApnSetting()).isNull();
+        OsAppId osAppId = new OsAppId(dataProfile.getTrafficDescriptor().getOsAppId());
+
+        assertThat(osAppId.getOsId()).isEqualTo(OsAppId.ANDROID_OS_ID);
+        assertThat(osAppId.getAppId()).isEqualTo("PRIORITIZE_BANDWIDTH");
+        assertThat(osAppId.getDifferentiator()).isEqualTo(1);
+    }
+
 
     @Test
     public void testSetPreferredDataProfile() {

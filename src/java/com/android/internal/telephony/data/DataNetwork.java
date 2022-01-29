@@ -1211,16 +1211,23 @@ public class DataNetwork extends StateMachine {
                 }
                 int networkCapability = DataUtils.getNetworkCapabilityFromString(
                         osAppId.getAppId());
-                if (networkCapability > 0) {
-                    builder.addCapability(networkCapability);
-                    // Enterprise is the only capability supporting differentiator.
-                    if (networkCapability == NetworkCapabilities.NET_CAPABILITY_ENTERPRISE) {
-                        builder.addEnterpriseId(osAppId.getDifferentiator());
-                    }
-                } else {
-                    loge("Invalid app id " + osAppId.getAppId());
+                switch (networkCapability) {
+                    case NetworkCapabilities.NET_CAPABILITY_ENTERPRISE:
+                        builder.addCapability(networkCapability);
+                        // Enterprise is the only capability supporting differentiator.
+                        if (networkCapability == NetworkCapabilities.NET_CAPABILITY_ENTERPRISE) {
+                            builder.addEnterpriseId(osAppId.getDifferentiator());
+                        }
+                        break;
+                    case NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY:
+                    case NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH:
+                    case NetworkCapabilities.NET_CAPABILITY_CBS:
+                        builder.addCapability(networkCapability);
+                        break;
+                    default:
+                        loge("Invalid app id " + osAppId.getAppId());
                 }
-            } catch (IllegalArgumentException e) {
+            } catch (Exception e) {
                 loge("Exception: " + e + ". Failed to create osAppId from "
                         + new BigInteger(1, trafficDescriptor.getOsAppId()).toString(16));
             }
