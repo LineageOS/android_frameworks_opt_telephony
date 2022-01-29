@@ -3243,7 +3243,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
-                        + " featureCode = " + featureCode);
+                        + " featureCode = " + Rlog.pii(RILJ_LOG_TAG, featureCode));
             }
 
             try {
