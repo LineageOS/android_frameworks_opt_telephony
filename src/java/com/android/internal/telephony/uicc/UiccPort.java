@@ -26,6 +26,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.RemoteException;
+import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.annotations.GuardedBy;
@@ -495,7 +496,7 @@ public class UiccPort {
         pw.println(" this=" + this);
         pw.println(" mPortIdx=" + mPortIdx);
         pw.println(" mCi=" + mCi);
-        pw.println(" mIccid=" + mIccid);
+        pw.println(" mIccid=" + SubscriptionInfo.givePrintableIccid(mIccid));
         pw.println(" mPhoneId=" + mPhoneId);
         pw.println(" mPhysicalSlotIndex=" + mPhysicalSlotIndex);
         synchronized (mOpenChannelRecords) {
