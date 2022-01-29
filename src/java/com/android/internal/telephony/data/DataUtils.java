@@ -80,6 +80,10 @@ public class DataUtils {
             case "VSIM": return NetworkCapabilities.NET_CAPABILITY_VSIM;
             case "BIP" : return NetworkCapabilities.NET_CAPABILITY_BIP;
             case "ENTERPRISE": return NetworkCapabilities.NET_CAPABILITY_ENTERPRISE;
+            case "PRIORITIZE_BANDWIDTH":
+                return NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH;
+            case "PRIORITIZE_LATENCY":
+                return NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY;
             default:
                 return -1;
         }
@@ -131,6 +135,10 @@ public class DataUtils {
             case NetworkCapabilities.NET_CAPABILITY_BIP:                  return "BIP";
             case NetworkCapabilities.NET_CAPABILITY_HEAD_UNIT:            return "HEAD_UNIT";
             case NetworkCapabilities.NET_CAPABILITY_MMTEL:                return "MMTEL";
+            case NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY:
+                return "PRIORITIZE_LATENCY";
+            case NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH:
+                return "PRIORITIZE_BANDWIDTH";
             default:
                 return "Unknown(" + netCap + ")";
         }
