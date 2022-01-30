@@ -792,11 +792,29 @@ public class DataConfigManager extends Handler {
     }
 
     /**
-     * @return The PCO id used for determine if data networks are using NR advanved networks. 0
+     * @return The PCO id used for determine if data networks are using NR advanced networks. 0
      * indicates this feature is disabled.
      */
     public int getNrAdvancedCapablePcoId() {
         return mCarrierConfig.getInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT);
+    }
+
+    /**
+     * @return The allowed APN types for initial attach. The order in the list determines the
+     * priority of it being considered as IA APN. Note this should be only used for some exception
+     * cases that we need to use "user-added" APN for initial attach. The regular way to configure
+     * IA APN is by adding "IA" type to the APN in APN config.
+     */
+    public @NonNull @ApnType List<Integer> getAllowedInitialAttachApnTypes() {
+        String[] apnTypesArray = mCarrierConfig.getStringArray(
+                CarrierConfigManager.KEY_ALLOWED_INITIAL_ATTACH_APN_TYPES_STRING_ARRAY);
+        if (apnTypesArray != null) {
+            return Arrays.stream(apnTypesArray)
+                    .map(ApnSetting::getApnTypesBitmaskFromString)
+                    .collect(Collectors.toList());
+        }
+
+        return Collections.emptyList();
     }
 
     /**
