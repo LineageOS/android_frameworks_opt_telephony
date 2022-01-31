@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-import android.content.Context;
 import android.hardware.radio.RadioError;
 import android.hardware.radio.RadioResponseInfo;
 import android.hardware.radio.network.IRadioNetworkResponse;
@@ -24,11 +23,8 @@ import android.os.AsyncResult;
 import android.telephony.BarringInfo;
 import android.telephony.CellInfo;
 import android.telephony.LinkCapacityEstimate;
-import android.telephony.NeighboringCellInfo;
 import android.telephony.RadioAccessSpecifier;
 import android.telephony.SignalStrength;
-import android.telephony.SubscriptionManager;
-import android.telephony.TelephonyManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -168,32 +164,6 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
         RadioResponse.responseInts(RIL.NETWORK_SERVICE, mRil, responseInfo, isRegistered ? 1 : 0,
                 ratFamily == android.hardware.radio.RadioTechnologyFamily.THREE_GPP
                         ? PhoneConstants.PHONE_TYPE_GSM : PhoneConstants.PHONE_TYPE_CDMA);
-    }
-
-    /**
-     * @param responseInfo Response info struct containing response type, serial no. and error
-     * @param cells Vector of neighboring radio cell information
-     */
-    public void getNeighboringCidsResponse(RadioResponseInfo responseInfo,
-            android.hardware.radio.network.NeighboringCell[] cells) {
-        RILRequest rr = mRil.processResponse(RIL.NETWORK_SERVICE, responseInfo);
-
-        if (rr != null) {
-            ArrayList<NeighboringCellInfo> ret = new ArrayList<>();
-            int[] subId = SubscriptionManager.getSubId(mRil.mPhoneId);
-            int radioType = ((TelephonyManager) mRil.mContext.getSystemService(
-                    Context.TELEPHONY_SERVICE)).getDataNetworkType(subId[0]);
-
-            if (radioType != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
-                for (android.hardware.radio.network.NeighboringCell cell : cells) {
-                    ret.add(new NeighboringCellInfo(cell.rssi, cell.cid, radioType));
-                }
-            }
-            if (responseInfo.error == RadioError.NONE) {
-                RadioResponse.sendMessageResponse(rr.mResult, ret);
-            }
-            mRil.processResponseDone(rr, responseInfo, ret);
-        }
     }
 
     /**

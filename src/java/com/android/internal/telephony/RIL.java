@@ -2035,9 +2035,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void sendUSSD(String ussd, Message result) {
-        RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
-        if (!messagingProxy.isEmpty()) {
+        RadioVoiceProxy voiceProxy =
+                getRadioServiceProxy(RadioVoiceProxy.class, result);
+        if (!voiceProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SEND_USSD, result, mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
@@ -2048,18 +2048,18 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                messagingProxy.sendUssd(rr.mSerial, RILUtils.convertNullToEmptyString(ussd));
+                voiceProxy.sendUssd(rr.mSerial, RILUtils.convertNullToEmptyString(ussd));
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "sendUSSD", e);
+                handleRadioProxyExceptionForRR(VOICE_SERVICE, "sendUssd", e);
             }
         }
     }
 
     @Override
     public void cancelPendingUssd(Message result) {
-        RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
-        if (!messagingProxy.isEmpty()) {
+        RadioVoiceProxy voiceProxy =
+                getRadioServiceProxy(RadioVoiceProxy.class, result);
+        if (!voiceProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_CANCEL_USSD, result, mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
@@ -2067,9 +2067,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                messagingProxy.cancelPendingUssd(rr.mSerial);
+                voiceProxy.cancelPendingUssd(rr.mSerial);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "cancelPendingUssd", e);
+                handleRadioProxyExceptionForRR(VOICE_SERVICE, "cancelPendingUssd", e);
             }
         }
     }

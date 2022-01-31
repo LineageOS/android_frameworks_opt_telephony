@@ -122,7 +122,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
 
         int carrierRestrictionDefault =
                 CarrierRestrictionRules.CARRIER_RESTRICTION_DEFAULT_NOT_ALLOWED;
-        if (carrierRestrictions.priority && !carrierRestrictions.allowedCarriersPrioritized) {
+        if (!carrierRestrictions.allowedCarriersPrioritized) {
             carrierRestrictionDefault = CarrierRestrictionRules.CARRIER_RESTRICTION_DEFAULT_ALLOWED;
         }
 
