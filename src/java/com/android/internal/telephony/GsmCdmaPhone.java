@@ -1951,10 +1951,12 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public ImsiEncryptionInfo getCarrierInfoForImsiEncryption(int keyType, boolean fallback) {
-        String operatorNumeric = TelephonyManager.from(mContext)
-                .getSimOperatorNumericForPhone(mPhoneId);
+        final TelephonyManager telephonyManager = mContext.getSystemService(TelephonyManager.class)
+                .createForSubscriptionId(getSubId());
+        String operatorNumeric = telephonyManager.getSimOperator();
+        int carrierId = telephonyManager.getSimCarrierId();
         return CarrierInfoManager.getCarrierInfoForImsiEncryption(keyType,
-                mContext, operatorNumeric, fallback, getSubId());
+                mContext, operatorNumeric, carrierId, fallback, getSubId());
     }
 
     @Override
@@ -1964,8 +1966,9 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public void deleteCarrierInfoForImsiEncryption() {
-        CarrierInfoManager.deleteCarrierInfoForImsiEncryption(mContext, getSubId());
+    public void deleteCarrierInfoForImsiEncryption(int carrierId) {
+        CarrierInfoManager.deleteCarrierInfoForImsiEncryption(mContext, getSubId(),
+                carrierId);
     }
 
     @Override

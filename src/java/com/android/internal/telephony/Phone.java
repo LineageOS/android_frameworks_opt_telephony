@@ -4019,8 +4019,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     /**
      * Deletes all the keys for a given Carrier from the device keystore.
+     * @param carrierId : the carrier ID which needs to be matched in the delete query
      */
-    public void deleteCarrierInfoForImsiEncryption() {
+    public void deleteCarrierInfoForImsiEncryption(int carrierId) {
         return;
     }
 
