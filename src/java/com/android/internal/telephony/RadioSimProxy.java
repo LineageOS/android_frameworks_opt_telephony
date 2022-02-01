@@ -496,7 +496,6 @@ public class RadioSimProxy extends RadioServiceProxy {
                     carrierRestrictionRules.getAllowedCarriers());
             carrierRestrictions.excludedCarriers = RILUtils.convertToHalCarrierRestrictionListAidl(
                     carrierRestrictionRules.getExcludedCarriers());
-            carrierRestrictions.priority = true;
             carrierRestrictions.allowedCarriersPrioritized =
                     (carrierRestrictionRules.getDefaultCarrierRestriction()
                             == CarrierRestrictionRules.CARRIER_RESTRICTION_DEFAULT_NOT_ALLOWED);

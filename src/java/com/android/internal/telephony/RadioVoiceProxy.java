@@ -85,6 +85,20 @@ public class RadioVoiceProxy extends RadioServiceProxy {
     }
 
     /**
+     * Call IRadioVoice#cancelPendingUssd
+     * @param serial Serial number of request
+     * @throws RemoteException
+     */
+    public void cancelPendingUssd(int serial) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mVoiceProxy.cancelPendingUssd(serial);
+        } else {
+            mRadioProxy.cancelPendingUssd(serial);
+        }
+    }
+
+    /**
      * Call IRadioVoice#conference
      * @param serial Serial number of request
      * @throws RemoteException
@@ -484,6 +498,21 @@ public class RadioVoiceProxy extends RadioServiceProxy {
             mVoiceProxy.sendDtmf(serial, s);
         } else {
             mRadioProxy.sendDtmf(serial, s);
+        }
+    }
+
+    /**
+     * Call IRadioVoice#sendUssd
+     * @param serial Serial number of request
+     * @param ussd String containing the USSD request in UTF-8 format
+     * @throws RemoteException
+     */
+    public void sendUssd(int serial, String ussd) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mVoiceProxy.sendUssd(serial, ussd);
+        } else {
+            mRadioProxy.sendUssd(serial, ussd);
         }
     }
 
