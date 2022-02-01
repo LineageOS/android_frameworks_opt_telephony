@@ -53,6 +53,13 @@ public class VoiceResponse extends IRadioVoiceResponse.Stub {
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
+    public void cancelPendingUssdResponse(RadioResponseInfo responseInfo) {
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
     public void conferenceResponse(RadioResponseInfo responseInfo) {
         RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
@@ -290,6 +297,13 @@ public class VoiceResponse extends IRadioVoiceResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void sendDtmfResponse(RadioResponseInfo responseInfo) {
+        RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void sendUssdResponse(RadioResponseInfo responseInfo) {
         RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
 
