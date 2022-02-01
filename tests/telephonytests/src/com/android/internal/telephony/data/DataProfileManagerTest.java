@@ -36,6 +36,7 @@ import android.os.Looper;
 import android.provider.Telephony;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.TelephonyManager;
+import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
@@ -370,6 +371,8 @@ public class DataProfileManagerTest extends TelephonyTest {
                 Telephony.Carriers.CONTENT_URI.getAuthority(), mApnSettingContentProvider);
 
         doReturn(true).when(mDataConfigManager).isConfigCarrierSpecific();
+        doReturn(List.of(ApnSetting.TYPE_IA, ApnSetting.TYPE_DEFAULT))
+                .when(mDataConfigManager).getAllowedInitialAttachApnTypes();
         doAnswer(invocation -> {
             ((Runnable) invocation.getArguments()[0]).run();
             return null;
@@ -528,14 +531,13 @@ public class DataProfileManagerTest extends TelephonyTest {
 
     @Test
     public void testSetInitialAttachDataProfile() {
-        verify(mMockedWwanDataServiceManager).setInitialAttachApn(any(DataProfile.class),
-                eq(false), eq(null));
+        ArgumentCaptor<DataProfile> dataProfileCaptor =
+                ArgumentCaptor.forClass(DataProfile.class);
 
-        List<DataProfile> dataProfiles = mDataProfileManagerUT
-                .getDataProfilesForNetworkCapabilities(
-                        new int[]{NetworkCapabilities.NET_CAPABILITY_IA});
-        assertThat(dataProfiles).hasSize(1);
-        assertThat(dataProfiles.get(0).getApnSetting().getApnName()).isEqualTo(GENERAL_PURPOSE_APN);
+        verify(mMockedWwanDataServiceManager).setInitialAttachApn(dataProfileCaptor.capture(),
+                eq(false), eq(null));
+        assertThat(dataProfileCaptor.getValue().getApnSetting().getApnName())
+                .isEqualTo(GENERAL_PURPOSE_APN);
     }
 
     @Test
@@ -569,13 +571,23 @@ public class DataProfileManagerTest extends TelephonyTest {
         testSimRemoval();
         Mockito.clearInvocations(mDataProfileManagerCallback);
         Mockito.clearInvocations(mMockedWwanDataServiceManager);
+
+        doReturn(List.of(ApnSetting.TYPE_IMS))
+                .when(mDataConfigManager).getAllowedInitialAttachApnTypes();
+
         mSimInserted = true;
         mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
         processAllMessages();
 
+        ArgumentCaptor<DataProfile> dataProfileCaptor =
+                ArgumentCaptor.forClass(DataProfile.class);
+
         verify(mDataProfileManagerCallback).onDataProfilesChanged();
-        verify(mMockedWwanDataServiceManager).setInitialAttachApn(any(DataProfile.class),
+        verify(mMockedWwanDataServiceManager).setInitialAttachApn(dataProfileCaptor.capture(),
                 eq(false), eq(null));
+
+        // Should only use IMS APN for initial attach
+        assertThat(dataProfileCaptor.getValue().getApnSetting().getApnName()).isEqualTo(IMS_APN);
 
         List<DataProfile> dataProfiles = mDataProfileManagerUT
                 .getDataProfilesForNetworkCapabilities(

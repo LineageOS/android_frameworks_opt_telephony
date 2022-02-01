@@ -24,6 +24,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_EMERGENCY_NU
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ENTER_EMERGENCY_CALLBACK_MODE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_SS;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_USSD;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESEND_INCALL_MUTE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RINGBACK_TONE;
@@ -358,6 +359,25 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
 
         if (mRil.mSsRegistrant != null) {
             mRil.mSsRegistrant.notifyRegistrant(new AsyncResult(null, ssData, null));
+        }
+    }
+
+    /**
+     * Indicates when a new USSD message is received. The USSD session is assumed to persist if the
+     * type code is REQUEST, otherwise the current session (if any) is assumed to have terminated.
+     * @param indicationType Type of radio indication
+     * @param ussdModeType USSD type code
+     * @param msg Message string in UTF-8, if applicable
+     */
+    public void onUssd(int indicationType, int ussdModeType, String msg) {
+        mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogMore(RIL_UNSOL_ON_USSD, "" + ussdModeType);
+
+        // TODO: Clean this up with a parcelable class for better self-documentation
+        String[] resp = new String[]{"" + ussdModeType, msg};
+        if (mRil.mUSSDRegistrant != null) {
+            mRil.mUSSDRegistrant.notifyRegistrant(new AsyncResult(null, resp, null));
         }
     }
 
