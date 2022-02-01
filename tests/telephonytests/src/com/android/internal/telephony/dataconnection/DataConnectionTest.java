@@ -921,6 +921,9 @@ public class DataConnectionTest extends TelephonyTest {
         waitForMs(100);
 
         assertEquals(carrierConfigPkgUid, getNetworkCapabilities().getOwnerUid());
+        assertEquals(
+                Collections.singleton(carrierConfigPkgUid),
+                getNetworkCapabilities().getAccessUids());
     }
 
     @Test
