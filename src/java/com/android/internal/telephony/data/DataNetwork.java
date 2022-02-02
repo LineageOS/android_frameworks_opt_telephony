@@ -1355,8 +1355,10 @@ public class DataNetwork extends StateMachine {
                 // suggested to de-register and re-register the network agent if it is needed to
                 // add/remove immutable capabilities.
                 logl("updateNetworkCapabilities: Immutable capabilities changed. Re-create the "
-                        + "network agent.");
-                mNetworkAgent.unregister();
+                        + "network agent. Attempted to change from " + mNetworkCapabilities + " to "
+                        + nc);
+                // Abandon the network agent because we are going to create a new one.
+                mNetworkAgent.abandon();
                 // Update the capabilities first so the new network agent would be created with the
                 // new capabilities.
                 mNetworkCapabilities = nc;
