@@ -378,11 +378,8 @@ public class UiccPort {
 
     /**
      * Exposes {@link UiccCarrierPrivilegeRules#getCarrierPrivilegeStatus}.
-     *
-     * <p>TODO(b/205736323) remove this and downstream once fully moved to CarrierPrivilegesTracker
-     *
-     * @deprecated Please use {@link UiccProfile#getCarrierPrivilegeStatus(Signature, String)}
-     *     instead.
+     * @deprecated Please use
+     * {@link UiccProfile#getCarrierPrivilegeStatus(Signature, String)} instead.
      */
     @Deprecated
     public int getCarrierPrivilegeStatus(Signature signature, String packageName) {
@@ -395,11 +392,8 @@ public class UiccPort {
 
     /**
      * Exposes {@link UiccCarrierPrivilegeRules#getCarrierPrivilegeStatus}.
-     *
-     * <p>TODO(b/205736323) remove this and downstream once fully moved to CarrierPrivilegesTracker
-     *
-     * @deprecated Please use {@link UiccProfile#getCarrierPrivilegeStatus(PackageManager, String)}
-     *     instead.
+     * @deprecated Please use
+     * {@link UiccProfile#getCarrierPrivilegeStatus(PackageManager, String)} instead.
      */
     @Deprecated
     public int getCarrierPrivilegeStatus(PackageManager packageManager, String packageName) {
@@ -412,9 +406,6 @@ public class UiccPort {
 
     /**
      * Exposes {@link UiccCarrierPrivilegeRules#getCarrierPrivilegeStatus}.
-     *
-     * <p>TODO(b/205736323) remove this and downstream once fully moved to CarrierPrivilegesTracker
-     *
      * @deprecated Please use {@link UiccProfile#getCarrierPrivilegeStatus(PackageInfo)} instead.
      */
     @Deprecated
@@ -428,11 +419,8 @@ public class UiccPort {
 
     /**
      * Exposes {@link UiccCarrierPrivilegeRules#getCarrierPrivilegeStatusForCurrentTransaction}.
-     *
-     * <p>TODO(b/205736323) remove this and downstream once fully moved to CarrierPrivilegesTracker
-     *
-     * @deprecated Please use {@link
-     *     UiccProfile#getCarrierPrivilegeStatusForCurrentTransaction(PackageManager)} instead.
+     * @deprecated Please use
+     * {@link UiccProfile#getCarrierPrivilegeStatusForCurrentTransaction(PackageManager)} instead.
      */
     @Deprecated
     public int getCarrierPrivilegeStatusForCurrentTransaction(PackageManager packageManager) {
