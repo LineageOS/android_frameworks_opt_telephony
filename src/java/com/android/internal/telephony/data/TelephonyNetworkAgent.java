@@ -20,7 +20,6 @@ import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.net.KeepalivePacketData;
-import android.net.LinkProperties;
 import android.net.NetworkAgent;
 import android.net.NetworkAgentConfig;
 import android.net.NetworkProvider;
@@ -145,8 +144,8 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
             @NonNull NetworkAgentConfig config, @NonNull NetworkProvider provider,
             @NonNull TelephonyNetworkAgentCallback callback) {
         super(phone.getContext(), looper, "TelephonyNetworkAgent",
-                dataNetwork.getNetworkCapabilities(), new LinkProperties(), score, config,
-                provider);
+                dataNetwork.getNetworkCapabilities(), dataNetwork.getLinkProperties(), score,
+                config, provider);
         register();
         mDataNetwork = dataNetwork;
         mTelephonyNetworkAgentCallbacks.add(callback);
