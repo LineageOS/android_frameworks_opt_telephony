@@ -31,6 +31,8 @@ import android.telephony.AnomalyReporter;
 import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccPort;
 import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
@@ -141,11 +143,11 @@ public class CarrierServicesSmsFilter {
 
     private Optional<String> getCarrierAppPackageForFiltering() {
         List<String> carrierPackages = null;
-        CarrierPrivilegesTracker cpt = mPhone.getCarrierPrivilegesTracker();
-        if (cpt != null) {
-            carrierPackages =
-                    cpt.getCarrierPackageNamesForIntent(
-                            new Intent(CarrierMessagingService.SERVICE_INTERFACE));
+        UiccPort port = UiccController.getInstance().getUiccPort(mPhone.getPhoneId());
+        if (port != null) {
+            carrierPackages = port.getCarrierPackageNamesForIntent(
+                    mContext.getPackageManager(),
+                    new Intent(CarrierMessagingService.SERVICE_INTERFACE));
         } else {
             loge("getCarrierAppPackageForFiltering: UiccCard not initialized");
         }
