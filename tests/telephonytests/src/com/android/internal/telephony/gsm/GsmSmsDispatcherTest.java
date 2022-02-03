@@ -41,6 +41,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.location.Country;
 import android.location.CountryDetector;
@@ -334,10 +335,11 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
     }
 
     private void mockUiccWithCarrierApp() {
+        when(mUiccController.getUiccPort(mPhone.getPhoneId())).thenReturn(mUiccPort);
         List<String> carrierPackages = new ArrayList<>();
         carrierPackages.add(CARRIER_APP_PACKAGE_NAME);
-        when(mCarrierPrivilegesTracker.getCarrierPackageNamesForIntent(any()))
-                .thenReturn(carrierPackages);
+        when(mUiccPort.getCarrierPackageNamesForIntent(
+                any(PackageManager.class), any(Intent.class))).thenReturn(carrierPackages);
     }
 
     private void mockCarrierAppStubResults(final int result, ICarrierMessagingService.Stub stub,

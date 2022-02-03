@@ -29,6 +29,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.content.ComponentName;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.os.Looper;
 import android.os.RemoteException;
@@ -38,6 +40,7 @@ import android.service.carrier.ICarrierMessagingService;
 import android.service.carrier.MessagePdu;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import com.android.internal.telephony.LocalLog;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccPort;
 
@@ -178,10 +181,11 @@ public class CarrierServicesSmsFilterTest extends TelephonyTest {
     }
 
     private void mockUiccWithCarrierApp() {
+        when(mUiccController.getUiccPort(mPhone.getPhoneId())).thenReturn(mUiccPort);
         List<String> carrierPackages = new ArrayList<>();
         carrierPackages.add(CARRIER_APP_PACKAGE_NAME);
-        when(mCarrierPrivilegesTracker.getCarrierPackageNamesForIntent(any()))
-                .thenReturn(carrierPackages);
+        when(mUiccPort.getCarrierPackageNamesForIntent(
+                any(PackageManager.class), any(Intent.class))).thenReturn(carrierPackages);
     }
 
     private void mockSystemApp() {
