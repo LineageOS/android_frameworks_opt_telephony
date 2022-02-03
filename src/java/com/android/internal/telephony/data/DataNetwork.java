@@ -1054,9 +1054,17 @@ public class DataNetwork extends StateMachine {
         public boolean processMessage(Message msg) {
             logv("event=" + eventToString(msg.what));
             switch (msg.what) {
+                case EVENT_DATA_STATE_CHANGED:
+                    // The data call list changed event should be conditionally deferred.
+                    // Otherwise the deferred message might be incorrectly treated as "disconnected"
+                    // signal. So we only defer the related data call list changed event, and drop
+                    // the unrelated.
+                    if (shouldDeferDataStateChangedEvent(msg)) {
+                        deferMessage(msg);
+                    }
+                    break;
                 case EVENT_START_HANDOVER:
                 case EVENT_TEAR_DOWN_NETWORK:
-                case EVENT_DATA_STATE_CHANGED:
                     // Defer the request until handover succeeds or fails.
                     deferMessage(msg);
                     break;
@@ -1075,6 +1083,39 @@ public class DataNetwork extends StateMachine {
                     return NOT_HANDLED;
             }
             return HANDLED;
+        }
+
+        /**
+         * Check if the data call list changed event should be deferred or dropped when handover
+         * is in progress.
+         *
+         * @param msg The data call list changed message.
+         *
+         * @return {@code true} if the message should be deferred.
+         */
+        private boolean shouldDeferDataStateChangedEvent(@NonNull Message msg) {
+            // The data call list changed event should be conditionally deferred.
+            // Otherwise the deferred message might be incorrectly treated as "disconnected"
+            // signal. So we only defer the related data call list changed event, and drop
+            // the unrelated.
+            AsyncResult ar = (AsyncResult) msg.obj;
+            int transport = (int) ar.userObj;
+            List<DataCallResponse> responseList = (List<DataCallResponse>) ar.result;
+            if (transport != mTransport) {
+                log("Dropped unrelated " + AccessNetworkConstants.transportTypeToString(transport)
+                        + " data call list changed event. " + responseList);
+                return false;
+            }
+
+            // Check if the data call list changed event are related to the current data network.
+            boolean related = responseList.stream().anyMatch(
+                    r -> mCid.get(mTransport) == r.getId());
+            if (related) {
+                log("Deferred the related data call list changed event." + responseList);
+            } else {
+                log("Dropped unrelated data call list changed event. " + responseList);
+            }
+            return related;
         }
     }
 
@@ -1245,7 +1286,7 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
-     * Check if the there are immutable capabilities changed. The connectivity service is not able
+     * Check if there are immutable capabilities changed. The connectivity service is not able
      * to handle immutable capabilities changed, but in very rare scenarios, immutable capabilities
      * need to be changed dynamically, such as in setup data call response, modem responded with the
      * same cid. In that case, we need to merge the new capabilities into the existing data network.
