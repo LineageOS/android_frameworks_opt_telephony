@@ -1075,7 +1075,7 @@ public class SubscriptionInfoUpdater extends Handler {
             }
             hasChanges = true;
             contentResolver.update(SubscriptionManager.CONTENT_URI, values,
-                    SubscriptionManager.ICC_ID + "=\"" + embeddedProfile.getIccid() + "\"", null);
+                    SubscriptionManager.ICC_ID + "='" + embeddedProfile.getIccid() + "'", null);
 
             // refresh Cached Active Subscription Info List
             mSubscriptionController.refreshCachedActiveSubscriptionInfoList();
@@ -1095,7 +1095,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 SubscriptionInfo info = existingSubscriptions.get(i);
                 if (info.isEmbedded()) {
                     if (DBG) logd("Removing embedded subscription of IccId " + info.getIccId());
-                    iccidsToRemove.add("\"" + info.getIccId() + "\"");
+                    iccidsToRemove.add("'" + info.getIccId() + "'");
                 }
             }
             String whereClause = SubscriptionManager.ICC_ID + " IN ("
