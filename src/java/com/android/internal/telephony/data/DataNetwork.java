@@ -1268,8 +1268,8 @@ public class DataNetwork extends StateMachine {
         List<Integer> newImmutableCapabilities = Arrays.stream(newCapabilities.getCapabilities())
                 .boxed().collect(Collectors.toList());
         newImmutableCapabilities.removeAll(MUTABLE_CAPABILITIES);
-        return oldImmutableCapabilities.size() == newImmutableCapabilities.size()
-                && oldImmutableCapabilities.containsAll(newImmutableCapabilities);
+        return oldImmutableCapabilities.size() != newImmutableCapabilities.size()
+                || !oldImmutableCapabilities.containsAll(newImmutableCapabilities);
     }
 
     /**
