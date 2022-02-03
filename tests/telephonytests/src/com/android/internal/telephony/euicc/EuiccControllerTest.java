@@ -149,7 +149,7 @@ public class EuiccControllerTest extends TelephonyTest {
         public void addResolutionIntent(
                 Intent extrasIntent, String resolutionAction, String callingPackage,
                 int resolvableErrors, boolean confirmationCodeRetried, EuiccOperation op,
-                int cardId, int portIndex, boolean usePortIndex) {
+                int cardId, int portIndex, boolean usePortIndex, int subscriptionId) {
             mResolutionAction = resolutionAction;
             mOp = op;
         }
