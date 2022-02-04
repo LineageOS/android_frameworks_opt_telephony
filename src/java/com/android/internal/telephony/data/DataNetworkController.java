@@ -1762,7 +1762,7 @@ public class DataNetworkController extends Handler {
         return new NetworkRequestList(mAllNetworkRequestList.stream()
                 .filter(request -> request.getState()
                         == TelephonyNetworkRequest.REQUEST_STATE_UNSATISFIED)
-                .filter(request -> dataProfile.canSatisfy(request.getCapabilities()))
+                .filter(request -> request.canBeSatisfiedBy(dataProfile))
                 .collect(Collectors.toList()));
     }
 
@@ -2507,13 +2507,15 @@ public class DataNetworkController extends Handler {
                     + TelephonyUtils.dataStateToString(mInternetDataNetworkState) + " to "
                     + TelephonyUtils.dataStateToString(dataNetworkState) + ".");
             // TODO: Create a new route to notify TelephonyRegistry.
-            if (dataNetworkState == TelephonyManager.DATA_CONNECTED) {
+            if (dataNetworkState == TelephonyManager.DATA_CONNECTED
+                    && mInternetDataNetworkState == TelephonyManager.DATA_DISCONNECTED) {
                 mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                         () -> callback.onInternetDataNetworkConnected(
                                 allConnectedInternetDataNetworks.stream()
                                         .map(DataNetwork::getDataProfile)
                                         .collect(Collectors.toList()))));
-            } else if (dataNetworkState == TelephonyManager.DATA_DISCONNECTED) {
+            } else if (dataNetworkState == TelephonyManager.DATA_DISCONNECTED
+                    && mInternetDataNetworkState == TelephonyManager.DATA_CONNECTED) {
                 mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                         callback::onInternetDataNetworkDisconnected));
             } // TODO: Add suspended callback if needed.

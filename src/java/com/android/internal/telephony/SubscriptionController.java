@@ -1267,7 +1267,7 @@ public class SubscriptionController extends ISub.Stub {
             if (i > 0) {
                 whereClause.append(",");
             }
-            whereClause.append("\"").append(embeddedIccids[i]).append("\"");
+            whereClause.append("'").append(embeddedIccids[i]).append("'");
         }
         whereClause.append(")");
 
@@ -3928,9 +3928,9 @@ public class SubscriptionController extends ISub.Stub {
         selection.append(SubscriptionManager.ICC_ID);
         selection.append(" IN (");
         for (int i = 0; i < iccIds.length - 1; i++) {
-            selection.append("\"" + iccIds[i] + "\", ");
+            selection.append("'" + iccIds[i] + "', ");
         }
-        selection.append("\"" + iccIds[iccIds.length - 1] + "\"");
+        selection.append("'" + iccIds[iccIds.length - 1] + "'");
         selection.append(")");
 
         return selection.toString();
