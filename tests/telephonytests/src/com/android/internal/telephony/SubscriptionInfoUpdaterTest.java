@@ -625,12 +625,12 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         // Info for 1 and 3 should be updated as active embedded subscriptions.
         ArgumentCaptor<ContentValues> iccid1Values = ArgumentCaptor.forClass(ContentValues.class);
         verify(mContentProvider).update(eq(SubscriptionManager.CONTENT_URI), iccid1Values.capture(),
-                eq(SubscriptionManager.ICC_ID + "=\"1\""), isNull());
+                eq(SubscriptionManager.ICC_ID + "='1'"), isNull());
         assertEquals(1,
                 iccid1Values.getValue().getAsInteger(SubscriptionManager.IS_EMBEDDED).intValue());
         ArgumentCaptor<ContentValues> iccid3Values = ArgumentCaptor.forClass(ContentValues.class);
         verify(mContentProvider).update(eq(SubscriptionManager.CONTENT_URI), iccid3Values.capture(),
-                eq(SubscriptionManager.ICC_ID + "=\"3\""), isNull());
+                eq(SubscriptionManager.ICC_ID + "='3'"), isNull());
         assertEquals(1,
                 iccid3Values.getValue().getAsInteger(SubscriptionManager.IS_EMBEDDED).intValue());
 
@@ -638,7 +638,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         // in the list provided by the LPA.
         ArgumentCaptor<ContentValues> iccid2Values = ArgumentCaptor.forClass(ContentValues.class);
         verify(mContentProvider).update(eq(SubscriptionManager.CONTENT_URI), iccid2Values.capture(),
-                eq(SubscriptionManager.ICC_ID + " IN (\"2\")"), isNull());
+                eq(SubscriptionManager.ICC_ID + " IN ('2')"), isNull());
         assertEquals(0,
                 iccid2Values.getValue().getAsInteger(SubscriptionManager.IS_EMBEDDED).intValue());
     }

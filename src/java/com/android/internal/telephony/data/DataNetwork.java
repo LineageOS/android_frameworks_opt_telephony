@@ -67,6 +67,7 @@ import android.telephony.data.DataServiceCallback;
 import android.telephony.data.NetworkSliceInfo;
 import android.telephony.data.QosBearerSession;
 import android.telephony.data.TrafficDescriptor;
+import android.telephony.data.TrafficDescriptor.OsAppId;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.IndentingPrintWriter;
@@ -93,6 +94,7 @@ import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -439,6 +441,9 @@ public class DataNetwork extends StateMachine {
 
     /** The network capabilities of this data network. */
     private @NonNull NetworkCapabilities mNetworkCapabilities;
+
+    /** The matched traffic descriptor returned from setup data call request. */
+    private final @NonNull List<TrafficDescriptor> mTrafficDescriptors = new ArrayList<>();
 
     /** The link properties of this data network. */
     private @NonNull LinkProperties mLinkProperties;
@@ -1054,9 +1059,17 @@ public class DataNetwork extends StateMachine {
         public boolean processMessage(Message msg) {
             logv("event=" + eventToString(msg.what));
             switch (msg.what) {
+                case EVENT_DATA_STATE_CHANGED:
+                    // The data call list changed event should be conditionally deferred.
+                    // Otherwise the deferred message might be incorrectly treated as "disconnected"
+                    // signal. So we only defer the related data call list changed event, and drop
+                    // the unrelated.
+                    if (shouldDeferDataStateChangedEvent(msg)) {
+                        deferMessage(msg);
+                    }
+                    break;
                 case EVENT_START_HANDOVER:
                 case EVENT_TEAR_DOWN_NETWORK:
-                case EVENT_DATA_STATE_CHANGED:
                     // Defer the request until handover succeeds or fails.
                     deferMessage(msg);
                     break;
@@ -1075,6 +1088,39 @@ public class DataNetwork extends StateMachine {
                     return NOT_HANDLED;
             }
             return HANDLED;
+        }
+
+        /**
+         * Check if the data call list changed event should be deferred or dropped when handover
+         * is in progress.
+         *
+         * @param msg The data call list changed message.
+         *
+         * @return {@code true} if the message should be deferred.
+         */
+        private boolean shouldDeferDataStateChangedEvent(@NonNull Message msg) {
+            // The data call list changed event should be conditionally deferred.
+            // Otherwise the deferred message might be incorrectly treated as "disconnected"
+            // signal. So we only defer the related data call list changed event, and drop
+            // the unrelated.
+            AsyncResult ar = (AsyncResult) msg.obj;
+            int transport = (int) ar.userObj;
+            List<DataCallResponse> responseList = (List<DataCallResponse>) ar.result;
+            if (transport != mTransport) {
+                log("Dropped unrelated " + AccessNetworkConstants.transportTypeToString(transport)
+                        + " data call list changed event. " + responseList);
+                return false;
+            }
+
+            // Check if the data call list changed event are related to the current data network.
+            boolean related = responseList.stream().anyMatch(
+                    r -> mCid.get(mTransport) == r.getId());
+            if (related) {
+                log("Deferred the related data call list changed event." + responseList);
+            } else {
+                log("Dropped unrelated data call list changed event. " + responseList);
+            }
+            return related;
         }
     }
 
@@ -1245,7 +1291,7 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
-     * Check if the there are immutable capabilities changed. The connectivity service is not able
+     * Check if there are immutable capabilities changed. The connectivity service is not able
      * to handle immutable capabilities changed, but in very rare scenarios, immutable capabilities
      * need to be changed dynamically, such as in setup data call response, modem responded with the
      * same cid. In that case, we need to merge the new capabilities into the existing data network.
@@ -1268,8 +1314,8 @@ public class DataNetwork extends StateMachine {
         List<Integer> newImmutableCapabilities = Arrays.stream(newCapabilities.getCapabilities())
                 .boxed().collect(Collectors.toList());
         newImmutableCapabilities.removeAll(MUTABLE_CAPABILITIES);
-        return oldImmutableCapabilities.size() == newImmutableCapabilities.size()
-                && oldImmutableCapabilities.containsAll(newImmutableCapabilities);
+        return oldImmutableCapabilities.size() != newImmutableCapabilities.size()
+                || !oldImmutableCapabilities.containsAll(newImmutableCapabilities);
     }
 
     /**
@@ -1296,6 +1342,38 @@ public class DataNetwork extends StateMachine {
                 if (cap >= 0) {
                     builder.addCapability(cap);
                 }
+            }
+        }
+
+        // Extract network capabilities from the traffic descriptor.
+        for (TrafficDescriptor trafficDescriptor : mTrafficDescriptors) {
+            try {
+                OsAppId osAppId = new OsAppId(trafficDescriptor.getOsAppId());
+                if (!osAppId.getOsId().equals(OsAppId.ANDROID_OS_ID)) {
+                    loge("Received non-Android OS id " + osAppId.getOsId());
+                    continue;
+                }
+                int networkCapability = DataUtils.getNetworkCapabilityFromString(
+                        osAppId.getAppId());
+                switch (networkCapability) {
+                    case NetworkCapabilities.NET_CAPABILITY_ENTERPRISE:
+                        builder.addCapability(networkCapability);
+                        // Enterprise is the only capability supporting differentiator.
+                        if (networkCapability == NetworkCapabilities.NET_CAPABILITY_ENTERPRISE) {
+                            builder.addEnterpriseId(osAppId.getDifferentiator());
+                        }
+                        break;
+                    case NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY:
+                    case NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH:
+                    case NetworkCapabilities.NET_CAPABILITY_CBS:
+                        builder.addCapability(networkCapability);
+                        break;
+                    default:
+                        loge("Invalid app id " + osAppId.getAppId());
+                }
+            } catch (Exception e) {
+                loge("Exception: " + e + ". Failed to create osAppId from "
+                        + new BigInteger(1, trafficDescriptor.getOsAppId()).toString(16));
             }
         }
 
@@ -1381,17 +1459,6 @@ public class DataNetwork extends StateMachine {
      */
     public @NonNull NetworkCapabilities getNetworkCapabilities() {
         return mNetworkCapabilities;
-    }
-
-    /**
-     * Get the capabilities that can be translated to APN types.
-     *
-     * @return The capabilities that can be translated to APN types.
-     */
-    public @NonNull @NetCapability Set<Integer> getApnTypesCapabilities() {
-        return Arrays.stream(mNetworkCapabilities.getCapabilities()).boxed()
-                .filter(cap -> DataUtils.networkCapabilityToApnType(cap) != ApnSetting.TYPE_NONE)
-                .collect(Collectors.toSet());
     }
 
     /**
@@ -1646,6 +1713,9 @@ public class DataNetwork extends StateMachine {
         linkProperties.setTcpBufferSizes(mDataConfigManager.getTcpConfigString());
 
         mNetworkSliceInfo = response.getSliceInfo();
+
+        mTrafficDescriptors.clear();
+        mTrafficDescriptors.addAll(response.getTrafficDescriptors());
 
         mQosBearerSessions.clear();
         mQosBearerSessions.addAll(response.getQosBearerSessions());
