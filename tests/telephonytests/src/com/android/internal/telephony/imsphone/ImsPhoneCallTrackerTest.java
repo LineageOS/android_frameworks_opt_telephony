@@ -109,6 +109,7 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import java.util.Set;
+import java.util.concurrent.Executor;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -140,6 +141,13 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private FeatureConnector<ImsManager> mMockConnector;
     @Captor
     private ArgumentCaptor<Set<RtpHeaderExtensionType>> mRtpHeaderExtensionTypeCaptor;
+
+    private Executor mExecutor = new Executor() {
+        @Override
+        public void execute(Runnable r) {
+            r.run();
+        }
+    };
 
     private void imsCallMocking(final ImsCall imsCall) throws Exception {
 
@@ -189,6 +197,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             }
         }).when(imsCall).hold();
 
+        doReturn(mExecutor).when(mContext).getMainExecutor();
         imsCall.attachSession(mImsCallSession);
         doReturn("1").when(mImsCallSession).getCallId();
         doReturn(mImsCallProfile).when(mImsCallSession).getCallProfile();
