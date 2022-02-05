@@ -25,6 +25,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
+import android.annotation.NonNull;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.MatrixCursor;
@@ -57,6 +58,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -139,9 +142,9 @@ public class DataProfileManagerTest extends TelephonyTest {
                         0,                      // max_conns
                         0,                      // wait_time
                         0,                      // max_conns_time
-                        0,                      // mtu
-                        0,                      // mtu_v4
-                        0,                      // mtu_v6
+                        -1,                     // mtu
+                        1280,                   // mtu_v4
+                        1280,                   // mtu_v6
                         "",                     // mvno_type
                         "",                     // mnvo_match_data
                         TelephonyManager.NETWORK_TYPE_BITMASK_LTE
@@ -254,6 +257,42 @@ public class DataProfileManagerTest extends TelephonyTest {
                         -1,                     // carrier_id
                         -1,                     // skip_464xlat
                         0                       // always_on
+                },
+                // This APN entry is created to test de-duping.
+                new Object[]{
+                        5,                      // id
+                        PLMN,                   // numeric
+                        GENERAL_PURPOSE_APN,    // name
+                        GENERAL_PURPOSE_APN,    // apn
+                        "",                     // proxy
+                        "",                     // port
+                        "",                     // mmsc
+                        "",                     // mmsproxy
+                        "",                     // mmsport
+                        "",                     // user
+                        "",                     // password
+                        -1,                     // authtype
+                        "fota",                 // types
+                        "IPV4V6",               // protocol
+                        "IPV4V6",               // roaming_protocol
+                        1,                      // carrier_enabled
+                        0,                      // profile_id
+                        1,                      // modem_cognitive
+                        0,                      // max_conns
+                        0,                      // wait_time
+                        0,                      // max_conns_time
+                        -1,                     // mtu
+                        -1,                     // mtu_v4
+                        -1,                     // mtu_v6
+                        "",                     // mvno_type
+                        "",                     // mnvo_match_data
+                        TelephonyManager.NETWORK_TYPE_BITMASK_LTE
+                                | TelephonyManager.NETWORK_TYPE_BITMASK_NR, // network_type_bitmask
+                        0,                      // lingering_network_type_bitmask
+                        0,                      // apn_set_id
+                        -1,                     // carrier_id
+                        -1,                     // skip_464xlat
+                        0                       // always_on
                 }
         );
 
@@ -350,6 +389,14 @@ public class DataProfileManagerTest extends TelephonyTest {
         }
 
         return true;
+    }
+
+    private void dedupeDataProfiles(@NonNull List<DataProfile> dataProfiles) throws Exception {
+        Class[] cArgs = new Class[1];
+        cArgs[0] = List.class;
+        Method method = DataProfileManager.class.getDeclaredMethod("dedupeDataProfiles", cArgs);
+        method.setAccessible(true);
+        method.invoke(mDataProfileManagerUT, dataProfiles);
     }
 
     @Before
@@ -614,5 +661,87 @@ public class DataProfileManagerTest extends TelephonyTest {
                         .build(), mPhone),
                 TelephonyManager.NETWORK_TYPE_LTE);
         assertThat(dataProfile.getApnSetting().getApnName()).isEqualTo(IMS_APN);
+    }
+
+    @Test
+    public void testDedupeDataProfiles() {
+        NetworkRequest request = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_FOTA)
+                .build();
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+        // This should get the merged data profile after deduping.
+        DataProfile dp = mDataProfileManagerUT.getDataProfileForNetworkRequest(tnr,
+                TelephonyManager.NETWORK_TYPE_LTE);
+        assertThat(dp.canSatisfy(NetworkCapabilities.NET_CAPABILITY_INTERNET)).isTrue();
+    }
+
+    @Test
+    public void testDedupeDataProfiles2() throws Exception {
+
+        DataProfile dataProfile1 = new DataProfile.Builder()
+                .setApnSetting(new ApnSetting.Builder()
+                        .setEntryName("general")
+                        .setApnName("apn")
+                        .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_MMS
+                                | ApnSetting.TYPE_SUPL | ApnSetting.TYPE_HIPRI)
+                        .setUser("user")
+                        .setPassword("password")
+                        .setAuthType(ApnSetting.AUTH_TYPE_CHAP)
+                        .setMmsc(Uri.parse("http://mms-s"))
+                        .setMmsProxyAddress("mmsc.proxy")
+                        .setMmsProxyPort(8080)
+                        .setProtocol(ApnSetting.PROTOCOL_IPV4V6)
+                        .setRoamingProtocol(ApnSetting.PROTOCOL_IPV4V6)
+                        .setCarrierEnabled(true)
+                        .build())
+                .build();
+
+        DataProfile dataProfile2 = new DataProfile.Builder()
+                .setApnSetting(new ApnSetting.Builder()
+                        .setEntryName("XCAP")
+                        .setApnName("apn")
+                        .setApnTypeBitmask(ApnSetting.TYPE_XCAP)
+                        .setUser("user")
+                        .setPassword("password")
+                        .setAuthType(ApnSetting.AUTH_TYPE_CHAP)
+                        .setProtocol(ApnSetting.PROTOCOL_IPV4V6)
+                        .setRoamingProtocol(ApnSetting.PROTOCOL_IPV4V6)
+                        .setCarrierEnabled(true)
+                        .build())
+                .build();
+
+        logd("apn1=" + dataProfile1.getApnSetting());
+        logd("apn2=" + dataProfile2.getApnSetting());
+        logd("apn1 can handle default=" + dataProfile1.getApnSetting()
+                .canHandleType(ApnSetting.TYPE_DEFAULT));
+        logd("apn2 can handle default=" + dataProfile2.getApnSetting()
+                .canHandleType(ApnSetting.TYPE_DEFAULT));
+        assertThat(dataProfile1.getApnSetting().similar(dataProfile2.getApnSetting())).isTrue();
+
+        List<DataProfile> dataProfiles = new ArrayList<>(Arrays.asList(dataProfile2, dataProfile1));
+
+        dedupeDataProfiles(dataProfiles);
+        // After deduping, there should be only one.
+        assertThat(dataProfiles).hasSize(1);
+
+        DataProfile dataProfile = dataProfiles.get(0);
+        assertThat(dataProfile.getApnSetting()).isNotNull();
+
+        logd("Merged profile=" + dataProfile);
+        assertThat(dataProfile.getApnSetting().getEntryName()).isEqualTo("general");
+        assertThat(dataProfile.getApnSetting().getApnName()).isEqualTo("apn");
+        assertThat(dataProfile.getApnSetting().getApnTypeBitmask()).isEqualTo(
+                ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_MMS | ApnSetting.TYPE_SUPL
+                        | ApnSetting.TYPE_HIPRI | ApnSetting.TYPE_XCAP);
+        assertThat(dataProfile.getApnSetting().getUser()).isEqualTo("user");
+        assertThat(dataProfile.getApnSetting().getPassword()).isEqualTo("password");
+        assertThat(dataProfile.getApnSetting().getAuthType()).isEqualTo(ApnSetting.AUTH_TYPE_CHAP);
+        assertThat(dataProfile.getApnSetting().getMmsc()).isEqualTo(Uri.parse("http://mms-s"));
+        assertThat(dataProfile.getApnSetting().getMmsProxyAddressAsString())
+                .isEqualTo("mmsc.proxy");
+        assertThat(dataProfile.getApnSetting().getMmsProxyPort()).isEqualTo(8080);
+        assertThat(dataProfile.getApnSetting().getProtocol()).isEqualTo(ApnSetting.PROTOCOL_IPV4V6);
+        assertThat(dataProfile.getApnSetting().getRoamingProtocol())
+                .isEqualTo(ApnSetting.PROTOCOL_IPV4V6);
     }
 }
