@@ -1049,7 +1049,7 @@ public class EuiccController extends IEuiccController.Stub {
                         false /* confirmationCodeRetried */,
                         EuiccOperation.forSwitchNoPrivileges(
                                 token, subscriptionId, callingPackage),
-                        cardId, portIndex, usePortIndex);
+                        cardId, portIndex, usePortIndex, subscriptionId);
                 sendResult(callbackIntent, RESOLVABLE_ERROR, extrasIntent);
                 return;
             }
@@ -1099,7 +1099,7 @@ public class EuiccController extends IEuiccController.Stub {
                                         false /* confirmationCodeRetried */,
                                         EuiccOperation.forSwitchDeactivateSim(
                                                 callingToken, subscriptionId, callingPackage),
-                                        cardId, portIndex, usePortIndex);
+                                        cardId, portIndex, usePortIndex, subscriptionId);
                                 break;
                             default:
                                 resultCode = ERROR;
@@ -1314,14 +1314,15 @@ public class EuiccController extends IEuiccController.Stub {
         // use the default port 0 when not specified
         addResolutionIntent(extrasIntent, resolutionAction, callingPackage, resolvableErrors,
                 confirmationCodeRetried, op, cardId, TelephonyManager.DEFAULT_PORT_INDEX,
-                false /* usePortIndex */);
+                false /* usePortIndex */, SubscriptionManager.INVALID_SUBSCRIPTION_ID);
     }
 
     /** Add a resolution intent to the given extras intent. */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     public void addResolutionIntent(Intent extrasIntent, String resolutionAction,
             String callingPackage, int resolvableErrors, boolean confirmationCodeRetried,
-            EuiccOperation op, int cardId, int portIndex, boolean usePortIndex) {
+            EuiccOperation op, int cardId, int portIndex, boolean usePortIndex,
+            int subscriptionId) {
         Intent intent = new Intent(EuiccManager.ACTION_RESOLVE_ERROR);
         intent.setPackage(RESOLUTION_ACTIVITY_PACKAGE_NAME);
         intent.setComponent(new ComponentName(
@@ -1331,6 +1332,7 @@ public class EuiccController extends IEuiccController.Stub {
         intent.putExtra(EuiccService.EXTRA_RESOLUTION_CALLING_PACKAGE, callingPackage);
         intent.putExtra(EuiccService.EXTRA_RESOLVABLE_ERRORS, resolvableErrors);
         intent.putExtra(EuiccService.EXTRA_RESOLUTION_CARD_ID, cardId);
+        intent.putExtra(EuiccService.EXTRA_RESOLUTION_SUBSCRIPTION_ID, subscriptionId);
         intent.putExtra(EuiccService.EXTRA_RESOLUTION_PORT_INDEX, portIndex);
         intent.putExtra(EuiccService.EXTRA_RESOLUTION_USE_PORT_INDEX, usePortIndex);
         intent.putExtra(EuiccService.EXTRA_RESOLUTION_CONFIRMATION_CODE_RETRIED,
