@@ -140,6 +140,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_REPORT_SMS
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_RESET_RADIO;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SCREEN_STATE;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_ANBR_QUERY;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_DEVICE_STATE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS_EXPECT_MORE;
@@ -148,6 +149,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEPARATE_C
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SETUP_DATA_CALL;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_ALLOWED_CARRIERS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_ALLOWED_NETWORK_TYPES_BITMAP;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_ANBR_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_BAND_MODE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_CALL_FORWARD;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_CALL_WAITING;
@@ -232,6 +234,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_LCEDATA_RECV
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_MODEM_RESTART;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NETWORK_SCAN_RESULT;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NITZ_TIME_RECEIVED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NOTIFY_ANBR;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_OEM_HOOK_RAW;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_SS;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_USSD;
@@ -5056,6 +5059,10 @@ public class RILUtils {
                 return "NOTIFY_IMS_TRAFFIC";
             case RIL_REQUEST_PERFORM_ACB_CHECK:
                 return "PERFORM_ACB_CHECK";
+            case RIL_REQUEST_SET_ANBR_ENABLED:
+                return "SET_ANBR_ENABLED";
+            case RIL_REQUEST_SEND_ANBR_QUERY:
+                return "SEND_ANBR_QUERY";
             default:
                 return "<unknown request " + request + ">";
         }
@@ -5192,6 +5199,8 @@ public class RILUtils {
                 return "UNSOL_ACCESS_ALLOWED";
             case RIL_UNSOL_CONNECTION_SETUP_FAILURE:
                 return "UNSOL_CONNECTION_SETUP_FAILURE";
+            case RIL_UNSOL_NOTIFY_ANBR:
+                return "UNSOL_NOTIFY_ANBR";
             default:
                 return "<unknown response>";
         }

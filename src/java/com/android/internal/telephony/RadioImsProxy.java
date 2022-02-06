@@ -129,4 +129,33 @@ public class RadioImsProxy extends RadioServiceProxy {
             mImsProxy.performAcbCheck(serial, token, trafficType);
         }
     }
+
+    /**
+     * Call IRadioIms#setAnbrEnabled
+     * @param serial Serial number of request
+     * @throws RemoteException
+     */
+    public void setAnbrEnabled(int serial, int qosSessionId, boolean isEnabled)
+            throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mImsProxy.setAnbrEnabled(serial, qosSessionId, isEnabled);
+        }
+    }
+
+    /**
+     * Calls IRadioIms#sendAnbrQuery.
+     * @param serial Serial number of request.
+     * @param qosSessionId QoS session ID is used to identify media stream such as audio or video.
+     * @param imsdirection Direction of this packet stream (e.g. uplink or downlink).
+     * @param bitsPerSecond The bit rate requested by the opponent UE.
+     * @throws RemoteException.
+     */
+    public void sendAnbrQuery(int serial, int qosSessionId, int imsdirection, int bitsPerSecond)
+            throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mImsProxy.sendAnbrQuery(serial, qosSessionId, imsdirection, bitsPerSecond);
+        }
+    }
 }

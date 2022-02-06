@@ -2779,6 +2779,22 @@ public interface CommandsInterface {
     default void unregisterForAccessAllowed(Handler h) {}
 
     /**
+     * Registers for notifications when ANBR is received form the network.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForNotifyAnbr(Handler h, int what, Object obj) {}
+
+    /**
+     * Unregisters for notifications when ANBR is received form the network.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForNotifyAnbr(Handler h) {}
+
+    /**
      * Set the UE's usage setting.
      *
      * @param result Callback message containing the success or failure status.
@@ -2844,4 +2860,22 @@ public interface CommandsInterface {
      * @param trafficType IMS traffic type like registration, voice, video, SMS, emergency, and etc.
      */
     default void performAcbCheck(int token, int trafficType, Message result) {}
+
+    /**
+     * Enable or disable the ANBR feature
+     *
+     * @param qosSessionId QoS session ID is used to identify media stream such as audio or video
+     * @param isEnabled True if Anbr feature is enabled, false otherwise
+     */
+    default void setAnbrEnabled(int qosSessionId, boolean isEnabled, Message result) {}
+
+    /**
+     * Triggers radio to send ANBRQ message to the network.
+     *
+     * @param qosSessionId QoS session ID is used to identify media stream such as audio or video.
+     * @param imsdirection Direction of this packet stream (e.g. uplink or downlink).
+     * @param bitsPerSecond The bit rate requested by the opponent UE.
+     */
+    default void sendAnbrQuery(int qosSessionId, int imsdirection, int bitsPerSecond,
+            Message result) {}
 }

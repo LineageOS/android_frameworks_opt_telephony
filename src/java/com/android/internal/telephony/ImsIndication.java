@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ACCESS_ALLOWED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CONNECTION_SETUP_FAILURE;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NOTIFY_ANBR;
 
 import android.hardware.radio.ims.IRadioImsIndication;
 import android.os.AsyncResult;
@@ -72,5 +73,28 @@ public class ImsIndication extends IRadioImsIndication.Stub {
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_ACCESS_ALLOWED, response);
 
         mRil.mAccessAllowedRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
+    }
+
+    /**
+     * Fired by radio when ANBR is received form the network.
+     *
+     * @param indicationType Type of radio indication.
+     * @param qosSessionId QoS session ID is used to identify media stream such as audio or video.
+     * @param imsdirection Direction of this packet stream (e.g. uplink or downlink).
+     * @param bitsPerSecond The recommended bit rate for the UE
+     *        for a specific logical channel and a specific direction by the network.
+     */
+    public void notifyAnbr(int indicationType, int qosSessionId, int imsdirection,
+            int bitsPerSecond) {
+        mRil.processIndication(RIL.IMS_SERVICE, indicationType);
+
+        int[] response = new int[3];
+        response[0] = qosSessionId;
+        response[1] = imsdirection;
+        response[2] = bitsPerSecond;
+
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_NOTIFY_ANBR, response);
+
+        mRil.mNotifyAnbrRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
     }
 }
