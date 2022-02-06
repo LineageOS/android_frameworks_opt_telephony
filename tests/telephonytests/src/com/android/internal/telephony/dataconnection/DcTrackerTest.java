@@ -708,6 +708,9 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn("fake.action_attached").when(mPhone).getActionAttached();
         doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_LTE).when(mServiceState)
                 .getRilDataRadioTechnology();
+        doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_LTE,
+                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE))
+                .when(mDisplayInfoController).getTelephonyDisplayInfo();
 
         mContextFixture.putStringArrayResource(com.android.internal.R.array
                 .config_mobile_tcp_buffers, new String[]{
@@ -2321,6 +2324,8 @@ public class DcTrackerTest extends TelephonyTest {
                 .setDataUsage(500_000_000, System.currentTimeMillis())
                 .build());
         replaceInstance(DcTracker.class, "mSubscriptionPlans", mDct, plans);
+        doReturn(plans.toArray(new SubscriptionPlan[0])).when(mNetworkPolicyManager)
+                .getSubscriptionPlans(anyInt(), any());
     }
 
     private void resetSubscriptionPlans() throws Exception {
@@ -2475,6 +2480,7 @@ public class DcTrackerTest extends TelephonyTest {
                 TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA))
                 .when(mDisplayInfoController).getTelephonyDisplayInfo();
         setUpTempNotMetered();
+        clearInvocations(mDataConnection);
 
         // NetCapability should be metered when connected to 5G with no unmetered plan or frequency
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TELEPHONY_DISPLAY_INFO_CHANGED));
@@ -2496,11 +2502,12 @@ public class DcTrackerTest extends TelephonyTest {
         intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
         mContext.sendBroadcast(intent);
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+        clearInvocations(mDataConnection);
 
         // NetCapability should switch to metered without fr=MMWAVE
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TELEPHONY_DISPLAY_INFO_CHANGED));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
-        verify(mDataConnection, times(2)).onMeterednessChanged(false);
+        verify(mDataConnection, times(1)).onMeterednessChanged(false);
 
         // NetCapability should switch to unmetered with fr=MMWAVE
         doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_LTE,
@@ -2508,7 +2515,7 @@ public class DcTrackerTest extends TelephonyTest {
                 .when(mDisplayInfoController).getTelephonyDisplayInfo();
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TELEPHONY_DISPLAY_INFO_CHANGED));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
-        verify(mDataConnection, times(2)).onMeterednessChanged(true);
+        verify(mDataConnection, times(1)).onMeterednessChanged(true);
 
         resetDataConnection(id);
         resetSubscriptionPlans();
@@ -2524,6 +2531,7 @@ public class DcTrackerTest extends TelephonyTest {
                 TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA))
                 .when(mDisplayInfoController).getTelephonyDisplayInfo();
         setUpTempNotMetered();
+        clearInvocations(mDataConnection);
 
         // NetCapability should be metered when connected to 5G with no unmetered plan or frequency
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TELEPHONY_DISPLAY_INFO_CHANGED));
@@ -2538,6 +2546,7 @@ public class DcTrackerTest extends TelephonyTest {
         intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
         mContext.sendBroadcast(intent);
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+        clearInvocations(mDataConnection);
 
         // NetCapability should switch to unmetered when fr=MMWAVE and MMWAVE unmetered
         doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_LTE,
@@ -2553,7 +2562,7 @@ public class DcTrackerTest extends TelephonyTest {
                 .when(mDisplayInfoController).getTelephonyDisplayInfo();
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TELEPHONY_DISPLAY_INFO_CHANGED));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
-        verify(mDataConnection, times(2)).onMeterednessChanged(false);
+        verify(mDataConnection, times(1)).onMeterednessChanged(false);
 
         // Set SUB6 frequency to unmetered
         doReturn(2).when(mPhone).getSubId();
@@ -2564,13 +2573,14 @@ public class DcTrackerTest extends TelephonyTest {
         intent.putExtra(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
         mContext.sendBroadcast(intent);
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
+        clearInvocations(mDataConnection);
 
         // NetCapability should switch to unmetered when fr=SUB6 and SUB6 unmetered
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_TELEPHONY_DISPLAY_INFO_CHANGED));
         waitForLastHandlerAction(mDcTrackerTestHandler.getThreadHandler());
         // Data connection is running on a different thread. Have to wait.
         waitForMs(200);
-        verify(mDataConnection, times(2)).onMeterednessChanged(true);
+        verify(mDataConnection, times(1)).onMeterednessChanged(true);
 
         resetDataConnection(id);
         resetSubscriptionPlans();
@@ -2583,6 +2593,7 @@ public class DcTrackerTest extends TelephonyTest {
         setUpSubscriptionPlans(true);
         setUpWatchdogTimer();
         setUpTempNotMetered();
+        clearInvocations(mDataConnection);
 
         // NetCapability should be unmetered when connected to 5G
         doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_LTE,
