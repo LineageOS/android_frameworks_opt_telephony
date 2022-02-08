@@ -40,6 +40,10 @@ public class TestMmTelFeature extends MmTelFeature {
     public CountDownLatch configuredRtpHeaderExtensions = new CountDownLatch(1);
     Set<RtpHeaderExtensionType> receivedExtensions = null;
 
+    public TestMmTelFeature() {
+        super(Runnable::run);
+    }
+
     private final TestImsCallSession mCallSession = new TestImsCallSession();
     private class TestImsCallSession extends ImsCallSessionImplBase {
 
