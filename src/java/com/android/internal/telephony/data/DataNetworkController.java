@@ -319,6 +319,12 @@ public class DataNetworkController extends Handler {
     private final @NonNull SparseArray<RegistrationManager.RegistrationCallback>
             mImsFeatureRegistrationCallbacks = new SparseArray<>();
 
+    /**
+     * {@code true} if {@link #tearDownAllDataNetworks(int)} was invoked and waiting for all
+     * networks torn down.
+     */
+    private boolean mPendingTearDownAllNetworks = false;
+
     /** The broadcast receiver. */
     private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
@@ -1193,6 +1199,11 @@ public class DataNetworkController extends Handler {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_RESTRICTED_BY_NETWORK);
         }
 
+        // Check if there are pending tear down all networks request.
+        if (mPendingTearDownAllNetworks) {
+            evaluation.addDataDisallowedReason(DataDisallowedReason.PENDING_TEAR_DOWN_ALL);
+        }
+
         // Check if the request is preferred on cellular and radio is/will be turned off.
         // We are using getDesiredPowerState() instead of isRadioOn() because we also don't want
         // to setup data network when radio power is about to be turned off.
@@ -1908,6 +1919,7 @@ public class DataNetworkController extends Handler {
                 + "), retryDelayMillis=" + retryDelayMillis + "ms.");
         mDataNetworkList.remove(dataNetwork);
         if (mAnyDataNetworkExisting && mDataNetworkList.isEmpty()) {
+            mPendingTearDownAllNetworks = false;
             mAnyDataNetworkExisting = false;
             mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                     () -> callback.onAnyDataNetworkExistingChanged(mAnyDataNetworkExisting)));
@@ -2091,6 +2103,7 @@ public class DataNetworkController extends Handler {
 
         if (mAnyDataNetworkExisting && mDataNetworkList.isEmpty()) {
             log("All data networks disconnected now.");
+            mPendingTearDownAllNetworks = false;
             mAnyDataNetworkExisting = false;
             mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                     () -> callback.onAnyDataNetworkExistingChanged(mAnyDataNetworkExisting)));
@@ -2646,6 +2659,7 @@ public class DataNetworkController extends Handler {
             return;
         }
 
+        mPendingTearDownAllNetworks = true;
         for (DataNetwork dataNetwork : mDataNetworkList) {
             if (!dataNetwork.isDisconnecting()) {
                 tearDownGracefully(dataNetwork, reason);
