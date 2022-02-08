@@ -1334,6 +1334,7 @@ public class UiccProfile extends IccCard {
     }
 
     private void onCarrierPrivilegesLoadedMessage() {
+        // TODO(b/211796398): clean up logic below once all carrier privilege check migration done
         // Update set of enabled carrier apps now that the privilege rules may have changed.
         ActivityManager am = mContext.getSystemService(ActivityManager.class);
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(mContext.getOpPackageName(),
