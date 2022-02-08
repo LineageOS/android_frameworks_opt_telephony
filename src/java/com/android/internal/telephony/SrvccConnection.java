@@ -16,6 +16,20 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_ACTIVE;
+import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_ALERTING;
+import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_DIALING;
+import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_HOLDING;
+import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_INCOMING;
+import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_INCOMING_SETUP;
+import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_WAITING;
+
+import android.telephony.Annotation.PreciseCallStates;
+import android.telephony.ims.ImsCallProfile;
+import android.telephony.ims.ImsStreamMediaProfile;
+
+import com.android.internal.telephony.imsphone.ImsPhoneConnection;
+
 /**
  * Connection information for SRVCC
  */
@@ -34,19 +48,19 @@ public class SrvccConnection {
     public static final int TONE_NETWORK = 2;
 
     /** Values are CALL_TYPE_ */
-    private int mType;
+    private int mType = CALL_TYPE_NORMAL;
 
     /** Values are Call.State */
     private Call.State mState;
 
     /** Values are SUBSTATE_ */
-    private int mSubstate;
+    private int mSubstate = SUBSTATE_NONE;
 
     /** Values are TONE_ */
-    private int mRingbackToneType;
+    private int mRingbackToneType = TONE_NONE;
 
     /** true if it is a multi-party call */
-    private boolean mIsMpty;
+    private boolean mIsMpty = false;
 
     /** true if it is a mobile terminated call */
     private boolean mIsMT;
@@ -63,17 +77,69 @@ public class SrvccConnection {
     /** Values are PhoneConstants.PRESENTATION_ */
     private int mNamePresentation;
 
-    public SrvccConnection(Connection c, boolean isEmergency, int ringbackToneType) {
-        mType = isEmergency ? CALL_TYPE_EMERGENCY : CALL_TYPE_NORMAL;
-        mState = c.getState();
-        mSubstate = SUBSTATE_NONE;
-        mRingbackToneType = ringbackToneType;
-        mIsMpty = false;
+    public SrvccConnection(ImsCallProfile profile,
+            ImsPhoneConnection c, @PreciseCallStates int preciseCallState) {
+        mState = toCallState(preciseCallState);
+        if (mState == Call.State.ALERTING) {
+            mRingbackToneType = isLocalTone(profile) ? TONE_LOCAL : TONE_NETWORK;
+        }
+        if (preciseCallState == PRECISE_CALL_STATE_INCOMING_SETUP) {
+            mSubstate = SUBSTATE_PREALERTING;
+        }
+
+        if (c == null) {
+            initialize(profile);
+        } else {
+            initialize(c);
+        }
+    }
+
+    // MT call in alerting or prealerting state
+    private void initialize(ImsCallProfile profile) {
+        mIsMT = true;
+        mNumber = profile.getCallExtra(ImsCallProfile.EXTRA_OI);
+        mName = profile.getCallExtra(ImsCallProfile.EXTRA_CNA);
+        mNumPresentation = ImsCallProfile.OIRToPresentation(
+                profile.getCallExtraInt(ImsCallProfile.EXTRA_OIR));
+        mNamePresentation = ImsCallProfile.OIRToPresentation(
+                profile.getCallExtraInt(ImsCallProfile.EXTRA_CNAP));
+    }
+
+    private void initialize(ImsPhoneConnection c) {
+        if (c.isEmergencyCall()) {
+            mType = CALL_TYPE_EMERGENCY;
+        }
         mIsMT = c.isIncoming();
         mNumber = c.getAddress();
         mNumPresentation = c.getNumberPresentation();
         mName = c.getCnapName();
         mNamePresentation = c.getCnapNamePresentation();
+    }
+
+    private boolean isLocalTone(ImsCallProfile profile) {
+        if (profile == null) return false;
+
+        ImsStreamMediaProfile mediaProfile = profile.getMediaProfile();
+        if (mediaProfile == null) return false;
+
+        boolean shouldPlayRingback =
+                (mediaProfile.getAudioDirection() == ImsStreamMediaProfile.DIRECTION_INACTIVE)
+                        ? true : false;
+        return shouldPlayRingback;
+    }
+
+    private static Call.State toCallState(int preciseCallState) {
+        switch (preciseCallState) {
+            case PRECISE_CALL_STATE_ACTIVE: return Call.State.ACTIVE;
+            case PRECISE_CALL_STATE_HOLDING: return Call.State.HOLDING;
+            case PRECISE_CALL_STATE_DIALING: return Call.State.DIALING;
+            case PRECISE_CALL_STATE_ALERTING: return Call.State.ALERTING;
+            case PRECISE_CALL_STATE_INCOMING: return Call.State.INCOMING;
+            case PRECISE_CALL_STATE_WAITING: return Call.State.WAITING;
+            case PRECISE_CALL_STATE_INCOMING_SETUP: return Call.State.INCOMING;
+            default:
+        }
+        return Call.State.DISCONNECTED;
     }
 
     /** Returns the type of the call */
@@ -84,6 +150,11 @@ public class SrvccConnection {
     /** Returns the state */
     public Call.State getState() {
         return mState;
+    }
+
+    /** Updates the state */
+    public void setState(Call.State state) {
+        mState = state;
     }
 
     /** Returns the sub state */
