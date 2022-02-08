@@ -96,6 +96,7 @@ import com.android.internal.telephony.data.DataConfigManager;
 import com.android.internal.telephony.data.DataEnabledOverride;
 import com.android.internal.telephony.data.DataNetworkController;
 import com.android.internal.telephony.data.DataProfileManager;
+import com.android.internal.telephony.data.DataRetryManager;
 import com.android.internal.telephony.data.DataServiceManager;
 import com.android.internal.telephony.data.DataSettingsManager;
 import com.android.internal.telephony.data.LinkBandwidthEstimator;
@@ -210,6 +211,8 @@ public abstract class TelephonyTest {
     protected DcTracker mDcTracker;
     @Mock
     protected DataNetworkController mDataNetworkController;
+    @Mock
+    protected DataRetryManager mDataRetryManager;
     @Mock
     protected DataSettingsManager mDataSettingsManager;
     @Mock
@@ -626,6 +629,7 @@ public abstract class TelephonyTest {
         doReturn(mCellLocation).when(mCellIdentity).asCellLocation();
         doReturn(mDataConfigManager).when(mDataNetworkController).getDataConfigManager();
         doReturn(mDataProfileManager).when(mDataNetworkController).getDataProfileManager();
+        doReturn(mDataRetryManager).when(mDataNetworkController).getDataRetryManager();
 
         //mUiccController
         doReturn(mUiccCardApplication3gpp).when(mUiccController).getUiccCardApplication(anyInt(),
