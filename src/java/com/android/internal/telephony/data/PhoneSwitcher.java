@@ -566,6 +566,7 @@ public class PhoneSwitcher extends Handler {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_MCX)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
                 .addEnterpriseId(NetworkCapabilities.NET_ENTERPRISE_ID_1)
                 .addEnterpriseId(NetworkCapabilities.NET_ENTERPRISE_ID_2)
                 .addEnterpriseId(NetworkCapabilities.NET_ENTERPRISE_ID_3)
