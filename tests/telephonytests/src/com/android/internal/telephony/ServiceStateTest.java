@@ -16,9 +16,12 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.ServiceState.UNKNOWN_ID;
+
 import android.os.Bundle;
 import android.os.Parcel;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.CellIdentityLte;
 import android.telephony.LteVopsSupportInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
@@ -30,6 +33,7 @@ import junit.framework.TestCase;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class ServiceStateTest extends TestCase {
 
@@ -401,5 +405,51 @@ public class ServiceStateTest extends TestCase {
         ss.setChannelNumber(36000); // band 33
 
         assertEquals(ss.getDuplexMode(), ServiceState.DUPLEX_MODE_TDD);
+    }
+
+    @SmallTest
+    public void testCreateLocationInfoSanitizedCopy() {
+        ServiceState ss = new ServiceState();
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setCellIdentity(new CellIdentityLte())
+                .build();
+        ss.addNetworkRegistrationInfo(nri);
+        ss.setCdmaSystemAndNetworkId(12345, 6789);
+        ss.setOperatorName(
+                /*longName=*/ "AwesomeTelecomm", /*shortName=*/ "AT", /*numeric=*/ "123456");
+
+        ServiceState fineLocationSanitizedSs =
+                ss.createLocationInfoSanitizedCopy(/*removeCoarseLocation=*/ false);
+        // CellIdentities is fine location protected, it should be sanitized
+        assertCellIdentitiesSanitized(fineLocationSanitizedSs);
+        // All other coarse location protected fields should remain
+        assertEquals("AwesomeTelecomm", fineLocationSanitizedSs.getOperatorAlphaLong());
+        assertEquals("AT", fineLocationSanitizedSs.getOperatorAlphaShort());
+        assertEquals("123456", fineLocationSanitizedSs.getOperatorNumeric());
+        assertEquals(12345, fineLocationSanitizedSs.getCdmaSystemId());
+        assertEquals(6789, fineLocationSanitizedSs.getCdmaNetworkId());
+
+        ServiceState coarseLocationSanitizedSs =
+                ss.createLocationInfoSanitizedCopy(/*removeCoarseLocation=*/ true);
+        // CellIdentities is fine location protected, it should be sanitized
+        assertCellIdentitiesSanitized(coarseLocationSanitizedSs);
+        // All other coarse location protected fields should be sanitized as well
+        assertEquals(null, coarseLocationSanitizedSs.getOperatorAlphaLong());
+        assertEquals(null, coarseLocationSanitizedSs.getOperatorAlphaShort());
+        assertEquals(null, coarseLocationSanitizedSs.getOperatorNumeric());
+        assertEquals(UNKNOWN_ID, coarseLocationSanitizedSs.getCdmaSystemId());
+        assertEquals(UNKNOWN_ID, coarseLocationSanitizedSs.getCdmaNetworkId());
+    }
+
+    private void assertCellIdentitiesSanitized(ServiceState ss) {
+        List<NetworkRegistrationInfo> networkRegistrationInfoList =
+                ss.getNetworkRegistrationInfoList();
+        if (networkRegistrationInfoList == null) return;
+        for (NetworkRegistrationInfo nri : networkRegistrationInfoList) {
+            assertNull(nri.getCellIdentity());
+        }
     }
 }
