@@ -239,6 +239,11 @@ public class UiccSlot extends Handler {
         }
     }
 
+    /** Return whether the passing portIndex belong to this physical slot */
+    public boolean isValidPortIndex(int portIndex) {
+        return mPortIdxToPhoneId.containsKey(portIndex);
+    }
+
     public int getPortIndexFromPhoneId(int phoneId) {
         synchronized (mLock) {
             for (Map.Entry<Integer, Integer> entry : mPortIdxToPhoneId.entrySet()) {
