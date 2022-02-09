@@ -25,6 +25,7 @@ import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.net.Uri;
 import android.telecom.PhoneAccount;
+import android.telephony.Rlog;
 import android.telephony.SmsManager;
 import android.telephony.SubscriptionInfo;
 import android.util.Log;
@@ -53,7 +54,7 @@ public class BtSmsInterfaceManager {
         }
         BluetoothDevice device = btAdapter.getRemoteDevice(info.getIccId());
         if (device == null) {
-            Log.d(LOG_TAG, "Bluetooth device addr invalid: " + info.getIccId());
+            Log.d(LOG_TAG, "Bluetooth device addr invalid: " + Rlog.pii(LOG_TAG, info.getIccId()));
             sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_INVALID_BLUETOOTH_ADDRESS);
             return;
         }
