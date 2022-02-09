@@ -2794,7 +2794,8 @@ public class DataConnection extends StateMachine {
                     }
                     retVal = HANDLED;
                     mDataCallSessionStats
-                            .onSetupDataCallResponse(dataCallResponse, cp.mRilRat,
+                            .onSetupDataCallResponse(dataCallResponse,
+                                    ServiceState.rilRadioTechnologyToNetworkType(cp.mRilRat),
                                     getApnTypeBitmask(), mApnSetting.getProtocol(),
                                     result.mFailCause);
                     break;
