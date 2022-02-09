@@ -50,7 +50,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.annotation.Nullable;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.NetworkStats;
@@ -91,6 +93,7 @@ import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
+import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.d2d.RtpTransport;
@@ -121,6 +124,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsCall.Listener mImsCallListener;
     private ImsCall mImsCall;
     private ImsCall mSecondImsCall;
+    private BroadcastReceiver mBroadcastReceiver;
     private Bundle mBundle = new Bundle();
     private static final int SUB_0 = 0;
     @Nullable private VtDataUsageProvider mVtDataUsageProvider;
@@ -260,19 +264,6 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         }).when(mConnectorFactory).create(any(), anyInt(), anyString(), any(), any());
 
         mCTUT = new ImsPhoneCallTracker(mImsPhone, mConnectorFactory, Runnable::run);
-        mCTUT.addReasonCodeRemapping(null, "Wifi signal lost.", ImsReasonInfo.CODE_WIFI_LOST);
-        mCTUT.addReasonCodeRemapping(501, "Call answered elsewhere.",
-                ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
-        mCTUT.addReasonCodeRemapping(510, "Call answered elsewhere.",
-                ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
-        mCTUT.addReasonCodeRemapping(ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, "",
-                ImsReasonInfo.CODE_SIP_FORBIDDEN);
-        mCTUT.addReasonCodeRemapping(ImsReasonInfo.CODE_SIP_SERVICE_UNAVAILABLE,
-                "emergency calls over wifi not allowed in this location",
-                ImsReasonInfo.CODE_EMERGENCY_CALL_OVER_WFC_NOT_AVAILABLE);
-        mCTUT.addReasonCodeRemapping(ImsReasonInfo.CODE_SIP_FORBIDDEN,
-                "service not allowed in this location",
-                ImsReasonInfo.CODE_WFC_SERVICE_NOT_AVAILABLE_IN_THIS_LOCATION);
         mCTUT.setDataEnabled(true);
 
         final ArgumentCaptor<VtDataUsageProvider> vtDataUsageProviderCaptor =
@@ -282,6 +273,11 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         mVtDataUsageProvider = vtDataUsageProviderCaptor.getValue();
         assertNotNull(mVtDataUsageProvider);
         mVtDataUsageProvider.setProviderCallbackBinder(mVtDataUsageProviderCb);
+        final ArgumentCaptor<BroadcastReceiver> receiverCaptor =
+                ArgumentCaptor.forClass(BroadcastReceiver.class);
+        verify(mContext).registerReceiver(receiverCaptor.capture(), any());
+        mBroadcastReceiver = receiverCaptor.getValue();
+        assertNotNull(mBroadcastReceiver);
 
         logd("ImsPhoneCallTracker initiated");
         processAllMessages();
@@ -364,6 +360,96 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testCarrierConfigLoadSubscription() throws Exception {
+        // Start with there being no subId loaded, so SubscriptionController#isActiveSubId is false
+        // as part of setup, connectionReady is called, which ends up calling
+        // updateCarrierConfiguration. Since the carrier config is not report carrier identified
+        // config, we should not see updateImsServiceConfig called yet.
+        verify(mImsManager, never()).updateImsServiceConfig();
+        // Send disconnected indication
+        mConnectorListener.connectionUnavailable(FeatureConnector.UNAVAILABLE_REASON_DISCONNECTED);
+
+        // Receive a subscription loaded and IMS connection ready indication.
+        doReturn(true).when(mSubscriptionController).isActiveSubId(anyInt());
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL, true);
+        sendCarrierConfigChanged();
+        // CarrierConfigLoader has signalled that the carrier config has been applied for a specific
+        // subscription. This will trigger unavailable -> ready indications.
+        mConnectorListener.connectionReady(mImsManager, SUB_0);
+        processAllMessages();
+        verify(mImsManager).updateImsServiceConfig();
+    }
+
+    @Test
+    @SmallTest
+    public void testCarrierConfigSentLocked() throws Exception {
+        // move to ImsService unavailable state.
+        mConnectorListener.connectionUnavailable(FeatureConnector.UNAVAILABLE_REASON_DISCONNECTED);
+        doReturn(true).when(mSubscriptionController).isActiveSubId(anyInt());
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL, true);
+
+        sendCarrierConfigChanged();
+        // No ImsService connected, so this will cache the config.
+        verify(mImsManager, never()).updateImsServiceConfig();
+
+        // Connect to ImsService, but sim is locked, so ensure we do not send configs yet
+        doReturn(mIccCard).when(mPhone).getIccCard();
+        doReturn(IccCardConstants.State.PIN_REQUIRED).when(mIccCard).getState();
+        mConnectorListener.connectionReady(mImsManager, SUB_0);
+        processAllMessages();
+        verify(mImsManager, never()).updateImsServiceConfig();
+
+        // Now move to ready and simulate carrier config change in response to SIM state change.
+        doReturn(IccCardConstants.State.READY).when(mIccCard).getState();
+        sendCarrierConfigChanged();
+        verify(mImsManager).updateImsServiceConfig();
+    }
+
+    @Test
+    @SmallTest
+    public void testCarrierConfigSentAfterReady() throws Exception {
+        verify(mImsManager, never()).updateImsServiceConfig();
+
+        // Receive a subscription loaded and IMS connection ready indication.
+        doReturn(true).when(mSubscriptionController).isActiveSubId(anyInt());
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL, true);
+        // CarrierConfigLoader has signalled that the carrier config has been applied for a specific
+        // subscription. This will trigger unavailable -> ready indications.
+        mConnectorListener.connectionUnavailable(FeatureConnector.UNAVAILABLE_REASON_DISCONNECTED);
+        mConnectorListener.connectionReady(mImsManager, SUB_0);
+        processAllMessages();
+        // Did not receive carrier config changed yet
+        verify(mImsManager, never()).updateImsServiceConfig();
+        sendCarrierConfigChanged();
+        processAllMessages();
+        verify(mImsManager).updateImsServiceConfig();
+    }
+
+    @Test
+    @SmallTest
+    public void testCarrierConfigSentBeforeReady() throws Exception {
+        // move to ImsService unavailable state.
+        mConnectorListener.connectionUnavailable(FeatureConnector.UNAVAILABLE_REASON_DISCONNECTED);
+        doReturn(true).when(mSubscriptionController).isActiveSubId(anyInt());
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL, true);
+
+        sendCarrierConfigChanged();
+        // No ImsService connected, so this will cache the config.
+        verify(mImsManager, never()).updateImsServiceConfig();
+
+        // Connect to ImsService and ensure that the pending carrier config change is processed
+        // properly.
+        mConnectorListener.connectionReady(mImsManager, SUB_0);
+        processAllMessages();
+        verify(mImsManager).updateImsServiceConfig();
+    }
+
+    @Test
+    @SmallTest
     public void testImsMTCall() {
         mImsCallProfile.setCallerNumberVerificationStatus(
                 ImsCallProfile.VERIFICATION_STATUS_PASSED);
@@ -405,6 +491,10 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testImsCepOnPeer() throws Exception {
+        PersistableBundle bundle = mContextFixture.getCarrierConfigBundle();
+        bundle.putBoolean(
+                CarrierConfigManager.KEY_SUPPORT_IMS_CONFERENCE_EVENT_PACKAGE_ON_PEER_BOOL, true);
+        mCTUT.updateCarrierConfigCache(bundle);
         testImsMTCallAccept();
         doReturn(false).when(mImsCall).isConferenceHost();
         doReturn(true).when(mImsCall).isMultiparty();
@@ -764,6 +854,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testReasonCodeRemap() {
+        loadReasonCodeRemap();
+
         assertEquals(ImsReasonInfo.CODE_WIFI_LOST, mCTUT.maybeRemapReasonCode(
                 new ImsReasonInfo(1, 1, "Wifi signal lost.")));
         assertEquals(ImsReasonInfo.CODE_WIFI_LOST, mCTUT.maybeRemapReasonCode(
@@ -783,6 +875,22 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private void clearCarrierConfig() {
         PersistableBundle bundle = new PersistableBundle();
         mCTUT.updateCarrierConfigCache(bundle);
+    }
+
+    private void loadReasonCodeRemap() {
+        mCTUT.addReasonCodeRemapping(null, "Wifi signal lost.", ImsReasonInfo.CODE_WIFI_LOST);
+        mCTUT.addReasonCodeRemapping(501, "Call answered elsewhere.",
+                ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
+        mCTUT.addReasonCodeRemapping(510, "Call answered elsewhere.",
+                ImsReasonInfo.CODE_ANSWERED_ELSEWHERE);
+        mCTUT.addReasonCodeRemapping(ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, "",
+                ImsReasonInfo.CODE_SIP_FORBIDDEN);
+        mCTUT.addReasonCodeRemapping(ImsReasonInfo.CODE_SIP_SERVICE_UNAVAILABLE,
+                "emergency calls over wifi not allowed in this location",
+                ImsReasonInfo.CODE_EMERGENCY_CALL_OVER_WFC_NOT_AVAILABLE);
+        mCTUT.addReasonCodeRemapping(ImsReasonInfo.CODE_SIP_FORBIDDEN,
+                "service not allowed in this location",
+                ImsReasonInfo.CODE_WFC_SERVICE_NOT_AVAILABLE_IN_THIS_LOCATION);
     }
 
     private void loadReasonCodeRemapCarrierConfig() {
@@ -1145,6 +1253,10 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testCantMakeCallTooMany() {
+        PersistableBundle bundle = mContextFixture.getCarrierConfigBundle();
+        bundle.putBoolean(CarrierConfigManager.KEY_ALLOW_HOLD_VIDEO_CALL_BOOL, true);
+        mCTUT.updateCarrierConfigCache(bundle);
+
         // Place a call.
         placeCallAndMakeActive();
 
@@ -1182,6 +1294,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testNumericOnlyRemap() {
+        loadReasonCodeRemap();
+
         assertEquals(ImsReasonInfo.CODE_SIP_FORBIDDEN, mCTUT.maybeRemapReasonCode(
                 new ImsReasonInfo(ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, 0)));
         assertEquals(ImsReasonInfo.CODE_SIP_FORBIDDEN, mCTUT.maybeRemapReasonCode(
@@ -1191,6 +1305,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testRemapEmergencyCallsOverWfc() {
+        loadReasonCodeRemap();
+
         assertEquals(ImsReasonInfo.CODE_SIP_SERVICE_UNAVAILABLE,
                 mCTUT.maybeRemapReasonCode(
                         new ImsReasonInfo(ImsReasonInfo.CODE_SIP_SERVICE_UNAVAILABLE, 0)));
@@ -1207,6 +1323,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testRemapWfcNotAvailable() {
+        loadReasonCodeRemap();
+
         assertEquals(ImsReasonInfo.CODE_SIP_FORBIDDEN,
                 mCTUT.maybeRemapReasonCode(
                         new ImsReasonInfo(ImsReasonInfo.CODE_SIP_FORBIDDEN, 0)));
@@ -1386,15 +1504,15 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testConfigureRtpHeaderExtensionTypes() throws Exception {
-
+        mConnectorListener.connectionUnavailable(FeatureConnector.UNAVAILABLE_REASON_DISCONNECTED);
+        doReturn(true).when(mSubscriptionController).isActiveSubId(anyInt());
         mContextFixture.getCarrierConfigBundle().putBoolean(
                 CarrierConfigManager.KEY_SUPPORTS_DEVICE_TO_DEVICE_COMMUNICATION_USING_RTP_BOOL,
                 true);
         mContextFixture.getCarrierConfigBundle().putBoolean(
                 CarrierConfigManager.KEY_SUPPORTS_SDP_NEGOTIATION_OF_D2D_RTP_HEADER_EXTENSIONS_BOOL,
                 true);
-        // Hacky but ImsPhoneCallTracker caches carrier config, so necessary.
-        mCTUT.updateCarrierConfigCache(mContextFixture.getCarrierConfigBundle());
+        sendCarrierConfigChanged();
 
         ImsPhoneCallTracker.Config config = new ImsPhoneCallTracker.Config();
         config.isD2DCommunicationSupported = true;
@@ -1417,15 +1535,15 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testRtpButNoSdp() throws Exception {
-
+        mConnectorListener.connectionUnavailable(FeatureConnector.UNAVAILABLE_REASON_DISCONNECTED);
+        doReturn(true).when(mSubscriptionController).isActiveSubId(anyInt());
         mContextFixture.getCarrierConfigBundle().putBoolean(
                 CarrierConfigManager.KEY_SUPPORTS_DEVICE_TO_DEVICE_COMMUNICATION_USING_RTP_BOOL,
                 true);
         mContextFixture.getCarrierConfigBundle().putBoolean(
                 CarrierConfigManager.KEY_SUPPORTS_SDP_NEGOTIATION_OF_D2D_RTP_HEADER_EXTENSIONS_BOOL,
                 false);
-        // Hacky but ImsPhoneCallTracker caches carrier config, so necessary.
-        mCTUT.updateCarrierConfigCache(mContextFixture.getCarrierConfigBundle());
+        sendCarrierConfigChanged();
 
         ImsPhoneCallTracker.Config config = new ImsPhoneCallTracker.Config();
         config.isD2DCommunicationSupported = true;
@@ -1447,6 +1565,9 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testDontConfigureRtpHeaderExtensionTypes() throws Exception {
+        mConnectorListener.connectionUnavailable(FeatureConnector.UNAVAILABLE_REASON_DISCONNECTED);
+        doReturn(true).when(mSubscriptionController).isActiveSubId(anyInt());
+        sendCarrierConfigChanged();
         ImsPhoneCallTracker.Config config = new ImsPhoneCallTracker.Config();
         config.isD2DCommunicationSupported = false;
         mCTUT.setConfig(config);
@@ -1454,6 +1575,14 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
         // Expect no offered header extensions since d2d is not supported.
         verify(mImsManager, never()).setOfferedRtpHeaderExtensionTypes(any());
+    }
+
+    private void sendCarrierConfigChanged() {
+        Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        intent.putExtra(CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
+        intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, mPhone.getPhoneId());
+        mBroadcastReceiver.onReceive(mContext, intent);
+        processAllMessages();
     }
 
     private void assertVtDataUsageUpdated(int expectedToken, long rxBytes, long txBytes)
