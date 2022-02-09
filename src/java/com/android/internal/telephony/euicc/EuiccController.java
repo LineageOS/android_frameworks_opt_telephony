@@ -21,6 +21,7 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
+import android.app.compat.CompatChanges;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -987,7 +988,8 @@ public class EuiccController extends IEuiccController.Stub {
         boolean callerCanWriteEmbeddedSubscriptions = callerCanWriteEmbeddedSubscriptions();
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
         Log.d(TAG, " subId: " + subscriptionId + " portIndex: " + portIndex
-                + " forceDeactivateSim: " + forceDeactivateSim + " usePortIndex: " + usePortIndex);
+                + " forceDeactivateSim: " + forceDeactivateSim + " usePortIndex: " + usePortIndex
+                + " callingPackage: " + callingPackage);
         long token = Binder.clearCallingIdentity();
         try {
             if (callerCanWriteEmbeddedSubscriptions) {
@@ -997,19 +999,23 @@ public class EuiccController extends IEuiccController.Stub {
                 forceDeactivateSim = true;
             }
 
-            // if the caller is not privileged caller and does not have the carrier privilege over
-            // any active subscription, do not continue.
-            if (!callerCanWriteEmbeddedSubscriptions && usePortIndex
-                    && (mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(callingPackage)
-                    != TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS)) {
-                Log.e(TAG, "Not permitted to use switchToSubscription with portIndex");
-                throw new SecurityException(
-                        "Must have carrier privileges to use switchToSubscription with portIndex");
-            }
             final String iccid;
             boolean passConsent = false;
             boolean isConsentNeededToResolvePortIndex = false;
             if (subscriptionId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                if (!usePortIndex) {
+                    // Resolve the portIndex internally if apps are calling switchToSubscription
+                    // API without portIndex and subscription id is invalid.
+                    portIndex = getResolvedPortIndexForDisableSubscription(cardId, callingPackage,
+                            callerCanWriteEmbeddedSubscriptions);
+                    if (portIndex == TelephonyManager.INVALID_PORT_INDEX) {
+                        Log.e(TAG, "Disable is not permitted: no active subscription or cannot"
+                                + " manage subscription");
+                        sendResult(callbackIntent, ERROR, null /* extrasIntent */);
+                        return;
+                    }
+                    usePortIndex = true;
+                }
                 if (callerCanWriteEmbeddedSubscriptions
                         || canManageActiveSubscriptionOnTargetSim(cardId, callingPackage,
                         usePortIndex, portIndex)) {
@@ -1083,6 +1089,34 @@ public class EuiccController extends IEuiccController.Stub {
         } finally {
             Binder.restoreCallingIdentity(token);
         }
+    }
+
+    /**
+     * Returns the resolved portIndex or {@link TelephonyManager#INVALID_PORT_INDEX} if calling
+     * cannot manage any active subscription.
+     */
+    private int getResolvedPortIndexForDisableSubscription(int cardId, String callingPackage,
+            boolean callerCanWriteEmbeddedSubscriptions) {
+        List<SubscriptionInfo> subInfoList = mSubscriptionManager
+                .getActiveSubscriptionInfoList(/* userVisibleOnly */false);
+        if (subInfoList == null || subInfoList.size() == 0) {
+            // No active subscription on any SIM.
+            return TelephonyManager.INVALID_PORT_INDEX;
+        }
+        // Return the portIndex of the first active subscription managed by the calling app.
+        for (SubscriptionInfo subInfo : subInfoList) {
+            // If cardId == TelephonyManager.UNSUPPORTED_CARD_ID, we assume it does not support
+            // multiple eSIMs. There are older multi-active SIM devices which do not implement HAL
+            // 1.2 and if they have multiple eSIMs, we let it pass if the app can manage an active
+            // subscription on any eSIM. That's the best we can do here.
+            if ((cardId == TelephonyManager.UNSUPPORTED_CARD_ID || subInfo.getCardId() == cardId)
+                    && subInfo.isEmbedded()
+                    && (callerCanWriteEmbeddedSubscriptions
+                    || mSubscriptionManager.canManageSubscription(subInfo, callingPackage))) {
+                return subInfo.getPortIndex();
+            }
+        }
+        return TelephonyManager.INVALID_PORT_INDEX;
     }
 
     /**
@@ -1851,5 +1885,29 @@ public class EuiccController extends IEuiccController.Stub {
             }
         }
         return false;
+    }
+
+    @Override
+    public boolean hasCarrierPrivilegesForPackageOnAnyPhone(String callingPackage) {
+        final long token = Binder.clearCallingIdentity();
+        try {
+            // checkCarrierPrivilegesForPackageAnyPhone API requires READ_PHONE_STATE permission,
+            // hence cannot call directly from EuiccManager switchToSubscription
+            return mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(callingPackage)
+                    == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
+    @Override
+    public boolean isCompatChangeEnabled(String callingPackage, long changeId) {
+        // Platform compat framework kills the callingPackage app to ensure that the change
+        // takes affect immediately. So the corresponding compat checking is moved to controller.
+        boolean changeEnabled = CompatChanges.isChangeEnabled(changeId, callingPackage,
+                Binder.getCallingUserHandle());
+        Log.i(TAG, "isCompatChangeEnabled changeId: " + changeId
+                + " changeEnabled: " + changeEnabled);
+        return changeEnabled;
     }
 }
