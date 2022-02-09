@@ -41,6 +41,8 @@ import android.telephony.data.DataProfile;
 import android.telephony.data.NetworkSliceInfo;
 import android.telephony.data.TrafficDescriptor;
 import android.telephony.emergency.EmergencyNumber;
+import android.telephony.ims.RegistrationManager;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.emergency.EmergencyConstants;
@@ -2900,13 +2902,14 @@ public interface CommandsInterface {
      * Updates the IMS registration information to the radio.
      *
      * @param state The current IMS registration state.
-     * @param accessNetworkType The type of underlying radio access network used.
-     * @param suggestedAction The expected action that modem should perform.
+     * @param imsRadioTech The type of underlying radio access network used.
+     * @param suggestedAction The suggested action for the radio to perform.
      * @param capabilities IMS capabilities such as VOICE, VIDEO and SMS.
      */
     default void updateImsRegistrationInfo(int state,
-            @AccessNetworkConstants.RadioAccessNetworkType int accessNetworkType,
-            int suggestedAction, int capabilities, Message result) {}
+            @ImsRegistrationImplBase.ImsRegistrationTech int imsRadioTech,
+            @RegistrationManager.SuggestedAction int suggestedAction,
+            int capabilities, Message result) {}
 
     /**
      * Notifies the NAS and RRC layers of the radio the type of upcoming IMS traffic.

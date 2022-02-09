@@ -192,6 +192,9 @@ public class SimulatedCommands extends BaseCommands
 
     // mode for Icc Sim Authentication
     private int mAuthenticationMode;
+
+    private int[] mImsRegistrationInfo = new int[4];
+
     //***** Constructor
     public
     SimulatedCommands() {
@@ -2582,5 +2585,18 @@ public class SimulatedCommands extends BaseCommands
 
     public SrvccConnection[] getSrvccConnections() {
         return mSrvccConnections;
+    }
+
+    @Override
+    public void updateImsRegistrationInfo(int regState,
+            int imsRadioTech, int suggestedAction, int capabilities, Message result) {
+        mImsRegistrationInfo[0] = regState;
+        mImsRegistrationInfo[1] = imsRadioTech;
+        mImsRegistrationInfo[2] = suggestedAction;
+        mImsRegistrationInfo[3] = capabilities;
+    }
+
+    public int[] getImsRegistrationInfo() {
+        return mImsRegistrationInfo;
     }
 }

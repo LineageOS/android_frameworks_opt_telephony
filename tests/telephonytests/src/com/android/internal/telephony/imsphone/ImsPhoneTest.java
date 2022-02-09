@@ -22,9 +22,20 @@ import static android.telephony.CarrierConfigManager.USSD_OVER_CS_ONLY;
 import static android.telephony.CarrierConfigManager.USSD_OVER_CS_PREFERRED;
 import static android.telephony.CarrierConfigManager.USSD_OVER_IMS_ONLY;
 import static android.telephony.CarrierConfigManager.USSD_OVER_IMS_PREFERRED;
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_NONE;
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK;
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_3G;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_LTE;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NR;
 
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
+import static com.android.internal.telephony.CommandsInterface.IMS_MMTEL_CAPABILITY_SMS;
+import static com.android.internal.telephony.CommandsInterface.IMS_MMTEL_CAPABILITY_VIDEO;
+import static com.android.internal.telephony.CommandsInterface.IMS_MMTEL_CAPABILITY_VOICE;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -65,6 +76,7 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsRegistrationAttributes;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.telephony.ims.stub.ImsUtImplBase;
@@ -1066,6 +1078,307 @@ public class ImsPhoneTest extends TelephonyTest {
 
         // Clean up
         mContextFixture.addCallingOrSelfPermission("");
+    }
+
+    /**
+     * Verifies that valid radio technology is passed to RIL
+     * when IMS registration state changes to registered.
+     */
+    @Test
+    @SmallTest
+    public void testUpdateImsRegistrationInfoRadioTech() {
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+
+        int[] regInfo = mSimulatedCommands.getImsRegistrationInfo();
+        assertNotNull(regInfo);
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        RegistrationManager.RegistrationCallback registrationCallback =
+                mImsPhoneUT.getImsMmTelRegistrationCallback();
+
+        ImsRegistrationAttributes attr = new ImsRegistrationAttributes.Builder(
+                REGISTRATION_TECH_LTE).build();
+        registrationCallback.onRegistered(attr);
+        mImsPhoneUT.updateImsRegistrationInfo(IMS_MMTEL_CAPABILITY_VOICE);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_LTE
+                && regInfo[3] == IMS_MMTEL_CAPABILITY_VOICE);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // duplicated notification with the same radio technology
+        attr = new ImsRegistrationAttributes.Builder(REGISTRATION_TECH_LTE).build();
+        registrationCallback.onRegistered(attr);
+
+        // verify that there is no change in SimulatedCommands
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // radio technology changed
+        attr = new ImsRegistrationAttributes.Builder(REGISTRATION_TECH_NR).build();
+        registrationCallback.onRegistered(attr);
+
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_NR
+                && regInfo[3] == IMS_MMTEL_CAPABILITY_VOICE);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // duplicated notification with the same radio technology
+        attr = new ImsRegistrationAttributes.Builder(REGISTRATION_TECH_NR).build();
+        registrationCallback.onRegistered(attr);
+
+        // verify that there is no change in SimulatedCommands
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // radio technology changed
+        attr = new ImsRegistrationAttributes.Builder(REGISTRATION_TECH_IWLAN).build();
+        registrationCallback.onRegistered(attr);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_IWLAN
+                && regInfo[3] == IMS_MMTEL_CAPABILITY_VOICE);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // duplicated notification with the same radio technology
+        attr = new ImsRegistrationAttributes.Builder(REGISTRATION_TECH_IWLAN).build();
+        registrationCallback.onRegistered(attr);
+
+        // verify that there is no change in SimulatedCommands
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // radio technology changed
+        attr = new ImsRegistrationAttributes.Builder(REGISTRATION_TECH_3G).build();
+        registrationCallback.onRegistered(attr);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_3G
+                && regInfo[3] == IMS_MMTEL_CAPABILITY_VOICE);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // duplicated notification with the same radio technology
+        attr = new ImsRegistrationAttributes.Builder(REGISTRATION_TECH_3G).build();
+        registrationCallback.onRegistered(attr);
+
+        // verify that there is no change in SimulatedCommands
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+    }
+
+    /**
+     * Verifies that valid capabilities is passed to RIL
+     * when IMS registration state changes to registered.
+     */
+    @Test
+    @SmallTest
+    public void testUpdateImsRegistrationInfoCapabilities() {
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+
+        int[] regInfo = mSimulatedCommands.getImsRegistrationInfo();
+        assertNotNull(regInfo);
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        RegistrationManager.RegistrationCallback registrationCallback =
+                mImsPhoneUT.getImsMmTelRegistrationCallback();
+
+        ImsRegistrationAttributes attr = new ImsRegistrationAttributes.Builder(
+                REGISTRATION_TECH_LTE).build();
+        registrationCallback.onRegistered(attr);
+        mImsPhoneUT.updateImsRegistrationInfo(IMS_MMTEL_CAPABILITY_VOICE);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_LTE
+                && regInfo[3] == IMS_MMTEL_CAPABILITY_VOICE);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // duplicated notification with the same capability
+        mImsPhoneUT.updateImsRegistrationInfo(IMS_MMTEL_CAPABILITY_VOICE);
+
+        // verify that there is no change in SimulatedCommands
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // capability changed
+        mImsPhoneUT.updateImsRegistrationInfo(IMS_MMTEL_CAPABILITY_VIDEO);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_LTE
+                && regInfo[3] == IMS_MMTEL_CAPABILITY_VIDEO);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // duplicated notification with the same capability
+        mImsPhoneUT.updateImsRegistrationInfo(IMS_MMTEL_CAPABILITY_VIDEO);
+
+        // verify that there is no change in SimulatedCommands
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // capability changed
+        mImsPhoneUT.updateImsRegistrationInfo(IMS_MMTEL_CAPABILITY_SMS);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_LTE
+                && regInfo[3] == IMS_MMTEL_CAPABILITY_SMS);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // duplicated notification with the same capability
+        mImsPhoneUT.updateImsRegistrationInfo(IMS_MMTEL_CAPABILITY_SMS);
+
+        // verify that there is no change in SimulatedCommands
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // capability changed, but no capability
+        mImsPhoneUT.updateImsRegistrationInfo(IMS_MMTEL_CAPABILITY_SMS);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        // verify that there is no change in SimulatedCommands.
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+    }
+
+    /**
+     * Verifies that valid state and reason is passed to RIL
+     * when IMS registration state changes to unregistered.
+     */
+    @Test
+    @SmallTest
+    public void testUpdateImsRegistrationInfo() {
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+
+        int[] regInfo = mSimulatedCommands.getImsRegistrationInfo();
+        assertNotNull(regInfo);
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[2] == 0);
+
+        RegistrationManager.RegistrationCallback registrationCallback =
+                mImsPhoneUT.getImsMmTelRegistrationCallback();
+
+        ImsReasonInfo reasonInfo = new ImsReasonInfo(ImsReasonInfo.CODE_REGISTRATION_ERROR,
+                ImsReasonInfo.CODE_UNSPECIFIED, "");
+
+        // unregistered with fatal error
+        registrationCallback.onUnregistered(reasonInfo, SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_NONE
+                && regInfo[2] == SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[2] == 0);
+
+        // duplicated notification with the same suggested action
+        registrationCallback.onUnregistered(reasonInfo, SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        // verify that there is no update in the SimulatedCommands
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[2] == 0);
+
+        // unregistered with repeated error
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_NONE
+                && regInfo[2] == SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[2] == 0);
+
+        // duplicated notification with the same suggested action
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        // verify that there is no update in the SimulatedCommands
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[2] == 0);
+
+        // unregistered with temporary error
+        registrationCallback.onUnregistered(reasonInfo, SUGGESTED_ACTION_NONE);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_NONE
+                && regInfo[2] == SUGGESTED_ACTION_NONE);
+
+        // verifies that reason codes except ImsReasonInfo.CODE_REGISTRATION_ERROR are discarded.
+        reasonInfo = new ImsReasonInfo(ImsReasonInfo.CODE_LOCAL_NETWORK_NO_SERVICE,
+                ImsReasonInfo.CODE_UNSPECIFIED, "");
+        registrationCallback.onUnregistered(reasonInfo, SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_NONE
+                && regInfo[2] == SUGGESTED_ACTION_NONE);
+
+        // change the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(1, 1, 1, 1, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 1 && regInfo[1] == 1 && regInfo[2] == 1);
+
+        // duplicated notification with the same suggested action
+        registrationCallback.onUnregistered(reasonInfo, SUGGESTED_ACTION_NONE);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        // verify that there is no update in the SimulatedCommands
+        assertTrue(regInfo[0] == 1 && regInfo[1] == 1 && regInfo[2] == 1);
     }
 
     private ServiceState getServiceStateDataAndVoice(int rat, int regState, boolean isRoaming) {

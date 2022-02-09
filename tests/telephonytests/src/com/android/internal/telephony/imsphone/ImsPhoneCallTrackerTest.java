@@ -2316,6 +2316,38 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals("5678", srvccConnections[1].getNumber());
     }
 
+    /**
+     * Verifies that the expected access network tech and IMS features are notified
+     * to ImsPhone when capabilities are changed.
+     */
+    @Test
+    @SmallTest
+    public void testUpdateImsRegistrationInfo() {
+        // LTE is registered.
+        doReturn(ImsRegistrationImplBase.REGISTRATION_TECH_LTE).when(
+                mImsManager).getRegistrationTech();
+
+        // enable Voice and Video
+        MmTelFeature.MmTelCapabilities caps = new MmTelFeature.MmTelCapabilities();
+        caps.addCapabilities(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE);
+        caps.addCapabilities(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VIDEO);
+        mCapabilityCallback.onCapabilitiesStatusChanged(caps);
+        processAllMessages();
+
+        verify(mImsPhone, times(1)).updateImsRegistrationInfo(
+                eq(CommandsInterface.IMS_MMTEL_CAPABILITY_VOICE
+                        | CommandsInterface.IMS_MMTEL_CAPABILITY_VIDEO));
+
+        // enable SMS
+        caps = new MmTelFeature.MmTelCapabilities();
+        caps.addCapabilities(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_SMS);
+        mCapabilityCallback.onCapabilitiesStatusChanged(caps);
+        processAllMessages();
+
+        verify(mImsPhone, times(1)).updateImsRegistrationInfo(
+                eq(CommandsInterface.IMS_MMTEL_CAPABILITY_SMS));
+    }
+
     private void sendCarrierConfigChanged() {
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         intent.putExtra(CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());

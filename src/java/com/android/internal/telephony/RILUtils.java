@@ -5616,7 +5616,12 @@ public class RILUtils {
         }
     }
 
-    /** Convert IMS registration state */
+    /**
+     * Converts IMS registration state.
+     *
+     * @param state The IMS registration state.
+     * @return The converted HAL IMS registration state.
+     */
     public static int convertImsRegistrationState(int state) {
         switch (state) {
             case RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED:
@@ -5628,7 +5633,35 @@ public class RILUtils {
         }
     }
 
-    /** Convert IMS capability */
+    /**
+     * Converts IMS service radio technology.
+     *
+     * @param imsRadioTech The IMS service radio technology.
+     * @return The converted HAL access network type.
+     */
+
+    public static int convertImsRegistrationTech(
+            @ImsRegistrationImplBase.ImsRegistrationTech int imsRadioTech) {
+        switch (imsRadioTech) {
+            case ImsRegistrationImplBase.REGISTRATION_TECH_LTE:
+                return android.hardware.radio.AccessNetwork.EUTRAN;
+            case ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN:
+                return android.hardware.radio.AccessNetwork.IWLAN;
+            case ImsRegistrationImplBase.REGISTRATION_TECH_NR:
+                return android.hardware.radio.AccessNetwork.NGRAN;
+            case ImsRegistrationImplBase.REGISTRATION_TECH_3G:
+                return android.hardware.radio.AccessNetwork.UTRAN;
+            default:
+                return android.hardware.radio.AccessNetwork.UNKNOWN;
+        }
+    }
+
+    /**
+     * Converts IMS capabilities.
+     *
+     * @param capabilities The IMS capabilities.
+     * @return The converted HAL IMS capabilities.
+     */
     public static int convertImsCapability(int capabilities) {
         int halCapabilities = android.hardware.radio.ims.ImsRegistration.IMS_MMTEL_CAPABILITY_NONE;
         if ((capabilities & CommandsInterface.IMS_MMTEL_CAPABILITY_VOICE) > 0) {
