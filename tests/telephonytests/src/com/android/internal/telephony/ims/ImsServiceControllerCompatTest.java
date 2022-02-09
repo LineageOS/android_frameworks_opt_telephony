@@ -39,6 +39,7 @@ import android.os.RemoteException;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.stub.ImsFeatureConfiguration;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.util.SparseIntArray;
 
 import androidx.test.runner.AndroidJUnit4;
 
@@ -61,6 +62,7 @@ import java.util.HashSet;
 public class ImsServiceControllerCompatTest extends ImsTestBase {
 
     private static final int SLOT_0 = 0;
+    private static final int SUB_1 = 1;
 
     private static final ImsServiceController.RebindRetry REBIND_RETRY =
             new ImsServiceController.RebindRetry() {
@@ -125,7 +127,9 @@ public class ImsServiceControllerCompatTest extends ImsTestBase {
     @SmallTest
     @Test
     public void testBindServiceAndCrashCleanUp() throws RemoteException {
-        ServiceConnection conn = bindAndConnectService();
+        SparseIntArray slotIdToSubIdMap = new SparseIntArray();
+        slotIdToSubIdMap.put(SLOT_0, SUB_1);
+        ServiceConnection conn = bindAndConnectService(slotIdToSubIdMap);
         // add the MMTelFeature
         verify(mMockServiceControllerBinder).createMMTelFeature(SLOT_0);
         verify(mMockServiceControllerBinder).addFeatureStatusCallback(eq(SLOT_0),
@@ -157,11 +161,11 @@ public class ImsServiceControllerCompatTest extends ImsTestBase {
         assertNull("FeatureContainer should be null", fc);
     }
 
-    private ServiceConnection bindAndConnectService() {
+    private ServiceConnection bindAndConnectService(SparseIntArray slotIdToSubIdMap) {
         HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures = new HashSet<>();
         testFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(SLOT_0,
                 ImsFeature.FEATURE_MMTEL));
-        ServiceConnection connection = bindService(testFeatures);
+        ServiceConnection connection = bindService(testFeatures, slotIdToSubIdMap);
         IImsServiceController.Stub controllerStub = mock(IImsServiceController.Stub.class);
         when(controllerStub.queryLocalInterface(any())).thenReturn(mMockServiceControllerBinder);
         connection.onServiceConnected(mTestComponentName, controllerStub);
@@ -169,10 +173,11 @@ public class ImsServiceControllerCompatTest extends ImsTestBase {
     }
 
     private ServiceConnection bindService(
-            HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures) {
+            HashSet<ImsFeatureConfiguration.FeatureSlotPair> testFeatures,
+            SparseIntArray slotIdToSubIdMap) {
         ArgumentCaptor<ServiceConnection> serviceCaptor =
                 ArgumentCaptor.forClass(ServiceConnection.class);
-        assertTrue(mTestImsServiceController.bind(testFeatures));
+        assertTrue(mTestImsServiceController.bind(testFeatures, slotIdToSubIdMap));
         verify(mMockContext).bindService(any(), serviceCaptor.capture(), anyInt());
         return serviceCaptor.getValue();
     }
