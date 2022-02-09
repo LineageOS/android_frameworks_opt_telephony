@@ -288,7 +288,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
 
         mImsManagerConnector = mConnectorFactory.create(mContext, mPhone.getPhoneId(), TAG,
                 new FeatureConnector.Listener<ImsManager>() {
-                    public void connectionReady(ImsManager manager) throws ImsException {
+                    public void connectionReady(ImsManager manager, int subId) throws ImsException {
                         logd("ImsManager: connection ready.");
                         synchronized (mLock) {
                             mImsManager = manager;
