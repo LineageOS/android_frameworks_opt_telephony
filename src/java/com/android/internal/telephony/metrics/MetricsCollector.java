@@ -16,10 +16,6 @@
 
 package com.android.internal.telephony.metrics;
 
-import static android.telephony.PhoneNumberUtils.areSamePhoneNumber;
-import static android.telephony.SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER;
-import static android.telephony.SubscriptionManager.PHONE_NUMBER_SOURCE_IMS;
-import static android.telephony.SubscriptionManager.PHONE_NUMBER_SOURCE_UICC;
 import static android.text.format.DateUtils.HOUR_IN_MILLIS;
 import static android.text.format.DateUtils.MINUTE_IN_MILLIS;
 import static android.text.format.DateUtils.SECOND_IN_MILLIS;
@@ -55,14 +51,11 @@ import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSIO
 import android.annotation.Nullable;
 import android.app.StatsManager;
 import android.content.Context;
-import android.telephony.SubscriptionInfo;
-import android.text.TextUtils;
 import android.util.StatsEvent;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
@@ -94,7 +87,6 @@ import com.android.telephony.Rlog;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -137,23 +129,20 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                     .build();
 
     private final PersistAtomsStorage mStorage;
-    private final TelephonyStatsLogHelper mTelephonyStatsLog;
     private final StatsManager mStatsManager;
     private final AirplaneModeStats mAirplaneModeStats;
     private final Set<DataCallSessionStats> mOngoingDataCallStats = ConcurrentHashMap.newKeySet();
     private static final Random sRandom = new Random();
 
     public MetricsCollector(Context context) {
-        this(context, new PersistAtomsStorage(context), new TelephonyStatsLogHelper());
+        this(context, new PersistAtomsStorage(context));
     }
 
     /** Allows dependency injection. Used during unit tests. */
     @VisibleForTesting
     public MetricsCollector(Context context,
-                            PersistAtomsStorage storage,
-                            TelephonyStatsLogHelper telephonyStatsLog) {
+                            PersistAtomsStorage storage) {
         mStorage = storage;
-        mTelephonyStatsLog = telephonyStatsLog;
         mStatsManager = (StatsManager) context.getSystemService(Context.STATS_MANAGER);
         if (mStatsManager != null) {
             registerAtom(CELLULAR_DATA_SERVICE_SWITCH, POLICY_PULL_DAILY);
@@ -656,56 +645,33 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     }
 
     private int pullPerSimStatus(List<StatsEvent> data) {
-        SubscriptionController subscriptionController = SubscriptionController.getInstance();
-        if (subscriptionController == null) {
-            return StatsManager.PULL_SKIP;
-        }
+        int result = StatsManager.PULL_SKIP;
         for (Phone phone : getPhonesIfAny()) {
-            int subId = phone.getSubId();
-            String countryIso =
-                    Optional.ofNullable(subscriptionController.getSubscriptionInfo(subId))
-                            .map(SubscriptionInfo::getCountryIso)
-                            .orElse("");
-            // number[]- hone numbers from each sources:
-            // numberState[] - int representation for each number source used in the atom
-            // index 0 - PHONE_NUMBER_SOURCE_UICC
-            // index 1 - PHONE_NUMBER_SOURCE_CARRIER
-            // index 2 - PHONE_NUMBER_SOURCE_IMS
-            String[] number = new String[] {
-                subscriptionController.getPhoneNumber(subId, PHONE_NUMBER_SOURCE_UICC),  // 0
-                subscriptionController.getPhoneNumber(subId, PHONE_NUMBER_SOURCE_CARRIER),  // 1
-                subscriptionController.getPhoneNumber(subId, PHONE_NUMBER_SOURCE_IMS),  // 2
-            };
-            int[] numberState = new int[number.length];  // default value 0
-            for (int i = 0, stateForNextUniqueNumber = 1; i < numberState.length; i++) {
-                if (TextUtils.isEmpty(number[i])) {
-                    // keep state 0 if number not available
-                    continue;
-                }
-                // the number is available:
-                // try to find the same number from other sources and reuse the state
-                for (int j = 0; j < i; j++) {
-                    if (!TextUtils.isEmpty(number[j])
-                            && areSamePhoneNumber(number[i], number[j], countryIso)) {
-                        numberState[i] = numberState[j];
-                    }
-                }
-                // didn't find same number (otherwise should not be state 0), assign a new state
-                if (numberState[i] == 0) {
-                    numberState[i] = stateForNextUniqueNumber;
-                    stateForNextUniqueNumber++;
-                }
+            PerSimStatus perSimStatus = PerSimStatus.getCurrentState(phone);
+            if (perSimStatus == null) {
+                continue;
             }
-            StatsEvent statsEvent = mTelephonyStatsLog.buildStatsEvent(
+            StatsEvent statsEvent = TelephonyStatsLog.buildStatsEvent(
                     PER_SIM_STATUS,
                     phone.getPhoneId(), // simSlotIndex
-                    phone.getCarrierId(), // carrierId
-                    numberState[0], // phoneNumberSourceUicc
-                    numberState[1], // phoneNumberSourceCarrier
-                    numberState[2]); // phoneNumberSourceIms
+                    perSimStatus.carrierId, // carrierId
+                    perSimStatus.phoneNumberSourceUicc, // phoneNumberSourceUicc
+                    perSimStatus.phoneNumberSourceCarrier, // phoneNumberSourceCarrier
+                    perSimStatus.phoneNumberSourceIms, // phoneNumberSourceIms
+                    perSimStatus.advancedCallingSettingEnabled, // volteEnabled
+                    perSimStatus.voWiFiSettingEnabled, // wfcEnabled
+                    perSimStatus.voWiFiModeSetting, // wfcMode
+                    perSimStatus.voWiFiRoamingModeSetting, // wfcRoamingMode
+                    perSimStatus.vtSettingEnabled, // videoCallingEnabled
+                    perSimStatus.dataRoamingEnabled, // dataRoamingEnabled
+                    perSimStatus.preferredNetworkType, // allowedNetworksByUser
+                    perSimStatus.disabled2g, // is2gDisabled
+                    false, // TODO(b/215758472): isPin1Enabled
+                    0); // TODO(b/215758472): simVoltageClass
             data.add(statsEvent);
+            result = StatsManager.PULL_SUCCESS;
         }
-        return StatsManager.PULL_SUCCESS;
+        return result;
     }
 
     /** Registers a pulled atom ID {@code atomId} with optional {@code policy} for pulling. */

@@ -287,6 +287,8 @@ public class ContextFixture implements TestFixture<Context> {
                     return mPowerWhitelistManager;
                 case Context.LOCATION_SERVICE:
                     return mLocationManager;
+                case Context.TELEPHONY_IMS_SERVICE:
+                    return mImsManager;
                 default:
                     return null;
             }
@@ -701,6 +703,7 @@ public class ContextFixture implements TestFixture<Context> {
 
     private final ContentProvider mContentProvider = spy(new FakeContentProvider());
 
+    private final ImsManager mImsManager = mock(ImsManager.class);
     private final Configuration mConfiguration = new Configuration();
     private final DisplayMetrics mDisplayMetrics = new DisplayMetrics();
     private final SharedPreferences mSharedPreferences = PreferenceManager
