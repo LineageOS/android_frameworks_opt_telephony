@@ -1046,7 +1046,7 @@ public class DataNetworkController extends Handler {
         // of them.
         DataEvaluation evaluation = evaluateNetworkRequest(networkRequest,
                 DataEvaluationReason.NEW_REQUEST);
-        if (evaluation.isDataAllowed()) {
+        if (!evaluation.containsDisallowedReasons()) {
             DataProfile dataProfile = evaluation.getCandidateDataProfile();
             if (dataProfile != null) {
                 setupDataNetwork(dataProfile, null);
@@ -1224,7 +1224,7 @@ public class DataNetworkController extends Handler {
         }
 
         // Check whether to allow data in certain situations if data is disallowed for soft reasons
-        if (evaluation.isDataAllowed()) {
+        if (!evaluation.containsDisallowedReasons()) {
             evaluation.addDataAllowedReason(DataAllowedReason.NORMAL);
         } else if (!evaluation.containsHardDisallowedReasons()) {
             // Check if request is MMS and MMS is always allowed
@@ -1237,12 +1237,7 @@ public class DataNetworkController extends Handler {
             if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
                 evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
             } else if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
-                int apnType = DataUtils.networkCapabilityToApnType(
-                        networkRequest.getApnTypeNetworkCapability());
-                Set<Integer> meteredApns = mServiceState.getDataRoaming()
-                        ? mDataConfigManager.getMeteredApnTypesWhenRoaming()
-                        : mDataConfigManager.getMeteredApnTypes();
-                if (!meteredApns.contains(apnType)) {
+                if (!networkRequest.isMeteredRequest()) {
                     evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
                 }
             }
@@ -1269,7 +1264,7 @@ public class DataNetworkController extends Handler {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_THROTTLED);
         }
 
-        if (evaluation.isDataAllowed()) {
+        if (!evaluation.containsDisallowedReasons()) {
             evaluation.setCandidateDataProfile(dataProfile);
         }
 
@@ -1321,7 +1316,7 @@ public class DataNetworkController extends Handler {
             // all the requests in the list have the same capabilities, we can only evaluate one
             // of them.
             DataEvaluation evaluation = evaluateNetworkRequest(requestList.get(0), reason);
-            if (evaluation.isDataAllowed()) {
+            if (!evaluation.containsDisallowedReasons()) {
                 DataProfile dataProfile = evaluation.getCandidateDataProfile();
                 if (dataProfile != null) {
                     setupDataNetwork(dataProfile, null);
@@ -1421,8 +1416,32 @@ public class DataNetworkController extends Handler {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_PROFILE_NOT_PREFERRED);
         }
 
-        if (evaluation.isDataAllowed()) {
+        // Check whether if there are any reason we should tear down the network.
+        if (!evaluation.containsDisallowedReasons()) {
+            // The data is allowed in the current condition.
             evaluation.addDataAllowedReason(DataAllowedReason.NORMAL);
+        } else if (!evaluation.containsHardDisallowedReasons()) {
+            // If there are reasons we should tear down the network, check if those are hard reasons
+            // or soft reasons. In some scenarios, we can make exceptions if they are soft
+            // disallowed reasons.
+
+            // Check if request is unmetered (WiFi or unmetered APN)
+            if (dataNetwork.getTransport() == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+                evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
+            } else {
+                boolean unmeteredNetwork = !mDataConfigManager.isAnyMeteredCapability(
+                        dataNetwork.getNetworkCapabilities()
+                                .getCapabilities(), mServiceState.getDataRoaming());
+                if (unmeteredNetwork) {
+                    evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
+                }
+            }
+
+            // Check if request is restricted
+            if (!dataNetwork.getNetworkCapabilities().hasCapability(
+                    NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
+                evaluation.addDataAllowedReason(DataAllowedReason.RESTRICTED_REQUEST);
+            }
         }
 
         log("Evaluated " + dataNetwork + ", " + evaluation.toString());
@@ -1444,7 +1463,7 @@ public class DataNetworkController extends Handler {
         for (DataNetwork dataNetwork : mDataNetworkList) {
             if (dataNetwork.isConnecting() || dataNetwork.isConnected()) {
                 DataEvaluation dataEvaluation = evaluateDataNetwork(dataNetwork, reason);
-                if (!dataEvaluation.isDataAllowed()) {
+                if (dataEvaluation.containsDisallowedReasons()) {
                     tearDownGracefully(dataNetwork, getTearDownReason(dataEvaluation));
                 }
             }
@@ -1520,7 +1539,7 @@ public class DataNetworkController extends Handler {
      * @return The tear down reason.
      */
     private @TearDownReason int getTearDownReason(@NonNull DataEvaluation dataEvaluation) {
-        if (!dataEvaluation.isDataAllowed()) {
+        if (dataEvaluation.containsDisallowedReasons()) {
             switch (dataEvaluation.getDataDisallowedReasons().get(0)) {
                 case DATA_DISABLED:
                     return DataNetwork.TEAR_DOWN_REASON_DATA_DISABLED;
@@ -1980,7 +1999,7 @@ public class DataNetworkController extends Handler {
 
         DataEvaluation evaluation = evaluateNetworkRequest(
                 telephonyNetworkRequest, DataEvaluationReason.DATA_RETRY);
-        if (evaluation.isDataAllowed()) {
+        if (!evaluation.containsDisallowedReasons()) {
             DataProfile dataProfile = dataSetupRetryEntry.dataProfile;
             if (dataProfile == null) {
                 dataProfile = evaluation.getCandidateDataProfile();
@@ -2273,7 +2292,7 @@ public class DataNetworkController extends Handler {
                 }
 
                 DataEvaluation dataEvaluation = evaluateDataNetworkHandover(dataNetwork);
-                if (dataEvaluation.isDataAllowed()) {
+                if (!dataEvaluation.containsDisallowedReasons()) {
                     logl("Start handover " + dataNetwork + " to "
                             + AccessNetworkConstants.transportTypeToString(preferredTransport));
                     dataNetwork.startHandover(preferredTransport, null);

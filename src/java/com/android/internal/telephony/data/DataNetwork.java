@@ -1331,18 +1331,12 @@ public class DataNetwork extends StateMachine {
         builder.setSubscriptionIds(Collections.singleton(mSubId));
 
         ApnSetting apnSetting = mDataProfile.getApnSetting();
-        boolean meteredApn = false;
+
         if (apnSetting != null) {
-            for (int apnType : apnSetting.getApnTypes()) {
-                if (!(roaming ? mDataConfigManager.getMeteredApnTypesWhenRoaming()
-                        : mDataConfigManager.getMeteredApnTypes()).contains(apnType)) {
-                    meteredApn = true;
-                }
-                int cap = DataUtils.apnTypeToNetworkCapability(apnType);
-                if (cap >= 0) {
-                    builder.addCapability(cap);
-                }
-            }
+            apnSetting.getApnTypes().stream()
+                    .map(DataUtils::apnTypeToNetworkCapability)
+                    .filter(cap -> cap >= 0)
+                    .forEach(builder::addCapability);
         }
 
         // Extract network capabilities from the traffic descriptor.
@@ -1377,10 +1371,6 @@ public class DataNetwork extends StateMachine {
             }
         }
 
-        // TODO: Support NET_CAPABILITY_NOT_METERED when non-restricted data is for unmetered use
-        if (!meteredApn) {
-            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
-        }
         // TODO: Support NET_CAPABILITY_NOT_RESTRICTED
         if (!mCongested) {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
@@ -1407,6 +1397,17 @@ public class DataNetwork extends StateMachine {
 
         if (NetworkCapabilitiesUtils.inferRestrictedCapability(builder.build())) {
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+        }
+
+        Set<Integer> meteredCapabilities = mDataConfigManager
+                .getMeteredNetworkCapabilities(roaming);
+        boolean unmeteredNetwork = meteredCapabilities.stream().noneMatch(
+                Arrays.stream(builder.build().getCapabilities()).boxed()
+                        .collect(Collectors.toSet())::contains);
+
+        // TODO: Support NET_CAPABILITY_NOT_METERED when non-restricted data is for unmetered use
+        if (unmeteredNetwork) {
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
         }
 
         // Set the bandwidth information.
@@ -1845,7 +1846,7 @@ public class DataNetwork extends StateMachine {
         }
         logl("tearDownWithCondition: reason=" + tearDownReasonToString(reason) + ", timeout="
                 + timeoutMillis + "ms.");
-        sendMessageDelayed(EVENT_TEAR_DOWN_NETWORK, timeoutMillis);
+        sendMessageDelayed(EVENT_TEAR_DOWN_NETWORK, reason, timeoutMillis);
         return () -> this.tearDown(reason);
     }
 

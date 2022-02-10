@@ -120,10 +120,10 @@ public class DataEvaluation {
     }
 
     /**
-     * @return {@code true} if the operation is allowed.
+     * @return {@code true} if the evaluation contains disallowed reasons.
      */
-    public boolean isDataAllowed() {
-        return mDataDisallowedReasons.size() == 0;
+    public boolean containsDisallowedReasons() {
+        return mDataDisallowedReasons.size() != 0;
     }
 
     /**
