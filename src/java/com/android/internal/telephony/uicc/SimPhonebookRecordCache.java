@@ -54,7 +54,7 @@ import java.util.stream.Collectors;
         value = "TelephonyManager.CAPABILITY_SIM_PHONEBOOK_IN_MODEM")
 public class SimPhonebookRecordCache extends Handler {
     // Instance Variables
-    private String LOG_TAG = "SimPhonebookRecordCache";
+    private static final String LOG_TAG = "SimPhonebookRecordCache";
     private static final boolean DBG = true;
     // Event Constants
     private static final int EVENT_PHONEBOOK_CHANGED = 1;
@@ -100,7 +100,6 @@ public class SimPhonebookRecordCache extends Handler {
         mCi = ci;
         mPhoneId = phoneId;
         mContext = context;
-        LOG_TAG += "[" + phoneId + "]";
         mCi.registerForSimPhonebookChanged(this, EVENT_PHONEBOOK_CHANGED, null);
         mCi.registerForIccRefresh(this, EVENT_SIM_REFRESH, null);
         mCi.registerForSimPhonebookRecordsReceived(this, EVENT_PHONEBOOK_RECORDS_RECEIVED, null);
@@ -206,7 +205,7 @@ public class SimPhonebookRecordCache extends Handler {
         synchronized (mReadLock) {
             mAdnLoadingWaiters.add(response);
             final int pendingSize = mAdnLoadingWaiters.size();
-            final boolean isCapacityInvalid = isAdnCapacityInvalid();
+            boolean isCapacityInvalid = getAdnCapacity() == null;
             if (isCapacityInvalid) {
                 getSimPhonebookCapacity();
             }
@@ -226,10 +225,6 @@ public class SimPhonebookRecordCache extends Handler {
             }
         }
         fillCache();
-    }
-
-    private boolean isAdnCapacityInvalid() {
-        return getAdnCapacity() == null || !getAdnCapacity().isSimValid();
     }
 
     @VisibleForTesting
@@ -317,7 +312,7 @@ public class SimPhonebookRecordCache extends Handler {
                 .build();
         UpdateRequest updateRequest = new UpdateRequest(index, newAdn, updateAdn, response);
         mUpdateRequests.add(updateRequest);
-        final boolean isCapacityInvalid = isAdnCapacityInvalid();
+        boolean isCapacityInvalid = getAdnCapacity() == null;
         if (isCapacityInvalid) {
             getSimPhonebookCapacity();
         }
@@ -363,11 +358,6 @@ public class SimPhonebookRecordCache extends Handler {
                 if (ar != null && ar.exception == null) {
                     AdnCapacity capacity = (AdnCapacity)ar.result;
                     handlePhonebookCapacityChanged(capacity);
-                } else {
-                    if (!isAdnCapacityInvalid()) {
-                        mAdnCapacity.set(new AdnCapacity());
-                    }
-                    invalidateSimPbCache();
                 }
                 break;
             case EVENT_PHONEBOOK_RECORDS_RECEIVED:
@@ -435,13 +425,10 @@ public class SimPhonebookRecordCache extends Handler {
 
     private void handlePhonebookCapacityChanged(AdnCapacity newCapacity) {
         AdnCapacity oldCapacity = mAdnCapacity.get();
-        if (newCapacity == null) {
-            newCapacity = new AdnCapacity();
-        }
         mAdnCapacity.set(newCapacity);
         if (oldCapacity == null && newCapacity != null) {
-            if (!newCapacity.isSimEmpty()){
-                invalidateSimPbCache();
+            if (newCapacity.getMaxAdnCount() > 0){
+                mSimPbRecords.clear();
                 fillCacheWithoutWaiting();
             } else {
                 notifyAdnLoadingWaiters();
@@ -449,9 +436,7 @@ public class SimPhonebookRecordCache extends Handler {
             mIsInitialized.set(true); // Let's say the whole process is ready
         } else {
             // There is nothing from PB, so notify waiters directly if any
-            if (newCapacity.isSimEmpty()
-                    || !newCapacity.isSimValid()) {
-                mIsCacheInvalidated.set(false);
+            if (newCapacity != null && newCapacity.getMaxAdnCount() == 0) {
                 notifyAdnLoadingWaiters();
             } else if (!mIsUpdateDone) {
                 invalidateSimPbCache();
@@ -471,7 +456,6 @@ public class SimPhonebookRecordCache extends Handler {
                 populateAdnRecords(records.getPhonebookRecords());
                 mIsRecordLoading.set(false);
                 mIsInRetry.set(false);
-                mIsCacheInvalidated.set(false);
                 notifyAdnLoadingWaiters();
                 tryFireUpdatePendingList();
             } else if (records.isRetryNeeded() && !mIsInRetry.get()) {
