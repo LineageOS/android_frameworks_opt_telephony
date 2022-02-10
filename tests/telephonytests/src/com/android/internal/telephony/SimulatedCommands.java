@@ -2491,7 +2491,14 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void updateSimPhonebookRecord(SimPhonebookRecord phonebookRecord, Message result) {
-        resultSuccess(result, new int[]{phonebookRecord.getRecordIndex()});
+        int recordId = phonebookRecord.getRecordId();
+        // Based on design, the record ID starts from 1.
+        // So if the record ID passed from upper layer is 0, it indicates to insert one new record
+        // without record ID specific.
+        if (recordId == 0) {
+            recordId = 1; // hack code for unit test
+        }
+        resultSuccess(result, new int[]{recordId});
         notifySimPhonebookChanged();
     }
 
