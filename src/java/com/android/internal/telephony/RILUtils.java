@@ -4370,10 +4370,21 @@ public class RILUtils {
      */
     public static android.hardware.radio.V1_6.PhonebookRecordInfo convertToHalPhonebookRecordInfo(
             SimPhonebookRecord record) {
-        if(record != null) {
-            return record.toPhonebookRecordInfo();
+        android.hardware.radio.V1_6.PhonebookRecordInfo pbRecordInfo =
+                new android.hardware.radio.V1_6.PhonebookRecordInfo();
+        pbRecordInfo.recordId = record.getRecordIndex();
+        pbRecordInfo.name = convertNullToEmptyString(record.getAlphaTag());
+        pbRecordInfo.number = convertNullToEmptyString(
+                convertToHalPhonebookRecordInfoNumber(record.getNumber()));
+        if (record.getEmails() != null) {
+            pbRecordInfo.emails = primitiveArrayToArrayList(record.getEmails());
         }
-        return null;
+        if (record.getAdditionalNumbers() != null) {
+            for (String addNum : record.getAdditionalNumbers()) {
+                pbRecordInfo.additionalNumbers.add(convertToHalPhonebookRecordInfoNumber(addNum));
+            }
+        }
+        return pbRecordInfo;
     }
 
     /**
@@ -4383,10 +4394,34 @@ public class RILUtils {
      */
     public static android.hardware.radio.sim.PhonebookRecordInfo
             convertToHalPhonebookRecordInfoAidl(SimPhonebookRecord record) {
-        if(record != null) {
-            return record.toPhonebookRecordInfoAidl();
+        android.hardware.radio.sim.PhonebookRecordInfo pbRecordInfo =
+                new android.hardware.radio.sim.PhonebookRecordInfo();
+        pbRecordInfo.recordId = record.getRecordIndex();
+        pbRecordInfo.name = convertNullToEmptyString(record.getAlphaTag());
+        pbRecordInfo.number = convertNullToEmptyString(
+                convertToHalPhonebookRecordInfoNumber(record.getNumber()));
+        pbRecordInfo.emails = record.getEmails();
+        if (record.getAdditionalNumbers() != null) {
+            String[] additionalNumbers = new String[record.getAdditionalNumbers().length];
+            for (int i = 0; i < additionalNumbers.length; i++) {
+                additionalNumbers[i] =
+                        convertToHalPhonebookRecordInfoNumber(record.getAdditionalNumbers()[i]);
+            }
+            pbRecordInfo.additionalNumbers = additionalNumbers;
         }
-        return null;
+        return pbRecordInfo;
+    }
+
+    /**
+     * Convert the GSM pause/wild/wait character to the phone number in the SIM PhonebookRecordInfo
+     * number format
+     * @param input GSM pause/wild/wait character
+     * @return The converted PhonebookRecordInfo number
+     */
+    private static String convertToHalPhonebookRecordInfoNumber(String input) {
+        return input == null ? null : input.replace(PhoneNumberUtils.WAIT, 'e')
+                .replace(PhoneNumberUtils.PAUSE, 'T')
+                .replace(PhoneNumberUtils.WILD, '?');
     }
 
     /**
