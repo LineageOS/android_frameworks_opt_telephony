@@ -3867,10 +3867,26 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * version scoped to their packages
      */
     public void notifyNewRingingConnectionP(Connection cn) {
+        Rlog.i(LOG_TAG, String.format(
+                "notifyNewRingingConnection: phoneId=[%d], connection=[%s], registrants=[%s]",
+                getPhoneId(), cn, getNewRingingConnectionRegistrantsAsString()));
         if (!mIsVoiceCapable)
             return;
         AsyncResult ar = new AsyncResult(null, cn, null);
         mNewRingingConnectionRegistrants.notifyRegistrants(ar);
+    }
+
+    /**
+     * helper for notifyNewRingingConnectionP(Connection) to create a string for a log message.
+     *
+     * @return a list of objects in mNewRingingConnectionRegistrants as a String
+     */
+    private String getNewRingingConnectionRegistrantsAsString() {
+        List<String> registrants = new ArrayList<>();
+        for (int i = 0; i < mNewRingingConnectionRegistrants.size(); i++) {
+            registrants.add(mNewRingingConnectionRegistrants.get(i).toString());
+        }
+        return String.join(", ", registrants);
     }
 
     /**
