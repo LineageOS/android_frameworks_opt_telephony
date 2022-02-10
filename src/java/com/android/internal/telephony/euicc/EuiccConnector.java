@@ -759,7 +759,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                         }
                         case CMD_DOWNLOAD_SUBSCRIPTION: {
                             DownloadRequest request = (DownloadRequest) message.obj;
-                            mEuiccService.downloadSubscription(slotId,
+                            mEuiccService.downloadSubscription(slotId, 0,
                                     request.mSubscription,
                                     request.mSwitchAfterDownload,
                                     request.mForceDeactivateSim,
