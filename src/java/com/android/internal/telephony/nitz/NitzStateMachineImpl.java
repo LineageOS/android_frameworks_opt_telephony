@@ -366,7 +366,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
                         + " reason=" + reason);
             } else {
                 TimestampedValue<Long> newNitzTime = nitzSignal.createTimeSignal();
-                builder.setUtcTime(newNitzTime);
+                builder.setUnixEpochTime(newNitzTime);
                 builder.addDebugInfo("Sending new time suggestion"
                         + " nitzSignal=" + nitzSignal
                         + ", reason=" + reason);

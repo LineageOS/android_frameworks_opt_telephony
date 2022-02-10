@@ -47,21 +47,21 @@ public class NitzDataTest {
         // tz, dt are in number of quarter-hours
         {
             NitzData nitz = NitzData.parse("15/06/20,01:02:03-1,0");
-            assertEquals(createUtcTime(2015, 6, 20, 1, 2, 3), nitz.getCurrentTimeInMillis());
+            assertEquals(createUnixEpochTime(2015, 6, 20, 1, 2, 3), nitz.getCurrentTimeInMillis());
             assertEquals(TimeUnit.MINUTES.toMillis(-1 * 15), nitz.getLocalOffsetMillis());
             assertEquals(0, nitz.getDstAdjustmentMillis().longValue());
             assertNull(nitz.getEmulatorHostTimeZone());
         }
         {
             NitzData nitz = NitzData.parse("15/06/20,01:02:03+8,1");
-            assertEquals(createUtcTime(2015, 6, 20, 1, 2, 3), nitz.getCurrentTimeInMillis());
+            assertEquals(createUnixEpochTime(2015, 6, 20, 1, 2, 3), nitz.getCurrentTimeInMillis());
             assertEquals(TimeUnit.MINUTES.toMillis(8 * 15), nitz.getLocalOffsetMillis());
             assertEquals(TimeUnit.HOURS.toMillis(1), nitz.getDstAdjustmentMillis().longValue());
             assertNull(nitz.getEmulatorHostTimeZone());
         }
         {
             NitzData nitz = NitzData.parse("15/06/20,01:02:03-8,1");
-            assertEquals(createUtcTime(2015, 6, 20, 1, 2, 3), nitz.getCurrentTimeInMillis());
+            assertEquals(createUnixEpochTime(2015, 6, 20, 1, 2, 3), nitz.getCurrentTimeInMillis());
             assertEquals(TimeUnit.MINUTES.toMillis(-8 * 15), nitz.getLocalOffsetMillis());
             assertEquals(TimeUnit.HOURS.toMillis(1), nitz.getDstAdjustmentMillis().longValue());
             assertNull(nitz.getEmulatorHostTimeZone());
@@ -72,14 +72,14 @@ public class NitzDataTest {
     public void testParse_noDstField() {
         {
             NitzData nitz = NitzData.parse("15/06/20,01:02:03+4");
-            assertEquals(createUtcTime(2015, 6, 20, 1, 2, 3), nitz.getCurrentTimeInMillis());
+            assertEquals(createUnixEpochTime(2015, 6, 20, 1, 2, 3), nitz.getCurrentTimeInMillis());
             assertEquals(TimeUnit.MINUTES.toMillis(4 * 15), nitz.getLocalOffsetMillis());
             assertNull(nitz.getDstAdjustmentMillis());
             assertNull(nitz.getEmulatorHostTimeZone());
         }
         {
             NitzData nitz = NitzData.parse("15/06/20,01:02:03-4");
-            assertEquals(createUtcTime(2015, 6, 20, 1, 2, 3), nitz.getCurrentTimeInMillis());
+            assertEquals(createUnixEpochTime(2015, 6, 20, 1, 2, 3), nitz.getCurrentTimeInMillis());
             assertEquals(TimeUnit.MINUTES.toMillis(-4 * 15), nitz.getLocalOffsetMillis());
             assertNull(nitz.getDstAdjustmentMillis());
             assertNull(nitz.getEmulatorHostTimeZone());
@@ -89,7 +89,7 @@ public class NitzDataTest {
     @Test
     public void testParse_androidEmulatorTimeZoneExtension() {
         NitzData nitz = NitzData.parse("15/06/20,01:02:03-32,1,America!Los_Angeles");
-        assertEquals(createUtcTime(2015, 6, 20, 1, 2, 3), nitz.getCurrentTimeInMillis());
+        assertEquals(createUnixEpochTime(2015, 6, 20, 1, 2, 3), nitz.getCurrentTimeInMillis());
         assertEquals(TimeUnit.MINUTES.toMillis(-32 * 15), nitz.getLocalOffsetMillis());
         assertEquals(TimeUnit.HOURS.toMillis(1), nitz.getDstAdjustmentMillis().longValue());
         assertEquals("America/Los_Angeles", nitz.getEmulatorHostTimeZone().getID());
@@ -103,7 +103,7 @@ public class NitzDataTest {
                 .toString());
     }
 
-    private static long createUtcTime(
+    private static long createUnixEpochTime(
             int year, int monthOfYear, int dayOfMonth, int hourOfDay, int minute, int second) {
         GregorianCalendar calendar = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
         calendar.clear(); // Clear millis, etc.
