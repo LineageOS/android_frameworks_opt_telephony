@@ -16,13 +16,8 @@
 
 package com.android.internal.telephony.metrics;
 
-import static android.telephony.SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER;
-import static android.telephony.SubscriptionManager.PHONE_NUMBER_SOURCE_IMS;
-import static android.telephony.SubscriptionManager.PHONE_NUMBER_SOURCE_UICC;
-
 import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_DATA_SERVICE_SWITCH;
 import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_SERVICE_STATE;
-import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS;
 import static com.android.internal.telephony.TelephonyStatsLog.SIM_SLOT_STATE;
 import static com.android.internal.telephony.TelephonyStatsLog.SUPPORTED_RADIO_ACCESS_FAMILY;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_RAT_USAGE;
@@ -39,14 +34,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import android.app.StatsManager;
-import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.StatsEvent;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
@@ -91,7 +84,6 @@ public class MetricsCollectorTest extends TelephonyTest {
 
     // Mocked classes
     private Phone mSecondPhone;
-    private TelephonyStatsLogHelper mTelephonyStatsLog;
     private UiccSlot mPhysicalSlot;
     private UiccSlot mEsimSlot;
     private UiccCard mActiveCard;
@@ -104,14 +96,13 @@ public class MetricsCollectorTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         mSecondPhone = mock(Phone.class);
-        mTelephonyStatsLog = mock(TelephonyStatsLogHelper.class);
         mPhysicalSlot = mock(UiccSlot.class);
         mEsimSlot = mock(UiccSlot.class);
         mActiveCard = mock(UiccCard.class);
         mActivePort = mock(UiccPort.class);
         mServiceStateStats = mock(ServiceStateStats.class);
         mMetricsCollector =
-                new MetricsCollector(mContext, mPersistAtomsStorage, mTelephonyStatsLog);
+                new MetricsCollector(mContext, mPersistAtomsStorage);
         doReturn(mSST).when(mSecondPhone).getServiceStateTracker();
         doReturn(mServiceStateStats).when(mSST).getServiceStateStats();
     }
@@ -420,67 +411,5 @@ public class MetricsCollectorTest extends TelephonyTest {
         assertThat(actualAtoms).hasSize(3);
         assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
         // TODO(b/153196254): verify atom contents
-    }
-
-    @Test
-    @SmallTest
-    public void onPullAtom_perSimStatus() throws Exception {
-        // Make PhoneFactory.getPhones() return an array of two
-        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone, mSecondPhone});
-        // phone 0 setup
-        doReturn(0).when(mPhone).getPhoneId();
-        doReturn(1).when(mPhone).getSubId();
-        doReturn(100).when(mPhone).getCarrierId();
-        doReturn("6506953210")
-                .when(mSubscriptionController)
-                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_UICC, null, null);
-        doReturn("")
-                .when(mSubscriptionController)
-                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_CARRIER, null, null);
-        doReturn("+16506953210")
-                .when(mSubscriptionController)
-                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_IMS, null, null);
-        SubscriptionInfo subscriptionInfo1 = mock(SubscriptionInfo.class);
-        doReturn("us").when(subscriptionInfo1).getCountryIso();
-        doReturn(subscriptionInfo1).when(mSubscriptionController).getSubscriptionInfo(1);
-        // phone 1 setup
-        doReturn(1).when(mSecondPhone).getPhoneId();
-        doReturn(2).when(mSecondPhone).getSubId();
-        doReturn(101).when(mSecondPhone).getCarrierId();
-        doReturn("0123")
-                .when(mSubscriptionController)
-                .getPhoneNumber(2, PHONE_NUMBER_SOURCE_UICC, null, null);
-        doReturn("16506950123")
-                .when(mSubscriptionController)
-                .getPhoneNumber(2, PHONE_NUMBER_SOURCE_CARRIER, null, null);
-        doReturn("+16506950123")
-                .when(mSubscriptionController)
-                .getPhoneNumber(2, PHONE_NUMBER_SOURCE_IMS, null, null);
-        SubscriptionInfo subscriptionInfo2 = mock(SubscriptionInfo.class);
-        doReturn("us").when(subscriptionInfo2).getCountryIso();
-        doReturn(subscriptionInfo2).when(mSubscriptionController).getSubscriptionInfo(2);
-        List<StatsEvent> actualAtoms = new ArrayList<>();
-
-        int result = mMetricsCollector.onPullAtom(PER_SIM_STATUS, actualAtoms);
-
-        verify(mTelephonyStatsLog).buildStatsEvent(
-                PER_SIM_STATUS, 0, 100, 1, 0, 1);
-        verify(mTelephonyStatsLog).buildStatsEvent(
-                PER_SIM_STATUS, 1, 101, 1, 2, 2);
-        assertThat(actualAtoms).hasSize(2);
-        assertThat(result).isEqualTo(StatsManager.PULL_SUCCESS);
-    }
-
-    @Test
-    @SmallTest
-    public void onPullAtom_perSimStatus_noSubscriptionController_skip() throws Exception {
-        // Make SubscriptionController.getInstance() return null
-        replaceInstance(SubscriptionController.class, "sInstance", null, null);
-        List<StatsEvent> actualAtoms = new ArrayList<>();
-
-        int result = mMetricsCollector.onPullAtom(PER_SIM_STATUS, actualAtoms);
-
-        assertThat(actualAtoms).isEmpty();
-        assertThat(result).isEqualTo(StatsManager.PULL_SKIP);
     }
 }
