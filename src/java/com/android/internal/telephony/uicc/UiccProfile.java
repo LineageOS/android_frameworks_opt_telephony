@@ -1334,6 +1334,7 @@ public class UiccProfile extends IccCard {
     }
 
     private void onCarrierPrivilegesLoadedMessage() {
+        // TODO(b/211796398): clean up logic below once all carrier privilege check migration done
         // Update set of enabled carrier apps now that the privilege rules may have changed.
         ActivityManager am = mContext.getSystemService(ActivityManager.class);
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(mContext.getOpPackageName(),
@@ -1750,17 +1751,6 @@ public class UiccProfile extends IccCard {
             return Collections.EMPTY_LIST;
         }
         return new ArrayList<>(carrierPrivilegeRules.getAccessRules());
-    }
-
-    /**
-     * Exposes {@link UiccCarrierPrivilegeRules#getCarrierPackageNamesForIntent}.
-     */
-    public List<String> getCarrierPackageNamesForIntent(
-            PackageManager packageManager, Intent intent) {
-        UiccCarrierPrivilegeRules carrierPrivilegeRules = getCarrierPrivilegeRules();
-        return carrierPrivilegeRules == null ? null :
-                carrierPrivilegeRules.getCarrierPackageNamesForIntent(
-                        packageManager, intent);
     }
 
     /** Returns a reference to the current {@link UiccCarrierPrivilegeRules}. */
