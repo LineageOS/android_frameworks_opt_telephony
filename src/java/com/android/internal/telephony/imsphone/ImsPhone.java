@@ -458,7 +458,11 @@ public class ImsPhone extends ImsPhoneBase {
         mCT.registerPhoneStateListener(mExternalCallTracker);
         mExternalCallTracker.setCallPuller(mCT);
 
-        mSS.setStateOff();
+        boolean legacyMode = true;
+        if (mDefaultPhone.getTransportManager() != null) {
+            legacyMode = mDefaultPhone.getTransportManager().isInLegacyMode();
+        }
+        mSS.setOutOfService(legacyMode, false);
 
         mPhoneId = mDefaultPhone.getPhoneId();
 

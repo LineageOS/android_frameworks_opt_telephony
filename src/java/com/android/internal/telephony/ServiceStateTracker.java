@@ -125,6 +125,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -210,6 +211,7 @@ public class ServiceStateTracker extends Handler {
     @UnsupportedAppUsage
     private RegistrantList mNetworkAttachedRegistrants = new RegistrantList();
     private RegistrantList mNetworkDetachedRegistrants = new RegistrantList();
+    private RegistrantList mServiceStateChangedRegistrants = new RegistrantList();
     private RegistrantList mPsRestrictEnabledRegistrants = new RegistrantList();
     private RegistrantList mPsRestrictDisabledRegistrants = new RegistrantList();
     private RegistrantList mImsCapabilityChangedRegistrants = new RegistrantList();
@@ -647,9 +649,6 @@ public class ServiceStateTracker extends Handler {
                 .isVoiceCapable();
         mUiccController = UiccController.getInstance();
 
-        mOutOfServiceSS = new ServiceState();
-        mOutOfServiceSS.setStateOutOfService();
-
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         mCi.registerForCellInfoList(this, EVENT_UNSOL_CELL_INFO_LIST, null);
         mCi.registerForPhysicalChannelConfiguration(this, EVENT_PHYSICAL_CHANNEL_CONFIG, null);
@@ -661,6 +660,8 @@ public class ServiceStateTracker extends Handler {
         mRestrictedState = new RestrictedState();
 
         mTransportManager = mPhone.getTransportManager();
+        mOutOfServiceSS = new ServiceState();
+        mOutOfServiceSS.setOutOfService(mTransportManager.isInLegacyMode(), false);
 
         for (int transportType : mTransportManager.getAvailableTransports()) {
             mRegStateManagers.append(transportType, new NetworkRegistrationManager(
@@ -756,9 +757,9 @@ public class ServiceStateTracker extends Handler {
         }
 
         mSS = new ServiceState();
-        mSS.setStateOutOfService();
+        mSS.setOutOfService(mTransportManager.isInLegacyMode(), false);
         mNewSS = new ServiceState();
-        mNewSS.setStateOutOfService();
+        mNewSS.setOutOfService(mTransportManager.isInLegacyMode(), false);
         mLastCellInfoReqTime = 0;
         mLastCellInfoList = null;
         mStartedGprsRegCheck = false;
@@ -3311,7 +3312,7 @@ public class ServiceStateTracker extends Handler {
 
         switch (mCi.getRadioState()) {
             case TelephonyManager.RADIO_POWER_UNAVAILABLE:
-                mNewSS.setStateOutOfService();
+                mNewSS.setOutOfService(mTransportManager.isInLegacyMode(), false);
                 mPhone.getSignalStrengthController().setSignalStrengthDefaultValues();
                 mLastNitzData = null;
                 mNitzState.handleNetworkUnavailable();
@@ -3319,7 +3320,7 @@ public class ServiceStateTracker extends Handler {
                 break;
 
             case TelephonyManager.RADIO_POWER_OFF:
-                mNewSS.setStateOff();
+                mNewSS.setOutOfService(mTransportManager.isInLegacyMode(), true);
                 mPhone.getSignalStrengthController().setSignalStrengthDefaultValues();
                 mLastNitzData = null;
                 mNitzState.handleNetworkUnavailable();
@@ -3635,9 +3636,14 @@ public class ServiceStateTracker extends Handler {
             mRejectCode = mNewRejectCode;
         }
 
+        if (!Objects.equals(mSS, mNewSS)) {
+            mServiceStateChangedRegistrants.notifyRegistrants();
+        }
+
         ServiceState oldMergedSS = new ServiceState(mPhone.getServiceState());
         mSS = new ServiceState(mNewSS);
-        mNewSS.setStateOutOfService();
+
+        mNewSS.setOutOfService(mTransportManager.isInLegacyMode(), false);
 
         mCellIdentity = primaryCellIdentity;
         if (mSS.getState() == ServiceState.STATE_IN_SERVICE && primaryCellIdentity != null) {
@@ -4930,6 +4936,25 @@ public class ServiceStateTracker extends Handler {
     }
 
     /**
+     * Register for service state changed event.
+     *
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     */
+    public void registerForServiceStateChanged(Handler h, int what) {
+        mServiceStateChangedRegistrants.addUnique(h, what, null);
+    }
+
+    /**
+     * Unregister for service state changed event.
+     *
+     * @param h The handler.
+     */
+    public void unregisterForServiceStateChanged(Handler h) {
+        mServiceStateChangedRegistrants.remove(h);
+    }
+
+    /**
      * Clean up existing voice and data connection then turn off radio power.
      *
      * Hang up the existing voice calls to decrease call drop rate.
@@ -5542,7 +5567,7 @@ public class ServiceStateTracker extends Handler {
             }
             // operator info should be kept in SS
             String operator = mNewSS.getOperatorAlphaLong();
-            mNewSS.setStateOff();
+            mNewSS.setOutOfService(mTransportManager.isInLegacyMode(), true);
             if (resetIwlanRatVal) {
                 mNewSS.setDataRegState(ServiceState.STATE_IN_SERVICE);
                 NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
