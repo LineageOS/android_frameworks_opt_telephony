@@ -484,6 +484,31 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testTransitionToCurrentStateNrConnectedWithPcoLength4AndNoNrAdvancedCapable()
+            throws Exception {
+        assertEquals("DefaultState", getCurrentState().getName());
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
+        doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
+        mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 0xFF03);
+        broadcastCarrierConfigs();
+        int cid = 1;
+        byte[] contents = new byte[]{31, 1, 84, 0};
+        doReturn(mDataConnection).when(mDcTracker).getDataConnectionByContextId(cid);
+        doReturn(mApnSetting).when(mDataConnection).getApnSetting();
+        doReturn(true).when(mApnSetting).canHandleType(ApnSetting.TYPE_DEFAULT);
+        mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 0xFF03);
+        broadcastCarrierConfigs();
+
+
+        mNetworkTypeController.sendMessage(EVENT_PCO_DATA_CHANGED,
+                new AsyncResult(null, new PcoData(cid, "", 0xff03, contents), null));
+        mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
+        processAllMessages();
+        assertEquals("connected", getCurrentState().getName());
+    }
+
+    @Test
     public void testTransitionToCurrentStateNrConnectedWithWrongPcoAndNoNrAdvancedCapable()
             throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
@@ -517,6 +542,28 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         int cid = 1;
         byte[] contents = new byte[]{1};
+        doReturn(mDataConnection).when(mDcTracker).getDataConnectionByContextId(cid);
+        doReturn(mApnSetting).when(mDataConnection).getApnSetting();
+        doReturn(true).when(mApnSetting).canHandleType(ApnSetting.TYPE_DEFAULT);
+        mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 0xFF03);
+        broadcastCarrierConfigs();
+
+        mNetworkTypeController.sendMessage(EVENT_PCO_DATA_CHANGED,
+                new AsyncResult(null, new PcoData(cid, "", 0xff03, contents), null));
+        mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
+        processAllMessages();
+        assertEquals("connected_mmwave", getCurrentState().getName());
+    }
+
+    @Test
+    public void testTransitionToCurrentStateNrConnectedWithNrAdvancedCapableAndPcoLength4()
+            throws Exception {
+        assertEquals("DefaultState", getCurrentState().getName());
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
+        doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
+        int cid = 1;
+        byte[] contents = new byte[]{31, 1, 84, 1};
         doReturn(mDataConnection).when(mDcTracker).getDataConnectionByContextId(cid);
         doReturn(mApnSetting).when(mDataConnection).getApnSetting();
         doReturn(true).when(mApnSetting).canHandleType(ApnSetting.TYPE_DEFAULT);
@@ -867,6 +914,36 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         // timer should not have gone off
         assertEquals("connected", getCurrentState().getName());
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA,
+                mNetworkTypeController.getOverrideNetworkType());
+        assertFalse(mNetworkTypeController.is5GHysteresisActive());
+    }
+
+    @Test
+    public void testPrimaryTimerReset_theNetworkModeWithoutNr() throws Exception {
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
+        doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
+        mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
+                "connected_mmwave,any,10;connected,any,10;not_restricted_rrc_con,any,10");
+        broadcastCarrierConfigs();
+
+        assertEquals("connected", getCurrentState().getName());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA,
+                mNetworkTypeController.getOverrideNetworkType());
+
+        // remove NR from preferred network types
+        doReturn(RadioAccessFamily.getRafFromNetworkType(
+                TelephonyManager.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA)).when(
+                mPhone).getCachedAllowedNetworkTypesBitmask();
+
+        // trigger 10 second timer after disconnecting from NR, and then it does the timer reset
+        // since the network mode without the NR capability.
+        doReturn(NetworkRegistrationInfo.NR_STATE_NONE).when(mServiceState).getNrState();
+        mNetworkTypeController.sendMessage(EVENT_NR_STATE_CHANGED);
+        processAllMessages();
+
+        // timer should be reset.
+        assertEquals("legacy", getCurrentState().getName());
+        assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
                 mNetworkTypeController.getOverrideNetworkType());
         assertFalse(mNetworkTypeController.is5GHysteresisActive());
     }
