@@ -390,14 +390,28 @@ public class EuiccCardController extends IEuiccCardController.Stub {
         }
 
         String iccId = null;
-
+        boolean isValidSlotPort = false;
         // get the iccid whether or not the port is active
         for (UiccSlot slot : mUiccController.getUiccSlots()) {
             if (slot.getEid().equals(cardId)) {
-                iccId = slot.getIccId(portIndex);
+                // find the matching slot. first validate if the passing port index is valid.
+                if (slot.isValidPortIndex(portIndex)) {
+                    isValidSlotPort = true;
+                    iccId = slot.getIccId(portIndex);
+                }
             }
         }
-        if (iccId.isEmpty()) {
+        if(!isValidSlotPort) {
+            try {
+                callback.onComplete(EuiccCardManager.RESULT_EUICC_NOT_FOUND, null);
+            } catch (RemoteException exception) {
+                loge("getEnabledProfile callback failure due to invalid port slot.",
+                        exception);
+            }
+            return;
+        }
+        // if there is no iccid enabled on this port, return null.
+        if (TextUtils.isEmpty(iccId)) {
             try {
                 callback.onComplete(EuiccCardManager.RESULT_PROFILE_NOT_FOUND, null);
             } catch (RemoteException exception) {
