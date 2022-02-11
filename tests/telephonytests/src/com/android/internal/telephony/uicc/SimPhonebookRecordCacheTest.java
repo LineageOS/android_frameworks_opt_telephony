@@ -93,8 +93,10 @@ public class SimPhonebookRecordCacheTest extends TelephonyTest {
         mSimPhonebookRecordCacheUt.requestLoadAllPbRecords(null);
         waitForLastHandlerAction(mSimPhonebookRecordCacheUt);
 
+        mSimPhonebookRecordCacheUt.clear();
+
         List<SimPhonebookRecord> records = new ArrayList<SimPhonebookRecord>();
-        records.add(new SimPhonebookRecord(10, "ABC", "12345", null, null));
+        records.add(new SimPhonebookRecord(1, "ABC", "12345", null, null));
         AsyncResult ar = new AsyncResult(null, new ReceivedPhonebookRecords(4, records), null);
         Message msg = Message.obtain(mSimPhonebookRecordCacheUt,
                 EVENT_PHONEBOOK_RECORDS_RECEIVED, ar);
@@ -103,7 +105,7 @@ public class SimPhonebookRecordCacheTest extends TelephonyTest {
         assertFalse(mSimPhonebookRecordCacheUt.isLoading());
         List<AdnRecord> adnRecords = mSimPhonebookRecordCacheUt.getAdnRecords();
         assertEquals(adnRecords.size(), 1);
-        assertEquals(adnRecords.get(0).getRecId(), 10);
+        assertEquals(adnRecords.get(0).getRecId(), 1);
     }
 
     @Test
@@ -117,34 +119,46 @@ public class SimPhonebookRecordCacheTest extends TelephonyTest {
 
     @Test
     public void testUpdatePhonebookRecord() {
+        mSimulatedCommands.notifySimPhonebookChanged();
+        waitForLastHandlerAction(mSimPhonebookRecordCacheUt);
         List<AdnRecord> adnRecords = mSimPhonebookRecordCacheUt.getAdnRecords();
-        assertEquals(adnRecords.size(), 0);
+        if (mSimPhonebookRecordCacheUt.ENABLE_INFLATE_WITH_EMPTY_RECORDS) {
+            assertEquals(adnRecords.size(), 1); // Max ADN from capacity
+        } else {
+            assertEquals(adnRecords.size(), 0);
+        }
+        mSimPhonebookRecordCacheUt.clear();
 
-        AdnRecord newAdn = new AdnRecord(0, 20, "AB", "123", null, null);
+        AdnRecord newAdn = new AdnRecord(IccConstants.EF_ADN, 1, "AB", "123", null, null);
         // add
         mSimPhonebookRecordCacheUt.updateSimPbAdnBySearch(null, newAdn, null);
         waitForLastHandlerAction(mSimPhonebookRecordCacheUt);
         adnRecords = mSimPhonebookRecordCacheUt.getAdnRecords();
         assertEquals(adnRecords.size(), 1);
         AdnRecord oldAdn = adnRecords.get(0);
-        assertEquals(oldAdn.getRecId(), 20);
+        assertEquals(oldAdn.getRecId(), 1);
         assertEquals(oldAdn.getAlphaTag(), "AB");
         assertEquals(oldAdn.getNumber(), "123");
         // update
-        newAdn = new AdnRecord(0, 20, "ABCD", "123456789", null, null);
+        newAdn = new AdnRecord(IccConstants.EF_ADN, 1, "ABCD", "123456789", null, null);
         mSimPhonebookRecordCacheUt.updateSimPbAdnBySearch(oldAdn, newAdn, null);
         waitForLastHandlerAction(mSimPhonebookRecordCacheUt);
         adnRecords = mSimPhonebookRecordCacheUt.getAdnRecords();
         assertEquals(adnRecords.size(), 1);
         oldAdn = adnRecords.get(0);
-        assertEquals(oldAdn.getRecId(), 20);
+        assertEquals(oldAdn.getRecId(), 1);
         assertEquals(oldAdn.getAlphaTag(), "ABCD");
         assertEquals(oldAdn.getNumber(), "123456789");
         // Delete
-        newAdn = new AdnRecord(0, 20, null, null, null, null);
+        newAdn = new AdnRecord(IccConstants.EF_ADN, 1, null, null, null, null);
         mSimPhonebookRecordCacheUt.updateSimPbAdnBySearch(oldAdn, newAdn, null);
         waitForLastHandlerAction(mSimPhonebookRecordCacheUt);
         adnRecords = mSimPhonebookRecordCacheUt.getAdnRecords();
-        assertEquals(adnRecords.size(), 0);
+        if (mSimPhonebookRecordCacheUt.ENABLE_INFLATE_WITH_EMPTY_RECORDS) {
+            assertEquals(adnRecords.size(), 1);
+            assertTrue(adnRecords.get(0).isEmpty());
+        } else {
+            assertEquals(adnRecords.size(), 0);
+        }
     }
 }
