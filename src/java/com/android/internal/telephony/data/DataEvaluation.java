@@ -255,7 +255,9 @@ public class DataEvaluation {
         /** Handover is not allowed by policy. */
         NOT_ALLOWED_BY_POLICY(true),
         /** Data network is not in the right state. */
-        ILLEGAL_STATE(true);
+        ILLEGAL_STATE(true),
+        /** VoPS is not supported by the network. */
+        VOPS_NOT_SUPPORTED(true);
 
         private final boolean mIsHardReason;
 
