@@ -68,9 +68,9 @@ public final class TimeServiceHelperImpl implements TimeServiceHelper {
 
         Objects.requireNonNull(timeSuggestion);
 
-        if (timeSuggestion.getUtcTime() != null) {
-            TimestampedValue<Long> utcTime = timeSuggestion.getUtcTime();
-            TelephonyMetrics.getInstance().writeNITZEvent(mSlotIndex, utcTime.getValue());
+        if (timeSuggestion.getUnixEpochTime() != null) {
+            TimestampedValue<Long> unixEpochTime = timeSuggestion.getUnixEpochTime();
+            TelephonyMetrics.getInstance().writeNITZEvent(mSlotIndex, unixEpochTime.getValue());
         }
         mTimeDetector.suggestTelephonyTime(timeSuggestion);
     }

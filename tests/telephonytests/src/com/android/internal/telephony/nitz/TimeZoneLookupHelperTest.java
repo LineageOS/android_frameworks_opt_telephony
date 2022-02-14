@@ -47,9 +47,9 @@ import java.util.concurrent.TimeUnit;
 public class TimeZoneLookupHelperTest {
     // Note: Historical dates are used to avoid the test breaking due to data changes.
     /* Arbitrary summer date in the Northern hemisphere. */
-    private static final long NH_SUMMER_TIME_MILLIS = createUtcTime(2015, 6, 20, 1, 2, 3);
+    private static final long NH_SUMMER_TIME_MILLIS = createUnixEpochTime(2015, 6, 20, 1, 2, 3);
     /* Arbitrary winter date in the Northern hemisphere. */
-    private static final long NH_WINTER_TIME_MILLIS = createUtcTime(2015, 1, 20, 1, 2, 3);
+    private static final long NH_WINTER_TIME_MILLIS = createUnixEpochTime(2015, 1, 20, 1, 2, 3);
 
     private TimeZoneLookupHelper mTimeZoneLookupHelper;
 
@@ -63,8 +63,8 @@ public class TimeZoneLookupHelperTest {
         // Historical dates are used to avoid the test breaking due to data changes.
         // However, algorithm updates may change the exact time zone returned, though it shouldn't
         // ever be a less exact match.
-        long nhSummerTimeMillis = createUtcTime(2015, 6, 20, 1, 2, 3);
-        long nhWinterTimeMillis = createUtcTime(2015, 1, 20, 1, 2, 3);
+        long nhSummerTimeMillis = createUnixEpochTime(2015, 6, 20, 1, 2, 3);
+        long nhWinterTimeMillis = createUnixEpochTime(2015, 1, 20, 1, 2, 3);
 
         String nhSummerTimeString = "15/06/20,01:02:03";
         String nhWinterTimeString = "15/01/20,01:02:03";
@@ -214,8 +214,8 @@ public class TimeZoneLookupHelperTest {
         // Historical dates are used to avoid the test breaking due to data changes.
         // However, algorithm updates may change the exact time zone returned, though it shouldn't
         // ever be a less exact match.
-        long nhSummerTimeMillis = createUtcTime(2015, 6, 20, 1, 2, 3);
-        long nhWinterTimeMillis = createUtcTime(2015, 1, 20, 1, 2, 3);
+        long nhSummerTimeMillis = createUnixEpochTime(2015, 6, 20, 1, 2, 3);
+        long nhWinterTimeMillis = createUnixEpochTime(2015, 1, 20, 1, 2, 3);
 
         // A country in the northern hemisphere with one time zone.
         String adIso = "AD"; // Andora
@@ -331,8 +331,8 @@ public class TimeZoneLookupHelperTest {
         // DE has two time zones according to IANA data: Europe/Berlin and Europe/Busingen, but they
         // become effectively identical after 338950800000 millis (Sun, 28 Sep 1980 01:00:00 GMT).
         // Android data tells us that Europe/Berlin the one that was "kept".
-        long nhSummerTimeMillis = createUtcTime(1975, 6, 20, 1, 2, 3);
-        long nhWinterTimeMillis = createUtcTime(1975, 1, 20, 1, 2, 3);
+        long nhSummerTimeMillis = createUnixEpochTime(1975, 6, 20, 1, 2, 3);
+        long nhWinterTimeMillis = createUnixEpochTime(1975, 1, 20, 1, 2, 3);
 
         // Before 1980, quality == QUALITY_MULTIPLE_ZONES_SAME_OFFSET because Europe/Busingen was
         // relevant.
@@ -345,8 +345,8 @@ public class TimeZoneLookupHelperTest {
 
         // And in 2015, quality == QUALITY_SINGLE_ZONE because Europe/Busingen became irrelevant
         // after 1980.
-        nhSummerTimeMillis = createUtcTime(2015, 6, 20, 1, 2, 3);
-        nhWinterTimeMillis = createUtcTime(2015, 1, 20, 1, 2, 3);
+        nhSummerTimeMillis = createUnixEpochTime(2015, 6, 20, 1, 2, 3);
+        nhWinterTimeMillis = createUnixEpochTime(2015, 1, 20, 1, 2, 3);
 
         expectedResult =
                 new CountryResult("Europe/Berlin", QUALITY_SINGLE_ZONE, ARBITRARY_DEBUG_INFO);
@@ -358,7 +358,7 @@ public class TimeZoneLookupHelperTest {
 
     @Test
     public void testDefaultBoostBehavior() {
-        long timeMillis = createUtcTime(2015, 6, 20, 1, 2, 3);
+        long timeMillis = createUnixEpochTime(2015, 6, 20, 1, 2, 3);
 
         // An example known to be explicitly boosted. New Zealand has two zones but the vast
         // majority of the population use one of them so Android's data file explicitly boosts the
@@ -402,7 +402,7 @@ public class TimeZoneLookupHelperTest {
 
     @Test
     public void testNoDefaultBoostBehavior() {
-        long timeMillis = createUtcTime(2015, 6, 20, 1, 2, 3);
+        long timeMillis = createUnixEpochTime(2015, 6, 20, 1, 2, 3);
 
         // An example known to not be explicitly boosted. Micronesia is spread out and there's no
         // suitable default.
@@ -489,7 +489,7 @@ public class TimeZoneLookupHelperTest {
         assertEquals(isOnlyMatch, lookupResult.isOnlyMatch());
     }
 
-    private static long createUtcTime(
+    private static long createUnixEpochTime(
             int year, int monthOfYear, int dayOfMonth, int hourOfDay, int minute, int second) {
         GregorianCalendar calendar = new GregorianCalendar(zone("UTC"));
         calendar.clear(); // Clear millis, etc.

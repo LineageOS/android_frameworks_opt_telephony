@@ -207,24 +207,24 @@ public final class NitzSignalInputFilterPredicateFactory {
                     return true;
                 }
 
-                // See if the NITZ signals have sufficiently different encoded UTC times. If yes,
-                // then we want to process the new one.
+                // See if the NITZ signals have sufficiently different encoded Unix epoch times. If
+                // yes, then we want to process the new one.
                 int nitzUpdateDiff = deviceState.getNitzUpdateDiffMillis();
 
-                // Calculate the UTC difference between the time the two signals hold, accounting
-                // for any difference in receipt time and age.
-                long utcTimeDifferenceMillis = newNitzData.getCurrentTimeInMillis()
+                // Calculate the Unix epoch difference between the time the two signals hold,
+                // accounting for any difference in receipt time and age.
+                long unixEpochTimeDifferenceMillis = newNitzData.getCurrentTimeInMillis()
                         - previousNitzData.getCurrentTimeInMillis();
                 long ageAdjustedElapsedRealtimeDifferenceMillis =
                         newSignal.getAgeAdjustedElapsedRealtimeMillis()
                                 - previousSignal.getAgeAdjustedElapsedRealtimeMillis();
 
                 // In ideal conditions, the difference between
-                // ageAdjustedElapsedRealtimeSinceLastSaved and utcTimeDifferenceMillis will be zero
-                // if two NITZ signals are consistent and if the elapsed realtime clock is ticking
-                // at the correct rate.
+                // ageAdjustedElapsedRealtimeSinceLastSaved and unixEpochTimeDifferenceMillis will
+                // be zero if two NITZ signals are consistent and if the elapsed realtime clock is
+                // ticking at the correct rate.
                 long millisGainedOrLost = Math.abs(
-                        utcTimeDifferenceMillis - ageAdjustedElapsedRealtimeDifferenceMillis);
+                        unixEpochTimeDifferenceMillis - ageAdjustedElapsedRealtimeDifferenceMillis);
                 if (millisGainedOrLost > nitzUpdateDiff) {
                     return true;
                 }
