@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b1d617ff_85425930",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 22176
+      },
+      "writtenOn": "2022-02-14T10:44:41Z",
+      "side": 1,
+      "message": "Fixed s5 dual sim (klteduos) internet connection",
+      "revId": "8c20f2c238109c547706b8b52e01510311c01301",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
