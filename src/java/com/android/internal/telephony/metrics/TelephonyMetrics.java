@@ -2203,7 +2203,7 @@ public class TelephonyMetrics {
             cq.rtpDroppedPackets = callQuality.getNumDroppedRtpPackets();
             cq.minPlayoutDelayMillis = callQuality.getMinPlayoutDelayMillis();
             cq.maxPlayoutDelayMillis = callQuality.getMaxPlayoutDelayMillis();
-            cq.rxRtpSidPackets = callQuality.getNumRtpSidPacketsRx();
+            cq.rxRtpSidPackets = callQuality.getNumRtpSidPacketsReceived();
             cq.rtpDuplicatePackets = callQuality.getNumRtpDuplicatePackets();
         }
         return cq;
