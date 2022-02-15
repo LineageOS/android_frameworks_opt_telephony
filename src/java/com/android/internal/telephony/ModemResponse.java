@@ -20,6 +20,7 @@ import android.hardware.radio.RadioError;
 import android.hardware.radio.RadioResponseInfo;
 import android.hardware.radio.modem.IRadioModemResponse;
 import android.os.SystemClock;
+import android.telephony.ActivityStatsTechSpecificInfo;
 import android.telephony.AnomalyReporter;
 import android.telephony.ModemActivityInfo;
 
@@ -101,20 +102,33 @@ public class ModemResponse extends IRadioModemResponse.Stub {
 
         if (rr != null) {
             ModemActivityInfo ret = null;
+            ActivityStatsTechSpecificInfo[] astsi = null;
             if (responseInfo.error == RadioError.NONE) {
                 final int sleepModeTimeMs = activityInfo.sleepModeTimeMs;
                 final int idleModeTimeMs = activityInfo.idleModeTimeMs;
-                int [] txModeTimeMs = new int[ModemActivityInfo.getNumTxPowerLevels()];
-                // TODO: update the function as per the new API introduced in Android T
-                for (int i = 0; i < ModemActivityInfo.getNumTxPowerLevels(); i++) {
-                    txModeTimeMs[i] = activityInfo.techSpecificInfo[0].txmModetimeMs[i];
+                int size = activityInfo.techSpecificInfo.length;
+                astsi = new ActivityStatsTechSpecificInfo[size];
+                for (int s = 0; s < size; s++) {
+                    int rat = activityInfo.techSpecificInfo[s].rat;
+                    int frequencyRange = activityInfo.techSpecificInfo[s].frequencyRange;
+                    int [] txModeTimeMs = new int[ModemActivityInfo.getNumTxPowerLevels()];
+                    int rxModeTimeMs = activityInfo.techSpecificInfo[s].rxModeTimeMs;
+                    for (int i = 0; i < ModemActivityInfo.getNumTxPowerLevels(); i++) {
+                        txModeTimeMs[i] = activityInfo.techSpecificInfo[s].txmModetimeMs[i];
+                    }
+                    astsi[s] = new ActivityStatsTechSpecificInfo(
+                                    rat,
+                                    frequencyRange,
+                                    txModeTimeMs,
+                                    rxModeTimeMs);
                 }
-                final int rxModeTimeMs = activityInfo.techSpecificInfo[0].rxModeTimeMs;
                 ret = new ModemActivityInfo(SystemClock.elapsedRealtime(), sleepModeTimeMs,
-                        idleModeTimeMs, txModeTimeMs, rxModeTimeMs);
+                        idleModeTimeMs, astsi);
             } else {
-                ret = new ModemActivityInfo(0, 0, 0,
+                astsi = new ActivityStatsTechSpecificInfo[1];
+                astsi[0] = new ActivityStatsTechSpecificInfo(0, 0,
                         new int[ModemActivityInfo.getNumTxPowerLevels()], 0);
+                ret = new ModemActivityInfo(SystemClock.elapsedRealtime(), 0, 0, astsi);
                 responseInfo.error = RadioError.NONE;
             }
             RadioResponse.sendMessageResponse(rr.mResult, ret);
