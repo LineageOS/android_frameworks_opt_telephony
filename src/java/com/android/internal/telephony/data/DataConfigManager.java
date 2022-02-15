@@ -17,7 +17,6 @@
 package com.android.internal.telephony.data;
 
 import android.annotation.NonNull;
-import android.annotation.Nullable;
 import android.annotation.StringDef;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -40,12 +39,13 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
+import android.text.TextUtils;
 import android.util.IndentingPrintWriter;
 
-import com.android.internal.R;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.data.DataNetworkController.HandoverRule;
-import com.android.internal.telephony.data.DataRetryManager.DataRetryRule;
+import com.android.internal.telephony.data.DataRetryManager.DataHandoverRetryRule;
+import com.android.internal.telephony.data.DataRetryManager.DataSetupRetryRule;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -68,6 +68,7 @@ import java.util.stream.Collectors;
  * {@link CarrierConfigManager}. All the data config will be loaded once and stored here.
  */
 public class DataConfigManager extends Handler {
+    /** Event for carrier config changed. */
     private static final int EVENT_CARRIER_CONFIG_CHANGED = 1;
 
     /** Indicates the bandwidth estimation source is from the modem. */
@@ -196,25 +197,26 @@ public class DataConfigManager extends Handler {
     /** The network capability priority map */
     private @NonNull final Map<Integer, Integer> mNetworkCapabilityPriorityMap =
             new ConcurrentHashMap<>();
-    /** The data retry rules */
-    private @NonNull final List<DataRetryRule> mDataRetryRules = new ArrayList<>();
+    /** The data setup retry rules */
+    private @NonNull final List<DataSetupRetryRule> mDataSetupRetryRules = new ArrayList<>();
+    /** The data handover retry rules */
+    private @NonNull final List<DataHandoverRetryRule> mDataHandoverRetryRules = new ArrayList<>();
     /** The metered APN types for home network */
-    private @NonNull final @ApnType List<Integer> mMeteredApnTypes = new ArrayList<>();
+    private @NonNull final @ApnType Set<Integer> mMeteredApnTypes = new HashSet<>();
     /** The metered APN types for roaming network */
-    private @NonNull final @ApnType List<Integer> mRoamingMeteredApnTypes =
-            new ArrayList<>();
+    private @NonNull final @ApnType Set<Integer> mRoamingMeteredApnTypes = new HashSet<>();
     /** The network types that only support single data networks */
     private @NonNull final @NetworkType List<Integer> mSingleDataNetworkTypeList =
             new ArrayList<>();
     /** The network types that support temporarily not metered */
     private @NonNull final @DataConfigNetworkType Set<String> mUnmeteredNetworkTypes =
             new HashSet<>();
+    /** The network types that support temporarily not metered when roaming */
+    private @NonNull final @DataConfigNetworkType Set<String> mRoamingUnmeteredNetworkTypes =
+            new HashSet<>();
     /** A map of network types to the downlink and uplink bandwidth values for that network type */
     private @NonNull final @DataConfigNetworkType Map<String, DataNetwork.NetworkBandwidth>
             mBandwidthMap = new ConcurrentHashMap<>();
-    /** A map of network types to the TCP buffer sizes for that network type */
-    private @NonNull final @DataConfigNetworkType Map<String, String> mTcpBufferSizeMap =
-            new ConcurrentHashMap<>();
     /** Rules for handover between IWLAN and cellular network. */
     private @NonNull final List<HandoverRule> mHandoverRuleList = new ArrayList<>();
 
@@ -291,7 +293,6 @@ public class DataConfigManager extends Handler {
         updateSingleDataNetworkTypeList();
         updateUnmeteredNetworkTypes();
         updateBandwidths();
-        updateTcpBuffers();
         updateHandoverRules();
 
         log("Data config updated. Config is " + (isConfigCarrierSpecific() ? "" : "not ")
@@ -348,13 +349,26 @@ public class DataConfigManager extends Handler {
      */
     private void updateDataRetryRules() {
         synchronized (this) {
-            mDataRetryRules.clear();
+            mDataSetupRetryRules.clear();
             String[] dataRetryRulesStrings = mCarrierConfig.getStringArray(
-                    CarrierConfigManager.KEY_TELEPHONY_DATA_RETRY_RULES_STRING_ARRAY);
+                    CarrierConfigManager.KEY_TELEPHONY_DATA_SETUP_RETRY_RULES_STRING_ARRAY);
             if (dataRetryRulesStrings != null) {
                 for (String ruleString : dataRetryRulesStrings) {
                     try {
-                        mDataRetryRules.add(new DataRetryRule(ruleString));
+                        mDataSetupRetryRules.add(new DataSetupRetryRule(ruleString));
+                    } catch (IllegalArgumentException e) {
+                        loge("updateDataRetryRules: " + e.getMessage());
+                    }
+                }
+            }
+
+            mDataHandoverRetryRules.clear();
+            dataRetryRulesStrings = mCarrierConfig.getStringArray(
+                    CarrierConfigManager.KEY_TELEPHONY_DATA_HANDOVER_RETRY_RULES_STRING_ARRAY);
+            if (dataRetryRulesStrings != null) {
+                for (String ruleString : dataRetryRulesStrings) {
+                    try {
+                        mDataHandoverRetryRules.add(new DataHandoverRetryRule(ruleString));
                     } catch (IllegalArgumentException e) {
                         loge("updateDataRetryRules: " + e.getMessage());
                     }
@@ -364,10 +378,17 @@ public class DataConfigManager extends Handler {
     }
 
     /**
-     * @return The data retry rules from carrier config.
+     * @return The data setup retry rules from carrier config.
      */
-    public @NonNull List<DataRetryRule> getDataRetryRules() {
-        return Collections.unmodifiableList(mDataRetryRules);
+    public @NonNull List<DataSetupRetryRule> getDataSetupRetryRules() {
+        return Collections.unmodifiableList(mDataSetupRetryRules);
+    }
+
+    /**
+     * @return The data handover retry rules from carrier config.
+     */
+    public @NonNull List<DataHandoverRetryRule> getDataHandoverRetryRules() {
+        return Collections.unmodifiableList(mDataHandoverRetryRules);
     }
 
     /**
@@ -405,17 +426,15 @@ public class DataConfigManager extends Handler {
     /**
      * @return The metered APN types when connected to a home network
      */
-    public @NonNull @ApnType List<Integer> getMeteredApnTypes() {
-        // TODO: return as set instead of list
-        return Collections.unmodifiableList(mMeteredApnTypes);
+    public @NonNull @ApnType Set<Integer> getMeteredApnTypes() {
+        return Collections.unmodifiableSet(mMeteredApnTypes);
     }
 
     /**
      * @return The metered APN types when roaming
      */
-    public @NonNull @ApnType List<Integer> getMeteredApnTypesWhenRoaming() {
-        // TODO: return as set instead of list
-        return Collections.unmodifiableList(mRoamingMeteredApnTypes);
+    public @NonNull @ApnType Set<Integer> getMeteredApnTypesWhenRoaming() {
+        return Collections.unmodifiableSet(mRoamingMeteredApnTypes);
     }
 
     /**
@@ -436,12 +455,9 @@ public class DataConfigManager extends Handler {
                     CarrierConfigManager.KEY_ONLY_SINGLE_DC_ALLOWED_INT_ARRAY);
             if (singleDataNetworkTypeList != null) {
                 Arrays.stream(singleDataNetworkTypeList)
-                        .map(ServiceState::rilRadioTechnologyToNetworkType)
-                        .distinct()
                         .forEach(mSingleDataNetworkTypeList::add);
             }
         }
-
     }
 
     /**
@@ -471,28 +487,28 @@ public class DataConfigManager extends Handler {
             if (unmeteredNetworkTypes != null) {
                 mUnmeteredNetworkTypes.addAll(Arrays.asList(unmeteredNetworkTypes));
             }
+            mRoamingUnmeteredNetworkTypes.clear();
+            String[] roamingUnmeteredNetworkTypes = mCarrierConfig.getStringArray(
+                    CarrierConfigManager.KEY_ROAMING_UNMETERED_NETWORK_TYPES_STRING_ARRAY);
+            if (roamingUnmeteredNetworkTypes != null) {
+                mRoamingUnmeteredNetworkTypes.addAll(Arrays.asList(roamingUnmeteredNetworkTypes));
+            }
         }
     }
 
     /**
-     * Get the meteredness for the network type from the carrier config.
+     * Get whether the network type is unmetered from the carrier configs.
      *
      * @param networkType The network type to check meteredness for
      * @param serviceState The service state, used to determine NR state
      * @return Whether the carrier considers the given network type unmetered
      */
-    public boolean isNetworkTypeUnmeteredByCarrier(@NetworkType int networkType,
+    public boolean isNetworkTypeUnmetered(@NetworkType int networkType,
             @NonNull ServiceState serviceState) {
-        return mUnmeteredNetworkTypes.contains(
-                getDataConfigNetworkType(networkType, serviceState));
-    }
-
-    /**
-     * @return Whether NR is considered unmetered by the carrier when roaming
-     */
-    public boolean isNrUnmeteredWhenRoaming() {
-        return mCarrierConfig.getBoolean(
-                CarrierConfigManager.KEY_UNMETERED_NR_NSA_WHEN_ROAMING_BOOL);
+        String dataConfigNetworkType = getDataConfigNetworkType(networkType, serviceState);
+        return serviceState.getDataRoaming()
+                ? mRoamingUnmeteredNetworkTypes.contains(dataConfigNetworkType)
+                : mUnmeteredNetworkTypes.contains(dataConfigNetworkType);
     }
 
     /**
@@ -580,35 +596,7 @@ public class DataConfigManager extends Handler {
      * @return The default MTU value in bytes from the carrier config.
      */
     public int getDefaultMtu() {
-        // TODO: Move values from mcc/mnc overlays to carrier configs
         return mCarrierConfig.getInt(CarrierConfigManager.KEY_DEFAULT_MTU_INT);
-    }
-
-    /**
-     * Update the TCP buffer sizes from the carrier config.
-     */
-    private void updateTcpBuffers() {
-        synchronized (this) {
-            mTcpBufferSizeMap.clear();
-            String[] buffers = mCarrierConfig.getStringArray(
-                    CarrierConfigManager.KEY_TCP_BUFFERS_STRING_ARRAY);
-            if (buffers != null) {
-                for (String buffer : buffers) {
-                    // split[0] = network type as string
-                    // split[1] = rmem_min,rmem_def,rmem_max,wmem_min,wmem_def,wmem_max
-                    String[] split = buffer.split(":");
-                    if (split.length != 2) {
-                        loge("Invalid TCP buffer sizes: " + buffer);
-                        continue;
-                    }
-                    if (split[1].split(",").length != 6) {
-                        loge("Invalid TCP buffer sizes for " + split[0] + ": " + split[1]);
-                        continue;
-                    }
-                    mTcpBufferSizeMap.put(split[0], split[1]);
-                }
-            }
-        }
     }
 
     /**
@@ -616,15 +604,14 @@ public class DataConfigManager extends Handler {
      * The config string will have the following form, with values in bytes:
      * "read_min,read_default,read_max,write_min,write_default,write_max"
      *
-     * @param networkType The network type. Note that {@link TelephonyManager#NETWORK_TYPE_LTE_CA}
-     *                    can be used for LTE CA even though it's not a radio access technology.
-     * @param serviceState The service state, used to determine NR state.
-     * @return The TCP configuration string for the given network type or null if unavailable.
+     * Note that starting from Android 13, the TCP buffer size is fixed after boot up, and should
+     * never be changed based on carriers or the network types. The value should be configured
+     * appropriately based on the device's memory and performance.
+     *
+     * @return The TCP configuration string.
      */
-    public @Nullable String getTcpConfigString(@NetworkType int networkType,
-            @NonNull ServiceState serviceState) {
-        // TODO: Move values from mcc/mnc overlays to carrier configs
-        return mTcpBufferSizeMap.get(getDataConfigNetworkType(networkType, serviceState));
+    public @NonNull String getTcpConfigString() {
+        return mResources.getString(com.android.internal.R.string.config_tcp_buffers);
     }
 
     /**
@@ -632,7 +619,8 @@ public class DataConfigManager extends Handler {
      * does not complete within the window, the data network will be torn down after timeout.
      */
     public long getImsDeregistrationDelay() {
-        return mResources.getInteger(R.integer.config_delay_for_ims_dereg_millis);
+        return mResources.getInteger(
+                com.android.internal.R.integer.config_delay_for_ims_dereg_millis);
     }
 
     /**
@@ -713,6 +701,14 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * @return Get the delay in milliseconds for re-evaluating unsatisfied network requests.
+     */
+    public long getRetrySetupAfterDisconnectMillis() {
+        return mCarrierConfig.getLong(CarrierConfigManager
+                .KEY_CARRIER_DATA_CALL_APN_RETRY_AFTER_DISCONNECT_LONG);
+    }
+
+    /**
      * Get the data config network type for the given network type
      *
      * @param networkType The network type
@@ -767,6 +763,61 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * @return Get recovery action delay in milliseconds between recovery actions.
+     *
+     * @see CarrierConfigManager#KEY_DATA_STALL_RECOVERY_TIMERS_LONG_ARRAY
+     */
+    public @NonNull long[] getDataStallRecoveryDelayMillis() {
+        return mCarrierConfig.getLongArray(
+            CarrierConfigManager.KEY_DATA_STALL_RECOVERY_TIMERS_LONG_ARRAY);
+    }
+
+    /**
+     * @return Get the data stall recovery should skip boolean array.
+     *
+     * @see CarrierConfigManager#KEY_DATA_STALL_RECOVERY_SHOULD_SKIP_BOOL_ARRAY
+     */
+    public @NonNull boolean[] getDataStallRecoveryShouldSkipArray() {
+        return mCarrierConfig.getBooleanArray(
+            CarrierConfigManager.KEY_DATA_STALL_RECOVERY_SHOULD_SKIP_BOOL_ARRAY);
+    }
+
+    /**
+     * @return The default preferred APN. An empty string if not configured. This is used for the
+     * first time boot up where preferred APN is not set.
+     */
+    public @NonNull String getDefaultPreferredApn() {
+        return TextUtils.emptyIfNull(mCarrierConfig.getString(
+                CarrierConfigManager.KEY_DEFAULT_PREFERRED_APN_NAME_STRING));
+    }
+
+    /**
+     * @return The PCO id used for determine if data networks are using NR advanced networks. 0
+     * indicates this feature is disabled.
+     */
+    public int getNrAdvancedCapablePcoId() {
+        return mCarrierConfig.getInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT);
+    }
+
+    /**
+     * @return The allowed APN types for initial attach. The order in the list determines the
+     * priority of it being considered as IA APN. Note this should be only used for some exception
+     * cases that we need to use "user-added" APN for initial attach. The regular way to configure
+     * IA APN is by adding "IA" type to the APN in APN config.
+     */
+    public @NonNull @ApnType List<Integer> getAllowedInitialAttachApnTypes() {
+        String[] apnTypesArray = mCarrierConfig.getStringArray(
+                CarrierConfigManager.KEY_ALLOWED_INITIAL_ATTACH_APN_TYPES_STRING_ARRAY);
+        if (apnTypesArray != null) {
+            return Arrays.stream(apnTypesArray)
+                    .map(ApnSetting::getApnTypesBitmaskFromString)
+                    .collect(Collectors.toList());
+        }
+
+        return Collections.emptyList();
+    }
+
+    /**
      * Registration point for subscription info ready
      *
      * @param h handler to notify
@@ -818,9 +869,13 @@ public class DataConfigManager extends Handler {
                 DataUtils.networkCapabilityToString(key) + ":" + value + " "));
         pw.decreaseIndent();
         pw.println();
-        pw.println("Data retry rules:");
+        pw.println("Data setup retry rules:");
         pw.increaseIndent();
-        mDataRetryRules.forEach(pw::println);
+        mDataSetupRetryRules.forEach(pw::println);
+        pw.decreaseIndent();
+        pw.println("Data handover retry rules:");
+        pw.increaseIndent();
+        mDataHandoverRetryRules.forEach(pw::println);
         pw.decreaseIndent();
         pw.println("Metered APN types=" + mMeteredApnTypes.stream()
                 .map(ApnSetting::getApnTypeString).collect(Collectors.joining(",")));
@@ -829,6 +884,8 @@ public class DataConfigManager extends Handler {
         pw.println("Single data network types=" + mSingleDataNetworkTypeList.stream()
                 .map(TelephonyManager::getNetworkTypeName).collect(Collectors.joining(",")));
         pw.println("Unmetered network types=" + String.join(",", mUnmeteredNetworkTypes));
+        pw.println("Roaming unmetered network types="
+                + String.join(",", mRoamingUnmeteredNetworkTypes));
         pw.println("Bandwidths:");
         pw.increaseIndent();
         mBandwidthMap.forEach((key, value) -> pw.println(key + ":" + value));
@@ -840,10 +897,7 @@ public class DataConfigManager extends Handler {
                 + shouldResetDataThrottlingWhenTacChanges());
         pw.println("Data service package name=" + getDataServicePackageName());
         pw.println("Default MTU=" + getDefaultMtu());
-        pw.println("TCP buffer sizes:");
-        pw.increaseIndent();
-        mTcpBufferSizeMap.forEach((key, value) -> pw.println(key + ":" + value));
-        pw.decreaseIndent();
+        pw.println("TCP buffer sizes:" + getTcpConfigString());
         pw.println("getImsDeregistrationDelay=" + getImsDeregistrationDelay());
         pw.println("shouldPersistIwlanDataNetworksWhenDataServiceRestarted="
                 + shouldPersistIwlanDataNetworksWhenDataServiceRestarted());

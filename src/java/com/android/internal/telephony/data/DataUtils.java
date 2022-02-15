@@ -19,22 +19,35 @@ package com.android.internal.telephony.data;
 import android.annotation.CurrentTimeMillisLong;
 import android.annotation.ElapsedRealtimeLong;
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.net.NetworkAgent;
 import android.net.NetworkCapabilities;
 import android.os.SystemClock;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.RadioAccessNetworkType;
+import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.NetCapability;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.Annotation.ValidationStatus;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnSetting.ApnType;
+import android.telephony.data.DataCallResponse;
+import android.telephony.data.DataCallResponse.LinkStatus;
+import android.telephony.data.DataProfile;
 import android.telephony.ims.feature.ImsFeature;
+import android.util.ArrayMap;
+
+import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -49,7 +62,7 @@ public class DataUtils {
      * Get the network capability from the string.
      *
      * @param capabilityString The capability in string format
-     * @return The network capability.
+     * @return The network capability. -1 if not found.
      */
     public static @NetCapability int getNetworkCapabilityFromString(
             @NonNull String capabilityString) {
@@ -64,9 +77,13 @@ public class DataUtils {
             case "EIMS": return NetworkCapabilities.NET_CAPABILITY_EIMS;
             case "INTERNET": return NetworkCapabilities.NET_CAPABILITY_INTERNET;
             case "MCX": return NetworkCapabilities.NET_CAPABILITY_MCX;
+            case "VSIM": return NetworkCapabilities.NET_CAPABILITY_VSIM;
+            case "BIP" : return NetworkCapabilities.NET_CAPABILITY_BIP;
             case "ENTERPRISE": return NetworkCapabilities.NET_CAPABILITY_ENTERPRISE;
-            // Only add APN type capabilities here. This should be only used by the priority
-            // configuration.
+            case "PRIORITIZE_BANDWIDTH":
+                return NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH;
+            case "PRIORITIZE_LATENCY":
+                return NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY;
             default:
                 return -1;
         }
@@ -117,9 +134,30 @@ public class DataUtils {
             case NetworkCapabilities.NET_CAPABILITY_VSIM:                 return "VSIM";
             case NetworkCapabilities.NET_CAPABILITY_BIP:                  return "BIP";
             case NetworkCapabilities.NET_CAPABILITY_HEAD_UNIT:            return "HEAD_UNIT";
+            case NetworkCapabilities.NET_CAPABILITY_MMTEL:                return "MMTEL";
+            case NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY:
+                return "PRIORITIZE_LATENCY";
+            case NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH:
+                return "PRIORITIZE_BANDWIDTH";
             default:
-                return "Unknown(" + Integer.toString(netCap) + ")";
+                return "Unknown(" + netCap + ")";
         }
+    }
+
+    /**
+     * Convert network capabilities to string.
+     *
+     * This is for debugging and logging purposes only.
+     *
+     * @param netCaps Network capabilities.
+     * @return Network capabilities in string format.
+     */
+    public static @NonNull String networkCapabilitiesToString(
+            @NetCapability @Nullable List<Integer> netCaps) {
+        if (netCaps == null || netCaps.isEmpty()) return "";
+        return "[" + netCaps.stream()
+                .map(DataUtils::networkCapabilityToString)
+                .collect(Collectors.joining("|")) + "]";
     }
 
     /**
@@ -181,6 +219,12 @@ public class DataUtils {
                 return ApnSetting.TYPE_MCX;
             case NetworkCapabilities.NET_CAPABILITY_IA:
                 return ApnSetting.TYPE_IA;
+            case NetworkCapabilities.NET_CAPABILITY_ENTERPRISE:
+                return ApnSetting.TYPE_ENTERPRISE;
+            case NetworkCapabilities.NET_CAPABILITY_VSIM:
+                return ApnSetting.TYPE_VSIM;
+            case NetworkCapabilities.NET_CAPABILITY_BIP:
+                return ApnSetting.TYPE_BIP;
             default:
                 return ApnSetting.TYPE_NONE;
         }
@@ -216,8 +260,12 @@ public class DataUtils {
                 return NetworkCapabilities.NET_CAPABILITY_MCX;
             case ApnSetting.TYPE_IA:
                 return NetworkCapabilities.NET_CAPABILITY_IA;
-            // Do not add TYPE_VSIM, TYPE_BIP, TYPE_HIPRI
-            // TODO: Add ENTERPRISE here if needed.
+            case ApnSetting.TYPE_BIP:
+                return NetworkCapabilities.NET_CAPABILITY_BIP;
+            case ApnSetting.TYPE_VSIM:
+                return NetworkCapabilities.NET_CAPABILITY_VSIM;
+            case ApnSetting.TYPE_ENTERPRISE:
+                return NetworkCapabilities.NET_CAPABILITY_ENTERPRISE;
             default:
                 return -1;
         }
@@ -295,6 +343,90 @@ public class DataUtils {
             case ImsFeature.FEATURE_RCS: return "RCS";
             default:
                 return "Unknown(" + imsFeature + ")";
+        }
+    }
+
+    /**
+     * Get the highest priority supported network capability from the specified data profile.
+     *
+     * @param dataConfigManager The data config that contains network priority information.
+     * @param dataProfile The data profile
+     * @return The highest priority network capability. -1 if cannot find one.
+     */
+    public static @NetCapability int getHighestPriorityNetworkCapabilityFromDataProfile(
+            @NonNull DataConfigManager dataConfigManager, @NonNull DataProfile dataProfile) {
+        if (dataProfile.getApnSetting() == null
+                || dataProfile.getApnSetting().getApnTypes().isEmpty()) return -1;
+        return dataProfile.getApnSetting().getApnTypes().stream()
+                .map(DataUtils::apnTypeToNetworkCapability)
+                .sorted(Comparator.comparing(dataConfigManager::getNetworkCapabilityPriority)
+                        .reversed())
+                .collect(Collectors.toList())
+                .get(0);
+    }
+
+    /**
+     * Group the network requests into several list that contains the same network capabilities.
+     *
+     * @param networkRequestList The provided network requests.
+     * @return The network requests after grouping.
+     */
+    public static @NonNull List<NetworkRequestList> getGroupedNetworkRequestList(
+            @NonNull NetworkRequestList networkRequestList) {
+        // Key is the capabilities set.
+        Map<Set<Integer>, NetworkRequestList> requestsMap = new ArrayMap<>();
+        for (TelephonyNetworkRequest networkRequest : networkRequestList) {
+            requestsMap.computeIfAbsent(Arrays.stream(networkRequest.getCapabilities())
+                            .boxed().collect(Collectors.toSet()),
+                    v -> new NetworkRequestList()).add(networkRequest);
+        }
+        // Sort the list, so the network request list contains higher priority will be in the front
+        // of the list.
+        return new ArrayList<>(requestsMap.values()).stream()
+                .sorted((list1, list2) -> Integer.compare(
+                        list2.get(0).getPriority(), list1.get(0).getPriority()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get the target transport from source transport. This is only used for handover between
+     * IWLAN and cellular scenario.
+     *
+     * @param sourceTransport The source transport.
+     * @return The target transport.
+     */
+    public static @TransportType int getTargetTransport(@TransportType int sourceTransport) {
+        return sourceTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
+                ? AccessNetworkConstants.TRANSPORT_TYPE_WLAN
+                : AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
+    }
+
+    /**
+     * Get the source transport from target transport. This is only used for handover between
+     * IWLAN and cellular scenario.
+     *
+     * @param targetTransport The target transport.
+     * @return The source transport.
+     */
+    public static @TransportType int getSourceTransport(@TransportType int targetTransport) {
+        return targetTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
+                ? AccessNetworkConstants.TRANSPORT_TYPE_WLAN
+                : AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
+    }
+
+    /**
+     * Convert link status to string.
+     *
+     * @param linkStatus The link status.
+     * @return The link status in string format.
+     */
+    public static @NonNull String linkStatusToString(@LinkStatus int linkStatus) {
+        switch (linkStatus) {
+            case DataCallResponse.LINK_STATUS_UNKNOWN: return "UNKNOWN";
+            case DataCallResponse.LINK_STATUS_INACTIVE: return "INACTIVE";
+            case DataCallResponse.LINK_STATUS_ACTIVE: return "ACTIVE";
+            case DataCallResponse.LINK_STATUS_DORMANT: return "DORMANT";
+            default: return "UNKNOWN(" + linkStatus + ")";
         }
     }
 }

@@ -16,17 +16,19 @@
 
 package com.android.internal.telephony.data;
 
-import static com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
+import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.net.NetworkAgent;
+import android.telephony.CarrierConfigManager;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -41,14 +43,9 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
-import java.util.concurrent.Executor;
-
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class DataStallRecoveryManagerTest extends TelephonyTest {
-
-    @Mock private DataNetworkController mDataNetworkController;
-    @Mock private DataServiceManager mDataServiceManager;
     @Mock private DataStallRecoveryManagerCallback mDataStallRecoveryManagerCallback;
     private DataStallRecoveryManager mDataStallRecoveryManager;
 
@@ -56,9 +53,17 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("DataStallRecoveryManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
-
-        doReturn(mDataNetworkController).when(mPhone).getDataNetworkController();
-        doReturn(mDataConfigManager).when(mDataNetworkController).getDataConfigManager();
+        doReturn(true).when(mPhone).isUsingNewDataStack();
+        mCarrierConfigManager = mPhone.getContext().getSystemService(CarrierConfigManager.class);
+        long[] dataStallRecoveryTimersArray = new long[] {1, 1, 1};
+        boolean[] dataStallRecoveryStepsArray = new boolean[] {false, false, false, false};
+        doReturn(dataStallRecoveryTimersArray)
+                .when(mDataConfigManager)
+                .getDataStallRecoveryDelayMillis();
+        doReturn(dataStallRecoveryStepsArray)
+                .when(mDataConfigManager)
+                .getDataStallRecoveryShouldSkipArray();
+        doReturn(mSST).when(mPhone).getServiceStateTracker();
         doAnswer(
                 invocation -> {
                     ((Runnable) invocation.getArguments()[0]).run();
@@ -66,12 +71,13 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
                 })
                 .when(mDataStallRecoveryManagerCallback)
                 .invokeFromExecutor(any(Runnable.class));
+        doReturn("").when(mSubscriptionController).getDataEnabledOverrideRules(anyInt());
 
         mDataStallRecoveryManager =
                 new DataStallRecoveryManager(
                         mPhone,
                         mDataNetworkController,
-                        mDataServiceManager,
+                        mMockedWwanDataServiceManager,
                         mTestableLooper.getLooper(),
                         mDataStallRecoveryManagerCallback);
         logd("DataStallRecoveryManagerTest -Setup!");
@@ -87,9 +93,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
                 ArgumentCaptor.forClass(DataNetworkControllerCallback.class);
         verify(mDataNetworkController)
                 .registerDataNetworkControllerCallback(
-                        any(Executor.class),
-                        dataNetworkControllerCallbackCaptor.capture(),
-                        eq(false));
+                        dataNetworkControllerCallbackCaptor.capture());
         DataNetworkControllerCallback dataNetworkControllerCallback =
                 dataNetworkControllerCallbackCaptor.getValue();
         dataNetworkControllerCallback.onInternetDataNetworkValidationStatusChanged(
@@ -104,10 +108,8 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
 
         logd("Sending validation failed callback");
         sendValidationFailedCallback();
-        processAllMessages();
-        moveTimeForward(180000);
+        processAllFutureMessages();
 
-        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(2);
         verify(mDataStallRecoveryManagerCallback).onDataStallReestablishInternet();
     }
 
@@ -119,10 +121,9 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
 
         logd("Sending validation failed callback");
         sendValidationFailedCallback();
-        processAllMessages();
-        moveTimeForward(180000);
+        processAllFutureMessages();
 
-        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(3);
+        verify(mSST, times(1)).powerOffRadioSafely();
     }
 
     @Test
@@ -134,10 +135,9 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
         logd("Sending validation failed callback");
         sendValidationFailedCallback();
 
-        processAllMessages();
-        moveTimeForward(180000);
+        processAllFutureMessages();
 
-        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(0);
+        verify(mPhone, times(1)).rebootModem(any());
     }
 
     @Test
@@ -150,8 +150,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
         logd("Sending validation failed callback");
         sendValidationFailedCallback();
 
-        processAllMessages();
-        moveTimeForward(180000);
+        processAllFutureMessages();
 
         assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(0);
     }
@@ -166,8 +165,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
         logd("Sending validation failed callback");
         sendValidationFailedCallback();
 
-        processAllMessages();
-        moveTimeForward(180000);
+        processAllFutureMessages();
 
         assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(2);
     }

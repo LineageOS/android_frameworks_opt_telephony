@@ -2198,6 +2198,13 @@ public class TelephonyMetrics {
             cq.rtpInactivityDetected = callQuality.isRtpInactivityDetected();
             cq.rxSilenceDetected = callQuality.isIncomingSilenceDetectedAtCallSetup();
             cq.txSilenceDetected = callQuality.isOutgoingSilenceDetectedAtCallSetup();
+            cq.voiceFrames = callQuality.getNumVoiceFrames();
+            cq.noDataFrames = callQuality.getNumNoDataFrames();
+            cq.rtpDroppedPackets = callQuality.getNumDroppedRtpPackets();
+            cq.minPlayoutDelayMillis = callQuality.getMinPlayoutDelayMillis();
+            cq.maxPlayoutDelayMillis = callQuality.getMaxPlayoutDelayMillis();
+            cq.rxRtpSidPackets = callQuality.getNumRtpSidPacketsReceived();
+            cq.rtpDuplicatePackets = callQuality.getNumRtpDuplicatePackets();
         }
         return cq;
     }

@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_DATA_CALL_LIST_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_KEEPALIVE_STATUS;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_PCO_DATA;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SLICING_CONFIG_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UNTHROTTLE_APN;
 
 import android.hardware.radio.data.IRadioDataIndication;
@@ -26,6 +27,8 @@ import android.os.AsyncResult;
 import android.os.RemoteException;
 import android.telephony.PcoData;
 import android.telephony.data.DataCallResponse;
+import android.telephony.data.DataProfile;
+import android.telephony.data.NetworkSlicingConfig;
 
 import com.android.internal.telephony.data.KeepaliveStatus;
 
@@ -95,14 +98,30 @@ public class DataIndication extends IRadioDataIndication.Stub {
     /**
      * Stop throttling calls to setupDataCall for the given APN.
      * @param indicationType Type of radio indication
-     * @param apn APN to unthrottle
+     * @param dpi DataProfileInfo associated with the APN to unthrottle
      * @throws RemoteException
      */
-    public void unthrottleApn(int indicationType, String apn) throws RemoteException {
+    public void unthrottleApn(int indicationType, android.hardware.radio.data.DataProfileInfo dpi)
+            throws RemoteException {
         mRil.processIndication(RIL.DATA_SERVICE, indicationType);
+        DataProfile response = RILUtils.convertToDataProfile(dpi);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_UNTHROTTLE_APN, apn);
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_UNTHROTTLE_APN, response);
 
-        mRil.mApnUnthrottledRegistrants.notifyRegistrants(new AsyncResult(null, apn, null));
+        mRil.mApnUnthrottledRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
+    }
+
+    /**
+     * Current slicing configuration including URSP rules and NSSAIs
+     * (configured, allowed and rejected).
+     * @param indicationType Type of radio indication
+     * @param slicingConfig Current slicing configuration
+     */
+    public void slicingConfigChanged(int indicationType,
+            android.hardware.radio.data.SlicingConfig slicingConfig) throws RemoteException {
+        mRil.processIndication(RIL.DATA_SERVICE, indicationType);
+        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_SLICING_CONFIG_CHANGED, slicingConfig);
+        NetworkSlicingConfig ret = RILUtils.convertHalSlicingConfig(slicingConfig);
+        mRil.mApnUnthrottledRegistrants.notifyRegistrants(new AsyncResult(null, ret, null));
     }
 }

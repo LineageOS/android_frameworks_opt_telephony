@@ -54,6 +54,10 @@ public class AdnCapacity implements Parcelable {
         mMaxAnrLength = maxAnrLength;
     }
 
+    public AdnCapacity() {
+        this(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    }
+
     public int getMaxAdnCount() {
         return mMaxAdnCount;
     }
@@ -96,6 +100,14 @@ public class AdnCapacity implements Parcelable {
 
     public boolean isSimFull() {
         return mMaxAdnCount == mUsedAdnCount;
+    }
+
+    public boolean isSimEmpty() {
+        return mUsedAdnCount == 0;
+    }
+
+    public boolean isSimValid() {
+        return mMaxAdnCount > 0;
     }
 
     public static final Parcelable.Creator<AdnCapacity> CREATOR

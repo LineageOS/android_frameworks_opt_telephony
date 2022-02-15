@@ -56,6 +56,7 @@ import android.telephony.RadioAccessFamily;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.SimDisplayNameSource;
+import android.telephony.SubscriptionManager.UsageSetting;
 import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
@@ -73,6 +74,7 @@ import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.data.DataEnabledOverride;
+import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCard;
@@ -588,12 +590,17 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.GROUP_UUID));
         int profileClass = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.PROFILE_CLASS));
+        int portIndex = cursor.getInt(cursor.getColumnIndexOrThrow(
+                SubscriptionManager.PORT_INDEX));
         int subType = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.SUBSCRIPTION_TYPE));
         String groupOwner = getOptionalStringFromCursor(cursor, SubscriptionManager.GROUP_OWNER,
                 /*defaultVal*/ null);
         boolean areUiccApplicationsEnabled = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.UICC_APPLICATIONS_ENABLED)) == 1;
+
+        int usageSetting = cursor.getInt(cursor.getColumnIndexOrThrow(
+                SubscriptionManager.USAGE_SETTING));
 
         if (VDBG) {
             String iccIdToPrint = SubscriptionInfo.givePrintableIccid(iccId);
@@ -605,11 +612,13 @@ public class SubscriptionController extends ISub.Stub {
                     + " countIso:" + countryIso + " isEmbedded:"
                     + isEmbedded + " accessRules:" + Arrays.toString(accessRules)
                     + " carrierConfigAccessRules: " + Arrays.toString(carrierConfigAccessRules)
-                    + " cardId:" + cardIdToPrint + " publicCardId:" + publicCardId
+                    + " cardId:" + cardIdToPrint + " portIndex:" + portIndex
+                    + " publicCardId:" + publicCardId
                     + " isOpportunistic:" + isOpportunistic + " groupUUID:" + groupUUID
                     + " profileClass:" + profileClass + " subscriptionType: " + subType
                     + " carrierConfigAccessRules:" + carrierConfigAccessRules
-                    + " areUiccApplicationsEnabled: " + areUiccApplicationsEnabled);
+                    + " areUiccApplicationsEnabled: " + areUiccApplicationsEnabled
+                    + " usageSetting: " + usageSetting);
         }
 
         // If line1number has been set to a different number, use it instead.
@@ -617,11 +626,14 @@ public class SubscriptionController extends ISub.Stub {
         if (!TextUtils.isEmpty(line1Number) && !line1Number.equals(number)) {
             number = line1Number;
         }
+        // FIXME(b/210771052): constructing a complete SubscriptionInfo requires a port index,
+        // but the port index isn't available here. Should it actually be part of SubscriptionInfo?
         SubscriptionInfo info = new SubscriptionInfo(id, iccId, simSlotIndex, displayName,
                 carrierName, nameSource, iconTint, number, dataRoaming, /* icon= */ null,
                 mcc, mnc, countryIso, isEmbedded, accessRules, cardId, publicCardId,
                 isOpportunistic, groupUUID, /* isGroupDisabled= */ false , carrierId, profileClass,
-                subType, groupOwner, carrierConfigAccessRules, areUiccApplicationsEnabled);
+                subType, groupOwner, carrierConfigAccessRules, areUiccApplicationsEnabled,
+                portIndex, usageSetting);
         info.setAssociatedPlmns(ehplmns, hplmns);
         return info;
     }
@@ -1255,7 +1267,7 @@ public class SubscriptionController extends ISub.Stub {
             if (i > 0) {
                 whereClause.append(",");
             }
-            whereClause.append("\"").append(embeddedIccids[i]).append("\"");
+            whereClause.append("'").append(embeddedIccids[i]).append("'");
         }
         whereClause.append(")");
 
@@ -1366,7 +1378,8 @@ public class SubscriptionController extends ISub.Stub {
             Cursor cursor = resolver.query(SubscriptionManager.CONTENT_URI,
                     new String[]{SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID,
                             SubscriptionManager.SIM_SLOT_INDEX, SubscriptionManager.NAME_SOURCE,
-                            SubscriptionManager.ICC_ID, SubscriptionManager.CARD_ID},
+                            SubscriptionManager.ICC_ID, SubscriptionManager.CARD_ID,
+                            SubscriptionManager.PORT_INDEX},
                     selection, args, null);
 
             boolean setDisplayName = false;
@@ -1393,6 +1406,7 @@ public class SubscriptionController extends ISub.Stub {
                         int nameSource = cursor.getInt(2);
                         String oldIccId = cursor.getString(3);
                         String oldCardId = cursor.getString(4);
+                        int oldPortIndex = cursor.getInt(5);
                         ContentValues value = new ContentValues();
 
                         if (slotIndex != oldSimInfoId) {
@@ -1409,6 +1423,15 @@ public class SubscriptionController extends ISub.Stub {
                             String cardId = card.getCardId();
                             if (cardId != null && cardId != oldCardId) {
                                 value.put(SubscriptionManager.CARD_ID, cardId);
+                            }
+                        }
+
+                        //update portIndex for pSim
+                        UiccSlot slot = mUiccController.getUiccSlotForPhone(slotIndex);
+                        if (slot != null && !slot.isEuicc()) {
+                            int portIndex = slot.getPortIndexFromIccId(uniqueId);
+                            if (portIndex != oldPortIndex) {
+                                value.put(SubscriptionManager.PORT_INDEX, portIndex);
                             }
                         }
 
@@ -1729,10 +1752,17 @@ public class SubscriptionController extends ISub.Stub {
                     value.put(SubscriptionManager.CARD_ID, cardId);
                 }
             }
+            UiccSlot slot = mUiccController.getUiccSlotForPhone(slotIndex);
+            if (slot != null) {
+                value.put(SubscriptionManager.PORT_INDEX, slot.getPortIndexFromIccId(uniqueId));
+            }
         }
         value.put(SubscriptionManager.ALLOWED_NETWORK_TYPES,
                 "user=" + RadioAccessFamily.getRafFromNetworkType(
                         RILConstants.PREFERRED_NETWORK_MODE));
+
+        value.put(SubscriptionManager.USAGE_SETTING,
+                SubscriptionManager.USAGE_SETTING_UNKNOWN);
 
         Uri uri = resolver.insert(SubscriptionManager.CONTENT_URI, value);
 
@@ -3034,9 +3064,9 @@ public class SubscriptionController extends ISub.Stub {
     private void validateSubId(int subId) {
         if (DBG) logd("validateSubId subId: " + subId);
         if (!SubscriptionManager.isValidSubscriptionId(subId)) {
-            throw new RuntimeException("Invalid sub id passed as parameter");
+            throw new IllegalArgumentException("Invalid sub id passed as parameter");
         } else if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
-            throw new RuntimeException("Default sub id passed as parameter");
+            throw new IllegalArgumentException("Default sub id passed as parameter");
         }
     }
 
@@ -3224,6 +3254,7 @@ public class SubscriptionController extends ISub.Stub {
             case SubscriptionManager.CROSS_SIM_CALLING_ENABLED:
             case SubscriptionManager.VOIMS_OPT_IN_STATUS:
             case SubscriptionManager.NR_ADVANCED_CALLING_ENABLED:
+            case SubscriptionManager.USAGE_SETTING:
                 value.put(propKey, Integer.parseInt(propValue));
                 break;
             case SubscriptionManager.ALLOWED_NETWORK_TYPES:
@@ -3309,6 +3340,7 @@ public class SubscriptionController extends ISub.Stub {
                         case SubscriptionManager.NR_ADVANCED_CALLING_ENABLED:
                         case SimInfo.COLUMN_PHONE_NUMBER_SOURCE_CARRIER:
                         case SimInfo.COLUMN_PHONE_NUMBER_SOURCE_IMS:
+                        case SubscriptionManager.USAGE_SETTING:
                             resultValue = cursor.getString(0);
                             break;
                         default:
@@ -3896,9 +3928,9 @@ public class SubscriptionController extends ISub.Stub {
         selection.append(SubscriptionManager.ICC_ID);
         selection.append(" IN (");
         for (int i = 0; i < iccIds.length - 1; i++) {
-            selection.append("\"" + iccIds[i] + "\", ");
+            selection.append("'" + iccIds[i] + "', ");
         }
-        selection.append("\"" + iccIds[iccIds.length - 1] + "\"");
+        selection.append("'" + iccIds[iccIds.length - 1] + "'");
         selection.append(")");
 
         return selection.toString();
@@ -4648,6 +4680,49 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
+     * Set the Usage Setting for this subscription.
+     *
+     * @param usageSetting the cellular usage setting
+     * @param subId the unique SubscriptionInfo index in database
+     * @param callingPackage the package making the IPC
+     * @return the number of records updated
+     *
+     * @throws SecurityException if doesn't have required permission.
+     */
+    @Override
+    public int setUsageSetting(@UsageSetting int usageSetting, int subId, String callingPackage) {
+        try {
+            TelephonyPermissions.enforceCallingOrSelfModifyPermissionOrCarrierPrivilege(
+                    mContext, subId, callingPackage);
+        } catch (SecurityException e) {
+            enforceCarrierPrivilegeOnInactiveSub(subId, callingPackage,
+                    "Caller requires permission on sub " + subId);
+        }
+
+        if (usageSetting < SubscriptionManager.USAGE_SETTING_DEFAULT
+                || usageSetting > SubscriptionManager.USAGE_SETTING_DATA_CENTRIC) {
+            throw new IllegalArgumentException("setUsageSetting: Invalid usage setting: "
+                    + usageSetting);
+        }
+
+        final long token = Binder.clearCallingIdentity();
+        int ret;
+        try {
+            ret = setSubscriptionProperty(subId, SubscriptionManager.USAGE_SETTING,
+                    String.valueOf(usageSetting));
+
+            // ret is the number of records updated in the DB, which should always be 1.
+            // TODO(b/205027930): move this check prior to the database mutation request
+            if (ret != 1) throw new IllegalArgumentException(
+                    "Invalid SubscriptionId for setUsageSetting");
+        } finally {
+            Binder.restoreCallingIdentity(token);
+            // FIXME(b/205726099) return void
+        }
+        return ret;
+    }
+
+    /**
      * @hide
      */
     private void setGlobalSetting(String name, int value) {
@@ -4695,7 +4770,7 @@ public class SubscriptionController extends ISub.Stub {
     /**
      * @hide
      */
-    protected static void invalidateActiveDataSubIdCaches() {
+    public static void invalidateActiveDataSubIdCaches() {
         if (sCachingEnabled) {
             SubscriptionManager.invalidateActiveDataSubIdCaches();
         }

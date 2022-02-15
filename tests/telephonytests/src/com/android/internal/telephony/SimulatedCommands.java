@@ -43,6 +43,7 @@ import android.telephony.IccOpenLogicalChannelResponse;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkScanRequest;
+import android.telephony.PcoData;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SignalThresholdInfo;
@@ -2335,10 +2336,12 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void registerForPcoData(Handler h, int what, Object obj) {
+        mPcoDataRegistrants.addUnique(h, what, obj);
     }
 
     @Override
     public void unregisterForPcoData(Handler h) {
+        mPcoDataRegistrants.remove(h);
     }
 
     @Override
@@ -2491,12 +2494,24 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void updateSimPhonebookRecord(SimPhonebookRecord phonebookRecord, Message result) {
-        resultSuccess(result, new int[]{phonebookRecord.getRecordIndex()});
+        int recordId = phonebookRecord.getRecordId();
+        // Based on design, the record ID starts from 1.
+        // So if the record ID passed from upper layer is 0, it indicates to insert one new record
+        // without record ID specific.
+        if (recordId == 0) {
+            recordId = 1; // hack code for unit test
+        }
+        resultSuccess(result, new int[]{recordId});
         notifySimPhonebookChanged();
     }
 
     @VisibleForTesting
     public void notifySimPhonebookChanged() {
         mSimPhonebookChangedRegistrants.notifyRegistrants();
+    }
+
+    public void triggerPcoData(int cid, String bearerProto, int pcoId, byte[] contents) {
+        PcoData response = new PcoData(cid, bearerProto, pcoId, contents);
+        mPcoDataRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
     }
 }

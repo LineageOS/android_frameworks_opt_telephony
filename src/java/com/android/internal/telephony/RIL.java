@@ -17,7 +17,6 @@
 package com.android.internal.telephony;
 
 import static com.android.internal.telephony.RILConstants.*;
-import static com.android.internal.util.Preconditions.checkNotNull;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -95,6 +94,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -245,6 +245,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private final SparseArray<AtomicLong> mServiceCookies = new SparseArray<>();
     private final RadioProxyDeathRecipient mRadioProxyDeathRecipient;
     final RilHandler mRilHandler;
+    private MockModem mMockModem;
 
     // Thread-safe HashMap to map from RIL_REQUEST_XXX constant to HalVersion.
     // This is for Radio HAL Fallback Compatibility feature. When a RIL request
@@ -258,6 +259,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     static final int EVENT_ACK_WAKE_LOCK_TIMEOUT = 4;
     static final int EVENT_BLOCKING_RESPONSE_TIMEOUT = 5;
     static final int EVENT_RADIO_PROXY_DEAD = 6;
+    static final int EVENT_AIDL_PROXY_DEAD = 7;
 
     //***** Constants
 
@@ -353,6 +355,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         resetProxyAndRequestList(service);
                     }
                     break;
+
+                case EVENT_AIDL_PROXY_DEAD:
+                    int aidlService = msg.arg1;
+                    AtomicLong obj = (AtomicLong) msg.obj;
+                    riljLog("handleMessage: EVENT_AIDL_PROXY_DEAD cookie = " + msg.obj
+                            + ", service = " + serviceToString(aidlService) + ", cookie = "
+                            + mServiceCookies.get(aidlService));
+                    if (obj.get() == mServiceCookies.get(aidlService).get()) {
+                        resetProxyAndRequestList(aidlService);
+                    }
+                    break;
             }
         }
     }
@@ -425,7 +438,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         @Override
         public void binderDied() {
             riljLog("Service " + serviceToString(mService) + " has died.");
-            mRilHandler.sendMessage(mRilHandler.obtainMessage(EVENT_RADIO_PROXY_DEAD, mService,
+            mRilHandler.sendMessage(mRilHandler.obtainMessage(EVENT_AIDL_PROXY_DEAD, mService,
                     0 /* ignored arg2 */, mServiceCookies.get(mService)));
             unlinkToDeath();
         }
@@ -456,6 +469,96 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    /**
+     * Request to enable/disable the mock modem service.
+     * This is invoked from shell commands during CTS testing only.
+     *
+     * @param serviceName the service name we want to bind to
+     */
+    public boolean setModemService(String serviceName) {
+        boolean serviceBound = true;
+
+        if (serviceName != null) {
+            riljLog("Binding to MockModemService");
+            mMockModem = null;
+
+            mMockModem = new MockModem(mContext, serviceName, mPhoneId);
+            if (mMockModem == null) {
+                riljLoge("MockModem create fail.");
+                return false;
+            }
+
+            // Disable HIDL service
+            if (mRadioProxy != null) {
+                riljLog("Disable HIDL service");
+                mDisabledRadioServices.get(RADIO_SERVICE).add(mPhoneId);
+            }
+
+            mMockModem.bindAllMockModemService();
+
+            for (int service = MIN_SERVICE_IDX; service <= MAX_SERVICE_IDX; service++) {
+                if (service == RADIO_SERVICE) continue;
+
+                int retryCount = 0;
+                IBinder binder;
+                do {
+                    binder = mMockModem.getServiceBinder(service);
+
+                    retryCount++;
+                    if (binder == null) {
+                        riljLog("Retry(" + retryCount + ") Service " + serviceToString(service));
+                        try {
+                            Thread.sleep(MockModem.BINDER_RETRY_MILLIS);
+                        } catch (InterruptedException e) {
+                        }
+                    }
+                } while ((binder == null) && (retryCount < MockModem.BINDER_MAX_RETRY));
+
+                if (binder == null) {
+                    riljLoge("Service " + serviceToString(service) + " bind fail");
+                    serviceBound = false;
+                    break;
+                }
+            }
+
+            if (serviceBound) {
+                for (int service = MIN_SERVICE_IDX; service <= MAX_SERVICE_IDX; service++) {
+                    resetProxyAndRequestList(service);
+                }
+            }
+        }
+
+        if ((serviceName == null) || (!serviceBound)) {
+            if (serviceBound) riljLog("Unbinding to MockModemService");
+
+            if (mDisabledRadioServices.get(RADIO_SERVICE).contains(mPhoneId)) {
+                mDisabledRadioServices.get(RADIO_SERVICE).clear();
+            }
+
+            if (mMockModem != null) {
+                mRadioVersion = RADIO_HAL_VERSION_UNKNOWN;
+                for (int service = MIN_SERVICE_IDX; service <= MAX_SERVICE_IDX; service++) {
+                    mMockModem.unbindMockModemService(service);
+                    resetProxyAndRequestList(service);
+                }
+                mMockModem = null;
+            }
+        }
+
+        return serviceBound;
+    }
+
+    /**
+     * Get current bound service in Radio Module
+     */
+    public String getModemService() {
+        if (mMockModem != null) {
+            return mMockModem.getServiceName();
+        } else {
+            return "default";
+        }
+    }
+
     /** Set a radio HAL fallback compatibility override. */
     @VisibleForTesting
     public void setCompatVersion(int rilRequest, @NonNull HalVersion halVersion) {
@@ -478,6 +581,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     /** Returns a {@link IRadio} instance or null if the service is not available. */
     @VisibleForTesting
     public synchronized IRadio getRadioProxy(Message result) {
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_0)) return null;
         if (!SubscriptionManager.isValidPhoneId(mPhoneId)) return null;
         if (!mIsCellularSupported) {
             if (RILJ_LOGV) riljLog("getRadioProxy: Not calling getService(): wifi-only");
@@ -645,9 +749,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 IBinder binder;
                 switch (service) {
                     case DATA_SERVICE:
-                        binder = ServiceManager.waitForDeclaredService(
-                                android.hardware.radio.data.IRadioData.DESCRIPTOR + "/"
-                                        + HIDL_SERVICE_NAME[mPhoneId]);
+                        if (mMockModem == null) {
+                            binder = ServiceManager.waitForDeclaredService(
+                                    android.hardware.radio.data.IRadioData.DESCRIPTOR + "/"
+                                            + HIDL_SERVICE_NAME[mPhoneId]);
+                        } else {
+                            binder = mMockModem.getServiceBinder(DATA_SERVICE);
+                        }
                         if (binder != null) {
                             mRadioVersion = RADIO_HAL_VERSION_2_0;
                             ((RadioDataProxy) serviceProxy).setAidl(mRadioVersion,
@@ -656,10 +764,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         }
                         break;
                     case MESSAGING_SERVICE:
-                        binder = ServiceManager.waitForDeclaredService(
-                                android.hardware.radio.messaging.IRadioMessaging.DESCRIPTOR + "/"
-                                        + HIDL_SERVICE_NAME[mPhoneId]);
-                        mRadioVersion = RADIO_HAL_VERSION_2_0;
+                        if (mMockModem == null) {
+                            binder = ServiceManager.waitForDeclaredService(
+                                    android.hardware.radio.messaging.IRadioMessaging.DESCRIPTOR
+                                            + "/" + HIDL_SERVICE_NAME[mPhoneId]);
+                        } else {
+                            binder = mMockModem.getServiceBinder(MESSAGING_SERVICE);
+                        }
                         if (binder != null) {
                             mRadioVersion = RADIO_HAL_VERSION_2_0;
                             ((RadioMessagingProxy) serviceProxy).setAidl(mRadioVersion,
@@ -668,10 +779,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         }
                         break;
                     case MODEM_SERVICE:
-                        binder = ServiceManager.waitForDeclaredService(
-                                android.hardware.radio.modem.IRadioModem.DESCRIPTOR + "/"
-                                        + HIDL_SERVICE_NAME[mPhoneId]);
-                        mRadioVersion = RADIO_HAL_VERSION_2_0;
+                        if (mMockModem == null) {
+                            binder = ServiceManager.waitForDeclaredService(
+                                    android.hardware.radio.modem.IRadioModem.DESCRIPTOR + "/"
+                                            + HIDL_SERVICE_NAME[mPhoneId]);
+                        } else {
+                            binder = mMockModem.getServiceBinder(MODEM_SERVICE);
+                        }
                         if (binder != null) {
                             mRadioVersion = RADIO_HAL_VERSION_2_0;
                             ((RadioModemProxy) serviceProxy).setAidl(mRadioVersion,
@@ -680,10 +794,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         }
                         break;
                     case NETWORK_SERVICE:
-                        binder = ServiceManager.waitForDeclaredService(
-                                android.hardware.radio.network.IRadioNetwork.DESCRIPTOR + "/"
-                                        + HIDL_SERVICE_NAME[mPhoneId]);
-                        mRadioVersion = RADIO_HAL_VERSION_2_0;
+                        if (mMockModem == null) {
+                            binder = ServiceManager.waitForDeclaredService(
+                                    android.hardware.radio.network.IRadioNetwork.DESCRIPTOR + "/"
+                                            + HIDL_SERVICE_NAME[mPhoneId]);
+                        } else {
+                            binder = mMockModem.getServiceBinder(NETWORK_SERVICE);
+                        }
                         if (binder != null) {
                             mRadioVersion = RADIO_HAL_VERSION_2_0;
                             ((RadioNetworkProxy) serviceProxy).setAidl(mRadioVersion,
@@ -692,10 +809,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         }
                         break;
                     case SIM_SERVICE:
-                        binder = ServiceManager.waitForDeclaredService(
-                                android.hardware.radio.sim.IRadioSim.DESCRIPTOR + "/"
-                                        + HIDL_SERVICE_NAME[mPhoneId]);
-                        mRadioVersion = RADIO_HAL_VERSION_2_0;
+                        if (mMockModem == null) {
+                            binder = ServiceManager.waitForDeclaredService(
+                                    android.hardware.radio.sim.IRadioSim.DESCRIPTOR + "/"
+                                            + HIDL_SERVICE_NAME[mPhoneId]);
+                        } else {
+                            binder = mMockModem.getServiceBinder(SIM_SERVICE);
+                        }
                         if (binder != null) {
                             mRadioVersion = RADIO_HAL_VERSION_2_0;
                             ((RadioSimProxy) serviceProxy).setAidl(mRadioVersion,
@@ -704,10 +824,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         }
                         break;
                     case VOICE_SERVICE:
-                        binder = ServiceManager.waitForDeclaredService(
-                                android.hardware.radio.voice.IRadioVoice.DESCRIPTOR + "/"
-                                        + HIDL_SERVICE_NAME[mPhoneId]);
-                        mRadioVersion = RADIO_HAL_VERSION_2_0;
+                        if (mMockModem == null) {
+                            binder = ServiceManager.waitForDeclaredService(
+                                    android.hardware.radio.voice.IRadioVoice.DESCRIPTOR + "/"
+                                            + HIDL_SERVICE_NAME[mPhoneId]);
+                        } else {
+                            binder = mMockModem.getServiceBinder(VOICE_SERVICE);
+                        }
                         if (binder != null) {
                             mRadioVersion = RADIO_HAL_VERSION_2_0;
                             ((RadioVoiceProxy) serviceProxy).setAidl(mRadioVersion,
@@ -717,7 +840,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         break;
                 }
 
-                if (serviceProxy.isEmpty()) {
+                if (serviceProxy.isEmpty() && mRadioVersion.less(RADIO_HAL_VERSION_2_0)) {
                     try {
                         mRadioVersion = RADIO_HAL_VERSION_1_6;
                         serviceProxy.setHidl(mRadioVersion,
@@ -727,7 +850,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     }
                 }
 
-                if (serviceProxy.isEmpty()) {
+                if (serviceProxy.isEmpty() && mRadioVersion.less(RADIO_HAL_VERSION_2_0)) {
                     try {
                         mRadioVersion = RADIO_HAL_VERSION_1_5;
                         serviceProxy.setHidl(mRadioVersion,
@@ -737,7 +860,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     }
                 }
 
-                if (serviceProxy.isEmpty()) {
+                if (serviceProxy.isEmpty() && mRadioVersion.less(RADIO_HAL_VERSION_2_0)) {
                     try {
                         mRadioVersion = RADIO_HAL_VERSION_1_4;
                         serviceProxy.setHidl(mRadioVersion,
@@ -747,7 +870,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     }
                 }
 
-                if (serviceProxy.isEmpty()) {
+                if (serviceProxy.isEmpty() && mRadioVersion.less(RADIO_HAL_VERSION_2_0)) {
                     try {
                         mRadioVersion = RADIO_HAL_VERSION_1_3;
                         serviceProxy.setHidl(mRadioVersion,
@@ -757,7 +880,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     }
                 }
 
-                if (serviceProxy.isEmpty()) {
+                if (serviceProxy.isEmpty() && mRadioVersion.less(RADIO_HAL_VERSION_2_0)) {
                     try {
                         mRadioVersion = RADIO_HAL_VERSION_1_2;
                         serviceProxy.setHidl(mRadioVersion,
@@ -767,7 +890,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     }
                 }
 
-                if (serviceProxy.isEmpty()) {
+                if (serviceProxy.isEmpty() && mRadioVersion.less(RADIO_HAL_VERSION_2_0)) {
                     try {
                         mRadioVersion = RADIO_HAL_VERSION_1_1;
                         serviceProxy.setHidl(mRadioVersion,
@@ -777,7 +900,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     }
                 }
 
-                if (serviceProxy.isEmpty()) {
+                if (serviceProxy.isEmpty() && mRadioVersion.less(RADIO_HAL_VERSION_2_0)) {
                     try {
                         mRadioVersion = RADIO_HAL_VERSION_1_0;
                         serviceProxy.setHidl(mRadioVersion,
@@ -828,6 +951,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
                                 break;
                         }
                     } else {
+                        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+                            throw new AssertionError("serviceProxy shouldn't be HIDL with HAL 2.0");
+                        }
                         serviceProxy.getHidl().linkToDeath(mRadioProxyDeathRecipient,
                                 mServiceCookies.get(service).incrementAndGet());
                         serviceProxy.getHidl().setResponseFunctions(
@@ -901,6 +1027,14 @@ public class RIL extends BaseCommands implements CommandsInterface {
         mPhoneId = instanceId == null ? 0 : instanceId;
         if (isRadioBugDetectionEnabled()) {
             mRadioBugDetector = new RadioBugDetector(context, mPhoneId);
+        }
+        try {
+            if (isRadioVersion2_0()) mRadioVersion = RADIO_HAL_VERSION_2_0;
+        } catch (SecurityException ex) {
+            /* TODO(b/211920208): instead of the following workaround (guessing if we're in a test
+             * based on proxies being populated), mock ServiceManager to not throw
+             * SecurityException and return correct value based on what HAL we're testing. */
+            if (proxies == null) throw ex;
         }
 
         TelephonyManager tm = (TelephonyManager) context.getSystemService(
@@ -978,6 +1112,23 @@ public class RIL extends BaseCommands implements CommandsInterface {
         if (RILJ_LOGD) {
             riljLog("Radio HAL version: " + mRadioVersion);
         }
+    }
+
+    private boolean isRadioVersion2_0() {
+        final String[] serviceNames = new String[] {
+            android.hardware.radio.data.IRadioData.DESCRIPTOR,
+            android.hardware.radio.messaging.IRadioMessaging.DESCRIPTOR,
+            android.hardware.radio.modem.IRadioModem.DESCRIPTOR,
+            android.hardware.radio.network.IRadioNetwork.DESCRIPTOR,
+            android.hardware.radio.sim.IRadioSim.DESCRIPTOR,
+            android.hardware.radio.voice.IRadioVoice.DESCRIPTOR,
+        };
+        for (String serviceName : serviceNames) {
+            if (ServiceManager.isDeclared(serviceName + '/' + HIDL_SERVICE_NAME[mPhoneId])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isRadioBugDetectionEnabled() {
@@ -1885,9 +2036,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void sendUSSD(String ussd, Message result) {
-        RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
-        if (!messagingProxy.isEmpty()) {
+        RadioVoiceProxy voiceProxy =
+                getRadioServiceProxy(RadioVoiceProxy.class, result);
+        if (!voiceProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SEND_USSD, result, mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
@@ -1898,18 +2049,18 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                messagingProxy.sendUssd(rr.mSerial, RILUtils.convertNullToEmptyString(ussd));
+                voiceProxy.sendUssd(rr.mSerial, RILUtils.convertNullToEmptyString(ussd));
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "sendUSSD", e);
+                handleRadioProxyExceptionForRR(VOICE_SERVICE, "sendUssd", e);
             }
         }
     }
 
     @Override
     public void cancelPendingUssd(Message result) {
-        RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
-        if (!messagingProxy.isEmpty()) {
+        RadioVoiceProxy voiceProxy =
+                getRadioServiceProxy(RadioVoiceProxy.class, result);
+        if (!voiceProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_CANCEL_USSD, result, mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
@@ -1917,9 +2068,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                messagingProxy.cancelPendingUssd(rr.mSerial);
+                voiceProxy.cancelPendingUssd(rr.mSerial);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(MESSAGING_SERVICE, "cancelPendingUssd", e);
+                handleRadioProxyExceptionForRR(VOICE_SERVICE, "cancelPendingUssd", e);
             }
         }
     }
@@ -3093,7 +3244,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
-                        + " featureCode = " + featureCode);
+                        + " featureCode = " + Rlog.pii(RILJ_LOG_TAG, featureCode));
             }
 
             try {
@@ -4059,8 +4210,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void startLceService(int reportIntervalMs, boolean pullMode, Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-
         if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
             // We have a 1.2 or later radio, so the LCE 1.0 LCE service control path is unused.
             // Instead the LCE functionality is always-on and provides unsolicited indications.
@@ -4073,6 +4222,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             return;
         }
 
+        IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_START_LCE, result, mRILDefaultWorkSource);
 
@@ -4091,7 +4241,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void stopLceService(Message result) {
-        IRadio radioProxy = getRadioProxy(result);
         if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
             // We have a 1.2 or later radio, so the LCE 1.0 LCE service control is unused.
             // Instead the LCE functionality is always-on and provides unsolicited indications.
@@ -4104,6 +4253,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             return;
         }
 
+        IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_STOP_LCE, result, mRILDefaultWorkSource);
 
@@ -4173,8 +4323,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Deprecated
     @Override
     public void pullLceData(Message result) {
-        IRadio radioProxy = getRadioProxy(result);
-
         if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_2)) {
             // We have a 1.2 or later radio, so the LCE 1.0 LCE service control path is unused.
             // Instead the LCE functionality is always-on and provides unsolicited indications.
@@ -4187,6 +4335,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             return;
         }
 
+        IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
             RILRequest rr = obtainRequest(RIL_REQUEST_PULL_LCEDATA, result, mRILDefaultWorkSource);
 
@@ -4227,7 +4376,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setAllowedCarriers(CarrierRestrictionRules carrierRestrictionRules,
             Message result, WorkSource workSource) {
-        checkNotNull(carrierRestrictionRules, "Carrier restriction cannot be null.");
+        Objects.requireNonNull(carrierRestrictionRules, "Carrier restriction cannot be null.");
 
         RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
         if (!simProxy.isEmpty()) {
@@ -4381,7 +4530,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo,
             Message result) {
-        checkNotNull(imsiEncryptionInfo, "ImsiEncryptionInfo cannot be null.");
+        Objects.requireNonNull(imsiEncryptionInfo, "ImsiEncryptionInfo cannot be null.");
         RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
         if (simProxy.isEmpty()) return;
         if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_1)) {
@@ -4411,7 +4560,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void startNattKeepalive(int contextId, KeepalivePacketData packetData,
             int intervalMillis, Message result) {
-        checkNotNull(packetData, "KeepaliveRequest cannot be null.");
+        Objects.requireNonNull(packetData, "KeepaliveRequest cannot be null.");
         RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class, result);
         if (dataProxy.isEmpty()) return;
         if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_1)) {
@@ -4563,8 +4712,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public boolean canToggleUiccApplicationsEnablement() {
-        return getRadioProxy(null) != null && mRadioVersion
-                .greaterOrEqual(RADIO_HAL_VERSION_1_5);
+        return !getRadioServiceProxy(RadioSimProxy.class, null).isEmpty()
+                && mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_5);
     }
 
     @Override
@@ -4941,11 +5090,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
             rr = mRequestList.get(serial);
         }
         if (rr == null) {
-            Rlog.w(RIL.RILJ_LOG_TAG, "processRequestAck: Unexpected solicited ack response! "
+            Rlog.w(RILJ_LOG_TAG, "processRequestAck: Unexpected solicited ack response! "
                     + "serial: " + serial);
         } else {
             decrementWakeLock(rr);
-            if (RIL.RILJ_LOGD) {
+            if (RILJ_LOGD) {
                 riljLog(rr.serialString() + " Ack < " + RILUtils.requestToString(rr.mRequest));
             }
         }
@@ -4960,7 +5109,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @VisibleForTesting
     public RILRequest processResponse(RadioResponseInfo responseInfo) {
-        return processResponseInternal(responseInfo.serial, responseInfo.error, responseInfo.type);
+        return processResponseInternal(RADIO_SERVICE, responseInfo.serial, responseInfo.error,
+                responseInfo.type);
     }
 
     /**
@@ -4973,22 +5123,26 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @VisibleForTesting
     public RILRequest processResponse_1_6(
             android.hardware.radio.V1_6.RadioResponseInfo responseInfo) {
-        return processResponseInternal(responseInfo.serial, responseInfo.error, responseInfo.type);
+        return processResponseInternal(RADIO_SERVICE, responseInfo.serial, responseInfo.error,
+                responseInfo.type);
     }
 
     /**
      * This is a helper function for an AIDL RadioResponseInfo to be called when a RadioResponse
      * callback is called. It takes care of acks, wakelocks, and finds and returns RILRequest
      * corresponding to the response if one is found.
+     * @param service Radio service that received the response
      * @param responseInfo RadioResponseInfo received in response callback
      * @return RILRequest corresponding to the response
      */
     @VisibleForTesting
-    public RILRequest processResponse(android.hardware.radio.RadioResponseInfo responseInfo) {
-        return processResponseInternal(responseInfo.serial, responseInfo.error, responseInfo.type);
+    public RILRequest processResponse(int service,
+            android.hardware.radio.RadioResponseInfo responseInfo) {
+        return processResponseInternal(service, responseInfo.serial, responseInfo.error,
+                responseInfo.type);
     }
 
-    private RILRequest processResponseInternal(int serial, int error, int type) {
+    private RILRequest processResponseInternal(int service, int serial, int error, int type) {
         RILRequest rr;
 
         if (type == RadioResponseType.SOLICITED_ACK) {
@@ -5003,7 +5157,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     mRadioBugDetector.detectRadioBug(rr.mRequest, error);
                 }
                 if (RILJ_LOGD) {
-                    riljLog(rr.serialString() + " Ack < " + RILUtils.requestToString(rr.mRequest));
+                    riljLog(rr.serialString() + " Ack from " + serviceToString(service)
+                            + " < " + RILUtils.requestToString(rr.mRequest));
                 }
             }
             return rr;
@@ -5011,8 +5166,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         rr = findAndRemoveRequestFromList(serial);
         if (rr == null) {
-            Rlog.e(RIL.RILJ_LOG_TAG, "processResponse: Unexpected response! serial: " + serial
-                    + " error: " + error);
+            Rlog.e(RILJ_LOG_TAG, "processResponse: Unexpected response! serial: " + serial
+                    + " ,error: " + error);
             return null;
         }
 
@@ -5022,10 +5177,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
             mRadioBugDetector.detectRadioBug(rr.mRequest, error);
         }
         if (type == RadioResponseType.SOLICITED_ACK_EXP) {
-            sendAck(RADIO_SERVICE);
-            if (RIL.RILJ_LOGD) {
-                riljLog("Response received for " + rr.serialString() + " "
-                        + RILUtils.requestToString(rr.mRequest) + " Sending ack to ril.cpp");
+            sendAck(service);
+            if (RILJ_LOGD) {
+                riljLog("Response received from " + serviceToString(service) + " for "
+                        + rr.serialString() + " " + RILUtils.requestToString(rr.mRequest)
+                        + " Sending ack to ril.cpp");
             }
         } else {
             // ack sent for SOLICITED_ACK_EXP above; nothing to do for SOLICITED response
@@ -5177,7 +5333,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         // TODO: Remove rr and clean up acquireWakelock for response and ack
         RILRequest rr = RILRequest.obtain(RIL_RESPONSE_ACKNOWLEDGEMENT, null,
                 mRILDefaultWorkSource);
-        acquireWakeLock(rr, RIL.FOR_ACK_WAKELOCK);
+        acquireWakeLock(rr, FOR_ACK_WAKELOCK);
         if (service == RADIO_SERVICE) {
             IRadio radioProxy = getRadioProxy(null);
             if (radioProxy != null) {

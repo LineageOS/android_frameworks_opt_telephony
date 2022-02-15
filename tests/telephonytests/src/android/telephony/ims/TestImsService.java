@@ -47,12 +47,12 @@ public class TestImsService extends android.telephony.ims.ImsService {
     }
 
     @Override
-    public MmTelFeature createMmTelFeature(int slotId) {
+    public MmTelFeature createMmTelFeatureForSubscription(int slotId, int subId) {
         return mSpyMmTelFeature;
     }
 
     @Override
-    public RcsFeature createRcsFeature(int slotId) {
+    public RcsFeature createRcsFeatureForSubscription(int slotId, int subId) {
         return null;
     }
 

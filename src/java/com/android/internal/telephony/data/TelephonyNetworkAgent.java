@@ -20,7 +20,6 @@ import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.net.KeepalivePacketData;
-import android.net.LinkProperties;
 import android.net.NetworkAgent;
 import android.net.NetworkAgentConfig;
 import android.net.NetworkProvider;
@@ -57,6 +56,12 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
 
     /** This is the id from {@link NetworkAgent#register()}. */
     private final int mId;
+
+    /**
+     * Indicates if this network agent is abandoned. if {@code true}, it ignores the
+     * @link NetworkAgent#onNetworkUnwanted()} calls from connectivity service.
+     */
+    private boolean mAbandoned = false;
 
     /**
      * The callbacks that are used to pass information to {@link DataNetwork} and
@@ -145,8 +150,8 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
             @NonNull NetworkAgentConfig config, @NonNull NetworkProvider provider,
             @NonNull TelephonyNetworkAgentCallback callback) {
         super(phone.getContext(), looper, "TelephonyNetworkAgent",
-                dataNetwork.getNetworkCapabilities(), new LinkProperties(), score, config,
-                provider);
+                dataNetwork.getNetworkCapabilities(), dataNetwork.getLinkProperties(), score,
+                config, provider);
         register();
         mDataNetwork = dataNetwork;
         mTelephonyNetworkAgentCallbacks.add(callback);
@@ -163,6 +168,10 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
      */
     @Override
     public void onNetworkUnwanted() {
+        if (mAbandoned) {
+            log("The agent is already abandoned. Ignored onNetworkUnwanted.");
+            return;
+        }
         mDataNetwork.tearDown(DataNetwork.TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED);
     }
 
@@ -186,6 +195,10 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
     @Override
     public void onValidationStatus(@android.telephony.Annotation.ValidationStatus int status,
             @Nullable Uri redirectUri) {
+        if (mAbandoned) {
+            log("The agent is already abandoned. Ignored onValidationStatus.");
+            return;
+        }
         mTelephonyNetworkAgentCallbacks.forEach(callback -> callback.invokeFromExecutor(
                 () -> callback.onValidationStatus(status, redirectUri)));
     }
@@ -212,6 +225,10 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
     @Override
     public void onStartSocketKeepalive(int slot, @NonNull Duration interval,
             @NonNull KeepalivePacketData packet) {
+        if (mAbandoned) {
+            log("The agent is already abandoned. Ignored onStartSocketKeepalive.");
+            return;
+        }
         mTelephonyNetworkAgentCallbacks.forEach(callback -> callback.invokeFromExecutor(
                 () -> callback.onStartSocketKeepalive(slot, interval, packet)));
     }
@@ -224,6 +241,10 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
      */
     @Override
     public void onStopSocketKeepalive(int slot) {
+        if (mAbandoned) {
+            log("The agent is already abandoned. Ignored onStopSocketKeepalive.");
+            return;
+        }
         mTelephonyNetworkAgentCallbacks.forEach(callback -> callback.invokeFromExecutor(
                 () -> callback.onStopSocketKeepalive(slot)));
     }
@@ -236,6 +257,10 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
      */
     @Override
     public void onQosCallbackRegistered(final int qosCallbackId, final @NonNull QosFilter filter) {
+        if (mAbandoned) {
+            log("The agent is already abandoned. Ignored onQosCallbackRegistered.");
+            return;
+        }
         mTelephonyNetworkAgentCallbacks.forEach(callback -> callback.invokeFromExecutor(
                 () -> callback.onQosCallbackRegistered(qosCallbackId, filter)));
     }
@@ -250,6 +275,10 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
      */
     @Override
     public void onQosCallbackUnregistered(final int qosCallbackId) {
+        if (mAbandoned) {
+            log("The agent is already abandoned. Ignored onQosCallbackUnregistered.");
+            return;
+        }
         mTelephonyNetworkAgentCallbacks.forEach(callback -> callback.invokeFromExecutor(
                 () -> callback.onQosCallbackUnregistered(qosCallbackId)));
     }
@@ -286,12 +315,33 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
     }
 
     /**
+     * Abandon the network agent. This is used for telephony to re-create the network agent when
+     * immutable capabilities got changed, where telephony calls {@link NetworkAgent#unregister()}
+     * and then create another network agent with new capabilities. Abandon this network agent
+     * allowing it ignore the subsequent {@link #onNetworkUnwanted()} invocation caused by
+     * {@link NetworkAgent#unregister()}.
+     */
+    public void abandon() {
+        mAbandoned = true;
+        unregister();
+    }
+
+    /**
      * Register the callback for receiving information from {@link TelephonyNetworkAgent}.
      *
      * @param callback The callback.
      */
     public void registerCallback(@NonNull TelephonyNetworkAgentCallback callback) {
         mTelephonyNetworkAgentCallbacks.add(callback);
+    }
+
+    /**
+     * Unregister the previously registered {@link TelephonyNetworkAgentCallback}.
+     *
+     * @param callback The callback to unregister.
+     */
+    public void unregisterCallback(@NonNull TelephonyNetworkAgentCallback callback) {
+        mTelephonyNetworkAgentCallbacks.remove(callback);
     }
 
     /**

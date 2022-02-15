@@ -16,7 +16,10 @@
 
 package com.android.internal.telephony.metrics;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -64,8 +67,11 @@ public class RcsStatsTest extends TelephonyTest {
     private static final long START_TIME_MILLIS = 2000L;
     private static final int SLOT_ID = 0;
     private static final int SLOT2_ID = 1;
+    private static final int INVALID_SLOT_ID = -1;
     private static final int CARRIER_ID = 100;
     private static final int CARRIER2_ID = 200;
+    private static final int INVALID_CARRIER_ID = -1;
+    private static final int INVALID_SUB_ID = Integer.MIN_VALUE;
 
     private class TestResult {
         public String tagName;
@@ -90,6 +96,7 @@ public class RcsStatsTest extends TelephonyTest {
 
     private class TestableRcsStats extends RcsStats {
         private long mTimeMillis = START_TIME_MILLIS;
+        private boolean mEnabledInvalidSubId = false;
 
         TestableRcsStats() {
             super();
@@ -97,18 +104,38 @@ public class RcsStatsTest extends TelephonyTest {
 
         @Override
         protected int getSlotId(int subId) {
+            if (mEnabledInvalidSubId) {
+                return INVALID_SLOT_ID;
+            }
+
             if (subId == mSubId) {
                 return SLOT_ID;
+            } else if (subId == mSubId2) {
+                return SLOT2_ID;
             }
             return SLOT2_ID;
         }
 
         @Override
         protected int getCarrierId(int subId) {
+            if (mEnabledInvalidSubId) {
+                return INVALID_CARRIER_ID;
+            }
+
             if (subId == mSubId) {
                 return CARRIER_ID;
+            } else if (subId == mSubId2) {
+                return CARRIER2_ID;
             }
-            return CARRIER2_ID;
+            return INVALID_CARRIER_ID;
+        }
+
+        @Override
+        protected boolean isValidCarrierId(int carrierId) {
+            if (carrierId == INVALID_CARRIER_ID) {
+                return false;
+            }
+            return true;
         }
 
         @Override
@@ -126,12 +153,21 @@ public class RcsStatsTest extends TelephonyTest {
 
         @Override
         protected int getSubId(int slotId) {
+            if (mEnabledInvalidSubId) {
+                return INVALID_SUB_ID;
+            }
+
             if (slotId == SLOT_ID) {
                 return mSubId;
+            } else if (slotId == SLOT2_ID) {
+                return mSubId2;
             }
-            return mSubId2;
+            return INVALID_SUB_ID;
         }
 
+        public void setEnableInvalidSubId() {
+            mEnabledInvalidSubId = true;
+        }
         private void setTimeMillis(long timeMillis) {
             mTimeMillis = timeMillis;
         }
@@ -143,6 +179,10 @@ public class RcsStatsTest extends TelephonyTest {
 
         public int getRcsAcsProvisioningCachedSize() {
             return mRcsAcsProvisioningStatsList.size();
+        }
+
+        public int getImsRegistrationServiceDescCachedSize() {
+            return mImsRegistrationServiceDescStatsList.size();
         }
 
         public long getRcsAcsProvisioningCachedTime(int carreirId, int slotId) {
@@ -280,6 +320,50 @@ public class RcsStatsTest extends TelephonyTest {
         assertEquals(responseType[0], stats.responseType);
         assertEquals(isSingleRegistrationEnabled, stats.isSingleRegistrationEnabled);
         assertEquals(timeGap, stats.stateTimerMillis);
+
+        // the last atoms will be cached
+        assertEquals(1, mRcsStats.getRcsAcsProvisioningCachedSize());
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    @SmallTest
+    public void onRcsAcsProvisioningStats_withAtomsInvalidSubId() throws Exception {
+        boolean isSingleRegistrationEnabled = true;
+        int[] responseCode = {200, 401};
+        int[] responseType = {
+                TelephonyStatsLog.RCS_ACS_PROVISIONING_STATS__RESPONSE_TYPE__PROVISIONING_XML,
+                TelephonyStatsLog.RCS_ACS_PROVISIONING_STATS__RESPONSE_TYPE__ERROR};
+        int[] slotIds = {SLOT_ID, SLOT_ID};
+        int[] carrierIds = {CARRIER_ID, CARRIER_ID};
+
+        // this will be cached
+        mRcsStats.onRcsAcsProvisioningStats(
+                mSubId, responseCode[0], responseType[0], isSingleRegistrationEnabled);
+
+        long timeGap = 6000L;
+        mRcsStats.incTimeMillis(timeGap);
+
+        // slotId and carrierId are invalid based on subId
+        mRcsStats.setEnableInvalidSubId();
+
+        // this will not be cached, previous will be stored
+        mRcsStats.onRcsAcsProvisioningStats(
+                mSubId, responseCode[1], responseType[1], isSingleRegistrationEnabled);
+
+        ArgumentCaptor<RcsAcsProvisioningStats> captor =
+                ArgumentCaptor.forClass(RcsAcsProvisioningStats.class);
+        verify(mPersistAtomsStorage).addRcsAcsProvisioningStats(captor.capture());
+        RcsAcsProvisioningStats stats = captor.getValue();
+        assertEquals(carrierIds[0], stats.carrierId);
+        assertEquals(slotIds[0], stats.slotId);
+        assertEquals(responseCode[0], stats.responseCode);
+        assertEquals(responseType[0], stats.responseType);
+        assertEquals(isSingleRegistrationEnabled, stats.isSingleRegistrationEnabled);
+        assertEquals(timeGap, stats.stateTimerMillis);
+        // the last atoms will not be cached
+        assertEquals(0, mRcsStats.getRcsAcsProvisioningCachedSize());
+
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -611,6 +695,34 @@ public class RcsStatsTest extends TelephonyTest {
         }
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
+
+    @Test
+    @SmallTest
+    public void onSipTransportFeatureTagStats_addInvalidEntries() throws Exception {
+        final long timeGap = 6000L;
+        Set<FeatureTagState> deniedTags = new ArraySet<>();
+        Set<FeatureTagState> deRegiTags = new ArraySet<>();
+        Set<String> regiTags = new ArraySet<>();
+
+        final int invalidSubId = INVALID_SUB_ID;
+
+        // create new featureTags with an invalidId
+        regiTags.add(FeatureTags.FEATURE_TAG_STANDALONE_MSG);
+        deniedTags.add(new FeatureTagState(FeatureTags.FEATURE_TAG_FILE_TRANSFER,
+                SipDelegateManager.DENIED_REASON_IN_USE_BY_ANOTHER_DELEGATE));
+        mRcsStats.onSipTransportFeatureTagStats(invalidSubId, deniedTags, deRegiTags, regiTags);
+        mRcsStats.incTimeMillis(timeGap);
+
+        // change status of featureTags with an invalidId
+        regiTags.clear();
+        deRegiTags.add(new FeatureTagState(FeatureTags.FEATURE_TAG_STANDALONE_MSG,
+                DelegateRegistrationState.DEREGISTERED_REASON_NOT_REGISTERED));
+        mRcsStats.onSipTransportFeatureTagStats(invalidSubId, deniedTags, deRegiTags, regiTags);
+        mRcsStats.incTimeMillis(timeGap);
+
+        verify(mPersistAtomsStorage, never()).addSipTransportFeatureTagStats(any());
+    }
+
 
     @Test
     @SmallTest
@@ -992,6 +1104,76 @@ public class RcsStatsTest extends TelephonyTest {
             assertEquals(timeGap, stats.publishedMillis);
         }
         verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    @SmallTest
+    public void onImsRegistrationServiceDescStats_withAtomsInvalidSubId() throws Exception {
+        int registrationTech  = 0; //ImsRegistrationImplBase.REGISTRATION_TECH_LTE
+        ArrayList<String> serviceIdList = new ArrayList<>();
+        serviceIdList.add("org.openmobilealliance:File-Transfer-HTTP");
+        serviceIdList.add("org.openmobilealliance:IM-session");
+        serviceIdList.add("Unknown1");
+        ArrayList<String> serviceIdVersionList = new ArrayList<>();
+        serviceIdVersionList.add("1.0");
+        serviceIdVersionList.add("1.0");
+        serviceIdVersionList.add("3.0");
+
+        mRcsStats.onImsRegistrationServiceDescStats(mSubId, serviceIdList, serviceIdVersionList,
+                registrationTech);
+
+        // getWallTimeMillis
+        /*
+         * UCE_EVENT__TYPE__PUBLISH = 0;
+         * UCE_EVENT__TYPE__SUBSCRIBE = 1;
+         * UCE_EVENT__TYPE__INCOMING_OPTION = 2;
+         * UCE_EVENT__TYPE__OUTGOING_OPTION = 3;
+         */
+        int type = TelephonyStatsLog.UCE_EVENT_STATS__TYPE__PUBLISH;
+        boolean successful = true;
+        /*
+         * UCE_EVENT__COMMAND_CODE__SERVICE_UNKNOWN = 0;
+         * UCE_EVENT__COMMAND_CODE__GENERIC_FAILURE = 1;
+         * UCE_EVENT__COMMAND_CODE__INVALID_PARAM = 2;
+         * UCE_EVENT__COMMAND_CODE__FETCH_ERROR = 3;
+         * UCE_EVENT__COMMAND_CODE__REQUEST_TIMEOUT = 4;
+         * UCE_EVENT__COMMAND_CODE__INSUFFICIENT_MEMORY = 5;
+         * UCE_EVENT__COMMAND_CODE__LOST_NETWORK_CONNECTION = 6;
+         * UCE_EVENT__COMMAND_CODE__NOT_SUPPORTED = 7;
+         * UCE_EVENT__COMMAND_CODE__NOT_FOUND = 8;
+         * UCE_EVENT__COMMAND_CODE__SERVICE_UNAVAILABLE = 9;
+         * UCE_EVENT__COMMAND_CODE__NO_CHANGE = 10;
+         */
+        int commandCode = TelephonyStatsLog.UCE_EVENT_STATS__COMMAND_CODE__SERVICE_UNAVAILABLE;
+        int networkResponse = 200;
+        mRcsStats.onUceEventStats(mSubId, type, successful, commandCode, networkResponse);
+
+        // slotId and carrierId are invalid based on subId
+        mRcsStats.setEnableInvalidSubId();
+        long timeGap = 6000L;
+        mRcsStats.incTimeMillis(timeGap);
+        mRcsStats.onUceEventStats(mSubId, type, successful, commandCode, networkResponse);
+
+        ArgumentCaptor<ImsRegistrationServiceDescStats> captor =
+                ArgumentCaptor.forClass(ImsRegistrationServiceDescStats.class);
+        verify(mPersistAtomsStorage, times(3))
+                .addImsRegistrationServiceDescStats(captor.capture());
+        List<ImsRegistrationServiceDescStats> captorValues = captor.getAllValues();
+
+        assertEquals(captorValues.size(), serviceIdList.size());
+
+        for (int index = 0; index < captorValues.size(); index++) {
+            ImsRegistrationServiceDescStats stats = captorValues.get(index);
+            assertEquals(CARRIER_ID, stats.carrierId);
+            assertEquals(SLOT_ID, stats.slotId);
+            int serviceId = mRcsStats.convertServiceIdToValue(serviceIdList.get(index));
+            assertEquals(serviceId, stats.serviceIdName);
+            float serviceVersionFloat = Float.parseFloat(serviceIdVersionList.get(index));
+            assertEquals(serviceVersionFloat, stats.serviceIdVersion, 0.1f);
+            assertEquals(registrationTech, stats.registrationTech);
+            assertEquals(timeGap, stats.publishedMillis);
+        }
+        assertEquals(0, mRcsStats.getImsRegistrationServiceDescCachedSize());
     }
 
     @Test

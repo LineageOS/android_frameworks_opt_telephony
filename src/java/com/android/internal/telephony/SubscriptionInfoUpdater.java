@@ -27,6 +27,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
@@ -44,6 +45,7 @@ import android.service.euicc.GetEuiccProfileInfoListResult;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.SubscriptionManager.UsageSetting;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyManager.SimState;
 import android.telephony.UiccAccessRule;
@@ -65,8 +67,10 @@ import com.android.telephony.Rlog;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.stream.Collectors;
 
 /**
  *@hide
@@ -627,6 +631,62 @@ public class SubscriptionInfoUpdater extends Handler {
         updateCarrierServices(phoneId, IccCardConstants.INTENT_VALUE_ICC_LOADED);
     }
 
+    /**
+     * Calculate the usage setting based on the carrier request.
+     *
+     * @param currentUsageSetting the current setting in the subscription DB
+     * @param preferredUsageSetting provided by the carrier config
+     * @return the calculated usage setting.
+     */
+    @VisibleForTesting
+    @UsageSetting public int calculateUsageSetting(
+            @UsageSetting int currentUsageSetting, @UsageSetting int preferredUsageSetting) {
+        int defaultUsageSetting;
+        int[] supportedUsageSettings;
+
+        //  Load the resources to provide the device capability
+        try {
+            defaultUsageSetting = sContext.getResources().getInteger(
+                com.android.internal.R.integer.config_default_cellular_usage_setting);
+            supportedUsageSettings = sContext.getResources().getIntArray(
+                com.android.internal.R.array.config_supported_cellular_usage_settings);
+            // If usage settings are not supported, return the default setting, which is UNKNOWN.
+            if (supportedUsageSettings == null
+                    || supportedUsageSettings.length < 1) return currentUsageSetting;
+        } catch (Resources.NotFoundException nfe) {
+            loge("Failed to load usage setting resources!");
+            return currentUsageSetting;
+        }
+
+        // If the current setting is invalid, including the first time the value is set,
+        // update it to default (this will trigger a change in the DB).
+        if (currentUsageSetting < SubscriptionManager.USAGE_SETTING_DEFAULT
+                || currentUsageSetting > SubscriptionManager.USAGE_SETTING_DATA_CENTRIC) {
+            logd("Updating usage setting for current subscription");
+            currentUsageSetting = SubscriptionManager.USAGE_SETTING_DEFAULT;
+        }
+
+        // Range check the inputs, and on failure, make no changes
+        if (preferredUsageSetting < SubscriptionManager.USAGE_SETTING_DEFAULT
+                || preferredUsageSetting > SubscriptionManager.USAGE_SETTING_DATA_CENTRIC) {
+            loge("Invalid usage setting!" + preferredUsageSetting);
+            return currentUsageSetting;
+        }
+
+        // Default is always allowed
+        if (preferredUsageSetting == SubscriptionManager.USAGE_SETTING_DEFAULT) {
+            return preferredUsageSetting;
+        }
+
+        // Forced setting must be explicitly supported
+        for (int i = 0; i < supportedUsageSettings.length; i++) {
+            if (preferredUsageSetting == supportedUsageSettings[i]) return preferredUsageSetting;
+        }
+
+        // If the preferred setting is not possible, just keep the current setting.
+        return currentUsageSetting;
+    }
+
     private void restoreSimSpecificSettingsForPhone(int phoneId) {
         SubscriptionManager subManager = SubscriptionManager.from(sContext);
         subManager.restoreSimSpecificSettingsForIccIdFromBackup(sIccId[phoneId]);
@@ -699,8 +759,12 @@ public class SubscriptionInfoUpdater extends Handler {
             }
             String iccId = sInactiveIccIds[phoneId] != null
                     ? sInactiveIccIds[phoneId] : sIccId[phoneId];
-            ContentValues value = new ContentValues(1);
+            ContentValues value = new ContentValues();
             value.put(SubscriptionManager.UICC_APPLICATIONS_ENABLED, true);
+            if (isSimAbsent) {
+                // When sim is absent, set the port index to invalid port index -1;
+                value.put(SubscriptionManager.PORT_INDEX, TelephonyManager.INVALID_PORT_INDEX);
+            }
             sContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
                     SubscriptionManager.ICC_ID + "=\'" + iccId + "\'", null);
             sInactiveIccIds[phoneId] = null;
@@ -983,6 +1047,8 @@ public class SubscriptionInfoUpdater extends Handler {
                         SubscriptionManager.NAME_SOURCE_CARRIER);
             }
             values.put(SubscriptionManager.PROFILE_CLASS, embeddedProfile.getProfileClass());
+            values.put(SubscriptionManager.PORT_INDEX,
+                    getEmbeddedProfilePortIndex(embeddedProfile.getIccid()));
             CarrierIdentifier cid = embeddedProfile.getCarrierIdentifier();
             if (cid != null) {
                 // Due to the limited subscription information, carrier id identified here might
@@ -1009,7 +1075,7 @@ public class SubscriptionInfoUpdater extends Handler {
             }
             hasChanges = true;
             contentResolver.update(SubscriptionManager.CONTENT_URI, values,
-                    SubscriptionManager.ICC_ID + "=\"" + embeddedProfile.getIccid() + "\"", null);
+                    SubscriptionManager.ICC_ID + "='" + embeddedProfile.getIccid() + "'", null);
 
             // refresh Cached Active Subscription Info List
             mSubscriptionController.refreshCachedActiveSubscriptionInfoList();
@@ -1029,7 +1095,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 SubscriptionInfo info = existingSubscriptions.get(i);
                 if (info.isEmbedded()) {
                     if (DBG) logd("Removing embedded subscription of IccId " + info.getIccId());
-                    iccidsToRemove.add("\"" + info.getIccId() + "\"");
+                    iccidsToRemove.add("'" + info.getIccId() + "'");
                 }
             }
             String whereClause = SubscriptionManager.ICC_ID + " IN ("
@@ -1047,6 +1113,15 @@ public class SubscriptionInfoUpdater extends Handler {
         return hasChanges;
     }
 
+    private int getEmbeddedProfilePortIndex(String iccId) {
+        UiccSlot[] slots = UiccController.getInstance().getUiccSlots();
+        for (UiccSlot slot : slots) {
+            if (slot != null && slot.isEuicc() && slot.isIccIdMappedToPortIndex(iccId)) {
+                return slot.getPortIndexFromIccId(iccId);
+            }
+        }
+        return TelephonyManager.INVALID_PORT_INDEX;
+    }
     /**
      * Called by CarrierConfigLoader to update the subscription before sending a broadcast.
      */
@@ -1149,6 +1224,33 @@ public class SubscriptionInfoUpdater extends Handler {
                 }
             }
         }
+
+        final int preferredUsageSetting =
+                config.getInt(
+                        CarrierConfigManager.KEY_CELLULAR_USAGE_SETTING_INT,
+                        SubscriptionManager.USAGE_SETTING_UNKNOWN);
+
+        @UsageSetting int newUsageSetting = calculateUsageSetting(
+                currentSubInfo.getUsageSetting(),
+                preferredUsageSetting);
+
+        if (newUsageSetting != currentSubInfo.getUsageSetting()) {
+            cv.put(SubscriptionManager.USAGE_SETTING, newUsageSetting);
+            if (DBG) {
+                logd("UsageSetting changed,"
+                        + " oldSetting=" + currentSubInfo.getUsageSetting()
+                        + " preferredSetting=" + preferredUsageSetting
+                        + " newSetting=" + newUsageSetting);
+            }
+        } else {
+            if (DBG) {
+                logd("UsageSetting unchanged,"
+                        + " oldSetting=" + currentSubInfo.getUsageSetting()
+                        + " preferredSetting=" + preferredUsageSetting
+                        + " newSetting=" + newUsageSetting);
+            }
+        }
+
         if (cv.size() > 0 && sContext.getContentResolver().update(SubscriptionManager
                     .getUriForSubscriptionId(currentSubId), cv, null, null) > 0) {
             mSubscriptionController.refreshCachedActiveSubscriptionInfoList();

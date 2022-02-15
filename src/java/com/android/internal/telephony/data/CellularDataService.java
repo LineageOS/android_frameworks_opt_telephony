@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.dataconnection;
+package com.android.internal.telephony.data;
 
 import static android.telephony.data.DataServiceCallback.RESULT_SUCCESS;
 
@@ -121,7 +121,11 @@ public class CellularDataService extends DataService {
                             callback.onHandoverCancelled(toResultCode(ar.exception));
                             break;
                         case APN_UNTHROTTLED:
-                            notifyApnUnthrottled((String) ar.result);
+                            if (ar.result instanceof DataProfile) {
+                                notifyDataProfileUnthrottled((DataProfile) ar.result);
+                            } else {
+                                notifyApnUnthrottled((String) ar.result);
+                            }
                             break;
                         default:
                             loge("Unexpected event: " + message.what);

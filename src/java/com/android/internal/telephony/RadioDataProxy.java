@@ -21,6 +21,7 @@ import android.net.LinkProperties;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.RemoteException;
+import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
@@ -37,6 +38,7 @@ import java.util.ArrayList;
  * getAidl to get IRadioData and call the AIDL implementations of the HAL APIs.
  */
 public class RadioDataProxy extends RadioServiceProxy {
+    private static final String TAG = "RadioDataProxy";
     private volatile android.hardware.radio.data.IRadioData mDataProxy = null;
 
     /**
@@ -48,6 +50,7 @@ public class RadioDataProxy extends RadioServiceProxy {
         mHalVersion = halVersion;
         mDataProxy = data;
         mIsAidl = true;
+        Rlog.d(TAG, "AIDL initialized");
     }
 
     /**
@@ -322,13 +325,20 @@ public class RadioDataProxy extends RadioServiceProxy {
                 dnses.add(linkProperties.getDnsServers().get(i).getHostAddress());
                 dnsesArr[i] = linkProperties.getDnsServers().get(i).getHostAddress();
             }
+        } else {
+            dnsesArr = new String[0];
         }
         if (isAidl()) {
-            mDataProxy.setupDataCall(serial, accessNetwork,
-                    RILUtils.convertToHalDataProfile(dataProfileInfo), roamingAllowed, reason,
-                    RILUtils.convertToHalLinkProperties(linkProperties), dnsesArr, pduSessionId,
-                    RILUtils.convertToHalSliceInfoAidl(sliceInfo),
-                    RILUtils.convertToHalTrafficDescriptorAidl(trafficDescriptor),
+            // Create a new DataProfile to set the TrafficDescriptor
+            DataProfile dp = new DataProfile.Builder()
+                    .setType(dataProfileInfo.getType())
+                    .setPreferred(dataProfileInfo.isPreferred())
+                    .setTrafficDescriptor(trafficDescriptor)
+                    .setApnSetting(dataProfileInfo.getApnSetting())
+                    .build();
+            mDataProxy.setupDataCall(serial, accessNetwork, RILUtils.convertToHalDataProfile(dp),
+                    roamingAllowed, reason, RILUtils.convertToHalLinkProperties(linkProperties),
+                    dnsesArr, pduSessionId, RILUtils.convertToHalSliceInfoAidl(sliceInfo),
                     matchAllRuleAllowed);
         } else if (mHalVersion.greaterOrEqual(RIL.RADIO_HAL_VERSION_1_6)) {
             ((android.hardware.radio.V1_6.IRadio) mRadioProxy).setupDataCall_1_6(serial,

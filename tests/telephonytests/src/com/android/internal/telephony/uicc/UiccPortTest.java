@@ -15,15 +15,21 @@
  */
 package com.android.internal.telephony.uicc;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.verify;
 
+import android.os.Binder;
 import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
+import com.android.internal.telephony.IccLogicalChannelRequest;
 import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
@@ -35,6 +41,9 @@ import org.mockito.Mock;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class UiccPortTest extends TelephonyTest {
+
+    private static final int CHANNEL_ID = 1;
+
     @Mock
     private UiccCard mUiccCard;
     private UiccPort mUiccPort;
@@ -85,5 +94,59 @@ public class UiccPortTest extends TelephonyTest {
         }
         assertEquals(mPhoneId, mUiccPort.getPhoneId());
         assertEquals(TelephonyManager.DEFAULT_PORT_INDEX, mUiccPort.getPortIdx());
+    }
+
+    @Test
+    @SmallTest
+    public void testGetOpenLogicalChannelRecord_noChannelOpened_shouldReturnNull() {
+        assertThat(mUiccPort.getOpenLogicalChannelRecord(CHANNEL_ID)).isNull();
+    }
+
+    @Test
+    @SmallTest
+    public void testOnLogicalChannelOpened_withChannelOpen_recordShouldMatch() {
+        IccLogicalChannelRequest request = getIccLogicalChannelRequest();
+
+        mUiccPort.onLogicalChannelOpened(request);
+
+        UiccPort.OpenLogicalChannelRecord record = mUiccPort.getOpenLogicalChannelRecord(
+                CHANNEL_ID);
+        assertThat(record).isNotNull();
+    }
+
+    @Test
+    @SmallTest
+    public void testOnOpenLogicalChannelClosed_withChannelOpenThenClose_noRecordLeft() {
+        IccLogicalChannelRequest request = getIccLogicalChannelRequest();
+
+        mUiccPort.onLogicalChannelOpened(request);
+        mUiccPort.onLogicalChannelClosed(CHANNEL_ID);
+
+        UiccPort.OpenLogicalChannelRecord record = mUiccPort.getOpenLogicalChannelRecord(
+                CHANNEL_ID);
+        assertThat(record).isNull();
+    }
+
+    @Test
+    @SmallTest
+    public void testClientDied_withChannelOpened_shouldGetCleanup() {
+        IccLogicalChannelRequest request = getIccLogicalChannelRequest();
+        mUiccPort.onLogicalChannelOpened(request);
+
+        UiccPort.OpenLogicalChannelRecord record = mUiccPort.getOpenLogicalChannelRecord(
+                CHANNEL_ID);
+        record.binderDied();
+
+        record = mUiccPort.getOpenLogicalChannelRecord(CHANNEL_ID);
+        assertThat(record).isNull();
+        verify(mUiccProfile).iccCloseLogicalChannel(eq(CHANNEL_ID), eq(null));
+    }
+
+    private IccLogicalChannelRequest getIccLogicalChannelRequest() {
+        IccLogicalChannelRequest request = new IccLogicalChannelRequest();
+        request.channel = CHANNEL_ID;
+        request.subId = 0;
+        request.binder = new Binder();
+        return request;
     }
 }

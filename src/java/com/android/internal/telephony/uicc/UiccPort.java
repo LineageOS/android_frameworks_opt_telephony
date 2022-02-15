@@ -16,21 +16,28 @@
 
 package com.android.internal.telephony.uicc;
 
+import android.annotation.NonNull;
 import android.content.Context;
-import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Message;
+import android.os.RemoteException;
+import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 
+import com.android.internal.annotations.GuardedBy;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.IccLogicalChannelRequest;
 import com.android.internal.telephony.TelephonyComponentFactory;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.List;
 
 public class UiccPort {
@@ -50,6 +57,11 @@ public class UiccPort {
     private final int mPhoneId;
     private int mPortIdx;
     private int mPhysicalSlotIndex;
+
+    // The list of the opened logical channel record. The channels will be closed by us when
+    // detecting client died without closing them in advance.
+    @GuardedBy("mOpenChannelRecords")
+    private final List<OpenLogicalChannelRecord> mOpenChannelRecords = new ArrayList<>();
 
     public UiccPort(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock,
             UiccCard uiccCard) {
@@ -365,8 +377,11 @@ public class UiccPort {
 
     /**
      * Exposes {@link UiccCarrierPrivilegeRules#getCarrierPrivilegeStatus}.
-     * @deprecated Please use
-     * {@link UiccProfile#getCarrierPrivilegeStatus(Signature, String)} instead.
+     *
+     * <p>TODO(b/205736323) remove this and downstream once fully moved to CarrierPrivilegesTracker
+     *
+     * @deprecated Please use {@link UiccProfile#getCarrierPrivilegeStatus(Signature, String)}
+     *     instead.
      */
     @Deprecated
     public int getCarrierPrivilegeStatus(Signature signature, String packageName) {
@@ -379,8 +394,11 @@ public class UiccPort {
 
     /**
      * Exposes {@link UiccCarrierPrivilegeRules#getCarrierPrivilegeStatus}.
-     * @deprecated Please use
-     * {@link UiccProfile#getCarrierPrivilegeStatus(PackageManager, String)} instead.
+     *
+     * <p>TODO(b/205736323) remove this and downstream once fully moved to CarrierPrivilegesTracker
+     *
+     * @deprecated Please use {@link UiccProfile#getCarrierPrivilegeStatus(PackageManager, String)}
+     *     instead.
      */
     @Deprecated
     public int getCarrierPrivilegeStatus(PackageManager packageManager, String packageName) {
@@ -393,6 +411,9 @@ public class UiccPort {
 
     /**
      * Exposes {@link UiccCarrierPrivilegeRules#getCarrierPrivilegeStatus}.
+     *
+     * <p>TODO(b/205736323) remove this and downstream once fully moved to CarrierPrivilegesTracker
+     *
      * @deprecated Please use {@link UiccProfile#getCarrierPrivilegeStatus(PackageInfo)} instead.
      */
     @Deprecated
@@ -406,8 +427,11 @@ public class UiccPort {
 
     /**
      * Exposes {@link UiccCarrierPrivilegeRules#getCarrierPrivilegeStatusForCurrentTransaction}.
-     * @deprecated Please use
-     * {@link UiccProfile#getCarrierPrivilegeStatusForCurrentTransaction(PackageManager)} instead.
+     *
+     * <p>TODO(b/205736323) remove this and downstream once fully moved to CarrierPrivilegesTracker
+     *
+     * @deprecated Please use {@link
+     *     UiccProfile#getCarrierPrivilegeStatusForCurrentTransaction(PackageManager)} instead.
      */
     @Deprecated
     public int getCarrierPrivilegeStatusForCurrentTransaction(PackageManager packageManager) {
@@ -415,21 +439,6 @@ public class UiccPort {
             return mUiccProfile.getCarrierPrivilegeStatusForCurrentTransaction(packageManager);
         } else {
             return TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED;
-        }
-    }
-
-    /**
-     * Exposes {@link UiccCarrierPrivilegeRules#getCarrierPackageNamesForIntent}.
-     * @deprecated Please use
-     * {@link UiccProfile#getCarrierPackageNamesForIntent(PackageManager, Intent)} instead.
-     */
-    @Deprecated
-    public List<String> getCarrierPackageNamesForIntent(
-            PackageManager packageManager, Intent intent) {
-        if (mUiccProfile != null) {
-            return mUiccProfile.getCarrierPackageNamesForIntent(packageManager, intent);
-        } else {
-            return null;
         }
     }
 
@@ -483,12 +492,99 @@ public class UiccPort {
         pw.println(" this=" + this);
         pw.println(" mPortIdx=" + mPortIdx);
         pw.println(" mCi=" + mCi);
-        pw.println(" mIccid=" + mIccid);
+        pw.println(" mIccid=" + SubscriptionInfo.givePrintableIccid(mIccid));
         pw.println(" mPhoneId=" + mPhoneId);
         pw.println(" mPhysicalSlotIndex=" + mPhysicalSlotIndex);
+        synchronized (mOpenChannelRecords) {
+            pw.println(" mOpenChannelRecords=" + mOpenChannelRecords);
+        }
         pw.println();
         if (mUiccProfile != null) {
             mUiccProfile.dump(fd, pw, args);
+        }
+    }
+
+    /**
+     * Informed that a logical channel has been successfully opened.
+     *
+     * @param request the original request to open the channel, with channel id attached.
+     * @hide
+     */
+    public void onLogicalChannelOpened(@NonNull IccLogicalChannelRequest request) {
+        OpenLogicalChannelRecord record = new OpenLogicalChannelRecord(request);
+        try {
+            request.binder.linkToDeath(record, /*flags=*/ 0);
+            addOpenLogicalChannelRecord(record);
+            if (DBG) log("onLogicalChannelOpened: monitoring client " + record);
+        } catch (RemoteException | NullPointerException ex) {
+            loge("IccOpenLogicChannel client has died, clean up manually");
+            record.binderDied();
+        }
+    }
+
+    /**
+     * Informed that a logical channel has been successfully closed.
+     *
+     * @param channelId the channel id of the logical channel that was just closed.
+     * @hide
+     */
+    public void onLogicalChannelClosed(int channelId) {
+        OpenLogicalChannelRecord record = getOpenLogicalChannelRecord(channelId);
+        if (record != null && record.mRequest != null && record.mRequest.binder != null) {
+            if (DBG) log("onLogicalChannelClosed: stop monitoring client " + record);
+            record.mRequest.binder.unlinkToDeath(record, /*flags=*/ 0);
+            removeOpenLogicalChannelRecord(record);
+            record.mRequest.binder = null;
+        }
+    }
+
+    /** Get the OpenLogicalChannelRecord matching the channel id. */
+    @VisibleForTesting
+    public OpenLogicalChannelRecord getOpenLogicalChannelRecord(int channelId) {
+        synchronized (mOpenChannelRecords) {
+            for (OpenLogicalChannelRecord channelRecord : mOpenChannelRecords) {
+                if (channelRecord.mRequest != null
+                        && channelRecord.mRequest.channel == channelId) {
+                    return channelRecord;
+                }
+            }
+        }
+        return null;
+    }
+
+    private void addOpenLogicalChannelRecord(OpenLogicalChannelRecord record) {
+        synchronized (mOpenChannelRecords) {
+            mOpenChannelRecords.add(record);
+        }
+    }
+
+    private void removeOpenLogicalChannelRecord(OpenLogicalChannelRecord record) {
+        synchronized (mOpenChannelRecords) {
+            mOpenChannelRecords.remove(record);
+        }
+    }
+
+    /** Record to keep open logical channel info. */
+    @VisibleForTesting
+    public class OpenLogicalChannelRecord implements IBinder.DeathRecipient {
+        IccLogicalChannelRequest mRequest;
+
+        OpenLogicalChannelRecord(IccLogicalChannelRequest request) {
+            this.mRequest = request;
+        }
+
+        @Override
+        public void binderDied() {
+            loge("IccOpenLogicalChannelRecord: client died, close channel in record " + this);
+            iccCloseLogicalChannel(mRequest.channel, /* response= */ null);
+            onLogicalChannelClosed(mRequest.channel);
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder("OpenLogicalChannelRecord {");
+            sb.append(" mRequest=" + mRequest).append("}");
+            return sb.toString();
         }
     }
 }

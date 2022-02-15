@@ -25,6 +25,9 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.PendingIntent;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.content.pm.UserInfo;
 import android.net.ConnectivityManager;
 import android.net.InetAddresses;
 import android.net.KeepalivePacketData;
@@ -46,8 +49,10 @@ import android.os.AsyncResult;
 import android.os.HandlerExecutor;
 import android.os.Message;
 import android.os.PersistableBundle;
+import android.os.Process;
 import android.os.SystemClock;
 import android.os.SystemProperties;
+import android.os.UserManager;
 import android.provider.Telephony;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
@@ -97,6 +102,7 @@ import com.android.internal.telephony.metrics.DataCallSessionStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.RilDataCall;
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.internal.util.Protocol;
@@ -676,6 +682,8 @@ public class DataConnection extends StateMachine {
      */
     public void updateTrafficDescriptors(DataCallResponse response) {
         mTrafficDescriptors = response.getTrafficDescriptors();
+        mDcController.updateTrafficDescriptorsForCid(response.getId(),
+                response.getTrafficDescriptors());
     }
 
     @VisibleForTesting
@@ -1400,6 +1408,12 @@ public class DataConnection extends StateMachine {
             }
         } else if (cp.mApnContext.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE
                 && mDcController.getActiveDcByCid(response.getId()) != null) {
+            if (!mDcController.getTrafficDescriptorsForCid(response.getId())
+                    .equals(response.getTrafficDescriptors())) {
+                if (DBG) log("Updating traffic descriptors: " + response.getTrafficDescriptors());
+                mDcController.getActiveDcByCid(response.getId()).updateTrafficDescriptors(response);
+                mDct.obtainMessage(DctConstants.EVENT_TRAFFIC_DESCRIPTORS_UPDATED).sendToTarget();
+            }
             if (DBG) log("DataConnection already exists for cid: " + response.getId());
             result = SetupResult.ERROR_DUPLICATE_CID;
             result.mFailCause = DataFailCause.DUPLICATE_CID;
@@ -1801,14 +1815,8 @@ public class DataConnection extends StateMachine {
      * @return True if this data connection supports enterprise use.
      */
     private boolean isEnterpriseUse() {
-        boolean enterpriseTrafficDescriptor = mTrafficDescriptors
-                .stream()
-                .anyMatch(td -> td.getOsAppId() != null && Arrays.equals(td.getOsAppId(),
-                        getEnterpriseOsAppId()));
-        boolean enterpriseApnContext = mApnContexts.keySet()
-                .stream()
-                .anyMatch(ac -> ac.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE);
-        return enterpriseTrafficDescriptor || enterpriseApnContext;
+        return  mApnContexts.keySet().stream().anyMatch(
+                ac -> ac.getApnTypeBitmask() == ApnSetting.TYPE_ENTERPRISE);
     }
 
     /**
@@ -1952,6 +1960,15 @@ public class DataConnection extends StateMachine {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED);
         }
 
+        final int carrierServicePackageUid = getCarrierServicePackageUid();
+
+        // TODO(b/205736323): Owner and Admin UIDs currently come from separate data sources. Unify
+        //                    them, and remove ArrayUtils.contains() check.
+        if (carrierServicePackageUid != Process.INVALID_UID
+                && ArrayUtils.contains(mAdministratorUids, carrierServicePackageUid)) {
+            builder.setOwnerUid(carrierServicePackageUid);
+            builder.setAccessUids(Collections.singleton(carrierServicePackageUid));
+        }
         builder.setAdministratorUids(mAdministratorUids);
 
         // Always start with NOT_VCN_MANAGED, then remove if VcnManager indicates this is part of a
@@ -1962,6 +1979,41 @@ public class DataConnection extends StateMachine {
         }
 
         return builder.build();
+    }
+
+    // TODO(b/205736323): Once TelephonyManager#getCarrierServicePackageNameForLogicalSlot() is
+    //                    plumbed to CarrierPrivilegesTracker's cache, query the cached UIDs.
+    private int getFirstUidForPackage(String pkgName) {
+        if (pkgName == null) {
+            return Process.INVALID_UID;
+        }
+
+        List<UserInfo> users = mPhone.getContext().getSystemService(UserManager.class).getUsers();
+        for (UserInfo user : users) {
+            int userId = user.getUserHandle().getIdentifier();
+            try {
+                PackageManager pm = mPhone.getContext().getPackageManager();
+
+                if (pm != null) {
+                    return pm.getPackageUidAsUser(pkgName, userId);
+                }
+            } catch (NameNotFoundException exception) {
+                // Didn't find package. Try other users
+                Rlog.i(
+                        "DataConnection",
+                        "Unable to find uid for package " + pkgName + " and user " + userId);
+            }
+        }
+        return Process.INVALID_UID;
+    }
+
+    private int getCarrierServicePackageUid() {
+        String pkgName =
+                mPhone.getContext()
+                        .getSystemService(TelephonyManager.class)
+                        .getCarrierServicePackageNameForLogicalSlot(mPhone.getPhoneId());
+
+        return getFirstUidForPackage(pkgName);
     }
 
     /**

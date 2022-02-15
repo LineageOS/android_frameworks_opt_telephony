@@ -228,6 +228,10 @@ public interface CommandsInterface {
     void registerForApnUnthrottled(Handler h, int what, Object obj);
     /** Unregister for apn unthrottled event */
     void unregisterForApnUnthrottled(Handler h);
+    /** Register for the slicing config changed event */
+    void registerForSlicingConfigChanged(Handler h, int what, Object obj);
+    /** Unregister for slicing config changed event */
+    void unregisterForSlicingConfigChanged(Handler h);
 
     /** InCall voice privacy notifications */
     void registerForInCallVoicePrivacyOn(Handler h, int what, Object obj);
@@ -2678,6 +2682,25 @@ public interface CommandsInterface {
      * @param result Message that will be sent back to handler.
      */
     default void getSlicingConfig(Message result) {};
+
+    /**
+     * Request to enable/disable the mock modem service.
+     * This is used in shell commands during CTS testing only.
+     *
+     * @param serviceName the service name which telephony wants to bind to
+     */
+    default boolean setModemService(String serviceName) {
+        return true;
+    };
+
+   /**
+     * Return the class name of the currently bound modem service.
+     *
+     * @return the class name of the modem service.
+     */
+    default String getModemService() {
+        return "default";
+    };
 
    /**
      * Request the SIM phonebook records of all activated UICC applications

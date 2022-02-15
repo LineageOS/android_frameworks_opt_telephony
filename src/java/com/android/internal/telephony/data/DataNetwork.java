@@ -20,6 +20,7 @@ import android.annotation.CallbackExecutor;
 import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.LinkAddress;
 import android.net.LinkProperties;
@@ -33,6 +34,9 @@ import android.net.ProxyInfo;
 import android.net.RouteInfo;
 import android.net.TelephonyNetworkSpecifier;
 import android.net.Uri;
+import android.net.vcn.VcnManager;
+import android.net.vcn.VcnManager.VcnNetworkPolicyChangeListener;
+import android.net.vcn.VcnNetworkPolicyResult;
 import android.os.AsyncResult;
 import android.os.Looper;
 import android.os.Message;
@@ -42,22 +46,30 @@ import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.DataState;
+import android.telephony.Annotation.NetCapability;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.Annotation.ValidationStatus;
 import android.telephony.DataFailCause;
 import android.telephony.LinkCapacityEstimate;
 import android.telephony.NetworkRegistrationInfo;
+import android.telephony.PcoData;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionPlan;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
+import android.telephony.data.DataCallResponse.HandoverFailureMode;
+import android.telephony.data.DataCallResponse.LinkStatus;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.telephony.data.DataServiceCallback;
+import android.telephony.data.NetworkSliceInfo;
 import android.telephony.data.QosBearerSession;
 import android.telephony.data.TrafficDescriptor;
+import android.telephony.data.TrafficDescriptor.OsAppId;
 import android.text.TextUtils;
+import android.util.ArrayMap;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 import android.util.Pair;
@@ -69,8 +81,11 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
+import com.android.internal.telephony.data.DataRetryManager.DataHandoverRetryEntry;
+import com.android.internal.telephony.data.DataRetryManager.DataRetryEntry;
 import com.android.internal.telephony.data.TelephonyNetworkAgent.TelephonyNetworkAgentCallback;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.util.ArrayUtils;
 import com.android.internal.util.IState;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
@@ -79,13 +94,18 @@ import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * DataNetwork class represents a single PDN (Packet Data Network).
@@ -105,13 +125,12 @@ import java.util.function.Consumer;
  *
  * State machine diagram:
  *
- *                   ┌─────────────────────────────────────────┐
- *                   │                                         │
- *                   │              ┌─────────┐                │
- *                   │              │Handover │                │
- *                   │              └─▲────┬──┘                │
- *                   │                │    │                   │
- *             ┌─────┴─────┐        ┌─┴────▼──┐        ┌───────▼──────┐
+ *
+ *                                  ┌─────────┐
+ *                                  │Handover │
+ *                                  └─▲────┬──┘
+ *                                    │    │
+ *             ┌───────────┐        ┌─┴────▼──┐        ┌───────▼──────┐
  *             │Connecting ├────────►Connected├────────►Disconnecting │
  *             └─────┬─────┘        └────┬────┘        └───────┬──────┘
  *                   │                   │                     │
@@ -158,6 +177,18 @@ public class DataNetwork extends StateMachine {
     /** Event for display info changed. This is for getting 5G NSA or mmwave information. */
     private static final int EVENT_DISPLAY_INFO_CHANGED = 13;
 
+    /** Event for initiating an handover between cellular and IWLAN. */
+    private static final int EVENT_START_HANDOVER = 14;
+
+    /** Event for setup data call (for handover) response from the data service. */
+    private static final int EVENT_HANDOVER_RESPONSE = 15;
+
+    /** Event for subscription plan changed or unmetered/congested override set. */
+    private static final int EVENT_SUBSCRIPTION_PLAN_OVERRIDE = 16;
+
+    /** Event for PCO data received from network. */
+    private static final int EVENT_PCO_DATA_RECEIVED = 17;
+
     /** The default MTU for IPv4 network. */
     private static final int DEFAULT_MTU_V4 = 1280;
 
@@ -191,6 +222,10 @@ public class DataNetwork extends StateMachine {
                     TEAR_DOWN_REASON_DATA_RESTRICTED_BY_NETWORK,
                     TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY,
                     TEAR_DOWN_REASON_POWER_OFF_BY_CARRIER,
+                    TEAR_DOWN_REASON_DATA_STALL,
+                    TEAR_DOWN_REASON_HANDOVER_FAILED,
+                    TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED,
+                    TEAR_DOWN_REASON_VCN_REQUESTED,
             })
     public @interface TearDownReason {}
 
@@ -227,6 +262,18 @@ public class DataNetwork extends StateMachine {
     /** Data network tear down due to radio turned off by the carrier. */
     public static final int TEAR_DOWN_REASON_POWER_OFF_BY_CARRIER = 11;
 
+    /** Data network tear down due to data stall. */
+    public static final int TEAR_DOWN_REASON_DATA_STALL = 12;
+
+    /** Data network tear down due to handover failed. */
+    public static final int TEAR_DOWN_REASON_HANDOVER_FAILED = 13;
+
+    /** Data network tear down due to handover not allowed. */
+    public static final int TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED = 14;
+
+    /** Data network tear down due to VCN service requested. */
+    public static final int TEAR_DOWN_REASON_VCN_REQUESTED = 15;
+
     @IntDef(prefix = {"BANDWIDTH_SOURCE_"},
             value = {
                     BANDWIDTH_SOURCE_UNKNOWN,
@@ -247,6 +294,25 @@ public class DataNetwork extends StateMachine {
 
     /** Indicates the bandwidth estimation source is from {@link LinkBandwidthEstimator}. */
     public static final int BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR = 3;
+
+    /**
+     * The capabilities that are allowed to changed dynamically during the life cycle of network.
+     * This is copied from {@code NetworkCapabilities#MUTABLE_CAPABILITIES}. There is no plan to
+     * make this a connectivity manager API since in the future, immutable network capabilities
+     * would be allowed to changed dynamically. (i.e. not immutable anymore.)
+     */
+    private static final List<Integer> MUTABLE_CAPABILITIES = List.of(
+            NetworkCapabilities.NET_CAPABILITY_TRUSTED,
+            NetworkCapabilities.NET_CAPABILITY_VALIDATED,
+            NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL,
+            NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING,
+            NetworkCapabilities.NET_CAPABILITY_FOREGROUND,
+            NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED,
+            NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED,
+            NetworkCapabilities.NET_CAPABILITY_PARTIAL_CONNECTIVITY,
+            NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED,
+            NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED,
+            NetworkCapabilities.NET_CAPABILITY_HEAD_UNIT);
 
     /** The parent state. Any messages not handled by the child state fallback to this. */
     private final DefaultState mDefaultState = new DefaultState();
@@ -275,7 +341,8 @@ public class DataNetwork extends StateMachine {
     /**
      * The disconnecting state. This is the state when data network is about to be disconnected.
      * The network is still usable in this state, but the clients should be prepared to lose the
-     * network in any moment.
+     * network in any moment. This state is particular useful for IMS graceful tear down, where
+     * the network enters disconnecting state while waiting for IMS de-registration signal.
      *
      * @see DataNetwork for the state machine diagram.
      */
@@ -290,6 +357,7 @@ public class DataNetwork extends StateMachine {
 
     /** The phone instance. */
     private final @NonNull Phone mPhone;
+
     /**
      * The subscription id. This is assigned when the network is created, and not supposed to
      * change afterwards.
@@ -326,7 +394,14 @@ public class DataNetwork extends StateMachine {
      * {@link AccessNetworkConstants#TRANSPORT_TYPE_WLAN}. The reason for storing both is that
      * during handover, both cid will be used.
      */
-    private SparseIntArray mCid = new SparseIntArray(2);
+    private final SparseIntArray mCid = new SparseIntArray(2);
+
+    /**
+     * The initial network agent id. The network agent can be re-created due to immutable capability
+     * changed. This is to preserve the initial network agent id so the id in the logging tag won't
+     * change for the entire life cycle of data network.
+     */
+    private int mInitialNetworkAgentId;
 
     /** PDU session id. */
     private int mPduSessionId = DataCallResponse.PDU_SESSION_ID_NOT_SET;
@@ -346,6 +421,12 @@ public class DataNetwork extends StateMachine {
     /** Data config manager. */
     private final @NonNull DataConfigManager mDataConfigManager;
 
+    /** VCN manager. */
+    private final @Nullable VcnManager mVcnManager;
+
+    /** VCN policy changed listener. */
+    private @Nullable VcnNetworkPolicyChangeListener mVcnPolicyChangeListener;
+
     /** The network agent associated with this data network. */
     private @NonNull TelephonyNetworkAgent mNetworkAgent;
 
@@ -361,14 +442,33 @@ public class DataNetwork extends StateMachine {
     /** The network capabilities of this data network. */
     private @NonNull NetworkCapabilities mNetworkCapabilities;
 
+    /** The matched traffic descriptor returned from setup data call request. */
+    private final @NonNull List<TrafficDescriptor> mTrafficDescriptors = new ArrayList<>();
+
     /** The link properties of this data network. */
     private @NonNull LinkProperties mLinkProperties;
+
+    /** The network slice info. */
+    private @Nullable NetworkSliceInfo mNetworkSliceInfo;
+
+    /** The link status (i.e. RRC state). */
+    private @LinkStatus int mLinkStatus = DataCallResponse.LINK_STATUS_UNKNOWN;
 
     /** The network bandwidth. */
     private @NonNull NetworkBandwidth mNetworkBandwidth = new NetworkBandwidth(14, 14);
 
+    /** Whether {@link NetworkCapabilities#NET_CAPABILITY_TEMPORARILY_NOT_METERED} is supported. */
+    private boolean mTempNotMeteredSupported = false;
+
+    /** Whether the current data network is temporarily not metered. */
+    private boolean mTempNotMetered = false;
+
+    /** Whether the current data network is congested. */
+    private boolean mCongested = false;
+
     /** The network requests associated with this data network */
-    private @NonNull NetworkRequestList mAttachedNetworkRequestList = new NetworkRequestList();
+    private final @NonNull NetworkRequestList mAttachedNetworkRequestList =
+            new NetworkRequestList();
 
     /**
      * The latest data call response received from either
@@ -397,16 +497,16 @@ public class DataNetwork extends StateMachine {
      * The current transport of the data network. For handover, the current transport will be set
      * after handover completes.
      */
-    private @TransportType int mTransport = AccessNetworkConstants.TRANSPORT_TYPE_INVALID;
+    private @TransportType int mTransport;
 
     /**
-     * The preferred transport of the data network. If the preferred transport is different from
-     * the current transport, then handover will happen.
+     * PCO (Protocol Configuration Options) data received from the network. Key is the PCO id, value
+     * is the PCO content.
      */
-    private @TransportType int mPreferredTransport = AccessNetworkConstants.TRANSPORT_TYPE_INVALID;
+    private final @NonNull Map<Integer, PcoData> mPcoData = new ArrayMap<>();
 
     /** The QOS bearer sessions. */
-    private @NonNull List<QosBearerSession> mQosBearerSessions = new ArrayList<>();
+    private final @NonNull List<QosBearerSession> mQosBearerSessions = new ArrayList<>();
 
     /**
      * The network bandwidth.
@@ -514,6 +614,52 @@ public class DataNetwork extends StateMachine {
          */
         public abstract void onDisconnected(@NonNull DataNetwork dataNetwork,
                 @DataFailureCause int cause);
+
+        /**
+         * Called when handover between IWLAN and cellular network succeeded.
+         *
+         * @param dataNetwork The data network.
+         */
+        public abstract void onHandoverSucceeded(@NonNull DataNetwork dataNetwork);
+
+        /**
+         * Called when data network handover between IWLAN and cellular network failed.
+         *
+         * @param dataNetwork The data network.
+         * @param cause The fail cause.
+         * @param retryDurationMillis Network suggested retry time in milliseconds.
+         * {@link Long#MAX_VALUE} indicates data retry should not occur.
+         * {@link DataCallResponse#RETRY_DURATION_UNDEFINED} indicates network did not suggest any
+         * retry duration.
+         * @param handoverFailureMode The handover failure mode that determine the behavior of
+         * how frameworks should handle the handover failure.
+         */
+        public abstract void onHandoverFailed(@NonNull DataNetwork dataNetwork,
+                @DataFailureCause int cause, long retryDurationMillis,
+                @HandoverFailureMode int handoverFailureMode);
+
+        /**
+         * Called when data network link status (i.e. RRC state) changed.
+         *
+         * @param dataNetwork The data network.
+         * @param linkStatus The link status (i.e. RRC state).
+         */
+        public abstract void onLinkStatusChanged(@NonNull DataNetwork dataNetwork,
+                @LinkStatus int linkStatus);
+
+        /**
+         * Called when PCO data changed.
+         *
+         * @param dataNetwork The data network.
+         */
+        public abstract void onPcoDataChanged(@NonNull DataNetwork dataNetwork);
+
+        /**
+         * Called when network capabilities changed.
+         *
+         * @param dataNetwork The data network.
+         */
+        public abstract void onNetworkCapabilitiesChanged(@NonNull DataNetwork dataNetwork);
     }
 
     /**
@@ -525,12 +671,14 @@ public class DataNetwork extends StateMachine {
      * @param dataServiceManagers Data service managers.
      * @param dataProfile The data profile for establishing the data network.
      * @param networkRequestList The initial network requests attached to this data network.
+     * @param transport The initial transport of the data network.
      * @param callback The callback to receives data network state update.
      */
     public DataNetwork(@NonNull Phone phone, @NonNull Looper looper,
             @NonNull SparseArray<DataServiceManager> dataServiceManagers,
             @NonNull DataProfile dataProfile,
             @NonNull NetworkRequestList networkRequestList,
+            @TransportType int transport,
             @NonNull DataNetworkCallback callback) {
         super("DataNetwork", looper);
         mPhone = phone;
@@ -539,10 +687,18 @@ public class DataNetwork extends StateMachine {
         mLinkProperties = new LinkProperties();
         mDataServiceManagers = dataServiceManagers;
         mAccessNetworksManager = phone.getAccessNetworksManager();
+        mVcnManager = mPhone.getContext().getSystemService(VcnManager.class);
         mDataNetworkController = phone.getDataNetworkController();
+        mDataNetworkController.registerDataNetworkControllerCallback(
+                new DataNetworkController.DataNetworkControllerCallback(getHandler()::post) {
+                    @Override
+                    public void onSubscriptionPlanOverride() {
+                        sendMessage(EVENT_SUBSCRIPTION_PLAN_OVERRIDE);
+                    }});
         mDataConfigManager = mDataNetworkController.getDataConfigManager();
         mDataNetworkCallback = callback;
         mDataProfile = dataProfile;
+        mTransport = transport;
         dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
         mAttachedNetworkRequestList.addAll(networkRequestList);
         mCid.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, INVALID_CID);
@@ -666,8 +822,7 @@ public class DataNetwork extends StateMachine {
                     // TODO: Should update suspend state when CSS indicator changes.
                     // TODO: Should update suspend state when call started/ended.
                     updateSuspendState();
-                    // TODO: Update TCP buffer size
-                    // TODO: Update Bandwidth
+                    updateBandwidthFromDataConfig();
                     break;
                 }
                 case EVENT_ATTACH_NETWORK_REQUEST: {
@@ -710,12 +865,14 @@ public class DataNetwork extends StateMachine {
                 case EVENT_DATA_STATE_CHANGED: {
                     AsyncResult ar = (AsyncResult) msg.obj;
                     int transport = (int) ar.userObj;
-                    onDataStateChanged(transport, (ArrayList<DataCallResponse>) ar.result);
+                    onDataStateChanged(transport, (List<DataCallResponse>) ar.result);
                     break;
                 }
+                case EVENT_START_HANDOVER:
                 case EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED:
                 case EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED:
                 case EVENT_TEAR_DOWN_NETWORK:
+                case EVENT_PCO_DATA_RECEIVED:
                     // Ignore the events when not in the correct state.
                     break;
                 default:
@@ -734,12 +891,11 @@ public class DataNetwork extends StateMachine {
     private final class ConnectingState extends State {
         @Override
         public void enter() {
-            // Need to update the transport so we have the correct log tag.
-            updatePreferredTransports();
             // Need to calculate the initial capabilities before creating the network agent.
             updateNetworkCapabilities();
             mNetworkAgent = createNetworkAgent();
-            mLogTag = "DN-" + mNetworkAgent.getId() + "-"
+            mInitialNetworkAgentId = mNetworkAgent.getId();
+            mLogTag = "DN-" + mInitialNetworkAgentId + "-"
                     + ((mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) ? "C" : "I");
 
             notifyPreciseDataConnectionState();
@@ -775,12 +931,11 @@ public class DataNetwork extends StateMachine {
                             msg.getData().getParcelable(DataServiceManager.DATA_CALL_RESPONSE);
                     onSetupResponse(resultCode, dataCallResponse);
                     break;
+                case EVENT_START_HANDOVER:
                 case EVENT_TEAR_DOWN_NETWORK:
-                    // Defer the tear down request until connected or disconnected.
+                case EVENT_PCO_DATA_RECEIVED:
+                    // Defer the request until connected or disconnected.
                     deferMessage(msg);
-                    break;
-                case EVENT_DATA_STATE_CHANGED:
-                    // Ignore any data call list changed event before connected.
                     break;
                 default:
                     return NOT_HANDLED;
@@ -797,6 +952,8 @@ public class DataNetwork extends StateMachine {
     private final class ConnectedState extends State {
         @Override
         public void enter() {
+            // Note that reaching here could mean from connecting -> connected, or from
+            // handover -> connected.
             if (!mEverConnected) {
                 // Transited from ConnectingState
                 log("network connected.");
@@ -809,25 +966,26 @@ public class DataNetwork extends StateMachine {
                 mQosCallbackTracker.updateSessions(mQosBearerSessions);
                 mKeepaliveTracker = new KeepaliveTracker(mPhone,
                         getHandler().getLooper(), DataNetwork.this, mNetworkAgent);
-            } else {
-                // Reaching here means
-                // 1. Handover succeeded.
-                // 2. Handover failed.
-                //TODO: Keep in mind when adding IWLAN handover support later.
+                if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
+                    registerForWwanEvents();
+                }
+
+                // Create the VCN policy changed listener. When the policy changed, we might need
+                // to tear down the VCN-managed network.
+                if (mVcnManager != null) {
+                    mVcnPolicyChangeListener = () -> {
+                        if (mVcnManager.applyVcnNetworkPolicy(mNetworkCapabilities, mLinkProperties)
+                                .isTeardownRequested()) {
+                            tearDown(TEAR_DOWN_REASON_VCN_REQUESTED);
+                        }
+                    };
+                    mVcnManager.addVcnNetworkPolicyChangeListener(
+                            getHandler()::post, mVcnPolicyChangeListener);
+                }
             }
 
             notifyPreciseDataConnectionState();
             updateSuspendState();
-
-            if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
-                // Reaching here means
-                // 1. The network was first time connected on cellular.
-                // 2. The network handover successfully from IWLAN to cellular.
-                // 3. The network failed to handover to IWLAN and re-entered connected state.
-                // TODO: Correctly support (3) later. We do not need to perform the following works.
-                registerForBandwidthUpdate();
-                mKeepaliveTracker.registerForKeepaliveStatus();
-            }
         }
 
         @Override
@@ -865,6 +1023,16 @@ public class DataNetwork extends StateMachine {
                 case EVENT_DISPLAY_INFO_CHANGED:
                     onDisplayInfoChanged();
                     break;
+                case EVENT_START_HANDOVER:
+                    onStartHandover(msg.arg1, (DataHandoverRetryEntry) msg.obj);
+                    break;
+                case EVENT_SUBSCRIPTION_PLAN_OVERRIDE:
+                    updateMeteredAndCongested();
+                    break;
+                case EVENT_PCO_DATA_RECEIVED:
+                    ar = (AsyncResult) msg.obj;
+                    onPcoDataReceived((PcoData) ar.result);
+                    break;
                 default:
                     return NOT_HANDLED;
             }
@@ -891,21 +1059,76 @@ public class DataNetwork extends StateMachine {
         public boolean processMessage(Message msg) {
             logv("event=" + eventToString(msg.what));
             switch (msg.what) {
+                case EVENT_DATA_STATE_CHANGED:
+                    // The data call list changed event should be conditionally deferred.
+                    // Otherwise the deferred message might be incorrectly treated as "disconnected"
+                    // signal. So we only defer the related data call list changed event, and drop
+                    // the unrelated.
+                    if (shouldDeferDataStateChangedEvent(msg)) {
+                        deferMessage(msg);
+                    }
+                    break;
+                case EVENT_START_HANDOVER:
                 case EVENT_TEAR_DOWN_NETWORK:
-                    // Defer the deactivate request until handover succeeds or fails.
+                    // Defer the request until handover succeeds or fails.
                     deferMessage(msg);
+                    break;
+                case EVENT_HANDOVER_RESPONSE:
+                    int resultCode = msg.arg1;
+                    DataCallResponse dataCallResponse =
+                            msg.getData().getParcelable(DataServiceManager.DATA_CALL_RESPONSE);
+                    onHandoverResponse(resultCode, dataCallResponse,
+                            (DataHandoverRetryEntry) msg.obj);
+                    break;
+                case EVENT_PCO_DATA_RECEIVED:
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    onPcoDataReceived((PcoData) ar.result);
                     break;
                 default:
                     return NOT_HANDLED;
             }
             return HANDLED;
         }
+
+        /**
+         * Check if the data call list changed event should be deferred or dropped when handover
+         * is in progress.
+         *
+         * @param msg The data call list changed message.
+         *
+         * @return {@code true} if the message should be deferred.
+         */
+        private boolean shouldDeferDataStateChangedEvent(@NonNull Message msg) {
+            // The data call list changed event should be conditionally deferred.
+            // Otherwise the deferred message might be incorrectly treated as "disconnected"
+            // signal. So we only defer the related data call list changed event, and drop
+            // the unrelated.
+            AsyncResult ar = (AsyncResult) msg.obj;
+            int transport = (int) ar.userObj;
+            List<DataCallResponse> responseList = (List<DataCallResponse>) ar.result;
+            if (transport != mTransport) {
+                log("Dropped unrelated " + AccessNetworkConstants.transportTypeToString(transport)
+                        + " data call list changed event. " + responseList);
+                return false;
+            }
+
+            // Check if the data call list changed event are related to the current data network.
+            boolean related = responseList.stream().anyMatch(
+                    r -> mCid.get(mTransport) == r.getId());
+            if (related) {
+                log("Deferred the related data call list changed event." + responseList);
+            } else {
+                log("Dropped unrelated data call list changed event. " + responseList);
+            }
+            return related;
+        }
     }
 
     /**
      * The disconnecting state. This is the state when data network is about to be disconnected.
      * The network is still usable in this state, but the clients should be prepared to lose the
-     * network in any moment.
+     * network in any moment. This state is particular useful for IMS graceful tear down, where
+     * the network enters disconnecting state while waiting for IMS de-registration signal.
      *
      * @see DataNetwork for the state machine diagram.
      */
@@ -913,10 +1136,6 @@ public class DataNetwork extends StateMachine {
         @Override
         public void enter() {
             notifyPreciseDataConnectionState();
-        }
-
-        @Override
-        public void exit() {
         }
 
         @Override
@@ -950,8 +1169,11 @@ public class DataNetwork extends StateMachine {
             }
 
             if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN && mEverConnected) {
-                mKeepaliveTracker.unregisterForKeepaliveStatus();
-                unregisterForBandwidthUpdate();
+                unregisterForWwanEvents();
+            }
+
+            if (mVcnManager != null && mVcnPolicyChangeListener != null) {
+                mVcnManager.removeVcnNetworkPolicyChangeListener(mVcnPolicyChangeListener);
             }
         }
 
@@ -960,6 +1182,24 @@ public class DataNetwork extends StateMachine {
             logv("event=" + eventToString(msg.what));
             return NOT_HANDLED;
         }
+    }
+
+    /**
+     * Register for events that can only happen on cellular networks.
+     */
+    private void registerForWwanEvents() {
+        registerForBandwidthUpdate();
+        mKeepaliveTracker.registerForKeepaliveStatus();
+        mRil.registerForPcoData(this.getHandler(), EVENT_PCO_DATA_RECEIVED, null);
+    }
+
+    /**
+     * Unregister for events that can only happen on cellular networks.
+     */
+    private void unregisterForWwanEvents() {
+        unregisterForBandwidthUpdate();
+        mKeepaliveTracker.unregisterForKeepaliveStatus();
+        mRil.unregisterForPcoData(this.getHandler());
     }
 
     @Override
@@ -1013,9 +1253,11 @@ public class DataNetwork extends StateMachine {
     private void registerForBandwidthUpdate() {
         int bandwidthEstimateSource = mDataConfigManager.getBandwidthEstimateSource();
         if (bandwidthEstimateSource == BANDWIDTH_SOURCE_MODEM) {
-            mPhone.mCi.unregisterForLceInfo(getHandler());
+            mPhone.mCi.registerForLceInfo(
+                    getHandler(), EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED, null);
         } else if (bandwidthEstimateSource == BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR) {
-            mPhone.getLinkBandwidthEstimator().unregisterForBandwidthChanged(getHandler());
+            mPhone.getLinkBandwidthEstimator().registerForBandwidthChanged(
+                    getHandler(), EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED, null);
         } else {
             loge("Invalid bandwidth source configuration: " + bandwidthEstimateSource);
         }
@@ -1036,19 +1278,66 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
+     * Remove network requests that can't be satisfied anymore.
+     */
+    private void removeUnsatisfiedNetworkRequests() {
+        for (TelephonyNetworkRequest networkRequest : mAttachedNetworkRequestList) {
+            if (!networkRequest.canBeSatisfiedBy(mNetworkCapabilities)) {
+                log("removeUnsatisfiedNetworkRequests: " + networkRequest
+                        + " can't be satisfied anymore. Will be detached.");
+                detachNetworkRequest(networkRequest);
+            }
+        }
+    }
+
+    /**
+     * Check if there are immutable capabilities changed. The connectivity service is not able
+     * to handle immutable capabilities changed, but in very rare scenarios, immutable capabilities
+     * need to be changed dynamically, such as in setup data call response, modem responded with the
+     * same cid. In that case, we need to merge the new capabilities into the existing data network.
+     *
+     * @param oldCapabilities The old network capabilities.
+     * @param newCapabilities The new network capabilities.
+     * @return {@code true} if there are immutable network capabilities changed.
+     */
+    private static boolean areImmutableCapabilitiesChanged(
+            @NonNull NetworkCapabilities oldCapabilities,
+            @NonNull NetworkCapabilities newCapabilities) {
+        if (oldCapabilities == null
+                || ArrayUtils.isEmpty(oldCapabilities.getCapabilities())) return false;
+
+        // Remove mutable capabilities from both old and new capabilities, the remaining
+        // capabilities would be immutable capabilities.
+        List<Integer> oldImmutableCapabilities = Arrays.stream(oldCapabilities.getCapabilities())
+                .boxed().collect(Collectors.toList());
+        oldImmutableCapabilities.removeAll(MUTABLE_CAPABILITIES);
+        List<Integer> newImmutableCapabilities = Arrays.stream(newCapabilities.getCapabilities())
+                .boxed().collect(Collectors.toList());
+        newImmutableCapabilities.removeAll(MUTABLE_CAPABILITIES);
+        return oldImmutableCapabilities.size() != newImmutableCapabilities.size()
+                || !oldImmutableCapabilities.containsAll(newImmutableCapabilities);
+    }
+
+    /**
      * Update the network capabilities.
      */
     private void updateNetworkCapabilities() {
         final NetworkCapabilities.Builder builder = new NetworkCapabilities.Builder()
                 .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
+        boolean roaming = mPhone.getServiceState().getDataRoaming();
 
         builder.setNetworkSpecifier(new TelephonyNetworkSpecifier.Builder()
                 .setSubscriptionId(mSubId).build());
         builder.setSubscriptionIds(Collections.singleton(mSubId));
 
         ApnSetting apnSetting = mDataProfile.getApnSetting();
+        boolean meteredApn = false;
         if (apnSetting != null) {
             for (int apnType : apnSetting.getApnTypes()) {
+                if (!(roaming ? mDataConfigManager.getMeteredApnTypesWhenRoaming()
+                        : mDataConfigManager.getMeteredApnTypes()).contains(apnType)) {
+                    meteredApn = true;
+                }
                 int cap = DataUtils.apnTypeToNetworkCapability(apnType);
                 if (cap >= 0) {
                     builder.addCapability(cap);
@@ -1056,16 +1345,59 @@ public class DataNetwork extends StateMachine {
             }
         }
 
-        // TODO: Support NET_CAPABILITY_NOT_METERED
+        // Extract network capabilities from the traffic descriptor.
+        for (TrafficDescriptor trafficDescriptor : mTrafficDescriptors) {
+            try {
+                OsAppId osAppId = new OsAppId(trafficDescriptor.getOsAppId());
+                if (!osAppId.getOsId().equals(OsAppId.ANDROID_OS_ID)) {
+                    loge("Received non-Android OS id " + osAppId.getOsId());
+                    continue;
+                }
+                int networkCapability = DataUtils.getNetworkCapabilityFromString(
+                        osAppId.getAppId());
+                switch (networkCapability) {
+                    case NetworkCapabilities.NET_CAPABILITY_ENTERPRISE:
+                        builder.addCapability(networkCapability);
+                        // Enterprise is the only capability supporting differentiator.
+                        if (networkCapability == NetworkCapabilities.NET_CAPABILITY_ENTERPRISE) {
+                            builder.addEnterpriseId(osAppId.getDifferentiator());
+                        }
+                        break;
+                    case NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY:
+                    case NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH:
+                    case NetworkCapabilities.NET_CAPABILITY_CBS:
+                        builder.addCapability(networkCapability);
+                        break;
+                    default:
+                        loge("Invalid app id " + osAppId.getAppId());
+                }
+            } catch (Exception e) {
+                loge("Exception: " + e + ". Failed to create osAppId from "
+                        + new BigInteger(1, trafficDescriptor.getOsAppId()).toString(16));
+            }
+        }
+
+        // TODO: Support NET_CAPABILITY_NOT_METERED when non-restricted data is for unmetered use
+        if (!meteredApn) {
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+        }
         // TODO: Support NET_CAPABILITY_NOT_RESTRICTED
-        // TODO: Support NET_CAPABILITY_NOT_CONGESTED correctly
-        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
+        if (!mCongested) {
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
+        }
 
-        // TODO: Support NET_CAPABILITY_TEMPORARILY_NOT_METERED
-        // TODO: Support NET_CAPABILITY_NOT_VCN_MANAGED correctly
+        if (mTempNotMeteredSupported && mTempNotMetered) {
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED);
+        }
+
+        // Always start with NOT_VCN_MANAGED, then remove if VcnManager indicates this is part of a
+        // VCN.
         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+        if (isVcnManaged(builder.build())) {
+            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+        }
 
-        if (!mPhone.getServiceState().getDataRoaming()) {
+        if (!roaming) {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING);
         }
 
@@ -1082,12 +1414,43 @@ public class DataNetwork extends StateMachine {
         builder.setLinkUpstreamBandwidthKbps(mNetworkBandwidth.uplinkBandwidthKbps);
 
         NetworkCapabilities nc = builder.build();
-        if (!nc.equals(mNetworkCapabilities)) {
+        if (mNetworkCapabilities == null || mNetworkAgent == null) {
+            // This is the first time when network capabilities is created. The agent is not created
+            // at this time. Just return here. The network capabilities will be used when network
+            // agent is created.
             mNetworkCapabilities = nc;
-            if (mNetworkAgent != null) {
-                log("sendNetworkCapabilities: " + mNetworkCapabilities);
-                mNetworkAgent.sendNetworkCapabilities(mNetworkCapabilities);
+            return;
+        }
+
+        if (!nc.equals(mNetworkCapabilities)) {
+            // Check if we are changing the immutable capabilities. Note that we should be very
+            // careful and limit the use cases of changing immutable capabilities. Connectivity
+            // service would not close sockets for clients if a network request becomes
+            // unsatisfiable.
+            if (mEverConnected && areImmutableCapabilitiesChanged(mNetworkCapabilities, nc)
+                    && (isConnected() || isHandoverInProgress())) {
+                // Before connectivity service supports making all capabilities mutable, it is
+                // suggested to de-register and re-register the network agent if it is needed to
+                // add/remove immutable capabilities.
+                logl("updateNetworkCapabilities: Immutable capabilities changed. Re-create the "
+                        + "network agent. Attempted to change from " + mNetworkCapabilities + " to "
+                        + nc);
+                // Abandon the network agent because we are going to create a new one.
+                mNetworkAgent.abandon();
+                // Update the capabilities first so the new network agent would be created with the
+                // new capabilities.
+                mNetworkCapabilities = nc;
+                mNetworkAgent = createNetworkAgent();
+                mNetworkAgent.markConnected();
             }
+
+            // Now we need to inform connectivity service and data network controller
+            // about the capabilities changed.
+            mNetworkCapabilities = nc;
+            mNetworkAgent.sendNetworkCapabilities(mNetworkCapabilities);
+            removeUnsatisfiedNetworkRequests();
+            mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                    .onNetworkCapabilitiesChanged(DataNetwork.this));
         }
     }
 
@@ -1110,24 +1473,6 @@ public class DataNetwork extends StateMachine {
      */
     public @NonNull DataProfile getDataProfile() {
         return mDataProfile;
-    }
-
-    /**
-     * Update the preferred transport based on the attached network request.
-     */
-    private void updatePreferredTransports() {
-        if (mAttachedNetworkRequestList.size() == 0) return;
-        // Get the highest priority network request.
-        TelephonyNetworkRequest networkRequest = mAttachedNetworkRequestList.get(0);
-
-        mPreferredTransport = mAccessNetworksManager.getPreferredTransportByNetworkCapability(
-                networkRequest.getHighestPriorityNetworkCapability());
-        if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_INVALID) {
-            mTransport = mPreferredTransport;
-        }
-
-        // TODO: Compare preferred transport and current transport. If they are different, initiate
-        //  handover.
     }
 
     /**
@@ -1172,8 +1517,8 @@ public class DataNetwork extends StateMachine {
             // To update NOT_SUSPENDED capability.
             updateNetworkCapabilities();
             notifyPreciseDataConnectionState();
-            mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
-                    .onSuspendedStateChanged(DataNetwork.this, mSuspended));
+            mDataNetworkCallback.invokeFromExecutor(() ->
+                    mDataNetworkCallback.onSuspendedStateChanged(DataNetwork.this, mSuspended));
         }
     }
 
@@ -1275,8 +1620,16 @@ public class DataNetwork extends StateMachine {
 
         // Set PDU session id
         if (mPduSessionId != response.getPduSessionId()) {
-            log("PDU session id updated to " + mPduSessionId);
             mPduSessionId = response.getPduSessionId();
+            log("PDU session id updated to " + mPduSessionId);
+        }
+
+        // Set the link status
+        if (mLinkStatus != response.getLinkStatus()) {
+            mLinkStatus = response.getLinkStatus();
+            log("Link status updated to " + DataUtils.linkStatusToString(mLinkStatus));
+            mDataNetworkCallback.invokeFromExecutor(
+                    () -> mDataNetworkCallback.onLinkStatusChanged(DataNetwork.this, mLinkStatus));
         }
 
         // Set link addresses
@@ -1357,10 +1710,15 @@ public class DataNetwork extends StateMachine {
             linkProperties.setHttpProxy(proxy);
         }
 
-        // updateTcpBufferSizes
-        linkProperties.setTcpBufferSizes(getTcpConfig());
+        linkProperties.setTcpBufferSizes(mDataConfigManager.getTcpConfigString());
 
-        mQosBearerSessions = response.getQosBearerSessions();
+        mNetworkSliceInfo = response.getSliceInfo();
+
+        mTrafficDescriptors.clear();
+        mTrafficDescriptors.addAll(response.getTrafficDescriptors());
+
+        mQosBearerSessions.clear();
+        mQosBearerSessions.addAll(response.getQosBearerSessions());
         if (mQosCallbackTracker != null) {
             mQosCallbackTracker.updateSessions(mQosBearerSessions);
         }
@@ -1371,8 +1729,7 @@ public class DataNetwork extends StateMachine {
             mNetworkAgent.sendLinkProperties(mLinkProperties);
         }
 
-        // TODO: Support default QOS update
-        // TODO: Support QOS bearer sessions
+        updateNetworkCapabilities();
     }
 
     /**
@@ -1386,28 +1743,6 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
-     * Get the TCP config string.
-     *
-     * @return The TCP config string used in {@link LinkProperties#setTcpBufferSizes(String)}.
-     */
-    private @Nullable String getTcpConfig() {
-        ServiceState ss = mPhone.getServiceState();
-        NetworkRegistrationInfo nrs = ss.getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, mTransport);
-        int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
-        if (nrs != null) {
-            networkType = nrs.getAccessNetworkTechnology();
-            if (networkType == TelephonyManager.NETWORK_TYPE_LTE
-                    && nrs.isUsingCarrierAggregation()) {
-                // Although LTE_CA is not a real RAT, but since LTE CA generally has higher speed
-                // we use LTE_CA to get a different TCP config for LTE CA.
-                networkType = TelephonyManager.NETWORK_TYPE_LTE_CA;
-            }
-        }
-        return mDataConfigManager.getTcpConfigString(networkType, ss);
-    }
-
-    /**
      * Called when receiving setup data network response from the data service.
      *
      * @param resultCode The result code.
@@ -1417,60 +1752,51 @@ public class DataNetwork extends StateMachine {
             @Nullable DataCallResponse response) {
         logl("onSetupResponse: resultCode=" + DataServiceCallback.resultCodeToString(resultCode)
                 + ", response=" + response);
-        int failCause = getFailCauseFromDataCallResponse(resultCode, response);
-        if (failCause == DataFailCause.NONE) {
+        mFailCause = getFailCauseFromDataCallResponse(resultCode, response);
+        if (mFailCause == DataFailCause.NONE) {
             updateDataNetwork(response);
 
             // TODO: Check if the cid already exists. If yes, should notify DNC and let it force
             //  attach the network requests to that existing data network.
 
-            // TODO: Check if there is still network request attached, if not, silently deactivate
-            //  the network.
-
             // TODO: Evaluate all network requests and see if each request still can be satisfied.
             //  For requests that can't be satisfied anymore, we need to put them back to the
             //  unsatisfied pool. If none of network requests can be satisfied, then there is no
             //  need to mark network agent connected. Just silently deactivate the data network.
-
-            if (mAttachedNetworkRequestList.size() != 0) {
-                // Setup data succeeded.
-                transitionTo(mConnectedState);
-            } else {
+            if (mAttachedNetworkRequestList.size() == 0) {
                 log("Tear down the network since there is no live network request.");
-                // Directly call onTearDown hear. We should not enter disconnecting state for silent
-                // tear down. Once the tear down is complete, the data call list changed event will
-                // move the state into disconnected there.
+                // Directly call onTearDown here. Calling tearDown will cause deadlock because
+                // EVENT_TEAR_DOWN_NETWORK is deferred until state machine enters connected state,
+                // which will never happen in this case.
                 onTearDown(TEAR_DOWN_REASON_NO_LIVE_REQUEST);
+                return;
             }
+
+            if (mVcnManager != null && mVcnManager.applyVcnNetworkPolicy(mNetworkCapabilities,
+                    mLinkProperties).isTeardownRequested()) {
+                log("VCN service requested to tear down the network.");
+                // Directly call onTearDown here. Calling tearDown will cause deadlock because
+                // EVENT_TEAR_DOWN_NETWORK is deferred until state machine enters connected state,
+                // which will never happen in this case.
+                onTearDown(TEAR_DOWN_REASON_VCN_REQUESTED);
+                return;
+            }
+
+            transitionTo(mConnectedState);
         } else {
             // Setup data failed.
-            long retry = response != null ? response.getRetryDurationMillis()
+            long retryDelayMillis = response != null ? response.getRetryDurationMillis()
                     : DataCallResponse.RETRY_DURATION_UNDEFINED;
             NetworkRequestList requestList = new NetworkRequestList(mAttachedNetworkRequestList);
-            mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback.onSetupDataFailed(
-                    DataNetwork.this, requestList, failCause, retry));
+            mDataNetworkCallback.invokeFromExecutor(()
+                    -> mDataNetworkCallback.onSetupDataFailed(
+                            DataNetwork.this, requestList, mFailCause, retryDelayMillis));
             transitionTo(mDisconnectedState);
         }
     }
 
     /**
-     * Check if should perform graceful teardown. Currently we only support IMS/RCS PDN tear down.
-     * Frameworks wait for IMS de-registration before tearing down the IMS PDN.
-     *
-     * @return {@code true} if graceful tear down should be performed.
-     */
-    private boolean shouldPerformGracefulTearDown() {
-        // TODO: The following APIs could be used
-        //  ImsMmTelManager.registerImsRegistrationCallback() for IMS registration
-        //  ImsRcsManager.registerImsRegistrationCallback() for RCS registration
-        //  Then check if the network requests are from those packages.
-        //  ImsResolver.getInstance().getConfiguredImsServicePackageName(ImsFeature.FEATURE_MMTEL);
-        //  ImsResolver.getInstance().getConfiguredImsServicePackageName(ImsFeature.FEATURE_RCS)
-        return false;
-    }
-
-    /**
-     * Tear down the data network
+     * Tear down the data network immediately.
      *
      * @param reason The reason of tearing down the network.
      */
@@ -1536,8 +1862,7 @@ public class DataNetwork extends StateMachine {
         // Also if never received data call response from setup call response, which updates the
         // cid, ignore the update here.
         logv("onDataStateChanged: " + responseList);
-        if (transport != mTransport || mCid.get(mTransport) == INVALID_CID || isConnecting()
-                || isDisconnected()) {
+        if (transport != mTransport || mCid.get(mTransport) == INVALID_CID || isDisconnected()) {
             return;
         }
 
@@ -1555,8 +1880,18 @@ public class DataNetwork extends StateMachine {
                     log("onDataStateChanged: PDN inactive reported by "
                             + AccessNetworkConstants.transportTypeToString(mTransport)
                             + " data service.");
-                    mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
-                            .onDisconnected(DataNetwork.this, response.getCause()));
+                    if (mEverConnected) {
+                        mDataNetworkCallback.invokeFromExecutor(
+                                () -> mDataNetworkCallback.onDisconnected(
+                                        DataNetwork.this, response.getCause()));
+                    } else {
+                        log("onDataStateChanged: never in connected state. Treated as a setup "
+                                + "failure.");
+                        mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                                .onSetupDataFailed(DataNetwork.this, mAttachedNetworkRequestList,
+                                        DataFailCause.NO_RETRY_FAILURE,
+                                        DataCallResponse.RETRY_DURATION_UNDEFINED));
+                    }
                     transitionTo(mDisconnectedState);
                 }
             }
@@ -1566,8 +1901,16 @@ public class DataNetwork extends StateMachine {
             // for that
             log("onDataStateChanged: PDN disconnected reported by "
                     + AccessNetworkConstants.transportTypeToString(mTransport) + " data service.");
-            mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
-                    .onDisconnected(DataNetwork.this, DataFailCause.LOST_CONNECTION));
+            if (mEverConnected) {
+                mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                        .onDisconnected(DataNetwork.this, DataFailCause.LOST_CONNECTION));
+            } else {
+                log("onDataStateChanged: never in connected state. Treated as a setup failure.");
+                mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                        .onSetupDataFailed(DataNetwork.this, mAttachedNetworkRequestList,
+                                DataFailCause.NO_RETRY_FAILURE,
+                                DataCallResponse.RETRY_DURATION_UNDEFINED));
+            }
             transitionTo(mDisconnectedState);
         }
     }
@@ -1579,6 +1922,7 @@ public class DataNetwork extends StateMachine {
         log("onDataConfigUpdated");
 
         updateBandwidthFromDataConfig();
+        updateMeteredAndCongested();
     }
 
     /**
@@ -1643,8 +1987,7 @@ public class DataNetwork extends StateMachine {
      */
     private void onDisplayInfoChanged() {
         updateBandwidthFromDataConfig();
-
-        // TODO: Update meteredness flags.
+        updateMeteredAndCongested();
     }
 
     /**
@@ -1662,6 +2005,72 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
+     * Update the metered and congested values from carrier configs and subscription overrides
+     */
+    private void updateMeteredAndCongested() {
+        int networkType = isNrConnected() ? TelephonyManager.NETWORK_TYPE_NR : getDataNetworkType();
+        log("updateMeteredAndCongested: networkType="
+                + TelephonyManager.getNetworkTypeName(networkType));
+        boolean changed = false;
+        if (mDataConfigManager.isTempNotMeteredSupportedByCarrier() != mTempNotMeteredSupported) {
+            mTempNotMeteredSupported = !mTempNotMeteredSupported;
+            changed = true;
+            log("updateMeteredAndCongested: mTempNotMeteredSupported changed to "
+                    + mTempNotMeteredSupported);
+        }
+        if ((mDataNetworkController.getUnmeteredOverrideNetworkTypes().contains(networkType)
+                || isNetworkTypeUnmetered(networkType)) != mTempNotMetered) {
+            mTempNotMetered = !mTempNotMetered;
+            changed = true;
+            log("updateMeteredAndCongested: mTempNotMetered changed to " + mTempNotMetered);
+        }
+        if (mDataNetworkController.getCongestedOverrideNetworkTypes().contains(networkType)
+                != mCongested) {
+            mCongested = !mCongested;
+            changed = true;
+            log("updateMeteredAndCongested: mCongested changed to " + mCongested);
+        }
+        if (changed) {
+            updateNetworkCapabilities();
+        }
+    }
+
+    /**
+     * Get whether the network type is unmetered from SubscriptionPlans, from either an unmetered
+     * general plan or specific plan for the given network type.
+     *
+     * @param networkType The network type to check meteredness for
+     * @return Whether the given network type is unmetered based on SubscriptionPlans
+     */
+    private boolean isNetworkTypeUnmetered(@NetworkType int networkType) {
+        List<SubscriptionPlan> plans = mDataNetworkController.getSubscriptionPlans();
+        if (plans.isEmpty()) return false;
+        boolean isGeneralUnmetered = true;
+        Set<Integer> allNetworkTypes = Arrays.stream(TelephonyManager.getAllNetworkTypes())
+                .boxed().collect(Collectors.toSet());
+        for (SubscriptionPlan plan : plans) {
+            // Check if plan is general (applies to all network types) or specific
+            if (Arrays.stream(plan.getNetworkTypes()).boxed().collect(Collectors.toSet())
+                    .containsAll(allNetworkTypes)) {
+                if (plan.getDataLimitBytes() != SubscriptionPlan.BYTES_UNLIMITED) {
+                    // Metered takes precedence over unmetered for safety
+                    isGeneralUnmetered = false;
+                }
+            } else {
+                // Check if plan applies to given network type
+                if (networkType != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
+                    for (int planNetworkType : plan.getNetworkTypes()) {
+                        if (planNetworkType == networkType) {
+                            return plan.getDataLimitBytes() == SubscriptionPlan.BYTES_UNLIMITED;
+                        }
+                    }
+                }
+            }
+        }
+        return isGeneralUnmetered;
+    }
+
+    /**
      * @return The unique context id assigned by the data service in
      * {@link DataCallResponse#getId()}.
      */
@@ -1673,13 +2082,30 @@ public class DataNetwork extends StateMachine {
      * @return The current network type reported by the network service.
      */
     private @NetworkType int getDataNetworkType() {
+        return getDataNetworkType(mTransport);
+    }
+
+    /**
+     * Get the data network type on the specified transport.
+     *
+     * @param transport The transport.
+     * @return The data network type.
+     */
+    private @NetworkType int getDataNetworkType(@TransportType int transport) {
         ServiceState ss = mPhone.getServiceState();
         NetworkRegistrationInfo nrs = ss.getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, mTransport);
+                NetworkRegistrationInfo.DOMAIN_PS, transport);
         if (nrs != null) {
             return nrs.getAccessNetworkTechnology();
         }
         return TelephonyManager.NETWORK_TYPE_UNKNOWN;
+    }
+
+    /**
+     * @return The physical link status (i.e. RRC state).
+     */
+    public @LinkStatus int getLinkStatus() {
+        return mLinkStatus;
     }
 
     /**
@@ -1701,6 +2127,31 @@ public class DataNetwork extends StateMachine {
         }
 
         return new NetworkScore.Builder().setLegacyInt(score).build();
+    }
+
+    /**
+     * Get the highest priority network capability from the network request. This is used to get
+     * the representative APN-type capability for different purposes. It will never return a
+     * non-APN-type capability.
+     *
+     * @return The highest priority network capability from this network.
+     */
+    public @NetCapability int getHighestPriorityNetworkCapability() {
+        int highestPriority = 0;
+        int highestPriorityCapability = -1;
+        for (int capability : getNetworkCapabilities().getCapabilities()) {
+            // Convert the capability to APN type. For non-APN-type capabilities, TYPE_NONE is
+            // returned.
+            int apnType = DataUtils.networkCapabilityToApnType(capability);
+            if (apnType != ApnSetting.TYPE_NONE) {
+                int priority = mDataConfigManager.getNetworkCapabilityPriority(capability);
+                if (priority > highestPriority) {
+                    highestPriority = priority;
+                    highestPriorityCapability = capability;
+                }
+            }
+        }
+        return highestPriorityCapability;
     }
 
     /**
@@ -1741,7 +2192,7 @@ public class DataNetwork extends StateMachine {
     /**
      * @return {@code true} if in handover state.
      */
-    public boolean isUnderHandover() {
+    public boolean isHandoverInProgress() {
         return getCurrentState() == mHandoverState;
     }
 
@@ -1773,11 +2224,9 @@ public class DataNetwork extends StateMachine {
             return TelephonyManager.DATA_CONNECTED;
         } else if (isDisconnecting()) {
             return TelephonyManager.DATA_DISCONNECTING;
+        } else if (isHandoverInProgress()) {
+            return TelephonyManager.DATA_HANDOVER_IN_PROGRESS;
         }
-        // TODO: Support handover
-        /* else if (state == mHandoverState) {
-            return TelephonyManager.DATA_UNDER_HANDOVER;
-        }*/
 
         return TelephonyManager.DATA_UNKNOWN;
     }
@@ -1825,6 +2274,169 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
+     * Request the data network to handover to the target transport.
+     *
+     * @param targetTransport The target transport.
+     * @param retryEntry Data handover retry entry. This would be {@code null} for first time
+     * handover attempt.
+     * @return {@code true} if the request has been accepted.
+     */
+    public boolean startHandover(@TransportType int targetTransport,
+            @Nullable DataHandoverRetryEntry retryEntry) {
+        if (getCurrentState() == null || isDisconnected() || isDisconnecting()) {
+            // Fail the request if not in the appropriate state.
+            if (retryEntry != null) retryEntry.setState(DataRetryEntry.RETRY_STATE_CANCELLED);
+            return false;
+        }
+        sendMessage(obtainMessage(EVENT_START_HANDOVER, targetTransport, 0, retryEntry));
+        return true;
+    }
+
+    /**
+     * Called when handover between IWLAN and cellular is needed.
+     *
+     * @param targetTransport The target transport.
+     * @param retryEntry Data handover retry entry. This would be {@code null} for first time
+     * handover attempt.
+     */
+    private void onStartHandover(@TransportType int targetTransport,
+            @Nullable DataHandoverRetryEntry retryEntry) {
+        if (mTransport == targetTransport) {
+            log("onStartHandover: The network is already on "
+                    + AccessNetworkConstants.transportTypeToString(mTransport)
+                    + ", handover is not needed.");
+            if (retryEntry != null) retryEntry.setState(DataRetryEntry.RETRY_STATE_CANCELLED);
+            return;
+        }
+
+        // We need to use the actual modem roaming state instead of the framework roaming state
+        // here. This flag is only passed down to ril_service for picking the correct protocol (for
+        // old modem backward compatibility).
+        boolean isModemRoaming = mPhone.getServiceState().getDataRoamingFromRegistration();
+
+        // Set this flag to true if the user turns on data roaming. Or if we override the roaming
+        // state in framework, we should set this flag to true as well so the modem will not reject
+        // the data call setup (because the modem actually thinks the device is roaming).
+        boolean allowRoaming = mPhone.getDataRoamingEnabled()
+                || (isModemRoaming && (!mPhone.getServiceState().getDataRoaming()
+                /*|| isUnmeteredUseOnly()*/));
+
+        logl("Start handover from " + AccessNetworkConstants.transportTypeToString(mTransport)
+                + " to " + AccessNetworkConstants.transportTypeToString(targetTransport));
+        // Send the handover request to the target transport data service.
+        mDataServiceManagers.get(targetTransport).setupDataCall(
+                DataUtils.networkTypeToAccessNetworkType(getDataNetworkType(targetTransport)),
+                mDataProfile, isModemRoaming, allowRoaming,
+                DataService.REQUEST_REASON_HANDOVER, mLinkProperties, mPduSessionId,
+                mNetworkSliceInfo, mDataProfile.getTrafficDescriptor(), true,
+                obtainMessage(EVENT_HANDOVER_RESPONSE, retryEntry));
+        transitionTo(mHandoverState);
+    }
+
+    /**
+     * Called when receiving handover response from the data service.
+     *
+     * @param resultCode The result code.
+     * @param response The response.
+     * @param retryEntry Data handover retry entry. This would be {@code null} for first time
+     * handover attempt.
+     */
+    private void onHandoverResponse(@DataServiceCallback.ResultCode int resultCode,
+            @Nullable DataCallResponse response, @Nullable DataHandoverRetryEntry retryEntry) {
+        logl("onHandoverResponse: resultCode=" + DataServiceCallback.resultCodeToString(resultCode)
+                + ", response=" + response);
+        mFailCause = getFailCauseFromDataCallResponse(resultCode, response);
+        if (mFailCause == DataFailCause.NONE) {
+            // Handover succeeded.
+
+            // Clean up on the source transport.
+            mDataServiceManagers.get(mTransport).deactivateDataCall(mCid.get(mTransport),
+                    DataService.REQUEST_REASON_HANDOVER, null);
+            // Switch the transport to the target.
+            mTransport = DataUtils.getTargetTransport(mTransport);
+            // Update the logging tag
+            mLogTag = "DN-" + mInitialNetworkAgentId + "-"
+                    + ((mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) ? "C" : "I");
+            updateDataNetwork(response);
+            if (mTransport != AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
+                // Handover from WWAN to WLAN
+                mPcoData.clear();
+                unregisterForWwanEvents();
+            } else {
+                // Handover from WLAN to WWAN
+                registerForWwanEvents();
+            }
+            if (retryEntry != null) retryEntry.setState(DataRetryEntry.RETRY_STATE_SUCCEEDED);
+            mDataNetworkCallback.invokeFromExecutor(
+                    () -> mDataNetworkCallback.onHandoverSucceeded(DataNetwork.this));
+        } else {
+            // Handover failed.
+            long retry = response != null ? response.getRetryDurationMillis()
+                    : DataCallResponse.RETRY_DURATION_UNDEFINED;
+            int handoverFailureMode = response != null ? response.getHandoverFailureMode()
+                    : DataCallResponse.HANDOVER_FAILURE_MODE_LEGACY;
+            if (retryEntry != null) retryEntry.setState(DataRetryEntry.RETRY_STATE_FAILED);
+            mDataNetworkCallback.invokeFromExecutor(
+                    () -> mDataNetworkCallback.onHandoverFailed(DataNetwork.this,
+                            mFailCause, retry, handoverFailureMode));
+        }
+
+        // No matter handover succeeded or not, transit back to connected state.
+        transitionTo(mConnectedState);
+    }
+
+    /**
+     * Called when receiving PCO (Protocol Configuration Options) data from the cellular network.
+     *
+     * @param pcoData PCO data.
+     */
+    private void onPcoDataReceived(@NonNull PcoData pcoData) {
+        if (pcoData.cid != getId()) return;
+        PcoData oldData = mPcoData.put(pcoData.pcoId, pcoData);
+        if (!Objects.equals(oldData, pcoData)) {
+            log("onPcoDataReceived: " + pcoData);
+            mDataNetworkCallback.invokeFromExecutor(
+                    () -> mDataNetworkCallback.onPcoDataChanged(DataNetwork.this));
+            if (mDataProfile.getApnSetting() != null) {
+                for (int apnType : mDataProfile.getApnSetting().getApnTypes()) {
+                    Intent intent = new Intent(TelephonyManager.ACTION_CARRIER_SIGNAL_PCO_VALUE);
+                    intent.putExtra(TelephonyManager.EXTRA_APN_TYPE, apnType);
+                    intent.putExtra(TelephonyManager.EXTRA_APN_PROTOCOL,
+                            ApnSetting.getProtocolIntFromString(pcoData.bearerProto));
+                    intent.putExtra(TelephonyManager.EXTRA_PCO_ID, pcoData.pcoId);
+                    intent.putExtra(TelephonyManager.EXTRA_PCO_VALUE, pcoData.contents);
+                    mPhone.getCarrierSignalAgent().notifyCarrierSignalReceivers(intent);
+                }
+            }
+        }
+    }
+
+    /**
+     * @return The PCO data received from the network.
+     */
+    public @NonNull Map<Integer, PcoData> getPcoData() {
+        return mPcoData;
+    }
+
+    /**
+     * Check if the this data network is VCN-managed.
+     *
+     * @param networkCapabilities The network capabilities of this data network.
+     * @return {@code true} if this data network is VCN-managed.
+     */
+    private boolean isVcnManaged(NetworkCapabilities networkCapabilities) {
+        if (mVcnManager == null) return false;
+        VcnNetworkPolicyResult policyResult =
+                mVcnManager.applyVcnNetworkPolicy(networkCapabilities, getLinkProperties());
+
+        // if the Network does have capability NOT_VCN_MANAGED, return false to indicate it's not
+        // VCN-managed
+        return !policyResult
+                .getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+    }
+
+    /**
      * Convert the data tear down reason to string.
      *
      * @param reason Data deactivation reason.
@@ -1854,6 +2466,14 @@ public class DataNetwork extends StateMachine {
                 return "TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY";
             case TEAR_DOWN_REASON_POWER_OFF_BY_CARRIER:
                 return "TEAR_DOWN_REASON_POWER_OFF_BY_CARRIER";
+            case TEAR_DOWN_REASON_DATA_STALL:
+                return "TEAR_DOWN_REASON_DATA_STALL";
+            case TEAR_DOWN_REASON_HANDOVER_FAILED:
+                return "TEAR_DOWN_REASON_HANDOVER_FAILED";
+            case TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED:
+                return "TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED";
+            case TEAR_DOWN_REASON_VCN_REQUESTED:
+                return "TEAR_DOWN_REASON_VCN_REQUESTED";
             default:
                 return "UNKNOWN(" + reason + ")";
         }
@@ -1891,6 +2511,14 @@ public class DataNetwork extends StateMachine {
                 return "EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED";
             case EVENT_DISPLAY_INFO_CHANGED:
                 return "EVENT_DISPLAY_INFO_CHANGED";
+            case EVENT_START_HANDOVER:
+                return "EVENT_START_HANDOVER";
+            case EVENT_HANDOVER_RESPONSE:
+                return "EVENT_HANDOVER_RESPONSE";
+            case EVENT_SUBSCRIPTION_PLAN_OVERRIDE:
+                return "EVENT_SUBSCRIPTION_PLAN_OVERRIDE";
+            case EVENT_PCO_DATA_RECEIVED:
+                return "EVENT_PCO_DATA_RECEIVED";
             default:
                 return "Unknown(" + event + ")";
         }
@@ -1970,7 +2598,11 @@ public class DataNetwork extends StateMachine {
         pw.println("mDataProfile=" + mDataProfile);
         pw.println("mNetworkCapabilities" + mNetworkCapabilities);
         pw.println("mLinkProperties=" + mLinkProperties);
+        pw.println("mNetworkSliceInfo=" + mNetworkSliceInfo);
         pw.println("mNetworkBandwidth=" + mNetworkBandwidth);
+        pw.println("mTempNotMeteredSupported=" + mTempNotMeteredSupported);
+        pw.println("mTempNotMetered=" + mTempNotMetered);
+        pw.println("mCongested=" + mCongested);
         pw.println("mDataCallResponse=" + mDataCallResponse);
 
         pw.println("Attached network requests:");

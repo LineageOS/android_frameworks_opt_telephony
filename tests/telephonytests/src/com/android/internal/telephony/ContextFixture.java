@@ -37,7 +37,6 @@ import android.app.UiModeManager;
 import android.app.usage.UsageStatsManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
-import android.content.ContentProvider;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -59,6 +58,7 @@ import android.database.MatrixCursor;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.Network;
+import android.net.NetworkPolicyManager;
 import android.net.Uri;
 import android.net.vcn.VcnManager;
 import android.net.wifi.WifiManager;
@@ -73,7 +73,6 @@ import android.os.UserHandle;
 import android.os.UserManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
-import android.provider.Telephony.ServiceStateTable;
 import android.telecom.TelecomManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
@@ -116,10 +115,11 @@ public class ContextFixture implements TestFixture<Context> {
     private static final String TAG = "ContextFixture";
     public static final String PERMISSION_ENABLE_ALL = "android.permission.STUB_PERMISSION";
 
-    public class FakeContentProvider extends MockContentProvider {
+    public static class FakeContentProvider extends MockContentProvider {
         private String[] mColumns = {"name", "value"};
         private HashMap<String, String> mKeyValuePairs = new HashMap<String, String>();
         private int mNumKeyValuePairs = 0;
+        private HashMap<String, String> mFlags = new HashMap<>();
 
         @Override
         public int delete(Uri uri, String selection, String[] selectionArgs) {
@@ -155,17 +155,17 @@ public class ContextFixture implements TestFixture<Context> {
         @Override
         public Bundle call(String method, String request, Bundle args) {
             logd("call called, mNumKeyValuePairs: " + mNumKeyValuePairs + " method: " + method +
-                    " request: " + request);
+                    " request: " + request + ", args=" + args);
+            Bundle bundle = new Bundle();
             switch(method) {
                 case Settings.CALL_METHOD_GET_GLOBAL:
                 case Settings.CALL_METHOD_GET_SECURE:
                 case Settings.CALL_METHOD_GET_SYSTEM:
                     if (mKeyValuePairs.containsKey(request)) {
-                        Bundle b = new Bundle(1);
-                        b.putCharSequence("value", mKeyValuePairs.get(request));
+                        bundle.putCharSequence("value", mKeyValuePairs.get(request));
                         logd("returning value pair: " + mKeyValuePairs.get(request) + " for " +
                                 request);
-                        return b;
+                        return bundle;
                     }
                     break;
                 case Settings.CALL_METHOD_PUT_GLOBAL:
@@ -175,6 +175,20 @@ public class ContextFixture implements TestFixture<Context> {
                     mKeyValuePairs.put(request, (String)args.get("value"));
                     mNumKeyValuePairs++;
                     break;
+                case Settings.CALL_METHOD_LIST_CONFIG:
+                    logd("LIST_config: " + mFlags);
+                    Bundle result = new Bundle();
+                    result.putSerializable(Settings.NameValueTable.VALUE, mFlags);
+                    return result;
+                case Settings.CALL_METHOD_SET_ALL_CONFIG:
+                    mFlags = (args != null)
+                            ? (HashMap) args.getSerializable(Settings.CALL_METHOD_FLAGS_KEY)
+                            : new HashMap<>();
+                    bundle.putInt(Settings.KEY_CONFIG_SET_ALL_RETURN,
+                            Settings.SET_ALL_RESULT_SUCCESS);
+                    return bundle;
+                default:
+                    logd("Unsupported method " + method);
             }
             return null;
         }
@@ -287,6 +301,8 @@ public class ContextFixture implements TestFixture<Context> {
                     return mPowerWhitelistManager;
                 case Context.LOCATION_SERVICE:
                     return mLocationManager;
+                case Context.NETWORK_POLICY_SERVICE:
+                    return mNetworkPolicyManager;
                 default:
                     return null;
             }
@@ -326,6 +342,8 @@ public class ContextFixture implements TestFixture<Context> {
                 return Context.TELEPHONY_IMS_SERVICE;
             } else if (serviceClass == TelephonyRegistryManager.class) {
                 return Context.TELEPHONY_REGISTRY_SERVICE;
+            } else if (serviceClass == NetworkPolicyManager.class) {
+                return Context.NETWORK_POLICY_SERVICE;
             }
             return super.getSystemServiceName(serviceClass);
         }
@@ -698,9 +716,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final LocationManager mLocationManager = mock(LocationManager.class);
     private final KeyguardManager mKeyguardManager = mock(KeyguardManager.class);
     private final VcnManager mVcnManager = mock(VcnManager.class);
-
-    private final ContentProvider mContentProvider = spy(new FakeContentProvider());
-
+    private final NetworkPolicyManager mNetworkPolicyManager = mock(NetworkPolicyManager.class);
     private final Configuration mConfiguration = new Configuration();
     private final DisplayMetrics mDisplayMetrics = new DisplayMetrics();
     private final SharedPreferences mSharedPreferences = PreferenceManager
@@ -759,11 +775,6 @@ public class ContextFixture implements TestFixture<Context> {
 
         mDisplayMetrics.density = 2.25f;
         doReturn(mDisplayMetrics).when(mResources).getDisplayMetrics();
-        mContentResolver.addProvider(Settings.AUTHORITY, mContentProvider);
-        // Settings caches the provider after first get/set call, this is needed to make sure
-        // Settings is using mContentProvider as the cached provider across all tests.
-        Settings.Global.getInt(mContentResolver, Settings.Global.AIRPLANE_MODE_ON, 0);
-        mContentResolver.addProvider(ServiceStateTable.AUTHORITY, mContentProvider);
         mPermissionTable.add(PERMISSION_ENABLE_ALL);
     }
 

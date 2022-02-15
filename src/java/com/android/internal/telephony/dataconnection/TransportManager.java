@@ -146,6 +146,7 @@ public class TransportManager extends Handler {
         mHandoverNeededEventRegistrants = new RegistrantList();
         mLogTag = TransportManager.class.getSimpleName() + "-" + mPhone.getPhoneId();
         mAccessNetworksManager = mPhone.getAccessNetworksManager();
+        if (phone.isUsingNewDataStack()) return;
         mAccessNetworksManager.registerForQualifiedNetworksChanged(this,
                 EVENT_QUALIFIED_NETWORKS_CHANGED);
     }

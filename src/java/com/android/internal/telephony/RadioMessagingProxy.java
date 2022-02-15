@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.os.RemoteException;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
@@ -28,6 +29,7 @@ import java.util.ArrayList;
  * getAidl to get IRadioMessaging and call the AIDL implementations of the HAL APIs.
  */
 public class RadioMessagingProxy extends RadioServiceProxy {
+    private static final String TAG = "RadioMessagingProxy";
     private volatile android.hardware.radio.messaging.IRadioMessaging mMessagingProxy = null;
 
     /**
@@ -40,6 +42,7 @@ public class RadioMessagingProxy extends RadioServiceProxy {
         mHalVersion = halVersion;
         mMessagingProxy = messaging;
         mIsAidl = true;
+        Rlog.d(TAG, "AIDL initialized");
     }
 
     /**
@@ -125,20 +128,6 @@ public class RadioMessagingProxy extends RadioServiceProxy {
             mMessagingProxy.acknowledgeLastIncomingGsmSms(serial, success, cause);
         } else {
             mRadioProxy.acknowledgeLastIncomingGsmSms(serial, success, cause);
-        }
-    }
-
-    /**
-     * Call IRadioMessaging#cancelPendingUssd
-     * @param serial Serial number of request
-     * @throws RemoteException
-     */
-    public void cancelPendingUssd(int serial) throws RemoteException {
-        if (isEmpty()) return;
-        if (isAidl()) {
-            mMessagingProxy.cancelPendingUssd(serial);
-        } else {
-            mRadioProxy.cancelPendingUssd(serial);
         }
     }
 
@@ -367,21 +356,6 @@ public class RadioMessagingProxy extends RadioServiceProxy {
                     RILUtils.convertToHalGsmSmsMessage(smscPdu, pdu));
         } else {
             mRadioProxy.sendSMSExpectMore(serial, RILUtils.convertToHalGsmSmsMessage(smscPdu, pdu));
-        }
-    }
-
-    /**
-     * Call IRadioMessaging#sendUssd
-     * @param serial Serial number of request
-     * @param ussd String containing the USSD request in UTF-8 format
-     * @throws RemoteException
-     */
-    public void sendUssd(int serial, String ussd) throws RemoteException {
-        if (isEmpty()) return;
-        if (isAidl()) {
-            mMessagingProxy.sendUssd(serial, ussd);
-        } else {
-            mRadioProxy.sendUssd(serial, ussd);
         }
     }
 

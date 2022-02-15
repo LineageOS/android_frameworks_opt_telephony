@@ -356,6 +356,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -363,7 +364,7 @@ import java.util.stream.Collectors;
  * Utils class for HAL <-> RIL conversions
  */
 public class RILUtils {
-    private static final String LOG_TAG = "RILUtils";
+    private static final String TAG = "RILUtils";
 
     // The number of required config values for broadcast SMS stored in RIL_CdmaBroadcastServiceInfo
     public static final int CDMA_BSI_NO_OF_INTS_STRUCT = 3;
@@ -565,8 +566,8 @@ public class RILUtils {
             String smscPdu, String pdu) {
         android.hardware.radio.messaging.GsmSmsMessage msg =
                 new android.hardware.radio.messaging.GsmSmsMessage();
-        msg.smscPdu = RILUtils.convertNullToEmptyString(smscPdu);
-        msg.pdu = RILUtils.convertNullToEmptyString(pdu);
+        msg.smscPdu = convertNullToEmptyString(smscPdu);
+        msg.pdu = convertNullToEmptyString(pdu);
         return msg;
     }
 
@@ -966,12 +967,58 @@ public class RILUtils {
         dpi.persistent = dp.isPersistent();
         dpi.preferred = dp.isPreferred();
         dpi.alwaysOn = dp.getApnSetting().isAlwaysOn();
+        dpi.trafficDescriptor = convertToHalTrafficDescriptorAidl(dp.getTrafficDescriptor());
 
         // profile id is only meaningful when it's persistent on the modem.
         dpi.profileId = (dpi.persistent) ? dp.getProfileId()
                 : android.hardware.radio.data.DataProfileInfo.ID_INVALID;
 
         return dpi;
+    }
+
+    /**
+     * Convert from DataProfileInfo.aidl to DataProfile
+     * @param dpi DataProfileInfo
+     * @return The converted DataProfile
+     */
+    public static DataProfile convertToDataProfile(
+            android.hardware.radio.data.DataProfileInfo dpi) {
+        ApnSetting apnSetting = new ApnSetting.Builder()
+                .setEntryName(dpi.apn)
+                .setApnName(dpi.apn)
+                .setApnTypeBitmask(dpi.supportedApnTypesBitmap)
+                .setAuthType(dpi.authType)
+                .setMaxConnsTime(dpi.maxConnsTime)
+                .setMaxConns(dpi.maxConns)
+                .setWaitTime(dpi.waitTime)
+                .setCarrierEnabled(dpi.enabled)
+                .setModemCognitive(dpi.persistent)
+                .setMtuV4(dpi.mtuV4)
+                .setMtuV6(dpi.mtuV6)
+                .setNetworkTypeBitmask(ServiceState.convertBearerBitmaskToNetworkTypeBitmask(
+                        dpi.bearerBitmap) >> 1)
+                .setProfileId(dpi.profileId)
+                .setPassword(dpi.password)
+                .setProtocol(dpi.protocol)
+                .setRoamingProtocol(dpi.roamingProtocol)
+                .setUser(dpi.user)
+                .setAlwaysOn(dpi.alwaysOn)
+                .build();
+
+        TrafficDescriptor td;
+        try {
+            td = convertHalTrafficDescriptor(dpi.trafficDescriptor);
+        } catch (IllegalArgumentException e) {
+            loge("convertToDataProfile: Failed to convert traffic descriptor. e=" + e);
+            td = null;
+        }
+
+        return new DataProfile.Builder()
+                .setType(dpi.type)
+                .setPreferred(dpi.preferred)
+                .setTrafficDescriptor(td)
+                .setApnSetting(apnSetting)
+                .build();
     }
 
     /**
@@ -1065,9 +1112,13 @@ public class RILUtils {
         android.hardware.radio.data.TrafficDescriptor td =
                 new android.hardware.radio.data.TrafficDescriptor();
         td.dnn = trafficDescriptor.getDataNetworkName();
-        android.hardware.radio.data.OsAppId osAppId = new android.hardware.radio.data.OsAppId();
-        osAppId.osAppId = trafficDescriptor.getOsAppId();
-        td.osAppId = osAppId;
+        if (trafficDescriptor.getOsAppId() == null) {
+            td.osAppId = null;
+        } else {
+            android.hardware.radio.data.OsAppId osAppId = new android.hardware.radio.data.OsAppId();
+            osAppId.osAppId = trafficDescriptor.getOsAppId();
+            td.osAppId = osAppId;
+        }
         return td;
     }
 
@@ -1141,7 +1192,7 @@ public class RILUtils {
     public static android.hardware.radio.data.LinkAddress[] convertToHalLinkProperties(
             LinkProperties linkProperties) {
         if (linkProperties == null) {
-            return null;
+            return new android.hardware.radio.data.LinkAddress[0];
         }
         android.hardware.radio.data.LinkAddress[] addresses =
                 new android.hardware.radio.data.LinkAddress[
@@ -1320,6 +1371,8 @@ public class RILUtils {
             for (int i = 0; i < ras.getBands().length; i++) {
                 bands[i] = ras.getBands()[i];
             }
+        } else {
+            bands = new int[0];
         }
         switch (ras.getRadioAccessNetwork()) {
             case AccessNetworkConstants.AccessNetworkType.GERAN:
@@ -1858,7 +1911,7 @@ public class RILUtils {
     public static android.hardware.radio.V1_0.Dial convertToHalDial(String address, int clirMode,
             UUSInfo uusInfo) {
         android.hardware.radio.V1_0.Dial dial = new android.hardware.radio.V1_0.Dial();
-        dial.address = RILUtils.convertNullToEmptyString(address);
+        dial.address = convertNullToEmptyString(address);
         dial.clir = clirMode;
         if (uusInfo != null) {
             android.hardware.radio.V1_0.UusInfo info = new android.hardware.radio.V1_0.UusInfo();
@@ -1880,7 +1933,7 @@ public class RILUtils {
     public static android.hardware.radio.voice.Dial convertToHalDialAidl(String address,
             int clirMode, UUSInfo uusInfo) {
         android.hardware.radio.voice.Dial dial = new android.hardware.radio.voice.Dial();
-        dial.address = RILUtils.convertNullToEmptyString(address);
+        dial.address = convertNullToEmptyString(address);
         dial.clir = clirMode;
         if (uusInfo != null) {
             android.hardware.radio.voice.UusInfo info = new android.hardware.radio.voice.UusInfo();
@@ -1888,6 +1941,8 @@ public class RILUtils {
             info.uusDcs = uusInfo.getDcs();
             info.uusData = new String(uusInfo.getUserData());
             dial.uusInfo = new android.hardware.radio.voice.UusInfo[] {info};
+        } else {
+            dial.uusInfo = new android.hardware.radio.voice.UusInfo[0];
         }
         return dial;
     }
@@ -2482,8 +2537,8 @@ public class RILUtils {
     }
 
     /**
-     * Convert a CellInfo defined in radio/1.0, 1.2, 1.4, 1.5, 1.6/types.hal to CellInfo
-     * @param cellInfo CellInfo defined in radio/1.0, 1.2, 1.4, 1.5, 1.6/types.hal
+     * Convert a CellInfo defined in CellInfo.aidl to CellInfo
+     * @param cellInfo CellInfo defined in CellInfo.aidl
      * @param nanotime time the CellInfo was created
      * @return The converted CellInfo
      */
@@ -2903,42 +2958,40 @@ public class RILUtils {
             android.hardware.radio.V1_0.SignalStrength signalStrength =
                     (android.hardware.radio.V1_0.SignalStrength) ss;
             return new SignalStrength(
-                    RILUtils.convertHalCdmaSignalStrength(signalStrength.cdma, signalStrength.evdo),
-                    RILUtils.convertHalGsmSignalStrength(signalStrength.gw),
-                    new CellSignalStrengthWcdma(),
-                    RILUtils.convertHalTdscdmaSignalStrength(signalStrength.tdScdma),
-                    RILUtils.convertHalLteSignalStrength(signalStrength.lte),
+                    convertHalCdmaSignalStrength(signalStrength.cdma, signalStrength.evdo),
+                    convertHalGsmSignalStrength(signalStrength.gw), new CellSignalStrengthWcdma(),
+                    convertHalTdscdmaSignalStrength(signalStrength.tdScdma),
+                    convertHalLteSignalStrength(signalStrength.lte),
                     new CellSignalStrengthNr());
         } else if (ss instanceof android.hardware.radio.V1_2.SignalStrength) {
             android.hardware.radio.V1_2.SignalStrength signalStrength =
                     (android.hardware.radio.V1_2.SignalStrength) ss;
             return new SignalStrength(
-                    RILUtils.convertHalCdmaSignalStrength(signalStrength.cdma, signalStrength.evdo),
-                    RILUtils.convertHalGsmSignalStrength(signalStrength.gsm),
-                    RILUtils.convertHalWcdmaSignalStrength(signalStrength.wcdma),
-                    RILUtils.convertHalTdscdmaSignalStrength(signalStrength.tdScdma),
-                    RILUtils.convertHalLteSignalStrength(signalStrength.lte),
-                    new CellSignalStrengthNr());
+                    convertHalCdmaSignalStrength(signalStrength.cdma, signalStrength.evdo),
+                    convertHalGsmSignalStrength(signalStrength.gsm),
+                    convertHalWcdmaSignalStrength(signalStrength.wcdma),
+                    convertHalTdscdmaSignalStrength(signalStrength.tdScdma),
+                    convertHalLteSignalStrength(signalStrength.lte), new CellSignalStrengthNr());
         } else if (ss instanceof android.hardware.radio.V1_4.SignalStrength) {
             android.hardware.radio.V1_4.SignalStrength signalStrength =
                     (android.hardware.radio.V1_4.SignalStrength) ss;
             return new SignalStrength(
-                    RILUtils.convertHalCdmaSignalStrength(signalStrength.cdma, signalStrength.evdo),
-                    RILUtils.convertHalGsmSignalStrength(signalStrength.gsm),
-                    RILUtils.convertHalWcdmaSignalStrength(signalStrength.wcdma),
-                    RILUtils.convertHalTdscdmaSignalStrength(signalStrength.tdscdma),
-                    RILUtils.convertHalLteSignalStrength(signalStrength.lte),
-                    RILUtils.convertHalNrSignalStrength(signalStrength.nr));
+                    convertHalCdmaSignalStrength(signalStrength.cdma, signalStrength.evdo),
+                    convertHalGsmSignalStrength(signalStrength.gsm),
+                    convertHalWcdmaSignalStrength(signalStrength.wcdma),
+                    convertHalTdscdmaSignalStrength(signalStrength.tdscdma),
+                    convertHalLteSignalStrength(signalStrength.lte),
+                    convertHalNrSignalStrength(signalStrength.nr));
         } else if (ss instanceof android.hardware.radio.V1_6.SignalStrength) {
             android.hardware.radio.V1_6.SignalStrength signalStrength =
                     (android.hardware.radio.V1_6.SignalStrength) ss;
             return new SignalStrength(
-                    RILUtils.convertHalCdmaSignalStrength(signalStrength.cdma, signalStrength.evdo),
-                    RILUtils.convertHalGsmSignalStrength(signalStrength.gsm),
-                    RILUtils.convertHalWcdmaSignalStrength(signalStrength.wcdma),
-                    RILUtils.convertHalTdscdmaSignalStrength(signalStrength.tdscdma),
-                    RILUtils.convertHalLteSignalStrength(signalStrength.lte),
-                    RILUtils.convertHalNrSignalStrength(signalStrength.nr));
+                    convertHalCdmaSignalStrength(signalStrength.cdma, signalStrength.evdo),
+                    convertHalGsmSignalStrength(signalStrength.gsm),
+                    convertHalWcdmaSignalStrength(signalStrength.wcdma),
+                    convertHalTdscdmaSignalStrength(signalStrength.tdscdma),
+                    convertHalLteSignalStrength(signalStrength.lte),
+                    convertHalNrSignalStrength(signalStrength.nr));
         }
         return null;
     }
@@ -2951,12 +3004,12 @@ public class RILUtils {
     public static SignalStrength convertHalSignalStrength(
             android.hardware.radio.network.SignalStrength signalStrength) {
         return new SignalStrength(
-                RILUtils.convertHalCdmaSignalStrength(signalStrength.cdma, signalStrength.evdo),
-                RILUtils.convertHalGsmSignalStrength(signalStrength.gsm),
-                RILUtils.convertHalWcdmaSignalStrength(signalStrength.wcdma),
-                RILUtils.convertHalTdscdmaSignalStrength(signalStrength.tdscdma),
-                RILUtils.convertHalLteSignalStrength(signalStrength.lte),
-                RILUtils.convertHalNrSignalStrength(signalStrength.nr));
+                convertHalCdmaSignalStrength(signalStrength.cdma, signalStrength.evdo),
+                convertHalGsmSignalStrength(signalStrength.gsm),
+                convertHalWcdmaSignalStrength(signalStrength.wcdma),
+                convertHalTdscdmaSignalStrength(signalStrength.tdscdma),
+                convertHalLteSignalStrength(signalStrength.lte),
+                convertHalNrSignalStrength(signalStrength.nr));
     }
 
     /**
@@ -3437,10 +3490,15 @@ public class RILUtils {
             sliceInfo = result.sliceInfo.getDiscriminator()
                     == android.hardware.radio.V1_6.OptionalSliceInfo.hidl_discriminator.noinit
                     ? null : convertHalSliceInfo(result.sliceInfo.value());
-            trafficDescriptors = result.trafficDescriptors.stream().map(
-                    RILUtils::convertHalTrafficDescriptor).collect(Collectors.toList());
+            for (android.hardware.radio.V1_6.TrafficDescriptor td : result.trafficDescriptors) {
+                try {
+                    trafficDescriptors.add(RILUtils.convertHalTrafficDescriptor(td));
+                } catch (IllegalArgumentException e) {
+                    loge("convertHalDataCallResult: Failed to convert traffic descriptor. e=" + e);
+                }
+            }
         } else {
-            Rlog.e(LOG_TAG, "Unsupported SetupDataCallResult " + dcResult);
+            loge("Unsupported SetupDataCallResult " + dcResult);
             return null;
         }
 
@@ -3454,7 +3512,7 @@ public class RILUtils {
                     ia = InetAddresses.parseNumericAddress(dns);
                     dnsList.add(ia);
                 } catch (IllegalArgumentException e) {
-                    Rlog.e(LOG_TAG, "Unknown dns: " + dns, e);
+                    Rlog.e(TAG, "Unknown dns: " + dns, e);
                 }
             }
         }
@@ -3469,7 +3527,7 @@ public class RILUtils {
                     ia = InetAddresses.parseNumericAddress(gateway);
                     gatewayList.add(ia);
                 } catch (IllegalArgumentException e) {
-                    Rlog.e(LOG_TAG, "Unknown gateway: " + gateway, e);
+                    Rlog.e(TAG, "Unknown gateway: " + gateway, e);
                 }
             }
         }
@@ -3484,7 +3542,7 @@ public class RILUtils {
                     ia = InetAddresses.parseNumericAddress(pcscf);
                     pcscfList.add(ia);
                 } catch (IllegalArgumentException e) {
-                    Rlog.e(LOG_TAG, "Unknown pcscf: " + pcscf, e);
+                    Rlog.e(TAG, "Unknown pcscf: " + pcscf, e);
                 }
             }
         }
@@ -3535,7 +3593,7 @@ public class RILUtils {
                     ia = InetAddresses.parseNumericAddress(dns);
                     dnsList.add(ia);
                 } catch (IllegalArgumentException e) {
-                    Rlog.e(LOG_TAG, "Unknown dns: " + dns, e);
+                    Rlog.e(TAG, "Unknown dns: " + dns, e);
                 }
             }
         }
@@ -3548,7 +3606,7 @@ public class RILUtils {
                     ia = InetAddresses.parseNumericAddress(gateway);
                     gatewayList.add(ia);
                 } catch (IllegalArgumentException e) {
-                    Rlog.e(LOG_TAG, "Unknown gateway: " + gateway, e);
+                    Rlog.e(TAG, "Unknown gateway: " + gateway, e);
                 }
             }
         }
@@ -3561,7 +3619,7 @@ public class RILUtils {
                     ia = InetAddresses.parseNumericAddress(pcscf);
                     pcscfList.add(ia);
                 } catch (IllegalArgumentException e) {
-                    Rlog.e(LOG_TAG, "Unknown pcscf: " + pcscf, e);
+                    Rlog.e(TAG, "Unknown pcscf: " + pcscf, e);
                 }
             }
         }
@@ -3571,7 +3629,11 @@ public class RILUtils {
         }
         List<TrafficDescriptor> trafficDescriptors = new ArrayList<>();
         for (android.hardware.radio.data.TrafficDescriptor td : result.trafficDescriptors) {
-            trafficDescriptors.add(convertHalTrafficDescriptor(td));
+            try {
+                trafficDescriptors.add(convertHalTrafficDescriptor(td));
+            } catch (IllegalArgumentException e) {
+                loge("convertHalDataCallResult: Failed to convert traffic descriptor. e=" + e);
+            }
         }
 
         return new DataCallResponse.Builder()
@@ -3592,7 +3654,8 @@ public class RILUtils {
                 .setPduSessionId(result.pduSessionId)
                 .setDefaultQos(convertHalQos(result.defaultQos))
                 .setQosBearerSessions(qosSessions)
-                .setSliceInfo(convertHalSliceInfo(result.sliceInfo))
+                .setSliceInfo(result.sliceInfo == null ? null
+                        : convertHalSliceInfo(result.sliceInfo))
                 .setTrafficDescriptors(trafficDescriptors)
                 .build();
     }
@@ -3620,33 +3683,34 @@ public class RILUtils {
     }
 
     private static TrafficDescriptor convertHalTrafficDescriptor(
-            android.hardware.radio.V1_6.TrafficDescriptor td) {
+            android.hardware.radio.V1_6.TrafficDescriptor td) throws IllegalArgumentException {
         String dnn = td.dnn.getDiscriminator()
                 == android.hardware.radio.V1_6.OptionalDnn.hidl_discriminator.noinit
                 ? null : td.dnn.value();
-        String osAppId = td.osAppId.getDiscriminator()
+        byte[] osAppId = td.osAppId.getDiscriminator()
                 == android.hardware.radio.V1_6.OptionalOsAppId.hidl_discriminator.noinit
-                ? null : new String(arrayListToPrimitiveArray(td.osAppId.value().osAppId));
+                ? null : arrayListToPrimitiveArray(td.osAppId.value().osAppId);
+
         TrafficDescriptor.Builder builder = new TrafficDescriptor.Builder();
         if (dnn != null) {
             builder.setDataNetworkName(dnn);
         }
         if (osAppId != null) {
-            builder.setOsAppId(osAppId.getBytes());
+            builder.setOsAppId(osAppId);
         }
         return builder.build();
     }
 
     private static TrafficDescriptor convertHalTrafficDescriptor(
-            android.hardware.radio.data.TrafficDescriptor td) {
+            android.hardware.radio.data.TrafficDescriptor td) throws IllegalArgumentException {
         String dnn = td.dnn;
-        String osAppId = td.osAppId == null ? null : new String(td.osAppId.osAppId);
+        byte[] osAppId = td.osAppId == null ? null : td.osAppId.osAppId;
         TrafficDescriptor.Builder builder = new TrafficDescriptor.Builder();
         if (dnn != null) {
             builder.setDataNetworkName(dnn);
         }
         if (osAppId != null) {
-            builder.setOsAppId(osAppId.getBytes());
+            builder.setOsAppId(osAppId);
         }
         return builder.build();
     }
@@ -3659,7 +3723,17 @@ public class RILUtils {
     public static NetworkSlicingConfig convertHalSlicingConfig(
             android.hardware.radio.V1_6.SlicingConfig sc) {
         List<UrspRule> urspRules = sc.urspRules.stream().map(ur -> new UrspRule(ur.precedence,
-                ur.trafficDescriptors.stream().map(RILUtils::convertHalTrafficDescriptor)
+                ur.trafficDescriptors.stream()
+                        .map(td -> {
+                            try {
+                                return convertHalTrafficDescriptor(td);
+                            } catch (IllegalArgumentException e) {
+                                loge("convertHalSlicingConfig: Failed to convert traffic descriptor"
+                                        + ". e=" + e);
+                                return null;
+                            }
+                        })
+                        .filter(Objects::nonNull)
                         .collect(Collectors.toList()),
                 ur.routeSelectionDescriptor.stream().map(rsd -> new RouteSelectionDescriptor(
                         rsd.precedence, rsd.sessionType.value(), rsd.sscMode.value(),
@@ -3682,7 +3756,11 @@ public class RILUtils {
         for (android.hardware.radio.data.UrspRule ur : sc.urspRules) {
             List<TrafficDescriptor> tds = new ArrayList<>();
             for (android.hardware.radio.data.TrafficDescriptor td : ur.trafficDescriptors) {
-                tds.add(convertHalTrafficDescriptor(td));
+                try {
+                    tds.add(convertHalTrafficDescriptor(td));
+                } catch (IllegalArgumentException e) {
+                    loge("convertHalTrafficDescriptor: " + e);
+                }
             }
             List<RouteSelectionDescriptor> rsds = new ArrayList<>();
             for (android.hardware.radio.data.RouteSelectionDescriptor rsd
@@ -4329,21 +4407,10 @@ public class RILUtils {
      */
     public static android.hardware.radio.V1_6.PhonebookRecordInfo convertToHalPhonebookRecordInfo(
             SimPhonebookRecord record) {
-        android.hardware.radio.V1_6.PhonebookRecordInfo pbRecordInfo =
-                new android.hardware.radio.V1_6.PhonebookRecordInfo();
-        pbRecordInfo.recordId = record.getRecordIndex();
-        pbRecordInfo.name = convertNullToEmptyString(record.getAlphaTag());
-        pbRecordInfo.number = convertNullToEmptyString(
-                convertToHalPhonebookRecordInfoNumber(record.getNumber()));
-        if (record.getEmails() != null) {
-            pbRecordInfo.emails = primitiveArrayToArrayList(record.getEmails());
+        if(record != null) {
+            return record.toPhonebookRecordInfo();
         }
-        if (record.getAdditionalNumbers() != null) {
-            for (String addNum : record.getAdditionalNumbers()) {
-                pbRecordInfo.additionalNumbers.add(convertToHalPhonebookRecordInfoNumber(addNum));
-            }
-        }
-        return pbRecordInfo;
+        return null;
     }
 
     /**
@@ -4353,34 +4420,10 @@ public class RILUtils {
      */
     public static android.hardware.radio.sim.PhonebookRecordInfo
             convertToHalPhonebookRecordInfoAidl(SimPhonebookRecord record) {
-        android.hardware.radio.sim.PhonebookRecordInfo pbRecordInfo =
-                new android.hardware.radio.sim.PhonebookRecordInfo();
-        pbRecordInfo.recordId = record.getRecordIndex();
-        pbRecordInfo.name = convertNullToEmptyString(record.getAlphaTag());
-        pbRecordInfo.number = convertNullToEmptyString(
-                convertToHalPhonebookRecordInfoNumber(record.getNumber()));
-        pbRecordInfo.emails = record.getEmails();
-        if (record.getAdditionalNumbers() != null) {
-            String[] additionalNumbers = new String[record.getAdditionalNumbers().length];
-            for (int i = 0; i < additionalNumbers.length; i++) {
-                additionalNumbers[i] =
-                        convertToHalPhonebookRecordInfoNumber(record.getAdditionalNumbers()[i]);
-            }
-            pbRecordInfo.additionalNumbers = additionalNumbers;
+        if(record != null) {
+            return record.toPhonebookRecordInfoAidl();
         }
-        return pbRecordInfo;
-    }
-
-    /**
-     * Convert the GSM pause/wild/wait character to the phone number in the SIM PhonebookRecordInfo
-     * number format
-     * @param input GSM pause/wild/wait character
-     * @return The converted PhonebookRecordInfo number
-     */
-    private static String convertToHalPhonebookRecordInfoNumber(String input) {
-        return input == null ? null : input.replace(PhoneNumberUtils.WAIT, 'e')
-                .replace(PhoneNumberUtils.PAUSE, 'T')
-                .replace(PhoneNumberUtils.WILD, '?');
+        return null;
     }
 
     /**
@@ -4466,7 +4509,7 @@ public class RILUtils {
 
     /**
      * Convert List<UiccSlotMapping> list to SlotPortMapping[]
-     * @param list List<UiccSlotMapping> of slots mapping
+     * @param slotMapping List<UiccSlotMapping> of slots mapping
      * @return SlotPortMapping[] of slots mapping
      */
     public static android.hardware.radio.config.SlotPortMapping[] convertSimSlotsMapping(

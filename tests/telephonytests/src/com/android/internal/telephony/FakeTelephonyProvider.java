@@ -26,6 +26,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.BaseColumns;
 import android.provider.Telephony;
+import android.telephony.SubscriptionManager;
 import android.test.mock.MockContentProvider;
 import android.util.Log;
 
@@ -118,7 +119,10 @@ public class FakeTelephonyProvider extends MockContentProvider {
                     + Telephony.SimInfo.COLUMN_ALLOWED_NETWORK_TYPES_FOR_REASONS + " TEXT,"
                     + Telephony.SimInfo.COLUMN_D2D_STATUS_SHARING + " INTEGER DEFAULT 0,"
                     + Telephony.SimInfo.COLUMN_D2D_STATUS_SHARING_SELECTED_CONTACTS + "TEXT,"
-                    + Telephony.SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED + " INTEGER DEFAULT -1"
+                    + Telephony.SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED + " INTEGER DEFAULT -1,"
+                    + Telephony.SimInfo.COLUMN_PORT_INDEX + " INTEGER DEFAULT -1,"
+                    + Telephony.SimInfo.COLUMN_USAGE_SETTING + " INTEGER DEFAULT "
+                            + SubscriptionManager.USAGE_SETTING_UNKNOWN
                     + ");";
         }
 

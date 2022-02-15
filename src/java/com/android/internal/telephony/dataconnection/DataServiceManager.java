@@ -329,12 +329,23 @@ public class DataServiceManager extends Handler {
             sendCompleteMessage(msg, resultCode);
         }
 
+        @Override
         public void onApnUnthrottled(String apn) {
             if (apn != null) {
                 mApnUnthrottledRegistrants.notifyRegistrants(
                         new AsyncResult(null, apn, null));
             } else {
                 loge("onApnUnthrottled: apn is null");
+            }
+        }
+
+        @Override
+        public void onDataProfileUnthrottled(DataProfile dataProfile) {
+            if (dataProfile != null) {
+                mApnUnthrottledRegistrants.notifyRegistrants(
+                        new AsyncResult(null, dataProfile, null));
+            } else {
+                loge("onDataProfileUnthrottled: dataProfile is null");
             }
         }
     }
@@ -359,6 +370,7 @@ public class DataServiceManager extends Handler {
         mPermissionManager = (LegacyPermissionManager) phone.getContext().getSystemService(
                 Context.LEGACY_PERMISSION_SERVICE);
         mAppOps = (AppOpsManager) phone.getContext().getSystemService(Context.APP_OPS_SERVICE);
+        if (phone.isUsingNewDataStack()) return;
 
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);

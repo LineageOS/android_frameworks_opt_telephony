@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony.dataconnection;
 
-import android.annotation.IntDef;
 import android.hardware.radio.V1_4.DataConnActiveStatus;
 import android.net.LinkAddress;
 import android.os.AsyncResult;
@@ -25,9 +24,11 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
+import android.telephony.data.TrafficDescriptor;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.DctConstants;
@@ -41,8 +42,6 @@ import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -57,24 +56,6 @@ public class DcController extends Handler {
     private static final boolean DBG = true;
     private static final boolean VDBG = false;
 
-    /** Physical link state unknown */
-    public static final int PHYSICAL_LINK_UNKNOWN = 0;
-
-    /** Physical link state inactive (i.e. RRC idle) */
-    public static final int PHYSICAL_LINK_NOT_ACTIVE = 1;
-
-    /** Physical link state active (i.e. RRC connected) */
-    public static final int PHYSICAL_LINK_ACTIVE = 2;
-
-    /** @hide */
-    @IntDef(prefix = { "PHYSICAL_LINK_" }, value = {
-            PHYSICAL_LINK_UNKNOWN,
-            PHYSICAL_LINK_NOT_ACTIVE,
-            PHYSICAL_LINK_ACTIVE
-    })
-    @Retention(RetentionPolicy.SOURCE)
-    public @interface PhysicalLinkState{}
-
     private final Phone mPhone;
     private final DcTracker mDct;
     private final String mTag;
@@ -86,16 +67,20 @@ public class DcController extends Handler {
     final ArrayList<DataConnection> mDcListAll = new ArrayList<>();
     // @GuardedBy("mDcListAll")
     private final HashMap<Integer, DataConnection> mDcListActiveByCid = new HashMap<>();
+    // @GuardedBy("mTrafficDescriptorsByCid")
+    private final HashMap<Integer, List<TrafficDescriptor>> mTrafficDescriptorsByCid =
+            new HashMap<>();
 
     /**
-     * Aggregated physical link state from all data connections. This reflects the device's RRC
+     * Aggregated physical link status from all data connections. This reflects the device's RRC
      * connection state.
-     * If {@link CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL} is true,
+     * If {@link CarrierConfigManager#KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL} is true,
      * then This reflects "internet data connection" instead of RRC state.
      */
-    private @PhysicalLinkState int mPhysicalLinkState = PHYSICAL_LINK_UNKNOWN;
+    private @DataCallResponse.LinkStatus int mPhysicalLinkStatus =
+            DataCallResponse.LINK_STATUS_UNKNOWN;
 
-    private RegistrantList mPhysicalLinkStateChangedRegistrants = new RegistrantList();
+    private RegistrantList mPhysicalLinkStatusChangedRegistrants = new RegistrantList();
 
     /**
      * Constructor.
@@ -140,6 +125,9 @@ public class DcController extends Handler {
             mDcListActiveByCid.remove(dc.mCid);
             mDcListAll.remove(dc);
         }
+        synchronized (mTrafficDescriptorsByCid) {
+            mTrafficDescriptorsByCid.remove(dc.mCid);
+        }
     }
 
     public void addActiveDcByCid(DataConnection dc) {
@@ -149,6 +137,7 @@ public class DcController extends Handler {
         synchronized (mDcListAll) {
             mDcListActiveByCid.put(dc.mCid, dc);
         }
+        updateTrafficDescriptorsForCid(dc.mCid, dc.getTrafficDescriptors());
     }
 
     DataConnection getActiveDcByCid(int cid) {
@@ -164,6 +153,9 @@ public class DcController extends Handler {
                 log("removeActiveDcByCid removedDc=null dc=" + dc);
             }
         }
+        synchronized (mTrafficDescriptorsByCid) {
+            mTrafficDescriptorsByCid.remove(dc.mCid);
+        }
     }
 
     boolean isDefaultDataActive() {
@@ -171,6 +163,18 @@ public class DcController extends Handler {
             return mDcListActiveByCid.values().stream()
                     .anyMatch(dc -> dc.getApnContexts().stream()
                             .anyMatch(apn -> apn.getApnTypeBitmask() == ApnSetting.TYPE_DEFAULT));
+        }
+    }
+
+    List<TrafficDescriptor> getTrafficDescriptorsForCid(int cid) {
+        synchronized (mTrafficDescriptorsByCid) {
+            return mTrafficDescriptorsByCid.get(cid);
+        }
+    }
+
+    void updateTrafficDescriptorsForCid(int cid, List<TrafficDescriptor> tds) {
+        synchronized (mTrafficDescriptorsByCid) {
+            mTrafficDescriptorsByCid.put(cid, tds);
         }
     }
 
@@ -209,19 +213,29 @@ public class DcController extends Handler {
         }
 
         // Create hashmap of cid to DataCallResponse
-        HashMap<Integer, DataCallResponse> dataCallResponseListByCid =
-                new HashMap<Integer, DataCallResponse>();
+        HashMap<Integer, DataCallResponse> dataCallResponseListByCid = new HashMap<>();
         for (DataCallResponse dcs : dcsList) {
             dataCallResponseListByCid.put(dcs.getId(), dcs);
         }
 
-        // Add a DC that is active but not in the
-        // dcsList to the list of DC's to retry
-        ArrayList<DataConnection> dcsToRetry = new ArrayList<DataConnection>();
+        // Add a DC that is active but not in the dcsList to the list of DC's to retry
+        ArrayList<DataConnection> dcsToRetry = new ArrayList<>();
         for (DataConnection dc : dcListActiveByCid.values()) {
-            if (dataCallResponseListByCid.get(dc.mCid) == null) {
+            DataCallResponse response = dataCallResponseListByCid.get(dc.mCid);
+            if (response == null) {
                 if (DBG) log("onDataStateChanged: add to retry dc=" + dc);
                 dcsToRetry.add(dc);
+            } else {
+                List<TrafficDescriptor> oldTds = getTrafficDescriptorsForCid(dc.mCid);
+                List<TrafficDescriptor> newTds = response.getTrafficDescriptors();
+                if (!oldTds.equals(newTds)) {
+                    if (DBG) {
+                        log("onDataStateChanged: add to retry due to TD changed dc=" + dc
+                                + ", oldTds=" + oldTds + ", newTds=" + newTds);
+                    }
+                    updateTrafficDescriptorsForCid(dc.mCid, newTds);
+                    dcsToRetry.add(dc);
+                }
             }
         }
         if (DBG) log("onDataStateChanged: dcsToRetry=" + dcsToRetry);
@@ -368,22 +382,23 @@ public class DcController extends Handler {
 
         if (mDataServiceManager.getTransportType()
                 == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
-            boolean isPhysicalLinkStateFocusingOnInternetData =
+            boolean isPhysicalLinkStatusFocusingOnInternetData =
                     mDct.getLteEndcUsingUserDataForIdleDetection();
-            int physicalLinkState =
-                    (isPhysicalLinkStateFocusingOnInternetData
+            int physicalLinkStatus =
+                    (isPhysicalLinkStatusFocusingOnInternetData
                             ? isInternetDataCallActive : isAnyDataCallActive)
-                            ? PHYSICAL_LINK_ACTIVE : PHYSICAL_LINK_NOT_ACTIVE;
-            if (mPhysicalLinkState != physicalLinkState) {
-                mPhysicalLinkState = physicalLinkState;
-                mPhysicalLinkStateChangedRegistrants.notifyResult(mPhysicalLinkState);
+                            ? DataCallResponse.LINK_STATUS_ACTIVE
+                            : DataCallResponse.LINK_STATUS_DORMANT;
+            if (mPhysicalLinkStatus != physicalLinkStatus) {
+                mPhysicalLinkStatus = physicalLinkStatus;
+                mPhysicalLinkStatusChangedRegistrants.notifyResult(mPhysicalLinkStatus);
             }
             if (isAnyDataCallDormant && !isAnyDataCallActive) {
                 // There is no way to indicate link activity per APN right now. So
                 // Link Activity will be considered dormant only when all data calls
                 // are dormant.
                 // If a single data call is in dormant state and none of the data
-                // calls are active broadcast overall link state as dormant.
+                // calls are active broadcast overall link status as dormant.
                 if (DBG) {
                     log("onDataStateChanged: Data activity DORMANT. stopNetStatePoll");
                 }
@@ -420,24 +435,24 @@ public class DcController extends Handler {
     }
 
     /**
-     * Register for physical link state (i.e. RRC state) changed event.
-     * if {@link CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL} is true,
-     * then physical link state is focusing on "internet data connection" instead of RRC state.
+     * Register for physical link status (i.e. RRC state) changed event.
+     * if {@link CarrierConfigManager#KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL} is true,
+     * then physical link status is focusing on "internet data connection" instead of RRC state.
      * @param h The handler
      * @param what The event
      */
     @VisibleForTesting
-    public void registerForPhysicalLinkStateChanged(Handler h, int what) {
-        mPhysicalLinkStateChangedRegistrants.addUnique(h, what, null);
+    public void registerForPhysicalLinkStatusChanged(Handler h, int what) {
+        mPhysicalLinkStatusChangedRegistrants.addUnique(h, what, null);
     }
 
     /**
-     * Unregister from physical link state (i.e. RRC state) changed event.
+     * Unregister from physical link status (i.e. RRC state) changed event.
      *
      * @param h The previously registered handler
      */
-    void unregisterForPhysicalLinkStateChanged(Handler h) {
-        mPhysicalLinkStateChangedRegistrants.remove(h);
+    void unregisterForPhysicalLinkStatusChanged(Handler h) {
+        mPhysicalLinkStatusChangedRegistrants.remove(h);
     }
 
     private void log(String s) {
@@ -450,9 +465,15 @@ public class DcController extends Handler {
 
     @Override
     public String toString() {
+        StringBuilder sb = new StringBuilder();
         synchronized (mDcListAll) {
-            return "mDcListAll=" + mDcListAll + " mDcListActiveByCid=" + mDcListActiveByCid;
+            sb.append("mDcListAll=").append(mDcListAll)
+                    .append(" mDcListActiveByCid=").append(mDcListActiveByCid);
         }
+        synchronized (mTrafficDescriptorsByCid) {
+            sb.append("mTrafficDescriptorsByCid=").append(mTrafficDescriptorsByCid);
+        }
+        return sb.toString();
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
@@ -460,6 +481,9 @@ public class DcController extends Handler {
         synchronized (mDcListAll) {
             pw.println(" mDcListAll=" + mDcListAll);
             pw.println(" mDcListActiveByCid=" + mDcListActiveByCid);
+        }
+        synchronized (mTrafficDescriptorsByCid) {
+            pw.println(" mTrafficDescriptorsByCid=" + mTrafficDescriptorsByCid);
         }
     }
 }
