@@ -95,8 +95,8 @@ public interface NitzStateMachine {
         int getNitzUpdateSpacingMillis();
 
         /**
-         * If UTC time between two NITZ signals is greater than this value then the second signal
-         * cannot be ignored.
+         * If Unix epoch time between two NITZ signals is greater than this value then the second
+         * signal cannot be ignored.
          */
         int getNitzUpdateDiffMillis();
 

@@ -38,7 +38,7 @@ final class NitzStateMachineTestSupport {
     static final int ARBITRARY_AGE = 54321;
 
     // Values used to when initializing device state but where the value isn't important.
-    static final long ARBITRARY_SYSTEM_CLOCK_TIME = createUtcTime(1977, 1, 1, 12, 0, 0);
+    static final long ARBITRARY_SYSTEM_CLOCK_TIME = createUnixEpochTime(1977, 1, 1, 12, 0, 0);
     static final long ARBITRARY_ELAPSED_REALTIME = 123456789L;
     static final String ARBITRARY_DEBUG_INFO = "Test debug info";
 
@@ -184,7 +184,7 @@ final class NitzStateMachineTestSupport {
 
             Builder setActualTimeUtc(int year, int monthInYear, int day, int hourOfDay,
                     int minute, int second) {
-                mActualTimeMillis = createUtcTime(year, monthInYear, day, hourOfDay, minute,
+                mActualTimeMillis = createUnixEpochTime(year, monthInYear, day, hourOfDay, minute,
                         second);
                 return this;
             }
@@ -279,8 +279,8 @@ final class NitzStateMachineTestSupport {
 
     private NitzStateMachineTestSupport() {}
 
-    private static long createUtcTime(int year, int monthInYear, int day, int hourOfDay, int minute,
-            int second) {
+    private static long createUnixEpochTime(int year, int monthInYear, int day, int hourOfDay,
+            int minute, int second) {
         Calendar cal = new GregorianCalendar(zone("Etc/UTC"));
         cal.clear();
         cal.set(year, monthInYear - 1, day, hourOfDay, minute, second);
@@ -302,7 +302,7 @@ final class NitzStateMachineTestSupport {
     static TelephonyTimeSuggestion createTimeSuggestionFromNitzSignal(
             int slotIndex, NitzSignal nitzSignal) {
         return new TelephonyTimeSuggestion.Builder(slotIndex)
-                .setUtcTime(nitzSignal.createTimeSignal())
+                .setUnixEpochTime(nitzSignal.createTimeSignal())
                 .addDebugInfo("Test")
                 .build();
     }

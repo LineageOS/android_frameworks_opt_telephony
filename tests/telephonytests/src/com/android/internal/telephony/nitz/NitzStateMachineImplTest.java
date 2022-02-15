@@ -755,9 +755,9 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         @Override
         public void suggestDeviceTime(TelephonyTimeSuggestion timeSuggestion) {
             suggestedTimes.set(timeSuggestion);
-            if (timeSuggestion.getUtcTime() != null) {
+            if (timeSuggestion.getUnixEpochTime() != null) {
                 // The fake time service just uses the latest suggestion.
-                mFakeDeviceState.currentTimeMillis = timeSuggestion.getUtcTime().getValue();
+                mFakeDeviceState.currentTimeMillis = timeSuggestion.getUnixEpochTime().getValue();
             }
         }
 
