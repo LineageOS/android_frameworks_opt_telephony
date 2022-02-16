@@ -17,6 +17,7 @@ package com.android.internal.telephony.euicc;
 
 import static android.telephony.euicc.EuiccCardManager.RESET_OPTION_DELETE_OPERATIONAL_PROFILES;
 import static android.telephony.euicc.EuiccManager.EUICC_OTA_STATUS_UNAVAILABLE;
+import static android.telephony.euicc.EuiccManager.SWITCH_WITHOUT_PORT_INDEX_EXCEPTION_ON_DISABLE;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -39,6 +40,7 @@ import static org.mockito.Mockito.when;
 import android.Manifest;
 import android.annotation.Nullable;
 import android.app.PendingIntent;
+import android.compat.testing.PlatformCompatChangeRule;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
@@ -68,9 +70,14 @@ import com.android.internal.telephony.euicc.EuiccConnector.GetOtaStatusCommandCa
 import com.android.internal.telephony.euicc.EuiccConnector.OtaStatusChangedCallback;
 import com.android.internal.telephony.uicc.UiccSlot;
 
+import libcore.junit.util.compat.CoreCompatChangeRule.DisableCompatChanges;
+import libcore.junit.util.compat.CoreCompatChangeRule.EnableCompatChanges;
+
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -86,11 +93,14 @@ import java.util.Collections;
 
 @RunWith(AndroidJUnit4.class)
 public class EuiccControllerTest extends TelephonyTest {
+    @Rule
+    public TestRule compatChangeRule = new PlatformCompatChangeRule();
     private static final DownloadableSubscription SUBSCRIPTION =
             DownloadableSubscription.forActivationCode("abcde");
 
     private static final String PACKAGE_NAME = "test.package";
     private static final String CARRIER_NAME = "test name";
+    private static final String TEST_PACKAGE_NAME = "com.android.frameworks.telephonytests";
     private static final byte[] SIGNATURE_BYTES = new byte[] {1, 2, 3, 4, 5};
 
     private static final UiccAccessRule ACCESS_RULE;
@@ -822,8 +832,21 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testSwitchToSubscription_emptySubscription_noActiveSubscription() throws Exception {
+        setHasWriteEmbeddedPermission(true);
+        callSwitchToSubscription(
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID, null /* iccid */, true /* complete */,
+                EuiccService.RESULT_OK, "whatever" /* callingPackage */);
+        verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
+                0 /* detailedCode */);
+        verify(mMockConnector, never()).switchToSubscription(anyInt(), anyInt(), anyString(),
+                anyBoolean(), any(), anyBoolean());
+    }
+
+    @Test
     public void testSwitchToSubscription_emptySubscription_success() throws Exception {
         setHasWriteEmbeddedPermission(true);
+        setHasCarrierPrivilegesOnActiveSubscription(false);
         callSwitchToSubscription(
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID, null /* iccid */, true /* complete */,
                 EuiccService.RESULT_OK, "whatever" /* callingPackage */);
@@ -1139,6 +1162,20 @@ public class EuiccControllerTest extends TelephonyTest {
                 EuiccManager.EXTRA_EMBEDDED_SUBSCRIPTION_ERROR_CODE, -1), 0x345678);
     }
 
+    @Test
+    @DisableCompatChanges({SWITCH_WITHOUT_PORT_INDEX_EXCEPTION_ON_DISABLE})
+    public void testIsCompactChangeEnabled_disable() {
+        assertFalse(mController.isCompatChangeEnabled(TEST_PACKAGE_NAME,
+                SWITCH_WITHOUT_PORT_INDEX_EXCEPTION_ON_DISABLE));
+    }
+
+    @Test
+    @EnableCompatChanges({SWITCH_WITHOUT_PORT_INDEX_EXCEPTION_ON_DISABLE})
+    public void testIsCompactChangeEnabled_enable() {
+        assertTrue(mController.isCompatChangeEnabled(TEST_PACKAGE_NAME,
+                SWITCH_WITHOUT_PORT_INDEX_EXCEPTION_ON_DISABLE));
+    }
+
     private void setUpUiccSlotData() {
         when(mUiccController.getUiccSlot(anyInt())).thenReturn(mUiccSlot);
         // TODO(b/199559633): Add test cases for isMultipleEnabledProfileSupported true case
@@ -1173,7 +1210,7 @@ public class EuiccControllerTest extends TelephonyTest {
         SubscriptionInfo subInfo = new SubscriptionInfo(
                 0, "", 0, "", "", 0, 0, "", 0, null, "", "", "", true /* isEmbedded */,
                 hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null, "", CARD_ID,
-                false, null, false, 0, 0, 0, null, null, true, -1);
+                false, null, false, 0, 0, 0, null, null, true, 0);
         when(mSubscriptionManager.canManageSubscription(subInfo, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
         when(mSubscriptionManager.getActiveSubscriptionInfoList(anyBoolean())).thenReturn(
@@ -1202,11 +1239,11 @@ public class EuiccControllerTest extends TelephonyTest {
         SubscriptionInfo subInfo1 = new SubscriptionInfo(
                 0, "", 0, "", "", 0, 0, "", 0, null, "", "", "", true /* isEmbedded */,
                 hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null, "", CARD_ID,
-                false, null, false, 0, 0, 0, null, null, true, -1);
+                false, null, false, 0, 0, 0, null, null, true, 0);
         SubscriptionInfo subInfo2 = new SubscriptionInfo(
                 0, "", 0, "", "", 0, 0, "", 0, null, "", "", "", true /* isEmbedded */,
                 hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null, "",
-                1 /* cardId */, false, null, false, 0, 0, 0, null, null, true, -1);
+                1 /* cardId */, false, null, false, 0, 0, 0, null, null, true, 0);
         when(mSubscriptionManager.canManageSubscription(subInfo1, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
         when(mSubscriptionManager.canManageSubscription(subInfo2, PACKAGE_NAME)).thenReturn(
