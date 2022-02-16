@@ -1144,7 +1144,7 @@ public class EuiccController extends IEuiccController.Stub {
     /**
      * Returns true if the target port index is valid.
      * 1. Port index is valid if it is non-negative and less than the total port count.
-     * 2. In SS Mode, port index is invalid if the embedded slot already has an active empty port
+     * 2. In SS Mode, port index is invalid if the embedded slot already has an active port
      * with different port index than the target port index.
      * 3. In DSDS mode, port index is invalid if the pSim slot is active and the embedded slot
      * already has an active empty port with different port index than the target port index.
