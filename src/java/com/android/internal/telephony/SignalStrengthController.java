@@ -84,12 +84,15 @@ public class SignalStrengthController extends Handler {
     private static final int EVENT_POLL_SIGNAL_STRENGTH_DONE                = 9;
     private static final int EVENT_CARRIER_CONFIG_CHANGED                   = 10;
 
+    @NonNull
     private final Phone mPhone;
+    @NonNull
     private final CommandsInterface mCi;
 
     @NonNull
     private SignalStrength mSignalStrength;
     private long mSignalStrengthUpdatedTime;
+    @Nullable
     private SignalStrength mLastSignalStrength = null;
 
     /**
@@ -97,6 +100,7 @@ public class SignalStrengthController extends Handler {
      * Reference: 3GPP TS 36.104 5.4.3)
      * inclusive ranges for which the lte rsrp boost is applied
      */
+    @Nullable
     private ArrayList<Pair<Integer, Integer>> mEarfcnPairListForRsrpBoost = null;
     /**
      * Offset which is reduced from the rsrp threshold while calculating signal strength level.
@@ -107,11 +111,14 @@ public class SignalStrengthController extends Handler {
      * Reference: 3GPP TS 38.104)
      * inclusive ranges for which the corresponding nr rsrp boost is applied
      */
+    @Nullable
     private ArrayList<Pair<Integer, Integer>> mNrarfcnRangeListForRsrpBoost = null;
     @Nullable
     private int[] mNrRsrpBoost = null;
+    @NonNull
     private final Object mRsrpBoostLock = new Object();
 
+    @NonNull
     private final List<SignalRequestRecord> mSignalRequestRecords = new ArrayList<>();
 
     @NonNull
@@ -131,7 +138,7 @@ public class SignalStrengthController extends Handler {
         }
     };
 
-    public SignalStrengthController(Phone phone) {
+    public SignalStrengthController(@NonNull Phone phone) {
         mPhone = phone;
         mCi = mPhone.mCi;
 
@@ -284,7 +291,7 @@ public class SignalStrengthController extends Handler {
      *
      * @return true if the signal strength changed and a notification was sent.
      */
-    private boolean onSignalStrengthResult(AsyncResult ar) {
+    private boolean onSignalStrengthResult(@NonNull AsyncResult ar) {
 
         // This signal is used for both voice and data radio signal so parse
         // all fields
@@ -309,6 +316,7 @@ public class SignalStrengthController extends Handler {
     /**
      * @return signal strength
      */
+    @NonNull
     public SignalStrength getSignalStrength() {
         if (shouldRefreshSignalStrength()) {
             log("getSignalStrength() refreshing signal strength.");
@@ -490,7 +498,7 @@ public class SignalStrengthController extends Handler {
      * Set a new request to update the signal strength thresholds.
      */
     public void setSignalStrengthUpdateRequest(int subId, int callingUid,
-            SignalStrengthUpdateRequest request, @NonNull Message onCompleted) {
+            @NonNull SignalStrengthUpdateRequest request, @NonNull Message onCompleted) {
         SignalRequestRecord record = new SignalRequestRecord(subId, callingUid, request);
         sendMessage(obtainMessage(EVENT_SET_SIGNAL_STRENGTH_UPDATE_REQUEST,
                 new Pair<SignalRequestRecord, Message>(record, onCompleted)));
@@ -500,7 +508,7 @@ public class SignalStrengthController extends Handler {
      * Clear the previously set request.
      */
     public void clearSignalStrengthUpdateRequest(int subId, int callingUid,
-            SignalStrengthUpdateRequest request, @Nullable Message onCompleted) {
+            @NonNull SignalStrengthUpdateRequest request, @Nullable Message onCompleted) {
         SignalRequestRecord record = new SignalRequestRecord(subId, callingUid, request);
         sendMessage(obtainMessage(EVENT_CLEAR_SIGNAL_STRENGTH_UPDATE_REQUEST,
                 new Pair<SignalRequestRecord, Message>(record, onCompleted)));
@@ -517,8 +525,9 @@ public class SignalStrengthController extends Handler {
      *    apps, sorted in ascending order.
      */
     @VisibleForTesting
+    @NonNull
     public int[] getConsolidatedSignalThresholds(int ran, int measurement,
-            int[] systemThresholds, int hysteresis) {
+            @Nullable int[] systemThresholds, int hysteresis) {
 
         // TreeSet with comparator that will filter element with interval less than hysteresis
         // from any current element
@@ -529,8 +538,10 @@ public class SignalStrengthController extends Handler {
             return Integer.compare(x, y);
         });
 
-        for (int systemThreshold : systemThresholds) {
-            target.add(systemThreshold);
+        if (systemThresholds != null) {
+            for (int systemThreshold : systemThresholds) {
+                target.add(systemThreshold);
+            }
         }
 
         final boolean isDeviceIdle = mPhone.isDeviceIdle();
@@ -605,12 +616,13 @@ public class SignalStrengthController extends Handler {
     private static boolean isRanAndSignalMeasurementTypeMatch(
             @AccessNetworkConstants.RadioAccessNetworkType int ran,
             @SignalThresholdInfo.SignalMeasurementType int measurement,
-            SignalThresholdInfo info) {
+            @NonNull SignalThresholdInfo info) {
         return ran == info.getRadioAccessNetworkType()
                 && measurement == info.getSignalMeasurementType();
     }
 
-    private static boolean isSignalReportRequestedWhileIdle(SignalStrengthUpdateRequest request) {
+    private static boolean isSignalReportRequestedWhileIdle(
+            @NonNull SignalStrengthUpdateRequest request) {
         return request.isSystemThresholdReportingRequestedWhileIdle()
                 || request.isReportingRequestedWhileIdle();
     }
@@ -639,6 +651,7 @@ public class SignalStrengthController extends Handler {
     private class SignalRequestRecord implements IBinder.DeathRecipient {
         final int mSubId; // subId the request originally applied to
         final int mCallingUid;
+        @NonNull
         final SignalStrengthUpdateRequest mRequest;
 
         SignalRequestRecord(int subId, int uid, @NonNull SignalStrengthUpdateRequest request) {
@@ -699,8 +712,12 @@ public class SignalStrengthController extends Handler {
         }
     }
 
-    void updateServiceStateArfcnRsrpBoost(ServiceState serviceState,
-            CellIdentity cellIdentity) {
+    // package private access from ServiceStateTracker
+    // TODO(b/219572311): Maintains ArfcnRsrpBoost here only without forwarding by ServiceState
+    void updateServiceStateArfcnRsrpBoost(@NonNull ServiceState serviceState,
+            @Nullable CellIdentity cellIdentity) {
+        if (cellIdentity == null) return;
+
         int rsrpBoost = 0;
         int arfcn;
 
@@ -719,7 +736,7 @@ public class SignalStrengthController extends Handler {
                     if (arfcn != INVALID_ARFCN) {
                         int index = containsEarfcnInEarfcnRange(mNrarfcnRangeListForRsrpBoost,
                                 arfcn);
-                        if (index != -1) {
+                        if (index != -1 && mNrRsrpBoost != null) {
                             rsrpBoost = mNrRsrpBoost[index];
                         }
                     }
@@ -736,8 +753,8 @@ public class SignalStrengthController extends Handler {
      *
      * return int index in earfcnPairList if earfcn falls within the provided range; -1 otherwise.
      */
-    private static int containsEarfcnInEarfcnRange(ArrayList<Pair<Integer, Integer>> earfcnPairList,
-            int earfcn) {
+    private static int containsEarfcnInEarfcnRange(
+            @Nullable ArrayList<Pair<Integer, Integer>> earfcnPairList, int earfcn) {
         int index = 0;
         if (earfcnPairList != null) {
             for (Pair<Integer, Integer> earfcnPair : earfcnPairList) {
@@ -757,8 +774,9 @@ public class SignalStrengthController extends Handler {
      * Format of the earfcnsList is expected to be {"erafcn1_start-earfcn1_end",
      * "earfcn2_start-earfcn2_end" ... }
      */
+    @Nullable
     private static ArrayList<Pair<Integer, Integer>> convertEarfcnStringArrayToPairList(
-            String[] earfcnsList) {
+            @Nullable String[] earfcnsList) {
         ArrayList<Pair<Integer, Integer>> earfcnPairList = new ArrayList<Pair<Integer, Integer>>();
 
         if (earfcnsList != null) {
