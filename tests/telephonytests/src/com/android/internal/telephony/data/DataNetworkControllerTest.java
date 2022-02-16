@@ -25,6 +25,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -59,6 +60,8 @@ import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
+import android.telephony.DataSpecificRegistrationInfo;
+import android.telephony.LteVopsSupportInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo.RegistrationState;
 import android.telephony.ServiceState;
@@ -257,12 +260,18 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
     private void serviceStateChanged(@NetworkType int networkType,
             @RegistrationState int regState) {
+        serviceStateChanged(networkType, regState, null);
+    }
+
+    private void serviceStateChanged(@NetworkType int networkType,
+            @RegistrationState int regState, DataSpecificRegistrationInfo dsri) {
         ServiceState ss = new ServiceState();
         ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
                 .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                 .setAccessNetworkTechnology(networkType)
                 .setRegistrationState(regState)
                 .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setDataSpecificInfo(dsri)
                 .build());
 
         ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
@@ -570,21 +579,35 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkConnected(any());
     }
 
-    private void verifyNoInternetSetup() throws Exception {
-        // Make sure internet is not connected.
-        verify(mMockedDataNetworkControllerCallback, never()).onInternetDataNetworkConnected(any());
+    private void verifyImsConnected() throws Exception {
         List<DataNetwork> dataNetworkList = getDataNetworks();
-        assertThat(dataNetworkList).isEmpty();
+        assertThat(dataNetworkList).isNotEmpty();
+        for (DataNetwork dataNetwork : getDataNetworks()) {
+            if (dataNetwork.isConnected() && dataNetwork.getNetworkCapabilities()
+                    .hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
+                return;
+            }
+        }
+        fail();
     }
 
-    private void verifyAllDataDisconnected() throws Exception {
-        processAllMessages();
+    private void verifyNoInternetConnected() throws Exception {
+        for (DataNetwork dataNetwork : getDataNetworks()) {
+            assertThat(dataNetwork.isInternetSupported()).isFalse();
+        }
+    }
 
+    private void verifyNoImsConnected() throws Exception {
+        for (DataNetwork dataNetwork : getDataNetworks()) {
+            assertThat(dataNetwork.getNetworkCapabilities().hasCapability(
+                    NetworkCapabilities.NET_CAPABILITY_IMS)).isFalse();
+        }
+    }
+
+
+    private void verifyAllDataDisconnected() throws Exception {
         List<DataNetwork> dataNetworkList = getDataNetworks();
         assertThat(dataNetworkList).isEmpty();
-
-        verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(false));
-        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkDisconnected();
     }
 
     // To test the basic data setup. Copy this as example for other tests.
@@ -612,6 +635,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         mDataNetworkControllerUT.addNetworkRequest(
                 createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS));
         processAllMessages();
+        verifyImsConnected();
         List<DataNetwork> dataNetworkList = getDataNetworks();
         assertThat(dataNetworkList).hasSize(1);
         DataNetwork dataNetwork = dataNetworkList.get(0);
@@ -644,7 +668,11 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         mDataNetworkControllerUT.obtainMessage(9/*EVENT_SIM_STATE_CHANGED*/,
                 TelephonyManager.SIM_STATE_ABSENT, 0).sendToTarget();
+        processAllMessages();
         verifyAllDataDisconnected();
+        verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(false));
+        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkDisconnected();
+
     }
 
     @Test
@@ -669,7 +697,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
         processAllMessages();
 
-        verifyNoInternetSetup();
+        verifyNoInternetConnected();
 
         // Network becomes in-service.
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
@@ -731,6 +759,9 @@ public class DataNetworkControllerTest extends TelephonyTest {
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_GSM,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         verifyAllDataDisconnected();
+        verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(false));
+        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkDisconnected();
+
 
         Mockito.clearInvocations(mMockedDataNetworkControllerCallback);
         // Now RAT changes from GSM to UMTS
@@ -738,7 +769,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 any(TelephonyNetworkRequest.class), eq(TelephonyManager.NETWORK_TYPE_UMTS));
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_UMTS,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
-        verifyNoInternetSetup();
+        verifyNoInternetConnected();
 
         doReturn(mGeneralPurposeDataProfile).when(mDataProfileManager)
                 .getDataProfileForNetworkRequest(any(TelephonyNetworkRequest.class), anyInt());
@@ -758,7 +789,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
 
         // Data should not be allowed when voice/data concurrent is not supported.
-        verifyNoInternetSetup();
+        verifyNoInternetConnected();
 
         // Call ended.
         doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
@@ -778,7 +809,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
 
         // Data should not be allowed when the device is in an emergency call.
-        verifyNoInternetSetup();
+        verifyNoInternetConnected();
 
         // Emergency call ended
         doReturn(false).when(mPhone).isInEcm();
@@ -799,7 +830,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
 
         // Data should not be allowed when roaming data is disabled.
-        verifyNoInternetSetup();
+        verifyNoInternetConnected();
         Mockito.clearInvocations(mMockedDataNetworkControllerCallback);
 
         // Roaming data enabled
@@ -815,7 +846,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
 
         // Verify data is torn down.
-        verifyNoInternetSetup();
+        verifyNoInternetConnected();
     }
 
     @Test
@@ -827,7 +858,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
 
         // Data should not be allowed when user data is disabled.
-        verifyNoInternetSetup();
+        verifyNoInternetConnected();
         Mockito.clearInvocations(mMockedDataNetworkControllerCallback);
 
         // User data enabled
@@ -845,7 +876,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
 
         // Verify data is torn down.
-        verifyNoInternetSetup();
+        verifyNoInternetConnected();
     }
 
     @Test
@@ -858,7 +889,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
 
         // Data should not be allowed when roaming + user data are disabled (soft failure reasons)
-        verifyNoInternetSetup();
+        verifyNoInternetConnected();
 
         // Always allow MMS
         mDataNetworkControllerUT.getDataSettingsManager().setAlwaysAllowMmsData(true);
@@ -883,7 +914,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
 
         // Data should not be allowed when roaming + user data are disabled (soft failure reasons)
-        verifyNoInternetSetup();
+        verifyNoInternetConnected();
 
         // Set transport to WLAN (unmetered)
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
@@ -1297,5 +1328,154 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         List<DataNetwork> dataNetworks = getDataNetworks();
         assertThat(dataNetworks).hasSize(0);
+    }
+
+    @Test
+    public void testDataDisableNotTearingDownUnmetered() throws Exception {
+        // User data enabled
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, true);
+        processAllMessages();
+
+        testSetupImsDataNetwork();
+        Mockito.clearInvocations(mMockedDataNetworkControllerCallback);
+
+        // User data disabled
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false);
+        processAllMessages();
+
+        // There shouldn't be all data disconnected event.
+        verify(mMockedDataNetworkControllerCallback, never())
+                .onAnyDataNetworkExistingChanged(anyBoolean());
+
+        // Verify IMS is still alive.
+        List<DataNetwork> dataNetworkList = getDataNetworks();
+        assertThat(dataNetworkList).hasSize(1);
+        assertThat(dataNetworkList.get(0).getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)).isTrue();
+        assertThat(dataNetworkList.get(0).isConnected()).isTrue();
+    }
+
+    @Test
+    public void testVoPSIMSSetup() throws Exception {
+        DataSpecificRegistrationInfo dsri = new DataSpecificRegistrationInfo(8, false, true, true,
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_SUPPORTED,
+                        LteVopsSupportInfo.LTE_STATUS_SUPPORTED));
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
+
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS,
+                        NetworkCapabilities.NET_CAPABILITY_MMTEL));
+        processAllMessages();
+        verifyImsConnected();
+    }
+
+    @Test
+    public void testNonVoPSNoIMSSetup() throws Exception {
+        DataSpecificRegistrationInfo dsri = new DataSpecificRegistrationInfo(8, false, true, true,
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED,
+                        LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED));
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
+
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS,
+                        NetworkCapabilities.NET_CAPABILITY_MMTEL));
+        processAllMessages();
+
+        verifyNoImsConnected();
+        verifyAllDataDisconnected();
+    }
+
+    @Test
+    public void testVoPStoNonVoPSImsTearDown() throws Exception {
+        // VoPS supported
+        DataSpecificRegistrationInfo dsri = new DataSpecificRegistrationInfo(8, false, true, true,
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_SUPPORTED,
+                        LteVopsSupportInfo.LTE_STATUS_SUPPORTED));
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
+
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS,
+                        NetworkCapabilities.NET_CAPABILITY_MMTEL));
+        processAllMessages();
+        verifyImsConnected();
+
+        // VOPS not supported
+        dsri = new DataSpecificRegistrationInfo(8, false, true, true,
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED,
+                        LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED));
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
+
+        verifyNoImsConnected();
+    }
+
+    @Test
+    public void testNonVoPStoVoPSImsSetup() throws Exception {
+        // VOPS not supported
+        DataSpecificRegistrationInfo dsri = new DataSpecificRegistrationInfo(8, false, true, true,
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED,
+                        LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED));
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
+
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS,
+                        NetworkCapabilities.NET_CAPABILITY_MMTEL));
+        processAllMessages();
+        verifyNoImsConnected();
+
+        // VoPS supported
+        dsri = new DataSpecificRegistrationInfo(8, false, true, true,
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_SUPPORTED,
+                        LteVopsSupportInfo.LTE_STATUS_SUPPORTED));
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
+
+        verifyImsConnected();
+    }
+
+    @Test
+    public void testVoPStoNonVoPSDelayImsTearDown() throws Exception {
+        mCarrierConfig.putBoolean(CarrierConfigManager.KEY_DELAY_IMS_TEAR_DOWN_UNTIL_CALL_END_BOOL,
+                true);
+        // Trigger carrier config reloading
+        mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        processAllMessages();
+
+        // VoPS supported
+        DataSpecificRegistrationInfo dsri = new DataSpecificRegistrationInfo(8, false, true, true,
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_SUPPORTED,
+                        LteVopsSupportInfo.LTE_STATUS_SUPPORTED));
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
+
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS,
+                        NetworkCapabilities.NET_CAPABILITY_MMTEL));
+        processAllMessages();
+        verifyImsConnected();
+
+        doReturn(PhoneConstants.State.OFFHOOK).when(mCT).getState();
+
+        dsri = new DataSpecificRegistrationInfo(8, false, true, true,
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED,
+                        LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED));
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
+
+        // Make sure IMS is still connected.
+        verifyImsConnected();
+
+        // Call ends
+        doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
+        mDataNetworkControllerUT.obtainMessage(18/*EVENT_VOICE_CALL_ENDED*/).sendToTarget();
+        processAllMessages();
+
+        verifyNoImsConnected();
     }
 }

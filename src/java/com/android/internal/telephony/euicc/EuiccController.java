@@ -57,6 +57,7 @@ import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.euicc.EuiccConnector.OtaStatusChangedCallback;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccPort;
+import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.internal.telephony.util.ArrayUtils;
 
@@ -1831,22 +1832,27 @@ public class EuiccController extends IEuiccController.Stub {
         }
         for (UiccCardInfo info : cardInfos) {
             //return false if physical card
-            if (info != null && info.getCardId() == cardId && (!info.isEuicc()
-                    || info.isRemovable())) {
+            if (info != null && info.getCardId() == cardId && !info.isEuicc()) {
                 return false;
             }
             for (UiccPortInfo portInfo : info.getPorts()) {
-                UiccPort port = UiccController.getInstance().getUiccPort(portIndex);
-                if (port == null) {
-                    return false;
-                }
-                //A port is available if it has no profiles enabled on it or calling app has
-                //carrier privilege over the profile installed on the selected port.
-                int result = port.getUiccProfile().getCarrierPrivilegeStatus(
-                        mContext.getPackageManager(), callingPackage);
-                if ((result == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS)
-                        || (portInfo.getIccId() == null && portInfo.isActive())) {
-                    return true;
+                if (portInfo.isActive()) {
+                    // A port is available if it has no profiles enabled on it or calling app has
+                    // Carrier privilege over the profile installed on the selected port.
+                    if (portInfo.getIccId() == null) {
+                        return true;
+                    }
+                    UiccPort uiccPort =
+                            UiccController.getInstance().getUiccPortForSlot(
+                                    info.getPhysicalSlotIndex(), portIndex);
+                    if (uiccPort != null) {
+                        UiccProfile uiccProfile = uiccPort.getUiccProfile();
+                        if (uiccProfile != null && uiccProfile.getCarrierPrivilegeStatus(
+                                mContext.getPackageManager(), callingPackage)
+                                == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
+                            return true;
+                        }
+                    }
                 }
             }
         }

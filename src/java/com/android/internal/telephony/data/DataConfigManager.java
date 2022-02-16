@@ -424,17 +424,43 @@ public class DataConfigManager extends Handler {
     }
 
     /**
-     * @return The metered APN types when connected to a home network
+     * Get the metered network capabilities.
+     *
+     * @param isRoaming {@code true} for roaming scenario.
+     *
+     * @return The metered network capabilities when connected to a home network.
      */
-    public @NonNull @ApnType Set<Integer> getMeteredApnTypes() {
-        return Collections.unmodifiableSet(mMeteredApnTypes);
+    public @NonNull @NetCapability Set<Integer> getMeteredNetworkCapabilities(boolean isRoaming) {
+        Set<Integer> meteredApnTypes = isRoaming ? mRoamingMeteredApnTypes : mMeteredApnTypes;
+        return meteredApnTypes.stream()
+                .map(DataUtils::apnTypeToNetworkCapability)
+                .filter(cap -> cap >= 0)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     /**
-     * @return The metered APN types when roaming
+     * Check if the network capability metered.
+     *
+     * @param networkCapability The network capability.
+     * @param isRoaming {@code true} for roaming scenario.
+     * @return {@code true} if the network capability is metered.
      */
-    public @NonNull @ApnType Set<Integer> getMeteredApnTypesWhenRoaming() {
-        return Collections.unmodifiableSet(mRoamingMeteredApnTypes);
+    public boolean isMeteredCapability(@NetCapability int networkCapability, boolean isRoaming) {
+        return getMeteredNetworkCapabilities(isRoaming).contains(networkCapability);
+    }
+
+    /**
+     * Check if the network capabilities are metered. If one of the capabilities is metered, then
+     * the capabilities are metered.
+     *
+     * @param networkCapabilities The network capabilities.
+     * @param isRoaming {@code true} for roaming scenario.
+     * @return {@code true} if the capabilities are metered.
+     */
+    public boolean isAnyMeteredCapability(@NonNull @NetCapability int[] networkCapabilities,
+            boolean isRoaming) {
+        return Arrays.stream(networkCapabilities).boxed()
+                .anyMatch(cap -> isMeteredCapability(cap, isRoaming));
     }
 
     /**
@@ -630,6 +656,15 @@ public class DataConfigManager extends Handler {
     public boolean shouldPersistIwlanDataNetworksWhenDataServiceRestarted() {
         return mResources.getBoolean(com.android.internal.R.bool
                 .config_wlan_data_service_conn_persistence_on_restart);
+    }
+
+    /**
+     * @return {@code true} if tearing down IMS data network should be delayed until the voice call
+     * ends.
+     */
+    public boolean isImsDelayTearDownEnabled() {
+        return mCarrierConfig.getBoolean(
+                CarrierConfigManager.KEY_DELAY_IMS_TEAR_DOWN_UNTIL_CALL_END_BOOL);
     }
 
     /**
@@ -903,6 +938,7 @@ public class DataConfigManager extends Handler {
                 + shouldPersistIwlanDataNetworksWhenDataServiceRestarted());
         pw.println("Bandwidth estimation source=" + mResources.getString(
                 com.android.internal.R.string.config_bandwidthEstimateSource));
+        pw.println("isDelayTearDownImsEnabled=" + isImsDelayTearDownEnabled());
         pw.decreaseIndent();
     }
 }

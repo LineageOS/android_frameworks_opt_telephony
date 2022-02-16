@@ -458,7 +458,11 @@ public class ImsPhone extends ImsPhoneBase {
         mCT.registerPhoneStateListener(mExternalCallTracker);
         mExternalCallTracker.setCallPuller(mCT);
 
-        mSS.setStateOff();
+        boolean legacyMode = true;
+        if (mDefaultPhone.getTransportManager() != null) {
+            legacyMode = mDefaultPhone.getTransportManager().isInLegacyMode();
+        }
+        mSS.setOutOfService(legacyMode, false);
 
         mPhoneId = mDefaultPhone.getPhoneId();
 
@@ -2507,8 +2511,15 @@ public class ImsPhone extends ImsPhoneBase {
         if (phoneNumber == null) {
             return;
         }
-        SubscriptionController subController = SubscriptionController.getInstance();
         int subId = getSubId();
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+            // Defending b/219080264:
+            // SubscriptionController.setSubscriptionProperty validates input subId
+            // so do not proceed if subId invalid. This may be happening because cached
+            // IMS callbacks are sent back to telephony after SIM state changed.
+            return;
+        }
+        SubscriptionController subController = SubscriptionController.getInstance();
         String countryIso = getCountryIso(subController, subId);
         // Format the number as one more defense to reject garbage values:
         // phoneNumber will become null.
