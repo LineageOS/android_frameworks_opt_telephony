@@ -58,14 +58,13 @@ public class RadioMessagingProxy extends RadioServiceProxy {
      */
     @Override
     public void clear() {
-        mHalVersion = RIL.RADIO_HAL_VERSION_UNKNOWN;
-        mRadioProxy = null;
+        super.clear();
         mMessagingProxy = null;
     }
 
     /**
      * Check whether a RadioMessaging implementation exists
-     * @return false if there is neither a HIDL nor AIDL implementation
+     * @return true if there is neither a HIDL nor AIDL implementation
      */
     @Override
     public boolean isEmpty() {

@@ -40,6 +40,7 @@ android_test {
         "services.net",
         "truth-prebuilt",
         "testables",
+        "platform-compat-test-rules"
     ],
 
     jarjar_rules: ":jarjar-rules-telephony-tests",
