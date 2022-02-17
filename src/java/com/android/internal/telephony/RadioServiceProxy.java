@@ -22,7 +22,7 @@ import android.os.RemoteException;
  * A holder for IRadio services. Use getHidl to get IRadio 1.0 and call the HIDL implementations or
  * getAidl to get the AIDL service and call the AIDL implementations of the HAL APIs.
  */
-public class RadioServiceProxy {
+public abstract class RadioServiceProxy {
     boolean mIsAidl;
     HalVersion mHalVersion = RIL.RADIO_HAL_VERSION_UNKNOWN;
     volatile android.hardware.radio.V1_0.IRadio mRadioProxy = null;
@@ -69,6 +69,7 @@ public class RadioServiceProxy {
     public boolean isEmpty() {
         return mRadioProxy == null;
     }
+
     /**
      * Call responseAcknowledgement for the service
      * @throws RemoteException
