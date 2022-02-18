@@ -291,7 +291,8 @@ public class UiccSlot extends Handler {
         // even ATR suggest UICC supports multiple enabled profiles, MEP can be disabled per
         // carrier restrictions, so checking the real number of ports reported from modem is
         // necessary.
-        return mPortIdxToPhoneId.size() > 1 && mAtr.isMultipleEnabledProfilesSupported();
+        return mPortIdxToPhoneId.size() > 1 && mAtr != null &&
+                mAtr.isMultipleEnabledProfilesSupported();
     }
 
     private boolean absentStateUpdateNeeded(CardState oldState) {

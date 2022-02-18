@@ -717,7 +717,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         if (serviceClass == RadioVoiceProxy.class) {
             return (T) getRadioServiceProxy(VOICE_SERVICE, result);
         }
-        return (T) new RadioServiceProxy();
+        riljLoge("getRadioServiceProxy: unrecognized " + serviceClass);
+        return null;
     }
 
     /**
@@ -727,7 +728,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @VisibleForTesting
     @NonNull
     public synchronized RadioServiceProxy getRadioServiceProxy(int service, Message result) {
-        if (!SubscriptionManager.isValidPhoneId(mPhoneId)) return new RadioServiceProxy();
+        if (!SubscriptionManager.isValidPhoneId(mPhoneId)) return mServiceProxies.get(service);
         if (!mIsCellularSupported) {
             if (RILJ_LOGV) riljLog("getRadioServiceProxy: Not calling getService(): wifi-only");
             if (result != null) {
@@ -735,7 +736,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
                 result.sendToTarget();
             }
-            return new RadioServiceProxy();
+            return mServiceProxies.get(service);
         }
 
         RadioServiceProxy serviceProxy = mServiceProxies.get(service);
