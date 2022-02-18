@@ -81,6 +81,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataRetryManager.DataHandoverRetryEntry;
 import com.android.internal.telephony.data.DataRetryManager.DataRetryEntry;
@@ -504,6 +505,9 @@ public class DataNetwork extends StateMachine {
      */
     private @TransportType int mTransport;
 
+    /** The reason that why setting up this data network is allowed. */
+    private @NonNull DataAllowedReason mDataAllowedReason;
+
     /**
      * PCO (Protocol Configuration Options) data received from the network. Key is the PCO id, value
      * is the PCO content.
@@ -677,6 +681,7 @@ public class DataNetwork extends StateMachine {
      * @param dataProfile The data profile for establishing the data network.
      * @param networkRequestList The initial network requests attached to this data network.
      * @param transport The initial transport of the data network.
+     * @param dataAllowedReason The reason that why setting up this data network is allowed.
      * @param callback The callback to receives data network state update.
      */
     public DataNetwork(@NonNull Phone phone, @NonNull Looper looper,
@@ -684,6 +689,7 @@ public class DataNetwork extends StateMachine {
             @NonNull DataProfile dataProfile,
             @NonNull NetworkRequestList networkRequestList,
             @TransportType int transport,
+            @NonNull DataAllowedReason dataAllowedReason,
             @NonNull DataNetworkCallback callback) {
         super("DataNetwork", looper);
         mPhone = phone;
@@ -704,6 +710,7 @@ public class DataNetwork extends StateMachine {
         mDataNetworkCallback = callback;
         mDataProfile = dataProfile;
         mTransport = transport;
+        mDataAllowedReason = dataAllowedReason;
         dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
         mAttachedNetworkRequestList.addAll(networkRequestList);
         mCid.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, INVALID_CID);
@@ -1392,7 +1399,6 @@ public class DataNetwork extends StateMachine {
             }
         }
 
-        // TODO: Support NET_CAPABILITY_NOT_RESTRICTED
         if (!mCongested) {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
         }
@@ -1416,19 +1422,52 @@ public class DataNetwork extends StateMachine {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED);
         }
 
-        if (NetworkCapabilitiesUtils.inferRestrictedCapability(builder.build())) {
-            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
-        }
-
         Set<Integer> meteredCapabilities = mDataConfigManager
-                .getMeteredNetworkCapabilities(roaming);
+                .getMeteredNetworkCapabilities(roaming).stream()
+                .filter(cap -> mAccessNetworksManager.getPreferredTransportByNetworkCapability(cap)
+                        == AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .collect(Collectors.toSet());
         boolean unmeteredNetwork = meteredCapabilities.stream().noneMatch(
                 Arrays.stream(builder.build().getCapabilities()).boxed()
                         .collect(Collectors.toSet())::contains);
 
-        // TODO: Support NET_CAPABILITY_NOT_METERED when non-restricted data is for unmetered use
         if (unmeteredNetwork) {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+        }
+
+        // Always start with not-restricted, and then remove if needed.
+        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+
+        // When data is disabled, or data roaming is disabled and the device is roaming, we need
+        // to remove certain capabilities depending on scenarios.
+        if (!mDataNetworkController.getDataSettingsManager().isDataEnabled()
+                || (mPhone.getServiceState().getDataRoaming()
+                && !mDataNetworkController.getDataSettingsManager().isDataRoamingEnabled())) {
+            // If data is allowed because the request is a restricted network request, we need
+            // to mark the network as restricted when data is disabled or data roaming is disabled
+            // and the device is roaming. If we don't do that, non-privileged apps will be able
+            // to use this network when data is disabled.
+            if (mDataAllowedReason == DataAllowedReason.RESTRICTED_REQUEST) {
+                builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+            } else if (mDataAllowedReason == DataAllowedReason.UNMETERED_USAGE
+                    || mDataAllowedReason == DataAllowedReason.MMS_REQUEST) {
+                // If data is allowed due to unmetered usage, or MMS always-allowed, we need to
+                // remove unrelated-but-metered capabilities.
+                for (int capability : meteredCapabilities) {
+                    // 1. If it's unmetered usage, remove all metered capabilities.
+                    // 2. if it's MMS always-allowed, then remove all metered capabilities but MMS.
+                    if (capability != NetworkCapabilities.NET_CAPABILITY_MMS
+                            || mDataAllowedReason != DataAllowedReason.MMS_REQUEST) {
+                        builder.removeCapability(capability);
+                    }
+                }
+            }
+        }
+
+        // If one of the capabilities are for special use, for example, IMS, CBS, then this
+        // network should be restricted, regardless data is enabled or not.
+        if (NetworkCapabilitiesUtils.inferRestrictedCapability(builder.build())) {
+            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
         }
 
         // Set the bandwidth information.
