@@ -255,12 +255,6 @@ public class UiccSlot extends Handler {
         }
     }
 
-    public boolean isIccIdMappedToPortIndex(String iccId) {
-        synchronized (mLock) {
-            return mIccIds.containsValue(iccId);
-        }
-    }
-
     public int getPortIndexFromIccId(String iccId) {
         synchronized (mLock) {
             for (Map.Entry<Integer, String> entry : mIccIds.entrySet()) {
