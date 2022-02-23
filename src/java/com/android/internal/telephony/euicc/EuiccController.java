@@ -1873,7 +1873,7 @@ public class EuiccController extends IEuiccController.Stub {
                 if (portInfo.isActive()) {
                     // A port is available if it has no profiles enabled on it or calling app has
                     // Carrier privilege over the profile installed on the selected port.
-                    if (portInfo.getIccId() == null) {
+                    if (TextUtils.isEmpty(portInfo.getIccId())) {
                         return true;
                     }
                     UiccPort uiccPort =
