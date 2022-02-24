@@ -967,10 +967,7 @@ public class GsmCdmaCallTracker extends CallTracker {
                             } else {
                                 newUnknownConnectionCdma = mConnections[i];
                             }
-                        } else if (mPhone.getTerminalBasedCallWaitingState()
-                                    == CallWaitingController.TERMINAL_BASED_NOT_ACTIVATED
-                                && newRinging.getState() == Call.State.WAITING) {
-                            mCi.hangupWaitingOrBackground(obtainCompleteMessage());
+                        } else if (hangupWaitingCallSilently(i)) {
                             return;
                         }
                     }
@@ -1023,6 +1020,9 @@ public class GsmCdmaCallTracker extends CallTracker {
 
                 if (mConnections[i].getCall() == mRingingCall) {
                     newRinging = mConnections[i];
+                    if (hangupWaitingCallSilently(i)) {
+                        return;
+                    }
                 } // else something strange happened
                 hasNonHangupStateChanged = true;
             } else if (conn != null && dc != null) { /* implicit conn.compareTo(dc) */
@@ -1913,5 +1913,23 @@ public class GsmCdmaCallTracker extends CallTracker {
     @Override
     public void cleanupCalls() {
         pollCallsWhenSafe();
+    }
+
+    private boolean hangupWaitingCallSilently(int index) {
+        if (index < 0 || index >= mConnections.length) return false;
+
+        GsmCdmaConnection newRinging = mConnections[index];
+        if (newRinging == null) return false;
+
+        if ((mPhone.getTerminalBasedCallWaitingState()
+                        == CallWaitingController.TERMINAL_BASED_NOT_ACTIVATED)
+                && (newRinging.getState() == Call.State.WAITING)) {
+            Rlog.d(LOG_TAG, "hangupWaitingCallSilently");
+            newRinging.dispose();
+            mConnections[index] = null;
+            mCi.hangupWaitingOrBackground(obtainCompleteMessage());
+            return true;
+        }
+        return false;
     }
 }
