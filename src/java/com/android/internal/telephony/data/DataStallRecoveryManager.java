@@ -500,20 +500,20 @@ public class DataStallRecoveryManager extends Handler {
         logv("enter: isRecoveryNeeded()");
         // To avoid back to back recovery, wait for a grace period
         if (getElapsedTimeSinceRecoveryMs() < getDataStallRecoveryDelayMillis(mLastAction)) {
-            log("skip back to back data stall recovery");
+            logl("skip back to back data stall recovery");
             return false;
         }
 
         // Skip recovery if it can cause a call to drop
         if (mPhone.getState() != PhoneConstants.State.IDLE
                 && getRecoveryAction() > RECOVERY_ACTION_CLEANUP) {
-            log("skip data stall recovery as there is an active call");
+            logl("skip data stall recovery as there is an active call");
             return false;
         }
 
         // Skip when poor signal strength
         if (mPhone.getSignalStrength().getLevel() <= CellSignalStrength.SIGNAL_STRENGTH_POOR) {
-            log("skip data stall recovery as in poor signal condition");
+            logl("skip data stall recovery as in poor signal condition");
             resetAction();
             return false;
         }
@@ -590,6 +590,17 @@ public class DataStallRecoveryManager extends Handler {
         mLastActionReported = false;
         broadcastDataStallDetected(recoveryAction);
         mNetworkCheckTimerStarted = false;
+
+        // DSRM used sendMessageDelayed to process the next event EVENT_DO_RECOVERY, so it need
+        // to check the condition if DSRM need to process the recovery action.
+        // Skip recovery if it can cause a call to drop
+        if (mPhone.getState() != PhoneConstants.State.IDLE
+                && getRecoveryAction() > RECOVERY_ACTION_CLEANUP) {
+            logl("skip data stall recovery as there is an active call");
+            cancelNetworkCheckTimer();
+            startNetworkCheckTimer(mLastAction);
+            return;
+        }
 
         switch (recoveryAction) {
             case RECOVERY_ACTION_GET_DATA_CALL_LIST:
