@@ -350,6 +350,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        sst.removeCallbacksAndMessages(null);
         sst = null;
         mSSTTestHandler.quit();
         mSSTTestHandler.join();
