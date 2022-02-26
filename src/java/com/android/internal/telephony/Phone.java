@@ -76,6 +76,7 @@ import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
 import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.data.DataNetworkController;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DcTracker;
@@ -305,6 +306,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     // WLAN DcTracker is for IWLAN data connection. For IWLAN legacy mode, only one (WWAN) DcTracker
     // will be created.
     protected final SparseArray<DcTracker> mDcTrackers = new SparseArray<>();
+    protected DataNetworkController mDataNetworkController;
     /* Used for dispatching signals to configured carrier apps */
     protected CarrierSignalAgent mCarrierSignalAgent;
     /* Used for dispatching carrier action from carrier apps */
@@ -4871,6 +4873,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return null;
     }
 
+    /**
+     * @return The data network controller
+     */
+    public @Nullable DataNetworkController getDataNetworkController() {
+        return mDataNetworkController;
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Phone: subId=" + getSubId());
         pw.println(" mPhoneId=" + mPhoneId);
@@ -4930,6 +4939,16 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                     pw.println("++++++++++++++++++++++++++++++++");
                 }
             }
+        }
+
+        if (mDataNetworkController != null) {
+            try {
+                mDataNetworkController.dump(fd, pw, args);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
         }
 
         if (getServiceStateTracker() != null) {
