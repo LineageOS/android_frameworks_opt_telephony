@@ -25,6 +25,8 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.telephony.data.DataProfile;
 
+import com.android.internal.telephony.Phone;
+
 import java.util.Arrays;
 
 /**
@@ -43,22 +45,29 @@ public class TelephonyNetworkRequest implements Parcelable {
      * first than lower priority ones.
      */
     private final int mPriority;
-    //private @Nullable DataNetwork mAttachedDataNetwork;
+
+    private @Nullable DataNetwork mAttachedDataNetwork;
 
     /**
      * Constructor
      *
      * @param request The native network request from the clients.
-     * @param dcm Data config manager.
+     * @param phone The phone instance
      */
-    public TelephonyNetworkRequest(NetworkRequest request, DataConfigManager dcm) {
+    public TelephonyNetworkRequest(NetworkRequest request, Phone phone) {
         mNetworkRequest = request;
+        DataConfigManager dcm = phone.getDataNetworkController().getDataConfigManager();
         mPriority = Arrays.stream(request.getCapabilities())
                 .map(dcm::getNetworkCapabilityPriority)
                 .max()
                 .orElse(0);
     }
 
+    /**
+     * Create the request from the parcel.
+     *
+     * @param p The parcel.
+     */
     private TelephonyNetworkRequest(Parcel p) {
         mNetworkRequest = p.readParcelable(NetworkRequest.class.getClassLoader());
         mPriority = p.readInt();
@@ -138,6 +147,8 @@ public class TelephonyNetworkRequest implements Parcelable {
 
     @Override
     public String toString() {
-        return mNetworkRequest.toString();
+        return "[" + mNetworkRequest.toString() + ", mPriority=" + mPriority
+                + ", mAttachedDataNetwork=" + mAttachedDataNetwork != null
+                ? mAttachedDataNetwork.getLogTag() : null + "]";
     }
 }
