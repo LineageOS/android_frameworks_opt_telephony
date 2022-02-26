@@ -40,6 +40,7 @@ import android.net.vcn.VcnNetworkPolicyResult;
 import android.os.AsyncResult;
 import android.os.Looper;
 import android.os.Message;
+import android.os.Process;
 import android.os.SystemClock;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
@@ -132,7 +133,7 @@ import java.util.stream.Collectors;
  *                                  │Handover │
  *                                  └─▲────┬──┘
  *                                    │    │
- *             ┌───────────┐        ┌─┴────▼──┐        ┌───────▼──────┐
+ *             ┌───────────┐        ┌─┴────▼──┐        ┌──────────────┐
  *             │Connecting ├────────►Connected├────────►Disconnecting │
  *             └─────┬─────┘        └────┬────┘        └───────┬──────┘
  *                   │                   │                     │
@@ -190,6 +191,9 @@ public class DataNetwork extends StateMachine {
 
     /** Event for PCO data received from network. */
     private static final int EVENT_PCO_DATA_RECEIVED = 17;
+
+    /** Event for carrier privileged UIDs changed. */
+    private static final int EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED = 18;
 
     /** The default MTU for IPv4 network. */
     private static final int DEFAULT_MTU_V4 = 1280;
@@ -573,6 +577,17 @@ public class DataNetwork extends StateMachine {
     private final @NonNull List<QosBearerSession> mQosBearerSessions = new ArrayList<>();
 
     /**
+     * The UIDs of packages that have carrier privilege. These UIDs will not change through the
+     * life cycle of data network.
+     */
+    private @NonNull int[] mAdministratorUids = new int[0];
+
+    /**
+     * Carrier service package uid. This UID will not change through the life cycle of data network.
+     */
+    private int mCarrierServicePackageUid = Process.INVALID_UID;
+
+    /**
      * The network bandwidth.
      */
     public static class NetworkBandwidth {
@@ -847,6 +862,9 @@ public class DataNetwork extends StateMachine {
                         transport, getHandler(), EVENT_SERVICE_STATE_CHANGED, transport);
             }
 
+            mPhone.getCarrierPrivilegesTracker().registerCarrierPrivilegesListener(getHandler(),
+                    EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED, null);
+
             // Only add symmetric code here, for example, registering and unregistering.
             // DefaultState.enter() is the starting point in the life cycle of the DataNetwork,
             // and DefaultState.exit() is the end. For non-symmetric initializing works, put them
@@ -924,6 +942,12 @@ public class DataNetwork extends StateMachine {
                     onDataStateChanged(transport, (List<DataCallResponse>) ar.result);
                     break;
                 }
+                case EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED: {
+                    AsyncResult asyncResult = (AsyncResult) msg.obj;
+                    int[] administratorUids = (int[]) asyncResult.result;
+                    mAdministratorUids = Arrays.copyOf(administratorUids, administratorUids.length);
+                    break;
+                }
                 case EVENT_START_HANDOVER:
                 case EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED:
                 case EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED:
@@ -953,6 +977,11 @@ public class DataNetwork extends StateMachine {
             mInitialNetworkAgentId = mNetworkAgent.getId();
             mLogTag = "DN-" + mInitialNetworkAgentId + "-"
                     + ((mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) ? "C" : "I");
+
+            // Get carrier config package uid. Note that this uid will not change through the life
+            // cycle of this data network. So there is no need to listen to the change event.
+            mCarrierServicePackageUid = mPhone.getCarrierPrivilegesTracker()
+                    .getCarrierServicePackageUid();
 
             notifyPreciseDataConnectionState();
             if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
@@ -1030,9 +1059,12 @@ public class DataNetwork extends StateMachine {
                 // to tear down the VCN-managed network.
                 if (mVcnManager != null) {
                     mVcnPolicyChangeListener = () -> {
+                        log("VCN policy changed.");
                         if (mVcnManager.applyVcnNetworkPolicy(mNetworkCapabilities, mLinkProperties)
                                 .isTeardownRequested()) {
                             tearDown(TEAR_DOWN_REASON_VCN_REQUESTED);
+                        } else {
+                            updateNetworkCapabilities();
                         }
                     };
                     mVcnManager.addVcnNetworkPolicyChangeListener(
@@ -1478,6 +1510,13 @@ public class DataNetwork extends StateMachine {
         if (!mSuspended) {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED);
         }
+
+        if (mCarrierServicePackageUid != Process.INVALID_UID
+                && ArrayUtils.contains(mAdministratorUids, mCarrierServicePackageUid)) {
+            builder.setOwnerUid(mCarrierServicePackageUid);
+            builder.setAllowedUids(Collections.singleton(mCarrierServicePackageUid));
+        }
+        builder.setAdministratorUids(mAdministratorUids);
 
         Set<Integer> meteredCapabilities = mDataConfigManager
                 .getMeteredNetworkCapabilities(roaming).stream()
@@ -2725,6 +2764,8 @@ public class DataNetwork extends StateMachine {
                 return "EVENT_SUBSCRIPTION_PLAN_OVERRIDE";
             case EVENT_PCO_DATA_RECEIVED:
                 return "EVENT_PCO_DATA_RECEIVED";
+            case EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED:
+                return "EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED";
             default:
                 return "Unknown(" + event + ")";
         }
@@ -2798,8 +2839,10 @@ public class DataNetwork extends StateMachine {
         pw.println("Tag: " + name());
         pw.increaseIndent();
         pw.println("mSubId=" + mSubId);
+        pw.println("mTransport=" + AccessNetworkConstants.transportTypeToString(mTransport));
         pw.println("WWAN cid=" + mCid.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN));
         pw.println("WLAN cid=" + mCid.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN));
+        pw.println("mDataAllowedReason=" + mDataAllowedReason);
         pw.println("mPduSessionId=" + mPduSessionId);
         pw.println("mDataProfile=" + mDataProfile);
         pw.println("mNetworkCapabilities" + mNetworkCapabilities);
@@ -2810,7 +2853,13 @@ public class DataNetwork extends StateMachine {
         pw.println("mTempNotMeteredSupported=" + mTempNotMeteredSupported);
         pw.println("mTempNotMetered=" + mTempNotMetered);
         pw.println("mCongested=" + mCongested);
+        pw.println("mSuspended" + mSuspended);
         pw.println("mDataCallResponse=" + mDataCallResponse);
+        pw.println("mFailCause=" + DataFailCause.toString(mFailCause));
+        pw.println("mAdministratorUids=" + Arrays.toString(mAdministratorUids));
+        pw.println("mCarrierServicePackageUid=" + mCarrierServicePackageUid);
+        pw.println("mEverConnected=" + mEverConnected);
+        pw.println("mInvokedDataDeactivation=" + mInvokedDataDeactivation);
 
         pw.println("Attached network requests:");
         pw.increaseIndent();
@@ -2819,8 +2868,6 @@ public class DataNetwork extends StateMachine {
         }
         pw.decreaseIndent();
         pw.println("mQosBearerSessions=" + mQosBearerSessions);
-        pw.println("mEverConnected=" + mEverConnected);
-        pw.println("mInvokedDataDeactivation=" + mInvokedDataDeactivation);
 
         mNetworkAgent.dump(fd, pw, args);
         pw.println("Local logs:");
