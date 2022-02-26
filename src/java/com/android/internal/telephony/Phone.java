@@ -39,6 +39,7 @@ import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
+import android.provider.DeviceConfig;
 import android.sysprop.TelephonyProperties;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
@@ -4915,6 +4916,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         pw.println(" needsOtaServiceProvisioning=" + needsOtaServiceProvisioning());
         pw.println(" isInEmergencySmsMode=" + isInEmergencySmsMode());
         pw.println(" isEcmCanceledForEmergency=" + isEcmCanceledForEmergency());
+        pw.println(" isUsingNewDataStack=" + isUsingNewDataStack());
         pw.println(" service state=" + getServiceState());
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
@@ -5115,5 +5117,16 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     @VisibleForTesting
     public boolean isAllowedNetworkTypesLoadedFromDb() {
         return mIsAllowedNetworkTypesLoadedFromDb;
+    }
+
+    /**
+     * @return {@code true} if using the new telephony data stack. See go/atdr for the design.
+     */
+    // TODO: Temp code. Use cl/399526916 for future canary process. After rolling out to 100%
+    //  dogfooders, the code below should be completely removed.
+    public boolean isUsingNewDataStack() {
+        String configValue = DeviceConfig.getProperty(DeviceConfig.NAMESPACE_TELEPHONY,
+                "new_telephony_data_enabled");
+        return configValue != null && Boolean.parseBoolean(configValue);
     }
 }
