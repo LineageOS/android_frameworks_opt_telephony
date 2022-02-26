@@ -1170,7 +1170,7 @@ public class DataRetryManager extends Handler {
             if (mDataRetryEntries.get(i) instanceof DataHandoverRetryEntry) {
                 DataHandoverRetryEntry entry = (DataHandoverRetryEntry) mDataRetryEntries.get(i);
                 if (entry.dataNetwork == dataNetwork
-                        && entry.appliedDataRetryRule.equals(dataRetryRule)) {
+                        && dataRetryRule.equals(entry.appliedDataRetryRule)) {
                     if (entry.getState() == DataRetryEntry.RETRY_STATE_SUCCEEDED
                             || entry.getState() == DataRetryEntry.RETRY_STATE_CANCELLED) {
                         break;
