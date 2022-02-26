@@ -838,6 +838,12 @@ public abstract class TelephonyTest {
     }
 
     protected void tearDown() throws Exception {
+        // Clear all remaining messages
+        if (!mTestableLoopers.isEmpty()) {
+            for (TestableLooper looper : mTestableLoopers) {
+                looper.getLooper().quit();
+            }
+        }
         // Ensure there are no references to handlers between tests.
         PhoneConfigurationManager.unregisterAllMultiSimConfigChangeRegistrants();
         // unmonitor TestableLooper for TelephonyTest class
