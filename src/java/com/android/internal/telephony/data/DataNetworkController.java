@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.data;
 
+
 import android.annotation.CallbackExecutor;
 import android.annotation.IntDef;
 import android.annotation.NonNull;
@@ -1622,6 +1623,23 @@ public class DataNetworkController extends Handler {
             }
         }
         return 0;
+    }
+
+    /**
+     * Check whether a dataNetwork is actively capable of internet connection
+     * @param cid dataNetwork unique identifier
+     * @return true if the dataNetwork is connected and capable of internet connection
+     */
+    public boolean isInternetNetwork(int cid) {
+        for (DataNetwork dataNetwork : mDataNetworkList) {
+            if (dataNetwork.getId() == cid
+                    && dataNetwork.isConnected()
+                    && dataNetwork.getNetworkCapabilities()
+                    .hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

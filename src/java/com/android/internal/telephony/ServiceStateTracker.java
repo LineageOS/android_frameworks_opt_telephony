@@ -95,7 +95,6 @@ import com.android.internal.telephony.cdnr.CarrierDisplayNameResolver;
 import com.android.internal.telephony.data.DataNetwork;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.dataconnection.DataConnection;
-import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.metrics.ServiceStateStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
@@ -2097,21 +2096,29 @@ public class ServiceStateTracker extends Handler {
     private boolean updateNrFrequencyRangeFromPhysicalChannelConfigs(
             List<PhysicalChannelConfig> physicalChannelConfigs, ServiceState ss) {
         int newFrequencyRange = ServiceState.FREQUENCY_RANGE_UNKNOWN;
-
         if (physicalChannelConfigs != null) {
-            DcTracker dcTracker = mPhone.getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
             for (PhysicalChannelConfig config : physicalChannelConfigs) {
                 if (isNrPhysicalChannelConfig(config)) {
                     // Update the frequency range of the NR parameters if there is an internet data
                     // connection associate to this NR physical channel channel config.
                     int[] contextIds = config.getContextIds();
                     for (int cid : contextIds) {
-                        DataConnection dc = dcTracker.getDataConnectionByContextId(cid);
-                        if (dc != null && dc.getNetworkCapabilities().hasCapability(
-                                NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
-                            newFrequencyRange = ServiceState.getBetterNRFrequencyRange(
-                                    newFrequencyRange, config.getFrequencyRange());
-                            break;
+                        if (mPhone.isUsingNewDataStack()) {
+                            if (mPhone.getDataNetworkController().isInternetNetwork(cid)) {
+                                newFrequencyRange = ServiceState.getBetterNRFrequencyRange(
+                                        newFrequencyRange, config.getFrequencyRange());
+                                break;
+                            }
+                        } else {
+                            DataConnection dc = mPhone.getDcTracker(
+                                    AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                                    .getDataConnectionByContextId(cid);
+                            if (dc != null && dc.getNetworkCapabilities().hasCapability(
+                                    NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                                newFrequencyRange = ServiceState.getBetterNRFrequencyRange(
+                                        newFrequencyRange, config.getFrequencyRange());
+                                break;
+                            }
                         }
                     }
                 }
