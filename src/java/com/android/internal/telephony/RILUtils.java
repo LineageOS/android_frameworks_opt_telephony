@@ -1106,7 +1106,7 @@ public class RILUtils {
     public static android.hardware.radio.data.TrafficDescriptor
             convertToHalTrafficDescriptorAidl(@Nullable TrafficDescriptor trafficDescriptor) {
         if (trafficDescriptor == null) {
-            return null;
+            return new android.hardware.radio.data.TrafficDescriptor();
         }
 
         android.hardware.radio.data.TrafficDescriptor td =
