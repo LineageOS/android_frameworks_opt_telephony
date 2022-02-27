@@ -614,20 +614,20 @@ public class DataServiceManager extends Handler {
      * establishing a packet data connection. When completed or error, the service must invoke
      * the provided callback to notify the platform.
      *
-     * @param accessNetworkType Access network type that the data call will be established on.
+     * @param accessNetworkType Access network type that the data network will be established on.
      * Must be one of {@link AccessNetworkConstants.AccessNetworkType}.
-     * @param dataProfile Data profile used for data call setup. See {@link DataProfile}
+     * @param dataProfile Data profile used for data network setup. See {@link DataProfile}
      * @param isRoaming True if the device is data roaming.
      * @param allowRoaming True if data roaming is allowed by the user.
      * @param reason The reason for data setup. Must be {@link DataService#REQUEST_REASON_NORMAL} or
      * {@link DataService#REQUEST_REASON_HANDOVER}.
      * @param linkProperties If {@code reason} is {@link DataService#REQUEST_REASON_HANDOVER}, this
      * is the link properties of the existing data connection, otherwise null.
-     * @param pduSessionId The pdu session id to be used for this data call.  A value of -1 means
+     * @param pduSessionId The pdu session id to be used for this data network.  A value of -1 means
      * no pdu session id was attached to this call. Reference: 3GPP TS 24.007 Section 11.2.3.1b.
      * @param sliceInfo The slice that represents S-NSSAI. Reference: 3GPP TS 24.501.
-     * @param trafficDescriptor The traffic descriptor for this data call, used for URSP matching.
-     * Reference: 3GPP TS TS 24.526 Section 5.2
+     * @param trafficDescriptor The traffic descriptor for this data network, used for URSP
+     * matching. Reference: 3GPP TS TS 24.526 Section 5.2.
      * @param matchAllRuleAllowed True if using the default match-all URSP rule for this request is
      * allowed.
      * @param onCompleteMessage The result message for this request. Null if the client does not
@@ -712,7 +712,7 @@ public class DataServiceManager extends Handler {
      * reason HANDOVER. The target transport now owns the transferred resources and is
      * responsible for releasing them.
      *
-     * @param cid The identifier of the data call which is provided in DataCallResponse
+     * @param cid The identifier of the data network which is provided in DataCallResponse
      * @param onCompleteMessage The result callback for this request.
      */
     public void startHandover(int cid, @NonNull Message onCompleteMessage) {
@@ -742,7 +742,7 @@ public class DataServiceManager extends Handler {
      * Since the handover was unsuccessful, the source transport retains ownership over any of
      * the resources being transferred and is still responsible for releasing them.
      *
-     * @param cid The identifier of the data call which is provided in DataCallResponse
+     * @param cid The identifier of the data network which is provided in DataCallResponse
      * @param onCompleteMessage The result callback for this request.
      */
     public void cancelHandover(int cid, @NonNull Message onCompleteMessage) {
@@ -787,7 +787,7 @@ public class DataServiceManager extends Handler {
     /**
      * Set an APN to initial attach network.
      *
-     * @param dataProfile Data profile used for data call setup. See {@link DataProfile}.
+     * @param dataProfile Data profile used for data network setup. See {@link DataProfile}.
      * @param isRoaming True if the device is data roaming.
      * @param onCompleteMessage The result message for this request. Null if the client does not
      * care about the result.
@@ -817,7 +817,7 @@ public class DataServiceManager extends Handler {
     }
 
     /**
-     * Send current carrier's data profiles to the data service for data call setup. This is
+     * Send current carrier's data profiles to the data service for data network setup. This is
      * only for CDMA carrier that can change the profile through OTA. The data service should
      * always uses the latest data profile sent by the framework.
      *
@@ -849,7 +849,7 @@ public class DataServiceManager extends Handler {
     }
 
     /**
-     * Get the active data call list.
+     * Get the active data network list.
      *
      * @param onCompleteMessage The result message for this request. Null if the client does not
      * care about the result.
@@ -879,7 +879,7 @@ public class DataServiceManager extends Handler {
     }
 
     /**
-     * Register for data call list changed event.
+     * Register for data network list changed event.
      *
      * @param h The target to post the event message to.
      * @param what The event.
@@ -891,7 +891,7 @@ public class DataServiceManager extends Handler {
     }
 
     /**
-     * Unregister for data call list changed event.
+     * Unregister for data network list changed event.
      *
      * @param h The handler
      */
