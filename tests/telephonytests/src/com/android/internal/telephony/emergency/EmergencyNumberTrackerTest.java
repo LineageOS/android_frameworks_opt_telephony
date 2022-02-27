@@ -40,6 +40,7 @@ import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -404,6 +405,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     /**
      * Test OTA Emergency Number Database Update Status.
      */
+    @Ignore("b/221641120") // TODO: Enable the tests after fixing the resource leak.
     @Test
     public void testOtaEmergencyNumberDatabase() {
         // Set up the Hal version as 1.4 to apply emergency number database
