@@ -21,8 +21,6 @@ import android.annotation.Nullable;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.NetworkSpecifier;
-import android.os.Parcel;
-import android.os.Parcelable;
 import android.telephony.data.DataProfile;
 
 import com.android.internal.telephony.Phone;
@@ -31,21 +29,32 @@ import java.util.Arrays;
 
 /**
  * TelephonyNetworkRequest is a wrapper class on top of {@link NetworkRequest}, which is originated
- * from the apps to request network. In addition to t{@link NetworkRequest}, this class is used
+ * from the apps to request network. In addition to to {@link NetworkRequest}, this class is used
  * to track more telephony specific items such as priority, attached data network, etc...
  *
- * The reason that TelephonyNetworkRequest does not extend {@link NetworkRequest} is that
- * the constructor of NetworkRequest is a hidden API.
+ * TelephonyNetworkRequest is not a pure container class.
  */
-public class TelephonyNetworkRequest implements Parcelable {
-    private final @NonNull NetworkRequest mNetworkRequest;
+public class TelephonyNetworkRequest {
+    /**
+     * Native network request from the clients. See {@link NetworkRequest};
+     */
+    private final @NonNull NetworkRequest mNativeNetworkRequest;
 
     /**
      * Priority of the network request. The network request has higher priority will be satisfied
      * first than lower priority ones.
      */
-    private final int mPriority;
+    private int mPriority;
 
+    /**
+     * Data config manager for retrieving data config.
+     */
+    private final DataConfigManager mDataConfigManager;
+
+    /**
+     * The attached data network. Note that the data network could be in any state. {@code null}
+     * indicates this network request is not satisfied.
+     */
     private @Nullable DataNetwork mAttachedDataNetwork;
 
     /**
@@ -55,50 +64,41 @@ public class TelephonyNetworkRequest implements Parcelable {
      * @param phone The phone instance
      */
     public TelephonyNetworkRequest(NetworkRequest request, Phone phone) {
-        mNetworkRequest = request;
-        DataConfigManager dcm = phone.getDataNetworkController().getDataConfigManager();
-        mPriority = Arrays.stream(request.getCapabilities())
-                .map(dcm::getNetworkCapabilityPriority)
-                .max()
-                .orElse(0);
-    }
+        mNativeNetworkRequest = request;
+        mDataConfigManager = phone.getDataNetworkController().getDataConfigManager();
 
-    /**
-     * Create the request from the parcel.
-     *
-     * @param p The parcel.
-     */
-    private TelephonyNetworkRequest(Parcel p) {
-        mNetworkRequest = p.readParcelable(NetworkRequest.class.getClassLoader());
-        mPriority = p.readInt();
+        mPriority = 0;
+        mAttachedDataNetwork = null;
+
+        updatePriority();
     }
 
     /**
      * @see NetworkRequest#getNetworkSpecifier()
      */
     public @Nullable NetworkSpecifier getNetworkSpecifier() {
-        return mNetworkRequest.getNetworkSpecifier();
+        return mNativeNetworkRequest.getNetworkSpecifier();
     }
 
     /**
      * @see NetworkRequest#getCapabilities()
      */
     public @NonNull int[] getCapabilities() {
-        return mNetworkRequest.getCapabilities();
+        return mNativeNetworkRequest.getCapabilities();
     }
 
     /**
      * @see NetworkRequest#hasCapability(int)
      */
     public boolean hasCapability(int capability) {
-        return mNetworkRequest.hasCapability(capability);
+        return mNativeNetworkRequest.hasCapability(capability);
     }
 
     /**
      * @see NetworkRequest#canBeSatisfiedBy(NetworkCapabilities)
      */
     public boolean canBeSatisfiedBy(@Nullable NetworkCapabilities nc) {
-        return mNetworkRequest.canBeSatisfiedBy(nc);
+        return mNativeNetworkRequest.canBeSatisfiedBy(nc);
     }
 
     /**
@@ -121,34 +121,59 @@ public class TelephonyNetworkRequest implements Parcelable {
         return mPriority;
     }
 
-    @Override
-    public void writeToParcel(Parcel dest, int flags) {
-        dest.writeParcelable(mNetworkRequest, flags);
-        dest.writeInt(mPriority);
+    /**
+     * Update the priority from data config manager.
+     */
+    public void updatePriority() {
+        mPriority = Arrays.stream(mNativeNetworkRequest.getCapabilities())
+                .map(mDataConfigManager::getNetworkCapabilityPriority)
+                .max()
+                .orElse(0);
     }
 
-    @Override
-    public int describeContents() {
-        return 0;
+    /**
+     * @return The native network request.
+     */
+    public @NonNull NetworkRequest getNativeNetworkRequest() {
+        return mNativeNetworkRequest;
     }
 
-    public static final @NonNull Parcelable.Creator<TelephonyNetworkRequest> CREATOR =
-            new Parcelable.Creator<TelephonyNetworkRequest>() {
-                @Override
-                public TelephonyNetworkRequest createFromParcel(Parcel source) {
-                    return new TelephonyNetworkRequest(source);
-                }
+    /**
+     * Set the attached data network.
+     *
+     * @param dataNetwork The data network.
+     */
+    public void setAttachedNetwork(@NonNull DataNetwork dataNetwork) {
+        mAttachedDataNetwork = dataNetwork;
+    }
 
-                @Override
-                public TelephonyNetworkRequest[] newArray(int size) {
-                    return new TelephonyNetworkRequest[size];
-                }
-            };
+    /**
+     * @return The attached network. {@code null} indicates the request is not attached to any
+     * network (i.e. the request is unsatisfied).
+     */
+    public @Nullable DataNetwork getAttachedNetwork() {
+        return mAttachedDataNetwork;
+    }
 
     @Override
     public String toString() {
-        return "[" + mNetworkRequest.toString() + ", mPriority=" + mPriority
-                + ", mAttachedDataNetwork=" + mAttachedDataNetwork != null
-                ? mAttachedDataNetwork.getLogTag() : null + "]";
+        return "[" + mNativeNetworkRequest.toString() + ", mPriority=" + mPriority
+                + ", mAttachedDataNetwork=" + (mAttachedDataNetwork != null
+                ? mAttachedDataNetwork.getLogTag() : null) + "]";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        TelephonyNetworkRequest that = (TelephonyNetworkRequest) o;
+        // Only compare the native network request.
+        return mNativeNetworkRequest.equals(that.mNativeNetworkRequest);
+    }
+
+    @Override
+    public int hashCode() {
+        // Only use the native network request's hash code.
+        return mNativeNetworkRequest.hashCode();
     }
 }
