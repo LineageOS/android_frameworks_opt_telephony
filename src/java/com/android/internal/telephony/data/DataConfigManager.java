@@ -33,10 +33,15 @@ import android.telephony.SubscriptionManager;
 import android.util.IndentingPrintWriter;
 
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.data.DataRetryManager.DataRetryRule;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -58,6 +63,8 @@ public class DataConfigManager extends Handler {
 
     /** The network capability priority map */
     private final Map<Integer, Integer> mNetworkCapabilityPriorityMap = new ConcurrentHashMap<>();
+
+    private final List<DataRetryRule> mDataRetryRules = new ArrayList<>();
 
     private @Nullable PersistableBundle mCarrierConfig = null;
     private @Nullable Resources mResources = null;
@@ -132,6 +139,7 @@ public class DataConfigManager extends Handler {
                 mPhone.getSubId());
 
         updateNetworkCapabilityPriority();
+        updateDataRetryRules();
 
         log("Data config updated. Config is " + (isConfigCarrierSpecific() ? "" : "not ")
                 + "carrier specific.");
@@ -178,6 +186,28 @@ public class DataConfigManager extends Handler {
             return mNetworkCapabilityPriorityMap.get(capability);
         }
         return 0;
+    }
+
+    /**
+     * Update the data retry rules from the carrier config.
+     */
+    private void updateDataRetryRules() {
+        mDataRetryRules.clear();
+        if (mCarrierConfig == null) return;
+        String[] dataRetryRulesStrings = mCarrierConfig.getStringArray(
+                CarrierConfigManager.KEY_TELEPHONY_DATA_RETRY_RULES_STRING_ARRAY);
+        if (dataRetryRulesStrings != null) {
+            Arrays.stream(dataRetryRulesStrings)
+                    .map(DataRetryRule::new)
+                    .forEach(mDataRetryRules::add);
+        }
+    }
+
+    /**
+     * @return The data retry rules from carrier config.
+     */
+    public @NonNull List<DataRetryRule> getDataRetryRules() {
+        return Collections.unmodifiableList(mDataRetryRules);
     }
 
     /**
@@ -232,6 +262,12 @@ public class DataConfigManager extends Handler {
                     + entry.getValue() + " ");
         }
         pw.println();
+        pw.println("Data retry rules:");
+        pw.increaseIndent();
+        for (DataRetryRule rule : mDataRetryRules) {
+            pw.println(rule);
+        }
+        pw.decreaseIndent();
         pw.decreaseIndent();
         pw.decreaseIndent();
     }
