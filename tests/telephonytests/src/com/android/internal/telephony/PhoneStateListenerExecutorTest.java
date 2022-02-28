@@ -31,13 +31,7 @@ import java.lang.reflect.Field;
 import java.util.concurrent.Executor;
 
 public class PhoneStateListenerExecutorTest extends TelephonyTest {
-
-    private Executor mSimpleExecutor = new Executor() {
-        @Override
-        public void execute(Runnable r) {
-            r.run();
-        }
-    };
+    private Executor mSimpleExecutor = Runnable::run;
 
     private PhoneStateListener mPhoneStateListenerUT;
 
@@ -45,7 +39,7 @@ public class PhoneStateListenerExecutorTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        this.setUp(this.getClass().getSimpleName());
+        this.setUp(getClass().getSimpleName());
 
         mPhoneStateListenerUT = new PhoneStateListener(mSimpleExecutor) {
             @Override
@@ -65,6 +59,8 @@ public class PhoneStateListenerExecutorTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mSimpleExecutor = null;
+        mPhoneStateListenerUT = null;
         super.tearDown();
     }
 

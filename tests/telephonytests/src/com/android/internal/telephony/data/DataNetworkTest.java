@@ -65,7 +65,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
@@ -81,7 +80,7 @@ public class DataNetworkTest extends TelephonyTest {
 
     private DataNetwork mDataNetworkUT;
 
-    private SparseArray<DataServiceManager> mDataServiceManagers = new SparseArray<>();
+    private final SparseArray<DataServiceManager> mDataServiceManagers = new SparseArray<>();
 
     private final ApnSetting mInternetApnSetting = new ApnSetting.Builder()
             .setId(2163)
@@ -129,7 +128,7 @@ public class DataNetworkTest extends TelephonyTest {
             .setTrafficDescriptor(new TrafficDescriptor("fake_apn", null))
             .build();
 
-    @Mock
+    // Mocked classes
     private DataNetworkCallback mDataNetworkCallback;
 
     private final NetworkRegistrationInfo mIwlanNetworkRegistrationInfo =
@@ -197,6 +196,7 @@ public class DataNetworkTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mDataNetworkCallback = Mockito.mock(DataNetworkCallback.class);
         doReturn(true).when(mPhone).isUsingNewDataStack();
         doAnswer(invocation -> {
             ((Runnable) invocation.getArguments()[0]).run();
@@ -215,6 +215,8 @@ public class DataNetworkTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mDataNetworkUT = null;
+        mDataServiceManagers.clear();
         super.tearDown();
     }
 

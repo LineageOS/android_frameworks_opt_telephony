@@ -21,6 +21,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import android.os.Binder;
@@ -36,27 +37,27 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class UiccPortTest extends TelephonyTest {
-
     private static final int CHANNEL_ID = 1;
 
-    @Mock
+    // Mocked classes
     private UiccCard mUiccCard;
+    private IccCardStatus mIccCardStatus;
+
     private UiccPort mUiccPort;
 
     private IccIoResult mIccIoResult;
 
-    @Mock
-    private IccCardStatus mIccCardStatus;
     private int mPhoneId = 0;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mUiccCard = mock(UiccCard.class);
+        mIccCardStatus = mock(IccCardStatus.class);
         /* initially there are no application available */
         mIccCardStatus.mApplications = new IccCardApplicationStatus[]{};
         mIccCardStatus.mCdmaSubscriptionAppIndex =
@@ -76,6 +77,8 @@ public class UiccPortTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mUiccPort = null;
+        mIccIoResult = null;
         super.tearDown();
     }
 

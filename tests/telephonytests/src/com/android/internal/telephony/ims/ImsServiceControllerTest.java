@@ -64,7 +64,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 import java.util.HashSet;
 
@@ -118,16 +117,17 @@ public class ImsServiceControllerTest extends ImsTestBase {
         }
     }
 
-    @Mock IImsMmTelFeature mMockMmTelFeature;
-    @Mock IBinder mMockMmTelBinder;
-    @Mock IImsRcsFeature mMockRcsFeature;
-    @Mock IBinder mMockRcsBinder;
-    @Mock IImsConfig mMockImsConfig;
-    @Mock IImsRegistration mMockRcsRegistration;
+    // Mocked classes
+    IImsMmTelFeature mMockMmTelFeature;
+    IBinder mMockMmTelBinder;
+    IImsRcsFeature mMockRcsFeature;
+    IBinder mMockRcsBinder;
+    IImsConfig mMockImsConfig;
+    IImsRegistration mMockRcsRegistration;
+    IImsServiceController mMockServiceControllerBinder;
+    ImsServiceController.ImsServiceControllerCallbacks mMockCallbacks;
+    Context mMockContext;
 
-    @Mock IImsServiceController mMockServiceControllerBinder;
-    @Mock ImsServiceController.ImsServiceControllerCallbacks mMockCallbacks;
-    @Mock Context mMockContext;
     private final ComponentName mTestComponentName = new ComponentName("TestPkg",
             "ImsServiceControllerTest");
     private final Handler mHandler = new Handler(Looper.getMainLooper());
@@ -138,6 +138,16 @@ public class ImsServiceControllerTest extends ImsTestBase {
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        mMockMmTelFeature = mock(IImsMmTelFeature.class);
+        mMockMmTelBinder = mock(IBinder.class);
+        mMockRcsFeature = mock(IImsRcsFeature.class);
+        mMockRcsBinder = mock(IBinder.class);
+        mMockImsConfig = mock(IImsConfig.class);
+        mMockRcsRegistration = mock(IImsRegistration.class);
+        mMockServiceControllerBinder = mock(IImsServiceController.class);
+        mMockCallbacks = mock(ImsServiceController.ImsServiceControllerCallbacks.class);
+        mMockContext = mock(Context.class);
+
         mRepo = new ImsFeatureBinderRepository();
         mTestImsServiceController = new ImsServiceController(mMockContext, mTestComponentName,
                 mMockCallbacks, mHandler, REBIND_RETRY, mRepo);
@@ -164,6 +174,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
         mTestImsServiceController = null;
         // Make sure the handler is empty before finishing the test.
         waitForHandlerAction(mHandler, 1000);
+        mTestImsServiceController = null;
+        mRepo = null;
         super.tearDown();
     }
 

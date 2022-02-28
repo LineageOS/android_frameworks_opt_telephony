@@ -87,6 +87,7 @@ public class IccRecordsTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mIccRecords = null;
         super.tearDown();
     }
 

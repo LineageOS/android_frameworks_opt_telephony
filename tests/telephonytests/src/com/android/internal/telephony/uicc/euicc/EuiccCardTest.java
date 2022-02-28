@@ -19,6 +19,7 @@ package com.android.internal.telephony.uicc.euicc;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -40,7 +41,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -71,9 +71,8 @@ public class EuiccCardTest extends TelephonyTest {
         }
     }
 
-    @Mock
+    // Mocked classes
     private CommandsInterface mMockCi;
-    @Mock
     private IccCardStatus mMockIccCardStatus;
 
     private Handler mHandler;
@@ -83,6 +82,8 @@ public class EuiccCardTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mMockCi = mock(CommandsInterface.class);
+        mMockIccCardStatus = mock(IccCardStatus.class);
 
         mMockIccCardStatus.mApplications = new IccCardApplicationStatus[]{};
         mMockIccCardStatus.mCdmaSubscriptionAppIndex =
@@ -104,6 +105,11 @@ public class EuiccCardTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        if (mHandler != null) {
+            mHandler.removeCallbacksAndMessages(null);
+            mHandler = null;
+        }
+        mEuiccCard = null;
         super.tearDown();
     }
 

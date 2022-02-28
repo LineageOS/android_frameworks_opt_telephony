@@ -55,7 +55,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Method;
@@ -73,7 +72,7 @@ public class DataProfileManagerTest extends TelephonyTest {
     private static final String TETHERING_APN = "DUN_APN";
     private static final String PLMN = "330123";
 
-    @Mock
+    // Mocked classes
     private DataProfileManagerCallback mDataProfileManagerCallback;
 
     private DataProfileManager mDataProfileManagerUT;
@@ -403,6 +402,7 @@ public class DataProfileManagerTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("DataProfileManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
+        mDataProfileManagerCallback = Mockito.mock(DataProfileManagerCallback.class);
         doReturn(true).when(mPhone).isUsingNewDataStack();
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
                 Telephony.Carriers.CONTENT_URI.getAuthority(), mApnSettingContentProvider);
@@ -429,6 +429,8 @@ public class DataProfileManagerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mDataProfileManagerUT = null;
+        mDataNetworkControllerCallback = null;
         super.tearDown();
     }
 

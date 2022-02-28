@@ -176,7 +176,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -199,17 +198,12 @@ public class RILTest extends TelephonyTest {
     // refer to RIL#DEFAULT_WAKE_LOCK_TIMEOUT_MS
     private static final int DEFAULT_WAKE_LOCK_TIMEOUT_MS = 60000;
 
-    @Mock
+    // Mocked classes
     private ConnectivityManager mConnectionManager;
-    @Mock
     private TelephonyManager mTelephonyManager;
-    @Mock
     private IRadio mRadioProxy;
-    @Mock
     private RadioDataProxy mDataProxy;
-    @Mock
     private RadioNetworkProxy mNetworkProxy;
-    @Mock
     private RadioSimProxy mSimProxy;
 
     private HalVersion mRadioVersionV10 = new HalVersion(1, 0);
@@ -299,7 +293,13 @@ public class RILTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        super.setUp(RILTest.class.getSimpleName());
+        super.setUp(getClass().getSimpleName());
+        mConnectionManager = mock(ConnectivityManager.class);
+        mTelephonyManager = mock(TelephonyManager.class);
+        mRadioProxy = mock(IRadio.class);
+        mDataProxy = mock(RadioDataProxy.class);
+        mNetworkProxy = mock(RadioNetworkProxy.class);
+        mSimProxy = mock(RadioSimProxy.class);
         try {
             TelephonyDevController.create();
         } catch (RuntimeException e) {
@@ -345,7 +345,9 @@ public class RILTest extends TelephonyTest {
         if (mRILUnderTest != null) {
             mRILUnderTest.mWakeLock.release();
             mRILUnderTest.mAckWakeLock.release();
+            mRILUnderTest = null;
         }
+        mRILInstance = null;
         super.tearDown();
     }
 
