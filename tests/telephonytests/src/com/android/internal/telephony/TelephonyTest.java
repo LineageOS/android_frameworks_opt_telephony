@@ -86,6 +86,8 @@ import com.android.ims.ImsEcbm;
 import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
+import com.android.internal.telephony.data.DataConfigManager;
+import com.android.internal.telephony.data.DataNetworkController;
 import com.android.internal.telephony.dataconnection.DataEnabledOverride;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DataThrottler;
@@ -197,6 +199,10 @@ public abstract class TelephonyTest {
     protected ImsManager mImsManager;
     @Mock
     protected DcTracker mDcTracker;
+    @Mock
+    protected DataNetworkController mDataNetworkController;
+    @Mock
+    protected DataConfigManager mDataConfigManager;
     @Mock
     protected DisplayInfoController mDisplayInfoController;
     @Mock
@@ -572,6 +578,7 @@ public abstract class TelephonyTest {
         doReturn(mTransportManager).when(mPhone).getTransportManager();
         doReturn(mDataEnabledSettings).when(mPhone).getDataEnabledSettings();
         doReturn(mDcTracker).when(mPhone).getDcTracker(anyInt());
+        doReturn(mDataNetworkController).when(mPhone).getDataNetworkController();
         doReturn(mCarrierPrivilegesTracker).when(mPhone).getCarrierPrivilegesTracker();
         doReturn(mSignalStrength).when(mPhone).getSignalStrength();
         doReturn(mVoiceCallSessionStats).when(mPhone).getVoiceCallSessionStats();
@@ -582,6 +589,7 @@ public abstract class TelephonyTest {
         doReturn(mLinkBandwidthEstimator).when(mPhone).getLinkBandwidthEstimator();
         doReturn(mCellIdentity).when(mPhone).getCurrentCellIdentity();
         doReturn(mCellLocation).when(mCellIdentity).asCellLocation();
+        doReturn(mDataConfigManager).when(mDataNetworkController).getDataConfigManager();
 
         //mUiccController
         doReturn(mUiccCardApplication3gpp).when(mUiccController).getUiccCardApplication(anyInt(),
