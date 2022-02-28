@@ -235,6 +235,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         boolean mSwitchAfterDownload;
         boolean mForceDeactivateSim;
         DownloadCommandCallback mCallback;
+        int mPortIndex;
         Bundle mResolvedBundle;
     }
 
@@ -451,15 +452,16 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
 
     /** Asynchronously download the given subscription. */
     @VisibleForTesting(visibility = PACKAGE)
-    public void downloadSubscription(int cardId, DownloadableSubscription subscription,
-            boolean switchAfterDownload, boolean forceDeactivateSim,
-            Bundle resolvedBundle, DownloadCommandCallback callback) {
+    public void downloadSubscription(int cardId, int portIndex,
+            DownloadableSubscription subscription, boolean switchAfterDownload,
+            boolean forceDeactivateSim, Bundle resolvedBundle, DownloadCommandCallback callback) {
         DownloadRequest request = new DownloadRequest();
         request.mSubscription = subscription;
         request.mSwitchAfterDownload = switchAfterDownload;
         request.mForceDeactivateSim = forceDeactivateSim;
         request.mResolvedBundle = resolvedBundle;
         request.mCallback = callback;
+        request.mPortIndex = portIndex;
         sendMessage(CMD_DOWNLOAD_SUBSCRIPTION, cardId, 0 /* arg2 */, request);
     }
 
@@ -759,7 +761,8 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                         }
                         case CMD_DOWNLOAD_SUBSCRIPTION: {
                             DownloadRequest request = (DownloadRequest) message.obj;
-                            mEuiccService.downloadSubscription(slotId, 0,
+                            mEuiccService.downloadSubscription(slotId,
+                                    request.mPortIndex,
                                     request.mSubscription,
                                     request.mSwitchAfterDownload,
                                     request.mForceDeactivateSim,
