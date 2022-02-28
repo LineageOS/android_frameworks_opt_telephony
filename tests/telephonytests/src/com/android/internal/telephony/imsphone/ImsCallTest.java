@@ -51,12 +51,8 @@ public class ImsCallTest extends TelephonyTest {
     private Bundle mBundle;
     private ImsCallProfile mTestCallProfile;
 
-    private Executor mExecutor = new Executor() {
-        @Override
-        public void execute(Runnable r) {
-            r.run();
-        }
-    };
+    private final Executor mExecutor = Runnable::run;
+
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
@@ -67,6 +63,8 @@ public class ImsCallTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mBundle = null;
+        mTestCallProfile = null;
         super.tearDown();
     }
 

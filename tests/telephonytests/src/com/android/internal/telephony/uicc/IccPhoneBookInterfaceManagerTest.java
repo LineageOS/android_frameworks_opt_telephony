@@ -23,11 +23,12 @@ import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 
 import android.content.ContentValues;
+import android.os.AsyncResult;
 import android.os.HandlerThread;
 import android.os.Message;
-import android.os.AsyncResult;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
@@ -37,7 +38,6 @@ import com.android.internal.telephony.TelephonyTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -45,13 +45,11 @@ import java.util.Arrays;
 import java.util.List;
 
 public class IccPhoneBookInterfaceManagerTest extends TelephonyTest {
-
-    @Mock
+    // Mocked classes
     private AdnRecordCache mAdnRecordCache;
-    @Mock
     private AdnRecord mAdnRecord;
-    @Mock
     private SimPhonebookRecordCache mSimPhonebookRecordCache;
+
     private IccPhoneBookInterfaceManager mIccPhoneBookInterfaceMgr;
     private IccPhoneBookInterfaceManagerHandler mIccPhoneBookInterfaceManagerHandler;
     private List<AdnRecord> mAdnList = Arrays.asList(mAdnRecord);
@@ -71,7 +69,10 @@ public class IccPhoneBookInterfaceManagerTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        super.setUp(this.getClass().getSimpleName());
+        super.setUp(getClass().getSimpleName());
+        mAdnRecordCache = mock(AdnRecordCache.class);
+        mAdnRecord = mock(AdnRecord.class);
+        mSimPhonebookRecordCache = mock(SimPhonebookRecordCache.class);
         //APP_FAM_3GPP default mPhone is GSM
         doReturn(mSimRecords).when(mPhone).getIccRecords();
         doReturn(mAdnRecordCache).when(mSimRecords).getAdnCache();
@@ -106,6 +107,10 @@ public class IccPhoneBookInterfaceManagerTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mIccPhoneBookInterfaceManagerHandler.quit();
         mIccPhoneBookInterfaceManagerHandler.join();
+        mIccPhoneBookInterfaceManagerHandler = null;
+        mIccPhoneBookInterfaceMgr = null;
+        mSimPhonebookRecordCache = null;
+        mAdnList = null;
         super.tearDown();
     }
 

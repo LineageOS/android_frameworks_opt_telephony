@@ -30,7 +30,6 @@ import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -103,7 +102,6 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Method;
@@ -113,25 +111,16 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
-
 public class ServiceStateTrackerTest extends TelephonyTest {
-    @Mock
+    // Mocked classes
     private ProxyController mProxyController;
-    @Mock
     private Handler mTestHandler;
+    private NetworkService mIwlanNetworkService;
+    private INetworkService.Stub mIwlanNetworkServiceStub;
+    private SubscriptionInfo mSubInfo;
+    private ServiceStateStats mServiceStateStats;
 
     private CellularNetworkService mCellularNetworkService;
-
-    @Mock
-    private NetworkService mIwlanNetworkService;
-    @Mock
-    private INetworkService.Stub mIwlanNetworkServiceStub;
-
-    @Mock
-    private SubscriptionInfo mSubInfo;
-
-    @Mock
-    private ServiceStateStats mServiceStateStats;
 
     // SST now delegates all signal strength operations to SSC
     // Add Mock SSC as the dependency to avoid NPE
@@ -229,9 +218,14 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-
         logd("ServiceStateTrackerTest +Setup!");
-        super.setUp("ServiceStateTrackerTest");
+        super.setUp(getClass().getSimpleName());
+        mProxyController = Mockito.mock(ProxyController.class);
+        mTestHandler = Mockito.mock(Handler.class);
+        mIwlanNetworkService = Mockito.mock(NetworkService.class);
+        mIwlanNetworkServiceStub = Mockito.mock(INetworkService.Stub.class);
+        mSubInfo = Mockito.mock(SubscriptionInfo.class);
+        mServiceStateStats = Mockito.mock(ServiceStateStats.class);
 
         mContextFixture.putResource(R.string.config_wwan_network_service_package,
                 "com.android.phone");
@@ -354,9 +348,13 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sst = null;
         mSSTTestHandler.quit();
         mSSTTestHandler.join();
+        mSSTTestHandler = null;
         if (mCellularNetworkService != null) {
             mCellularNetworkService.onDestroy();
+            mCellularNetworkService = null;
         }
+        mSsc = null;
+        mBundle = null;
         super.tearDown();
     }
 
@@ -1413,7 +1411,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mContextFixture.putBooleanResource(
                 R.bool.config_user_notification_of_restrictied_mobile_access, true);
         doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
-        Drawable mockDrawable = mock(Drawable.class);
+        Drawable mockDrawable = Mockito.mock(Drawable.class);
         Resources mockResources = mContext.getResources();
         when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
 
@@ -1445,7 +1443,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mContextFixture.putBooleanResource(
                 R.bool.config_user_notification_of_restrictied_mobile_access, true);
         doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
-        Drawable mockDrawable = mock(Drawable.class);
+        Drawable mockDrawable = Mockito.mock(Drawable.class);
         Resources mockResources = mContext.getResources();
         when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
 
@@ -1478,7 +1476,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mContextFixture.putBooleanResource(
                 R.bool.config_user_notification_of_restrictied_mobile_access, true);
         doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
-        Drawable mockDrawable = mock(Drawable.class);
+        Drawable mockDrawable = Mockito.mock(Drawable.class);
         Resources mockResources = mContext.getResources();
         when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
 
@@ -1510,7 +1508,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mContextFixture.putBooleanResource(
                 R.bool.config_user_notification_of_restrictied_mobile_access, true);
         doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
-        Drawable mockDrawable = mock(Drawable.class);
+        Drawable mockDrawable = Mockito.mock(Drawable.class);
         Resources mockResources = mContext.getResources();
         when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
 
@@ -1544,7 +1542,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mContextFixture.putBooleanResource(
                 R.bool.config_user_notification_of_restrictied_mobile_access, true);
         doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
-        Drawable mockDrawable = mock(Drawable.class);
+        Drawable mockDrawable = Mockito.mock(Drawable.class);
         Resources mockResources = mContext.getResources();
         when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
 

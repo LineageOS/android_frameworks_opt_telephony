@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
@@ -43,7 +44,6 @@ import com.android.internal.R;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,7 +52,7 @@ import java.util.List;
 public class CellularNetworkServiceTest extends TelephonyTest {
     CellularNetworkService mCellularNetworkService;
 
-    @Mock
+    // Mocked classes
     private INetworkServiceCallback mCallback;
 
     private void addNetworkService() {
@@ -73,9 +73,9 @@ public class CellularNetworkServiceTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-
         logd("CellularNetworkServiceTest +Setup!");
-        super.setUp("CellularNetworkServiceTest");
+        super.setUp(this.getClass().getSimpleName());
+        mCallback = mock(INetworkServiceCallback.class);
 
         mContextFixture.putResource(R.string.config_wwan_network_service_package,
                 "com.android.phone");
@@ -93,6 +93,7 @@ public class CellularNetworkServiceTest extends TelephonyTest {
     public void tearDown() throws Exception {
         if (mCellularNetworkService != null) {
             mCellularNetworkService.onDestroy();
+            mCellularNetworkService = null;
         }
         super.tearDown();
     }

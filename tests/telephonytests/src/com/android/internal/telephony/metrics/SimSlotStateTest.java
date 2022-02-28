@@ -21,6 +21,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -33,23 +34,29 @@ import com.android.internal.telephony.uicc.UiccSlot;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
 
 public class SimSlotStateTest extends TelephonyTest {
-    @Mock private UiccSlot mInactiveSlot;
-    @Mock private UiccSlot mEmptySlot;
-    @Mock private UiccSlot mPhysicalSlot;
-    @Mock private UiccSlot mEsimSlot;
-
-    @Mock private UiccCard mInactiveCard;
-    @Mock private UiccCard mActiveCard;
-
-    @Mock private UiccPort mInactivePort;
-    @Mock private UiccPort mActivePort;
+    // Mocked classes
+    private UiccSlot mInactiveSlot;
+    private UiccSlot mEmptySlot;
+    private UiccSlot mPhysicalSlot;
+    private UiccSlot mEsimSlot;
+    private UiccCard mInactiveCard;
+    private UiccCard mActiveCard;
+    private UiccPort mInactivePort;
+    private UiccPort mActivePort;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mInactiveSlot = mock(UiccSlot.class);
+        mEmptySlot = mock(UiccSlot.class);
+        mPhysicalSlot = mock(UiccSlot.class);
+        mEsimSlot = mock(UiccSlot.class);
+        mInactiveCard = mock(UiccCard.class);
+        mActiveCard = mock(UiccCard.class);
+        mInactivePort = mock(UiccPort.class);
+        mActivePort = mock(UiccPort.class);
 
         doReturn(false).when(mInactiveSlot).isActive();
 

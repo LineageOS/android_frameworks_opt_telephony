@@ -44,7 +44,7 @@ import java.util.ArrayList;
 public class RetryManagerTest extends TelephonyTest {
 
     // This is the real APN data for the Japanese carrier NTT Docomo.
-    private ApnSetting mApn1 = new ApnSetting.Builder()
+    private final ApnSetting mApn1 = new ApnSetting.Builder()
             .setId(2163)
             .setOperatorNumeric("44010")
             .setEntryName("sp-mode")
@@ -55,7 +55,7 @@ public class RetryManagerTest extends TelephonyTest {
             .setCarrierEnabled(true)
             .build();
 
-    private ApnSetting mApn2 = new ApnSetting.Builder()
+    private final ApnSetting mApn2 = new ApnSetting.Builder()
             .setId(2164)
             .setOperatorNumeric("44010")
             .setEntryName("mopera U")
@@ -66,7 +66,7 @@ public class RetryManagerTest extends TelephonyTest {
             .setCarrierEnabled(true)
             .build();
 
-    private ApnSetting mApn3 = new ApnSetting.Builder()
+    private final ApnSetting mApn3 = new ApnSetting.Builder()
             .setId(2165)
             .setOperatorNumeric("44010")
             .setEntryName("b-mobile for Nexus")
@@ -90,6 +90,7 @@ public class RetryManagerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mBundle = null;
         super.tearDown();
     }
 
