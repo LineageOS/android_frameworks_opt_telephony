@@ -64,8 +64,9 @@ public class ExponentialBackoffTest extends ImsTestBase {
     }
 
     @After
-    public void tearDown() {
+    public void tearDown() throws Exception {
         mBackoffUnderTest.stop();
+        super.tearDown();
     }
 
     @Test
