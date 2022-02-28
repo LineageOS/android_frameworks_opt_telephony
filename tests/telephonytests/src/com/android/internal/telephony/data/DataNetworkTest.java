@@ -57,6 +57,7 @@ import android.testing.TestableLooper;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataNetwork.DataNetworkCallback;
 
 import org.junit.After;
@@ -249,7 +250,8 @@ public class DataNetworkTest extends TelephonyTest {
 
         mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
                 mInternetDataProfile, networkRequestList,
-                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, mDataNetworkCallback);
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, DataAllowedReason.NORMAL,
+                mDataNetworkCallback);
         mDataNetworkUT.sendMessage(9/*EVENT_SERVICE_STATE_CHANGED*/);
 
         processAllMessages();
@@ -318,7 +320,8 @@ public class DataNetworkTest extends TelephonyTest {
 
         mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
                 mInternetDataProfile, networkRequestList,
-                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, mDataNetworkCallback);
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, DataAllowedReason.NORMAL,
+                mDataNetworkCallback);
         mDataNetworkUT.sendMessage(9/*EVENT_SERVICE_STATE_CHANGED*/);
 
         processAllMessages();
@@ -345,7 +348,8 @@ public class DataNetworkTest extends TelephonyTest {
 
         mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
                 mInternetDataProfile, networkRequestList,
-                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, mDataNetworkCallback);
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, DataAllowedReason.NORMAL,
+                mDataNetworkCallback);
         mDataNetworkUT.sendMessage(9/*EVENT_SERVICE_STATE_CHANGED*/);
 
         processAllMessages();
@@ -372,7 +376,8 @@ public class DataNetworkTest extends TelephonyTest {
 
         mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
                 mInternetDataProfile, networkRequestList,
-                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, mDataNetworkCallback);
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, DataAllowedReason.NORMAL,
+                mDataNetworkCallback);
         mDataNetworkUT.sendMessage(9/*EVENT_SERVICE_STATE_CHANGED*/);
 
         processAllMessages();
@@ -434,7 +439,7 @@ public class DataNetworkTest extends TelephonyTest {
 
         mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
                 mImsDataProfile, networkRequestList, AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
-                mDataNetworkCallback);
+                DataAllowedReason.NORMAL, mDataNetworkCallback);
         mDataNetworkUT.sendMessage(9/*EVENT_SERVICE_STATE_CHANGED*/);
 
         processAllMessages();
