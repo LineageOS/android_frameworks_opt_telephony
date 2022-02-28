@@ -23,17 +23,16 @@ import static org.junit.Assert.assertTrue;
 
 import android.os.AsyncResult;
 import android.os.HandlerThread;
-import android.os.Handler;
 import android.os.Message;
 
 import com.android.internal.telephony.TelephonyTest;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class SimPhonebookRecordCacheTest extends TelephonyTest {
     private static final int EVENT_PHONEBOOK_RECORDS_RECEIVED = 2;
@@ -57,8 +56,8 @@ public class SimPhonebookRecordCacheTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        super.setUp(this.getClass().getSimpleName());
-        mSimPhonebookRecordHandler = new SimPhonebookRecordHandler(this.getClass().getSimpleName());
+        super.setUp(getClass().getSimpleName());
+        mSimPhonebookRecordHandler = new SimPhonebookRecordHandler(getClass().getSimpleName());
         mSimPhonebookRecordHandler.start();
         waitUntilReady();
     }
@@ -67,6 +66,8 @@ public class SimPhonebookRecordCacheTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mSimPhonebookRecordHandler.quit();
         mSimPhonebookRecordHandler.join();
+        mSimPhonebookRecordHandler = null;
+        mSimPhonebookRecordCacheUt = null;
         super.tearDown();
     }
 

@@ -131,6 +131,7 @@ public class SmsNumberUtilsTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mHbpcdContentProvider = null;
         super.tearDown();
     }
 

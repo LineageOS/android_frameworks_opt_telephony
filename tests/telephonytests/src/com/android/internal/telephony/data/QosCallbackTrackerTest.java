@@ -20,6 +20,7 @@ import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
@@ -46,7 +47,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -88,13 +88,10 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         }
     }
 
-    @Mock
+    // Mocked classes
     private Phone mPhone;
-    @Mock
     private TelephonyNetworkAgent mNetworkAgent;
-    @Mock
     private Network mNetwork;
-    @Mock
     private RcsStats mRcsStats;
 
     private QosCallbackTracker mQosCallbackTracker;
@@ -102,17 +99,21 @@ public class QosCallbackTrackerTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mPhone = mock(Phone.class);
+        mNetworkAgent = mock(TelephonyNetworkAgent.class);
+        mNetwork = mock(Network.class);
+        mRcsStats = mock(RcsStats.class);
         doReturn(mNetwork).when(mNetworkAgent).getNetwork();
         doReturn(100).when(mNetwork).getNetId();
         doReturn(0).when(mPhone).getPhoneId();
         mQosCallbackTracker = new QosCallbackTracker(mNetworkAgent, mPhone);
-        replaceInstance(QosCallbackTracker.class, "mRcsStats", mQosCallbackTracker,
-                mRcsStats);
+        replaceInstance(QosCallbackTracker.class, "mRcsStats", mQosCallbackTracker, mRcsStats);
         processAllMessages();
     }
 
     @After
     public void tearDown() throws Exception {
+        mQosCallbackTracker = null;
         super.tearDown();
     }
 

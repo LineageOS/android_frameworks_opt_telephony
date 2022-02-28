@@ -46,7 +46,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentMatchers;
-import org.mockito.MockitoAnnotations;
 
 import java.security.PublicKey;
 import java.text.SimpleDateFormat;
@@ -87,7 +86,6 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         logd("CarrierActionAgentTest +Setup!");
-        MockitoAnnotations.initMocks(this);
         super.setUp(getClass().getSimpleName());
         mCarrierKeyDM = new CarrierKeyDownloadManager(mPhone);
         processAllMessages();
@@ -96,6 +94,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mCarrierKeyDM = null;
         super.tearDown();
     }
 

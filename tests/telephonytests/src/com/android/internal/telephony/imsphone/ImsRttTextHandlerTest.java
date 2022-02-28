@@ -233,6 +233,14 @@ public class ImsRttTextHandlerTest extends TelephonyTest {
         waitForHandlerAction(mRttTextHandler, TEST_TIMEOUT);
         mHandlerThread.quit();
         mHandlerThread.join();
+
+        mRttTextStream = null;
+        mNetworkWriter = null;
+        mRttTextHandler = null;
+        mHandlerThread = null;
+        mPipeToHandler = null;
+        mPipeFromHandler = null;
+        mHandlerSideOfPipeToHandler = null;
         super.tearDown();
     }
 

@@ -44,7 +44,6 @@ import android.app.timezonedetector.TelephonyTimeZoneSuggestion;
 
 import com.android.internal.telephony.NitzData;
 import com.android.internal.telephony.NitzSignal;
-import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.nitz.NitzStateMachineImpl.TimeZoneSuggester;
 import com.android.internal.telephony.nitz.NitzStateMachineTestSupport.FakeDeviceState;
 import com.android.internal.telephony.nitz.NitzStateMachineTestSupport.Scenario;
@@ -56,8 +55,7 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.List;
 
-public class TimeZoneSuggesterImplTest extends TelephonyTest {
-
+public class TimeZoneSuggesterImplTest {
     private static final int SLOT_INDEX = 99999;
     private static final TelephonyTimeZoneSuggestion EMPTY_TIME_ZONE_SUGGESTION =
             new TelephonyTimeZoneSuggestion.Builder(SLOT_INDEX).build();
@@ -66,10 +64,7 @@ public class TimeZoneSuggesterImplTest extends TelephonyTest {
     private TimeZoneSuggester mTimeZoneSuggester;
 
     @Before
-    public void setUp() throws Exception {
-        TelephonyTest.logd("TimeZoneSuggesterImplTest +Setup!");
-        super.setUp("TimeZoneSuggesterImplTest");
-
+    public void setUp() {
         // In tests a fake impl is used for DeviceState, which allows historic data to be used.
         mFakeDeviceState = new FakeDeviceState();
 
@@ -77,13 +72,12 @@ public class TimeZoneSuggesterImplTest extends TelephonyTest {
         // construct tests using known historic examples.
         TimeZoneLookupHelper timeZoneLookupHelper = new TimeZoneLookupHelper();
         mTimeZoneSuggester = new TimeZoneSuggesterImpl(mFakeDeviceState, timeZoneLookupHelper);
-
-        TelephonyTest.logd("TimeZoneSuggesterImplTest -Setup!");
     }
 
     @After
-    public void tearDown() throws Exception {
-        super.tearDown();
+    public void tearDown() {
+        mFakeDeviceState = null;
+        mTimeZoneSuggester = null;
     }
 
     @Test
