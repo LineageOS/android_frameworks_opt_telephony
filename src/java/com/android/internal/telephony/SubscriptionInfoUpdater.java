@@ -67,10 +67,8 @@ import com.android.telephony.Rlog;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.stream.Collectors;
 
 /**
  *@hide
@@ -1116,7 +1114,8 @@ public class SubscriptionInfoUpdater extends Handler {
     private int getEmbeddedProfilePortIndex(String iccId) {
         UiccSlot[] slots = UiccController.getInstance().getUiccSlots();
         for (UiccSlot slot : slots) {
-            if (slot != null && slot.isEuicc() && slot.isIccIdMappedToPortIndex(iccId)) {
+            if (slot != null && slot.isEuicc()
+                    && slot.getPortIndexFromIccId(iccId) != TelephonyManager.INVALID_PORT_INDEX) {
                 return slot.getPortIndexFromIccId(iccId);
             }
         }

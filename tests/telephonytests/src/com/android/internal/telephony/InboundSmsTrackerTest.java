@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -100,8 +101,10 @@ public class InboundSmsTrackerTest {
     @Test
     @SmallTest
     public void testInitializationFromDb() {
+        Cursor cursor = createFakeCursor();
         mInboundSmsTracker = new InboundSmsTracker(InstrumentationRegistry.getContext(),
-                createFakeCursor(), false);
+                cursor, false);
+        cursor.close();
         testInitialization();
     }
 }
