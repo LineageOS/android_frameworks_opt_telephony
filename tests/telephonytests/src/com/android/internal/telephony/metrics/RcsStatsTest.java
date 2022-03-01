@@ -89,8 +89,8 @@ public class RcsStatsTest extends TelephonyTest {
         }
     }
 
-    private int mSubId = 10;
-    private int mSubId2 = 20;
+    private final int mSubId = 10;
+    private final int mSubId2 = 20;
 
     private TestableRcsStats mRcsStats;
 
@@ -221,6 +221,7 @@ public class RcsStatsTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mRcsStats = null;
         super.tearDown();
     }
 

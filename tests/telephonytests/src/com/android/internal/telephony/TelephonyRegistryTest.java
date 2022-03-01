@@ -71,7 +71,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -84,8 +83,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class TelephonyRegistryTest extends TelephonyTest {
-    @Mock
+    // Mocked classes
     private SubscriptionInfo mMockSubInfo;
+    private TelephonyRegistry.ConfigurationProvider mMockConfigurationProvider;
+
     private TelephonyCallbackWrapper mTelephonyCallback;
     private List<LinkCapacityEstimate> mLinkCapacityEstimateList;
     private TelephonyRegistry mTelephonyRegistry;
@@ -98,7 +99,6 @@ public class TelephonyRegistryTest extends TelephonyTest {
     private int mDataConnectionState = TelephonyManager.DATA_UNKNOWN;
     private int mNetworkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
     private List<PhysicalChannelConfig> mPhysicalChannelConfigs;
-    private TelephonyRegistry.ConfigurationProvider mMockConfigurationProvider;
     private CellLocation mCellLocation;
 
     // All events contribute to TelephonyRegistry#isPhoneStatePermissionRequired
@@ -235,16 +235,12 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.systemRunning();
     }
 
-    private Executor mSimpleExecutor = new Executor() {
-        @Override
-        public void execute(Runnable r) {
-            r.run();
-        }
-    };
+    private final Executor mSimpleExecutor = Runnable::run;
 
     @Before
     public void setUp() throws Exception {
-        super.setUp("TelephonyRegistryTest");
+        super.setUp(getClass().getSimpleName());
+        mMockSubInfo = mock(SubscriptionInfo.class);
         mMockConfigurationProvider = mock(TelephonyRegistry.ConfigurationProvider.class);
         when(mMockConfigurationProvider.getRegistrationLimit()).thenReturn(-1);
         when(mMockConfigurationProvider.isRegistrationLimitEnabledInPlatformCompat(anyInt()))
@@ -271,6 +267,20 @@ public class TelephonyRegistryTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mTelephonyRegistry = null;
+        mTelephonyCallback = null;
+        if (mLinkCapacityEstimateList != null) {
+            mLinkCapacityEstimateList.clear();
+            mLinkCapacityEstimateList = null;
+        }
+        mTelephonyRegistry = null;
+        mPhoneCapability = null;
+        mTelephonyDisplayInfo = null;
+        mServiceState = null;
+        if (mPhysicalChannelConfigs != null) {
+            mPhysicalChannelConfigs.clear();
+            mPhysicalChannelConfigs = null;
+        }
+        mCellLocation = null;
         super.tearDown();
     }
 

@@ -34,13 +34,12 @@ import android.util.ArraySet;
 import androidx.test.InstrumentationRegistry;
 import androidx.test.runner.AndroidJUnit4;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -60,9 +59,11 @@ public class CarrierAppUtilsTest {
     private static final int USER_ID = 12345;
     private static final String CALLING_PACKAGE = "phone";
 
-    @Mock private Context mContext;
-    @Mock private PackageManager mPackageManager;
-    @Mock private TelephonyManager mTelephonyManager;
+    // Mocked classes
+    private Context mContext;
+    private PackageManager mPackageManager;
+    private TelephonyManager mTelephonyManager;
+
     private SettingsMockContentProvider mContentProvider;
     private MockContentResolver mContentResolver;
 
@@ -81,7 +82,9 @@ public class CarrierAppUtilsTest {
         System.setProperty("dexmaker.dexcache",
                 InstrumentationRegistry.getTargetContext().getCacheDir().getPath());
         Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
-        MockitoAnnotations.initMocks(this);
+        mContext = Mockito.mock(Context.class);
+        mPackageManager = Mockito.mock(PackageManager.class);
+        mTelephonyManager = Mockito.mock(TelephonyManager.class);
 
         Mockito.when(mContext.createContextAsUser(Mockito.any(UserHandle.class), Mockito.eq(0)))
                 .thenReturn(mContext);
@@ -97,6 +100,12 @@ public class CarrierAppUtilsTest {
         Settings.Secure.putIntForUser(
                 mContentResolver, Settings.Secure.CARRIER_APPS_HANDLED, 0, USER_ID);
         Mockito.when(mContext.getContentResolver()).thenReturn(mContentResolver);
+    }
+
+    @After
+    public void tearDown() {
+        mContentProvider = null;
+        mContentResolver = null;
     }
 
     /** No apps configured - should do nothing. */

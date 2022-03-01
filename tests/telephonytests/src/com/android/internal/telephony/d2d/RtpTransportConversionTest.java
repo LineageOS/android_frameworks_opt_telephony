@@ -20,6 +20,7 @@ import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertTrue;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -29,14 +30,12 @@ import android.telephony.ims.RtpHeaderExtension;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.ArraySet;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -68,13 +67,15 @@ public class RtpTransportConversionTest {
     private static final int DEVICE_STATE_LOCAL_IDENTIFIER = 2;
 
     private RtpTransport mRtpTransport;
-    @Mock private Timeouts.Adapter mTimeoutsAdapter;
-    @Mock private RtpAdapter mRtpAdapter;
-    @Mock private Handler mHandler;
-    @Mock private TransportProtocol.Callback mCallback;
-    @Captor private ArgumentCaptor<Set<RtpHeaderExtension>> mHeaderExtensionCaptor;
-    @Captor private ArgumentCaptor<Set<Communicator.Message>> mMessagesCaptor;
-    private final TestParams mParams;
+    private TestParams mParams;
+
+    // Mocked classes
+    private Timeouts.Adapter mTimeoutsAdapter;
+    private RtpAdapter mRtpAdapter;
+    private Handler mHandler;
+    private TransportProtocol.Callback mCallback;
+    private ArgumentCaptor<Set<RtpHeaderExtension>> mHeaderExtensionCaptor;
+    private ArgumentCaptor<Set<Communicator.Message>> mMessagesCaptor;
 
     public RtpTransportConversionTest(TestParams params) {
         mParams = params;
@@ -82,7 +83,12 @@ public class RtpTransportConversionTest {
 
     @Before
     public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
+        mTimeoutsAdapter = mock(Timeouts.Adapter.class);
+        mRtpAdapter = mock(RtpAdapter.class);
+        mHandler = mock(Handler.class);
+        mCallback = mock(TransportProtocol.Callback.class);
+        mHeaderExtensionCaptor = ArgumentCaptor.forClass(Set.class);
+        mMessagesCaptor = ArgumentCaptor.forClass(Set.class);
         mRtpTransport = new RtpTransport(mRtpAdapter, mTimeoutsAdapter, mHandler, true /* sdp */);
         mRtpTransport.setCallback(mCallback);
 
@@ -91,6 +97,12 @@ public class RtpTransportConversionTest {
         mRtpTransport.startNegotiation();
         verify(mCallback).onNegotiationSuccess(any());
         verify(mCallback, never()).onNegotiationFailed(any());
+    }
+
+    @After
+    public void tearDown() {
+        mRtpTransport = null;
+        mParams = null;
     }
 
     /**

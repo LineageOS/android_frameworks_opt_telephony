@@ -37,37 +37,37 @@ import java.util.List;
 
 public class SignalStrengthUpdateRequestTest extends TestCase {
 
-    private SignalThresholdInfo mRssiInfoOnGERAN = new SignalThresholdInfo.Builder()
+    private final SignalThresholdInfo mRssiInfoOnGERAN = new SignalThresholdInfo.Builder()
             .setRadioAccessNetworkType(AccessNetworkConstants.AccessNetworkType.GERAN)
             .setSignalMeasurementType(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI)
             .setThresholds(new int[]{-109, -103, -97, -89})
             .build();
 
-    private SignalThresholdInfo mRssiInfoOnGERAN2 = new SignalThresholdInfo.Builder()
+    private final SignalThresholdInfo mRssiInfoOnGERAN2 = new SignalThresholdInfo.Builder()
             .setRadioAccessNetworkType(AccessNetworkConstants.AccessNetworkType.GERAN)
             .setSignalMeasurementType(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI)
             .setThresholds(new int[]{-108, -102, -96, -88})
             .build();
 
-    private SignalThresholdInfo mRssiInfoOnCDMA2000 = new SignalThresholdInfo.Builder()
+    private final SignalThresholdInfo mRssiInfoOnCDMA2000 = new SignalThresholdInfo.Builder()
             .setRadioAccessNetworkType(AccessNetworkConstants.AccessNetworkType.CDMA2000)
             .setSignalMeasurementType(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI)
             .setThresholds(new int[]{-109, -103, -97, -89})
             .build();
 
-    private SignalThresholdInfo mRscpInfoOnUTRAN = new SignalThresholdInfo.Builder()
+    private final SignalThresholdInfo mRscpInfoOnUTRAN = new SignalThresholdInfo.Builder()
             .setRadioAccessNetworkType(AccessNetworkConstants.AccessNetworkType.UTRAN)
             .setSignalMeasurementType(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSCP)
             .setThresholds(new int[]{-115, -105, -95, -85})
             .build();
 
-    private SignalThresholdInfo mRsrpInfoOnEUTRAN = new SignalThresholdInfo.Builder()
+    private final SignalThresholdInfo mRsrpInfoOnEUTRAN = new SignalThresholdInfo.Builder()
             .setRadioAccessNetworkType(AccessNetworkConstants.AccessNetworkType.EUTRAN)
             .setSignalMeasurementType(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSRP)
             .setThresholds(new int[]{-115, -105, -95, -85})
             .build();
 
-    private SignalThresholdInfo mRsrqInfoEUTRAN = new SignalThresholdInfo.Builder()
+    private final SignalThresholdInfo mRsrqInfoEUTRAN = new SignalThresholdInfo.Builder()
             .setRadioAccessNetworkType(AccessNetworkConstants.AccessNetworkType.EUTRAN)
             .setSignalMeasurementType(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSRQ)
             .setThresholds(new int[]{-30, -20, -10, -1})

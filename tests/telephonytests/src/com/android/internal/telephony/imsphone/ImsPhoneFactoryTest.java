@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -31,23 +32,17 @@ import com.android.internal.telephony.TelephonyTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
 
 import java.util.concurrent.Executor;
 
 public class ImsPhoneFactoryTest extends TelephonyTest {
+    // Mocked classes
+    private PhoneNotifier mPhoneNotifier;
 
-    @Mock
-    private PhoneNotifier mPhoneNotifer;
     private ImsPhone mImsPhoneUT;
     private ImsPhoneFactoryHandler mImsPhoneFactoryHandler;
 
-    private Executor mExecutor = new Executor() {
-        @Override
-        public void execute(Runnable r) {
-            r.run();
-        }
-    };
+    private final Executor mExecutor = Runnable::run;
 
     private class ImsPhoneFactoryHandler extends HandlerThread {
 
@@ -56,17 +51,18 @@ public class ImsPhoneFactoryTest extends TelephonyTest {
         }
         @Override
         public void onLooperPrepared() {
-            mImsPhoneUT = ImsPhoneFactory.makePhone(mContext, mPhoneNotifer, mPhone);
+            mImsPhoneUT = ImsPhoneFactory.makePhone(mContext, mPhoneNotifier, mPhone);
             setReady(true);
         }
     }
 
     @Before
     public void setUp() throws Exception {
-        super.setUp(this.getClass().getSimpleName());
+        super.setUp(getClass().getSimpleName());
+        mPhoneNotifier = mock(PhoneNotifier.class);
         doReturn(mExecutor).when(mContext).getMainExecutor();
 
-        mImsPhoneFactoryHandler = new ImsPhoneFactoryHandler(this.getClass().getSimpleName());
+        mImsPhoneFactoryHandler = new ImsPhoneFactoryHandler(getClass().getSimpleName());
         mImsPhoneFactoryHandler.start();
 
         waitUntilReady();
@@ -76,6 +72,8 @@ public class ImsPhoneFactoryTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mImsPhoneFactoryHandler.quit();
         mImsPhoneFactoryHandler.join();
+        mImsPhoneFactoryHandler = null;
+        mImsPhoneUT = null;
         super.tearDown();
     }
 
@@ -85,6 +83,6 @@ public class ImsPhoneFactoryTest extends TelephonyTest {
         assertEquals(mPhone, mImsPhoneUT.getDefaultPhone());
 
         mImsPhoneUT.notifyDataActivity();
-        verify(mPhoneNotifer, times(1)).notifyDataActivity(eq(mImsPhoneUT));
+        verify(mPhoneNotifier, times(1)).notifyDataActivity(eq(mImsPhoneUT));
     }
 }

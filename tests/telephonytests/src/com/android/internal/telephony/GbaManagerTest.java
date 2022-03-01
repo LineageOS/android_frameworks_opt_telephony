@@ -59,8 +59,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 /**
  * Unit tests for GbaManager
@@ -79,11 +77,13 @@ public final class GbaManagerTest {
     private static final int RELEASE_TIME_60S = 60 * 1000;
     private static final int TEST_SUB_ID = Integer.MAX_VALUE;
 
-    @Mock Context mMockContext;
-    @Mock IBinder mMockBinder;
-    @Mock IGbaService mMockGbaServiceBinder;
-    @Mock IBootstrapAuthenticationCallback mMockCallback;
-    @Mock RcsStats mMockRcsStats;
+    // Mocked classes
+    Context mMockContext;
+    IBinder mMockBinder;
+    IGbaService mMockGbaServiceBinder;
+    IBootstrapAuthenticationCallback mMockCallback;
+    RcsStats mMockRcsStats;
+
     private GbaManager mTestGbaManager;
     private Handler mHandler;
     private TestableLooper mLooper;
@@ -91,7 +91,11 @@ public final class GbaManagerTest {
     @Before
     public void setUp() throws Exception {
         log("setUp");
-        MockitoAnnotations.initMocks(this);
+        mMockContext = mock(Context.class);
+        mMockBinder = mock(IBinder.class);
+        mMockGbaServiceBinder = mock(IGbaService.class);
+        mMockCallback = mock(IBootstrapAuthenticationCallback.class);
+        mMockRcsStats = mock(RcsStats.class);
         if (Looper.myLooper() == null) {
             Looper.prepare();
         }
@@ -111,6 +115,7 @@ public final class GbaManagerTest {
         log("tearDown");
         mTestGbaManager.destroy();
         mTestGbaManager = null;
+        mHandler = null;
         mLooper.destroy();
         mLooper = null;
     }

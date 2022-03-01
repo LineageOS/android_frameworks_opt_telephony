@@ -44,24 +44,23 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class CallManagerTest extends TelephonyTest {
-
-    @Mock
+    // Mocked classes
     GsmCdmaCall mFgCall;
-    @Mock
     GsmCdmaCall mBgCall;
-    @Mock
     GsmCdmaCall mRingingCall;
-    @Mock
     Phone mSecondPhone;
 
     @Before
     public void setUp() throws Exception {
-        super.setUp(this.getClass().getSimpleName());
+        super.setUp(getClass().getSimpleName());
+        mFgCall = mock(GsmCdmaCall.class);
+        mBgCall = mock(GsmCdmaCall.class);
+        mRingingCall = mock(GsmCdmaCall.class);
+        mSecondPhone = mock(Phone.class);
         restoreInstance(CallManager.class, "INSTANCE", null);
         /* Mock Phone and Call, initially all calls are idle */
         doReturn(ServiceState.STATE_IN_SERVICE).when(mServiceState).getState();

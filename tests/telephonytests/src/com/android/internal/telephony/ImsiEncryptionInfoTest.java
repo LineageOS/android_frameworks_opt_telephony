@@ -60,6 +60,8 @@ public class ImsiEncryptionInfoTest {
     @After
     public void tearDown() throws Exception {
         mImsiEncryptionInfo = null;
+        mPublicKey = null;
+        mDate = null;
     }
 
     @Before

@@ -146,6 +146,9 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mHandler = null;
+        mCarrierPrivilegesTracker = null;
+        mCarrierConfigs =  null;
         super.tearDown();
     }
 
