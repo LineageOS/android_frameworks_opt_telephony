@@ -39,7 +39,6 @@ import android.app.timezonedetector.TelephonyTimeZoneSuggestion;
 
 import com.android.internal.telephony.IndentingPrintWriter;
 import com.android.internal.telephony.NitzSignal;
-import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.nitz.NitzStateMachineImpl.NitzSignalInputFilterPredicate;
 import com.android.internal.telephony.nitz.NitzStateMachineTestSupport.FakeDeviceState;
 import com.android.internal.telephony.nitz.NitzStateMachineTestSupport.Scenario;
@@ -52,8 +51,7 @@ import java.io.PrintWriter;
 import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
 
-public class NitzStateMachineImplTest extends TelephonyTest {
-
+public class NitzStateMachineImplTest {
     private static final int SLOT_INDEX = 99999;
     private static final TelephonyTimeZoneSuggestion EMPTY_TIME_ZONE_SUGGESTION =
             createEmptyTimeZoneSuggestion(SLOT_INDEX);
@@ -63,15 +61,11 @@ public class NitzStateMachineImplTest extends TelephonyTest {
     private FakeTimeServiceHelper mFakeTimeServiceHelper;
     private FakeDeviceState mFakeDeviceState;
     private TimeZoneSuggesterImpl mRealTimeZoneSuggester;
-
     private NitzStateMachineImpl mNitzStateMachineImpl;
 
 
     @Before
-    public void setUp() throws Exception {
-        TelephonyTest.logd("NitzStateMachineImplTest +Setup!");
-        super.setUp("NitzStateMachineImplTest");
-
+    public void setUp() {
         // In tests we use a fake impls for NewTimeServiceHelper and DeviceState.
         mFakeDeviceState = new FakeDeviceState();
         mFakeTimeServiceHelper = new FakeTimeServiceHelper(mFakeDeviceState);
@@ -92,17 +86,18 @@ public class NitzStateMachineImplTest extends TelephonyTest {
         mNitzStateMachineImpl = new NitzStateMachineImpl(
                 SLOT_INDEX, mFakeDeviceState, mFakeNitzSignalInputFilter, mRealTimeZoneSuggester,
                 mFakeTimeServiceHelper);
-
-        TelephonyTest.logd("NitzStateMachineImplTest -Setup!");
     }
 
     @After
-    public void tearDown() throws Exception {
-        super.tearDown();
+    public void tearDown() {
+        mFakeTimeServiceHelper = null;
+        mFakeDeviceState = null;
+        mRealTimeZoneSuggester = null;
+        mNitzStateMachineImpl = null;
     }
 
     @Test
-    public void test_countryThenNitz() throws Exception {
+    public void test_countryThenNitz() {
         Scenario scenario = UNIQUE_US_ZONE_SCENARIO1;
         String networkCountryIsoCode = scenario.getNetworkCountryIsoCode();
         NitzSignal nitzSignal =

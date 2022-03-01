@@ -36,6 +36,7 @@ public class DataEvaluationTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         logd("tearDown");
+        mDataEvaluationUT = null;
         super.tearDown();
     }
 

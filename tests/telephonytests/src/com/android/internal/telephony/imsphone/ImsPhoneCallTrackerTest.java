@@ -106,8 +106,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -128,78 +126,54 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private Bundle mBundle = new Bundle();
     private static final int SUB_0 = 0;
     @Nullable private VtDataUsageProvider mVtDataUsageProvider;
-    @Mock
-    private ImsCallSession mImsCallSession;
-    @Mock
-    private SharedPreferences mSharedPreferences;
-    @Mock
-    private ImsPhoneConnection.Listener mImsPhoneConnectionListener;
-    @Mock
-    private ImsConfig mImsConfig;
-    @Mock
-    private ImsPhoneConnection mImsPhoneConnection;
-    @Mock
-    private INetworkStatsProviderCallback mVtDataUsageProviderCb;
-    @Mock
-    private ImsPhoneCallTracker.ConnectorFactory mConnectorFactory;
-    @Mock
-    private FeatureConnector<ImsManager> mMockConnector;
-    @Captor
-    private ArgumentCaptor<Set<RtpHeaderExtensionType>> mRtpHeaderExtensionTypeCaptor;
 
-    private Executor mExecutor = new Executor() {
-        @Override
-        public void execute(Runnable r) {
-            r.run();
-        }
-    };
+    // Mocked classes
+    private ArgumentCaptor<Set<RtpHeaderExtensionType>> mRtpHeaderExtensionTypeCaptor;
+    private FeatureConnector<ImsManager> mMockConnector;
+    private ImsCallSession mImsCallSession;
+    private SharedPreferences mSharedPreferences;
+    private ImsPhoneConnection.Listener mImsPhoneConnectionListener;
+    private ImsConfig mImsConfig;
+    private ImsPhoneConnection mImsPhoneConnection;
+    private INetworkStatsProviderCallback mVtDataUsageProviderCb;
+    private ImsPhoneCallTracker.ConnectorFactory mConnectorFactory;
+
+    private final Executor mExecutor = Runnable::run;
 
     private void imsCallMocking(final ImsCall imsCall) throws Exception {
 
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                // trigger the listener on accept call
-                if (mImsCallListener != null) {
-                    mImsCallListener.onCallStarted(imsCall);
-                }
-                return null;
+        doAnswer((Answer<Void>) invocation -> {
+            // trigger the listener on accept call
+            if (mImsCallListener != null) {
+                mImsCallListener.onCallStarted(imsCall);
             }
+            return null;
         }).when(imsCall).accept(anyInt());
 
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                // trigger the listener on reject call
-                int reasonCode = (int) invocation.getArguments()[0];
-                if (mImsCallListener != null) {
-                    mImsCallListener.onCallStartFailed(imsCall, new ImsReasonInfo(reasonCode, -1));
-                    mImsCallListener.onCallTerminated(imsCall, new ImsReasonInfo(reasonCode, -1));
-                }
-                return null;
+        doAnswer((Answer<Void>) invocation -> {
+            // trigger the listener on reject call
+            int reasonCode = (int) invocation.getArguments()[0];
+            if (mImsCallListener != null) {
+                mImsCallListener.onCallStartFailed(imsCall, new ImsReasonInfo(reasonCode, -1));
+                mImsCallListener.onCallTerminated(imsCall, new ImsReasonInfo(reasonCode, -1));
             }
+            return null;
         }).when(imsCall).reject(anyInt());
 
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                // trigger the listener on reject call
-                int reasonCode = (int) invocation.getArguments()[0];
-                if (mImsCallListener != null) {
-                    mImsCallListener.onCallTerminated(imsCall, new ImsReasonInfo(reasonCode, -1));
-                }
-                return null;
+        doAnswer((Answer<Void>) invocation -> {
+            // trigger the listener on reject call
+            int reasonCode = (int) invocation.getArguments()[0];
+            if (mImsCallListener != null) {
+                mImsCallListener.onCallTerminated(imsCall, new ImsReasonInfo(reasonCode, -1));
             }
+            return null;
         }).when(imsCall).terminate(anyInt());
 
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                if (mImsCallListener != null) {
-                    mImsCallListener.onCallHeld(imsCall);
-                }
-                return null;
+        doAnswer((Answer<Void>) invocation -> {
+            if (mImsCallListener != null) {
+                mImsCallListener.onCallHeld(imsCall);
             }
+            return null;
         }).when(imsCall).hold();
 
         doReturn(mExecutor).when(mContext).getMainExecutor();
@@ -210,7 +184,14 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        super.setUp(this.getClass().getSimpleName());
+        super.setUp(getClass().getSimpleName());
+        mRtpHeaderExtensionTypeCaptor = ArgumentCaptor.forClass(Set.class);
+        mMockConnector = mock(FeatureConnector.class);
+        mImsCallSession = mock(ImsCallSession.class);
+        mSharedPreferences = mock(SharedPreferences.class);
+        mImsConfig = mock(ImsConfig.class);
+        mVtDataUsageProviderCb = mock(INetworkStatsProviderCallback.class);
+        mConnectorFactory = mock(ImsPhoneCallTracker.ConnectorFactory.class);
         mImsCallProfile.mCallExtras = mBundle;
         mImsCall = spy(new ImsCall(mContext, mImsCallProfile));
         mSecondImsCall = spy(new ImsCall(mContext, mImsCallProfile));
@@ -227,26 +208,19 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             return null;
         }).when(mImsManager).open(any(), any(), any());
 
-        doAnswer(new Answer<ImsCall>() {
-            @Override
-            public ImsCall answer(InvocationOnMock invocation) throws Throwable {
-                mImsCallListener =
-                        (ImsCall.Listener) invocation.getArguments()[1];
-                mImsCall.setListener(mImsCallListener);
-                return mImsCall;
-            }
+        doAnswer((Answer<ImsCall>) invocation -> {
+            mImsCallListener =
+                    (ImsCall.Listener) invocation.getArguments()[1];
+            mImsCall.setListener(mImsCallListener);
+            return mImsCall;
         }).when(mImsManager).takeCall(any(), any());
 
-        doAnswer(new Answer<ImsCall>() {
-            @Override
-            public ImsCall answer(InvocationOnMock invocation) throws Throwable {
-                mImsCallListener =
-                        (ImsCall.Listener) invocation.getArguments()[2];
-                mSecondImsCall.setListener(mImsCallListener);
-                return mSecondImsCall;
-            }
-        }).when(mImsManager).makeCall(eq(mImsCallProfile), (String[]) any(),
-                (ImsCall.Listener) any());
+        doAnswer((Answer<ImsCall>) invocation -> {
+            mImsCallListener =
+                    (ImsCall.Listener) invocation.getArguments()[2];
+            mSecondImsCall.setListener(mImsCallListener);
+            return mSecondImsCall;
+        }).when(mImsManager).makeCall(eq(mImsCallProfile), any(), any());
 
         doAnswer(invocation -> {
             mCapabilityCallback = (ImsMmTelManager.CapabilityCallback) invocation.getArguments()[0];
@@ -289,6 +263,15 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mCTUT = null;
+        mMmTelListener = null;
+        mConnectorListener = null;
+        mCapabilityCallback = null;
+        mImsCallListener = null;
+        mImsCall = null;
+        mSecondImsCall = null;
+        mBroadcastReceiver = null;
+        mBundle = null;
+        mVtDataUsageProvider = null;
         super.tearDown();
     }
 

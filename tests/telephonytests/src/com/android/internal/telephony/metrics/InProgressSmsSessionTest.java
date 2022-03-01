@@ -16,6 +16,10 @@
 
 package com.android.internal.telephony.metrics;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.TelephonyTest;
@@ -24,10 +28,6 @@ import com.android.internal.telephony.nano.TelephonyProto;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 public class InProgressSmsSessionTest extends TelephonyTest {
 
@@ -41,6 +41,7 @@ public class InProgressSmsSessionTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mSmsSession = null;
         super.tearDown();
     }
 

@@ -18,6 +18,7 @@ package com.android.internal.telephony.uicc;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.mockito.Mockito.mock;
 
 import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -30,7 +31,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -42,12 +42,13 @@ public class UiccCardTest extends TelephonyTest {
 
     private IccIoResult mIccIoResult;
 
-    @Mock
+    // Mocked classes
     private IccCardStatus mIccCardStatus;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mIccCardStatus = mock(IccCardStatus.class);
         /* initially there are no application available */
         mIccCardStatus.mApplications = new IccCardApplicationStatus[]{};
         mIccCardStatus.mCdmaSubscriptionAppIndex =
@@ -67,6 +68,8 @@ public class UiccCardTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mUiccCard = null;
+        mIccIoResult = null;
         super.tearDown();
     }
 

@@ -18,6 +18,7 @@ package com.android.internal.telephony.dataconnection;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import android.net.NetworkCapabilities;
@@ -30,79 +31,75 @@ import com.android.internal.telephony.TelephonyTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
-
 
 public class DcRequestTest extends TelephonyTest {
+    NetworkRequest mNetworkRequest;
 
-    @Mock
+    // Mocked classes
     ApnConfigTypeRepository mApnConfigTypeRepo;
 
     @Before
     public void setUp() throws Exception {
+        mApnConfigTypeRepo = mock(ApnConfigTypeRepository.class);
         super.setUp(getClass().getSimpleName());
     }
 
     @After
     public void tearDown() throws Exception {
+        mNetworkRequest = null;
         super.tearDown();
     }
 
     @Test
     public void whenNetworkRequestInternetThenPriorityZero() {
-        NetworkRequest request =
-                new NetworkRequest.Builder()
-                        .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        .build();
+        mNetworkRequest = new NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build();
 
         when(mApnConfigTypeRepo.getByType(ApnSetting.TYPE_DEFAULT))
                 .thenReturn(new ApnConfigType(ApnSetting.TYPE_DEFAULT, 0));
-        DcRequest dcRequest = DcRequest.create(request, mApnConfigTypeRepo);
+        DcRequest dcRequest = DcRequest.create(mNetworkRequest, mApnConfigTypeRepo);
 
         assertEquals(0, dcRequest.priority);
     }
 
     @Test
     public void whenNetworkRequestMcxThenApnConfigTypeMcxPriorityReturned() {
-        NetworkRequest request =
-                new NetworkRequest.Builder()
-                        .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-                        //Testing out multiple transport types here
-                        .addTransportType(NetworkCapabilities.TRANSPORT_BLUETOOTH)
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_MCX)
-                        .build();
+        mNetworkRequest = new NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                //Testing out multiple transport types here
+                .addTransportType(NetworkCapabilities.TRANSPORT_BLUETOOTH)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_MCX)
+                .build();
 
         when(mApnConfigTypeRepo.getByType(ApnSetting.TYPE_MCX))
                 .thenReturn(new ApnConfigType(ApnSetting.TYPE_MCX, 21));
-        DcRequest dcRequest = DcRequest.create(request, mApnConfigTypeRepo);
+        DcRequest dcRequest = DcRequest.create(mNetworkRequest, mApnConfigTypeRepo);
         assertEquals(21, dcRequest.priority);
     }
 
     @Test
     public void whenNetworkRequestNotCellularThenDcRequestIsNull() {
-        NetworkRequest request =
-                new NetworkRequest.Builder()
-                        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_MCX)
-                        .build();
-        when(mApnConfigTypeRepo.getByType(ApnSetting.TYPE_NONE))
-                .thenReturn(null);
-        DcRequest dcRequest = DcRequest.create(request, mApnConfigTypeRepo);
+        mNetworkRequest = new NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_MCX)
+                .build();
+        when(mApnConfigTypeRepo.getByType(ApnSetting.TYPE_NONE)).thenReturn(null);
+        DcRequest dcRequest = DcRequest.create(mNetworkRequest, mApnConfigTypeRepo);
         assertNull(dcRequest);
     }
 
     @Test
     public void whenNetworkRequestHasNoTransportThenPriorityStays() {
         //This seems like an invalid case that should be handled differently.
-        NetworkRequest request =
-                new NetworkRequest.Builder()
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_MCX)
-                        .build();
+        mNetworkRequest = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_MCX)
+                .build();
 
         when(mApnConfigTypeRepo.getByType(ApnSetting.TYPE_MCX))
                 .thenReturn(new ApnConfigType(ApnSetting.TYPE_MCX, 11));
-        DcRequest dcRequest = DcRequest.create(request, mApnConfigTypeRepo);
+        DcRequest dcRequest = DcRequest.create(mNetworkRequest, mApnConfigTypeRepo);
         assertEquals(11, dcRequest.priority);
     }
 
@@ -112,16 +109,14 @@ public class DcRequestTest extends TelephonyTest {
                 new TelephonyNetworkSpecifier.Builder().setSubscriptionId(5).build();
 
         //This seems like an invalid case that should be handled differently.
-        NetworkRequest request =
-                new NetworkRequest.Builder()
-                        .addTransportType(NetworkCapabilities.TRANSPORT_BLUETOOTH)
-                        .setNetworkSpecifier(telephonyNetworkSpecifier)
-                        .build();
+        mNetworkRequest = new NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_BLUETOOTH)
+                .setNetworkSpecifier(telephonyNetworkSpecifier)
+                .build();
 
-        when(mApnConfigTypeRepo.getByType(ApnSetting.TYPE_NONE))
-                .thenReturn(null);
+        when(mApnConfigTypeRepo.getByType(ApnSetting.TYPE_NONE)).thenReturn(null);
 
-        DcRequest dcRequest = DcRequest.create(request, mApnConfigTypeRepo);
+        DcRequest dcRequest = DcRequest.create(mNetworkRequest, mApnConfigTypeRepo);
 
         assertNull(dcRequest);
     }
