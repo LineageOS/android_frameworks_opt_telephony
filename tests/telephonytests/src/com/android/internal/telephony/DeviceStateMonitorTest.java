@@ -73,9 +73,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
             | IndicationFilter.REGISTRATION_FAILURE
             | IndicationFilter.BARRING_INFO;
 
-    // INDICATION_FILTERS_ALL but excludes Indication.SIGNAL_STRENGTH
-    private static final int INDICATION_FILTERS_WHEN_TETHERING_ON =
-            INDICATION_FILTERS_ALL & ~IndicationFilter.SIGNAL_STRENGTH;
+    private static final int INDICATION_FILTERS_WHEN_TETHERING_ON = INDICATION_FILTERS_ALL;
     private static final int INDICATION_FILTERS_WHEN_CHARGING = INDICATION_FILTERS_ALL;
     private static final int INDICATION_FILTERS_WHEN_SCREEN_ON = INDICATION_FILTERS_ALL;
 
@@ -96,7 +94,6 @@ public class DeviceStateMonitorTest extends TelephonyTest {
     // Keep the same value as corresponding event
     // See state2Event() for detail
     private static final int STATE_TYPE_RIL_CONNECTED = 0;
-    // EVENT_UPDATE_NODE_CHANGED is not here, it will be removed in aosp soon
     private static final int STATE_TYPE_SCREEN = 2;
     private static final int STATE_TYPE_POWER_SAVE_MODE = 3;
     private static final int STATE_TYPE_CHARGING = 4;
@@ -104,6 +101,8 @@ public class DeviceStateMonitorTest extends TelephonyTest {
     private static final int STATE_TYPE_RADIO_AVAILABLE = 6;
     private static final int STATE_TYPE_WIFI_CONNECTED = 7;
     private static final int STATE_TYPE_ALWAYS_SIGNAL_STRENGTH_REPORTED = 8;
+    private static final int STATE_TYPE_RADIO_ON = 9;
+    private static final int STATE_TYPE_RADIO_OFF_OR_NOT_AVAILABLE = 10;
 
     /** @hide */
     @IntDef(prefix = {"STATE_"}, value = {
@@ -236,17 +235,40 @@ public class DeviceStateMonitorTest extends TelephonyTest {
     public void testScreenOnOff() {
         // screen was off by default, turn it on now
         updateState(STATE_TYPE_SCREEN, STATE_ON);
-        processAllMessages();
 
         verify(mSimulatedCommandsVerifier).setUnsolResponseFilter(
                 eq(INDICATION_FILTERS_WHEN_SCREEN_ON), nullable(Message.class));
 
         // turn screen off
         updateState(STATE_TYPE_SCREEN, STATE_OFF);
-        processAllMessages();
 
         verify(mSimulatedCommandsVerifier).setUnsolResponseFilter(
                 eq(INDICATION_FILTERS_MINIMUM), nullable(Message.class));
+    }
+
+    @Test
+    public void testScreenOnOffwithRadioToggle() {
+        // screen was off by default, turn it on now
+        updateState(STATE_TYPE_SCREEN, STATE_ON);
+        // turn off radio
+        updateState(STATE_TYPE_RADIO_OFF_OR_NOT_AVAILABLE, /* stateValue is not used */ 0);
+
+        verify(mSimulatedCommandsVerifier)
+                .sendDeviceState(eq(LOW_DATA_EXPECTED), eq(true), nullable(Message.class));
+        reset(mSimulatedCommandsVerifier);
+
+        // turn screen off and on
+        updateState(STATE_TYPE_SCREEN, STATE_OFF);
+        updateState(STATE_TYPE_SCREEN, STATE_ON);
+
+        verify(mSimulatedCommandsVerifier, never())
+                .sendDeviceState(anyInt(), anyBoolean(), nullable(Message.class));
+
+        // turn on radio
+        updateState(STATE_TYPE_RADIO_ON, /* stateValue is not used */ 0);
+
+        verify(mSimulatedCommandsVerifier)
+                .sendDeviceState(eq(LOW_DATA_EXPECTED), eq(false), nullable(Message.class));
     }
 
     @Test
@@ -375,5 +397,58 @@ public class DeviceStateMonitorTest extends TelephonyTest {
         updateState(STATE_TYPE_TETHERING, STATE_ON);
         updateState(STATE_TYPE_SCREEN, STATE_ON);
         verify(mSimulatedCommandsVerifier).getBarringInfo(nullable(Message.class));
+    }
+
+    @Test
+    public void testGetBarringInfowithRadioToggle() {
+        // screen was off by default, turn it on now
+        updateState(STATE_TYPE_SCREEN, STATE_ON);
+
+        verify(mSimulatedCommandsVerifier).getBarringInfo(nullable(Message.class));
+        reset(mSimulatedCommandsVerifier);
+
+        // turn off radio
+        updateState(STATE_TYPE_RADIO_OFF_OR_NOT_AVAILABLE, /* stateValue is not used */ 0);
+
+        verify(mSimulatedCommandsVerifier, never()).getBarringInfo(nullable(Message.class));
+
+        // turn screen off and on
+        updateState(STATE_TYPE_SCREEN, STATE_OFF);
+        updateState(STATE_TYPE_SCREEN, STATE_ON);
+
+        verify(mSimulatedCommandsVerifier, never()).getBarringInfo(nullable(Message.class));
+
+        // turn on radio
+        updateState(STATE_TYPE_RADIO_ON, /* stateValue is not used */ 0);
+
+        verify(mSimulatedCommandsVerifier).getBarringInfo(nullable(Message.class));
+    }
+
+    @Test
+    public void testAlwaysOnSignalStrengthwithRadioToggle() {
+        // Start with the radio off
+        updateState(STATE_TYPE_RADIO_OFF_OR_NOT_AVAILABLE, /* stateValue is not used */ 0);
+        reset(mSimulatedCommandsVerifier);
+        // Toggle always-reported signal strength while the radio is OFF. This should do nothing.
+        // This should have no effect while the radio is off.
+        updateState(STATE_TYPE_ALWAYS_SIGNAL_STRENGTH_REPORTED, STATE_ON);
+        updateState(STATE_TYPE_ALWAYS_SIGNAL_STRENGTH_REPORTED, STATE_OFF);
+        verify(mSimulatedCommandsVerifier, never())
+                .sendDeviceState(anyInt(), anyBoolean(), nullable(Message.class));
+
+        // Turn on the always reported signal strength and then the radio, which should just turn
+        // on this one little thing more than the absolute minimum.
+        updateState(STATE_TYPE_ALWAYS_SIGNAL_STRENGTH_REPORTED, STATE_ON);
+        updateState(STATE_TYPE_RADIO_ON, /* stateValue is not used */ 0);
+        verify(mSimulatedCommandsVerifier).setUnsolResponseFilter(
+                eq(IndicationFilter.SIGNAL_STRENGTH | INDICATION_FILTERS_MINIMUM),
+                        nullable(Message.class));
+
+        // Turn off radio and see that SignalStrength goes off again. Technically, in this
+        // direction, the value becomes a "don't-care", but it's not worth the complexity of having
+        // the value only sync on the rising edge of radio power.
+        updateState(STATE_TYPE_RADIO_OFF_OR_NOT_AVAILABLE, /* stateValue is not used */ 0);
+        verify(mSimulatedCommandsVerifier).setUnsolResponseFilter(
+                eq(INDICATION_FILTERS_MINIMUM), nullable(Message.class));
     }
 }
