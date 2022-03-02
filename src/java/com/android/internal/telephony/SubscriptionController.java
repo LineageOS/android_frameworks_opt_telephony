@@ -120,7 +120,7 @@ import java.util.stream.Collectors;
  */
 public class SubscriptionController extends ISub.Stub {
     private static final String LOG_TAG = "SubscriptionController";
-    private static final boolean DBG = true;
+    private static final boolean DBG = false;
     private static final boolean VDBG = Rlog.isLoggable(LOG_TAG, Log.VERBOSE);
     private static final boolean DBG_CACHE = false;
     private static final int DEPRECATED_SETTING = -1;
@@ -889,6 +889,10 @@ public class SubscriptionController extends ISub.Stub {
                     if (DBG) {
                         logd("[getActiveSubscriptionInfoForSimSlotIndex]+ slotIndex="
                                 + slotIndex + " subId=" + si);
+                    } else {
+                        logd("[getActiveSubscriptionInfoForSimSlotIndex]+ slotIndex="
+                                + slotIndex + " subId=" + conditionallyRemoveIdentifiers(si, false,
+                                false));
                     }
                     return conditionallyRemoveIdentifiers(si, callingPackage, callingFeatureId,
                             "getActiveSubscriptionInfoForSimSlotIndex");
