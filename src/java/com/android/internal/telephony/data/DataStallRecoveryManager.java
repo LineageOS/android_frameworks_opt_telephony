@@ -21,6 +21,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.RegistrantList;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
@@ -31,16 +32,15 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 
 /**
- * DataStallMonitor monitors the data network activities, detects potential data stall, and takes
- * actions to recover
+ * DataStallRecoveryManager monitors the network validation result from connectivity service and
+ * takes actions to recovery data network.
  */
-public class DataStallMonitor extends Handler {
+public class DataStallRecoveryManager extends Handler {
     /** Event for data config updated. */
     private static final int EVENT_DATA_CONFIG_UPDATED = 1;
 
     /** Event for internet validation status changed. */
     private static final int EVENT_INTERNET_VALIDATION_STATUS_CHANGED = 2;
-
 
     private final @NonNull Phone mPhone;
     private final @NonNull String mLogTag;
@@ -55,6 +55,9 @@ public class DataStallMonitor extends Handler {
     /** Cellular data service */
     private final @NonNull DataServiceManager mWwanDataServiceManager;
 
+    /** The RegistrantList for recovery action reestablish */
+    private final RegistrantList mDataStallReestablishRegistrants = new RegistrantList();
+
     /**
      * Constructor
      *
@@ -63,7 +66,7 @@ public class DataStallMonitor extends Handler {
      * @param looper The looper to be used by the handler. Currently the handler thread is the
      * phone process's main thread.
      */
-    public DataStallMonitor(@NonNull Phone phone,
+    public DataStallRecoveryManager(@NonNull Phone phone,
             @NonNull DataNetworkController dataNetworkController,
             @NonNull DataServiceManager dataServiceManager, @NonNull Looper looper) {
         super(looper);
@@ -73,6 +76,13 @@ public class DataStallMonitor extends Handler {
         mWwanDataServiceManager = dataServiceManager;
         mDataConfigManager = mDataNetworkController.getDataConfigManager();
 
+        registerAllEvents();
+    }
+
+    /**
+     * Register for all events that data stall monitor is interested.
+     */
+    private void registerAllEvents() {
         mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
         mDataNetworkController.registerForInternetValidationStatusChanged(this,
                 EVENT_INTERNET_VALIDATION_STATUS_CHANGED);
@@ -108,6 +118,16 @@ public class DataStallMonitor extends Handler {
     }
 
     /**
+     * Register for data stall reestablish event.
+     *
+     * @param handler The handler to handle the event.
+     * @param what The event.
+     */
+    public void registerForDataStallReestablishEvent(@NonNull Handler handler, int what) {
+        mDataStallReestablishRegistrants.addUnique(handler, what, null);
+    }
+
+    /**
      * Log debug messages.
      * @param s debug messages
      */
@@ -133,7 +153,7 @@ public class DataStallMonitor extends Handler {
     }
 
     /**
-     * Dump the state of DataStallMonitor
+     * Dump the state of DataStallRecoveryManager
      *
      * @param fd File descriptor
      * @param printWriter Print writer
@@ -141,7 +161,8 @@ public class DataStallMonitor extends Handler {
      */
     public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
         IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
-        pw.println(DataStallMonitor.class.getSimpleName() + "-" + mPhone.getPhoneId() + ":");
+        pw.println(DataStallRecoveryManager.class.getSimpleName() + "-" + mPhone.getPhoneId()
+                + ":");
         pw.increaseIndent();
         pw.println("Local logs:");
         pw.increaseIndent();
