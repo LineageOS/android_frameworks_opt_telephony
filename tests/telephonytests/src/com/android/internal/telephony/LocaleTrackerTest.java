@@ -94,6 +94,8 @@ public class LocaleTrackerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mLocaleTracker = null;
+        mCellInfo = null;
         super.tearDown();
     }
 

@@ -109,9 +109,9 @@ public class TelephonyNetworkRequest {
                     CAPABILITY_ATTRIBUTE_APN_SETTING | CAPABILITY_ATTRIBUTE_TRAFFIC_DESCRIPTOR_DNN),
             new SimpleImmutableEntry<>(NetworkCapabilities.NET_CAPABILITY_IMS,
                     CAPABILITY_ATTRIBUTE_APN_SETTING | CAPABILITY_ATTRIBUTE_TRAFFIC_DESCRIPTOR_DNN),
+            // TODO add OS APP Id as part of b/206703524
             new SimpleImmutableEntry<>(NetworkCapabilities.NET_CAPABILITY_CBS,
-                    CAPABILITY_ATTRIBUTE_APN_SETTING | CAPABILITY_ATTRIBUTE_TRAFFIC_DESCRIPTOR_DNN
-                            | CAPABILITY_ATTRIBUTE_TRAFFIC_DESCRIPTOR_OS_APP_ID),
+                    CAPABILITY_ATTRIBUTE_APN_SETTING | CAPABILITY_ATTRIBUTE_TRAFFIC_DESCRIPTOR_DNN),
             new SimpleImmutableEntry<>(NetworkCapabilities.NET_CAPABILITY_XCAP,
                     CAPABILITY_ATTRIBUTE_APN_SETTING | CAPABILITY_ATTRIBUTE_TRAFFIC_DESCRIPTOR_DNN),
             new SimpleImmutableEntry<>(NetworkCapabilities.NET_CAPABILITY_EIMS,

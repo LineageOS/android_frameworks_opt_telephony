@@ -39,6 +39,7 @@ import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 
 import android.annotation.Nullable;
@@ -85,7 +86,6 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
-import org.mockito.Mock;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -107,7 +107,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     private static final int REGISTRATION1_TECH = 1;
     private static final int REGISTRATION2_TECH = 2;
 
-    @Mock private FileOutputStream mTestFileOutputStream;
+    // Mocked classes
+    private FileOutputStream mTestFileOutputStream;
 
     @Rule public TemporaryFolder mFolder = new TemporaryFolder();
 
@@ -898,6 +899,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mTestFileOutputStream = mock(FileOutputStream.class);
         makeTestData();
 
         // by default, test loading with real file IO and saving with mocks
@@ -909,6 +911,75 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mTestFile.delete();
+        mTestFile = null;
+        mFolder = null;
+        mCall1Proto = null;
+        mCall2Proto = null;
+        mCall3Proto = null;
+        mCall4Proto = null;
+        mCarrier1LteUsageProto = null;
+        mCarrier1UmtsUsageProto = null;
+        mCarrier2LteUsageProto = null;
+        mCarrier3LteUsageProto = null;
+        mCarrier3GsmUsageProto = null;
+        mVoiceCallRatUsages = null;
+        mServiceSwitch1Proto = null;
+        mServiceSwitch2Proto = null;
+        mServiceState1Proto = null;
+        mServiceState2Proto = null;
+        mServiceState3Proto = null;
+        mServiceState4Proto = null;
+        mServiceSwitches = null;
+        mServiceStates = null;
+        mImsRegistrationStatsLte0 = null;
+        mImsRegistrationStatsWifi0 = null;
+        mImsRegistrationStatsLte1 = null;
+        mImsRegistrationTerminationLte = null;
+        mImsRegistrationTerminationWifi = null;
+        mImsRegistrationStats = null;
+        mImsRegistrationTerminations = null;
+        mDataCallSession0 = null;
+        mDataCallSession1 = null;
+        mImsRegistrationFeatureTagStats1Proto = null;
+        mImsRegistrationFeatureTagStats2Proto = null;
+        mImsRegistrationFeatureTagStatses = null;
+        mRcsClientProvisioningStats1Proto = null;
+        mRcsClientProvisioningStats2Proto = null;
+        mRcsClientProvisioningStatses = null;
+        mRcsAcsProvisioningStats1Proto = null;
+        mRcsAcsProvisioningStats2Proto = null;
+        mRcsAcsProvisioningStatses = null;
+        mImsRegistrationServiceIm = null;
+        mImsRegistrationServiceFt = null;
+        mImsRegistrationServiceDescStats = null;
+        mImsDedicatedBearerListenerEvent1 = null;
+        mImsDedicatedBearerListenerEvent2 = null;
+        mImsDedicatedBearerListenerEvents = null;
+        mImsDedicatedBearerEvent1 = null;
+        mImsDedicatedBearerEvent2 = null;
+        mImsDedicatedBearerEvents = null;
+        mUceEventStats1 = null;
+        mUceEventStats2 = null;
+        mUceEventStatses = null;
+        mPresenceNotifyEvent1 = null;
+        mPresenceNotifyEvent2 = null;
+        mPresenceNotifyEvents = null;
+        mSipTransportFeatureTagStats1 = null;
+        mSipTransportFeatureTagStats2 = null;
+        mSipTransportFeatureTagStatsArray = null;
+        mSipDelegateStats1 = null;
+        mSipDelegateStats2 = null;
+        mSipDelegateStats3 = null;
+        mSipDelegateStatsArray = null;
+        mGbaEvent1 = null;
+        mGbaEvent2 = null;
+        mGbaEvent = null;
+        mSipMessageResponse1 = null;
+        mSipMessageResponse2 = null;
+        mSipMessageResponse = null;
+        mSipTransportSession1 = null;
+        mSipTransportSession2 = null;
+        mSipTransportSession = null;
         super.tearDown();
     }
 

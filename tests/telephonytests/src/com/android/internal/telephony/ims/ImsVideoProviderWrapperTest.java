@@ -17,6 +17,7 @@
 package com.android.internal.telephony.ims;
 
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import android.telecom.VideoProfile;
@@ -29,11 +30,10 @@ import com.android.ims.internal.VideoPauseTracker;
 
 import junit.framework.TestCase;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 /**
  * Tests for the {@link com.android.ims.internal.VideoPauseTracker} class.
@@ -41,17 +41,24 @@ import org.mockito.MockitoAnnotations;
 @RunWith(AndroidJUnit4.class)
 public class ImsVideoProviderWrapperTest extends TestCase {
     private ImsVideoCallProviderWrapper mImsVideoCallProviderWrapper;
-    @Mock
+
+    // Mocked classes
     VideoPauseTracker mVideoPauseTracker;
 
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        MockitoAnnotations.initMocks(this);
+        mVideoPauseTracker = mock(VideoPauseTracker.class);
         mImsVideoCallProviderWrapper = new ImsVideoCallProviderWrapper(null, mVideoPauseTracker);
         when(mVideoPauseTracker.shouldPauseVideoFor(anyInt())).thenReturn(true);
         when(mVideoPauseTracker.shouldResumeVideoFor(anyInt())).thenReturn(true);
+    }
+
+    @After
+    @Override
+    public void tearDown() throws Exception {
+        mImsVideoCallProviderWrapper = null;
     }
 
     @SmallTest

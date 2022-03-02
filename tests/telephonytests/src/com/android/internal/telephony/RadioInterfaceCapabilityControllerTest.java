@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertTrue;
 
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -34,7 +35,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -42,15 +42,15 @@ import java.util.Set;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class RadioInterfaceCapabilityControllerTest extends TelephonyTest {
-    @Mock
+    // Mocked classes
     RadioConfig mMockRadioConfig;
-
-    @Mock
     CommandsInterface mMockCommandsInterface;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mMockRadioConfig = mock(RadioConfig.class);
+        mMockCommandsInterface = mock(CommandsInterface.class);
     }
 
     @After

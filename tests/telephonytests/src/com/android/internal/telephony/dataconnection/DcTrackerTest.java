@@ -109,7 +109,6 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -156,19 +155,13 @@ public class DcTrackerTest extends TelephonyTest {
     private static final String FAKE_PLMN = "44010";
     private static final long TEST_TIMEOUT = 1000;
 
-    @Mock
+    // Mocked classes
     ISub mIsub;
-    @Mock
     IBinder mBinder;
-    @Mock
     SubscriptionInfo mSubscriptionInfo;
-    @Mock
     ApnContext mApnContext;
-    @Mock
     DataConnection mDataConnection;
-    @Mock
     Handler mHandler;
-    @Mock
     NetworkPolicyManager mNetworkPolicyManager;
 
     private DcTracker mDct;
@@ -703,6 +696,13 @@ public class DcTrackerTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("DcTrackerTest +Setup!");
         super.setUp(getClass().getSimpleName());
+        mIsub = Mockito.mock(ISub.class);
+        mBinder = Mockito.mock(IBinder.class);
+        mSubscriptionInfo = Mockito.mock(SubscriptionInfo.class);
+        mApnContext = Mockito.mock(ApnContext.class);
+        mDataConnection = Mockito.mock(DataConnection.class);
+        mHandler = Mockito.mock(Handler.class);
+        mNetworkPolicyManager = Mockito.mock(NetworkPolicyManager.class);
 
         doReturn("fake.action_detached").when(mPhone).getActionDetached();
         doReturn("fake.action_attached").when(mPhone).getActionAttached();
@@ -789,7 +789,12 @@ public class DcTrackerTest extends TelephonyTest {
         mDct = null;
         mDcTrackerTestHandler.quit();
         mDcTrackerTestHandler.join();
+        mDcTrackerTestHandler = null;
         mCellularDataService.onDestroy();
+        mCellularDataService = null;
+        mAlarmManager = null;
+        mBundle = null;
+        mCellularDataService = null;
         waitForMs(100);
         super.tearDown();
     }

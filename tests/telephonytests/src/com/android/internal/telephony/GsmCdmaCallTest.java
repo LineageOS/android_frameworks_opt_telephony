@@ -24,19 +24,21 @@ import static org.mockito.Mockito.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
 
 public class GsmCdmaCallTest extends TelephonyTest {
-
-    @Mock GsmCdmaConnection mConnection1;
-    @Mock GsmCdmaConnection mConnection2;
-    @Mock DriverCall mDriverCall;
+    // Mocked classes
+    GsmCdmaConnection mConnection1;
+    GsmCdmaConnection mConnection2;
+    DriverCall mDriverCall;
 
     private GsmCdmaCall mCallUnderTest;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mConnection1 = mock(GsmCdmaConnection.class);
+        mConnection2 = mock(GsmCdmaConnection.class);
+        mDriverCall = mock(DriverCall.class);
         mCallUnderTest = new GsmCdmaCall(mCT);
     }
 

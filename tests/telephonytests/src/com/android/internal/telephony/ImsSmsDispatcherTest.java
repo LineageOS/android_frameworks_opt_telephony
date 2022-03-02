@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -46,7 +47,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 import org.mockito.stubbing.Answer;
 
 import java.util.HashMap;
@@ -54,10 +54,12 @@ import java.util.HashMap;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class ImsSmsDispatcherTest extends TelephonyTest {
-    @Mock private SmsDispatchersController mSmsDispatchersController;
-    @Mock private SMSDispatcher.SmsTracker mSmsTracker;
-    @Mock private ImsSmsDispatcher.FeatureConnectorFactory mConnectorFactory;
-    @Mock private FeatureConnector<ImsManager> mMockConnector;
+    // Mocked classes
+    private SmsDispatchersController mSmsDispatchersController;
+    private SMSDispatcher.SmsTracker mSmsTracker;
+    private ImsSmsDispatcher.FeatureConnectorFactory mConnectorFactory;
+    private FeatureConnector<ImsManager> mMockConnector;
+
     private FeatureConnector.Listener<ImsManager> mImsManagerListener;
     private HashMap<String, Object> mTrackerData;
     private ImsSmsDispatcher mImsSmsDispatcher;
@@ -66,7 +68,10 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-
+        mSmsDispatchersController = mock(SmsDispatchersController.class);
+        mSmsTracker = mock(SMSDispatcher.SmsTracker.class);
+        mConnectorFactory = mock(ImsSmsDispatcher.FeatureConnectorFactory.class);
+        mMockConnector = mock(FeatureConnector.class);
         doAnswer((Answer<FeatureConnector<ImsManager>>) invocation -> {
             mImsManagerListener =
                     (FeatureConnector.Listener<ImsManager>) invocation.getArguments()[3];
@@ -86,6 +91,8 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mImsSmsDispatcher = null;
+        mImsManagerListener = null;
+        mTrackerData = null;
         super.tearDown();
     }
 

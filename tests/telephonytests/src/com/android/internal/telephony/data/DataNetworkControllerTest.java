@@ -92,7 +92,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
@@ -112,10 +111,11 @@ public class DataNetworkControllerTest extends TelephonyTest {
     private static final String IPV4_ADDRESS = "10.0.2.15";
     private static final String IPV6_ADDRESS = "2607:fb90:a620:651d:eabe:f8da:c107:44be";
 
-    @Mock
+    // Mocked classes
     private PhoneSwitcher mMockedPhoneSwitcher;
-    @Mock
     protected ISub mIsub;
+    private DataNetworkControllerCallback mMockedDataNetworkControllerCallback;
+    private DataRetryManagerCallback mMockedDataRetryManagerCallback;
 
     private int mNetworkRequestId = 0;
 
@@ -123,10 +123,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
     private final SparseArray<RegistrantList> mDataCallListChangedRegistrants = new SparseArray<>();
     private DataNetworkController mDataNetworkControllerUT;
     private PersistableBundle mCarrierConfig;
-    @Mock
-    private DataNetworkControllerCallback mMockedDataNetworkControllerCallback;
-    @Mock
-    private DataRetryManagerCallback mMockedDataRetryManagerCallback;
 
     private final DataProfile mGeneralPurposeDataProfile = new DataProfile.Builder()
             .setApnSetting(new ApnSetting.Builder()
@@ -374,6 +370,10 @@ public class DataNetworkControllerTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("DataNetworkControllerTest +Setup!");
         super.setUp(getClass().getSimpleName());
+        mMockedPhoneSwitcher = Mockito.mock(PhoneSwitcher.class);
+        mIsub = Mockito.mock(ISub.class);
+        mMockedDataNetworkControllerCallback = Mockito.mock(DataNetworkControllerCallback.class);
+        mMockedDataRetryManagerCallback = Mockito.mock(DataRetryManagerCallback.class);
 
         initializeConfig();
         doReturn(true).when(mPhone).isUsingNewDataStack();
@@ -495,6 +495,10 @@ public class DataNetworkControllerTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         logd("tearDown");
+        mMockedDataServiceManagers.clear();
+        mDataCallListChangedRegistrants.clear();
+        mDataNetworkControllerUT = null;
+        mCarrierConfig = null;
         super.tearDown();
     }
 

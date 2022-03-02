@@ -64,11 +64,11 @@ public class CarrierDisplayNameResolverTest extends TelephonyTest {
 
     private CarrierDisplayNameResolver mCdnr;
 
-    private final ServiceState mSS = new ServiceState();
+    private ServiceState mSS = new ServiceState();
 
     @Before
     public void setUp() throws Exception {
-        super.setUp("CDNRTest");
+        super.setUp(this.getClass().getSimpleName());
 
         mCdnr = new CarrierDisplayNameResolver(mPhone);
 
@@ -102,6 +102,9 @@ public class CarrierDisplayNameResolverTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mCdnr = null;
+        mConfig = null;
+        mSS = null;
         super.tearDown();
     }
 

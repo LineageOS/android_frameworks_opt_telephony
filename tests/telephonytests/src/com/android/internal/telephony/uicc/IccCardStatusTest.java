@@ -15,27 +15,27 @@
  */
 package com.android.internal.telephony.uicc;
 
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
+
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Log;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-
-import static org.junit.Assert.assertEquals;
 
 public class IccCardStatusTest {
 
     private IccCardStatus mIccCardStatus;
     private static final String TAG = "ICCCardStatusTest";
-    @Mock
+
+    // Mocked classes
     private IccCardApplicationStatus mApplicationStatus;
 
     @Before
     public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
+        mApplicationStatus = mock(IccCardApplicationStatus.class);
         mIccCardStatus = new IccCardStatus();
         /* set only one applications for cdma */
         mIccCardStatus.mApplications = new IccCardApplicationStatus[]{mApplicationStatus};

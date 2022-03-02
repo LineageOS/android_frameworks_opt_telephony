@@ -46,12 +46,13 @@ public class NitzSignalInputFilterPredicateFactoryTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        super.setUp("NitzSignalInputFilterPredicateFactoryTest");
+        super.setUp(getClass().getSimpleName());
         mFakeDeviceState = new FakeDeviceState();
     }
 
     @After
     public void tearDown() throws Exception {
+        mFakeDeviceState = null;
         super.tearDown();
     }
 

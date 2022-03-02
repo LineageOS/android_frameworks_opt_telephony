@@ -52,7 +52,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
@@ -82,7 +81,7 @@ public class SignalStrengthControllerTest extends TelephonyTest {
             String.format("%s,%s", HOME_PNN, "short"), "f2,s2"
     };
 
-    @Mock
+    // Mocked classes
     private Handler mHandler;
 
     private SignalStrengthController mSsc;
@@ -90,8 +89,8 @@ public class SignalStrengthControllerTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        super.setUp(TAG);
-
+        super.setUp(this.getClass().getSimpleName());
+        mHandler = Mockito.mock(Handler.class);
         when(mPhone.getSubId()).thenReturn(ACTIVE_SUB_ID);
         mSsc = new SignalStrengthController(mPhone);
         replaceInstance(Handler.class, "mLooper", mHandler, mSsc.getLooper());
@@ -125,6 +124,7 @@ public class SignalStrengthControllerTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mSsc = null;
+        mBundle = null;
         super.tearDown();
     }
 

@@ -20,6 +20,7 @@ import static com.android.internal.telephony.dataconnection.DcTracker.REQUEST_TY
 import static com.android.internal.telephony.dataconnection.DcTracker.REQUEST_TYPE_NORMAL;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -38,7 +39,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -54,21 +54,22 @@ public class DataThrottlerTest extends TelephonyTest {
     private static final boolean DBG = true;
     private DataThrottler mDataThrottler;
 
-    @Mock
+    // Mocked classes
     private DataThrottler.Callback mMockChangedCallback1;
-
-    @Mock
     private DataThrottler.Callback mMockChangedCallback2;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mMockChangedCallback1 = mock(DataThrottler.Callback.class);
+        mMockChangedCallback2 = mock(DataThrottler.Callback.class);
         mDataThrottler = new DataThrottler(mPhone, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
         mDataThrottler.registerForThrottleStatusChanges(mMockChangedCallback1);
     }
 
     @After
     public void tearDown() throws Exception {
+        mDataThrottler = null;
         super.tearDown();
     }
 
