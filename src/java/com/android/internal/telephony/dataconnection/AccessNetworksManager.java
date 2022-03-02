@@ -17,6 +17,7 @@
 package com.android.internal.telephony.dataconnection;
 
 import android.annotation.NonNull;
+import android.annotation.StringDef;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -30,8 +31,11 @@ import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.RemoteException;
+import android.os.SystemProperties;
 import android.os.UserHandle;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
+import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.ApnType;
 import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
@@ -41,17 +45,26 @@ import android.telephony.data.IQualifiedNetworksServiceCallback;
 import android.telephony.data.QualifiedNetworksService;
 import android.telephony.data.ThrottleStatus;
 import android.text.TextUtils;
+import android.util.IndentingPrintWriter;
+import android.util.LocalLog;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.RIL;
 import com.android.telephony.Rlog;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -60,8 +73,39 @@ import java.util.stream.Collectors;
  * networks changes.
  */
 public class AccessNetworksManager extends Handler {
-    private final String mLogTag;
     private static final boolean DBG = false;
+    public static final String SYSTEM_PROPERTIES_IWLAN_OPERATION_MODE =
+            "ro.telephony.iwlan_operation_mode";
+
+    @Retention(RetentionPolicy.SOURCE)
+    @StringDef(prefix = {"IWLAN_OPERATION_MODE_"},
+            value = {
+                    IWLAN_OPERATION_MODE_DEFAULT,
+                    IWLAN_OPERATION_MODE_LEGACY,
+                    IWLAN_OPERATION_MODE_AP_ASSISTED})
+    public @interface IwlanOperationMode {}
+
+    /**
+     * IWLAN default mode. On device that has IRadio 1.4 or above, it means
+     * {@link #IWLAN_OPERATION_MODE_AP_ASSISTED}. On device that has IRadio 1.3 or below, it means
+     * {@link #IWLAN_OPERATION_MODE_LEGACY}.
+     */
+    public static final String IWLAN_OPERATION_MODE_DEFAULT = "default";
+
+    /**
+     * IWLAN legacy mode. IWLAN is completely handled by the modem, and when the device is on
+     * IWLAN, modem reports IWLAN as a RAT.
+     */
+    public static final String IWLAN_OPERATION_MODE_LEGACY = "legacy";
+
+    /**
+     * IWLAN application processor assisted mode. IWLAN is handled by the bound IWLAN data service
+     * and network service separately.
+     */
+    public static final String IWLAN_OPERATION_MODE_AP_ASSISTED = "AP-assisted";
+
+    private final String mLogTag;
+    private final LocalLog mLocalLog = new LocalLog(64);
     private final UUID mAnomalyUUID = UUID.fromString("c2d1a639-00e2-4561-9619-6acf37d90590");
     private String mLastBoundPackageName;
 
@@ -91,6 +135,8 @@ public class AccessNetworksManager extends Handler {
     // Available networks. Key is the APN type.
     private final SparseArray<int[]> mAvailableNetworks = new SparseArray<>();
 
+    private final @TransportType int[] mAvailableTransports;
+
     private final RegistrantList mQualifiedNetworksChangedRegistrants = new RegistrantList();
 
     private final Set<DataThrottler> mDataThrottlers = new HashSet<>();
@@ -110,6 +156,19 @@ public class AccessNetworksManager extends Handler {
             }
         }
     };
+
+    /**
+     * The current transport of the APN type. The key is the APN type, and the value is the
+     * transport.
+     */
+    private final Map<Integer, Integer> mCurrentTransports = new ConcurrentHashMap<>();
+
+    /**
+     * The preferred transport of the APN type. The key is the APN type, and the value is the
+     * transport. The preferred transports are updated as soon as QNS changes the preference, while
+     * the current transports are updated after handover complete.
+     */
+    private final Map<Integer, Integer> mPreferredTransports = new ConcurrentHashMap<>();
 
     /**
      * Registers the data throttler in order to receive APN status changes.
@@ -261,8 +320,6 @@ public class AccessNetworksManager extends Handler {
             List<QualifiedNetworks> qualifiedNetworksList = new ArrayList<>();
             for (int supportedApnType : SUPPORTED_APN_TYPES) {
                 if ((apnTypes & supportedApnType) == supportedApnType) {
-                    // TODO: Verify the preference from data settings manager to make sure the order
-                    // of the networks do not violate users/carrier's preference.
                     if (mAvailableNetworks.get(supportedApnType) != null) {
                         if (Arrays.equals(mAvailableNetworks.get(supportedApnType),
                                 qualifiedNetworkTypes)) {
@@ -280,6 +337,7 @@ public class AccessNetworksManager extends Handler {
 
             if (!qualifiedNetworksList.isEmpty()) {
                 mQualifiedNetworksChangedRegistrants.notifyResult(qualifiedNetworksList);
+                setPreferredTransports(qualifiedNetworksList);
             }
         }
     }
@@ -295,17 +353,27 @@ public class AccessNetworksManager extends Handler {
                 Context.CARRIER_CONFIG_SERVICE);
         mLogTag = "ANM-" + mPhone.getPhoneId();
 
-        IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        try {
-            Context contextAsUser = phone.getContext().createPackageContextAsUser(
-                phone.getContext().getPackageName(), 0, UserHandle.ALL);
-            contextAsUser.registerReceiver(mConfigChangedReceiver, intentFilter,
-                null /* broadcastPermission */, null);
-        } catch (PackageManager.NameNotFoundException e) {
-            loge("Package name not found: ", e);
+        if (isInLegacyMode()) {
+            log("operates in legacy mode.");
+            // For legacy mode, WWAN is the only transport to handle all data connections, even
+            // the IWLAN ones.
+            mAvailableTransports = new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN};
+        } else {
+            log("operates in AP-assisted mode.");
+            mAvailableTransports = new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                    AccessNetworkConstants.TRANSPORT_TYPE_WLAN};
+            IntentFilter intentFilter = new IntentFilter();
+            intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+            try {
+                Context contextAsUser = phone.getContext().createPackageContextAsUser(
+                        phone.getContext().getPackageName(), 0, UserHandle.ALL);
+                contextAsUser.registerReceiver(mConfigChangedReceiver, intentFilter,
+                        null /* broadcastPermission */, null);
+            } catch (PackageManager.NameNotFoundException e) {
+                loge("Package name not found: ", e);
+            }
+            bindQualifiedNetworksService();
         }
-        bindQualifiedNetworksService();
     }
 
     /**
@@ -447,6 +515,113 @@ public class AccessNetworksManager extends Handler {
     }
 
     /**
+     * @return {@code true} if the device operates in legacy mode, otherwise {@code false}.
+     */
+    public boolean isInLegacyMode() {
+        // Get IWLAN operation mode from the system property. If the system property is configured
+        // to default or not configured, the mode is tied to IRadio version. For 1.4 or above, it's
+        // AP-assisted mode, for 1.3 or below, it's legacy mode.
+        String mode = SystemProperties.get(SYSTEM_PROPERTIES_IWLAN_OPERATION_MODE);
+
+        if (mode.equals(IWLAN_OPERATION_MODE_AP_ASSISTED)) {
+            return false;
+        } else if (mode.equals(IWLAN_OPERATION_MODE_LEGACY)) {
+            return true;
+        }
+
+        return mPhone.getHalVersion().less(RIL.RADIO_HAL_VERSION_1_4);
+    }
+
+    /**
+     * @return The available transports. Note that on legacy devices, the only available transport
+     * would be WWAN only. If the device is configured as AP-assisted mode, the available transport
+     * will always be WWAN and WLAN (even if the device is not camped on IWLAN).
+     * See {@link #isInLegacyMode()} for mode details.
+     */
+    public synchronized @NonNull int[] getAvailableTransports() {
+        return mAvailableTransports;
+    }
+
+    /**
+     * Get the transport based on the APN type.
+     *
+     * @param apnType APN type
+     * @return The transport type
+     */
+    public int getCurrentTransport(@ApnType int apnType) {
+        // In legacy mode, always route to cellular.
+        if (isInLegacyMode()) {
+            return AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
+        }
+
+        // If we can't find the corresponding transport, always route to cellular.
+        return mCurrentTransports.get(apnType) == null
+                ? AccessNetworkConstants.TRANSPORT_TYPE_WWAN : mCurrentTransports.get(apnType);
+    }
+
+    /**
+     * Set the current transport of apn type.
+     *
+     * @param apnType The APN type
+     * @param transport The transport. Must be WWAN or WLAN.
+     */
+    public void setCurrentTransport(@ApnType int apnType, int transport) {
+        Integer previousTransport = mCurrentTransports.put(apnType, transport);
+        if (previousTransport == null || previousTransport != transport) {
+            logl("setCurrentTransport: apnType=" + ApnSetting.getApnTypeString(apnType)
+                    + ", transport=" + AccessNetworkConstants.transportTypeToString(transport));
+        }
+    }
+
+    private static @TransportType int getTransportFromAccessNetwork(int accessNetwork) {
+        return accessNetwork == AccessNetworkType.IWLAN
+                ? AccessNetworkConstants.TRANSPORT_TYPE_WLAN
+                : AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
+    }
+
+    private void setPreferredTransports(@NonNull List<QualifiedNetworks> networksList) {
+        for (QualifiedNetworks networks : networksList) {
+            if (networks.qualifiedNetworks.length > 0) {
+                int transport = getTransportFromAccessNetwork(networks.qualifiedNetworks[0]);
+                mPreferredTransports.put(networks.apnType, transport);
+                logl("setPreferredTransports: apnType="
+                        + ApnSetting.getApnTypeString(networks.apnType)
+                        + ", transport=" + AccessNetworkConstants.transportTypeToString(transport));
+            }
+        }
+    }
+
+    /**
+     * Get the  preferred transport.
+     *
+     * @param apnType APN type
+     * @return The preferred transport.
+     */
+    public @TransportType int getPreferredTransport(@ApnType int apnType) {
+        // In legacy mode, always preferred on cellular.
+        if (isInLegacyMode()) {
+            return AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
+        }
+
+        return mPreferredTransports.get(apnType) == null
+                ? AccessNetworkConstants.TRANSPORT_TYPE_WWAN : mPreferredTransports.get(apnType);
+    }
+
+    /**
+     * Check if there is any APN type's current transport is on IWLAN.
+     *
+     * @return {@code true} if there is any APN is on IWLAN, otherwise {@code false}.
+     */
+    public boolean isAnyApnOnIwlan() {
+        for (int apnType : AccessNetworksManager.SUPPORTED_APN_TYPES) {
+            if (getCurrentTransport(apnType) == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Unregister for qualified networks changed event.
      *
      * @param h The handler
@@ -469,4 +644,47 @@ public class AccessNetworksManager extends Handler {
         Rlog.e(mLogTag, s, ex);
     }
 
+    private void logl(String s) {
+        log(s);
+        mLocalLog.log(s);
+    }
+
+    /**
+     * Dump the state of access networks manager
+     *
+     * @param fd File descriptor
+     * @param printWriter Print writer
+     * @param args Arguments
+     */
+    public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
+        IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
+        pw.println(AccessNetworksManager.class.getSimpleName() + "-" + mPhone.getPhoneId() + ":");
+        pw.increaseIndent();
+        pw.println("current transports=");
+        pw.increaseIndent();
+        for (int apnType : AccessNetworksManager.SUPPORTED_APN_TYPES) {
+            pw.println(ApnSetting.getApnTypeString(apnType)
+                    + ": " + AccessNetworkConstants.transportTypeToString(
+                    getCurrentTransport(apnType)));
+        }
+        pw.decreaseIndent();
+        pw.println("preferred transports=");
+        pw.increaseIndent();
+        for (int apnType : AccessNetworksManager.SUPPORTED_APN_TYPES) {
+            pw.println(ApnSetting.getApnTypeString(apnType)
+                    + ": " + AccessNetworkConstants.transportTypeToString(
+                    getPreferredTransport(apnType)));
+        }
+
+        pw.decreaseIndent();
+        pw.println("isInLegacy=" + isInLegacyMode());
+        pw.println("IWLAN operation mode="
+                + SystemProperties.get(SYSTEM_PROPERTIES_IWLAN_OPERATION_MODE));
+        pw.println("Local logs=");
+        pw.increaseIndent();
+        mLocalLog.dump(fd, pw, args);
+        pw.decreaseIndent();
+        pw.decreaseIndent();
+        pw.flush();
+    }
 }
