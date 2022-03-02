@@ -34,6 +34,7 @@ import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.data.DataNetworkController;
+import com.android.internal.telephony.dataconnection.AccessNetworksManager;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.LinkBandwidthEstimator;
@@ -401,6 +402,16 @@ public class TelephonyComponentFactory {
 
     public TransportManager makeTransportManager(Phone phone) {
         return new TransportManager(phone);
+    }
+
+    /**
+     * Make access networks manager
+     *
+     * @param phone The phone instance
+     * @return The access networks manager
+     */
+    public AccessNetworksManager makeAccessNetworksManager(Phone phone) {
+        return new AccessNetworksManager(phone);
     }
 
     public CdmaSubscriptionSourceManager
