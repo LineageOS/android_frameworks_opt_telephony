@@ -73,9 +73,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
             | IndicationFilter.REGISTRATION_FAILURE
             | IndicationFilter.BARRING_INFO;
 
-    // INDICATION_FILTERS_ALL but excludes Indication.SIGNAL_STRENGTH
-    private static final int INDICATION_FILTERS_WHEN_TETHERING_ON =
-            INDICATION_FILTERS_ALL & ~IndicationFilter.SIGNAL_STRENGTH;
+    private static final int INDICATION_FILTERS_WHEN_TETHERING_ON = INDICATION_FILTERS_ALL;
     private static final int INDICATION_FILTERS_WHEN_CHARGING = INDICATION_FILTERS_ALL;
     private static final int INDICATION_FILTERS_WHEN_SCREEN_ON = INDICATION_FILTERS_ALL;
 
@@ -426,5 +424,33 @@ public class DeviceStateMonitorTest extends TelephonyTest {
         updateState(STATE_TYPE_RADIO_ON, /* stateValue is not used */ 0);
 
         verify(mSimulatedCommandsVerifier).getBarringInfo(nullable(Message.class));
+    }
+
+    @Test
+    public void testAlwaysOnSignalStrengthwithRadioToggle() {
+        // Start with the radio off
+        updateState(STATE_TYPE_RADIO_OFF_OR_NOT_AVAILABLE, /* stateValue is not used */ 0);
+        reset(mSimulatedCommandsVerifier);
+        // Toggle always-reported signal strength while the radio is OFF. This should do nothing.
+        // This should have no effect while the radio is off.
+        updateState(STATE_TYPE_ALWAYS_SIGNAL_STRENGTH_REPORTED, STATE_ON);
+        updateState(STATE_TYPE_ALWAYS_SIGNAL_STRENGTH_REPORTED, STATE_OFF);
+        verify(mSimulatedCommandsVerifier, never())
+                .sendDeviceState(anyInt(), anyBoolean(), nullable(Message.class));
+
+        // Turn on the always reported signal strength and then the radio, which should just turn
+        // on this one little thing more than the absolute minimum.
+        updateState(STATE_TYPE_ALWAYS_SIGNAL_STRENGTH_REPORTED, STATE_ON);
+        updateState(STATE_TYPE_RADIO_ON, /* stateValue is not used */ 0);
+        verify(mSimulatedCommandsVerifier).setUnsolResponseFilter(
+                eq(IndicationFilter.SIGNAL_STRENGTH | INDICATION_FILTERS_MINIMUM),
+                        nullable(Message.class));
+
+        // Turn off radio and see that SignalStrength goes off again. Technically, in this
+        // direction, the value becomes a "don't-care", but it's not worth the complexity of having
+        // the value only sync on the rising edge of radio power.
+        updateState(STATE_TYPE_RADIO_OFF_OR_NOT_AVAILABLE, /* stateValue is not used */ 0);
+        verify(mSimulatedCommandsVerifier).setUnsolResponseFilter(
+                eq(INDICATION_FILTERS_MINIMUM), nullable(Message.class));
     }
 }

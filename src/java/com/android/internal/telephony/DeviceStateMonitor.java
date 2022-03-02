@@ -355,10 +355,13 @@ public class DeviceStateMonitor extends Handler {
      */
     private boolean shouldEnableSignalStrengthReports() {
         // We should enable signal strength update if one of the following condition is true.
-        // 1. The device is charging.
-        // 2. When the screen is on.
-        // 3. Any of system services is registrating to always listen to signal strength changes
-        return mIsAlwaysSignalStrengthReportingEnabled || mIsCharging || mIsScreenOn;
+        // 1. Whenever the conditions for high power usage are met.
+        // 2. Any of system services is registrating to always listen to signal strength changes
+        //    and the radio is on (if radio is off no indications should be sent regardless, but
+        //    in the rare case that something registers/unregisters for always-on indications
+        //    and the radio is off, we might as well ignore it).
+        return shouldEnableHighPowerConsumptionIndications()
+                || (mIsAlwaysSignalStrengthReportingEnabled && mIsRadioOn);
     }
 
     /**
