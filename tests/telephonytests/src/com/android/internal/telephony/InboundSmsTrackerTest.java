@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -27,6 +28,7 @@ import androidx.test.InstrumentationRegistry;
 
 import com.android.internal.util.HexDump;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -53,6 +55,11 @@ public class InboundSmsTrackerTest {
                 FAKE_ADDRESS, FAKE_DISPLAY_ADDRESS, FAKE_REFERENCE_NUMBER, FAKE_SEQUENCE_NUMBER,
                 FAKE_MESSAGE_COUNT, false, FAKE_MESSAGE_BODY, false /* isClass0 */, FAKE_SUBID,
                 InboundSmsHandler.SOURCE_NOT_INJECTED);
+    }
+
+    @After
+    public void tearDown() {
+        mInboundSmsTracker = null;
     }
 
     public static MatrixCursor createFakeCursor() {
@@ -100,8 +107,10 @@ public class InboundSmsTrackerTest {
     @Test
     @SmallTest
     public void testInitializationFromDb() {
+        Cursor cursor = createFakeCursor();
         mInboundSmsTracker = new InboundSmsTracker(InstrumentationRegistry.getContext(),
-                createFakeCursor(), false);
+                cursor, false);
+        cursor.close();
         testInitialization();
     }
 }

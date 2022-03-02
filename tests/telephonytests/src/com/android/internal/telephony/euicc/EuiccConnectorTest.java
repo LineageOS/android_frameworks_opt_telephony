@@ -50,9 +50,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -65,15 +63,17 @@ public class EuiccConnectorTest extends TelephonyTest {
 
     private TestLooper mLooper;
     private EuiccConnector mConnector;
-    @Mock private IEuiccService.Stub mEuiccService;
+
+    // Mocked classes
+    private IEuiccService.Stub mEuiccService;
 
     private static final int CARD_ID = 15;
     private static final int PORT_INDEX = 0;
 
     @Before
     public void setUp() throws Exception {
-        super.setUp("EuiccConnectorTest");
-        MockitoAnnotations.initMocks(this);
+        super.setUp(getClass().getSimpleName());
+        mEuiccService = Mockito.mock(IEuiccService.Stub.class);
         when(mEuiccService.queryLocalInterface(anyString())).thenReturn(mEuiccService);
         when(mEuiccService.asBinder()).thenReturn(mEuiccService);
         mLooper = new TestLooper();
@@ -81,6 +81,8 @@ public class EuiccConnectorTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mLooper = null;
+        mConnector = null;
         super.tearDown();
     }
 

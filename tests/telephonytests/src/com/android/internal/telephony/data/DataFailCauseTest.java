@@ -153,6 +153,8 @@ public class DataFailCauseTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mPersistableBundle = null;
+        mFailCauseDataList.clear();
+        mFailCauseDataList = null;
         super.tearDown();
     }
 

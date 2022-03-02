@@ -29,6 +29,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,7 +38,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -48,18 +48,20 @@ public class IccSmsInterfaceManagerTest extends TelephonyTest {
     // object under test
     private IccSmsInterfaceManager mIccSmsInterfaceManager;
 
-    @Mock
+    // Mocked classes
     private SmsPermissions mMockSmsPermissions;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mMockSmsPermissions = mock(SmsPermissions.class);
         mIccSmsInterfaceManager = new IccSmsInterfaceManager(mPhone, mContext, mAppOpsManager,
                 mSmsDispatchersController, mMockSmsPermissions);
     }
 
     @After
     public void tearDown() throws Exception {
+        mIccSmsInterfaceManager = null;
         super.tearDown();
     }
 

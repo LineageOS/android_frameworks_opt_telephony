@@ -31,6 +31,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -58,7 +59,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 import java.util.Map;
 
@@ -74,11 +74,12 @@ public class ImsStatsTest extends TelephonyTest {
                     | MmTelCapabilities.CAPABILITY_TYPE_SMS
                     | MmTelCapabilities.CAPABILITY_TYPE_UT;
 
-    @Mock private UiccSlot mPhysicalSlot0;
-    @Mock private UiccSlot mPhysicalSlot1;
-    @Mock private Phone mSecondPhone;
-    @Mock private ImsPhone mSecondImsPhone;
-    @Mock private ServiceStateStats mServiceStateStats;
+    // Mocked classes
+    private UiccSlot mPhysicalSlot0;
+    private UiccSlot mPhysicalSlot1;
+    private Phone mSecondPhone;
+    private ImsPhone mSecondImsPhone;
+    private ServiceStateStats mServiceStateStats;
 
     private TestableImsStats mImsStats;
 
@@ -108,6 +109,11 @@ public class ImsStatsTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mPhysicalSlot0 = mock(UiccSlot.class);
+        mPhysicalSlot1 = mock(UiccSlot.class);
+        mSecondPhone = mock(Phone.class);
+        mSecondImsPhone = mock(ImsPhone.class);
+        mServiceStateStats = mock(ServiceStateStats.class);
 
         doReturn(CARRIER1_ID).when(mPhone).getCarrierId();
         doReturn(mImsPhone).when(mPhone).getImsPhone();
@@ -115,12 +121,10 @@ public class ImsStatsTest extends TelephonyTest {
         doReturn(mServiceStateStats).when(mSST).getServiceStateStats();
 
         // WWAN PS RAT is LTE
-        doReturn(
-                        new NetworkRegistrationInfo.Builder()
-                                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
-                                .build())
-                .when(mServiceState)
-                .getNetworkRegistrationInfo(DOMAIN_PS, TRANSPORT_TYPE_WWAN);
+        doReturn(new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .build())
+                .when(mServiceState).getNetworkRegistrationInfo(DOMAIN_PS, TRANSPORT_TYPE_WWAN);
 
         // Single physical SIM
         doReturn(true).when(mPhysicalSlot0).isActive();
@@ -135,6 +139,7 @@ public class ImsStatsTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mImsStats = null;
         super.tearDown();
     }
 

@@ -21,6 +21,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 
 import android.os.AsyncResult;
 import android.os.Environment;
@@ -40,9 +41,9 @@ import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -93,10 +94,8 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     private static final int VALID_SLOT_INDEX_VALID_2 = 2;
     private static final int INVALID_SLOT_INDEX_VALID = SubscriptionManager.INVALID_SIM_SLOT_INDEX;
 
-    @Mock
+    // Mocked classes
     private SubscriptionController mSubControllerMock;
-
-    @Mock
     private Phone mPhone2; // mPhone as phone 1 is already defined in TelephonyTest.
 
     // mEmergencyNumberTrackerMock for mPhone
@@ -113,7 +112,9 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         logd("EmergencyNumberTrackerTest +Setup!");
-        super.setUp("EmergencyNumberTrackerTest");
+        super.setUp(getClass().getSimpleName());
+        mSubControllerMock = mock(SubscriptionController.class);
+        mPhone2 = mock(Phone.class);
         mContext = InstrumentationRegistry.getTargetContext();
 
         doReturn(mContext).when(mPhone).getContext();
@@ -144,6 +145,11 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         Path target = Paths.get(mLocalDownloadDirectory.getPath(), EMERGENCY_NUMBER_DB_OTA_FILE);
         Files.deleteIfExists(target);
         mLocalDownloadDirectory.delete();
+        mLocalDownloadDirectory = null;
+        mEmergencyNumberTrackerMock = null;
+        mEmergencyNumberTrackerMock2 = null;
+        mEmergencyNumberListTestSample.clear();
+        mEmergencyNumberListTestSample = null;
         super.tearDown();
     }
 
@@ -404,6 +410,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     /**
      * Test OTA Emergency Number Database Update Status.
      */
+    @Ignore("b/221641120") // TODO: Enable the tests after fixing the resource leak.
     @Test
     public void testOtaEmergencyNumberDatabase() {
         // Set up the Hal version as 1.4 to apply emergency number database

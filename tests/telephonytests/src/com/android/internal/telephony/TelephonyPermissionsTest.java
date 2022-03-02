@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import android.app.AppOpsManager;
@@ -48,10 +49,9 @@ import android.test.suitebuilder.annotation.SmallTest;
 import com.android.internal.util.test.FakeSettingsProvider;
 import com.android.server.pm.permission.LegacyPermissionManagerService;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 import java.lang.reflect.Field;
 import java.util.Map;
@@ -67,27 +67,17 @@ public class TelephonyPermissionsTest {
     private static final String FEATURE = "com.example.feature";
     private static final String MSG = "message";
 
-    @Mock
+    // Mocked classes
     private Context mMockContext;
-    @Mock
     private AppOpsManager mMockAppOps;
-    @Mock
     private SubscriptionManager mMockSubscriptionManager;
-    @Mock
     private ITelephony mMockTelephony;
-    @Mock
     private IBinder mMockTelephonyBinder;
-    @Mock
     private PackageManager mMockPackageManager;
-    @Mock
     private ApplicationInfo mMockApplicationInfo;
-    @Mock
     private TelephonyManager mTelephonyManagerMock;
-    @Mock
     private TelephonyManager mTelephonyManagerMockForSub1;
-    @Mock
     private TelephonyManager mTelephonyManagerMockForSub2;
-    @Mock
     private LegacyPermissionManagerService mMockLegacyPermissionManagerService;
 
     private MockContentResolver mMockContentResolver;
@@ -95,7 +85,17 @@ public class TelephonyPermissionsTest {
 
     @Before
     public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
+        mMockContext = mock(Context.class);
+        mMockAppOps = mock(AppOpsManager.class);
+        mMockSubscriptionManager = mock(SubscriptionManager.class);
+        mMockTelephony = mock(ITelephony.class);
+        mMockTelephonyBinder = mock(IBinder.class);
+        mMockPackageManager = mock(PackageManager.class);
+        mMockApplicationInfo = mock(ApplicationInfo.class);
+        mTelephonyManagerMock = mock(TelephonyManager.class);
+        mTelephonyManagerMockForSub1 = mock(TelephonyManager.class);
+        mTelephonyManagerMockForSub2 = mock(TelephonyManager.class);
+        mMockLegacyPermissionManagerService = mock(LegacyPermissionManagerService.class);
 
         when(mMockContext.getSystemService(Context.TELEPHONY_SERVICE)).thenReturn(
                 mTelephonyManagerMock);
@@ -128,6 +128,12 @@ public class TelephonyPermissionsTest {
         when(mMockContext.checkPermission(android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE,
                 PID, UID)).thenReturn(PackageManager.PERMISSION_DENIED);
         setTelephonyMockAsService();
+    }
+
+    @After
+    public void tearDown() {
+        mMockContentResolver = null;
+        mFakeSettingsConfigProvider = null;
     }
 
     @Test

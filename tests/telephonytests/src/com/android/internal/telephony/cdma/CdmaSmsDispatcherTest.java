@@ -29,16 +29,10 @@ import static org.mockito.Mockito.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
 
 public class CdmaSmsDispatcherTest extends TelephonyTest {
-    @Mock
-    private android.telephony.SmsMessage mSmsMessage;
-    @Mock
-    private SmsMessage mCdmaSmsMessage;
-    @Mock
+    // Mocked classes
     private SmsDispatchersController mSmsDispatchersController;
-    @Mock
     private SMSDispatcher.SmsTracker mSmsTracker;
 
     private CdmaSMSDispatcher mCdmaSmsDispatcher;
@@ -59,7 +53,9 @@ public class CdmaSmsDispatcherTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        super.setUp(this.getClass().getSimpleName());
+        super.setUp(getClass().getSimpleName());
+        mSmsDispatchersController = mock(SmsDispatchersController.class);
+        mSmsTracker = mock(SMSDispatcher.SmsTracker.class);
 
         setupMockPackagePermissionChecks();
         doReturn(mSmsUsageMonitor).when(mSmsDispatchersController).getUsageMonitor();
@@ -70,9 +66,10 @@ public class CdmaSmsDispatcherTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
-        mCdmaSmsDispatcher = null;
         mCdmaSmsDispatcherTestHandler.quit();
         mCdmaSmsDispatcherTestHandler.join();
+        mCdmaSmsDispatcherTestHandler = null;
+        mCdmaSmsDispatcher = null;
         super.tearDown();
     }
 

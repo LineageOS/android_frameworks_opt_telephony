@@ -34,6 +34,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -62,7 +63,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -78,47 +78,49 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
     private static final int SINGLE_SIM = 1;
     private static final int DUAL_SIM = 2;
     private MultiSimSettingController mMultiSimSettingControllerUT;
-    @Mock
-    private SubscriptionController mSubControllerMock;
-    @Mock
-    private Phone mPhoneMock1;
-    @Mock
-    private Phone mPhoneMock2;
-    @Mock
-    private DataEnabledSettings mDataEnabledSettingsMock1;
-    @Mock
-    private DataEnabledSettings mDataEnabledSettingsMock2;
     private Phone[] mPhones;
-    @Mock
+    private ParcelUuid mGroupUuid1 = new ParcelUuid(UUID.randomUUID());
+
+    // Mocked classes
+    private SubscriptionController mSubControllerMock;
+    private Phone mPhoneMock1;
+    private Phone mPhoneMock2;
+    private DataEnabledSettings mDataEnabledSettingsMock1;
+    private DataEnabledSettings mDataEnabledSettingsMock2;
     private CommandsInterface mMockCi;
 
-    ParcelUuid mGroupUuid1 = new ParcelUuid(UUID.randomUUID());
 
-    private SubscriptionInfo mSubInfo1 = new SubscriptionInfo(1, "subInfo1 IccId", 0, "T-mobile",
-            "T-mobile", 0, 255, "12345", 0, null, "310", "260",
+    private final SubscriptionInfo mSubInfo1 = new SubscriptionInfo(1, "subInfo1 IccId", 0,
+            "T-mobile", "T-mobile", 0, 255, "12345", 0, null, "310", "260",
             "156", false, null, null);
 
-    private SubscriptionInfo mSubInfo2 = new SubscriptionInfo(2, "subInfo2 IccId", 1, "T-mobile",
-            "T-mobile", 0, 255, "12345", 0, null, "310", "260",
+    private final SubscriptionInfo mSubInfo2 = new SubscriptionInfo(2, "subInfo2 IccId", 1,
+            "T-mobile", "T-mobile", 0, 255, "12345", 0, null, "310", "260",
             "156", false, null, null, -1, false, mGroupUuid1.toString(), false,
             TelephonyManager.UNKNOWN_CARRIER_ID, SubscriptionManager.PROFILE_CLASS_DEFAULT,
             SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM, null, null, true, -1);
 
-    private SubscriptionInfo mSubInfo3 = new SubscriptionInfo(3, "subInfo3 IccId", -1, "T-mobile",
-            "T-mobile", 0, 255, "12345", 0, null, "310", "260",
+    private final SubscriptionInfo mSubInfo3 = new SubscriptionInfo(3, "subInfo3 IccId", -1,
+            "T-mobile", "T-mobile", 0, 255, "12345", 0, null, "310", "260",
             "156", false, null, null, -1, false, mGroupUuid1.toString(), false,
             TelephonyManager.UNKNOWN_CARRIER_ID, SubscriptionManager.PROFILE_CLASS_DEFAULT,
             SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM, null, null, true, -1);
 
-    private SubscriptionInfo mSubInfo4 = new SubscriptionInfo(4, "subInfo4 IccId", -1, "T-mobile",
-            "T-mobile", 0, 255, "12345", 0, null, "310", "260",
+    private final SubscriptionInfo mSubInfo4 = new SubscriptionInfo(4, "subInfo4 IccId", -1,
+            "T-mobile", "T-mobile", 0, 255, "12345", 0, null, "310", "260",
             "156", false, null, null, -1, false, mGroupUuid1.toString(), false,
             TelephonyManager.UNKNOWN_CARRIER_ID, SubscriptionManager.PROFILE_CLASS_DEFAULT,
             SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM, null, null, true, -1);
 
     @Before
     public void setUp() throws Exception {
-        super.setUp("SubscriptionControllerTest");
+        super.setUp(getClass().getSimpleName());
+        mSubControllerMock = mock(SubscriptionController.class);
+        mPhoneMock1 = mock(Phone.class);
+        mPhoneMock2 = mock(Phone.class);
+        mDataEnabledSettingsMock1 = mock(DataEnabledSettings.class);
+        mDataEnabledSettingsMock2 = mock(DataEnabledSettings.class);
+        mMockCi = mock(CommandsInterface.class);
         // Default configuration:
         // DSDS device.
         // Sub 1 is the default sub.
@@ -163,6 +165,9 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mPhones = null;
+        mGroupUuid1 = null;
+        mMultiSimSettingControllerUT = null;
         super.tearDown();
     }
 

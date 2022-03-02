@@ -109,9 +109,9 @@ public class TelephonyNetworkRequest {
                     CAPABILITY_ATTRIBUTE_APN_SETTING | CAPABILITY_ATTRIBUTE_TRAFFIC_DESCRIPTOR_DNN),
             new SimpleImmutableEntry<>(NetworkCapabilities.NET_CAPABILITY_IMS,
                     CAPABILITY_ATTRIBUTE_APN_SETTING | CAPABILITY_ATTRIBUTE_TRAFFIC_DESCRIPTOR_DNN),
+            // TODO add OS APP Id as part of b/206703524
             new SimpleImmutableEntry<>(NetworkCapabilities.NET_CAPABILITY_CBS,
-                    CAPABILITY_ATTRIBUTE_APN_SETTING | CAPABILITY_ATTRIBUTE_TRAFFIC_DESCRIPTOR_DNN
-                            | CAPABILITY_ATTRIBUTE_TRAFFIC_DESCRIPTOR_OS_APP_ID),
+                    CAPABILITY_ATTRIBUTE_APN_SETTING | CAPABILITY_ATTRIBUTE_TRAFFIC_DESCRIPTOR_DNN),
             new SimpleImmutableEntry<>(NetworkCapabilities.NET_CAPABILITY_XCAP,
                     CAPABILITY_ATTRIBUTE_APN_SETTING | CAPABILITY_ATTRIBUTE_TRAFFIC_DESCRIPTOR_DNN),
             new SimpleImmutableEntry<>(NetworkCapabilities.NET_CAPABILITY_EIMS,
@@ -157,7 +157,8 @@ public class TelephonyNetworkRequest {
     /**
      * Data config manager for retrieving data config.
      */
-    private final @NonNull DataConfigManager mDataConfigManager;
+    // TODO: Make this @NonNull after old data stack removed.
+    private final @Nullable DataConfigManager mDataConfigManager;
 
     /**
      * The attached data network. Note that the data network could be in any state. {@code null}
@@ -387,8 +388,9 @@ public class TelephonyNetworkRequest {
      * @return {@code true} if this network request can result in bringing up a metered network.
      */
     public boolean isMeteredRequest() {
-        return mDataConfigManager.isAnyMeteredCapability(getCapabilities(),
-                mPhone.getServiceState().getDataRoaming());
+        // TODO: Remove null check after old data stack removed.
+        return mDataConfigManager != null && mDataConfigManager.isAnyMeteredCapability(
+                getCapabilities(), mPhone.getServiceState().getDataRoaming());
     }
 
     /**
@@ -442,8 +444,8 @@ public class TelephonyNetworkRequest {
         return "[" + mNativeNetworkRequest.toString() + ", mPriority=" + mPriority
                 + ", state=" + requestStateToString(mState)
                 + ", mAttachedDataNetwork=" + (mAttachedDataNetwork != null
-                ? mAttachedDataNetwork.name() : null) + ", created time="
-                + DataUtils.elapsedTimeToString(mCreatedTimeMillis)
+                ? mAttachedDataNetwork.name() : null) + ", isMetered=" + isMeteredRequest()
+                + ", created time=" + DataUtils.elapsedTimeToString(mCreatedTimeMillis)
                 + ", evaluation result=" + mEvaluation + "]";
     }
 
