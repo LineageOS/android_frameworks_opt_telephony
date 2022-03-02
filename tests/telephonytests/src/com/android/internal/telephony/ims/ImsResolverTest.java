@@ -67,7 +67,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -96,24 +95,17 @@ public class ImsResolverTest extends ImsTestBase {
     private static final int NUM_MAX_SLOTS = 2;
     private static final String TAG = ImsResolverTest.class.getSimpleName();
 
-    @Mock
+    // Mocked classes
     Context mMockContext;
-    @Mock
     PackageManager mMockPM;
-    @Mock
     ImsResolver.SubscriptionManagerProxy mTestSubscriptionManagerProxy;
-    @Mock
     ImsResolver.TelephonyManagerProxy mTestTelephonyManagerProxy;
-    @Mock
     CarrierConfigManager mMockCarrierConfigManager;
-    @Mock
     UserManager mMockUserManager;
-    @Mock
     ImsResolver.ImsDynamicQueryManagerFactory mMockQueryManagerFactory;
-    @Mock
     ImsServiceFeatureQueryManager mMockQueryManager;
-    @Mock
     ImsFeatureBinderRepository mMockRepo;
+
     private ImsResolver mTestImsResolver;
     private BroadcastReceiver mTestPackageBroadcastReceiver;
     private BroadcastReceiver mTestCarrierConfigReceiver;
@@ -126,6 +118,15 @@ public class ImsResolverTest extends ImsTestBase {
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        mMockContext = mock(Context.class);
+        mMockPM = mock(PackageManager.class);
+        mTestSubscriptionManagerProxy = mock(ImsResolver.SubscriptionManagerProxy.class);
+        mTestTelephonyManagerProxy = mock(ImsResolver.TelephonyManagerProxy.class);
+        mMockCarrierConfigManager = mock(CarrierConfigManager.class);
+        mMockUserManager = mock(UserManager.class);
+        mMockQueryManagerFactory = mock(ImsResolver.ImsDynamicQueryManagerFactory.class);
+        mMockQueryManager = mock(ImsServiceFeatureQueryManager.class);
+        mMockRepo = mock(ImsFeatureBinderRepository.class);
     }
 
     @After
@@ -133,6 +134,12 @@ public class ImsResolverTest extends ImsTestBase {
     public void tearDown() throws Exception {
         mTestImsResolver.destroy();
         mTestImsResolver = null;
+        mLooper = null;
+        mTestPackageBroadcastReceiver = null;
+        mTestCarrierConfigReceiver = null;
+        mTestBootCompleteReceiver = null;
+        mDynamicQueryListener = null;
+        mCarrierConfigs = null;
         super.tearDown();
     }
 

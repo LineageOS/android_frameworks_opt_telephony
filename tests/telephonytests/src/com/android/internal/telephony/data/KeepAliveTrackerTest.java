@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -43,7 +44,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -55,10 +55,8 @@ public class KeepAliveTrackerTest extends TelephonyTest {
 
     private KeepaliveTracker mKeepaliveTrackerUT;
 
-    @Mock
+    // Mocked classes
     private DataNetwork mMockedDataNetwork;
-
-    @Mock
     private TelephonyNetworkAgent mMockedTelephonyNetworkAgent;
 
     private TelephonyNetworkAgentCallback mTelephonyNetworkAgentCallback;
@@ -67,6 +65,8 @@ public class KeepAliveTrackerTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("KeepAliveTrackerTest +Setup!");
         super.setUp(getClass().getSimpleName());
+        mMockedDataNetwork = mock(DataNetwork.class);
+        mMockedTelephonyNetworkAgent = mock(TelephonyNetworkAgent.class);
         replaceInstance(NetworkAgent.class, "mPreConnectedQueue",
                 mMockedTelephonyNetworkAgent, new ArrayList<>());
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
@@ -82,6 +82,8 @@ public class KeepAliveTrackerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mKeepaliveTrackerUT = null;
+        mTelephonyNetworkAgentCallback = null;
         super.tearDown();
     }
 

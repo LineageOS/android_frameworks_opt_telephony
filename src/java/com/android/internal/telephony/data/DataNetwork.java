@@ -81,10 +81,12 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataRetryManager.DataHandoverRetryEntry;
 import com.android.internal.telephony.data.DataRetryManager.DataRetryEntry;
 import com.android.internal.telephony.data.TelephonyNetworkAgent.TelephonyNetworkAgentCallback;
+import com.android.internal.telephony.metrics.DataCallSessionStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.ArrayUtils;
 import com.android.internal.util.IState;
@@ -393,6 +395,10 @@ public class DataNetwork extends StateMachine {
     /** The log tag. */
     private String mLogTag;
 
+    /** Metrics of per data network connection. */
+    private final DataCallSessionStats mDataCallSessionStats;
+
+
     /**
      * The unique context id assigned by the data service in {@link DataCallResponse#getId()}. One
      * for {@link AccessNetworkConstants#TRANSPORT_TYPE_WWAN} and one for
@@ -503,6 +509,9 @@ public class DataNetwork extends StateMachine {
      * after handover completes.
      */
     private @TransportType int mTransport;
+
+    /** The reason that why setting up this data network is allowed. */
+    private @NonNull DataAllowedReason mDataAllowedReason;
 
     /**
      * PCO (Protocol Configuration Options) data received from the network. Key is the PCO id, value
@@ -677,6 +686,7 @@ public class DataNetwork extends StateMachine {
      * @param dataProfile The data profile for establishing the data network.
      * @param networkRequestList The initial network requests attached to this data network.
      * @param transport The initial transport of the data network.
+     * @param dataAllowedReason The reason that why setting up this data network is allowed.
      * @param callback The callback to receives data network state update.
      */
     public DataNetwork(@NonNull Phone phone, @NonNull Looper looper,
@@ -684,6 +694,7 @@ public class DataNetwork extends StateMachine {
             @NonNull DataProfile dataProfile,
             @NonNull NetworkRequestList networkRequestList,
             @TransportType int transport,
+            @NonNull DataAllowedReason dataAllowedReason,
             @NonNull DataNetworkCallback callback) {
         super("DataNetwork", looper);
         mPhone = phone;
@@ -701,9 +712,11 @@ public class DataNetwork extends StateMachine {
                         sendMessage(EVENT_SUBSCRIPTION_PLAN_OVERRIDE);
                     }});
         mDataConfigManager = mDataNetworkController.getDataConfigManager();
+        mDataCallSessionStats = new DataCallSessionStats(mPhone);
         mDataNetworkCallback = callback;
         mDataProfile = dataProfile;
         mTransport = transport;
+        mDataAllowedReason = dataAllowedReason;
         dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
         mAttachedNetworkRequestList.addAll(networkRequestList);
         mCid.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, INVALID_CID);
@@ -815,6 +828,7 @@ public class DataNetwork extends StateMachine {
                     // TODO: Should update suspend state when call started/ended.
                     updateSuspendState();
                     updateBandwidthFromDataConfig();
+                    updateDataCallSessionStatsOfDrsOrRatChange((AsyncResult) msg.obj);
                     break;
                 }
                 case EVENT_ATTACH_NETWORK_REQUEST: {
@@ -1154,6 +1168,7 @@ public class DataNetwork extends StateMachine {
             quit();
             notifyPreciseDataConnectionState();
             mNetworkAgent.unregister();
+            mDataCallSessionStats.onDataCallDisconnected(mFailCause);
 
             if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN
                     && mPduSessionId != DataCallResponse.PDU_SESSION_ID_NOT_SET) {
@@ -1392,7 +1407,6 @@ public class DataNetwork extends StateMachine {
             }
         }
 
-        // TODO: Support NET_CAPABILITY_NOT_RESTRICTED
         if (!mCongested) {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
         }
@@ -1416,19 +1430,52 @@ public class DataNetwork extends StateMachine {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED);
         }
 
-        if (NetworkCapabilitiesUtils.inferRestrictedCapability(builder.build())) {
-            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
-        }
-
         Set<Integer> meteredCapabilities = mDataConfigManager
-                .getMeteredNetworkCapabilities(roaming);
+                .getMeteredNetworkCapabilities(roaming).stream()
+                .filter(cap -> mAccessNetworksManager.getPreferredTransportByNetworkCapability(cap)
+                        == AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .collect(Collectors.toSet());
         boolean unmeteredNetwork = meteredCapabilities.stream().noneMatch(
                 Arrays.stream(builder.build().getCapabilities()).boxed()
                         .collect(Collectors.toSet())::contains);
 
-        // TODO: Support NET_CAPABILITY_NOT_METERED when non-restricted data is for unmetered use
         if (unmeteredNetwork) {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+        }
+
+        // Always start with not-restricted, and then remove if needed.
+        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+
+        // When data is disabled, or data roaming is disabled and the device is roaming, we need
+        // to remove certain capabilities depending on scenarios.
+        if (!mDataNetworkController.getDataSettingsManager().isDataEnabled()
+                || (mPhone.getServiceState().getDataRoaming()
+                && !mDataNetworkController.getDataSettingsManager().isDataRoamingEnabled())) {
+            // If data is allowed because the request is a restricted network request, we need
+            // to mark the network as restricted when data is disabled or data roaming is disabled
+            // and the device is roaming. If we don't do that, non-privileged apps will be able
+            // to use this network when data is disabled.
+            if (mDataAllowedReason == DataAllowedReason.RESTRICTED_REQUEST) {
+                builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+            } else if (mDataAllowedReason == DataAllowedReason.UNMETERED_USAGE
+                    || mDataAllowedReason == DataAllowedReason.MMS_REQUEST) {
+                // If data is allowed due to unmetered usage, or MMS always-allowed, we need to
+                // remove unrelated-but-metered capabilities.
+                for (int capability : meteredCapabilities) {
+                    // 1. If it's unmetered usage, remove all metered capabilities.
+                    // 2. if it's MMS always-allowed, then remove all metered capabilities but MMS.
+                    if (capability != NetworkCapabilities.NET_CAPABILITY_MMS
+                            || mDataAllowedReason != DataAllowedReason.MMS_REQUEST) {
+                        builder.removeCapability(capability);
+                    }
+                }
+            }
+        }
+
+        // If one of the capabilities are for special use, for example, IMS, CBS, then this
+        // network should be restricted, regardless data is enabled or not.
+        if (NetworkCapabilitiesUtils.inferRestrictedCapability(builder.build())) {
+            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
         }
 
         // Set the bandwidth information.
@@ -1496,6 +1543,19 @@ public class DataNetwork extends StateMachine {
      */
     public @NonNull DataProfile getDataProfile() {
         return mDataProfile;
+    }
+
+    /**
+     * Once RIL Data Radio Technology changes, the new radio technology will be returned in
+     * AsyncResult.
+     * See
+     * {@link com.android.internal.telephony.ServiceStateTracker#registerForDataRegStateOrRatChanged}
+     *
+     * @param ar RegistrationInfo: {@code Pair(drs, rat)}
+     */
+    private void updateDataCallSessionStatsOfDrsOrRatChange(AsyncResult ar) {
+        Pair<Integer, Integer> drsRatPair = (Pair<Integer, Integer>) ar.result;
+        mDataCallSessionStats.onDrsOrRatChanged(drsRatPair.second);
     }
 
     /**
@@ -1582,6 +1642,10 @@ public class DataNetwork extends StateMachine {
                         DataService.REQUEST_REASON_NORMAL, null, mPduSessionId, null,
                         trafficDescriptor, matchAllRuleAllowed,
                         obtainMessage(EVENT_SETUP_DATA_CALL_RESPONSE));
+
+        int apnTypeBitmask = mDataProfile.getApnSetting() != null
+                ? mDataProfile.getApnSetting().getApnTypeBitmask() : ApnSetting.TYPE_NONE;
+        mDataCallSessionStats.onSetupDataCall(apnTypeBitmask);
 
         logl("setupData: accessNetwork="
                 + AccessNetworkType.toString(accessNetwork) + ", " + mDataProfile
@@ -1816,6 +1880,18 @@ public class DataNetwork extends StateMachine {
                             DataNetwork.this, requestList, mFailCause, retryDelayMillis));
             transitionTo(mDisconnectedState);
         }
+
+        int apnTypeBitmask = ApnSetting.TYPE_NONE;
+        int protocol = ApnSetting.PROTOCOL_UNKNOWN;
+        if (mDataProfile.getApnSetting() != null) {
+            apnTypeBitmask = mDataProfile.getApnSetting().getApnTypeBitmask();
+            protocol = mDataProfile.getApnSetting().getProtocol();
+        }
+        mDataCallSessionStats.onSetupDataCallResponse(response,
+                getDataNetworkType(),
+                apnTypeBitmask,
+                protocol,
+                mFailCause);
     }
 
     /**
@@ -1844,6 +1920,7 @@ public class DataNetwork extends StateMachine {
         // TODO: Need to support DataService.REQUEST_REASON_SHUTDOWN
         mDataServiceManagers.get(mTransport).deactivateDataCall(mCid.get(mTransport),
                 DataService.REQUEST_REASON_NORMAL, null);
+        mDataCallSessionStats.setDeactivateDataCallReason(DataService.REQUEST_REASON_NORMAL);
         mInvokedDataDeactivation = true;
     }
 

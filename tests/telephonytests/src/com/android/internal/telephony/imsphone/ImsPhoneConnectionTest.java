@@ -66,7 +66,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -82,16 +81,18 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
 
     private ImsPhoneConnection mConnectionUT;
     private Bundle mBundle = new Bundle();
-    @Mock
+
+    // Mocked classes
     private ImsPhoneCall mForeGroundCall;
-    @Mock
     private ImsPhoneCall mBackGroundCall;
-    @Mock
     private ImsPhoneCall mRingGroundCall;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mForeGroundCall = mock(ImsPhoneCall.class);
+        mBackGroundCall = mock(ImsPhoneCall.class);
+        mRingGroundCall = mock(ImsPhoneCall.class);
         replaceInstance(Handler.class, "mLooper", mImsCT, Looper.myLooper());
         replaceInstance(ImsPhoneCallTracker.class, "mForegroundCall", mImsCT, mForeGroundCall);
         replaceInstance(ImsPhoneCallTracker.class, "mBackgroundCall", mImsCT, mBackGroundCall);
@@ -104,6 +105,8 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mBundle = null;
+        mConnectionUT = null;
         super.tearDown();
     }
 

@@ -24,7 +24,6 @@ import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 
 import android.Manifest;
 import android.app.AppOpsManager;
@@ -36,9 +35,7 @@ import android.os.HandlerThread;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -50,11 +47,9 @@ public class SmsPermissionsTest extends TelephonyTest {
 
     private HandlerThread mHandlerThread;
 
-    @Mock
+    // Mocked classes
     private Phone mMockPhone;
-    @Mock
     private Context mMockContext;
-    @Mock
     private AppOpsManager mMockAppOps;
 
     private SmsPermissions mSmsPermissionsTest;
@@ -64,9 +59,11 @@ public class SmsPermissionsTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        super.setUp("SmsPermissionsTest");
+        super.setUp(getClass().getSimpleName());
+        mMockPhone = Mockito.mock(Phone.class);
+        mMockContext = Mockito.mock(Context.class);
+        mMockAppOps = Mockito.mock(AppOpsManager.class);
 
-        MockitoAnnotations.initMocks(this);
         mHandlerThread = new HandlerThread("IccSmsInterfaceManagerTest");
         mHandlerThread.start();
         final CountDownLatch initialized = new CountDownLatch(1);
@@ -97,6 +94,8 @@ public class SmsPermissionsTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mHandlerThread.quit();
         mHandlerThread.join();
+        mHandlerThread = null;
+        mSmsPermissionsTest = null;
         super.tearDown();
     }
 
@@ -257,7 +256,7 @@ public class SmsPermissionsTest extends TelephonyTest {
 
     @Test
     public void testPackageNameMatchesCallingUid() {
-        AppOpsManager mockAppOpsManager = mock(AppOpsManager.class);
+        AppOpsManager mockAppOpsManager = Mockito.mock(AppOpsManager.class);
         Mockito.when(mMockContext.getSystemService(Context.APP_OPS_SERVICE)).thenReturn(
                 mockAppOpsManager);
 

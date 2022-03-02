@@ -24,6 +24,7 @@ import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.isNull;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,18 +40,17 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-
 
 public class WapPushOverSmsTest extends TelephonyTest {
-    @Mock
+    // Mocked classes
     protected ISms.Stub mISmsStub;
 
     private WapPushOverSms mWapPushOverSmsUT;
 
     @Before
     public void setUp() throws Exception {
-        super.setUp("WapPushOverSmsTest");
+        super.setUp(getClass().getSimpleName());
+        mISmsStub = mock(ISms.Stub.class);
 
         // Note that this replaces only cached services in ServiceManager. If a service is not found
         // in the cache, a real instance is used.

@@ -24,6 +24,7 @@ import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -60,7 +61,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
@@ -92,22 +92,23 @@ public class EuiccPortTest extends TelephonyTest {
         }
     }
 
-    @Mock
+    // Mocked classes
     private CommandsInterface mMockCi;
-    @Mock
     private IccCardStatus mMockIccCardStatus;
+    private EuiccCard mEuiccCard;
+    private Resources mMockResources;
 
     private Handler mHandler;
-    @Mock
-    private EuiccCard mEuiccCard;
     private EuiccPort mEuiccPort;
 
-    @Mock
-    private Resources mMockResources;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mMockCi = mock(CommandsInterface.class);
+        mMockIccCardStatus = mock(IccCardStatus.class);
+        mEuiccCard = mock(EuiccCard.class);
+        mMockResources = mock(Resources.class);
 
         mMockIccCardStatus.mApplications = new IccCardApplicationStatus[]{};
         mMockIccCardStatus.mCdmaSubscriptionAppIndex =
@@ -134,6 +135,9 @@ public class EuiccPortTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mHandler.removeCallbacksAndMessages(null);
+        mHandler = null;
+        mEuiccPort = null;
         super.tearDown();
     }
 

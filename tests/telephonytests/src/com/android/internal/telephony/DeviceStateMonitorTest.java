@@ -26,6 +26,7 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
@@ -50,7 +51,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -133,8 +133,9 @@ public class DeviceStateMonitorTest extends TelephonyTest {
                 STATE_TYPE_CHARGING, STATE_TYPE_SCREEN, STATE_TYPE_TETHERING}
     );
 
-    @Mock
+    // Mocked classes
     UiModeManager mUiModeManager;
+
     private DeviceStateMonitor mDSM;
 
     // Given a stateType, return the event type that can change the state
@@ -163,6 +164,7 @@ public class DeviceStateMonitorTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mUiModeManager = mock(UiModeManager.class);
         mContextFixture.setSystemService(Context.UI_MODE_SERVICE, mUiModeManager);
         // We don't even need a mock executor, we just need to not throw.
         doReturn(null).when(mContextFixture.getTestDouble()).getMainExecutor();

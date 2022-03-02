@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -36,11 +37,10 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccIoResult;
 import com.android.internal.telephony.uicc.IccUtils;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -74,7 +74,7 @@ public class ApduSenderTest {
         }
     }
 
-    @Mock
+    // Mocked classes
     private CommandsInterface mMockCi;
 
     private TestableLooper mLooper;
@@ -86,7 +86,7 @@ public class ApduSenderTest {
 
     @Before
     public void setUp() {
-        MockitoAnnotations.initMocks(this);
+        mMockCi = mock(CommandsInterface.class);
         mHandler = new Handler(Looper.myLooper());
 
         mResponseCaptor = new ResponseCaptor();
@@ -94,6 +94,16 @@ public class ApduSenderTest {
 
         mSender = new ApduSender(mMockCi, AID, false /* supportExtendedApdu */);
         mLooper = TestableLooper.get(this);
+    }
+
+    @After
+    public void tearDown() {
+        mHandler.removeCallbacksAndMessages(null);
+        mHandler = null;
+        mLooper = null;
+        mResponseCaptor = null;
+        mSelectResponse = null;
+        mSender = null;
     }
 
     @Test

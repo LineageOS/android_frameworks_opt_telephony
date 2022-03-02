@@ -20,6 +20,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -34,7 +35,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 
 @RunWith(AndroidJUnit4.class)
 public class ExponentialBackoffTest extends ImsTestBase {
@@ -45,12 +45,16 @@ public class ExponentialBackoffTest extends ImsTestBase {
 
     private ExponentialBackoff mBackoffUnderTest;
     private Handler mHandler = new Handler(Looper.getMainLooper());
-    @Mock private Runnable mRunnable;
-    @Mock private ExponentialBackoff.HandlerAdapter mHandlerAdapter;
+
+    // Mocked classes
+    private Runnable mRunnable;
+    private ExponentialBackoff.HandlerAdapter mHandlerAdapter;
 
     @Before
     public void setUp() throws Exception {
         super.setUp();
+        mRunnable = mock(Runnable.class);
+        mHandlerAdapter = mock(ExponentialBackoff.HandlerAdapter.class);
         mBackoffUnderTest = new ExponentialBackoff(
                 START_DELAY_MS, MAXIMUM_DELAY_MS, MULTIPLIER, mHandler, mRunnable);
         mBackoffUnderTest.setHandlerAdapter(mHandlerAdapter);
@@ -64,8 +68,11 @@ public class ExponentialBackoffTest extends ImsTestBase {
     }
 
     @After
-    public void tearDown() {
+    public void tearDown() throws Exception {
         mBackoffUnderTest.stop();
+        mBackoffUnderTest = null;
+        mHandler = null;
+        super.tearDown();
     }
 
     @Test
