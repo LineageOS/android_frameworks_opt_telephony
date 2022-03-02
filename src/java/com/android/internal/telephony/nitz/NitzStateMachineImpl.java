@@ -111,16 +111,18 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
     // Shared detection state.
 
     /**
-     * The last / latest NITZ signal <em>processed</em> (i.e. after input filtering). It is used for
+     * The latest active NITZ signal <em>processed</em> (i.e. after input filtering). It is used for
      * input filtering (e.g. rate limiting) and provides the NITZ information when time / time zone
      * needs to be recalculated when something else has changed.
      */
     @Nullable private NitzSignal mLatestNitzSignal;
 
     /**
-     * The last NITZ received, and the time when it was cleared. Used to restore the NITZ for
-     * transient network disconnections. This can be null, but the value held when it isn't will not
-     * be.
+     * The last NITZ received, which has been cleared from {@link #mLatestNitzSignal} because of a
+     * loss of connectivity. The TimestampedValue reference time is the time according to the
+     * elapsed realtime clock when {@link #mLatestNitzSignal} was cleared. This field is used to
+     * hold the NITZ for later restoration after transient network disconnections. This can be null,
+     * but the NitzSignal referenced by the TimestampedValue will never be.
      */
     @Nullable private TimestampedValue<NitzSignal> mLastNitzSignalCleared;
 
@@ -226,6 +228,9 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
         // Always store the latest valid NITZ signal to be processed.
         mLatestNitzSignal = nitzSignal;
 
+        // Clear any retained NITZ signal: The value now in mLatestNitzSignal means it isn't needed.
+        mLastNitzSignalCleared = null;
+
         String reason = "handleNitzReceived(" + nitzSignal + ")";
         runDetection(reason);
     }
@@ -271,11 +276,16 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
                     + mLastNitzSignalCleared.getValue();
             mLatestNitzSignal = mLastNitzSignalCleared.getValue();
 
+            // NITZ was restored, so we do not need the retained value anymore.
+            mLastNitzSignalCleared = null;
+
             runDetection(reason);
         } else {
             if (DBG) {
                 Rlog.d(LOG_TAG, reason + ": mLastNitzSignalCleared is too old.");
             }
+            // The retained NITZ is judged too old, so it could be cleared here, but it's kept for
+            // debugging and in case mDeviceState.getNitzNetworkDisconnectRetentionMillis() changes.
         }
     }
 
@@ -396,7 +406,14 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
 
     @VisibleForTesting
     @Nullable
-    public NitzData getCachedNitzData() {
+    public NitzData getLatestNitzData() {
         return mLatestNitzSignal != null ? mLatestNitzSignal.getNitzData() : null;
+    }
+
+    @VisibleForTesting
+    @Nullable
+    public NitzData getLastNitzDataCleared() {
+        return mLastNitzSignalCleared != null
+                ? mLastNitzSignalCleared.getValue().getNitzData() : null;
     }
 }
