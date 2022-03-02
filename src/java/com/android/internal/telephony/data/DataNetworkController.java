@@ -97,7 +97,8 @@ public class DataNetworkController extends Handler {
     /** Event for setup a data network. */
     private static final int EVENT_SETUP_DATA_NETWORK = 5;
 
-
+    /** Event for data stall action reestablish. */
+    private static final int EVENT_DATA_STALL_ACTION_REESTABLISH = 6;
 
     private final Phone mPhone;
     private final String mLogTag;
@@ -230,6 +231,8 @@ public class DataNetworkController extends Handler {
      */
     private void registerAllEvents() {
         mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
+        mDataStallMonitor.registerForDataStallReestablishEvent(this,
+                EVENT_DATA_STALL_ACTION_REESTABLISH);
     }
 
     @Override
@@ -249,6 +252,9 @@ public class DataNetworkController extends Handler {
                 break;
             case EVENT_SETUP_DATA_NETWORK:
                 onSetupDataNetwork((DataProfile) msg.obj);
+                break;
+            case EVENT_DATA_STALL_ACTION_REESTABLISH:
+                onDataStallActionReestablish();
                 break;
             default:
                 loge("Unexpected event " + msg.what);
@@ -381,6 +387,12 @@ public class DataNetworkController extends Handler {
                 return;
             }
         }
+    }
+
+    /**
+     * Handle data stall action reestablish event.
+     */
+    private void onDataStallActionReestablish() {
     }
 
     /**

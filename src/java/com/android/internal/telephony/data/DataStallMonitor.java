@@ -21,6 +21,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.RegistrantList;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
@@ -55,6 +56,9 @@ public class DataStallMonitor extends Handler {
     /** Cellular data service */
     private final @NonNull DataServiceManager mWwanDataServiceManager;
 
+    /** The RegistrantList for recovery action reestablish */
+    private final RegistrantList mDataStallReestablishRegistrants = new RegistrantList();
+
     /**
      * Constructor
      *
@@ -73,6 +77,13 @@ public class DataStallMonitor extends Handler {
         mWwanDataServiceManager = dataServiceManager;
         mDataConfigManager = mDataNetworkController.getDataConfigManager();
 
+        registerAllEvents();
+    }
+
+    /**
+     * Register for all events that data stall monitor is interested.
+     */
+    private void registerAllEvents() {
         mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
         mDataNetworkController.registerForInternetValidationStatusChanged(this,
                 EVENT_INTERNET_VALIDATION_STATUS_CHANGED);
@@ -105,6 +116,16 @@ public class DataStallMonitor extends Handler {
      */
     private void onInternetValidationStatusChanged(boolean isValid) {
 
+    }
+
+    /**
+     * Register for data stall reestablish event.
+     *
+     * @param handler The handler to handle the event.
+     * @param what The event.
+     */
+    public void registerForDataStallReestablishEvent(@NonNull Handler handler, int what) {
+        mDataStallReestablishRegistrants.addUnique(handler, what, null);
     }
 
     /**
