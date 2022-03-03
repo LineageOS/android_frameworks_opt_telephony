@@ -74,14 +74,14 @@ public class DataCallSessionStats {
      * Updates the ongoing dataCall's atom for data call response event.
      *
      * @param response setup Data call response
-     * @param radioTechnology The data call RAT
+     * @param currentRat The data call current Network Type
      * @param apnTypeBitmask APN type bitmask
      * @param protocol Data connection protocol
      * @param failureCause failure cause as per android.telephony.DataFailCause
      */
     public synchronized void onSetupDataCallResponse(
             @Nullable DataCallResponse response,
-            @RilRadioTechnology int radioTechnology,
+            @NetworkType int currentRat,
             @ApnType int apnTypeBitmask,
             @ProtocolType int protocol,
             @DataFailureCause int failureCause) {
@@ -92,7 +92,6 @@ public class DataCallSessionStats {
             return;
         }
 
-        @NetworkType int currentRat = ServiceState.rilRadioTechnologyToNetworkType(radioTechnology);
         if (currentRat != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
             mDataCallSession.ratAtEnd = currentRat;
             mDataCallSession.bandAtEnd =
@@ -113,7 +112,6 @@ public class DataCallSessionStats {
                     (int) Math.min(response.getRetryDurationMillis(), Integer.MAX_VALUE);
             // If setup has failed, then store the atom
             if (failureCause != DataFailCause.NONE) {
-                mDataCallSession.failureCause = failureCause;
                 mDataCallSession.oosAtEnd = getIsOos();
                 mDataCallSession.setupFailed = true;
                 mDataCallSession.ongoing = false;

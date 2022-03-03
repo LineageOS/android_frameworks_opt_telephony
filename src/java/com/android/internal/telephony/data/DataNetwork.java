@@ -86,6 +86,7 @@ import com.android.internal.telephony.data.DataNetworkController.NetworkRequestL
 import com.android.internal.telephony.data.DataRetryManager.DataHandoverRetryEntry;
 import com.android.internal.telephony.data.DataRetryManager.DataRetryEntry;
 import com.android.internal.telephony.data.TelephonyNetworkAgent.TelephonyNetworkAgentCallback;
+import com.android.internal.telephony.metrics.DataCallSessionStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.ArrayUtils;
 import com.android.internal.util.IState;
@@ -393,6 +394,10 @@ public class DataNetwork extends StateMachine {
 
     /** The log tag. */
     private String mLogTag;
+
+    /** Metrics of per data network connection. */
+    private final DataCallSessionStats mDataCallSessionStats;
+
 
     /**
      * The unique context id assigned by the data service in {@link DataCallResponse#getId()}. One
@@ -707,6 +712,7 @@ public class DataNetwork extends StateMachine {
                         sendMessage(EVENT_SUBSCRIPTION_PLAN_OVERRIDE);
                     }});
         mDataConfigManager = mDataNetworkController.getDataConfigManager();
+        mDataCallSessionStats = new DataCallSessionStats(mPhone);
         mDataNetworkCallback = callback;
         mDataProfile = dataProfile;
         mTransport = transport;
@@ -822,6 +828,7 @@ public class DataNetwork extends StateMachine {
                     // TODO: Should update suspend state when call started/ended.
                     updateSuspendState();
                     updateBandwidthFromDataConfig();
+                    updateDataCallSessionStatsOfDrsOrRatChange((AsyncResult) msg.obj);
                     break;
                 }
                 case EVENT_ATTACH_NETWORK_REQUEST: {
@@ -1161,6 +1168,7 @@ public class DataNetwork extends StateMachine {
             quit();
             notifyPreciseDataConnectionState();
             mNetworkAgent.unregister();
+            mDataCallSessionStats.onDataCallDisconnected(mFailCause);
 
             if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN
                     && mPduSessionId != DataCallResponse.PDU_SESSION_ID_NOT_SET) {
@@ -1538,6 +1546,19 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
+     * Once RIL Data Radio Technology changes, the new radio technology will be returned in
+     * AsyncResult.
+     * See
+     * {@link com.android.internal.telephony.ServiceStateTracker#registerForDataRegStateOrRatChanged}
+     *
+     * @param ar RegistrationInfo: {@code Pair(drs, rat)}
+     */
+    private void updateDataCallSessionStatsOfDrsOrRatChange(AsyncResult ar) {
+        Pair<Integer, Integer> drsRatPair = (Pair<Integer, Integer>) ar.result;
+        mDataCallSessionStats.onDrsOrRatChanged(drsRatPair.second);
+    }
+
+    /**
      * Update data suspended state.
      */
     private void updateSuspendState() {
@@ -1621,6 +1642,10 @@ public class DataNetwork extends StateMachine {
                         DataService.REQUEST_REASON_NORMAL, null, mPduSessionId, null,
                         trafficDescriptor, matchAllRuleAllowed,
                         obtainMessage(EVENT_SETUP_DATA_CALL_RESPONSE));
+
+        int apnTypeBitmask = mDataProfile.getApnSetting() != null
+                ? mDataProfile.getApnSetting().getApnTypeBitmask() : ApnSetting.TYPE_NONE;
+        mDataCallSessionStats.onSetupDataCall(apnTypeBitmask);
 
         logl("setupData: accessNetwork="
                 + AccessNetworkType.toString(accessNetwork) + ", " + mDataProfile
@@ -1855,6 +1880,18 @@ public class DataNetwork extends StateMachine {
                             DataNetwork.this, requestList, mFailCause, retryDelayMillis));
             transitionTo(mDisconnectedState);
         }
+
+        int apnTypeBitmask = ApnSetting.TYPE_NONE;
+        int protocol = ApnSetting.PROTOCOL_UNKNOWN;
+        if (mDataProfile.getApnSetting() != null) {
+            apnTypeBitmask = mDataProfile.getApnSetting().getApnTypeBitmask();
+            protocol = mDataProfile.getApnSetting().getProtocol();
+        }
+        mDataCallSessionStats.onSetupDataCallResponse(response,
+                getDataNetworkType(),
+                apnTypeBitmask,
+                protocol,
+                mFailCause);
     }
 
     /**
@@ -1883,6 +1920,7 @@ public class DataNetwork extends StateMachine {
         // TODO: Need to support DataService.REQUEST_REASON_SHUTDOWN
         mDataServiceManagers.get(mTransport).deactivateDataCall(mCid.get(mTransport),
                 DataService.REQUEST_REASON_NORMAL, null);
+        mDataCallSessionStats.setDeactivateDataCallReason(DataService.REQUEST_REASON_NORMAL);
         mInvokedDataDeactivation = true;
     }
 
