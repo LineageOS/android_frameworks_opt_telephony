@@ -1669,7 +1669,7 @@ public class DataNetwork extends StateMachine {
 
         TrafficDescriptor trafficDescriptor = mDataProfile.getTrafficDescriptor();
         final boolean matchAllRuleAllowed = trafficDescriptor == null
-                || trafficDescriptor.getOsAppId() == null;
+                || !TextUtils.isEmpty(trafficDescriptor.getDataNetworkName());
 
         int accessNetwork = DataUtils.networkTypeToAccessNetworkType(dataNetworkType);
 
