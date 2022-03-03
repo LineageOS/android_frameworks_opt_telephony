@@ -311,8 +311,7 @@ public class TelephonyNetworkRequestTest extends TelephonyTest {
                         .getBytes()))
                 .build();
 
-        // TODO: fix as part of as part of b/206703524
-        //assertThat(cbsRequest.canBeSatisfiedBy(cbsDataProfile)).isTrue();
-        //assertThat(embbRequest.canBeSatisfiedBy(cbsDataProfile)).isFalse();
+        assertThat(cbsRequest.canBeSatisfiedBy(cbsDataProfile)).isTrue();
+        assertThat(embbRequest.canBeSatisfiedBy(cbsDataProfile)).isFalse();
     }
 }
