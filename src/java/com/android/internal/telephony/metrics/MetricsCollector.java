@@ -666,8 +666,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                     perSimStatus.dataRoamingEnabled, // dataRoamingEnabled
                     perSimStatus.preferredNetworkType, // allowedNetworksByUser
                     perSimStatus.disabled2g, // is2gDisabled
-                    false, // TODO(b/215758472): isPin1Enabled
-                    0); // TODO(b/215758472): simVoltageClass
+                    perSimStatus.pin1Enabled, // isPin1Enabled
+                    perSimStatus.minimumVoltageClass); // simVoltageClass
             data.add(statsEvent);
             result = StatsManager.PULL_SUCCESS;
         }
