@@ -353,7 +353,7 @@ public class DataServiceManager extends Handler {
         super(looper);
         mPhone = phone;
         mTransportType = transportType;
-        mTag = "DSM-" + (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN ? "C" : "I")
+        mTag = "DSM-" + (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN ? "C-" : "I-")
                 + mPhone.getPhoneId();
         mBound = false;
         mCarrierConfigManager = (CarrierConfigManager) phone.getContext().getSystemService(
@@ -886,7 +886,7 @@ public class DataServiceManager extends Handler {
      */
     public void registerForDataCallListChanged(Handler h, int what) {
         if (h != null) {
-            mDataCallListChangedRegistrants.addUnique(h, what, null);
+            mDataCallListChangedRegistrants.addUnique(h, what, mTransportType);
         }
     }
 
@@ -909,7 +909,7 @@ public class DataServiceManager extends Handler {
      */
     public void registerForApnUnthrottled(Handler h, int what) {
         if (h != null) {
-            mApnUnthrottledRegistrants.addUnique(h, what, null);
+            mApnUnthrottledRegistrants.addUnique(h, what, mTransportType);
         }
     }
 
@@ -929,11 +929,10 @@ public class DataServiceManager extends Handler {
      *
      * @param h The target to post the event message to.
      * @param what The event.
-     * @param obj The user object.
      */
-    public void registerForServiceBindingChanged(Handler h, int what, Object obj) {
+    public void registerForServiceBindingChanged(Handler h, int what) {
         if (h != null) {
-            mServiceBindingChangedRegistrants.addUnique(h, what, obj);
+            mServiceBindingChangedRegistrants.addUnique(h, what, mTransportType);
         }
 
     }

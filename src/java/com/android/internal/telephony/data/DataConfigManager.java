@@ -28,8 +28,11 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RegistrantList;
+import android.telephony.Annotation.NetCapability;
+import android.telephony.Annotation.NetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.util.IndentingPrintWriter;
 
 import com.android.internal.telephony.Phone;
@@ -135,6 +138,9 @@ public class DataConfigManager extends Handler {
         if (mCarrierConfigManager != null) {
             mCarrierConfig = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId());
         }
+        if (mCarrierConfig == null) {
+            mCarrierConfig = CarrierConfigManager.getDefaultConfig();
+        }
         mResources = SubscriptionManager.getResourcesForSubId(mPhone.getContext(),
                 mPhone.getSubId());
 
@@ -151,7 +157,6 @@ public class DataConfigManager extends Handler {
      * Update the network capability priority from carrier config.
      */
     private void updateNetworkCapabilityPriority() {
-        if (mCarrierConfig == null) return;
         String[] capabilityPriorityStrings = mCarrierConfig.getStringArray(
                 CarrierConfigManager.KEY_TELEPHONY_NETWORK_CAPABILITY_PRIORITIES_STRING_ARRAY);
         if (capabilityPriorityStrings != null) {
@@ -181,7 +186,7 @@ public class DataConfigManager extends Handler {
      * @param capability The network capability
      * @return The priority range from 0 ~ 100. 100 is the highest priority.
      */
-    public int getNetworkCapabilityPriority(int capability) {
+    public int getNetworkCapabilityPriority(@NetCapability int capability) {
         if (mNetworkCapabilityPriorityMap.containsKey(capability)) {
             return mNetworkCapabilityPriorityMap.get(capability);
         }
@@ -193,7 +198,6 @@ public class DataConfigManager extends Handler {
      */
     private void updateDataRetryRules() {
         mDataRetryRules.clear();
-        if (mCarrierConfig == null) return;
         String[] dataRetryRulesStrings = mCarrierConfig.getStringArray(
                 CarrierConfigManager.KEY_TELEPHONY_DATA_RETRY_RULES_STRING_ARRAY);
         if (dataRetryRulesStrings != null) {
@@ -208,6 +212,21 @@ public class DataConfigManager extends Handler {
      */
     public @NonNull List<DataRetryRule> getDataRetryRules() {
         return Collections.unmodifiableList(mDataRetryRules);
+    }
+
+    /**
+     * Get the TCP config string, which will be used for
+     * {@link android.net.LinkProperties#setTcpBufferSizes(String)}
+     *
+     * @param networkType The network type. Note that {@link TelephonyManager#NETWORK_TYPE_NR} is
+     * used for both 5G SA and NSA case. {@link TelephonyManager#NETWORK_TYPE_LTE_CA} can be used
+     * for LTE CA even though it's not really a radio access technology.
+     *
+     * @return The TCP buffer configuration string.
+     */
+    public @NonNull String getTcpConfigString(@NetworkType int networkType) {
+        // TODO: Move all TCP_BUFFER_SIZES_XXX from DataConnection to here.
+        return null;
     }
 
     /**
@@ -261,13 +280,13 @@ public class DataConfigManager extends Handler {
             pw.print(DataUtils.networkCapabilityToString(entry.getKey()) + ":"
                     + entry.getValue() + " ");
         }
+        pw.decreaseIndent();
         pw.println();
         pw.println("Data retry rules:");
         pw.increaseIndent();
         for (DataRetryRule rule : mDataRetryRules) {
             pw.println(rule);
         }
-        pw.decreaseIndent();
         pw.decreaseIndent();
         pw.decreaseIndent();
     }
