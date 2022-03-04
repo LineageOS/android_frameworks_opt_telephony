@@ -30,6 +30,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.ComparisonFailure;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -38,6 +39,7 @@ import java.io.OutputStreamWriter;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+@Ignore("b/221640979") // TODO: Enable the tests after fixing the resource leak.
 public class ImsRttTextHandlerTest extends TelephonyTest {
     private static final int TEST_TIMEOUT = 1000;
     private static final int READ_BUFFER_SIZE = 1000;
