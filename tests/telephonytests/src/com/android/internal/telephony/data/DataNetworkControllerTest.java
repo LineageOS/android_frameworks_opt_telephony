@@ -270,8 +270,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                     Handler.class), anyInt());
         }
 
-        mDataNetworkControllerUT = Mockito.spy(new DataNetworkController(
-                mPhone, Looper.myLooper()));
+        mDataNetworkControllerUT = new DataNetworkController(mPhone, Looper.myLooper());
         SparseArray<DataServiceManager> dataServiceManagers = new SparseArray<>();
         dataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 mMockedWwanDataServiceManager);
