@@ -962,11 +962,13 @@ public class CarrierResolver extends Handler {
     public int getCarrierListVersion() {
         // Use the cached value if it exists, otherwise retrieve it.
         if (mCarrierListVersion == null) {
-            final Cursor cursor = mContext.getContentResolver().query(
+            // The auto closeable cursor will be closed after exiting try-block.
+            try (Cursor cursor = mContext.getContentResolver().query(
                     Uri.withAppendedPath(CarrierId.All.CONTENT_URI,
-                    "get_version"), null, null, null);
-            cursor.moveToFirst();
-            mCarrierListVersion = cursor.getInt(0);
+                    "get_version"), null, null, null)) {
+                cursor.moveToFirst();
+                mCarrierListVersion = cursor.getInt(0);
+            }
         }
         return mCarrierListVersion;
     }

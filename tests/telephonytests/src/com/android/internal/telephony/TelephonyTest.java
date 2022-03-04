@@ -57,6 +57,7 @@ import android.os.Message;
 import android.os.MessageQueue;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
+import android.os.StrictMode;
 import android.os.UserManager;
 import android.permission.LegacyPermissionManager;
 import android.provider.BlockedNumberContract;
@@ -465,8 +466,24 @@ public abstract class TelephonyTest {
         mOldInstances.clear();
     }
 
+    // TODO: Unit tests that do not extend TelephonyTest or ImsTestBase should enable strict mode
+    //   by calling this method.
+    public static void enableStrictMode() {
+        StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
+                .detectLeakedSqlLiteObjects()
+                .detectLeakedClosableObjects()
+                .detectIncorrectContextUse()
+                .detectLeakedRegistrationObjects()
+                .detectUnsafeIntentLaunch()
+                .detectActivityLeaks()
+                .penaltyLog()
+                .penaltyDeath()
+                .build());
+    }
+
     protected void setUp(String tag) throws Exception {
         TAG = tag;
+        enableStrictMode();
         MockitoAnnotations.initMocks(this);
         TelephonyManager.disableServiceHandleCaching();
         SubscriptionController.disableCaching();
