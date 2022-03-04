@@ -705,6 +705,7 @@ public class DcTrackerTest extends TelephonyTest {
 
         doReturn("fake.action_detached").when(mPhone).getActionDetached();
         doReturn("fake.action_attached").when(mPhone).getActionAttached();
+        doReturn(false).when(mPhone).isUsingNewDataStack();
         doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_LTE).when(mServiceState)
                 .getRilDataRadioTechnology();
         doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_LTE,
