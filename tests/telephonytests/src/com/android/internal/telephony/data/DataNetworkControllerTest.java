@@ -376,7 +376,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
         mMockedDataRetryManagerCallback = Mockito.mock(DataRetryManagerCallback.class);
 
         initializeConfig();
-        doReturn(true).when(mPhone).isUsingNewDataStack();
         mMockedDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 mMockedWwanDataServiceManager);
         mMockedDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WLAN,

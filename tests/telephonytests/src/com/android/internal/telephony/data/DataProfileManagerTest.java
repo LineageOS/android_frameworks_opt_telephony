@@ -403,7 +403,6 @@ public class DataProfileManagerTest extends TelephonyTest {
         logd("DataProfileManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
         mDataProfileManagerCallback = Mockito.mock(DataProfileManagerCallback.class);
-        doReturn(true).when(mPhone).isUsingNewDataStack();
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
                 Telephony.Carriers.CONTENT_URI.getAuthority(), mApnSettingContentProvider);
 
