@@ -30,6 +30,7 @@ import android.telephony.Annotation.ValidationStatus;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnSetting.ApnType;
+import android.telephony.ims.feature.ImsFeature;
 
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -280,5 +281,20 @@ public class DataUtils {
      */
     public static @NonNull String systemTimeToString(@CurrentTimeMillisLong long systemTime) {
         return (systemTime != 0) ? TIME_FORMAT.format(systemTime) : "never";
+    }
+
+    /**
+     * Convert the IMS feature to string.
+     *
+     * @param imsFeature IMS feature.
+     * @return IMS feature in string format.
+     */
+    public static @NonNull String imsFeatureToString(@ImsFeature.FeatureType int imsFeature) {
+        switch (imsFeature) {
+            case ImsFeature.FEATURE_MMTEL: return "MMTEL";
+            case ImsFeature.FEATURE_RCS: return "RCS";
+            default:
+                return "Unknown(" + imsFeature + ")";
+        }
     }
 }
