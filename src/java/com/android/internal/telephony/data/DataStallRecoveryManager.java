@@ -18,7 +18,6 @@ package com.android.internal.telephony.data;
 
 import android.annotation.IntDef;
 import android.annotation.NonNull;
-import android.content.Context;
 import android.content.ContentResolver;
 import android.content.Intent;
 import android.net.ConnectivityManager;
@@ -26,12 +25,13 @@ import android.net.ConnectivityManager.NetworkCallback;
 import android.net.Network;
 import android.os.AsyncResult;
 import android.os.AsyncTask;
-import android.os.HandlerExecutor;
 import android.os.Handler;
+import android.os.HandlerExecutor;
 import android.os.Looper;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.provider.Settings;
+import android.telephony.Annotation.ValidationStatus;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
@@ -171,8 +171,8 @@ public class DataStallRecoveryManager extends Handler {
                 break;
             case EVENT_INTERNET_VALIDATION_STATUS_CHANGED:
                 AsyncResult ar = (AsyncResult) msg.obj;
-                Boolean isValid = (Boolean) ar.result;
-                onInternetValidationStatusChanged(isValid);
+                int validationStatus = (int) ar.result;
+                onInternetValidationStatusChanged(validationStatus);
                 break;
         }
     }
@@ -185,9 +185,9 @@ public class DataStallRecoveryManager extends Handler {
     /**
      * Called when internet validation status changed.
      *
-     * @param isValid {@code true} if internet validation succeeded.
+     * @param validationStatus Validation status.
      */
-    private void onInternetValidationStatusChanged(boolean isValid) {
+    private void onInternetValidationStatusChanged(@ValidationStatus int validationStatus) {
         // TODO: (b/178670629): Add the logic when Validation Status Changed.
 
     }
