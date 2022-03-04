@@ -353,8 +353,8 @@ public class DataServiceManager extends Handler {
         super(looper);
         mPhone = phone;
         mTransportType = transportType;
-        mTag = "DSM-" + (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN ? "C-" : "I-")
-                + mPhone.getPhoneId();
+        mTag = "DSMGR-" + (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN ? "C-"
+                : "I-") + mPhone.getPhoneId();
         mBound = false;
         mCarrierConfigManager = (CarrierConfigManager) phone.getContext().getSystemService(
                 Context.CARRIER_CONFIG_SERVICE);
