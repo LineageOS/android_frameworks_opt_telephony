@@ -120,7 +120,7 @@ import java.util.stream.Collectors;
  */
 public class SubscriptionController extends ISub.Stub {
     private static final String LOG_TAG = "SubscriptionController";
-    private static final boolean DBG = true;
+    private static final boolean DBG = false;
     private static final boolean VDBG = Rlog.isLoggable(LOG_TAG, Log.VERBOSE);
     private static final boolean DBG_CACHE = false;
     private static final int DEPRECATED_SETTING = -1;
@@ -889,6 +889,10 @@ public class SubscriptionController extends ISub.Stub {
                     if (DBG) {
                         logd("[getActiveSubscriptionInfoForSimSlotIndex]+ slotIndex="
                                 + slotIndex + " subId=" + si);
+                    } else {
+                        logd("[getActiveSubscriptionInfoForSimSlotIndex]+ slotIndex="
+                                + slotIndex + " subId=" + conditionallyRemoveIdentifiers(si, false,
+                                false));
                     }
                     return conditionallyRemoveIdentifiers(si, callingPackage, callingFeatureId,
                             "getActiveSubscriptionInfoForSimSlotIndex");
@@ -2839,16 +2843,21 @@ public class SubscriptionController extends ISub.Stub {
 
         TelecomManager telecomManager = mContext.getSystemService(TelecomManager.class);
         PhoneAccountHandle currentHandle = telecomManager.getUserSelectedOutgoingPhoneAccount();
+        logd("[setDefaultVoiceSubId] current phoneAccountHandle=" + currentHandle);
 
         if (!Objects.equals(currentHandle, newHandle)) {
             telecomManager.setUserSelectedOutgoingPhoneAccount(newHandle);
             logd("[setDefaultVoiceSubId] change to phoneAccountHandle=" + newHandle);
         } else {
-            logd("[setDefaultVoiceSubId] default phone account not changed");
+            logd("[setDefaultVoiceSubId] default phoneAccountHandle not changed.");
         }
 
         if (previousDefaultSub != getDefaultSubId()) {
             sendDefaultChangedBroadcast(getDefaultSubId());
+            logd(String.format("[setDefaultVoiceSubId] change to subId=%d", getDefaultSubId()));
+        } else {
+            logd(String.format("[setDefaultVoiceSubId] default subId not changed. subId=%d",
+                    previousDefaultSub));
         }
     }
 
