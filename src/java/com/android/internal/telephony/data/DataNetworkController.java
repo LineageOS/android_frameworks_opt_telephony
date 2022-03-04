@@ -29,12 +29,12 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.os.RegistrantList;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.NetCapability;
 import android.telephony.Annotation.NetworkType;
+import android.telephony.Annotation.ValidationStatus;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo.RegistrationState;
 import android.telephony.ServiceState;
@@ -95,26 +95,23 @@ public class DataNetworkController extends Handler {
     /** Re-evaluate all unsatisfied network requests. */
     private static final int EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS = 5;
 
-    /** Event for data stall action reestablish. */
-    private static final int EVENT_DATA_STALL_ACTION_REESTABLISH = 6;
-
     /** Event for packet switch restricted enabled by network. */
-    private static final int EVENT_PS_RESTRICT_ENABLED = 7;
+    private static final int EVENT_PS_RESTRICT_ENABLED = 6;
 
     /** Event for packet switch restricted disabled by network. */
-    private static final int EVENT_PS_RESTRICT_DISABLED = 8;
+    private static final int EVENT_PS_RESTRICT_DISABLED = 7;
 
     /** Event for data service binding changed. */
-    private static final int EVENT_DATA_SERVICE_BINDING_CHANGED = 9;
+    private static final int EVENT_DATA_SERVICE_BINDING_CHANGED = 8;
 
     /** Event for SIM state changed. */
-    private static final int EVENT_SIM_STATE_CHANGED = 10;
+    private static final int EVENT_SIM_STATE_CHANGED = 9;
 
     /** Event for data profile changed. */
-    private static final int EVENT_DATA_PROFILES_CHANGED = 11;
+    private static final int EVENT_DATA_PROFILES_CHANGED = 10;
 
     /** Event for data retry. */
-    private static final int EVENT_DATA_RETRY = 12;
+    private static final int EVENT_DATA_RETRY = 11;
 
     private final Phone mPhone;
     private final String mLogTag;
@@ -146,10 +143,10 @@ public class DataNetworkController extends Handler {
     private final @NonNull List<DataNetwork> mHistoricalDataNetworkList = new ArrayList<>();
 
     /**
-     * Registrant list for internet validation status changed.
+     * Data network controller callback. Used for listening events from data network controller.
      */
-    private final @NonNull RegistrantList mInternetValidationStatusRegistrants =
-            new RegistrantList();
+    private final @NonNull List<DataNetworkControllerCallback> mDataNetworkControllerCallbacks =
+            new ArrayList<>();
 
     /** Indicates if packet switch data is restricted by the network. */
     private boolean mPsRestricted = false;
@@ -294,6 +291,26 @@ public class DataNetworkController extends Handler {
     }
 
     /**
+     * The data network controller callback. Note this is only used for passing information
+     * internally in the data stack, should not be used externally.
+     */
+    interface DataNetworkControllerCallback {
+        /**
+         * Called when internet data network validation status changed.
+         *
+         * @param validationStatus The validation status.
+         */
+        default void onInternetDataNetworkValidationStatusChanged(
+                @ValidationStatus int validationStatus) {}
+
+        /** Called when internet data network is connected. */
+        default void onInternetDataNetworkConnected() {}
+
+        /** Called when internet data network is disconnected. */
+        default void onInternetDataNetworkDisconnected() {}
+    }
+
+    /**
      * Constructor
      *
      * @param phone The phone instance.
@@ -319,7 +336,8 @@ public class DataNetworkController extends Handler {
         mDataProfileManager = new DataProfileManager(mPhone, this, mDataServiceManagers
                 .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), looper);
         mDataStallRecoveryManager = new DataStallRecoveryManager(mPhone, this, mDataServiceManagers
-                .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), looper);
+                .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), looper,
+                () -> post(this::onDataStallReestablishInternet));
         mDataRetryManager = new DataRetryManager(mPhone, this, looper);
 
         registerAllEvents();
@@ -337,8 +355,6 @@ public class DataNetworkController extends Handler {
         mDataRetryManager.registerForDataRetryCallback(dataRetryEntry ->
                 sendMessage(obtainMessage(EVENT_DATA_RETRY, dataRetryEntry)));
         mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
-        mDataStallRecoveryManager.registerForDataStallReestablishEvent(this,
-                EVENT_DATA_STALL_ACTION_REESTABLISH);
         mDataProfileManager.registerForDataProfilesChanged(this, EVENT_DATA_PROFILES_CHANGED);
         mPhone.getServiceStateTracker().registerForPsRestrictedEnabled(this,
                 EVENT_PS_RESTRICT_ENABLED, null);
@@ -370,9 +386,6 @@ public class DataNetworkController extends Handler {
                 break;
             case EVENT_REMOVE_NETWORK_REQUEST:
                 onRemoveNetworkRequest((NetworkRequest) msg.obj);
-                break;
-            case EVENT_DATA_STALL_ACTION_REESTABLISH:
-                onDataStallActionReestablish();
                 break;
             case EVENT_PS_RESTRICT_ENABLED:
                 mPsRestricted = true;
@@ -872,7 +885,10 @@ public class DataNetworkController extends Handler {
      * @param dataNetwork The data network.
      */
     private void onDataNetworkConnected(@NonNull DataNetwork dataNetwork) {
-
+        if (dataNetwork.isInternet()) {
+            mDataNetworkControllerCallbacks.forEach(
+                    DataNetworkControllerCallback::onInternetDataNetworkConnected);
+        }
     }
 
     /**
@@ -892,15 +908,10 @@ public class DataNetworkController extends Handler {
         }
 
         // TODO: Add DataConfigManager.isRecoveryOnBadNetworkEnabled()
-
-        NetworkCapabilities nc = dataNetwork.getNetworkCapabilities();
-        if (nc != null
-                && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
-                && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_TRUSTED)
-                && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)) {
-            mInternetValidationStatusRegistrants.notifyResult(
-                    dataValidationResult.getValidationStatus());
+        if (dataNetwork.isInternet()) {
+            mDataNetworkControllerCallbacks.forEach(callback ->
+                    callback.onInternetDataNetworkValidationStatusChanged(
+                            dataValidationResult.getValidationStatus()));
         }
     }
 
@@ -925,6 +936,11 @@ public class DataNetworkController extends Handler {
             @DataFailureCause int cause) {
         // TODO: Should perform retry here.
 
+        if (dataNetwork.isInternet()) {
+            mDataNetworkControllerCallbacks.forEach(
+                    DataNetworkControllerCallback::onInternetDataNetworkDisconnected);
+        }
+
         mDataNetworkList.remove(dataNetwork);
     }
 
@@ -940,9 +956,11 @@ public class DataNetworkController extends Handler {
     }
 
     /**
-     * Handle data stall action reestablish event.
+     * Called when data stall occurs and needed to tear down / setup a new data network for
+     * internet. This event is from {@link DataStallRecoveryManager}.
      */
-    private void onDataStallActionReestablish() {
+    private void onDataStallReestablishInternet() {
+        log("onDataStallReestablishInternet");
     }
 
     /**
@@ -1037,13 +1055,25 @@ public class DataNetworkController extends Handler {
     }
 
     /**
-     * Register for internet data network validation status changed event.
+     * Register data network controller callback.
      *
-     * @param handler The handler to handle the event.
-     * @param what The event.
+     * @param callback The callback.
      */
-    public void registerForInternetValidationStatusChanged(@NonNull Handler handler, int what) {
-        mInternetValidationStatusRegistrants.addUnique(handler, what, null);
+    public void registerDataNetworkControllerCallback(
+            @NonNull DataNetworkControllerCallback callback) {
+        if (!mDataNetworkControllerCallbacks.contains(callback)) {
+            mDataNetworkControllerCallbacks.add(callback);
+        }
+    }
+
+    /**
+     * Unregister data network controller callback.
+     *
+     * @param callback The callback.
+     */
+    public void unregisterDataNetworkControllerCallback(
+            @NonNull DataNetworkControllerCallback callback) {
+        mDataNetworkControllerCallbacks.remove(callback);
     }
 
     /**
