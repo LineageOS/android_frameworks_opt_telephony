@@ -239,6 +239,15 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * @return {@code true} if PDN should persist when IWLAN data service restarted/crashed.
+     * {@code false} will cause all data networks on IWLAN torn down if IWLAN data service crashes.
+     */
+    public boolean shouldPersistIwlanDataNetworksWhenDataServiceRestarted() {
+        return mResources.getBoolean(com.android.internal.R.bool
+                .config_wlan_data_service_conn_persistence_on_restart);
+    }
+
+    /**
      * Registration point for subscription info ready
      *
      * @param h handler to notify
@@ -283,6 +292,7 @@ public class DataConfigManager extends Handler {
         IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         pw.println(DataConfigManager.class.getSimpleName() + "-" + mPhone.getPhoneId() + ":");
         pw.increaseIndent();
+        pw.println("isConfigCarrierSpecific=" + isConfigCarrierSpecific());
         pw.println("Network capability priority:");
         pw.increaseIndent();
         for (Map.Entry<Integer, Integer> entry : mNetworkCapabilityPriorityMap.entrySet()) {
@@ -297,6 +307,9 @@ public class DataConfigManager extends Handler {
             pw.println(rule);
         }
         pw.decreaseIndent();
+        pw.println("getImsDeregistrationDelay=" + getImsDeregistrationDelay());
+        pw.println("shouldPersistIwlanDataNetworksWhenDataServiceRestarted="
+                + shouldPersistIwlanDataNetworksWhenDataServiceRestarted());
         pw.decreaseIndent();
     }
 }

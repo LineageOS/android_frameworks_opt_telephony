@@ -21,7 +21,9 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.telephony.data.DataProfile;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -79,6 +81,13 @@ public class DataEvaluation {
             mDataAllowedReason = reason;
         }
         mEvaluatedTime = System.currentTimeMillis();
+    }
+
+    /**
+     * @return List of data disallowed reasons.
+     */
+    public @NonNull List<DataDisallowedReason> getDataDisallowedReasons() {
+        return new ArrayList<>(mDataDisallowedReasons);
     }
 
     /**
@@ -154,22 +163,20 @@ public class DataEvaluation {
         DATA_CONFIG_CHANGED,
         /** SIM is loaded. */
         SIM_LOADED,
+        /** SIM is removed. */
+        SIM_REMOVAL,
         /** Data profiles changed. */
         DATA_PROFILES_CHANGED,
-        /** Airplane mode off. */
-        AIRPLANE_MODE_OFF,
-        /** When data RAT changes, some unsatisfied network requests might fit with the new RAT. */
-        DATA_RAT_CHANGED,
-        /** When service state changes from out of service to in service. */
-        DATA_IN_SERVICE,
+        /** When service state changes.(For now only considering data RAT and data registration). */
+        DATA_SERVICE_STATE_CHANGED,
         /** When data is enabled (by user, carrier, thermal, etc...) */
         DATA_ENABLED,
         /** When data roaming is enabled. */
         ROAMING_ENABLED,
         /** When voice call ended (for concurrent voice/data not supported RAT). */
         VOICE_CALL_ENDED,
-        /** When network no longer restricts mobile data. */
-        DATA_RESTRICTED_LIFTED,
+        /** When network restricts or no longer restricts mobile data. */
+        DATA_RESTRICTED_CHANGED,
         /** Network capabilities changed. The unsatisfied requests might have chances to attach. */
         DATA_NETWORK_CAPABILITIES_CHANGED,
     }
@@ -200,12 +207,14 @@ public class DataEvaluation {
         DATA_RESTRICTED_BY_NETWORK(true),
         /** Radio power is off (i.e. airplane mode on) */
         RADIO_POWER_OFF(true),
-        /** Data disabled by telephony in some scenarios, for example, emergency call. */
-        INTERNAL_DATA_DISABLED(true),
         /** Airplane mode is forcibly turned on by the carrier. */
         RADIO_DISABLED_BY_CARRIER(true),
         /** Underlying data service is not bound. */
-        DATA_SERVICE_NOT_READY(true);
+        DATA_SERVICE_NOT_READY(true),
+        /** Unable to find a suitable data profile. */
+        NO_SUITABLE_DATA_PROFILE(true),
+        /** Current data network type not allowed. */
+        DATA_NETWORK_TYPE_NOT_ALLOWED(true);
 
         private final boolean mIsHardReason;
 
