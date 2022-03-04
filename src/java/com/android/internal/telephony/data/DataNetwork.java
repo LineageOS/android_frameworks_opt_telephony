@@ -173,6 +173,13 @@ public class DataNetwork extends StateMachine {
                     TEAR_DOWN_REASON_SIM_REMOVAL,
                     TEAR_DOWN_REASON_AIRPLANE_MODE_ON,
                     TEAR_DOWN_REASON_DATA_DISABLED,
+                    TEAR_DOWN_REASON_NO_LIVE_REQUEST,
+                    TEAR_DOWN_REASON_RAT_NOT_ALLOWED,
+                    TEAR_DOWN_REASON_ROAMING_DISABLED,
+                    TEAR_DOWN_REASON_CONCURRENT_VOICE_DATA_NOT_ALLOWED,
+                    TEAR_DOWN_REASON_DATA_RESTRICTED_BY_NETWORK,
+                    TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY,
+                    TEAR_DOWN_REASON_POWER_OFF_BY_CARRIER,
             })
     public @interface TearDownReason {}
 
@@ -190,6 +197,24 @@ public class DataNetwork extends StateMachine {
 
     /** Data network tear down due to no live network request. */
     public static final int TEAR_DOWN_REASON_NO_LIVE_REQUEST = 5;
+
+    /** Data network tear down due to current RAT is not allowed by the data profile. */
+    public static final int TEAR_DOWN_REASON_RAT_NOT_ALLOWED = 6;
+
+    /** Data network tear down due to data roaming not enabled. */
+    public static final int TEAR_DOWN_REASON_ROAMING_DISABLED = 7;
+
+    /** Data network tear down due to concurrent voice/data not allowed. */
+    public static final int TEAR_DOWN_REASON_CONCURRENT_VOICE_DATA_NOT_ALLOWED = 8;
+
+    /** Data network tear down due to network restricted. */
+    public static final int TEAR_DOWN_REASON_DATA_RESTRICTED_BY_NETWORK = 9;
+
+    /** Data network tear down due to data service unbound. */
+    public static final int TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY = 10;
+
+    /** Data network tear down due to radio turned off by the carrier. */
+    public static final int TEAR_DOWN_REASON_POWER_OFF_BY_CARRIER = 11;
 
     /** The phone instance. */
     private final @NonNull Phone mPhone;
@@ -467,7 +492,12 @@ public class DataNetwork extends StateMachine {
         addState(mDisconnectedState, mDefaultState);
         setInitialState(mConnectingState);
 
+        /**
+         * This will trigger {@link DefaultState#enter()}, and then {@link ConnectingState#enter()}.
+         * Check {@link StateMachine} class to see how Android state machine works.
+         */
         start();
+        // Do not add more stuffs here.
     }
 
     /**
@@ -519,6 +549,11 @@ public class DataNetwork extends StateMachine {
                     AccessNetworkConstants.TRANSPORT_TYPE_WWAN, getHandler(),
                     EVENT_SERVICE_STATE_CHANGED,
                     AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+
+            // Only add symmetric code here, for example, registering and unregistering.
+            // DefaultState.enter() is the starting point in the life cycle of the DataNetwork,
+            // and DefaultState.exit() is the end. For non-symmetric initializing works, put them
+            // in ConnectingState.enter().
         }
 
         @Override
@@ -1450,7 +1485,7 @@ public class DataNetwork extends StateMachine {
     /**
      * @return {@code true} if in connecting state.
      */
-    private boolean isConnecting() {
+    public boolean isConnecting() {
         return getCurrentState() == mConnectingState;
     }
 
@@ -1471,7 +1506,7 @@ public class DataNetwork extends StateMachine {
     /**
      * @return {@code true} if in disconnected state.
      */
-    private boolean isDisconnected() {
+    public boolean isDisconnected() {
         return getCurrentState() == mDisconnectedState;
     }
 
@@ -1487,6 +1522,13 @@ public class DataNetwork extends StateMachine {
      */
     public boolean isSuspended() {
         return getState() == TelephonyManager.DATA_SUSPENDED;
+    }
+
+    /**
+     * @return The current transport of the data network.
+     */
+    public @TransportType int getTransport() {
+        return mTransport;
     }
 
     private @DataState int getState() {
@@ -1572,6 +1614,18 @@ public class DataNetwork extends StateMachine {
                 return "DATA_DISABLED";
             case TEAR_DOWN_REASON_NO_LIVE_REQUEST:
                 return "TEAR_DOWN_REASON_NO_LIVE_REQUEST";
+            case TEAR_DOWN_REASON_RAT_NOT_ALLOWED:
+                return "TEAR_DOWN_REASON_RAT_NOT_ALLOWED";
+            case TEAR_DOWN_REASON_ROAMING_DISABLED:
+                return "TEAR_DOWN_REASON_ROAMING_DISABLED";
+            case TEAR_DOWN_REASON_CONCURRENT_VOICE_DATA_NOT_ALLOWED:
+                return "TEAR_DOWN_REASON_CONCURRENT_VOICE_DATA_NOT_ALLOWED";
+            case TEAR_DOWN_REASON_DATA_RESTRICTED_BY_NETWORK:
+                return "TEAR_DOWN_REASON_DATA_RESTRICTED_BY_NETWORK";
+            case TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY:
+                return "TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY";
+            case TEAR_DOWN_REASON_POWER_OFF_BY_CARRIER:
+                return "TEAR_DOWN_REASON_POWER_OFF_BY_CARRIER";
             default:
                 return "UNKNOWN(" + reason + ")";
         }
