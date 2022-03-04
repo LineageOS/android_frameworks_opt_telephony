@@ -41,13 +41,11 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyManager.SimState;
-import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
-import android.util.Log;
 import android.util.SparseArray;
 import android.util.SparseBooleanArray;
 
@@ -60,6 +58,7 @@ import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataEvaluation.DataDisallowedReason;
 import com.android.internal.telephony.data.DataEvaluation.DataEvaluationReason;
 import com.android.internal.telephony.data.DataNetwork.DataValidationResult;
+import com.android.internal.telephony.data.DataRetryManager.DataRetryEntry;
 import com.android.internal.telephony.dataconnection.AccessNetworksManager;
 import com.android.telephony.Rlog;
 
@@ -79,7 +78,7 @@ import java.util.stream.Collectors;
  * create and manage all the mobile data networks.
  */
 public class DataNetworkController extends Handler {
-    private final boolean VDBG;
+    private static final boolean VDBG = false;
 
     /** Event for data config updated. */
     private static final int EVENT_DATA_CONFIG_UPDATED = 1;
@@ -114,6 +113,9 @@ public class DataNetworkController extends Handler {
     /** Event for data profile changed. */
     private static final int EVENT_DATA_PROFILES_CHANGED = 11;
 
+    /** Event for data retry. */
+    private static final int EVENT_DATA_RETRY = 12;
+
     private final Phone mPhone;
     private final String mLogTag;
     private final LocalLog mLocalLog = new LocalLog(128);
@@ -123,13 +125,14 @@ public class DataNetworkController extends Handler {
     private final @NonNull DataProfileManager mDataProfileManager;
     private final @NonNull DataStallRecoveryManager mDataStallRecoveryManager;
     private final @NonNull AccessNetworksManager mAccessNetworksManager;
+    private final @NonNull DataRetryManager mDataRetryManager;
     private final @NonNull SparseArray<DataServiceManager> mDataServiceManagers =
             new SparseArray<>();
 
     /**
      * The list of all network requests.
      */
-    private final @NonNull NetworkRequestList mNetworkRequestList = new NetworkRequestList();
+    private final @NonNull NetworkRequestList mAllNetworkRequestList = new NetworkRequestList();
 
     /**
      * The current data network list, including the ones that are connected, connecting, or
@@ -193,6 +196,15 @@ public class DataNetworkController extends Handler {
         }
 
         /**
+         * Copy constructor
+         *
+         * @param requestList The network request list.
+         */
+        public NetworkRequestList(NetworkRequestList requestList) {
+            this.addAll(requestList);
+        }
+
+        /**
          * Constructor
          *
          * @param newRequest The initial request of the list.
@@ -201,6 +213,7 @@ public class DataNetworkController extends Handler {
             this();
             add(newRequest);
         }
+
         /**
          * Add the network request to the list. Note that the item will be inserted to the position
          * based on the priority.
@@ -261,6 +274,11 @@ public class DataNetworkController extends Handler {
             return null;
         }
 
+        @Override
+        public String toString() {
+            return "[NetworkRequestList: size=" + size() + ", leading by " + get(0) + "]";
+        }
+
         /**
          * Dump the network request list.
          *
@@ -286,7 +304,6 @@ public class DataNetworkController extends Handler {
         super(looper);
         mPhone = phone;
         mLogTag = "DNC-" + mPhone.getPhoneId();
-        VDBG = Rlog.isLoggable(mLogTag, Log.VERBOSE);
         log("DataNetworkController created.");
 
         mAccessNetworksManager = phone.getAccessNetworksManager();
@@ -303,6 +320,7 @@ public class DataNetworkController extends Handler {
                 .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), looper);
         mDataStallRecoveryManager = new DataStallRecoveryManager(mPhone, this, mDataServiceManagers
                 .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), looper);
+        mDataRetryManager = new DataRetryManager(mPhone, this, looper);
 
         registerAllEvents();
     }
@@ -316,6 +334,8 @@ public class DataNetworkController extends Handler {
         filter.addAction(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
         mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
 
+        mDataRetryManager.registerForDataRetryCallback(dataRetryEntry ->
+                sendMessage(obtainMessage(EVENT_DATA_RETRY, dataRetryEntry)));
         mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
         mDataStallRecoveryManager.registerForDataStallReestablishEvent(this,
                 EVENT_DATA_STALL_ACTION_REESTABLISH);
@@ -376,6 +396,10 @@ public class DataNetworkController extends Handler {
                 sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
                         DataEvaluationReason.DATA_PROFILES_CHANGED));
                 break;
+            case EVENT_DATA_RETRY:
+                DataRetryEntry dataRetryEntry = (DataRetryEntry) msg.obj;
+                setupDataNetwork(dataRetryEntry.dataProfile, null, dataRetryEntry);
+                break;
             default:
                 loge("Unexpected event " + msg.what);
         }
@@ -401,7 +425,7 @@ public class DataNetworkController extends Handler {
      * @param networkRequest The network request.
      */
     private void onAddNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
-        if (!mNetworkRequestList.add(networkRequest)) {
+        if (!mAllNetworkRequestList.add(networkRequest)) {
             loge("onAddNetworkRequest: Duplicate network request. " + networkRequest);
             return;
         }
@@ -437,7 +461,7 @@ public class DataNetworkController extends Handler {
         if (evaluation.isDataAllowed()) {
             DataProfile dataProfile = evaluation.getCandidateDataProfile();
             if (dataProfile != null) {
-                setupDataNetwork(dataProfile, new NetworkRequestList(networkRequest));
+                setupDataNetwork(dataProfile, new NetworkRequestList(networkRequest), null);
             }
         }
     }
@@ -516,33 +540,6 @@ public class DataNetworkController extends Handler {
     }
 
     /**
-     * Get the preferred transport type for the network request. If this network request is used
-     * to setup the data network, it will be setup on the preferred transport.
-     *
-     * @param networkRequest The network request.
-     * @return The preferred transport type.
-     */
-    public @TransportType int getPreferredTransportTypeForNetworkRequest(
-            @NonNull TelephonyNetworkRequest networkRequest) {
-        int highestPriority = 0;
-        int highestPriorityApnType = ApnSetting.TYPE_NONE;
-        // A network request might contain several APN-type capabilities. Extract the APN type that
-        // which has the highest priority.
-        for (int capability : networkRequest.getCapabilities()) {
-            int apnType = DataUtils.networkCapabilityToApnType(capability);
-            if (apnType != ApnSetting.TYPE_NONE) {
-                int priority = mDataConfigManager.getNetworkCapabilityPriority(capability);
-                if (priority > highestPriority) {
-                    highestPriority = priority;
-                    highestPriorityApnType = apnType;
-                }
-            }
-        }
-
-        return mAccessNetworksManager.getPreferredTransport(highestPriorityApnType);
-    }
-
-    /**
      * Evaluate a network request. The goal is to find a suitable {@link DataProfile} that can be
      * used to setup the data network.
      *
@@ -562,7 +559,8 @@ public class DataNetworkController extends Handler {
             return evaluation;
         }
 
-        int transport = getPreferredTransportTypeForNetworkRequest(networkRequest);
+        int transport = mAccessNetworksManager.getPreferredTransportByNetworkCapability(
+                networkRequest.getHighestPriorityNetworkCapability());
         int regState = getDataRegistrationState(transport);
         if (shouldCheckRegistrationState()
                 && regState != NetworkRegistrationInfo.REGISTRATION_STATE_HOME
@@ -648,7 +646,7 @@ public class DataNetworkController extends Handler {
         // First, try to group similar network request together.
         Map<Set<Integer>, NetworkRequestList> requestsMap = new ArrayMap<>();
         int count = 0;
-        for (TelephonyNetworkRequest networkRequest : mNetworkRequestList) {
+        for (TelephonyNetworkRequest networkRequest : mAllNetworkRequestList) {
             if (networkRequest.getState() == TelephonyNetworkRequest.REQUEST_STATE_UNSATISFIED) {
                 Set<Integer> key = Arrays.stream(networkRequest.getCapabilities()).boxed()
                         .collect(Collectors.toSet());
@@ -663,7 +661,10 @@ public class DataNetworkController extends Handler {
         }
 
         log("Re-evaluating " + count + " unsatisfied network requests in " + requestsMap.size()
-                + " groups.");
+                + " groups, " + requestsMap.keySet().stream()
+                .map(capsSet -> DataUtils.networkCapabilitiesToString(
+                        capsSet.stream().mapToInt(Number::intValue).toArray()))
+                .collect(Collectors.joining(",")));
 
         // Second, see if any existing network can satisfy those network requests.
         for (NetworkRequestList requestList : requestsMap.values()) {
@@ -678,7 +679,7 @@ public class DataNetworkController extends Handler {
             if (evaluation.isDataAllowed()) {
                 DataProfile dataProfile = evaluation.getCandidateDataProfile();
                 if (dataProfile != null) {
-                    setupDataNetwork(dataProfile, requestList);
+                    setupDataNetwork(dataProfile, requestList, null);
                 }
             }
         }
@@ -702,7 +703,7 @@ public class DataNetworkController extends Handler {
         // TODO: TelephonyNetworkRequest should be used after DcTracker and other legacy data stacks
         //  are removed.
         // temp solution: find the original telephony network request.
-        TelephonyNetworkRequest networkRequest = mNetworkRequestList.stream()
+        TelephonyNetworkRequest networkRequest = mAllNetworkRequestList.stream()
                 .filter(nr -> nr.getNativeNetworkRequest().equals(request))
                 .findFirst()
                 .orElse(null);
@@ -710,7 +711,7 @@ public class DataNetworkController extends Handler {
             return;
         }
 
-        if (!mNetworkRequestList.remove(networkRequest)) {
+        if (!mAllNetworkRequestList.remove(networkRequest)) {
             loge("onRemoveNetworkRequest: Network request does not exist. " + networkRequest);
             return;
         }
@@ -739,7 +740,7 @@ public class DataNetworkController extends Handler {
      * Update each network request's priority.
      */
     private void updateNetworkRequestsPriority() {
-        for (TelephonyNetworkRequest networkRequest : mNetworkRequestList) {
+        for (TelephonyNetworkRequest networkRequest : mAllNetworkRequestList) {
             networkRequest.updatePriority();
         }
     }
@@ -748,10 +749,15 @@ public class DataNetworkController extends Handler {
      * Setup data network.
      *
      * @param dataProfile The data profile to setup the data network.
-     * @param networkRequestList The network requests associated with the data network.
+     * @param networkRequestList The network requests associated with the data network. {@code null}
+     * indicates that all unsatisfied network requests that can be satisfied by the data profile
+     * will be used to attach to the created network.
+     * @param dataRetryEntry Data retry entry. {@code null} if this data network setup is not
+     * initiated by a data retry.
      */
     private void setupDataNetwork(@NonNull DataProfile dataProfile,
-            @NonNull NetworkRequestList networkRequestList) {
+            @Nullable NetworkRequestList networkRequestList,
+            @Nullable DataRetryEntry dataRetryEntry) {
         log("onSetupDataNetwork: dataProfile=" + dataProfile);
         for (DataNetwork dataNetwork : mDataNetworkList) {
             if (dataNetwork.getDataProfile().equals(dataProfile)) {
@@ -761,22 +767,46 @@ public class DataNetworkController extends Handler {
             }
         }
 
+        // If the provided network request list is empty, then find all unsatisfied network requests
+        // that can be satisfied by this data profile.
+        if (networkRequestList == null || networkRequestList.isEmpty()) {
+            networkRequestList = new NetworkRequestList();
+            networkRequestList.addAll(mAllNetworkRequestList.stream()
+                    .filter(request -> request.getState()
+                            == TelephonyNetworkRequest.REQUEST_STATE_UNSATISFIED)
+                    .filter(request -> dataProfile.canSatisfy(request.getCapabilities()))
+                    .collect(Collectors.toList()));
+        }
+
+        if (networkRequestList.isEmpty()) {
+            log("Can't find any unsatisfied network requests that can be satisfied by this data "
+                    + "profile.");
+            return;
+        }
+
         logl("Creating data network with " + dataProfile + ", and attaching "
                 + networkRequestList.size() + " network requests to it.");
-        DataNetwork network = new DataNetwork(mPhone, getLooper(), mDataServiceManagers,
+        mDataNetworkList.add(new DataNetwork(mPhone, getLooper(), mDataServiceManagers,
                 dataProfile, networkRequestList, new DataNetwork.DataNetworkCallback() {
                     @Override
                     public void onSetupDataFailed(@NonNull DataNetwork dataNetwork,
-                            @DataFailureCause int cause, long retryDurationMillis) {
+                            @NonNull NetworkRequestList requestList, @DataFailureCause int cause,
+                            long retryDurationMillis) {
                         post(() -> {
+                            if (dataRetryEntry != null) {
+                                dataRetryEntry.setState(DataRetryEntry.RETRY_STATE_FAILED);
+                            }
                             DataNetworkController.this.onDataNetworkSetupDataFailed(
-                                    dataNetwork, cause, retryDurationMillis);
+                                    dataNetwork, requestList, cause, retryDurationMillis);
                         });
                     }
 
                     @Override
                     public void onConnected(@NonNull DataNetwork dataNetwork) {
                         post(() -> {
+                            if (dataRetryEntry != null) {
+                                dataRetryEntry.setState(DataRetryEntry.RETRY_STATE_SUCCEEDED);
+                            }
                             DataNetworkController.this.onDataNetworkConnected(dataNetwork);
                         });
                     }
@@ -816,20 +846,24 @@ public class DataNetworkController extends Handler {
                                     dataNetwork, cause);
                         });
                     }
-                });
-        mDataNetworkList.add(network);
+                }));
     }
 
     /**
      * Called when setup data network failed.
      *
      * @param dataNetwork The data network.
+     * @param requestList The network requests attached to the data network.
+     * @param cause The fail cause
+     * @param retryDurationMillis The retry timer suggested by the network/data service.
      */
     private void onDataNetworkSetupDataFailed(@NonNull DataNetwork dataNetwork,
-            @DataFailureCause int cause, long retryDurationMillis) {
-        // TODO: Should perform retry here.
-
+            @NonNull NetworkRequestList requestList, @DataFailureCause int cause,
+            long retryDurationMillis) {
         mDataNetworkList.remove(dataNetwork);
+        // Data retry manager will determine if retry is needed. If needed, retry will be scheduled.
+        mDataRetryManager.evaluateDataRetry(dataNetwork.getDataProfile(), requestList, cause,
+                retryDurationMillis);
     }
 
     /**
@@ -955,11 +989,19 @@ public class DataNetworkController extends Handler {
             }
         }
     }
+
     /**
      * @return Data config manager instance.
      */
     public @NonNull DataConfigManager getDataConfigManager() {
         return mDataConfigManager;
+    }
+
+    /**
+     * @return Data profile manager instance.
+     */
+    public @NonNull DataProfileManager getDataProfileManager() {
+        return mDataProfileManager;
     }
 
     /**
@@ -1066,7 +1108,7 @@ public class DataNetworkController extends Handler {
 
         pw.println("All telephony network requests:");
         pw.increaseIndent();
-        for (TelephonyNetworkRequest networkRequest : mNetworkRequestList) {
+        for (TelephonyNetworkRequest networkRequest : mAllNetworkRequestList) {
             pw.println(networkRequest);
         }
         pw.decreaseIndent();

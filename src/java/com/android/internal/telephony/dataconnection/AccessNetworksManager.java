@@ -37,6 +37,7 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.ApnType;
+import android.telephony.Annotation.NetCapability;
 import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.data.ApnSetting;
@@ -51,6 +52,7 @@ import android.util.SparseArray;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RIL;
+import com.android.internal.telephony.data.DataUtils;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -605,6 +607,24 @@ public class AccessNetworksManager extends Handler {
 
         return mPreferredTransports.get(apnType) == null
                 ? AccessNetworkConstants.TRANSPORT_TYPE_WWAN : mPreferredTransports.get(apnType);
+    }
+
+    /**
+     * Get the  preferred transport by network capability.
+     *
+     * @param networkCapability The network capability. (Note that only APN-type capabilities are
+     * supported.
+     * @return The preferred transport.
+     */
+    public @TransportType int getPreferredTransportByNetworkCapability(
+            @NetCapability int networkCapability) {
+        int apnType = DataUtils.networkCapabilityToApnType(networkCapability);
+        if (apnType == ApnSetting.TYPE_NONE) {
+            // The network capability can't be converted to APN type.
+            throw new IllegalArgumentException("Illegal network capability "
+                    + DataUtils.networkCapabilityToString(networkCapability) + " provided.");
+        }
+        return getPreferredTransport(apnType);
     }
 
     /**
