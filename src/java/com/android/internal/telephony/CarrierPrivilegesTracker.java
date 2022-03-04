@@ -46,10 +46,12 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
+import android.os.Process;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.UserHandle;
 import android.os.UserManager;
+import android.service.carrier.CarrierService;
 import android.telephony.Annotation.CarrierPrivilegeStatus;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
@@ -802,6 +804,25 @@ public class CarrierPrivilegesTracker extends Handler {
         } finally {
             mPrivilegedPackageInfoLock.readLock().unlock();
         }
+    }
+
+    /**
+     * @return The UID of carrier service package. {@link Process#INVALID_UID} if not found.
+     */
+    public int getCarrierServicePackageUid() {
+        Intent intent = new Intent(CarrierService.CARRIER_SERVICE_INTERFACE);
+        List<String> carrierPackageNames = getCarrierPackageNamesForIntent(intent);
+        if (!carrierPackageNames.isEmpty()) {
+            List<Integer> uids = new ArrayList<>(getUidsForPackage(carrierPackageNames.get(0),
+                    /* invalidateCache= */ false));
+            if (uids.isEmpty()) return Process.INVALID_UID;
+            if (uids.size() > 1) {
+                Rlog.w(TAG, "getCarrierServicePackageUid: more than one uid for carrier "
+                        + "service package.");
+            }
+            return uids.get(0);
+        }
+        return Process.INVALID_UID;
     }
 
     /**
