@@ -71,15 +71,6 @@ public class DataStallRecoveryManager extends Handler {
     /** Event for data config updated. */
     private static final int EVENT_DATA_CONFIG_UPDATED = 1;
 
-    /** Event for internet validation status changed. */
-    private static final int EVENT_INTERNET_VALIDATION_STATUS_CHANGED = 2;
-
-    /** Event for internet data network connected. */
-    private static final int EVENT_INTERNET_CONNECTED = 3;
-
-    /** Event for internet data network disconnected. */
-    private static final int EVENT_INTERNET_DISCONNECTED = 4;
-
     private final @NonNull Phone mPhone;
     private final @NonNull String mLogTag;
     private final @NonNull LocalLog mLocalLog = new LocalLog(128);
@@ -155,22 +146,22 @@ public class DataStallRecoveryManager extends Handler {
     private void registerAllEvents() {
         mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
         mDataNetworkController.registerDataNetworkControllerCallback(
+                this::post,
                 new DataNetworkControllerCallback() {
                     @Override
                     public void onInternetDataNetworkValidationStatusChanged(
                             @ValidationStatus int validationStatus) {
-                        sendMessage(obtainMessage(EVENT_INTERNET_VALIDATION_STATUS_CHANGED,
-                                validationStatus, 0));
+                        onInternetValidationStatusChanged(validationStatus);
                     }
 
                     @Override
                     public void onInternetDataNetworkConnected() {
-                        sendEmptyMessage(EVENT_INTERNET_CONNECTED);
+                        // onInternetDataNetworkConnected();
                     }
 
                     @Override
                     public void onInternetDataNetworkDisconnected() {
-                        sendEmptyMessage(EVENT_INTERNET_DISCONNECTED);
+                        // onInternetDataNetworkDisconnected();
                     }
                 }, false);
         mTelephonyManager.registerTelephonyCallback(
@@ -205,15 +196,6 @@ public class DataStallRecoveryManager extends Handler {
         switch (msg.what) {
             case EVENT_DATA_CONFIG_UPDATED:
                 onDataConfigUpdated();
-                break;
-            case EVENT_INTERNET_VALIDATION_STATUS_CHANGED:
-                onInternetValidationStatusChanged(msg.arg1);
-                break;
-            case EVENT_INTERNET_CONNECTED:
-                // handle internet connected event.
-                break;
-            case EVENT_INTERNET_DISCONNECTED:
-                // handle internet disconnected event.
                 break;
             default:
                 loge("Unexpected message " + msg);

@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.data;
 
+import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.BroadcastReceiver;
@@ -55,6 +56,7 @@ import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.feature.ImsFeature;
 import android.text.TextUtils;
 import android.util.ArrayMap;
+import android.util.ArraySet;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 import android.util.SparseArray;
@@ -87,6 +89,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -394,40 +397,53 @@ public class DataNetworkController extends Handler {
      * internally in the data stack, should not be used externally.
      */
     public static class DataNetworkControllerCallback {
+        /** The executor of the callback. */
+        private Executor mExecutor;
+
         /**
-         * indicates the callback is automatically unregistered after first invocation. This is
+         * Indicates the callback is automatically unregistered after first invocation. This is
          * useful for the clients which only want to get the result once.
+         */
+        private boolean mAutoUnregisterEnabled = false;
+
+        /**
+         * Indicates callback auto unregister should be skipped this time. This
+         * is internally used by {@link DataNetworkControllerCallbackList}.
          */
         private boolean mSkipAutoUnregisterThisTime = false;
 
         /**
-         * Called when internet data network validation status changed.
+         * Set the executor of the callback.
          *
-         * @param validationStatus The validation status.
+         * @param executor The executor
+         * @param enableAutoUnregister {@code true} if this callback should be unregistered
+         * automatically after invoked the overridden callback method.
          */
-        public void onInternetDataNetworkValidationStatusChanged(
-                @ValidationStatus int validationStatus) {
-            mSkipAutoUnregisterThisTime = true;
-        }
-
-        /** Called when internet data network is connected. */
-        public void onInternetDataNetworkConnected() {
-            mSkipAutoUnregisterThisTime = true;
-        }
-
-        /** Called when internet data network is disconnected. */
-        public void onInternetDataNetworkDisconnected() {
-            mSkipAutoUnregisterThisTime = true;
-        }
-
-        /** Called when all data networks are disconnected. */
-        public void onAllDataNetworksDisconnected() {
-            mSkipAutoUnregisterThisTime = true;
+        final void init(@NonNull @CallbackExecutor Executor executor,
+                boolean enableAutoUnregister) {
+            Objects.requireNonNull(executor);
+            mExecutor = executor;
+            mAutoUnregisterEnabled = enableAutoUnregister;
         }
 
         /**
-         * @return {@code true} indicates the callback is automatically unregistered after first
-         * invocation. This is useful for the clients which only want to get the result once.
+         * @return The executor of the callback.
+         */
+        final Executor getExecutor() {
+            return mExecutor;
+        }
+
+        /**
+         * @return {@code true} if this callback should be unregistered automatically after invoked
+         * the overridden callback method.
+         */
+        final boolean isAutoUnregisterEnabled() {
+            return mAutoUnregisterEnabled;
+        }
+
+        /**
+         * @return {@code true} if the callback auto unregister should be skipped this time. This
+         * is internally used by {@link DataNetworkControllerCallbackList}.
          */
         final boolean shouldSkipAutoUnregister() {
             return mSkipAutoUnregisterThisTime;
@@ -442,6 +458,34 @@ public class DataNetworkController extends Handler {
         final void setSkipAutoUnregister(boolean skip) {
             mSkipAutoUnregisterThisTime = skip;
         }
+
+        /**
+         * Called when internet data network validation status changed.
+         *
+         * @param validationStatus The validation status.
+         */
+        public void onInternetDataNetworkValidationStatusChanged(
+                @ValidationStatus int validationStatus) {
+            mSkipAutoUnregisterThisTime = true;
+        }
+
+        /** Called when internet data network is connected. */
+        public void onInternetDataNetworkConnected() {
+            // Never remove this line.
+            mSkipAutoUnregisterThisTime = true;
+        }
+
+        /** Called when internet data network is disconnected. */
+        public void onInternetDataNetworkDisconnected() {
+            // Never remove this line.
+            mSkipAutoUnregisterThisTime = true;
+        }
+
+        /** Called when all data networks are disconnected. */
+        public void onAllDataNetworksDisconnected() {
+            // Never remove this line.
+            mSkipAutoUnregisterThisTime = true;
+        }
     }
 
     /**
@@ -449,24 +493,17 @@ public class DataNetworkController extends Handler {
      */
     @VisibleForTesting
     public class DataNetworkControllerCallbackList {
-        /**
-         * Callbacks map. The key is the callback, value indicates this callback should be
-         * auto-unregistered or not.
-         */
-        private final @NonNull Map<DataNetworkControllerCallback, Boolean> mCallbacks =
-                new ArrayMap<>();
+        /** Callbacks set. */
+        private final @NonNull Set<DataNetworkControllerCallback> mCallbacks = new ArraySet<>();
 
         /**
          * Register the callback.
          *
          * @param callback The callback.
-         * @param autoUnregister {@code true} means the callback will be auto unregistered once the
-         * callback is called once.
          */
-        public void registerCallback(@NonNull DataNetworkControllerCallback callback,
-                boolean autoUnregister) {
-            Objects.requireNonNull(callback);
-            mCallbacks.put(callback, autoUnregister);
+        public void registerCallback(@NonNull DataNetworkControllerCallback callback) {
+            logv("registerCallback: " + callback);
+            mCallbacks.add(Objects.requireNonNull(callback));
 
             if (mDataNetworkList.isEmpty()) {
                 notifyListeners(DataNetworkControllerCallback::onAllDataNetworksDisconnected);
@@ -479,6 +516,7 @@ public class DataNetworkController extends Handler {
          * @param callback The callback.
          */
         public void unregisterCallback(@NonNull DataNetworkControllerCallback callback) {
+            logv("unregisterCallback: " + callback);
             mCallbacks.remove(callback);
         }
 
@@ -488,16 +526,12 @@ public class DataNetworkController extends Handler {
          * @param callbackConsumer The consumer which contains the actual callback method.
          */
         public void notifyListeners(Consumer<DataNetworkControllerCallback> callbackConsumer) {
-            Iterator<Map.Entry<DataNetworkControllerCallback, Boolean>> it =
-                    mCallbacks.entrySet().iterator();
+            Iterator<DataNetworkControllerCallback> it = mCallbacks.iterator();
             while (it.hasNext()) {
-                Map.Entry<DataNetworkControllerCallback, Boolean> callbackEntry = it.next();
-
-                DataNetworkControllerCallback callback = callbackEntry.getKey();
+                DataNetworkControllerCallback callback = it.next();
                 callback.setSkipAutoUnregister(false);
                 // Invoke the actual callback passed in consumer.
-                callbackConsumer.accept(callback);
-
+                callback.getExecutor().execute(() -> callbackConsumer.accept(callback));
                 // The client might not override this method, we should skip auto unregister in
                 // this case.
                 if (callback.shouldSkipAutoUnregister()) {
@@ -507,8 +541,7 @@ public class DataNetworkController extends Handler {
 
                 // If the callback was registered as an auto-unregistered callback, unregister now
                 // since the callback has been invoked.
-                boolean isAutoUnregisterCallback = callbackEntry.getValue();
-                if (isAutoUnregisterCallback) {
+                if (callback.isAutoUnregisterEnabled()) {
                     logv("Callback " + callback + " automatically removed.");
                     it.remove();
                 }
@@ -633,7 +666,7 @@ public class DataNetworkController extends Handler {
                 break;
             case EVENT_REGISTER_DATA_NETWORK_CONTROLLER_CALLBACK:
                 mDataNetworkControllerCallbacks
-                        .registerCallback((DataNetworkControllerCallback) msg.obj, msg.arg1 == 1);
+                        .registerCallback((DataNetworkControllerCallback) msg.obj);
                 break;
             case EVENT_UNREGISTER_DATA_NETWORK_CONTROLLER_CALLBACK:
                 mDataNetworkControllerCallbacks.unregisterCallback(
@@ -1517,14 +1550,25 @@ public class DataNetworkController extends Handler {
     /**
      * Register data network controller callback.
      *
+     * @param executor The executor of the callback.
      * @param callback The callback.
-     * @oaram autoUnregister {@code true} Indicates that once the callback is called, unregister
-     * the callback automatically.
+     * @param autoUnregister {@code true} if this callback should be unregistered automatically
+     * after invoked the overridden callback method.
      */
-    public void registerDataNetworkControllerCallback(
+    public void registerDataNetworkControllerCallback(@NonNull @CallbackExecutor Executor executor,
             @NonNull DataNetworkControllerCallback callback, boolean autoUnregister) {
-        sendMessage(obtainMessage(EVENT_REGISTER_DATA_NETWORK_CONTROLLER_CALLBACK,
-                (autoUnregister ? 1 : 0), 0, callback));
+        callback.init(executor, autoUnregister);
+        sendMessage(obtainMessage(EVENT_REGISTER_DATA_NETWORK_CONTROLLER_CALLBACK, callback));
+    }
+
+    /**
+     * Unregister data network controller callback.
+     *
+     * @param callback The callback.
+     */
+    public void unregisterDataNetworkControllerCallback(
+            @NonNull DataNetworkControllerCallback callback) {
+        sendMessage(obtainMessage(EVENT_UNREGISTER_DATA_NETWORK_CONTROLLER_CALLBACK, callback));
     }
 
     /**
