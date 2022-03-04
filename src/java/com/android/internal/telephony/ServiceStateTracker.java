@@ -92,6 +92,8 @@ import com.android.internal.telephony.cdma.EriInfo;
 import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.cdnr.CarrierDisplayNameData;
 import com.android.internal.telephony.cdnr.CarrierDisplayNameResolver;
+import com.android.internal.telephony.data.DataNetwork;
+import com.android.internal.telephony.data.DataNetworkController;
 import com.android.internal.telephony.dataconnection.DataConnection;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.TransportManager;
@@ -224,6 +226,12 @@ public class ServiceStateTracker extends Handler {
 
     /** Waiting period before recheck gprs and voice registration. */
     public static final int DEFAULT_GPRS_CHECK_PERIOD_MILLIS = 60 * 1000;
+
+    /**
+     * The timer value to wait for all data networks to be torn down.
+     */
+    private static final long POWER_OFF_ALL_DATA_NETWORKS_DISCONNECTED_TIMEOUT =
+            TimeUnit.SECONDS.toMillis(10);
 
     /** GSM events */
     protected static final int EVENT_RADIO_STATE_CHANGED                    = 1;
@@ -1166,6 +1174,12 @@ public class ServiceStateTracker extends Handler {
         switch (msg.what) {
             case EVENT_SET_RADIO_POWER_OFF:
                 synchronized(this) {
+                    if (mPhone.isUsingNewDataStack()) {
+                        mPendingRadioPowerOffAfterDataOff = false;
+                        log("Wait for all data networks torn down timed out. Power off now.");
+                        hangupAndPowerOff();
+                        return;
+                    }
                     if (mPendingRadioPowerOffAfterDataOff &&
                             (msg.arg1 == mPendingRadioPowerOffAfterDataOffTag)) {
                         if (DBG) log("EVENT_SET_RADIO_OFF, turn radio off now.");
@@ -1443,6 +1457,15 @@ public class ServiceStateTracker extends Handler {
                 break;
 
             case EVENT_ALL_DATA_DISCONNECTED:
+                if (mPhone.isUsingNewDataStack()) {
+                    if (mPendingRadioPowerOffAfterDataOff) {
+                        mPendingRadioPowerOffAfterDataOff = false;
+                        removeMessages(EVENT_SET_RADIO_POWER_OFF);
+                        if (DBG) log("EVENT_ALL_DATA_DISCONNECTED, turn radio off now.");
+                        hangupAndPowerOff();
+                        return;
+                    }
+                }
                 int dds = SubscriptionManager.getDefaultDataSubscriptionId();
                 ProxyController.getInstance().unregisterForAllDataDisconnected(dds, this);
                 synchronized(this) {
@@ -3045,13 +3068,14 @@ public class ServiceStateTracker extends Handler {
         } else if ((!mDesiredPowerState || mRadioDisabledByCarrier) && mCi.getRadioState()
                 == TelephonyManager.RADIO_POWER_ON) {
             // If it's on and available and we want it off gracefully
-            if (mImsRegistrationOnOff && getRadioPowerOffDelayTimeoutForImsRegistration() > 0) {
+            if (!mPhone.isUsingNewDataStack() && mImsRegistrationOnOff
+                    && getRadioPowerOffDelayTimeoutForImsRegistration() > 0) {
                 if (DBG) log("setPowerStateToDesired: delaying power off until IMS dereg.");
                 startDelayRadioOffWaitingForImsDeregTimeout();
                 // Return early here as we do not want to hit the cancel timeout code below.
                 return;
             } else {
-                if (DBG) log("setPowerStateToDesired: powering off");
+                if (DBG) log("setPowerStateToDesired: powerOffRadioSafely()");
                 powerOffRadioSafely();
             }
         } else if (mDeviceShuttingDown
@@ -4883,6 +4907,25 @@ public class ServiceStateTracker extends Handler {
     public void powerOffRadioSafely() {
         synchronized (this) {
             if (!mPendingRadioPowerOffAfterDataOff) {
+                if (mPhone.isUsingNewDataStack()) {
+                    mPhone.getDataNetworkController().registerDataNetworkControllerCallback(
+                            this::post,
+                            new DataNetworkController.DataNetworkControllerCallback() {
+                                @Override
+                                public void onAllDataNetworksDisconnected() {
+                                    sendEmptyMessage(EVENT_ALL_DATA_DISCONNECTED);
+                                }
+                                // One time callback. If all data networks are already disconnected
+                                // upon registration, the callback will be invoked immediately.
+                            }, true);
+                    log("powerOffRadioSafely: Tear down all data networks.");
+                    mPhone.getDataNetworkController().tearDownAllDataNetworks(
+                            DataNetwork.TEAR_DOWN_REASON_AIRPLANE_MODE_ON);
+                    sendEmptyMessageDelayed(EVENT_SET_RADIO_POWER_OFF,
+                            POWER_OFF_ALL_DATA_NETWORKS_DISCONNECTED_TIMEOUT);
+                    mPendingRadioPowerOffAfterDataOff = true;
+                    return;
+                }
                 int dds = SubscriptionManager.getDefaultDataSubscriptionId();
                 // To minimize race conditions we call cleanUpAllConnections on
                 // both if else paths instead of before this isDisconnected test.
@@ -4989,6 +5032,7 @@ public class ServiceStateTracker extends Handler {
      * Hang up all voice call and turn off radio. Implemented by derived class.
      */
     protected void hangupAndPowerOff() {
+        if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF) return;
         // hang up all active voice calls
         if (!mPhone.isPhoneTypeGsm() || mPhone.isInCall()) {
             mPhone.mCT.mRingingCall.hangupIfAlive();

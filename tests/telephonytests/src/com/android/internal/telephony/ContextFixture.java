@@ -80,6 +80,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
 import android.telephony.euicc.EuiccManager;
+import android.telephony.ims.ImsManager;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.mock.MockContext;
@@ -321,6 +322,10 @@ public class ContextFixture implements TestFixture<Context> {
                 return Context.KEYGUARD_SERVICE;
             } else if (serviceClass == VcnManager.class) {
                 return Context.VCN_MANAGEMENT_SERVICE;
+            } else if (serviceClass == ImsManager.class) {
+                return Context.TELEPHONY_IMS_SERVICE;
+            } else if (serviceClass == TelephonyRegistryManager.class) {
+                return Context.TELEPHONY_REGISTRY_SERVICE;
             }
             return super.getSystemServiceName(serviceClass);
         }
