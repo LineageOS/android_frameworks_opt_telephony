@@ -1439,6 +1439,21 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
+     * @return {@code true} if this data network supports internet.
+     */
+    public boolean isInternet() {
+        return mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                && mNetworkCapabilities.hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                && mNetworkCapabilities.hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_TRUSTED)
+                && mNetworkCapabilities.hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
+                && mNetworkCapabilities.hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_NOT_VPN);
+    }
+
+    /**
      * Get precise data connection state
      *
      * @return The {@link PreciseDataConnectionState}
