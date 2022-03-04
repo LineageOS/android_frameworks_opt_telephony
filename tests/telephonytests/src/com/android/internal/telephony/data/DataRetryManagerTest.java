@@ -22,6 +22,7 @@ import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -36,7 +37,7 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import com.android.internal.telephony.TelephonyTest;
-import com.android.internal.telephony.data.DataRetryManager.DataRetryCallback;
+import com.android.internal.telephony.data.DataRetryManager.DataRetryManagerCallback;
 import com.android.internal.telephony.data.DataRetryManager.DataRetryRule;
 
 import org.junit.After;
@@ -120,7 +121,7 @@ public class DataRetryManagerTest extends TelephonyTest {
             .build();
 
     @Mock
-    private DataRetryCallback mDataRetryCallbackMock;
+    private DataRetryManagerCallback mDataRetryManagerCallbackMock;
 
     private DataRetryManager mDataRetryManagerUT;
 
@@ -128,8 +129,12 @@ public class DataRetryManagerTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("DataRetryManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
+        doAnswer(invocation -> {
+            ((Runnable) invocation.getArguments()[0]).run();
+            return null;
+        }).when(mDataRetryManagerCallbackMock).invokeFromExecutor(any(Runnable.class));
         mDataRetryManagerUT = new DataRetryManager(mPhone, mDataNetworkController,
-                Looper.myLooper());
+                Looper.myLooper(), mDataRetryManagerCallbackMock);
 
         logd("DataRetryManagerTest -Setup!");
     }
@@ -249,7 +254,6 @@ public class DataRetryManagerTest extends TelephonyTest {
 
     @Test
     public void testDataRetryNetworkSuggestedRetry() {
-        mDataRetryManagerUT.registerForDataRetryCallback(mDataRetryCallbackMock);
         NetworkRequest request = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build();
@@ -261,7 +265,7 @@ public class DataRetryManagerTest extends TelephonyTest {
 
         ArgumentCaptor<DataRetryEntry> retryEntryCaptor =
                 ArgumentCaptor.forClass(DataRetryEntry.class);
-        verify(mDataRetryCallbackMock).onDataRetry(retryEntryCaptor.capture());
+        verify(mDataRetryManagerCallbackMock).onDataRetry(retryEntryCaptor.capture());
         DataRetryEntry entry = retryEntryCaptor.getValue();
 
         assertThat(entry.retryType).isEqualTo(DataRetryEntry.RETRY_TYPE_DATA_PROFILE);
@@ -273,7 +277,6 @@ public class DataRetryManagerTest extends TelephonyTest {
 
     @Test
     public void testDataRetryNetworkSuggestedNeverRetry() {
-        mDataRetryManagerUT.registerForDataRetryCallback(mDataRetryCallbackMock);
         NetworkRequest request = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build();
@@ -284,7 +287,7 @@ public class DataRetryManagerTest extends TelephonyTest {
                 Long.MAX_VALUE);
         processAllFutureMessages();
 
-        verify(mDataRetryCallbackMock, never()).onDataRetry(any(DataRetryEntry.class));
+        verify(mDataRetryManagerCallbackMock, never()).onDataRetry(any(DataRetryEntry.class));
     }
 
     @Test
@@ -297,7 +300,6 @@ public class DataRetryManagerTest extends TelephonyTest {
         processAllMessages();
 
 
-        mDataRetryManagerUT.registerForDataRetryCallback(mDataRetryCallbackMock);
         NetworkRequest request = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build();
@@ -308,7 +310,7 @@ public class DataRetryManagerTest extends TelephonyTest {
                 DataCallResponse.RETRY_DURATION_UNDEFINED);
         processAllFutureMessages();
 
-        verify(mDataRetryCallbackMock, never()).onDataRetry(any(DataRetryEntry.class));
+        verify(mDataRetryManagerCallbackMock, never()).onDataRetry(any(DataRetryEntry.class));
     }
 
     @Test
@@ -319,7 +321,6 @@ public class DataRetryManagerTest extends TelephonyTest {
         mDataRetryManagerUT.obtainMessage(1/*EVENT_DATA_CONFIG_UPDATED*/).sendToTarget();
         processAllMessages();
 
-        mDataRetryManagerUT.registerForDataRetryCallback(mDataRetryCallbackMock);
         NetworkRequest request = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build();
@@ -336,7 +337,7 @@ public class DataRetryManagerTest extends TelephonyTest {
 
         ArgumentCaptor<DataRetryEntry> retryEntryCaptor =
                 ArgumentCaptor.forClass(DataRetryEntry.class);
-        verify(mDataRetryCallbackMock).onDataRetry(retryEntryCaptor.capture());
+        verify(mDataRetryManagerCallbackMock).onDataRetry(retryEntryCaptor.capture());
         DataRetryEntry entry = retryEntryCaptor.getValue();
 
         assertThat(entry.retryType).isEqualTo(DataRetryEntry.RETRY_TYPE_NETWORK_CAPABILITIES);
@@ -351,13 +352,13 @@ public class DataRetryManagerTest extends TelephonyTest {
         // 2nd failed and retry.
         doReturn(List.of(mDataProfile1, mDataProfile2)).when(mDataProfileManager)
                 .getDataProfilesForNetworkCapabilities((int[]) any());
-        Mockito.clearInvocations(mDataRetryCallbackMock);
+        Mockito.clearInvocations(mDataRetryManagerCallbackMock);
         mDataRetryManagerUT.evaluateDataRetry(mDataProfile2, networkRequestList, 123,
                 DataCallResponse.RETRY_DURATION_UNDEFINED);
         processAllFutureMessages();
 
         retryEntryCaptor = ArgumentCaptor.forClass(DataRetryEntry.class);
-        verify(mDataRetryCallbackMock).onDataRetry(retryEntryCaptor.capture());
+        verify(mDataRetryManagerCallbackMock).onDataRetry(retryEntryCaptor.capture());
         entry = retryEntryCaptor.getValue();
 
         assertThat(entry.retryType).isEqualTo(DataRetryEntry.RETRY_TYPE_NETWORK_CAPABILITIES);
@@ -370,13 +371,13 @@ public class DataRetryManagerTest extends TelephonyTest {
         logd("retry entry: (" + entry.hashCode() + ")=" + entry);
 
         // 3rd failed and never retry.
-        Mockito.clearInvocations(mDataRetryCallbackMock);
+        Mockito.clearInvocations(mDataRetryManagerCallbackMock);
         mDataRetryManagerUT.evaluateDataRetry(mDataProfile1, networkRequestList, 123,
                 DataCallResponse.RETRY_DURATION_UNDEFINED);
         processAllFutureMessages();
 
         // Verify there is no retry.
-        verify(mDataRetryCallbackMock, never()).onDataRetry(any(DataRetryEntry.class));
+        verify(mDataRetryManagerCallbackMock, never()).onDataRetry(any(DataRetryEntry.class));
     }
 
     @Test
@@ -389,7 +390,6 @@ public class DataRetryManagerTest extends TelephonyTest {
         mDataRetryManagerUT.obtainMessage(1/*EVENT_DATA_CONFIG_UPDATED*/).sendToTarget();
         processAllMessages();
 
-        mDataRetryManagerUT.registerForDataRetryCallback(mDataRetryCallbackMock);
         NetworkRequest request = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
                 .build();
@@ -406,7 +406,7 @@ public class DataRetryManagerTest extends TelephonyTest {
 
         ArgumentCaptor<DataRetryEntry> retryEntryCaptor =
                 ArgumentCaptor.forClass(DataRetryEntry.class);
-        verify(mDataRetryCallbackMock).onDataRetry(retryEntryCaptor.capture());
+        verify(mDataRetryManagerCallbackMock).onDataRetry(retryEntryCaptor.capture());
         DataRetryEntry entry = retryEntryCaptor.getValue();
 
         assertThat(entry.retryType).isEqualTo(DataRetryEntry.RETRY_TYPE_NETWORK_CAPABILITIES);
@@ -420,13 +420,13 @@ public class DataRetryManagerTest extends TelephonyTest {
         entry.setState(DataRetryEntry.RETRY_STATE_SUCCEEDED);
 
         // Failed again. Retry should happen.
-        Mockito.clearInvocations(mDataRetryCallbackMock);
+        Mockito.clearInvocations(mDataRetryManagerCallbackMock);
         mDataRetryManagerUT.evaluateDataRetry(mDataProfile3, networkRequestList, 123,
                 DataCallResponse.RETRY_DURATION_UNDEFINED);
         processAllFutureMessages();
 
         retryEntryCaptor = ArgumentCaptor.forClass(DataRetryEntry.class);
-        verify(mDataRetryCallbackMock).onDataRetry(retryEntryCaptor.capture());
+        verify(mDataRetryManagerCallbackMock).onDataRetry(retryEntryCaptor.capture());
         entry = retryEntryCaptor.getValue();
 
         assertThat(entry.retryType).isEqualTo(DataRetryEntry.RETRY_TYPE_NETWORK_CAPABILITIES);
@@ -449,10 +449,9 @@ public class DataRetryManagerTest extends TelephonyTest {
         doReturn(List.of(retryRule1, retryRule2, retryRule3)).when(mDataConfigManager)
                 .getDataRetryRules();
 
-        mDataRetryManagerUT.obtainMessage(1/*EVENT_DATA_CONFIG_UPDATED*/).sendToTarget();
+        mDataRetryManagerUT.obtainMessage(1/*EVET_DATA_CONFIG_UPDATED*/).sendToTarget();
         processAllMessages();
 
-        mDataRetryManagerUT.registerForDataRetryCallback(mDataRetryCallbackMock);
         NetworkRequest request = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
                 .build();
@@ -464,14 +463,14 @@ public class DataRetryManagerTest extends TelephonyTest {
         doReturn(List.of(mDataProfile3)).when(mDataProfileManager)
                 .getDataProfilesForNetworkCapabilities((int[]) any());
         for (long delay : List.of(2000, 4000, 8000, 8000)) {
-            Mockito.clearInvocations(mDataRetryCallbackMock);
+            Mockito.clearInvocations(mDataRetryManagerCallbackMock);
             mDataRetryManagerUT.evaluateDataRetry(mDataProfile3, networkRequestList, 123,
                     DataCallResponse.RETRY_DURATION_UNDEFINED);
             processAllFutureMessages();
 
             ArgumentCaptor<DataRetryEntry> retryEntryCaptor =
                     ArgumentCaptor.forClass(DataRetryEntry.class);
-            verify(mDataRetryCallbackMock).onDataRetry(retryEntryCaptor.capture());
+            verify(mDataRetryManagerCallbackMock).onDataRetry(retryEntryCaptor.capture());
             DataRetryEntry entry = retryEntryCaptor.getValue();
 
             assertThat(entry.retryType).isEqualTo(DataRetryEntry.RETRY_TYPE_NETWORK_CAPABILITIES);
@@ -483,7 +482,7 @@ public class DataRetryManagerTest extends TelephonyTest {
         }
 
         // The last fail should not trigger any retry.
-        Mockito.clearInvocations(mDataRetryCallbackMock);
+        Mockito.clearInvocations(mDataRetryManagerCallbackMock);
         mDataRetryManagerUT.evaluateDataRetry(mDataProfile3, networkRequestList, 123,
                 DataCallResponse.RETRY_DURATION_UNDEFINED);
         processAllFutureMessages();
@@ -492,6 +491,6 @@ public class DataRetryManagerTest extends TelephonyTest {
                 ArgumentCaptor.forClass(DataRetryEntry.class);
 
         // Verify there is no retry.
-        verify(mDataRetryCallbackMock, never()).onDataRetry(any(DataRetryEntry.class));
+        verify(mDataRetryManagerCallbackMock, never()).onDataRetry(any(DataRetryEntry.class));
     }
 }
