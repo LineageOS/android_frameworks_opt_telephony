@@ -268,7 +268,7 @@ public class DataUtils {
      * @return The string format time.
      */
     public static @NonNull String elapsedTimeToString(@ElapsedRealtimeLong long elapsedTime) {
-        return (elapsedTime != 0) ? getReadableSystemTime(System.currentTimeMillis()
+        return (elapsedTime != 0) ? systemTimeToString(System.currentTimeMillis()
                 - SystemClock.elapsedRealtime() + elapsedTime) : "never";
     }
 
@@ -278,7 +278,7 @@ public class DataUtils {
      * @param systemTime The system time retrieved from {@link System#currentTimeMillis()}.
      * @return The string format time.
      */
-    public static @NonNull String getReadableSystemTime(@CurrentTimeMillisLong long systemTime) {
+    public static @NonNull String systemTimeToString(@CurrentTimeMillisLong long systemTime) {
         return (systemTime != 0) ? TIME_FORMAT.format(systemTime) : "never";
     }
 }

@@ -18,6 +18,7 @@ package com.android.internal.telephony.data;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.NetworkCapabilities;
 import android.net.Uri;
@@ -33,6 +34,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
+import android.telephony.data.TrafficDescriptor;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
@@ -54,6 +56,9 @@ import java.util.stream.Collectors;
 public class DataProfileManager extends Handler {
     /** Event for data config updated. */
     private static final int EVENT_DATA_CONFIG_UPDATED = 1;
+
+    /** Event for APN database changed. */
+    private static final int EVENT_APN_DATABASE_CHANGED = 2;
 
     private final Phone mPhone;
     private final String mLogTag;
@@ -105,8 +110,22 @@ public class DataProfileManager extends Handler {
         mWwanDataServiceManager = dataServiceManager;
         mDataConfigManager = dataNetworkController.getDataConfigManager();
         mAccessNetworksManager = phone.getAccessNetworksManager();
+        registerAllEvents();
+    }
 
+    /**
+     * Register for all events that data network controller is interested.
+     */
+    private void registerAllEvents() {
         mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
+        mPhone.getContext().getContentResolver().registerContentObserver(
+                Telephony.Carriers.CONTENT_URI, true, new ContentObserver(this) {
+                    @Override
+                    public void onChange(boolean selfChange) {
+                        super.onChange(selfChange);
+                        sendEmptyMessage(EVENT_APN_DATABASE_CHANGED);
+                    }
+                });
     }
 
     @Override
@@ -115,7 +134,14 @@ public class DataProfileManager extends Handler {
             case EVENT_DATA_CONFIG_UPDATED:
                 onDataConfigUpdated();
                 break;
+            case EVENT_APN_DATABASE_CHANGED:
+                onApnDatabaseChanged();
+                break;
         }
+    }
+
+    private void onApnDatabaseChanged() {
+        updateDataProfiles();
     }
 
     /**
@@ -148,7 +174,8 @@ public class DataProfileManager extends Handler {
                 if (apn != null) {
                     profiles.add(new DataProfile.Builder()
                             .setApnSetting(apn)
-                            .setTrafficDescriptor(null)
+                            // TODO: Support TD correctly once ENTERPRISE becomes an APN type.
+                            .setTrafficDescriptor(new TrafficDescriptor(apn.getApnName(), null))
                             .setPreferred(false)
                             .build());
                     log("Added " + apn);
@@ -296,6 +323,7 @@ public class DataProfileManager extends Handler {
      * Update the data profiles at modem.
      */
     private void updateDataProfilesAtModem() {
+        log("updateDataProfilesAtModem: set " + mAllDataProfiles.size() + " data profiles.");
         mWwanDataServiceManager.setDataProfile(mAllDataProfiles,
                 mPhone.getServiceState().getDataRoamingFromRegistration(), null);
     }
@@ -448,7 +476,7 @@ public class DataProfileManager extends Handler {
         pw.increaseIndent();
         for (DataProfile dp : mAllDataProfiles) {
             pw.print(dp);
-            pw.print(", last setup time: " + DataUtils.elapsedTimeToString(
+            pw.println(", last setup time: " + DataUtils.elapsedTimeToString(
                     dp.getLastSetupTimestamp()));
         }
         pw.decreaseIndent();

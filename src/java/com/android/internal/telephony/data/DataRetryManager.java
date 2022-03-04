@@ -483,12 +483,12 @@ public class DataRetryManager extends Handler {
         @Override
         public String toString() {
             return "[DataRetryEntry: delay=" + retryDelayMillis + "ms, retry time:"
-                    + DataUtils.getReadableSystemTime(mRetrySystemTime) + ", " + dataProfile
+                    + DataUtils.systemTimeToString(mRetrySystemTime) + ", " + dataProfile
                     + ", retry type=" + retryTypeToString(retryType) + ", retry capabilities="
                     + DataUtils.networkCapabilitiesToString(networkCapabilities.stream()
                     .mapToInt(Number::intValue).toArray()) + ", applied rule="
                     + appliedDataRetryRule + ", state=" + retryStateToString(mRetryState)
-                    + ", timestamp=" + DataUtils.getReadableSystemTime(mRetryStateTimestamp) + "]";
+                    + ", timestamp=" + DataUtils.systemTimeToString(mRetryStateTimestamp) + "]";
         }
 
         /** Data retry entry builder. */
@@ -730,8 +730,8 @@ public class DataRetryManager extends Handler {
                     log("Found matching rule " + retryRule + ", failed count=" + failedCount);
                     if (failedCount == retryRule.getMaxRetries()) {
                         log("Data retry failed for " + failedCount + " times. Stopped "
-                                + "timer-based data retry. Condition-based retry will happen when "
-                                + "condition changes.");
+                                + "timer-based data retry. Condition-based retry will still happen "
+                                + "when condition changes.");
                         return;
                     }
 

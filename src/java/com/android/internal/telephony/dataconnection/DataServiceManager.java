@@ -381,6 +381,7 @@ public class DataServiceManager extends Handler {
         } catch (PackageManager.NameNotFoundException e) {
             loge("Package name not found: " + e.getMessage());
         }
+
         PhoneConfigurationManager.registerForMultiSimConfigChange(
                 this, EVENT_BIND_DATA_SERVICE, null);
 
@@ -444,6 +445,7 @@ public class DataServiceManager extends Handler {
             loge("can't bindDataService with invalid phone or phoneId.");
             return;
         }
+        if (mPhone.isUsingNewDataStack()) return;
 
         if (TextUtils.isEmpty(packageName)) {
             loge("Can't find the binding package");

@@ -273,7 +273,7 @@ public class DataEvaluation {
             evaluationStr.append(" ").append(mDataAllowedReason);
         }
         evaluationStr.append(", candidate profile=" + mCandidateDataProfile);
-        evaluationStr.append(", time=" + DataUtils.getReadableSystemTime(mEvaluatedTime));
+        evaluationStr.append(", time=" + DataUtils.systemTimeToString(mEvaluatedTime));
         return evaluationStr.toString();
     }
 

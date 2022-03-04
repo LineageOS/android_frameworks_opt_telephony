@@ -143,6 +143,9 @@ public class DataNetwork extends StateMachine {
     /** Data network service state changed event. */
     private static final int EVENT_SERVICE_STATE_CHANGED = 9;
 
+    /** Event for detaching all network requests. */
+    private static final int EVENT_DETACH_ALL_NETWORK_REQUESTS = 10;
+
     /** The default MTU for IPv4 network */
     private static final int DEFAULT_MTU_V4 = 1280;
 
@@ -194,6 +197,13 @@ public class DataNetwork extends StateMachine {
      * change afterwards.
      */
     private final int mSubId;
+
+    /**
+     * Indicates that
+     * {@link DataService.DataServiceProvider#deactivateDataCall(int, int, DataServiceCallback)}
+     * has been called. This flag can be only changed from {@code false} to {@code true}.
+     */
+    private boolean mInvokedDataDeactivation = false;
 
     /** RIL interface. */
     private final @NonNull CommandsInterface mRil;
@@ -269,7 +279,13 @@ public class DataNetwork extends StateMachine {
      */
     private @DataFailureCause int mFailCause = DataFailCause.NONE;
 
-    /** Indicates if data network is suspended. */
+    /**
+     * Indicates if data network is suspended. Note this is slightly different from the
+     * {@link TelephonyManager#DATA_SUSPENDED}, which is only possible when data network is in
+     * connected state. This flag reflects to the
+     * {@link NetworkCapabilities#NET_CAPABILITY_NOT_SUSPENDED} which can happen when data network
+     * is in connected or disconnecting state.
+     */
     private boolean mSuspended = false;
 
     /**
@@ -346,7 +362,7 @@ public class DataNetwork extends StateMachine {
         /**
          * Called when data network enters {@link DisconnectedState}. Note this is only called
          * when the data network was previously connected. For setup data network failed,
-         * {@link #onSetupDataFailed(DataNetwork, int, long)} is called.
+         * {@link #onSetupDataFailed(DataNetwork, NetworkRequestList, int, long)} is called.
          *
          * @param dataNetwork The data network.
          * @param cause The disconnect cause.
@@ -486,13 +502,10 @@ public class DataNetwork extends StateMachine {
     private final class DefaultState extends State {
         @Override
         public void enter() {
+            logv("Registering all events.");
             mDataConfigManager.registerForConfigUpdate(getHandler(), EVENT_DATA_CONFIG_UPDATED);
             mDataServiceManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                     .registerForDataCallListChanged(getHandler(), EVENT_DATA_STATE_CHANGED);
-            mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
-                    AccessNetworkConstants.TRANSPORT_TYPE_WWAN, getHandler(),
-                    EVENT_SERVICE_STATE_CHANGED,
-                    AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
             if (!mAccessNetworksManager.isInLegacyMode()) {
                 mDataServiceManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
                         .registerForDataCallListChanged(getHandler(), EVENT_DATA_STATE_CHANGED);
@@ -501,12 +514,26 @@ public class DataNetwork extends StateMachine {
                         EVENT_SERVICE_STATE_CHANGED,
                         AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
             }
-
-
+            mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
+                    AccessNetworkConstants.TRANSPORT_TYPE_WWAN, getHandler(),
+                    EVENT_SERVICE_STATE_CHANGED,
+                    AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
         }
 
         @Override
         public void exit() {
+            logv("Unregistering all events.");
+            mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(
+                    AccessNetworkConstants.TRANSPORT_TYPE_WWAN, getHandler());
+
+            if (!mAccessNetworksManager.isInLegacyMode()) {
+                mDataServiceManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
+                        .unregisterForDataCallListChanged(getHandler());
+                mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(
+                        AccessNetworkConstants.TRANSPORT_TYPE_WLAN, getHandler());
+            }
+            mDataServiceManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                    .unregisterForDataCallListChanged(getHandler());
             mDataConfigManager.unregisterForConfigUpdate(getHandler());
         }
 
@@ -549,6 +576,13 @@ public class DataNetwork extends StateMachine {
                     networkRequest.setState(TelephonyNetworkRequest.REQUEST_STATE_UNSATISFIED);
                     networkRequest.setAttachedNetwork(null);
                     break;
+                }
+                case EVENT_DETACH_ALL_NETWORK_REQUESTS: {
+                    for (TelephonyNetworkRequest networkRequest : mAttachedNetworkRequestList) {
+                        networkRequest.setState(TelephonyNetworkRequest.REQUEST_STATE_UNSATISFIED);
+                        networkRequest.setAttachedNetwork(null);
+                    }
+                    mAttachedNetworkRequestList.clear();
                 }
                 case EVENT_VALIDATION_STATUS_RESULT:
                     loge("Ignore the validation status: "
@@ -658,6 +692,12 @@ public class DataNetwork extends StateMachine {
             logv("event=" + eventToString(msg.what));
             switch (msg.what) {
                 case EVENT_TEAR_DOWN_NETWORK:
+                    if (mInvokedDataDeactivation) {
+                        log("Ignore tear down request because network is being torn down.");
+                        break;
+                    }
+                    removeMessages(EVENT_TEAR_DOWN_NETWORK);
+                    removeDeferredMessages(EVENT_TEAR_DOWN_NETWORK);
                     transitionTo(mDisconnectingState);
                     onTearDown(msg.arg1);
                     break;
@@ -741,7 +781,9 @@ public class DataNetwork extends StateMachine {
     private final class DisconnectedState extends State {
         @Override
         public void enter() {
-            log("Data network disconnected.");
+            logl("Data network disconnected.");
+            // The detach all network requests must be tge last message to handle.
+            sendMessage(EVENT_DETACH_ALL_NETWORK_REQUESTS);
             // Gracefully handle all the un-processed events then quit the state machine.
             // quit() throws a QUIT event to the end of message queue. All the events before quit()
             // will be processed. Events after quit() will not be processed.
@@ -753,7 +795,6 @@ public class DataNetwork extends StateMachine {
                     && mPduSessionId != DataCallResponse.PDU_SESSION_ID_NOT_SET) {
                 mRil.releasePduSessionId(null, mPduSessionId);
             }
-            detachAllNetworkRequests();
         }
 
         @Override
@@ -792,15 +833,6 @@ public class DataNetwork extends StateMachine {
         }
         sendMessage(obtainMessage(EVENT_ATTACH_NETWORK_REQUEST, requestList));
         return true;
-    }
-
-    /** Detach all network requests from the data network. */
-    private void detachAllNetworkRequests() {
-        for (TelephonyNetworkRequest networkRequest : mAttachedNetworkRequestList) {
-            networkRequest.setState(TelephonyNetworkRequest.REQUEST_STATE_UNSATISFIED);
-            networkRequest.setAttachedNetwork(null);
-        }
-        mAttachedNetworkRequestList.clear();
     }
 
     /**
@@ -958,7 +990,7 @@ public class DataNetwork extends StateMachine {
         // Only notify when there is a change.
         if (mSuspended != newSuspendedState) {
             mSuspended = newSuspendedState;
-            log("Network becomes " + (mSuspended ? "suspended" : "not suspended"));
+            logl("Network becomes " + (mSuspended ? "suspended" : "unsuspended"));
             // To update NOT_SUSPENDED capability.
             updateNetworkCapabilities();
             notifyPreciseDataConnectionState();
@@ -1236,7 +1268,6 @@ public class DataNetwork extends StateMachine {
             long retry = response != null ? response.getRetryDurationMillis()
                     : DataCallResponse.RETRY_DURATION_UNDEFINED;
             NetworkRequestList requestList = new NetworkRequestList(mAttachedNetworkRequestList);
-            detachAllNetworkRequests();
             mDataNetworkCallback.onSetupDataFailed(DataNetwork.this, requestList,
                     failCause, retry);
             transitionTo(mDisconnectedState);
@@ -1294,7 +1325,11 @@ public class DataNetwork extends StateMachine {
         // Ignore the update if it's not from the data service on the right transport.
         // Also if never received data call response from setup call response, which updates the
         // cid, ignore the update here.
-        if (transport != mTransport || mCid.get(mTransport) == INVALID_CID) return;
+        logv("onDataStateChanged: " + responseList);
+        if (transport != mTransport || mCid.get(mTransport) == INVALID_CID || isConnecting()
+                || isDisconnected()) {
+            return;
+        }
 
         DataCallResponse response = responseList.stream()
                 .filter(r -> mCid.get(mTransport) == r.getId())
@@ -1374,6 +1409,13 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
+     * @return The attached network request list.
+     */
+    public @NonNull NetworkRequestList getAttachedNetworkRequestList() {
+        return mAttachedNetworkRequestList;
+    }
+
+    /**
      * @return {@code true} if in connecting state.
      */
     private boolean isConnecting() {
@@ -1383,14 +1425,14 @@ public class DataNetwork extends StateMachine {
     /**
      * @return {@code true} if in connected state.
      */
-    private boolean isConnected() {
+    public boolean isConnected() {
         return getCurrentState() == mConnectedState;
     }
 
     /**
      * @return {@code true} if in disconnecting state.
      */
-    private boolean isDisconnecting() {
+    public boolean isDisconnecting() {
         return getCurrentState() == mDisconnectingState;
     }
 
@@ -1404,26 +1446,26 @@ public class DataNetwork extends StateMachine {
     /**
      * @return {@code true} if in handover state.
      */
-    private boolean isUnderHandover() {
+    public boolean isUnderHandover() {
         return getCurrentState() == mHandoverState;
     }
 
     /**
      * @return {@code true} if the data network is suspended.
      */
-    private boolean isSuspended() {
-        return mSuspended;
+    public boolean isSuspended() {
+        return getState() == TelephonyManager.DATA_SUSPENDED;
     }
 
     private @DataState int getState() {
         IState state = getCurrentState();
-        if (isDisconnected() || state == null) {
+        if (state == null || isDisconnected()) {
             return TelephonyManager.DATA_DISCONNECTED;
         } else if (isConnecting()) {
             return TelephonyManager.DATA_CONNECTING;
         } else if (isConnected()) {
             // The data connection can only be suspended when it's in active state.
-            if (isSuspended()) {
+            if (mSuspended) {
                 return TelephonyManager.DATA_SUSPENDED;
             }
             return TelephonyManager.DATA_CONNECTED;
@@ -1441,7 +1483,7 @@ public class DataNetwork extends StateMachine {
     /**
      * @return {@code true} if this data network supports internet.
      */
-    public boolean isInternet() {
+    public boolean isInternetSupported() {
         return mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 && mNetworkCapabilities.hasCapability(
                         NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
@@ -1534,6 +1576,13 @@ public class DataNetwork extends StateMachine {
         }
     }
 
+    @Override
+    public String toString() {
+        return "[DataNetwork: " + mLogTag + ", " + (mDataProfile.getApnSetting() != null
+                ? mDataProfile.getApnSetting().getApnName() : null) + ", state="
+                + (getCurrentState() != null ? getCurrentState().getName() : null) + "]";
+    }
+
     /**
      * @return The short name of the data network (e.g. DN-C-1)
      */
@@ -1591,12 +1640,11 @@ public class DataNetwork extends StateMachine {
      */
     public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
         IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
-        pw.println(DataNetwork.class.getSimpleName() + "-" + mPhone.getPhoneId() + ":");
         super.dump(fd, pw, args);
-
+        pw.println("Tag: " + name());
         pw.increaseIndent();
         pw.println("WWAN cid=" + mCid.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN));
-        pw.println("WLAN cid=" + mCid.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN));
+        pw.println("WLAN cid=" + mCid.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN));
         mNetworkAgent.dump(fd, pw, args);
 
         pw.println("Attached network requests:");
@@ -1609,5 +1657,6 @@ public class DataNetwork extends StateMachine {
         mLocalLog.dump(fd, pw, args);
         pw.decreaseIndent();
         pw.decreaseIndent();
+        pw.println("---------------");
     }
 }
