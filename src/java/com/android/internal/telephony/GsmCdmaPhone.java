@@ -15,6 +15,7 @@
  */
 
 package com.android.internal.telephony;
+
 import static com.android.internal.telephony.CommandException.Error.GENERIC_FAILURE;
 import static com.android.internal.telephony.CommandException.Error.SIM_BUSY;
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_DISABLE;
@@ -90,10 +91,10 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaMmiCode;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.data.DataNetworkController;
+import com.android.internal.telephony.data.LinkBandwidthEstimator;
 import com.android.internal.telephony.dataconnection.AccessNetworksManager;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DcTracker;
-import com.android.internal.telephony.dataconnection.LinkBandwidthEstimator;
 import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.gsm.GsmMmiCode;
