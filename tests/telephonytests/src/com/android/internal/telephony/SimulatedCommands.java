@@ -17,6 +17,7 @@
 package com.android.internal.telephony.test;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.hardware.radio.RadioError;
 import android.hardware.radio.V1_0.DataRegStateResult;
 import android.hardware.radio.V1_0.SetupDataCallResult;
 import android.hardware.radio.V1_0.VoiceRegStateResult;
@@ -1239,7 +1240,7 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void deactivateDataCall(int cid, int reason, Message result) {
         SimulatedCommandsVerifier.getInstance().deactivateDataCall(cid, reason, result);
-        resultSuccess(result, null);
+        resultSuccess(result, RadioError.NONE);
     }
 
     @Override
