@@ -109,6 +109,24 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
          * @param qosCallbackId the id for the callback being unregistered.
          */
         public void onQosCallbackUnregistered(int qosCallbackId) {}
+
+        /**
+         * Requests that the network hardware send the specified packet at the specified interval.
+         *
+         * @param slot the hardware slot on which to start the keepalive.
+         * @param interval the interval between packets, between 10 and 3600. Note that this API
+         *                 does not support sub-second precision and will round off the request.
+         * @param packet the packet to send.
+         */
+        public void onStartSocketKeepalive(int slot, @NonNull Duration interval,
+                @NonNull KeepalivePacketData packet) {}
+
+        /**
+         * Requests that the network hardware stop a previously-started keepalive.
+         *
+         * @param slot the hardware slot on which to stop the keepalive.
+         */
+        public void onStopSocketKeepalive(int slot) {}
     }
 
     /**
@@ -181,6 +199,7 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
         // modem unsolicited.
         loge("onBandwidthUpdateRequested: RIL.pullLceData is not supported anymore.");
     }
+
     /**
      * Called when connectivity service requests that the network hardware send the specified
      * packet at the specified interval.
@@ -193,7 +212,8 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
     @Override
     public void onStartSocketKeepalive(int slot, @NonNull Duration interval,
             @NonNull KeepalivePacketData packet) {
-
+        mTelephonyNetworkAgentCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                () -> callback.onStartSocketKeepalive(slot, interval, packet)));
     }
 
     /**
@@ -203,8 +223,9 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
      * @param slot the hardware slot on which to stop the keepalive.
      */
     @Override
-    public synchronized void onStopSocketKeepalive(int slot) {
-
+    public void onStopSocketKeepalive(int slot) {
+        mTelephonyNetworkAgentCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                () -> callback.onStopSocketKeepalive(slot)));
     }
 
     /**

@@ -49,7 +49,6 @@ import android.telephony.LinkCapacityEstimate;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
-import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
@@ -160,10 +159,10 @@ public class DataNetwork extends StateMachine {
     /** Event for display info changed. This is for getting 5G NSA or mmwave information. */
     private static final int EVENT_DISPLAY_INFO_CHANGED = 13;
 
-    /** The default MTU for IPv4 network */
+    /** The default MTU for IPv4 network. */
     private static final int DEFAULT_MTU_V4 = 1280;
 
-    /** The default MTU for IPv6 network */
+    /** The default MTU for IPv6 network. */
     private static final int DEFAULT_MTU_V6 = 1280;
 
     /** Invalid context id. */
@@ -305,6 +304,11 @@ public class DataNetwork extends StateMachine {
      */
     private boolean mInvokedDataDeactivation = false;
 
+    /**
+     * Indicates that if the data network has ever entered {@link ConnectedState}.
+     */
+    private boolean mEverConnected = false;
+
     /** RIL interface. */
     private final @NonNull CommandsInterface mRil;
 
@@ -348,6 +352,9 @@ public class DataNetwork extends StateMachine {
 
     /** QOS callback tracker. This is only created after network connected on WWAN. */
     private @Nullable QosCallbackTracker mQosCallbackTracker;
+
+    /** Data network keepalive tracker. */
+    private @Nullable NetworkKeepaliveTracker mNetworkKeepaliveTracker;
 
     /** The data profile used to establish this data network. */
     private final @NonNull DataProfile mDataProfile;
@@ -421,6 +428,12 @@ public class DataNetwork extends StateMachine {
         public NetworkBandwidth(int downlinkBandwidthKbps, int uplinkBandwidthKbps) {
             this.downlinkBandwidthKbps = downlinkBandwidthKbps;
             this.uplinkBandwidthKbps = uplinkBandwidthKbps;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("NetworkBandwidth=[downlink=%d, uplink=%d]",
+                    downlinkBandwidthKbps, uplinkBandwidthKbps);
         }
     }
 
@@ -616,6 +629,8 @@ public class DataNetwork extends StateMachine {
                     AccessNetworkConstants.TRANSPORT_TYPE_WWAN, getHandler(),
                     EVENT_SERVICE_STATE_CHANGED,
                     AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            mPhone.getDisplayInfoController().registerForTelephonyDisplayInfoChanged(
+                    getHandler(), EVENT_DISPLAY_INFO_CHANGED, null);
 
             // Only add symmetric code here, for example, registering and unregistering.
             // DefaultState.enter() is the starting point in the life cycle of the DataNetwork,
@@ -626,6 +641,8 @@ public class DataNetwork extends StateMachine {
         @Override
         public void exit() {
             logv("Unregistering all events.");
+            mPhone.getDisplayInfoController().unregisterForTelephonyDisplayInfoChanged(
+                    getHandler());
             mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(
                     AccessNetworkConstants.TRANSPORT_TYPE_WWAN, getHandler());
 
@@ -781,48 +798,41 @@ public class DataNetwork extends StateMachine {
     private final class ConnectedState extends State {
         @Override
         public void enter() {
-            log("network connected.");
-            notifyPreciseDataConnectionState();
-            mNetworkAgent.markConnected();
-            mDataNetworkCallback.invokeFromExecutor(
-                    () -> mDataNetworkCallback.onConnected(DataNetwork.this));
+            if (!mEverConnected) {
+                // Transited from ConnectingState
+                log("network connected.");
+                mEverConnected = true;
+                mNetworkAgent.markConnected();
+                mDataNetworkCallback.invokeFromExecutor(
+                        () -> mDataNetworkCallback.onConnected(DataNetwork.this));
 
-            mQosCallbackTracker = new QosCallbackTracker(mNetworkAgent, mPhone);
-            mQosCallbackTracker.updateSessions(mQosBearerSessions);
+                mQosCallbackTracker = new QosCallbackTracker(mNetworkAgent, mPhone);
+                mQosCallbackTracker.updateSessions(mQosBearerSessions);
+                mNetworkKeepaliveTracker = new NetworkKeepaliveTracker(mPhone,
+                        getHandler().getLooper(), DataNetwork.this, mNetworkAgent);
+            } else {
+                // Reaching here means
+                // 1. Handover succeeded.
+                // 2. Handover failed.
+                //TODO: Keep in mind when adding IWLAN handover support later.
+            }
+
+            notifyPreciseDataConnectionState();
             updateSuspendState();
 
-            mPhone.getDisplayInfoController().registerForTelephonyDisplayInfoChanged(
-                    getHandler(), EVENT_DISPLAY_INFO_CHANGED, null);
-            // TODO: Register for the following events after handover from IWLAN to cellular.
             if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
-                int bandwidthEstimateSource = mDataConfigManager.getBandwidthEstimateSource();
-                if (bandwidthEstimateSource == BANDWIDTH_SOURCE_MODEM) {
-                    mPhone.mCi.registerForLceInfo(getHandler(),
-                            EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED, null);
-                } else if (bandwidthEstimateSource == BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR) {
-                    mPhone.getLinkBandwidthEstimator().registerForBandwidthChanged(getHandler(),
-                            EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED, null);
-                } else {
-                    loge("Invalid bandwidth source configuration: " + bandwidthEstimateSource);
-                }
+                // Reaching here means
+                // 1. The network was first time connected on cellular.
+                // 2. The network handover successfully from IWLAN to cellular.
+                // 3. The network failed to handover to IWLAN and re-entered connected state.
+                // TODO: Correctly support (3) later. We do not need to perform the following works.
+                registerForBandwidthUpdate();
+                mNetworkKeepaliveTracker.registerForKeepaliveStatus();
             }
         }
 
         @Override
         public void exit() {
-            // TODO: Unregister for the following events after handover from cellular to IWLAN.
-            if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
-                int bandwidthEstimateSource = mDataConfigManager.getBandwidthEstimateSource();
-                if (bandwidthEstimateSource == BANDWIDTH_SOURCE_MODEM) {
-                    mPhone.mCi.unregisterForLceInfo(getHandler());
-                } else if (bandwidthEstimateSource == BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR) {
-                    mPhone.getLinkBandwidthEstimator().unregisterForBandwidthChanged(getHandler());
-                } else {
-                    loge("Invalid bandwidth source configuration: " + bandwidthEstimateSource);
-                }
-            }
-            mPhone.getDisplayInfoController().unregisterForTelephonyDisplayInfoChanged(
-                    getHandler());
         }
 
         @Override
@@ -939,6 +949,11 @@ public class DataNetwork extends StateMachine {
                     && mPduSessionId != DataCallResponse.PDU_SESSION_ID_NOT_SET) {
                 mRil.releasePduSessionId(null, mPduSessionId);
             }
+
+            if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN && mEverConnected) {
+                mNetworkKeepaliveTracker.unregisterForKeepaliveStatus();
+                unregisterForBandwidthUpdate();
+            }
         }
 
         @Override
@@ -991,6 +1006,34 @@ public class DataNetwork extends StateMachine {
             return;
         }
         sendMessage(obtainMessage(EVENT_DETACH_NETWORK_REQUEST, networkRequest));
+    }
+
+    /**
+     * Register for bandwidth update.
+     */
+    private void registerForBandwidthUpdate() {
+        int bandwidthEstimateSource = mDataConfigManager.getBandwidthEstimateSource();
+        if (bandwidthEstimateSource == BANDWIDTH_SOURCE_MODEM) {
+            mPhone.mCi.unregisterForLceInfo(getHandler());
+        } else if (bandwidthEstimateSource == BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR) {
+            mPhone.getLinkBandwidthEstimator().unregisterForBandwidthChanged(getHandler());
+        } else {
+            loge("Invalid bandwidth source configuration: " + bandwidthEstimateSource);
+        }
+    }
+
+    /**
+     * Unregister bandwidth update.
+     */
+    private void unregisterForBandwidthUpdate() {
+        int bandwidthEstimateSource = mDataConfigManager.getBandwidthEstimateSource();
+        if (bandwidthEstimateSource == BANDWIDTH_SOURCE_MODEM) {
+            mPhone.mCi.unregisterForLceInfo(getHandler());
+        } else if (bandwidthEstimateSource == BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR) {
+            mPhone.getLinkBandwidthEstimator().unregisterForBandwidthChanged(getHandler());
+        } else {
+            loge("Invalid bandwidth source configuration: " + bandwidthEstimateSource);
+        }
     }
 
     /**
@@ -1348,26 +1391,21 @@ public class DataNetwork extends StateMachine {
      *
      * @return The TCP config string used in {@link LinkProperties#setTcpBufferSizes(String)}.
      */
-    private @NonNull String getTcpConfig() {
+    private @Nullable String getTcpConfig() {
         ServiceState ss = mPhone.getServiceState();
         NetworkRegistrationInfo nrs = ss.getNetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, mTransport);
         int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
         if (nrs != null) {
             networkType = nrs.getAccessNetworkTechnology();
-            if (networkType == TelephonyManager.NETWORK_TYPE_LTE && isNrConnected()) {
-                // Use the 5G SA TCP config for 5G NSA.
-                networkType = TelephonyManager.NETWORK_TYPE_NR;
-            }
-
             if (networkType == TelephonyManager.NETWORK_TYPE_LTE
                     && nrs.isUsingCarrierAggregation()) {
-                // Although LTE_CA is not a real RAT, but since LTE CA gernally has higher speed,
-                // so we use a different network type to get a different TCP config for LTE CA.
+                // Although LTE_CA is not a real RAT, but since LTE CA generally has higher speed
+                // we use LTE_CA to get a different TCP config for LTE CA.
                 networkType = TelephonyManager.NETWORK_TYPE_LTE_CA;
             }
         }
-        return mDataConfigManager.getTcpConfigString(networkType);
+        return mDataConfigManager.getTcpConfigString(networkType, ss);
     }
 
     /**
@@ -1580,13 +1618,8 @@ public class DataNetwork extends StateMachine {
     private void onBandwidthUpdated(int uplinkBandwidthKbps, int downlinkBandwidthKbps) {
         log("onBandwidthUpdated: downlinkBandwidthKbps=" + downlinkBandwidthKbps
                 + ", uplinkBandwidthKbps=" + uplinkBandwidthKbps);
-        TelephonyDisplayInfo displayInfo = mPhone.getDisplayInfoController()
-                .getTelephonyDisplayInfo();
-        NetworkBandwidth bandwidthFromConfig = null;
-        if (displayInfo != null) {
-            bandwidthFromConfig = mDataConfigManager.getBandwidthForNetworkType(
-                    getDataNetworkType(), displayInfo.getOverrideNetworkType());
-        }
+        NetworkBandwidth bandwidthFromConfig =  mDataConfigManager.getBandwidthForNetworkType(
+                getDataNetworkType(), mPhone.getServiceState());
 
         if (downlinkBandwidthKbps == LinkCapacityEstimate.INVALID && bandwidthFromConfig != null) {
             // Fallback to carrier config.
@@ -1624,13 +1657,9 @@ public class DataNetwork extends StateMachine {
             return;
         }
         log("updateBandwidthFromDataConfig");
-        TelephonyDisplayInfo displayInfo = mPhone.getDisplayInfoController()
-                .getTelephonyDisplayInfo();
-        if (displayInfo != null) {
-            mNetworkBandwidth = mDataConfigManager.getBandwidthForNetworkType(
-                    getDataNetworkType(), displayInfo.getOverrideNetworkType());
-            updateNetworkCapabilities();
-        }
+        mNetworkBandwidth = mDataConfigManager.getBandwidthForNetworkType(
+                getDataNetworkType(), mPhone.getServiceState());
+        updateNetworkCapabilities();
     }
 
     /**
@@ -1855,6 +1884,14 @@ public class DataNetwork extends StateMachine {
                 return "EVENT_DATA_STATE_CHANGED";
             case EVENT_SERVICE_STATE_CHANGED:
                 return "EVENT_DATA_NETWORK_TYPE_REG_STATE_CHANGED";
+            case EVENT_DETACH_ALL_NETWORK_REQUESTS:
+                return "EVENT_DETACH_ALL_NETWORK_REQUESTS";
+            case EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED:
+                return "EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED";
+            case EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED:
+                return "EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED";
+            case EVENT_DISPLAY_INFO_CHANGED:
+                return "EVENT_DISPLAY_INFO_CHANGED";
             default:
                 return "Unknown(" + event + ")";
         }
@@ -1927,9 +1964,15 @@ public class DataNetwork extends StateMachine {
         super.dump(fd, pw, args);
         pw.println("Tag: " + name());
         pw.increaseIndent();
+        pw.println("mSubId=" + mSubId);
         pw.println("WWAN cid=" + mCid.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN));
         pw.println("WLAN cid=" + mCid.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN));
-        mNetworkAgent.dump(fd, pw, args);
+        pw.println("mPduSessionId=" + mPduSessionId);
+        pw.println("mDataProfile=" + mDataProfile);
+        pw.println("mNetworkCapabilities" + mNetworkCapabilities);
+        pw.println("mLinkProperties=" + mLinkProperties);
+        pw.println("mNetworkBandwidth=" + mNetworkBandwidth);
+        pw.println("mDataCallResponse=" + mDataCallResponse);
 
         pw.println("Attached network requests:");
         pw.increaseIndent();
@@ -1938,7 +1981,10 @@ public class DataNetwork extends StateMachine {
         }
         pw.decreaseIndent();
         pw.println("mQosBearerSessions=" + mQosBearerSessions);
+        pw.println("mEverConnected=" + mEverConnected);
+        pw.println("mInvokedDataDeactivation=" + mInvokedDataDeactivation);
 
+        mNetworkAgent.dump(fd, pw, args);
         pw.println("Local logs:");
         pw.increaseIndent();
         mLocalLog.dump(fd, pw, args);

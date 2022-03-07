@@ -990,7 +990,8 @@ public class DataNetworkController extends Handler {
         // We are using getDesiredPowerState() instead of isRadioOn() because we also don't want
         // to setup data network when radio power is about to be turned off.
         if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
-                && !mPhone.getServiceStateTracker().getDesiredPowerState()) {
+                && (!mPhone.getServiceStateTracker().getDesiredPowerState()
+                || mPhone.mCi.getRadioState() != TelephonyManager.RADIO_POWER_ON)) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.RADIO_POWER_OFF);
         }
 
@@ -2192,7 +2193,7 @@ public class DataNetworkController extends Handler {
         pw.println("mImsDataNetworkState="
                 + TelephonyUtils.dataStateToString(mImsDataNetworkState));
         pw.println("mDataServiceBound=" + mDataServiceBound);
-        pw.println("mSimState=" + mSimState);
+        pw.println("mSimState=" + SubscriptionInfoUpdater.simStateString(mSimState));
         pw.println(mDataNetworkControllerCallbacks);
         pw.println("Local logs:");
         pw.increaseIndent();

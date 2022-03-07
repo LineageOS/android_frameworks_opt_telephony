@@ -118,6 +118,7 @@ import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.SettingsObserver;
 import com.android.internal.telephony.SubscriptionInfoUpdater;
+import com.android.internal.telephony.data.DataConfigManager;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons.DataAllowedReasonType;
 import com.android.internal.telephony.dataconnection.DataConnectionReasons.DataDisallowedReasonType;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings.DataEnabledChangedReason;
@@ -4309,15 +4310,18 @@ public class DcTracker extends Handler {
             }
         }
         if (useLte) {
-            Pair<Integer, Integer> ltePair = temp.get(DctConstants.RAT_NAME_LTE);
+            Pair<Integer, Integer> ltePair =
+                    temp.get(DataConfigManager.DATA_CONFIG_NETWORK_TYPE_LTE);
             if (ltePair != null) {
-                if (temp.containsKey(DctConstants.RAT_NAME_NR_NSA)) {
-                    temp.put(DctConstants.RAT_NAME_NR_NSA, new Pair<>(
-                            temp.get(DctConstants.RAT_NAME_NR_NSA).first, ltePair.second));
+                if (temp.containsKey(DataConfigManager.DATA_CONFIG_NETWORK_TYPE_NR_NSA)) {
+                    temp.put(DataConfigManager.DATA_CONFIG_NETWORK_TYPE_NR_NSA, new Pair<>(
+                            temp.get(DataConfigManager.DATA_CONFIG_NETWORK_TYPE_NR_NSA).first,
+                            ltePair.second));
                 }
-                if (temp.containsKey(DctConstants.RAT_NAME_NR_NSA_MMWAVE)) {
-                    temp.put(DctConstants.RAT_NAME_NR_NSA_MMWAVE, new Pair<>(
-                            temp.get(DctConstants.RAT_NAME_NR_NSA_MMWAVE).first, ltePair.second));
+                if (temp.containsKey(DataConfigManager.DATA_CONFIG_NETWORK_TYPE_NR_NSA_MMWAVE)) {
+                    temp.put(DataConfigManager.DATA_CONFIG_NETWORK_TYPE_NR_NSA_MMWAVE, new Pair<>(
+                            temp.get(DataConfigManager.DATA_CONFIG_NETWORK_TYPE_NR_NSA_MMWAVE)
+                                    .first, ltePair.second));
                 }
             }
         }
@@ -5592,7 +5596,7 @@ public class DcTracker extends Handler {
                     bandwidths = b.getStringArray(CarrierConfigManager.KEY_BANDWIDTH_STRING_ARRAY);
                 }
                 useLte = b.getBoolean(CarrierConfigManager
-                        .KEY_BANDWIDTH_NR_NSA_USE_LTE_VALUE_FOR_UPSTREAM_BOOL);
+                        .KEY_BANDWIDTH_NR_NSA_USE_LTE_VALUE_FOR_UPLINK_BOOL);
                 mWatchdogTimeMs = b.getLong(CarrierConfigManager.KEY_5G_WATCHDOG_TIME_MS_LONG);
                 mNrNsaAllUnmetered = b.getBoolean(CarrierConfigManager.KEY_UNMETERED_NR_NSA_BOOL);
                 mNrNsaMmwaveUnmetered = b.getBoolean(

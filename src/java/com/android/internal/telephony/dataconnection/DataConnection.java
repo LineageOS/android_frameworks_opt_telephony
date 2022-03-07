@@ -94,6 +94,8 @@ import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.TelephonyStatsLog;
+import com.android.internal.telephony.data.DataConfigManager;
+import com.android.internal.telephony.data.NetworkKeepaliveStatus;
 import com.android.internal.telephony.dataconnection.DcTracker.ReleaseNetworkType;
 import com.android.internal.telephony.dataconnection.DcTracker.RequestNetworkType;
 import com.android.internal.telephony.metrics.DataCallSessionStats;
@@ -1581,12 +1583,8 @@ public class DataConnection extends StateMachine {
     }
 
     private void updateLinkBandwidthsFromCarrierConfig(int rilRat) {
-        String ratName = ServiceState.rilRadioTechnologyToString(rilRat);
-        if (rilRat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE && isNRConnected()) {
-            ratName = mPhone.getServiceState().getNrFrequencyRange()
-                    == ServiceState.FREQUENCY_RANGE_MMWAVE
-                    ? DctConstants.RAT_NAME_NR_NSA_MMWAVE : DctConstants.RAT_NAME_NR_NSA;
-        }
+        String ratName = DataConfigManager.getDataConfigNetworkType(
+                ServiceState.rilRadioTechnologyToNetworkType(rilRat), mPhone.getServiceState());
 
         if (DBG) log("updateLinkBandwidthsFromCarrierConfig: " + ratName);
 
@@ -3255,7 +3253,7 @@ public class DataConnection extends StateMachine {
                         mNetworkAgent.sendSocketKeepaliveEvent(
                                 slot, SocketKeepalive.ERROR_HARDWARE_ERROR);
                     } else {
-                        KeepaliveStatus ks = (KeepaliveStatus) ar.result;
+                        NetworkKeepaliveStatus ks = (NetworkKeepaliveStatus) ar.result;
                         if (ks == null) {
                             loge("Null KeepaliveStatus received!");
                         } else {
@@ -3272,7 +3270,7 @@ public class DataConnection extends StateMachine {
                         // We have no way to notify connectivity in this case.
                     }
                     if (ar.result != null) {
-                        KeepaliveStatus ks = (KeepaliveStatus) ar.result;
+                        NetworkKeepaliveStatus ks = (NetworkKeepaliveStatus) ar.result;
                         mNetworkAgent.keepaliveTracker.handleKeepaliveStatus(ks);
                     }
 
@@ -3288,11 +3286,12 @@ public class DataConnection extends StateMachine {
                         loge("EVENT_KEEPALIVE_STOPPED: error stopping keepalive for handle="
                                 + handle + " e=" + ar.exception);
                         mNetworkAgent.keepaliveTracker.handleKeepaliveStatus(
-                                new KeepaliveStatus(KeepaliveStatus.ERROR_UNKNOWN));
+                                new NetworkKeepaliveStatus(NetworkKeepaliveStatus.ERROR_UNKNOWN));
                     } else {
                         log("Keepalive Stop Requested for handle=" + handle);
                         mNetworkAgent.keepaliveTracker.handleKeepaliveStatus(
-                                new KeepaliveStatus(handle, KeepaliveStatus.STATUS_INACTIVE));
+                                new NetworkKeepaliveStatus(
+                                        handle, NetworkKeepaliveStatus.STATUS_INACTIVE));
                     }
                     retVal = HANDLED;
                     break;
