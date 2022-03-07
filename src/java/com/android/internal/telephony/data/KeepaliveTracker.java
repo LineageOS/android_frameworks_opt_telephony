@@ -28,7 +28,7 @@ import android.telephony.AccessNetworkConstants;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.data.NetworkKeepaliveStatus.KeepaliveStatus;
+import com.android.internal.telephony.data.KeepaliveStatus.KeepaliveStatusCode;
 import com.android.internal.telephony.data.TelephonyNetworkAgent.TelephonyNetworkAgentCallback;
 import com.android.telephony.Rlog;
 
@@ -39,7 +39,7 @@ import java.util.concurrent.TimeUnit;
  * Keepalive tracker tracks the active keepalive requests from the connectivity service, forwards
  * it to the modem, and handles keepalive status update from the modem.
  */
-public class NetworkKeepaliveTracker extends Handler {
+public class KeepaliveTracker extends Handler {
     /** Event for keepalive session started. */
     private static final int EVENT_KEEPALIVE_STARTED = 1;
 
@@ -78,7 +78,7 @@ public class NetworkKeepaliveTracker extends Handler {
         public int slotIndex;
 
         /** The current status. */
-        public @KeepaliveStatus int currentStatus;
+        public @KeepaliveStatusCode int currentStatus;
 
         /**
          * Constructor
@@ -86,7 +86,7 @@ public class NetworkKeepaliveTracker extends Handler {
          * @param slotIndex The associated SIM slot index.
          * @param status The keepalive status.
          */
-        KeepaliveRecord(int slotIndex, @KeepaliveStatus int status) {
+        KeepaliveRecord(int slotIndex, @KeepaliveStatusCode int status) {
             this.slotIndex = slotIndex;
             this.currentStatus = status;
         }
@@ -101,13 +101,13 @@ public class NetworkKeepaliveTracker extends Handler {
      * @param dataNetwork The parent data network.
      * @param networkAgent The associated network agent.
      */
-    public NetworkKeepaliveTracker(@NonNull Phone phone, @NonNull Looper looper,
+    public KeepaliveTracker(@NonNull Phone phone, @NonNull Looper looper,
             @NonNull DataNetwork dataNetwork, @NonNull TelephonyNetworkAgent networkAgent) {
         super(looper);
         mPhone = phone;
         mDataNetwork = dataNetwork;
         mNetworkAgent = networkAgent;
-        mLogTag = "DNKT-" + mPhone.getPhoneId();
+        mLogTag = "KT-" + networkAgent.getId();
         mNetworkAgent.registerCallback(new TelephonyNetworkAgentCallback(this::post) {
             @Override
             public void onStartSocketKeepalive(int slot, @NonNull Duration interval,
@@ -125,7 +125,7 @@ public class NetworkKeepaliveTracker extends Handler {
     @Override
     public void handleMessage(@NonNull Message msg) {
         AsyncResult ar;
-        NetworkKeepaliveStatus ks;
+        KeepaliveStatus ks;
         int slotIndex;
         switch (msg.what) {
             case EVENT_KEEPALIVE_STARTED:
@@ -138,7 +138,7 @@ public class NetworkKeepaliveTracker extends Handler {
                             slotIndex, SocketKeepalive.ERROR_HARDWARE_ERROR);
                     break;
                 }
-                ks = (NetworkKeepaliveStatus) ar.result;
+                ks = (KeepaliveStatus) ar.result;
                 onSocketKeepaliveStarted(slotIndex, ks);
                 break;
             case EVENT_KEEPALIVE_STOPPED:
@@ -148,12 +148,12 @@ public class NetworkKeepaliveTracker extends Handler {
                 if (ar.exception != null) {
                     loge("EVENT_KEEPALIVE_STOPPED: error stopping keepalive for handle="
                             + handle + " e=" + ar.exception);
-                    onKeepaliveStatus(new NetworkKeepaliveStatus(
-                            NetworkKeepaliveStatus.ERROR_UNKNOWN));
+                    onKeepaliveStatus(new KeepaliveStatus(
+                            KeepaliveStatus.ERROR_UNKNOWN));
                 } else {
                     log("Keepalive Stop Requested for handle=" + handle);
-                    onKeepaliveStatus(new NetworkKeepaliveStatus(
-                            handle, NetworkKeepaliveStatus.STATUS_INACTIVE));
+                    onKeepaliveStatus(new KeepaliveStatus(
+                            handle, KeepaliveStatus.STATUS_INACTIVE));
                 }
                 break;
             case EVENT_KEEPALIVE_STATUS:
@@ -162,7 +162,7 @@ public class NetworkKeepaliveTracker extends Handler {
                     loge("EVENT_KEEPALIVE_STATUS: error in keepalive, e=" + ar.exception);
                     // We have no way to notify connectivity in this case.
                 } else if (ar.result != null) {
-                    ks = (NetworkKeepaliveStatus) ar.result;
+                    ks = (KeepaliveStatus) ar.result;
                     onKeepaliveStatus(ks);
                 }
                 break;
@@ -252,13 +252,13 @@ public class NetworkKeepaliveTracker extends Handler {
      */
     private int keepaliveStatusErrorToPacketKeepaliveError(int error) {
         switch(error) {
-            case NetworkKeepaliveStatus.ERROR_NONE:
+            case KeepaliveStatus.ERROR_NONE:
                 return SocketKeepalive.SUCCESS;
-            case NetworkKeepaliveStatus.ERROR_UNSUPPORTED:
+            case KeepaliveStatus.ERROR_UNSUPPORTED:
                 return SocketKeepalive.ERROR_UNSUPPORTED;
-            case NetworkKeepaliveStatus.ERROR_NO_RESOURCES:
+            case KeepaliveStatus.ERROR_NO_RESOURCES:
                 return SocketKeepalive.ERROR_INSUFFICIENT_RESOURCES;
-            case NetworkKeepaliveStatus.ERROR_UNKNOWN:
+            case KeepaliveStatus.ERROR_UNKNOWN:
             default:
                 return SocketKeepalive.ERROR_HARDWARE_ERROR;
         }
@@ -270,16 +270,16 @@ public class NetworkKeepaliveTracker extends Handler {
      * @param slotIndex The SIM slot index.
      * @param ks Keepalive status.
      */
-    private void onSocketKeepaliveStarted(int slotIndex, @NonNull NetworkKeepaliveStatus ks) {
+    private void onSocketKeepaliveStarted(int slotIndex, @NonNull KeepaliveStatus ks) {
         switch (ks.statusCode) {
-            case NetworkKeepaliveStatus.STATUS_INACTIVE:
+            case KeepaliveStatus.STATUS_INACTIVE:
                 mNetworkAgent.sendSocketKeepaliveEvent(slotIndex,
                         keepaliveStatusErrorToPacketKeepaliveError(ks.errorCode));
                 break;
-            case NetworkKeepaliveStatus.STATUS_ACTIVE:
+            case KeepaliveStatus.STATUS_ACTIVE:
                 mNetworkAgent.sendSocketKeepaliveEvent(slotIndex, SocketKeepalive.SUCCESS);
                 // fall through to add record
-            case NetworkKeepaliveStatus.STATUS_PENDING:
+            case KeepaliveStatus.STATUS_PENDING:
                 log("Adding keepalive handle=" + ks.sessionHandle + " slotIndex = " + slotIndex);
                 mKeepalives.put(ks.sessionHandle, new KeepaliveRecord(slotIndex, ks.statusCode));
                 break;
@@ -294,7 +294,7 @@ public class NetworkKeepaliveTracker extends Handler {
      *
      * @param ks Keepalive status.
      */
-    private void onKeepaliveStatus(@NonNull NetworkKeepaliveStatus ks) {
+    private void onKeepaliveStatus(@NonNull KeepaliveStatus ks) {
         final KeepaliveRecord kr;
         kr = mKeepalives.get(ks.sessionHandle);
 
@@ -307,44 +307,44 @@ public class NetworkKeepaliveTracker extends Handler {
         }
         // Switch on the current state, to see what we do with the status update
         switch (kr.currentStatus) {
-            case NetworkKeepaliveStatus.STATUS_INACTIVE:
+            case KeepaliveStatus.STATUS_INACTIVE:
                 log("Inactive Keepalive received status!");
                 mNetworkAgent.sendSocketKeepaliveEvent(
                         kr.slotIndex, SocketKeepalive.ERROR_HARDWARE_ERROR);
                 break;
-            case NetworkKeepaliveStatus.STATUS_PENDING:
+            case KeepaliveStatus.STATUS_PENDING:
                 switch (ks.statusCode) {
-                    case NetworkKeepaliveStatus.STATUS_INACTIVE:
+                    case KeepaliveStatus.STATUS_INACTIVE:
                         mNetworkAgent.sendSocketKeepaliveEvent(kr.slotIndex,
                                 keepaliveStatusErrorToPacketKeepaliveError(ks.errorCode));
-                        kr.currentStatus = NetworkKeepaliveStatus.STATUS_INACTIVE;
+                        kr.currentStatus = KeepaliveStatus.STATUS_INACTIVE;
                         mKeepalives.remove(ks.sessionHandle);
                         break;
-                    case NetworkKeepaliveStatus.STATUS_ACTIVE:
+                    case KeepaliveStatus.STATUS_ACTIVE:
                         log("Pending Keepalive received active status!");
-                        kr.currentStatus = NetworkKeepaliveStatus.STATUS_ACTIVE;
+                        kr.currentStatus = KeepaliveStatus.STATUS_ACTIVE;
                         mNetworkAgent.sendSocketKeepaliveEvent(
                                 kr.slotIndex, SocketKeepalive.SUCCESS);
                         break;
-                    case NetworkKeepaliveStatus.STATUS_PENDING:
+                    case KeepaliveStatus.STATUS_PENDING:
                         loge("Invalid unsolicited Keepalive Pending Status!");
                         break;
                     default:
                         loge("Invalid Keepalive Status received, " + ks.statusCode);
                 }
                 break;
-            case NetworkKeepaliveStatus.STATUS_ACTIVE:
+            case KeepaliveStatus.STATUS_ACTIVE:
                 switch (ks.statusCode) {
-                    case NetworkKeepaliveStatus.STATUS_INACTIVE:
+                    case KeepaliveStatus.STATUS_INACTIVE:
                         log("Keepalive received stopped status!");
                         mNetworkAgent.sendSocketKeepaliveEvent(kr.slotIndex,
                                 SocketKeepalive.SUCCESS);
 
-                        kr.currentStatus = NetworkKeepaliveStatus.STATUS_INACTIVE;
+                        kr.currentStatus = KeepaliveStatus.STATUS_INACTIVE;
                         mKeepalives.remove(ks.sessionHandle);
                         break;
-                    case NetworkKeepaliveStatus.STATUS_PENDING:
-                    case NetworkKeepaliveStatus.STATUS_ACTIVE:
+                    case KeepaliveStatus.STATUS_PENDING:
+                    case KeepaliveStatus.STATUS_ACTIVE:
                         loge("Active Keepalive received invalid status!");
                         break;
                     default:

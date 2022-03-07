@@ -26,15 +26,15 @@ import android.os.Parcelable;
  *
  * {@hide}
  */
-public class NetworkKeepaliveStatus implements Parcelable {
-    /** This should match the HAL Radio::1_1::KeepaliveStatusCode */
+public class KeepaliveStatus implements Parcelable {
+    /** This should match the HAL {@code KeepaliveStatus.aidl}. */
     @IntDef(prefix = {"STATUS_REASON_"},
             value = {
                     STATUS_ACTIVE,
                     STATUS_INACTIVE,
                     STATUS_PENDING,
             })
-    public @interface KeepaliveStatus {}
+    public @interface KeepaliveStatusCode {}
 
     public static final int STATUS_ACTIVE = 0;
     public static final int STATUS_INACTIVE = 1;
@@ -54,18 +54,18 @@ public class NetworkKeepaliveStatus implements Parcelable {
      * A status code indicating whether this Keepalive session is
      * active, inactive, or pending activation
      */
-    public final @KeepaliveStatus int statusCode;
+    public final @KeepaliveStatusCode int statusCode;
 
     /** An error code indicating a lower layer failure, if any */
     public final int errorCode;
 
-    public NetworkKeepaliveStatus(int error) {
+    public KeepaliveStatus(int error) {
         sessionHandle = INVALID_HANDLE;
         statusCode = STATUS_INACTIVE;
         errorCode = error;
     }
 
-    public NetworkKeepaliveStatus(int handle, @KeepaliveStatus int code) {
+    public KeepaliveStatus(int handle, @KeepaliveStatusCode int code) {
         sessionHandle = handle;
         statusCode = code;
         errorCode = ERROR_NONE;
@@ -91,22 +91,22 @@ public class NetworkKeepaliveStatus implements Parcelable {
         dest.writeInt(statusCode);
     }
 
-    private NetworkKeepaliveStatus(Parcel p) {
+    private KeepaliveStatus(Parcel p) {
         errorCode = p.readInt();
         sessionHandle = p.readInt();
         statusCode = p.readInt();
     }
 
-    public static final Parcelable.Creator<NetworkKeepaliveStatus> CREATOR =
-            new Parcelable.Creator<NetworkKeepaliveStatus>() {
+    public static final Parcelable.Creator<KeepaliveStatus> CREATOR =
+            new Parcelable.Creator<KeepaliveStatus>() {
                 @Override
-                public NetworkKeepaliveStatus createFromParcel(Parcel source) {
-                    return new NetworkKeepaliveStatus(source);
+                public KeepaliveStatus createFromParcel(Parcel source) {
+                    return new KeepaliveStatus(source);
                 }
 
                 @Override
-                public NetworkKeepaliveStatus[] newArray(int size) {
-                    return new NetworkKeepaliveStatus[size];
+                public KeepaliveStatus[] newArray(int size) {
+                    return new KeepaliveStatus[size];
                 }
             };
 }

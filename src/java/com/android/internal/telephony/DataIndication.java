@@ -30,7 +30,7 @@ import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.NetworkSlicingConfig;
 
-import com.android.internal.telephony.data.NetworkKeepaliveStatus;
+import com.android.internal.telephony.data.KeepaliveStatus;
 
 import java.util.ArrayList;
 
@@ -75,7 +75,7 @@ public class DataIndication extends IRadioDataIndication.Stub {
                     + " code=" +  halStatus.code);
         }
 
-        NetworkKeepaliveStatus ks = new NetworkKeepaliveStatus(
+        KeepaliveStatus ks = new KeepaliveStatus(
                 halStatus.sessionHandle, halStatus.code);
         mRil.mNattKeepaliveStatusRegistrants.notifyRegistrants(new AsyncResult(null, ks, null));
     }
