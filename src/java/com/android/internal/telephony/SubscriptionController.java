@@ -71,7 +71,7 @@ import android.util.Log;
 import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.IccCardConstants.State;
-import com.android.internal.telephony.dataconnection.DataEnabledOverride;
+import com.android.internal.telephony.data.DataEnabledOverride;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCard;

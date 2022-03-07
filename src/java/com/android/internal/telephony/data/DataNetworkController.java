@@ -161,6 +161,9 @@ public class DataNetworkController extends Handler {
     /** Event for registering all events. */
     private static final int EVENT_REGISTER_ALL_EVENTS = 19;
 
+    /** Event for emergency call started or ended. */
+    private static final int EVENT_EMERGENCY_CALL_CHANGED = 20;
+
     /** The supported IMS features. This is for IMS graceful tear down support. */
     private static final Collection<Integer> SUPPORTED_IMS_FEATURES =
             List.of(ImsFeature.FEATURE_MMTEL, ImsFeature.FEATURE_RCS);
@@ -615,7 +618,7 @@ public class DataNetworkController extends Handler {
                                 DataEvaluationReason.DATA_ENABLED_CHANGED));
                     }
                     @Override
-                    public void onRoamingEnabledChanged(boolean enabled) {
+                    public void onDataRoamingEnabledChanged(boolean enabled) {
                         // If data roaming is enabled by the user, evaluate the unsatisfied network
                         // requests and then attempt to setup data networks to satisfy them.
                         // If data roaming is disabled, evaluate the existing data networks and
@@ -677,6 +680,7 @@ public class DataNetworkController extends Handler {
                 EVENT_PS_RESTRICT_ENABLED, null);
         mPhone.getServiceStateTracker().registerForPsRestrictedDisabled(this,
                 EVENT_PS_RESTRICT_DISABLED, null);
+        mPhone.registerForEmergencyCallToggle(this, EVENT_EMERGENCY_CALL_CHANGED, null);
         mDataServiceManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                 .registerForServiceBindingChanged(this, EVENT_DATA_SERVICE_BINDING_CHANGED);
 
@@ -780,6 +784,15 @@ public class DataNetworkController extends Handler {
                 break;
             case EVENT_SERVICE_STATE_CHANGED:
                 onServiceStateChanged();
+                break;
+            case EVENT_EMERGENCY_CALL_CHANGED:
+                if (mPhone.isInEcm()) {
+                    sendMessage(obtainMessage(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
+                            DataEvaluationReason.EMERGENCY_CALL_CHANGED));
+                } else {
+                    sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
+                            DataEvaluationReason.EMERGENCY_CALL_CHANGED));
+                }
                 break;
             default:
                 loge("Unexpected event " + msg.what);
@@ -974,11 +987,10 @@ public class DataNetworkController extends Handler {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DEFAULT_DATA_UNSELECTED);
         }
 
-        // TODO: Support data roaming check
-        /*if (mServiceState.getDataRoaming() &&
-                !mDataSettingManager.isDataRoamingEnabled()) {
+        // Check if data roaming is disabled.
+        if (mServiceState.getDataRoaming() && !mDataSettingsManager.isDataRoamingEnabled()) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.ROAMING_DISABLED);
-        }*/
+        }
 
         // Check if data is restricted by the network.
         if (mPsRestricted) {
@@ -1011,15 +1023,59 @@ public class DataNetworkController extends Handler {
             evaluation.addDataDisallowedReason(DataDisallowedReason.NO_SUITABLE_DATA_PROFILE);
         }
 
-        // TODO: Support data enabled/disabled check
+        // Check if data is disabled
+        int[] apnTypes = Arrays.stream(networkRequest.getApnTypesCapabilities())
+                .map(DataUtils::networkCapabilityToApnType).toArray();
+        int apnType = 0;
+        for (int apn : apnTypes) {
+            apnType |= apn;
+        }
+        if (apnType == 0 ? !mDataSettingsManager.isDataEnabled()
+                : !mDataSettingsManager.isDataEnabled(apnType)) {
+            evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_DISABLED);
+        }
 
-        // TODO: Handle restricted request
-        // TODO: Handle unmetered request
+        // Check if device is CDMA and is currently in ECBM
+        if (mPhone.isInEcm() && mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+            evaluation.addDataDisallowedReason(DataDisallowedReason.EMERGENCY_CALL);
+        }
 
-        if (!evaluation.isDataAllowed()) {
-            // TODO: Add more soft disallowed reason bypass support.
-        } else {
+        // Check whether to allow data in certain situations if data is disallowed for soft reasons
+        if (evaluation.isDataAllowed()) {
             evaluation.addDataAllowedReason(DataAllowedReason.NORMAL);
+        } else if (!evaluation.containsHardDisallowedReasons()) {
+            // Check if request is MMS and MMS is always allowed
+            if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMS)
+                    && mDataSettingsManager.isMmsAlwaysAllowed()) {
+                evaluation.addDataAllowedReason(DataAllowedReason.MMS_REQUEST);
+            }
+
+            // Check if request is unmetered (WiFi or unmetered APN)
+            if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+                evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
+            } else if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
+                List<Integer> meteredApns = mServiceState.getDataRoaming()
+                        ? mDataConfigManager.getMeteredApnTypesWhenRoaming()
+                        : mDataConfigManager.getMeteredApnTypes();
+                boolean unmetered = !meteredApns.isEmpty() && apnTypes.length != 0;
+                for (int apn : apnTypes) {
+                    if (meteredApns.contains(apn)) {
+                        unmetered = false;
+                        break;
+                    }
+                }
+                if (unmetered) {
+                    evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
+                }
+            }
+
+            // Check if request is restricted
+            if (!networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
+                evaluation.addDataAllowedReason(DataAllowedReason.RESTRICTED_REQUEST);
+            }
+        }
+
+        if (evaluation.isDataAllowed()) {
             evaluation.setCandidateDataProfile(dataProfile);
         }
 
@@ -1109,8 +1165,22 @@ public class DataNetworkController extends Handler {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_RESTRICTED_BY_NETWORK);
         }
 
-        // TODO: Add data enabled check after DataSettingsManager is available.
-        // TODO: Add data roaming check after DataSettingsManager is available.
+        // Check if device is CDMA and is currently in ECBM
+        if (mPhone.isInEcm() && mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+            evaluation.addDataDisallowedReason(DataDisallowedReason.EMERGENCY_CALL);
+        }
+
+        // Check if data is disabled
+        boolean dataDisabled = false;
+        if (!mDataSettingsManager.isDataEnabled()) {
+            dataDisabled = true;
+        }
+
+        // Check if data roaming is disabled
+        if (mPhone.getServiceState().getDataRoaming()
+                && !mDataSettingsManager.isDataRoamingEnabled()) {
+            evaluation.addDataDisallowedReason(DataDisallowedReason.ROAMING_DISABLED);
+        }
 
         // Check if current data network type is allowed by the data profile. Use the lingering
         // network type. Some data network is allowed to create on certain RATs, but can linger
@@ -1118,17 +1188,27 @@ public class DataNetworkController extends Handler {
         // extend its life cycle to 3G.
         int networkType = getDataNetworkType(dataNetwork.getTransport());
         DataProfile dataProfile = dataNetwork.getDataProfile();
-        if (dataProfile.getApnSetting() != null
-                // Sometimes network temporarily OOS and network type becomes UNKNOWN. We don't
-                // tear down network in that case.
-                && networkType != TelephonyManager.NETWORK_TYPE_UNKNOWN
-                && !dataProfile.getApnSetting().canSupportLingeringNetworkType(networkType)) {
-            log("networkType=" + TelephonyManager.getNetworkTypeName(networkType)
-                    + ", networkTypeBitmask="
-                    + dataProfile.getApnSetting().getNetworkTypeBitmask()
-                    + ", lingeringNetworkTypeBitmask="
-                    + dataProfile.getApnSetting().getLingeringNetworkTypeBitmask());
-            evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_NETWORK_TYPE_NOT_ALLOWED);
+        if (dataProfile.getApnSetting() != null) {
+            // Check if data is disabled for the APN type
+            dataDisabled = !mDataSettingsManager.isDataEnabled(
+                    dataProfile.getApnSetting().getApnTypeBitmask());
+
+            // Sometimes network temporarily OOS and network type becomes UNKNOWN. We don't
+            // tear down network in that case.
+            if (networkType != TelephonyManager.NETWORK_TYPE_UNKNOWN
+                    && !dataProfile.getApnSetting().canSupportLingeringNetworkType(networkType)) {
+                log("networkType=" + TelephonyManager.getNetworkTypeName(networkType)
+                        + ", networkTypeBitmask="
+                        + dataProfile.getApnSetting().getNetworkTypeBitmask()
+                        + ", lingeringNetworkTypeBitmask="
+                        + dataProfile.getApnSetting().getLingeringNetworkTypeBitmask());
+                evaluation.addDataDisallowedReason(
+                        DataDisallowedReason.DATA_NETWORK_TYPE_NOT_ALLOWED);
+            }
+        }
+
+        if (dataDisabled) {
+            evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_DISABLED);
         }
 
         if (evaluation.isDataAllowed()) {
