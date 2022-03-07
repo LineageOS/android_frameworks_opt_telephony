@@ -407,7 +407,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                                 transport).values()), null));
                 return null;
             }).when(mMockedDataServiceManagers.get(transport)).deactivateDataCall(
-                    anyInt(), anyInt(), eq(null));
+                    anyInt(), anyInt(), any(Message.class));
 
             doAnswer(invocation -> {
                 Handler h = (Handler) invocation.getArguments()[0];

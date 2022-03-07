@@ -461,7 +461,7 @@ public class DataNetworkTest extends TelephonyTest {
         verify(mSimulatedCommandsVerifier, never()).releasePduSessionId(nullable(Message.class),
                 anyInt());
         verify(mMockedWwanDataServiceManager).deactivateDataCall(eq(123),
-                eq(DataService.REQUEST_REASON_NORMAL), eq(null));
+                eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
         verify(mDataNetworkCallback).onDisconnected(eq(mDataNetworkUT), eq(
                 DataFailCause.EMM_DETACHED));
 
@@ -563,7 +563,7 @@ public class DataNetworkTest extends TelephonyTest {
 
         verify(mSimulatedCommandsVerifier).releasePduSessionId(nullable(Message.class), eq(1));
         verify(mMockedWlanDataServiceManager).deactivateDataCall(eq(123),
-                eq(DataService.REQUEST_REASON_NORMAL), eq(null));
+                eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
         verify(mDataNetworkCallback).onDisconnected(eq(mDataNetworkUT), eq(
                 DataFailCause.EMM_DETACHED));
 
@@ -690,5 +690,18 @@ public class DataNetworkTest extends TelephonyTest {
         assertThat(mDataNetworkUT.getNetworkCapabilities().getAdministratorUids()).asList()
                 .containsExactly(ADMIN_UID1, ADMIN_UID2);
         assertThat(mDataNetworkUT.getNetworkCapabilities().getOwnerUid()).isEqualTo(ADMIN_UID2);
+    }
+
+    @Test
+    public void testDeactivateDataCallRadioNotAvailable() throws Exception {
+        testCreateDataNetwork();
+        assertThat(mDataNetworkUT.isConnected()).isTrue();
+        mDataNetworkUT.sendMessage(19/*EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE*/,
+                6/*RESULT_ERROR_RADIO_NOT_AVAILABLE*/);
+        processAllMessages();
+
+        verify(mDataNetworkCallback).onDisconnected(eq(mDataNetworkUT), eq(
+                DataFailCause.RADIO_NOT_AVAILABLE));
+        assertThat(mDataNetworkUT.isConnected()).isFalse();
     }
 }
