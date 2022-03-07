@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.dataconnection;
+package com.android.internal.telephony.data;
 
+import android.annotation.IntDef;
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -25,10 +26,16 @@ import android.os.Parcelable;
  *
  * {@hide}
  */
-public class KeepaliveStatus implements Parcelable {
-    private static final String LOG_TAG = "KeepaliveStatus";
-
+public class NetworkKeepaliveStatus implements Parcelable {
     /** This should match the HAL Radio::1_1::KeepaliveStatusCode */
+    @IntDef(prefix = {"STATUS_REASON_"},
+            value = {
+                    STATUS_ACTIVE,
+                    STATUS_INACTIVE,
+                    STATUS_PENDING,
+            })
+    public @interface KeepaliveStatus {}
+
     public static final int STATUS_ACTIVE = 0;
     public static final int STATUS_INACTIVE = 1;
     public static final int STATUS_PENDING = 2;
@@ -47,18 +54,18 @@ public class KeepaliveStatus implements Parcelable {
      * A status code indicating whether this Keepalive session is
      * active, inactive, or pending activation
      */
-    public final int statusCode;
+    public final @KeepaliveStatus int statusCode;
 
     /** An error code indicating a lower layer failure, if any */
     public final int errorCode;
 
-    public KeepaliveStatus(int error) {
+    public NetworkKeepaliveStatus(int error) {
         sessionHandle = INVALID_HANDLE;
         statusCode = STATUS_INACTIVE;
         errorCode = error;
     }
 
-    public KeepaliveStatus(int handle, int code) {
+    public NetworkKeepaliveStatus(int handle, @KeepaliveStatus int code) {
         sessionHandle = handle;
         statusCode = code;
         errorCode = ERROR_NONE;
@@ -84,22 +91,22 @@ public class KeepaliveStatus implements Parcelable {
         dest.writeInt(statusCode);
     }
 
-    private KeepaliveStatus(Parcel p) {
+    private NetworkKeepaliveStatus(Parcel p) {
         errorCode = p.readInt();
         sessionHandle = p.readInt();
         statusCode = p.readInt();
     }
 
-    public static final Parcelable.Creator<KeepaliveStatus> CREATOR =
-            new Parcelable.Creator<KeepaliveStatus>() {
+    public static final Parcelable.Creator<NetworkKeepaliveStatus> CREATOR =
+            new Parcelable.Creator<NetworkKeepaliveStatus>() {
                 @Override
-                public KeepaliveStatus createFromParcel(Parcel source) {
-                    return new KeepaliveStatus(source);
+                public NetworkKeepaliveStatus createFromParcel(Parcel source) {
+                    return new NetworkKeepaliveStatus(source);
                 }
 
                 @Override
-                public KeepaliveStatus[] newArray(int size) {
-                    return new KeepaliveStatus[size];
+                public NetworkKeepaliveStatus[] newArray(int size) {
+                    return new NetworkKeepaliveStatus[size];
                 }
             };
 }
