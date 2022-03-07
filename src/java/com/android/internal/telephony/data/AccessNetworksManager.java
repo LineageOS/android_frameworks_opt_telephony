@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.dataconnection;
+package com.android.internal.telephony.data;
 
 import android.annotation.NonNull;
 import android.annotation.StringDef;
@@ -52,7 +52,7 @@ import android.util.SparseArray;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RIL;
-import com.android.internal.telephony.data.DataUtils;
+import com.android.internal.telephony.dataconnection.DataThrottler;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -111,7 +111,7 @@ public class AccessNetworksManager extends Handler {
     private final UUID mAnomalyUUID = UUID.fromString("c2d1a639-00e2-4561-9619-6acf37d90590");
     private String mLastBoundPackageName;
 
-    static final int[] SUPPORTED_APN_TYPES = {
+    public static final int[] SUPPORTED_APN_TYPES = {
             ApnSetting.TYPE_DEFAULT,
             ApnSetting.TYPE_MMS,
             ApnSetting.TYPE_FOTA,

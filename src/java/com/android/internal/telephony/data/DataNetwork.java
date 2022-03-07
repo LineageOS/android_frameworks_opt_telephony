@@ -70,7 +70,6 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.TelephonyNetworkAgent.TelephonyNetworkAgentCallback;
-import com.android.internal.telephony.dataconnection.AccessNetworksManager;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.IState;
 import com.android.internal.util.State;
@@ -353,8 +352,8 @@ public class DataNetwork extends StateMachine {
     /** QOS callback tracker. This is only created after network connected on WWAN. */
     private @Nullable QosCallbackTracker mQosCallbackTracker;
 
-    /** Data network keepalive tracker. */
-    private @Nullable NetworkKeepaliveTracker mNetworkKeepaliveTracker;
+    /** NAT keepalive tracker. */
+    private @Nullable KeepaliveTracker mKeepaliveTracker;
 
     /** The data profile used to establish this data network. */
     private final @NonNull DataProfile mDataProfile;
@@ -808,7 +807,7 @@ public class DataNetwork extends StateMachine {
 
                 mQosCallbackTracker = new QosCallbackTracker(mNetworkAgent, mPhone);
                 mQosCallbackTracker.updateSessions(mQosBearerSessions);
-                mNetworkKeepaliveTracker = new NetworkKeepaliveTracker(mPhone,
+                mKeepaliveTracker = new KeepaliveTracker(mPhone,
                         getHandler().getLooper(), DataNetwork.this, mNetworkAgent);
             } else {
                 // Reaching here means
@@ -827,7 +826,7 @@ public class DataNetwork extends StateMachine {
                 // 3. The network failed to handover to IWLAN and re-entered connected state.
                 // TODO: Correctly support (3) later. We do not need to perform the following works.
                 registerForBandwidthUpdate();
-                mNetworkKeepaliveTracker.registerForKeepaliveStatus();
+                mKeepaliveTracker.registerForKeepaliveStatus();
             }
         }
 
@@ -951,7 +950,7 @@ public class DataNetwork extends StateMachine {
             }
 
             if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN && mEverConnected) {
-                mNetworkKeepaliveTracker.unregisterForKeepaliveStatus();
+                mKeepaliveTracker.unregisterForKeepaliveStatus();
                 unregisterForBandwidthUpdate();
             }
         }
