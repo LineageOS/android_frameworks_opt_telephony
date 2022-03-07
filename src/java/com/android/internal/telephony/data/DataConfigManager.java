@@ -18,22 +18,28 @@ package com.android.internal.telephony.data;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.annotation.StringDef;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
+import android.net.LinkProperties;
+import android.net.NetworkCapabilities;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RegistrantList;
+import android.telephony.Annotation.ApnType;
 import android.telephony.Annotation.NetCapability;
 import android.telephony.Annotation.NetworkType;
-import android.telephony.Annotation.OverrideNetworkType;
 import android.telephony.CarrierConfigManager;
+import android.telephony.NetworkRegistrationInfo;
+import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.data.ApnSetting;
 import android.util.IndentingPrintWriter;
 
 import com.android.internal.R;
@@ -43,17 +49,22 @@ import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * DataConfigManager is the source of all data related configuration from carrier config and
  * resource overlay. DataConfigManager is created to reduce the excessive access to the
- * {@link CarrierConfigManager}. All the data config will be loaded once and store here.
+ * {@link CarrierConfigManager}. All the data config will be loaded once and stored here.
  */
 public class DataConfigManager extends Handler {
     private static final int EVENT_CARRIER_CONFIG_CHANGED = 1;
@@ -68,33 +79,141 @@ public class DataConfigManager extends Handler {
     private static final String BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR_STRING_VALUE =
             "bandwidth_estimator";
 
-    // /** Configuration used only network type GSM. Should not be used outside of DataConfigManager
-    //   */
-    // private static final String CONFIG_USED_NETWORK_TYPE_GPRS = "GPRS";
+    /** Default downlink and uplink bandwidth value in kbps. */
+    private static final int DEFAULT_BANDWIDTH = 14;
 
-    // private static final String CONFIG_USED_NETWORK_TYPE_EDGE = "EDGE";
+    /** Network type GPRS. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_GPRS = "GPRS";
 
-    // TODO: A lot more to be added.
+    /** Network type EDGE. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_EDGE = "EDGE";
 
-    // private static final String CONFIG_USED_NETWORK_TYPE_NR_NSA = "NR_NSA";
+    /** Network type UMTS. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_UMTS = "UMTS";
 
-    // private static final String CONFIG_USED_NETWORK_TYPE_NR_NSA_MMWAVE = "NR_NSA_MMWAVE";
+    /** Network type CDMA. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_CDMA = "CDMA";
 
-    private final Phone mPhone;
-    private final String mLogTag;
+    /** Network type 1xRTT. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_1xRTT = "1xRTT";
+
+    /** Network type EvDo Rev 0. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_EVDO_0 = "EvDo_0";
+
+    /** Network type EvDo Rev A. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_EVDO_A = "EvDo_A";
+
+    /** Network type HSDPA. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_HSDPA = "HSDPA";
+
+    /** Network type HSUPA. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_HSUPA = "HSUPA";
+
+    /** Network type HSPA. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_HSPA = "HSPA";
+
+    /** Network type EvDo Rev B. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_EVDO_B = "EvDo_B";
+
+    /** Network type eHRPD. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_EHRPD = "eHRPD";
+
+    /** Network type iDEN. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_IDEN = "iDEN";
+
+    /** Network type LTE. Should not be used outside of DataConfigManager. */
+    // TODO: Public only for use by DcTracker. This should be private once DcTracker is removed.
+    public static final String DATA_CONFIG_NETWORK_TYPE_LTE = "LTE";
+
+    /** Network type HSPA+. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_HSPAP = "HSPA+";
+
+    /** Network type GSM. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_GSM = "GSM";
+
+    /** Network type IWLAN. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_IWLAN = "IWLAN";
+
+    /** Network type TD_SCDMA. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_TD_SCDMA = "TD_SCDMA";
+
+    /** Network type LTE_CA. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_LTE_CA = "LTE_CA";
+
+    /** Network type NR_NSA. Should not be used outside of DataConfigManager. */
+    // TODO: Public only for use by DcTracker. This should be private once DcTracker is removed.
+    public static final String DATA_CONFIG_NETWORK_TYPE_NR_NSA = "NR_NSA";
+
+    /** Network type NR_NSA_MMWAVE. Should not be used outside of DataConfigManager. */
+    // TODO: Public only for use by DcTracker. This should be private once DcTracker is removed.
+    public static final String DATA_CONFIG_NETWORK_TYPE_NR_NSA_MMWAVE = "NR_NSA_MMWAVE";
+
+    /** Network type NR_SA. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_NR_SA = "NR_SA";
+
+    /** Network type NR_SA_MMWAVE. Should not be used outside of DataConfigManager. */
+    private static final String DATA_CONFIG_NETWORK_TYPE_NR_SA_MMWAVE = "NR_SA_MMWAVE";
+
+    @StringDef(prefix = {"DATA_CONFIG_NETWORK_TYPE_"}, value = {
+            DATA_CONFIG_NETWORK_TYPE_GPRS,
+            DATA_CONFIG_NETWORK_TYPE_EDGE,
+            DATA_CONFIG_NETWORK_TYPE_UMTS,
+            DATA_CONFIG_NETWORK_TYPE_CDMA,
+            DATA_CONFIG_NETWORK_TYPE_1xRTT,
+            DATA_CONFIG_NETWORK_TYPE_EVDO_0,
+            DATA_CONFIG_NETWORK_TYPE_EVDO_A,
+            DATA_CONFIG_NETWORK_TYPE_HSDPA,
+            DATA_CONFIG_NETWORK_TYPE_HSUPA,
+            DATA_CONFIG_NETWORK_TYPE_HSPA,
+            DATA_CONFIG_NETWORK_TYPE_EVDO_B,
+            DATA_CONFIG_NETWORK_TYPE_EHRPD,
+            DATA_CONFIG_NETWORK_TYPE_IDEN,
+            DATA_CONFIG_NETWORK_TYPE_LTE,
+            DATA_CONFIG_NETWORK_TYPE_HSPAP,
+            DATA_CONFIG_NETWORK_TYPE_GSM,
+            DATA_CONFIG_NETWORK_TYPE_IWLAN,
+            DATA_CONFIG_NETWORK_TYPE_TD_SCDMA,
+            DATA_CONFIG_NETWORK_TYPE_LTE_CA,
+            DATA_CONFIG_NETWORK_TYPE_NR_NSA,
+            DATA_CONFIG_NETWORK_TYPE_NR_NSA_MMWAVE,
+            DATA_CONFIG_NETWORK_TYPE_NR_SA,
+            DATA_CONFIG_NETWORK_TYPE_NR_SA_MMWAVE,
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    private @interface DataConfigNetworkType {}
+
+    private @NonNull final Phone mPhone;
+    private @NonNull final String mLogTag;
 
     /** The registrants list for config update event. */
-    private final RegistrantList mConfigUpdateRegistrants = new RegistrantList();
+    private @NonNull final RegistrantList mConfigUpdateRegistrants = new RegistrantList();
 
     private @NonNull final CarrierConfigManager mCarrierConfigManager;
+    private @NonNull PersistableBundle mCarrierConfig = null;
+    private @NonNull Resources mResources = null;
 
     /** The network capability priority map */
-    private final Map<Integer, Integer> mNetworkCapabilityPriorityMap = new ConcurrentHashMap<>();
-
-    private final List<DataRetryRule> mDataRetryRules = new ArrayList<>();
-
-    private @Nullable PersistableBundle mCarrierConfig = null;
-    private @Nullable Resources mResources = null;
+    private @NonNull final Map<Integer, Integer> mNetworkCapabilityPriorityMap =
+            new ConcurrentHashMap<>();
+    /** The data retry rules */
+    private @NonNull final List<DataRetryRule> mDataRetryRules = new ArrayList<>();
+    /** The metered APN types for home network */
+    private @NonNull final @ApnType List<Integer> mMeteredApnTypes = new ArrayList<>();
+    /** The metered APN types for roaming network */
+    private @NonNull final @ApnType List<Integer> mRoamingMeteredApnTypes =
+            new ArrayList<>();
+    /** The network types that only support single data networks */
+    private @NonNull final @NetworkType List<Integer> mSingleDataNetworkTypeList =
+            new ArrayList<>();
+    /** The network types that support temporarily not metered */
+    private @NonNull final @DataConfigNetworkType Set<String> mUnmeteredNetworkTypes =
+            new HashSet<>();
+    /** A map of network types to the downlink and uplink bandwidth values for that network type */
+    private @NonNull final @DataConfigNetworkType Map<String, DataNetwork.NetworkBandwidth>
+            mBandwidthMap = new ConcurrentHashMap<>();
+    /** A map of network types to the TCP buffer sizes for that network type */
+    private @NonNull final @DataConfigNetworkType Map<String, String> mTcpBufferSizeMap =
+            new ConcurrentHashMap<>();
 
     /**
      * Constructor
@@ -126,11 +245,7 @@ public class DataConfigManager extends Handler {
             }
         }, filter, null, mPhone);
 
-        if (mCarrierConfigManager != null) {
-            mCarrierConfig = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId());
-        }
-        mResources = SubscriptionManager.getResourcesForSubId(mPhone.getContext(),
-                mPhone.getSubId());
+        // Must be called to set mCarrierConfig and mResources to non-null values
         updateConfig();
     }
 
@@ -151,8 +266,7 @@ public class DataConfigManager extends Handler {
      * configuration is the default (i.e. SIM not inserted).
      */
     public boolean isConfigCarrierSpecific() {
-        return mCarrierConfig != null
-                && mCarrierConfig.getBoolean(CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL);
+        return mCarrierConfig.getBoolean(CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL);
     }
 
     /**
@@ -170,6 +284,11 @@ public class DataConfigManager extends Handler {
 
         updateNetworkCapabilityPriority();
         updateDataRetryRules();
+        updateMeteredApnTypes();
+        updateSingleDataNetworkTypeList();
+        updateUnmeteredNetworkTypes();
+        updateBandwidths();
+        updateTcpBuffers();
 
         log("Data config updated. Config is " + (isConfigCarrierSpecific() ? "" : "not ")
                 + "carrier specific.");
@@ -181,25 +300,28 @@ public class DataConfigManager extends Handler {
      * Update the network capability priority from carrier config.
      */
     private void updateNetworkCapabilityPriority() {
-        String[] capabilityPriorityStrings = mCarrierConfig.getStringArray(
-                CarrierConfigManager.KEY_TELEPHONY_NETWORK_CAPABILITY_PRIORITIES_STRING_ARRAY);
-        if (capabilityPriorityStrings != null) {
-            for (String capabilityPriorityString : capabilityPriorityStrings) {
-                capabilityPriorityString = capabilityPriorityString.trim().toUpperCase();
-                String[] tokens = capabilityPriorityString.split(":");
-                if (tokens.length != 2) {
-                    loge("Invalid config \"" + capabilityPriorityString + "\"");
-                    continue;
-                }
+        synchronized (this) {
+            mNetworkCapabilityPriorityMap.clear();
+            String[] capabilityPriorityStrings = mCarrierConfig.getStringArray(
+                    CarrierConfigManager.KEY_TELEPHONY_NETWORK_CAPABILITY_PRIORITIES_STRING_ARRAY);
+            if (capabilityPriorityStrings != null) {
+                for (String capabilityPriorityString : capabilityPriorityStrings) {
+                    capabilityPriorityString = capabilityPriorityString.trim().toUpperCase();
+                    String[] tokens = capabilityPriorityString.split(":");
+                    if (tokens.length != 2) {
+                        loge("Invalid config \"" + capabilityPriorityString + "\"");
+                        continue;
+                    }
 
-                int netCap = DataUtils.getNetworkCapabilityFromString(tokens[0]);
-                if (netCap < 0) {
-                    loge("Invalid config \"" + capabilityPriorityString + "\"");
-                    continue;
-                }
+                    int netCap = DataUtils.getNetworkCapabilityFromString(tokens[0]);
+                    if (netCap < 0) {
+                        loge("Invalid config \"" + capabilityPriorityString + "\"");
+                        continue;
+                    }
 
-                int priority = Integer.parseInt(tokens[1]);
-                mNetworkCapabilityPriorityMap.put(netCap, priority);
+                    int priority = Integer.parseInt(tokens[1]);
+                    mNetworkCapabilityPriorityMap.put(netCap, priority);
+                }
             }
         }
     }
@@ -221,13 +343,15 @@ public class DataConfigManager extends Handler {
      * Update the data retry rules from the carrier config.
      */
     private void updateDataRetryRules() {
-        mDataRetryRules.clear();
-        String[] dataRetryRulesStrings = mCarrierConfig.getStringArray(
-                CarrierConfigManager.KEY_TELEPHONY_DATA_RETRY_RULES_STRING_ARRAY);
-        if (dataRetryRulesStrings != null) {
-            Arrays.stream(dataRetryRulesStrings)
-                    .map(DataRetryRule::new)
-                    .forEach(mDataRetryRules::add);
+        synchronized (this) {
+            mDataRetryRules.clear();
+            String[] dataRetryRulesStrings = mCarrierConfig.getStringArray(
+                    CarrierConfigManager.KEY_TELEPHONY_DATA_RETRY_RULES_STRING_ARRAY);
+            if (dataRetryRulesStrings != null) {
+                Arrays.stream(dataRetryRulesStrings)
+                        .map(DataRetryRule::new)
+                        .forEach(mDataRetryRules::add);
+            }
         }
     }
 
@@ -239,18 +363,258 @@ public class DataConfigManager extends Handler {
     }
 
     /**
-     * Get the TCP config string, which will be used for
-     * {@link android.net.LinkProperties#setTcpBufferSizes(String)}
-     *
-     * @param networkType The network type. Note that {@link TelephonyManager#NETWORK_TYPE_NR} is
-     * used for both 5G SA and NSA case. {@link TelephonyManager#NETWORK_TYPE_LTE_CA} can be used
-     * for LTE CA even though it's not really a radio access technology.
-     *
-     * @return The TCP buffer configuration string.
+     * @return Whether data roaming is enabled by default in carrier config.
      */
-    public @NonNull String getTcpConfigString(@NetworkType int networkType) {
-        // TODO: Move all TCP_BUFFER_SIZES_XXX from DataConnection to here.
-        return null;
+    public boolean isDataRoamingEnabledByDefault() {
+        return mCarrierConfig.getBoolean(
+                CarrierConfigManager.KEY_CARRIER_DEFAULT_DATA_ROAMING_ENABLED_BOOL);
+    }
+
+    /**
+     * Update the home and roaming metered APN types from the carrier config.
+     */
+    private void updateMeteredApnTypes() {
+        synchronized (this) {
+            mMeteredApnTypes.clear();
+            String[] meteredApnTypes = mCarrierConfig.getStringArray(
+                    CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS);
+            if (meteredApnTypes != null) {
+                Arrays.stream(meteredApnTypes)
+                        .map(ApnSetting::getApnTypeInt)
+                        .forEach(mMeteredApnTypes::add);
+            }
+            mRoamingMeteredApnTypes.clear();
+            String[] roamingMeteredApns = mCarrierConfig.getStringArray(
+                    CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS);
+            if (roamingMeteredApns != null) {
+                Arrays.stream(roamingMeteredApns)
+                        .map(ApnSetting::getApnTypeInt)
+                        .forEach(mRoamingMeteredApnTypes::add);
+            }
+        }
+    }
+
+    /**
+     * @return The metered APN types when connected to a home network
+     */
+    public @NonNull @ApnType List<Integer> getMeteredApnTypes() {
+        return Collections.unmodifiableList(mMeteredApnTypes);
+    }
+
+    /**
+     * @return The metered APN types when roaming
+     */
+    public @NonNull @ApnType List<Integer> getMeteredApnTypesWhenRoaming() {
+        return Collections.unmodifiableList(mRoamingMeteredApnTypes);
+    }
+
+    /**
+     * @return Whether to use data activity for RRC detection
+     */
+    public boolean shouldUseDataActivityForRrcDetection() {
+        return mCarrierConfig.getBoolean(
+                CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL);
+    }
+
+    /**
+     * Update the network types for only single data networks from the carrier config.
+     */
+    private void updateSingleDataNetworkTypeList() {
+        synchronized (this) {
+            mSingleDataNetworkTypeList.clear();
+            int[] singleDataNetworkTypeList = mCarrierConfig.getIntArray(
+                    CarrierConfigManager.KEY_ONLY_SINGLE_DC_ALLOWED_INT_ARRAY);
+            if (singleDataNetworkTypeList != null) {
+                Arrays.stream(singleDataNetworkTypeList)
+                        .map(ServiceState::rilRadioTechnologyToNetworkType)
+                        .distinct()
+                        .forEach(mSingleDataNetworkTypeList::add);
+            }
+        }
+
+    }
+
+    /**
+     * @return The list of {@link NetworkType} that only supports single data networks
+     */
+    public @NonNull @NetworkType List<Integer> getNetworkTypesOnlySupportSingleDataNetwork() {
+        return Collections.unmodifiableList(mSingleDataNetworkTypeList);
+    }
+
+    /**
+     * @return Whether {@link NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED}
+     * is supported by the carrier
+     */
+    public boolean isTempNotMeteredSupportedByCarrier() {
+        return mCarrierConfig.getBoolean(
+                CarrierConfigManager.KEY_NETWORK_TEMP_NOT_METERED_SUPPORTED_BOOL);
+    }
+
+    /**
+     * Update the network types that are temporarily not metered from the carrier config.
+     */
+    private void updateUnmeteredNetworkTypes() {
+        synchronized (this) {
+            mUnmeteredNetworkTypes.clear();
+            String[] unmeteredNetworkTypes = mCarrierConfig.getStringArray(
+                    CarrierConfigManager.KEY_UNMETERED_NETWORK_TYPES_STRING_ARRAY);
+            if (unmeteredNetworkTypes != null) {
+                mUnmeteredNetworkTypes.addAll(Arrays.asList(unmeteredNetworkTypes));
+            }
+        }
+    }
+
+    /**
+     * Get the meteredness for the network type from the carrier config.
+     *
+     * @param networkType The network type to check meteredness for
+     * @param serviceState The service state, used to determine NR state
+     * @return Whether the carrier considers the given network type unmetered
+     */
+    public boolean isNetworkTypeUnmeteredByCarrier(@NetworkType int networkType,
+            @NonNull ServiceState serviceState) {
+        return mUnmeteredNetworkTypes.contains(
+                getDataConfigNetworkType(networkType, serviceState));
+    }
+
+    /**
+     * @return Whether NR is considered unmetered by the carrier when roaming
+     */
+    public boolean isNrUnmeteredWhenRoaming() {
+        return mCarrierConfig.getBoolean(
+                CarrierConfigManager.KEY_UNMETERED_NR_NSA_WHEN_ROAMING_BOOL);
+    }
+
+    /**
+     * Update the downlink and uplink bandwidth values from the carrier config.
+     */
+    private void updateBandwidths() {
+        synchronized (this) {
+            mBandwidthMap.clear();
+            String[] bandwidths = mCarrierConfig.getStringArray(
+                    CarrierConfigManager.KEY_BANDWIDTH_STRING_ARRAY);
+            boolean useLte = mCarrierConfig.getBoolean(CarrierConfigManager
+                    .KEY_BANDWIDTH_NR_NSA_USE_LTE_VALUE_FOR_UPLINK_BOOL);
+            if (bandwidths != null) {
+                for (String bandwidth : bandwidths) {
+                    // split1[0] = network type as string
+                    // split1[1] = downlink,uplink
+                    String[] split1 = bandwidth.split(":");
+                    if (split1.length != 2) {
+                        loge("Invalid bandwidth: " + bandwidth);
+                        continue;
+                    }
+                    // split2[0] = downlink bandwidth in kbps
+                    // split2[1] = uplink bandwidth in kbps
+                    String[] split2 = split1[1].split(",");
+                    if (split2.length != 2) {
+                        loge("Invalid bandwidth values: " + Arrays.toString(split2));
+                        continue;
+                    }
+                    int downlink, uplink;
+                    try {
+                        downlink = Integer.parseInt(split2[0]);
+                        uplink = Integer.parseInt(split2[1]);
+                    } catch (NumberFormatException e) {
+                        loge("Exception parsing bandwidth values for network type " + split1[0]
+                                + ": " + e);
+                        continue;
+                    }
+                    if (useLte && split1[0].startsWith("NR")) {
+                        // We can get it directly from mBandwidthMap because LTE is defined before
+                        // the NR values in CarrierConfigManager#KEY_BANDWIDTH_STRING_ARRAY.
+                        uplink = mBandwidthMap.get(DATA_CONFIG_NETWORK_TYPE_LTE)
+                                .uplinkBandwidthKbps;
+                    }
+                    mBandwidthMap.put(split1[0],
+                            new DataNetwork.NetworkBandwidth(downlink, uplink));
+                }
+            }
+        }
+    }
+
+    /**
+     * Get the bandwidth estimate from the carrier config.
+     *
+     * @param networkType The network type to get the bandwidth for
+     * @param serviceState The service state, used to determine NR state
+     * @return The pre-configured bandwidth estimate from carrier config.
+     */
+    public @NonNull DataNetwork.NetworkBandwidth getBandwidthForNetworkType(
+            @NetworkType int networkType, @NonNull ServiceState serviceState) {
+        DataNetwork.NetworkBandwidth bandwidth = mBandwidthMap.get(
+                getDataConfigNetworkType(networkType, serviceState));
+        if (bandwidth != null) {
+            return bandwidth;
+        }
+        return new DataNetwork.NetworkBandwidth(DEFAULT_BANDWIDTH, DEFAULT_BANDWIDTH);
+    }
+
+    /**
+     * @return Whether data throttling should be reset when the TAC changes from the carrier config.
+     */
+    public boolean shouldResetDataThrottlingWhenTacChanges() {
+        return mCarrierConfig.getBoolean(
+                CarrierConfigManager.KEY_UNTHROTTLE_DATA_RETRY_WHEN_TAC_CHANGES_BOOL);
+    }
+
+    /**
+     * @return The data service package override string from the carrier config.
+     */
+    public String getDataServicePackageName() {
+        return mCarrierConfig.getString(
+                CarrierConfigManager.KEY_CARRIER_DATA_SERVICE_WWAN_PACKAGE_OVERRIDE_STRING);
+    }
+
+    /**
+     * @return The default MTU value in bytes from the carrier config.
+     */
+    public int getDefaultMtu() {
+        // TODO: Move values from mcc/mnc overlays to carrier configs
+        return mCarrierConfig.getInt(CarrierConfigManager.KEY_DEFAULT_MTU_INT);
+    }
+
+    /**
+     * Update the TCP buffer sizes from the carrier config.
+     */
+    private void updateTcpBuffers() {
+        synchronized (this) {
+            mTcpBufferSizeMap.clear();
+            String[] buffers = mCarrierConfig.getStringArray(
+                    CarrierConfigManager.KEY_TCP_BUFFERS_STRING_ARRAY);
+            if (buffers != null) {
+                for (String buffer : buffers) {
+                    // split[0] = network type as string
+                    // split[1] = rmem_min,rmem_def,rmem_max,wmem_min,wmem_def,wmem_max
+                    String[] split = buffer.split(":");
+                    if (split.length != 2) {
+                        loge("Invalid TCP buffer sizes: " + buffer);
+                        continue;
+                    }
+                    if (split[1].split(",").length != 6) {
+                        loge("Invalid TCP buffer sizes for " + split[0] + ": " + split[1]);
+                        continue;
+                    }
+                    mTcpBufferSizeMap.put(split[0], split[1]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Get the TCP config string, used by {@link LinkProperties#setTcpBufferSizes(String)}.
+     * The config string will have the following form, with values in bytes:
+     * "read_min,read_default,read_max,write_min,write_default,write_max"
+     *
+     * @param networkType The network type. Note that {@link TelephonyManager#NETWORK_TYPE_LTE_CA}
+     *                    can be used for LTE CA even though it's not a radio access technology.
+     * @param serviceState The service state, used to determine NR state.
+     * @return The TCP configuration string for the given network type or null if unavailable.
+     */
+    public @Nullable String getTcpConfigString(@NetworkType int networkType,
+            @NonNull ServiceState serviceState) {
+        // TODO: Move values from mcc/mnc overlays to carrier configs
+        return mTcpBufferSizeMap.get(getDataConfigNetworkType(networkType, serviceState));
     }
 
     /**
@@ -290,17 +654,79 @@ public class DataConfigManager extends Handler {
     }
 
     /**
-     * Get the bandwidth estimate from the carrier config.
+     * Get the data config network type based on the given network type and service state
      *
-     * @param networkType The current network type.
-     * @param overrideNetworkType The override network type. This is used to indicate 5G NSA and
-     * millimeter wave case.
-     * @return The pre-configured bandwidth estimate from carrier config.
+     * @param networkType The network type
+     * @param serviceState The service state, used to determine NR state
+     * @return The equivalent data config network type
      */
-    public @NonNull DataNetwork.NetworkBandwidth getBandwidthForNetworkType(
-            @NetworkType int networkType, @OverrideNetworkType int overrideNetworkType) {
-        return new DataNetwork.NetworkBandwidth(0, 0);
-        // TODO: Add the real implementation.
+    public static @NonNull @DataConfigNetworkType String getDataConfigNetworkType(
+            @NetworkType int networkType, @NonNull ServiceState serviceState) {
+        // TODO: Make method private once DataConnection is removed
+        if ((networkType == TelephonyManager.NETWORK_TYPE_LTE
+                || networkType == TelephonyManager.NETWORK_TYPE_LTE_CA)
+                && (serviceState.getNrState() == NetworkRegistrationInfo.NR_STATE_CONNECTED)) {
+            return serviceState.getNrFrequencyRange() == ServiceState.FREQUENCY_RANGE_MMWAVE
+                    ? DATA_CONFIG_NETWORK_TYPE_NR_NSA_MMWAVE : DATA_CONFIG_NETWORK_TYPE_NR_NSA;
+        } else if (networkType == TelephonyManager.NETWORK_TYPE_NR
+                && serviceState.getNrFrequencyRange() == ServiceState.FREQUENCY_RANGE_MMWAVE) {
+            return DATA_CONFIG_NETWORK_TYPE_NR_SA_MMWAVE;
+        }
+        return networkTypeToDataConfigNetworkType(networkType);
+    }
+
+    /**
+     * Get the data config network type for the given network type
+     *
+     * @param networkType The network type
+     * @return The equivalent data config network type
+     */
+    private static @NonNull @DataConfigNetworkType String networkTypeToDataConfigNetworkType(
+            @NetworkType int networkType) {
+        switch (networkType) {
+            case TelephonyManager.NETWORK_TYPE_GPRS:
+                return DATA_CONFIG_NETWORK_TYPE_GPRS;
+            case TelephonyManager.NETWORK_TYPE_EDGE:
+                return DATA_CONFIG_NETWORK_TYPE_EDGE;
+            case TelephonyManager.NETWORK_TYPE_UMTS:
+                return DATA_CONFIG_NETWORK_TYPE_UMTS;
+            case TelephonyManager.NETWORK_TYPE_HSDPA:
+                return DATA_CONFIG_NETWORK_TYPE_HSDPA;
+            case TelephonyManager.NETWORK_TYPE_HSUPA:
+                return DATA_CONFIG_NETWORK_TYPE_HSUPA;
+            case TelephonyManager.NETWORK_TYPE_HSPA:
+                return DATA_CONFIG_NETWORK_TYPE_HSPA;
+            case TelephonyManager.NETWORK_TYPE_CDMA:
+                return DATA_CONFIG_NETWORK_TYPE_CDMA;
+            case TelephonyManager.NETWORK_TYPE_EVDO_0:
+                return DATA_CONFIG_NETWORK_TYPE_EVDO_0;
+            case TelephonyManager.NETWORK_TYPE_EVDO_A:
+                return DATA_CONFIG_NETWORK_TYPE_EVDO_A;
+            case TelephonyManager.NETWORK_TYPE_EVDO_B:
+                return DATA_CONFIG_NETWORK_TYPE_EVDO_B;
+            case TelephonyManager.NETWORK_TYPE_1xRTT:
+                return DATA_CONFIG_NETWORK_TYPE_1xRTT;
+            case TelephonyManager.NETWORK_TYPE_LTE:
+                return DATA_CONFIG_NETWORK_TYPE_LTE;
+            case TelephonyManager.NETWORK_TYPE_EHRPD:
+                return DATA_CONFIG_NETWORK_TYPE_EHRPD;
+            case TelephonyManager.NETWORK_TYPE_IDEN:
+                return DATA_CONFIG_NETWORK_TYPE_IDEN;
+            case TelephonyManager.NETWORK_TYPE_HSPAP:
+                return DATA_CONFIG_NETWORK_TYPE_HSPAP;
+            case TelephonyManager.NETWORK_TYPE_GSM:
+                return DATA_CONFIG_NETWORK_TYPE_GSM;
+            case TelephonyManager.NETWORK_TYPE_TD_SCDMA:
+                return DATA_CONFIG_NETWORK_TYPE_TD_SCDMA;
+            case TelephonyManager.NETWORK_TYPE_IWLAN:
+                return DATA_CONFIG_NETWORK_TYPE_IWLAN;
+            case TelephonyManager.NETWORK_TYPE_LTE_CA:
+                return DATA_CONFIG_NETWORK_TYPE_LTE_CA;
+            case TelephonyManager.NETWORK_TYPE_NR:
+                return DATA_CONFIG_NETWORK_TYPE_NR_SA;
+            default:
+                return "";
+        }
     }
 
     /**
@@ -351,17 +777,35 @@ public class DataConfigManager extends Handler {
         pw.println("isConfigCarrierSpecific=" + isConfigCarrierSpecific());
         pw.println("Network capability priority:");
         pw.increaseIndent();
-        for (Map.Entry<Integer, Integer> entry : mNetworkCapabilityPriorityMap.entrySet()) {
-            pw.print(DataUtils.networkCapabilityToString(entry.getKey()) + ":"
-                    + entry.getValue() + " ");
-        }
+        mNetworkCapabilityPriorityMap.forEach((key, value) -> pw.print(
+                DataUtils.networkCapabilityToString(key) + ":" + value + " "));
         pw.decreaseIndent();
         pw.println();
         pw.println("Data retry rules:");
         pw.increaseIndent();
-        for (DataRetryRule rule : mDataRetryRules) {
-            pw.println(rule);
-        }
+        mDataRetryRules.forEach(pw::println);
+        pw.decreaseIndent();
+        pw.println("Metered APN types=" + mMeteredApnTypes.stream()
+                .map(ApnSetting::getApnTypeString).collect(Collectors.joining(",")));
+        pw.println("Roaming metered APN types=" + mRoamingMeteredApnTypes.stream()
+                .map(ApnSetting::getApnTypeString).collect(Collectors.joining(",")));
+        pw.println("Single data network types=" + mSingleDataNetworkTypeList.stream()
+                .map(TelephonyManager::getNetworkTypeName).collect(Collectors.joining(",")));
+        pw.println("Unmetered network types=" + String.join(",", mUnmeteredNetworkTypes));
+        pw.println("Bandwidths:");
+        pw.increaseIndent();
+        mBandwidthMap.forEach((key, value) -> pw.println(key + ":" + value));
+        pw.decreaseIndent();
+        pw.println("shouldUseDataActivityForRrcDetection="
+                + shouldUseDataActivityForRrcDetection());
+        pw.println("isTempNotMeteredSupportedByCarrier=" + isTempNotMeteredSupportedByCarrier());
+        pw.println("shouldResetDataThrottlingWhenTacChanges="
+                + shouldResetDataThrottlingWhenTacChanges());
+        pw.println("Data service package name=" + getDataServicePackageName());
+        pw.println("Default MTU=" + getDefaultMtu());
+        pw.println("TCP buffer sizes:");
+        pw.increaseIndent();
+        mTcpBufferSizeMap.forEach((key, value) -> pw.println(key + ":" + value));
         pw.decreaseIndent();
         pw.println("getImsDeregistrationDelay=" + getImsDeregistrationDelay());
         pw.println("shouldPersistIwlanDataNetworksWhenDataServiceRestarted="
