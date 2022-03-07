@@ -39,7 +39,6 @@ import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.dataconnection.AccessNetworksManager;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
