@@ -35,6 +35,9 @@ import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.data.AccessNetworksManager;
 import com.android.internal.telephony.data.DataNetworkController;
+import com.android.internal.telephony.data.DataProfileManager;
+import com.android.internal.telephony.data.DataServiceManager;
+import com.android.internal.telephony.data.DataSettingsManager;
 import com.android.internal.telephony.data.LinkBandwidthEstimator;
 import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
@@ -487,5 +490,40 @@ public class TelephonyComponentFactory {
      */
     public DataNetworkController makeDataNetworkController(Phone phone, Looper looper) {
         return new DataNetworkController(phone, looper);
+    }
+
+    /**
+     * Create data profile manager.
+     *
+     * @param phone The phone instance.
+     * @param dataNetworkController Data network controller instance.
+     * @param dataServiceManager Data service manager instance.
+     * @param looper The looper to be used by the handler. Currently the handler thread is the phone
+     * process's main thread.
+     * @param callback Callback for passing events back to data network controller.
+     * @return The data profile manager instance.
+     */
+    public @NonNull DataProfileManager makeDataProfileManager(@NonNull Phone phone,
+            @NonNull DataNetworkController dataNetworkController,
+            @NonNull DataServiceManager dataServiceManager, @NonNull Looper looper,
+            @NonNull DataProfileManager.DataProfileManagerCallback callback) {
+        return new DataProfileManager(phone, dataNetworkController, dataServiceManager, looper,
+                callback);
+    }
+
+    /**
+     * Create data settings manager.
+     *
+     * @param phone The phone instance.
+     * @param dataNetworkController Data network controller instance.
+     * @param looper The looper to be used by the handler. Currently the handler thread is the phone
+     * process's main thread.
+     * @param callback Callback for passing events back to data network controller.
+     * @return The data settings manager instance.
+     */
+    public @NonNull DataSettingsManager makeDataSettingsManager(@NonNull Phone phone,
+            @NonNull DataNetworkController dataNetworkController, @NonNull Looper looper,
+            @NonNull DataSettingsManager.DataSettingsManagerCallback callback) {
+        return new DataSettingsManager(phone, dataNetworkController, looper, callback);
     }
 }
