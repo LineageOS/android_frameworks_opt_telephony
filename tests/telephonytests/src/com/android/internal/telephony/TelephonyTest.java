@@ -606,6 +606,10 @@ public abstract class TelephonyTest {
                 .makeEriManager(nullable(Phone.class), anyInt());
         doReturn(mLinkBandwidthEstimator).when(mTelephonyComponentFactory)
                 .makeLinkBandwidthEstimator(nullable(Phone.class));
+        doReturn(mDataProfileManager).when(mTelephonyComponentFactory)
+                .makeDataProfileManager(any(Phone.class), any(DataNetworkController.class),
+                        any(DataServiceManager.class), any(Looper.class),
+                        any(DataProfileManager.DataProfileManagerCallback.class));
 
         //mPhone
         doReturn(mContext).when(mPhone).getContext();
