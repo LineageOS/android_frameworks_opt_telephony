@@ -229,7 +229,6 @@ public class DataNetworkTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
         mDataNetworkCallback = Mockito.mock(DataNetworkCallback.class);
         mDataCallSessionStats = Mockito.mock(DataCallSessionStats.class);
-        doReturn(true).when(mPhone).isUsingNewDataStack();
         doAnswer(invocation -> {
             ((Runnable) invocation.getArguments()[0]).run();
             return null;
