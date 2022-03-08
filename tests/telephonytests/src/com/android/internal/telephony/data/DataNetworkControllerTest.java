@@ -21,6 +21,7 @@ import static com.android.internal.telephony.data.DataNetworkController.NetworkR
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -43,6 +44,7 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RegistrantList;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
@@ -61,6 +63,7 @@ import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneSwitcher;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.data.DataNetworkController.HandoverRule;
 
 import org.junit.After;
 import org.junit.Before;
@@ -742,5 +745,52 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Verify data is allowed
         verifyInternetConnected();
+    }
+
+    @Test
+    public void testHandoverRuleFromString() {
+        HandoverRule handoverRule = new HandoverRule("source=GERAN|UTRAN|EUTRAN|NGRAN|IWLAN, "
+                + "target=GERAN|UTRAN|EUTRAN|NGRAN|IWLAN, type=allowed");
+        assertThat(handoverRule.sourceAccessNetworks).containsExactly(AccessNetworkType.GERAN,
+                AccessNetworkType.UTRAN, AccessNetworkType.EUTRAN, AccessNetworkType.NGRAN,
+                AccessNetworkType.IWLAN);
+        assertThat(handoverRule.targetAccessNetworks).containsExactly(AccessNetworkType.GERAN,
+                AccessNetworkType.UTRAN, AccessNetworkType.EUTRAN, AccessNetworkType.NGRAN,
+                AccessNetworkType.IWLAN);
+        assertThat(handoverRule.ruleType).isEqualTo(HandoverRule.RULE_TYPE_ALLOWED);
+        assertThat(handoverRule.isRoaming).isFalse();
+
+        handoverRule = new HandoverRule("source=   NGRAN|     IWLAN, "
+                + "target  =    EUTRAN,    type  =    disallowed");
+        assertThat(handoverRule.sourceAccessNetworks).containsExactly(AccessNetworkType.NGRAN,
+                AccessNetworkType.IWLAN);
+        assertThat(handoverRule.targetAccessNetworks).containsExactly(AccessNetworkType.EUTRAN);
+        assertThat(handoverRule.ruleType).isEqualTo(HandoverRule.RULE_TYPE_DISALLOWED);
+        assertThat(handoverRule.isRoaming).isFalse();
+
+        handoverRule = new HandoverRule("source=   IWLAN, "
+                + "target  =    EUTRAN,    type  =    disallowed, roaming = true");
+        assertThat(handoverRule.sourceAccessNetworks).containsExactly(AccessNetworkType.IWLAN);
+        assertThat(handoverRule.targetAccessNetworks).containsExactly(AccessNetworkType.EUTRAN);
+        assertThat(handoverRule.ruleType).isEqualTo(HandoverRule.RULE_TYPE_DISALLOWED);
+        assertThat(handoverRule.isRoaming).isTrue();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new HandoverRule("V2hhdCBUaGUgRnVjayBpcyB0aGlzIQ=="));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new HandoverRule("target=GERAN|UTRAN|EUTRAN|NGRAN|IWLAN, type=allowed"));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new HandoverRule("source=GERAN|UTRAN|EUTRAN|NGRAN|IWLAN, type=allowed"));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new HandoverRule("source=GERAN, target=IWLAN, type=wtf"));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new HandoverRule("source=GERAN, target=NGRAN, type=allowed"));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new HandoverRule("source=IWLAN, target=WTFRAN, type=allowed"));
     }
 }
