@@ -58,6 +58,7 @@ import android.telephony.RadioAccessFamily;
 import android.telephony.RadioAccessSpecifier;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
+import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
@@ -829,12 +830,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 ar = (AsyncResult) msg.obj;
                 if (ar.exception == null) {
                     try {
-                        int mUsageSettingFromModem = ((int[]) ar.result)[0];
+                        mUsageSettingFromModem = ((int[]) ar.result)[0];
                     } catch (NullPointerException | ClassCastException e) {
                         Rlog.e(LOG_TAG, "Invalid response for usage setting " + ar.result);
                         break;
                     }
 
+                    logd("Received mUsageSettingFromModem=" + mUsageSettingFromModem);
                     if (mUsageSettingFromModem != mPreferredUsageSetting) {
                         mCi.setUsageSetting(obtainMessage(EVENT_SET_USAGE_SETTING_DONE),
                                 mPreferredUsageSetting);
@@ -4512,15 +4514,25 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         updateUsageSetting();
     }
 
-    // Need a magic little helper function to avoid a static call via SubscriptionManager
-    private int getPreferredUsageSetting() {
-        String result = SubscriptionController.getInstance().getSubscriptionProperty(
-                getSubId(), SubscriptionManager.USAGE_SETTING);
-        try {
-            return Integer.parseInt(result);
-        } catch (NumberFormatException nfe) {
+    private int getResolvedUsageSetting(int subId) {
+        SubscriptionInfo subInfo = SubscriptionController.getInstance().getSubscriptionInfo(subId);
+
+        if (subInfo == null
+                || subInfo.getUsageSetting() == SubscriptionManager.USAGE_SETTING_UNKNOWN) {
+            loge("Failed to get SubscriptionInfo for subId=" + subId);
+            return SubscriptionManager.USAGE_SETTING_UNKNOWN;
         }
-        return SubscriptionManager.USAGE_SETTING_UNKNOWN;
+
+        if (subInfo.getUsageSetting() != SubscriptionManager.USAGE_SETTING_DEFAULT) {
+            return subInfo.getUsageSetting();
+        }
+
+        if (subInfo.isOpportunistic()) {
+            return SubscriptionManager.USAGE_SETTING_DATA_CENTRIC;
+        } else {
+            return mContext.getResources().getInteger(
+                    com.android.internal.R.integer.config_default_cellular_usage_setting);
+        }
     }
 
     /**
@@ -4534,20 +4546,23 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         final int subId = getSubId();
         if (!SubscriptionManager.isValidSubscriptionId(subId)) return false;
 
-        int lastPreferredUsageSetting = mPreferredUsageSetting;
+        final int lastPreferredUsageSetting = mPreferredUsageSetting;
 
-        int mPreferredUsageSetting = getPreferredUsageSetting();
+        mPreferredUsageSetting = getResolvedUsageSetting(subId);
+        if (mPreferredUsageSetting == SubscriptionManager.USAGE_SETTING_UNKNOWN) {
+            loge("Usage Setting is Supported but Preferred Setting Unknown!");
+            return false;
+        }
 
         // We might get a lot of requests to update, so definitely we don't want to hammer
         // the modem with multiple duplicate requests for usage setting updates
         if (mPreferredUsageSetting == lastPreferredUsageSetting) return false;
 
-        // If the user prefers the default setting, we now need to resolve that into a concrete
-        // value, since the modem will have a "concrete" value.
-        if (mPreferredUsageSetting == SubscriptionManager.USAGE_SETTING_DEFAULT) {
-            mPreferredUsageSetting = mContext.getResources().getInteger(
-                    com.android.internal.R.integer.config_default_cellular_usage_setting);
-        }
+        String logStr = "mPreferredUsageSetting=" + mPreferredUsageSetting
+                + ", lastPreferredUsageSetting=" + lastPreferredUsageSetting
+                + ", mUsageSettingFromModem=" + mUsageSettingFromModem;
+        logd(logStr);
+        mLocalLog.log(logStr);
 
         // If the modem value hasn't been updated, request it.
         if (mUsageSettingFromModem == SubscriptionManager.USAGE_SETTING_UNKNOWN) {
