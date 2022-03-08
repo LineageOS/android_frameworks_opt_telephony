@@ -17,6 +17,7 @@
 package com.android.internal.telephony.data;
 
 import android.annotation.CallbackExecutor;
+import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.BroadcastReceiver;
@@ -32,11 +33,14 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.AccessNetworkConstants.AccessNetworkType;
+import android.telephony.AccessNetworkConstants.RadioAccessNetworkType;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.NetCapability;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.Annotation.ValidationStatus;
+import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo.RegistrationState;
@@ -83,12 +87,15 @@ import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -579,6 +586,151 @@ public class DataNetworkController extends Handler {
         @Override
         public String toString() {
             return "[DataNetworkControllerCallbackList: " + mCallbacks + "]";
+        }
+    }
+
+    /**
+     * This class represent a rule allowing or disallowing handover between IWLAN and cellular
+     * networks.
+     *
+     * @see CarrierConfigManager#KEY_IWLAN_HANDOVER_POLICY_STRING_ARRAY
+     */
+    public static class HandoverRule {
+        @Retention(RetentionPolicy.SOURCE)
+        @IntDef(prefix = {"RULE_TYPE_"},
+                value = {
+                        RULE_TYPE_ALLOWED,
+                        RULE_TYPE_DISALLOWED,
+                })
+        public @interface HandoverRuleType {}
+
+        /** Indicating this rule is for allowing handover. */
+        public static final int RULE_TYPE_ALLOWED = 1;
+
+        /** Indicating this rule is for disallowing handover. */
+        public static final int RULE_TYPE_DISALLOWED = 2;
+
+        private static final String RULE_TAG_SOURCE_ACCESS_NETWORKS = "source";
+
+        private static final String RULE_TAG_TARGET_ACCESS_NETWORKS = "target";
+
+        private static final String RULE_TAG_TYPE = "type";
+
+        private static final String RULE_TAG_ROAMING = "roaming";
+
+        /** Handover rule type. */
+        public final @HandoverRuleType int ruleType;
+
+        /** The applicable source access networks for handover. */
+        public final @NonNull @RadioAccessNetworkType Set<Integer> sourceAccessNetworks;
+
+        /** The applicable target access networks for handover. */
+        public final @NonNull @RadioAccessNetworkType Set<Integer> targetAccessNetworks;
+
+        /** {@code true} indicates this policy is only applicable when the device is roaming. */
+        public final boolean isRoaming;
+
+        /**
+         * Constructor
+         *
+         * @param ruleString The rule in string format.
+         *
+         * @see CarrierConfigManager#KEY_IWLAN_HANDOVER_POLICY_STRING_ARRAY
+         */
+        public HandoverRule(@NonNull String ruleString) {
+            if (TextUtils.isEmpty(ruleString)) {
+                throw new IllegalArgumentException("illegal rule " + ruleString);
+            }
+
+            Set<Integer> source = null, target = null;
+            int type = 0;
+            boolean roaming = false;
+
+            ruleString = ruleString.trim().toLowerCase(Locale.ROOT);
+            String[] expressions = ruleString.split("\\s*,\\s*");
+            for (String expression : expressions) {
+                String[] tokens = expression.trim().split("\\s*=\\s*");
+                if (tokens.length != 2) {
+                    throw new IllegalArgumentException("illegal rule " + ruleString + ", tokens="
+                            + Arrays.toString(tokens));
+                }
+                String key = tokens[0].trim();
+                String value = tokens[1].trim();
+                try {
+                    switch (key) {
+                        case RULE_TAG_SOURCE_ACCESS_NETWORKS:
+                            source = Arrays.stream(value.split("\\s*\\|\\s*"))
+                                    .map(String::trim)
+                                    .map(AccessNetworkType::fromString)
+                                    .collect(Collectors.toSet());
+                            break;
+                        case RULE_TAG_TARGET_ACCESS_NETWORKS:
+                            target = Arrays.stream(value.split("\\s*\\|\\s*"))
+                                    .map(String::trim)
+                                    .map(AccessNetworkType::fromString)
+                                    .collect(Collectors.toSet());
+                            break;
+                        case RULE_TAG_TYPE:
+                            if (value.toLowerCase(Locale.ROOT).equals("allowed")) {
+                                type = RULE_TYPE_ALLOWED;
+                            } else if (value.toLowerCase(Locale.ROOT).equals("disallowed")) {
+                                type = RULE_TYPE_DISALLOWED;
+                            } else {
+                                throw new IllegalArgumentException("unexpected rule type " + value);
+                            }
+                            break;
+                        case RULE_TAG_ROAMING:
+                            roaming = Boolean.parseBoolean(value);
+                            break;
+                        default:
+                            throw new IllegalArgumentException("unexpected key " + key);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    throw new IllegalArgumentException("illegal rule \"" + ruleString + "\", e="
+                            + e);
+                }
+            }
+
+            if (source == null || target == null) {
+                throw new IllegalArgumentException("Need to specify both source and target. "
+                        + "\"" + ruleString + "\"");
+            }
+
+            if (source.contains(AccessNetworkType.UNKNOWN)) {
+                throw new IllegalArgumentException("Source access networks contains unknown. "
+                        + "\"" + ruleString + "\"");
+            }
+
+            if (target.contains(AccessNetworkType.UNKNOWN)) {
+                throw new IllegalArgumentException("Target access networks contains unknown. "
+                        + "\"" + ruleString + "\"");
+            }
+
+            if (type == 0) {
+                throw new IllegalArgumentException("Rule type is not specified correctly. "
+                        + "\"" + ruleString + "\"");
+            }
+
+            if (!source.contains(AccessNetworkType.IWLAN)
+                    && !target.contains(AccessNetworkType.IWLAN)) {
+                throw new IllegalArgumentException("IWLAN must be specified in either source or "
+                        + "target access networks.\"" + ruleString + "\"");
+            }
+
+            sourceAccessNetworks = source;
+            targetAccessNetworks = target;
+            ruleType = type;
+            isRoaming = roaming;
+        }
+
+        @Override
+        public String toString() {
+            return "[HandoverRule: type=" + (ruleType == RULE_TYPE_ALLOWED ? "allowed"
+                    : "disallowed") + ", source=" + sourceAccessNetworks.stream()
+                    .map(AccessNetworkType::toString).collect(Collectors.joining("|"))
+                    + ", target=" + targetAccessNetworks.stream().map(AccessNetworkType::toString)
+                    .collect(Collectors.joining("|")) + ", isRoaming=" + isRoaming + "]";
         }
     }
 
