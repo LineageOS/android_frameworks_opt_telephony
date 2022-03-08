@@ -2379,6 +2379,7 @@ public class DcTracker extends Handler {
      * @return true if only single DataConnection is allowed
      */
     private boolean isOnlySingleDcAllowed(int rilRadioTech) {
+        int networkType = ServiceState.rilRadioTechnologyToNetworkType(rilRadioTech);
         // Default single dc rats with no knowledge of carrier
         int[] singleDcRats = null;
         // get the carrier specific value, if it exists, from CarrierConfigManager.
@@ -2399,12 +2400,17 @@ public class DcTracker extends Handler {
             onlySingleDcAllowed = true;
         }
         if (singleDcRats != null) {
-            for (int i=0; i < singleDcRats.length && onlySingleDcAllowed == false; i++) {
-                if (rilRadioTech == singleDcRats[i]) onlySingleDcAllowed = true;
+            for (int i = 0; i < singleDcRats.length && !onlySingleDcAllowed; i++) {
+                if (networkType == singleDcRats[i]) {
+                    onlySingleDcAllowed = true;
+                }
             }
         }
 
-        if (DBG) log("isOnlySingleDcAllowed(" + rilRadioTech + "): " + onlySingleDcAllowed);
+        if (DBG) {
+            log("isOnlySingleDcAllowed(" + TelephonyManager.getNetworkTypeName(networkType) + "): "
+                    + onlySingleDcAllowed);
+        }
         return onlySingleDcAllowed;
     }
 
@@ -4419,7 +4425,7 @@ public class DcTracker extends Handler {
         int rat = mPhone.getDisplayInfoController().getTelephonyDisplayInfo().getNetworkType();
         // congested override and either network is specified or unknown and all networks specified
         boolean isCongested = mCongestedOverride && (mCongestedNetworkTypes.contains(rat)
-                || mUnmeteredNetworkTypes.containsAll(Arrays.stream(
+                || mCongestedNetworkTypes.containsAll(Arrays.stream(
                 TelephonyManager.getAllNetworkTypes()).boxed().collect(Collectors.toSet())));
         for (DataConnection dataConnection : mDataConnections.values()) {
             dataConnection.onCongestednessChanged(isCongested);

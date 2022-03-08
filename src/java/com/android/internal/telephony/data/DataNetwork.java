@@ -367,6 +367,18 @@ public class DataNetwork extends StateMachine {
     /** The network bandwidth. */
     private @NonNull NetworkBandwidth mNetworkBandwidth = new NetworkBandwidth(14, 14);
 
+    /** The TCP buffer sizes config. */
+    private @Nullable String mTcpBufferSizes = "";
+
+    /** Whether {@link NetworkCapabilities#NET_CAPABILITY_TEMPORARILY_NOT_METERED} is supported. */
+    private boolean mTempNotMeteredSupported = false;
+
+    /** Whether the current data network is temporarily not metered. */
+    private boolean mTempNotMetered = false;
+
+    /** Whether the current data network is congested. */
+    private boolean mCongested = false;
+
     /** The network requests associated with this data network */
     private @NonNull NetworkRequestList mAttachedNetworkRequestList = new NetworkRequestList();
 
@@ -666,8 +678,8 @@ public class DataNetwork extends StateMachine {
                     // TODO: Should update suspend state when CSS indicator changes.
                     // TODO: Should update suspend state when call started/ended.
                     updateSuspendState();
-                    // TODO: Update TCP buffer size
-                    // TODO: Update Bandwidth
+                    updateTcpBufferSizes();
+                    updateBandwidthFromDataConfig();
                     break;
                 }
                 case EVENT_ATTACH_NETWORK_REQUEST: {
@@ -1041,14 +1053,20 @@ public class DataNetwork extends StateMachine {
     private void updateNetworkCapabilities() {
         final NetworkCapabilities.Builder builder = new NetworkCapabilities.Builder()
                 .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
+        boolean roaming = mPhone.getServiceState().getDataRoaming();
 
         builder.setNetworkSpecifier(new TelephonyNetworkSpecifier.Builder()
                 .setSubscriptionId(mSubId).build());
         builder.setSubscriptionIds(Collections.singleton(mSubId));
 
         ApnSetting apnSetting = mDataProfile.getApnSetting();
+        boolean meteredApn = false;
         if (apnSetting != null) {
             for (int apnType : apnSetting.getApnTypes()) {
+                if (!(roaming ? mDataConfigManager.getMeteredApnTypesWhenRoaming()
+                        : mDataConfigManager.getMeteredApnTypes()).contains(apnType)) {
+                    meteredApn = true;
+                }
                 int cap = DataUtils.apnTypeToNetworkCapability(apnType);
                 if (cap >= 0) {
                     builder.addCapability(cap);
@@ -1056,16 +1074,24 @@ public class DataNetwork extends StateMachine {
             }
         }
 
-        // TODO: Support NET_CAPABILITY_NOT_METERED
+        // TODO: Support NET_CAPABILITY_NOT_METERED when non-restricted data is for unmetered use
+        if (!meteredApn) {
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+        }
         // TODO: Support NET_CAPABILITY_NOT_RESTRICTED
         // TODO: Support NET_CAPABILITY_NOT_CONGESTED correctly
-        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
+        if (!mCongested) {
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED);
+        }
 
-        // TODO: Support NET_CAPABILITY_TEMPORARILY_NOT_METERED
+        // TODO: Support NET_CAPABILITY_TEMPORARILY_NOT_METERED correctly
+        if (mTempNotMeteredSupported && mTempNotMetered) {
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED);
+        }
         // TODO: Support NET_CAPABILITY_NOT_VCN_MANAGED correctly
         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
 
-        if (!mPhone.getServiceState().getDataRoaming()) {
+        if (!roaming) {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING);
         }
 
@@ -1357,8 +1383,7 @@ public class DataNetwork extends StateMachine {
             linkProperties.setHttpProxy(proxy);
         }
 
-        // updateTcpBufferSizes
-        linkProperties.setTcpBufferSizes(getTcpConfig());
+        linkProperties.setTcpBufferSizes(mTcpBufferSizes);
 
         mQosBearerSessions = response.getQosBearerSessions();
         if (mQosCallbackTracker != null) {
@@ -1579,6 +1604,8 @@ public class DataNetwork extends StateMachine {
         log("onDataConfigUpdated");
 
         updateBandwidthFromDataConfig();
+        updateTcpBufferSizes();
+        updateMeteredAndCongested();
     }
 
     /**
@@ -1643,8 +1670,8 @@ public class DataNetwork extends StateMachine {
      */
     private void onDisplayInfoChanged() {
         updateBandwidthFromDataConfig();
-
-        // TODO: Update meteredness flags.
+        updateTcpBufferSizes();
+        updateMeteredAndCongested();
     }
 
     /**
@@ -1659,6 +1686,30 @@ public class DataNetwork extends StateMachine {
         mNetworkBandwidth = mDataConfigManager.getBandwidthForNetworkType(
                 getDataNetworkType(), mPhone.getServiceState());
         updateNetworkCapabilities();
+    }
+
+    /**
+     * Update the TCP buffer sizes from carrier configs.
+     */
+    private void updateTcpBufferSizes() {
+        log("updateTcpBufferSizes");
+        mTcpBufferSizes = getTcpConfig();
+        LinkProperties linkProperties = new LinkProperties(mLinkProperties);
+        linkProperties.setTcpBufferSizes(mTcpBufferSizes);
+        if (!linkProperties.equals(mLinkProperties)) {
+            mLinkProperties = linkProperties;
+            log("sendLinkProperties " + mLinkProperties);
+            mNetworkAgent.sendLinkProperties(mLinkProperties);
+        }
+    }
+
+    /**
+     * Update the metered and congested values from carrier configs and subscription overrides
+     */
+    private void updateMeteredAndCongested() {
+        log("updateMeteredAndCongested");
+        mTempNotMeteredSupported = mDataConfigManager.isTempNotMeteredSupportedByCarrier();
+        // TODO: set mTempNotMetered and mCongested based on SubscriptionPlans and overrides
     }
 
     /**
@@ -1971,6 +2022,10 @@ public class DataNetwork extends StateMachine {
         pw.println("mNetworkCapabilities" + mNetworkCapabilities);
         pw.println("mLinkProperties=" + mLinkProperties);
         pw.println("mNetworkBandwidth=" + mNetworkBandwidth);
+        pw.println("mTcpBufferSizes=" + mTcpBufferSizes);
+        pw.println("mTempNotMeteredSupported=" + mTempNotMeteredSupported);
+        pw.println("mTempNotMetered=" + mTempNotMetered);
+        pw.println("mCongested=" + mCongested);
         pw.println("mDataCallResponse=" + mDataCallResponse);
 
         pw.println("Attached network requests:");
