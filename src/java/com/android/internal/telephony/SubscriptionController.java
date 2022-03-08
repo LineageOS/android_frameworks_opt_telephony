@@ -4586,12 +4586,9 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    /**
-     * Implements getPhoneNumber() APIs, w/o permission check.
-     * Can be used by other phone internal components.
-     */
+    // Internal helper method for implementing getPhoneNumber() API.
     @Nullable
-    public String getPhoneNumber(int subId, int source) {
+    private String getPhoneNumber(int subId, int source) {
         if (source == SubscriptionManager.PHONE_NUMBER_SOURCE_UICC) {
             Phone phone = PhoneFactory.getPhone(getPhoneId(subId));
             return phone != null ? phone.getLine1Number() : null;
