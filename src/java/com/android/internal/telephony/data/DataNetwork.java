@@ -123,9 +123,9 @@ import java.util.stream.Collectors;
  * {@link ConnectedState}. When the data network is about to be disconnected, it first enters
  * {@link DisconnectingState} when performing graceful tear down or when sending the data
  * deactivation request. At the end, it enters {@link DisconnectedState} when {@link DataService}
- * notifies data disconnected. Note that a unsolicited disconnected event from {@link DataService}
- * can immediately move data network transited from {@link ConnectedState} to
- * {@link DisconnectedState}. {@link DisconnectedState} is the final state of a data network.
+ * notifies data disconnected. Note that an unsolicited disconnected event from {@link DataService}
+ * or a RADIO_NOT_AVAILABLE response can immediately move data network from {@link ConnectedState}
+ * to {@link DisconnectedState}. {@link DisconnectedState} is the final state of a data network.
  *
  * State machine diagram:
  *
@@ -158,7 +158,7 @@ public class DataNetwork extends StateMachine {
     private static final int EVENT_ALLOCATE_PDU_SESSION_ID_RESPONSE = 5;
 
     /** Event for setup data network response. */
-    private static final int EVENT_SETUP_DATA_CALL_RESPONSE = 6;
+    private static final int EVENT_SETUP_DATA_NETWORK_RESPONSE = 6;
 
     /** Event for tearing down data network. */
     private static final int EVENT_TEAR_DOWN_NETWORK = 7;
@@ -195,6 +195,9 @@ public class DataNetwork extends StateMachine {
 
     /** Event for carrier privileged UIDs changed. */
     private static final int EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED = 18;
+
+    /** Event for deactivate data network response. */
+    private static final int EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE = 19;
 
     /** The default MTU for IPv4 network. */
     private static final int DEFAULT_MTU_V4 = 1280;
@@ -739,8 +742,7 @@ public class DataNetwork extends StateMachine {
 
         for (TelephonyNetworkRequest networkRequest : networkRequestList) {
             networkRequest.setAttachedNetwork(DataNetwork.this);
-            networkRequest.setState(
-                    TelephonyNetworkRequest.REQUEST_STATE_SATISFIED);
+            networkRequest.setState(TelephonyNetworkRequest.REQUEST_STATE_SATISFIED);
         }
 
         addState(mDefaultState);
@@ -960,7 +962,7 @@ public class DataNetwork extends StateMachine {
                     }
                     setupData();
                     break;
-                case EVENT_SETUP_DATA_CALL_RESPONSE:
+                case EVENT_SETUP_DATA_NETWORK_RESPONSE:
                     int resultCode = msg.arg1;
                     DataCallResponse dataCallResponse =
                             msg.getData().getParcelable(DataServiceManager.DATA_CALL_RESPONSE);
@@ -1071,6 +1073,10 @@ public class DataNetwork extends StateMachine {
                     ar = (AsyncResult) msg.obj;
                     onPcoDataReceived((PcoData) ar.result);
                     break;
+                case EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE:
+                    int resultCode = msg.arg1;
+                    onDeactivateResponse(resultCode);
+                    break;
                 default:
                     return NOT_HANDLED;
             }
@@ -1179,7 +1185,15 @@ public class DataNetwork extends StateMachine {
         @Override
         public boolean processMessage(Message msg) {
             logv("event=" + eventToString(msg.what));
-            return NOT_HANDLED;
+            switch (msg.what) {
+                case EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE:
+                    int resultCode = msg.arg1;
+                    onDeactivateResponse(resultCode);
+                    break;
+                default:
+                    return NOT_HANDLED;
+            }
+            return HANDLED;
         }
     }
 
@@ -1680,7 +1694,7 @@ public class DataNetwork extends StateMachine {
                 .setupDataCall(accessNetwork, mDataProfile, isModemRoaming, allowRoaming,
                         DataService.REQUEST_REASON_NORMAL, null, mPduSessionId, null,
                         trafficDescriptor, matchAllRuleAllowed,
-                        obtainMessage(EVENT_SETUP_DATA_CALL_RESPONSE));
+                        obtainMessage(EVENT_SETUP_DATA_NETWORK_RESPONSE));
 
         int apnTypeBitmask = mDataProfile.getApnSetting() != null
                 ? mDataProfile.getApnSetting().getApnTypeBitmask() : ApnSetting.TYPE_NONE;
@@ -1934,6 +1948,23 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
+     * Called when receiving deactivate data network response from the data service.
+     *
+     * @param resultCode The result code.
+     */
+    private void onDeactivateResponse(@DataServiceCallback.ResultCode int resultCode) {
+        logl("onDeactivateResponse: resultCode="
+                + DataServiceCallback.resultCodeToString(resultCode));
+        if (resultCode == DataServiceCallback.RESULT_ERROR_RADIO_NOT_AVAILABLE) {
+            log("Remove network since deactivate request returned RADIO_NOT_AVAILABLE.");
+            mDataNetworkCallback.invokeFromExecutor(
+                    () -> mDataNetworkCallback.onDisconnected(
+                            DataNetwork.this, DataFailCause.RADIO_NOT_AVAILABLE));
+            transitionTo(mDisconnectedState);
+        }
+    }
+
+    /**
      * Tear down the data network immediately.
      *
      * @param reason The reason of tearing down the network.
@@ -1958,7 +1989,8 @@ public class DataNetwork extends StateMachine {
 
         // TODO: Need to support DataService.REQUEST_REASON_SHUTDOWN
         mDataServiceManagers.get(mTransport).deactivateDataCall(mCid.get(mTransport),
-                DataService.REQUEST_REASON_NORMAL, null);
+                DataService.REQUEST_REASON_NORMAL,
+                obtainMessage(EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE));
         mDataCallSessionStats.setDeactivateDataCallReason(DataService.REQUEST_REASON_NORMAL);
         mInvokedDataDeactivation = true;
     }
@@ -2499,7 +2531,8 @@ public class DataNetwork extends StateMachine {
 
             // Clean up on the source transport.
             mDataServiceManagers.get(mTransport).deactivateDataCall(mCid.get(mTransport),
-                    DataService.REQUEST_REASON_HANDOVER, null);
+                    DataService.REQUEST_REASON_HANDOVER,
+                    obtainMessage(EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE));
             // Switch the transport to the target.
             mTransport = DataUtils.getTargetTransport(mTransport);
             // Update the logging tag
@@ -2645,7 +2678,7 @@ public class DataNetwork extends StateMachine {
                 return "EVENT_DETACH_NETWORK_REQUEST";
             case EVENT_ALLOCATE_PDU_SESSION_ID_RESPONSE:
                 return "EVENT_ALLOCATE_PDU_SESSION_ID_RESPONSE";
-            case EVENT_SETUP_DATA_CALL_RESPONSE:
+            case EVENT_SETUP_DATA_NETWORK_RESPONSE:
                 return "EVENT_SETUP_DATA_NETWORK_RESPONSE";
             case EVENT_TEAR_DOWN_NETWORK:
                 return "EVENT_TEAR_DOWN_NETWORK";
@@ -2671,6 +2704,8 @@ public class DataNetwork extends StateMachine {
                 return "EVENT_PCO_DATA_RECEIVED";
             case EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED:
                 return "EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED";
+            case EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE:
+                return "EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE";
             default:
                 return "Unknown(" + event + ")";
         }
