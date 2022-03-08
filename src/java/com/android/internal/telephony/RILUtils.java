@@ -1353,7 +1353,7 @@ public class RILUtils {
         android.hardware.radio.network.RadioAccessSpecifierBands bandsInHalFormat =
                 new android.hardware.radio.network.RadioAccessSpecifierBands();
         rasInHalFormat.accessNetwork = convertToHalAccessNetworkAidl(ras.getRadioAccessNetwork());
-        int[] bands = null;
+        int[] bands;
         if (ras.getBands() != null) {
             bands = new int[ras.getBands().length];
             for (int i = 0; i < ras.getBands().length; i++) {
@@ -1364,29 +1364,32 @@ public class RILUtils {
         }
         switch (ras.getRadioAccessNetwork()) {
             case AccessNetworkConstants.AccessNetworkType.GERAN:
-                bandsInHalFormat.geranBands(bands);
+                bandsInHalFormat.setGeranBands(bands);
                 break;
             case AccessNetworkConstants.AccessNetworkType.UTRAN:
-                bandsInHalFormat.utranBands(bands);
+                bandsInHalFormat.setUtranBands(bands);
                 break;
             case AccessNetworkConstants.AccessNetworkType.EUTRAN:
-                bandsInHalFormat.eutranBands(bands);
+                bandsInHalFormat.setEutranBands(bands);
                 break;
             case AccessNetworkConstants.AccessNetworkType.NGRAN:
-                bandsInHalFormat.ngranBands(bands);
+                bandsInHalFormat.setNgranBands(bands);
                 break;
             default:
                 return null;
         }
         rasInHalFormat.bands = bandsInHalFormat;
 
+        int[] channels;
         if (ras.getChannels() != null) {
-            int[] channels = new int[ras.getChannels().length];
+            channels = new int[ras.getChannels().length];
             for (int i = 0; i < ras.getChannels().length; i++) {
                 channels[i] = ras.getChannels()[i];
             }
-            rasInHalFormat.channels = channels;
+        } else {
+            channels = new int[0];
         }
+        rasInHalFormat.channels = channels;
 
         return rasInHalFormat;
     }
@@ -2730,7 +2733,7 @@ public class RILUtils {
             android.hardware.radio.network.CellIdentityGsm cid) {
         return new CellIdentityGsm(cid.lac, cid.cid, cid.arfcn,
                 cid.bsic == (byte) 0xFF ? CellInfo.UNAVAILABLE : cid.bsic, cid.mcc, cid.mnc,
-                "", "", new ArraySet<>());
+                cid.operatorNames.alphaLong, cid.operatorNames.alphaShort, new ArraySet<>());
     }
 
     /**
