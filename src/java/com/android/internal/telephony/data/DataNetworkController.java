@@ -1616,20 +1616,44 @@ public class DataNetworkController extends Handler {
                     return DataNetwork.TEAR_DOWN_REASON_DATA_DISABLED;
                 case ROAMING_DISABLED:
                     return DataNetwork.TEAR_DOWN_REASON_ROAMING_DISABLED;
+                case DEFAULT_DATA_UNSELECTED:
+                    return DataNetwork.TEAR_DOWN_REASON_DEFAULT_DATA_UNSELECTED;
+                case NOT_IN_SERVICE:
+                    return DataNetwork.TEAR_DOWN_REASON_NOT_IN_SERVICE;
+                case DATA_CONFIG_NOT_READY:
+                    return DataNetwork.TEAR_DOWN_REASON_DATA_CONFIG_NOT_READY;
                 case SIM_NOT_READY:
                     return DataNetwork.TEAR_DOWN_REASON_SIM_REMOVAL;
                 case CONCURRENT_VOICE_DATA_NOT_ALLOWED:
                     return DataNetwork.TEAR_DOWN_REASON_CONCURRENT_VOICE_DATA_NOT_ALLOWED;
                 case DATA_RESTRICTED_BY_NETWORK:
                     return DataNetwork.TEAR_DOWN_REASON_DATA_RESTRICTED_BY_NETWORK;
-                case RADIO_DISABLED_BY_CARRIER:
-                    return DataNetwork.TEAR_DOWN_REASON_POWER_OFF_BY_CARRIER;
                 case RADIO_POWER_OFF:
                     return DataNetwork.TEAR_DOWN_REASON_AIRPLANE_MODE_ON;
+                case PENDING_TEAR_DOWN_ALL:
+                    return DataNetwork.TEAR_DOWN_REASON_PENDING_TEAR_DOWN_ALL;
+                case RADIO_DISABLED_BY_CARRIER:
+                    return DataNetwork.TEAR_DOWN_REASON_POWER_OFF_BY_CARRIER;
                 case DATA_SERVICE_NOT_READY:
                     return DataNetwork.TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY;
+                case NO_SUITABLE_DATA_PROFILE:
+                    return DataNetwork.TEAR_DOWN_REASON_NO_SUITABLE_DATA_PROFILE;
                 case DATA_NETWORK_TYPE_NOT_ALLOWED:
                     return DataNetwork.TEAR_DOWN_REASON_RAT_NOT_ALLOWED;
+                case EMERGENCY_CALL:
+                    return DataNetwork.TEAR_DOWN_REASON_EMERGENCY_CALL;
+                case RETRY_SCHEDULED:
+                    return DataNetwork.TEAR_DOWN_REASON_RETRY_SCHEDULED;
+                case DATA_THROTTLED:
+                    return DataNetwork.TEAR_DOWN_REASON_DATA_THROTTLED;
+                case DATA_PROFILE_INVALID:
+                    return DataNetwork.TEAR_DOWN_REASON_DATA_PROFILE_INVALID;
+                case DATA_PROFILE_NOT_PREFERRED:
+                    return DataNetwork.TEAR_DOWN_REASON_DATA_PROFILE_NOT_PREFERRED;
+                case NOT_ALLOWED_BY_POLICY:
+                    return DataNetwork.TEAR_DOWN_REASON_NOT_ALLOWED_BY_POLICY;
+                case ILLEGAL_STATE:
+                    return DataNetwork.TEAR_DOWN_REASON_ILLEGAL_STATE;
                 case VOPS_NOT_SUPPORTED:
                     return DataNetwork.TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED;
             }
