@@ -33,7 +33,6 @@ import static com.android.internal.telephony.TelephonyStatsLog.IMS_REGISTRATION_
 import static com.android.internal.telephony.TelephonyStatsLog.IMS_REGISTRATION_TERMINATION;
 import static com.android.internal.telephony.TelephonyStatsLog.INCOMING_SMS;
 import static com.android.internal.telephony.TelephonyStatsLog.OUTGOING_SMS;
-import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS;
 import static com.android.internal.telephony.TelephonyStatsLog.PRESENCE_NOTIFY_EVENT;
 import static com.android.internal.telephony.TelephonyStatsLog.RCS_ACS_PROVISIONING_STATS;
 import static com.android.internal.telephony.TelephonyStatsLog.RCS_CLIENT_PROVISIONING_STATS;
@@ -128,21 +127,14 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                     .setCoolDownMillis(MIN_COOLDOWN_MILLIS)
                     .build();
 
-    private final PersistAtomsStorage mStorage;
+    private PersistAtomsStorage mStorage;
     private final StatsManager mStatsManager;
     private final AirplaneModeStats mAirplaneModeStats;
     private final Set<DataCallSessionStats> mOngoingDataCallStats = ConcurrentHashMap.newKeySet();
     private static final Random sRandom = new Random();
 
     public MetricsCollector(Context context) {
-        this(context, new PersistAtomsStorage(context));
-    }
-
-    /** Allows dependency injection. Used during unit tests. */
-    @VisibleForTesting
-    public MetricsCollector(Context context,
-                            PersistAtomsStorage storage) {
-        mStorage = storage;
+        mStorage = new PersistAtomsStorage(context);
         mStatsManager = (StatsManager) context.getSystemService(Context.STATS_MANAGER);
         if (mStatsManager != null) {
             registerAtom(CELLULAR_DATA_SERVICE_SWITCH, POLICY_PULL_DAILY);
@@ -171,7 +163,6 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             registerAtom(UCE_EVENT_STATS, POLICY_PULL_DAILY);
             registerAtom(PRESENCE_NOTIFY_EVENT, POLICY_PULL_DAILY);
             registerAtom(GBA_EVENT, POLICY_PULL_DAILY);
-            registerAtom(PER_SIM_STATUS, null);
 
             Rlog.d(TAG, "registered");
         } else {
@@ -179,6 +170,12 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         }
 
         mAirplaneModeStats = new AirplaneModeStats(context);
+    }
+
+    /** Replaces the {@link PersistAtomsStorage} backing the puller. Used during unit tests. */
+    @VisibleForTesting
+    public void setPersistAtomsStorage(PersistAtomsStorage storage) {
+        mStorage = storage;
     }
 
     /**
@@ -243,8 +240,6 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 return pullPresenceNotifyEvent(data);
             case GBA_EVENT:
                 return pullGbaEvent(data);
-            case PER_SIM_STATUS:
-                return pullPerSimStatus(data);
             default:
                 Rlog.e(TAG, String.format("unexpected atom ID %d", atomTag));
                 return StatsManager.PULL_SKIP;
@@ -642,36 +637,6 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             Rlog.w(TAG, "GBA_EVENT pull too frequent, skipping");
             return StatsManager.PULL_SKIP;
         }
-    }
-
-    private int pullPerSimStatus(List<StatsEvent> data) {
-        int result = StatsManager.PULL_SKIP;
-        for (Phone phone : getPhonesIfAny()) {
-            PerSimStatus perSimStatus = PerSimStatus.getCurrentState(phone);
-            if (perSimStatus == null) {
-                continue;
-            }
-            StatsEvent statsEvent = TelephonyStatsLog.buildStatsEvent(
-                    PER_SIM_STATUS,
-                    phone.getPhoneId(), // simSlotIndex
-                    perSimStatus.carrierId, // carrierId
-                    perSimStatus.phoneNumberSourceUicc, // phoneNumberSourceUicc
-                    perSimStatus.phoneNumberSourceCarrier, // phoneNumberSourceCarrier
-                    perSimStatus.phoneNumberSourceIms, // phoneNumberSourceIms
-                    perSimStatus.advancedCallingSettingEnabled, // volteEnabled
-                    perSimStatus.voWiFiSettingEnabled, // wfcEnabled
-                    perSimStatus.voWiFiModeSetting, // wfcMode
-                    perSimStatus.voWiFiRoamingModeSetting, // wfcRoamingMode
-                    perSimStatus.vtSettingEnabled, // videoCallingEnabled
-                    perSimStatus.dataRoamingEnabled, // dataRoamingEnabled
-                    perSimStatus.preferredNetworkType, // allowedNetworksByUser
-                    perSimStatus.disabled2g, // is2gDisabled
-                    false, // TODO(b/215758472): isPin1Enabled
-                    0); // TODO(b/215758472): simVoltageClass
-            data.add(statsEvent);
-            result = StatsManager.PULL_SUCCESS;
-        }
-        return result;
     }
 
     /** Registers a pulled atom ID {@code atomId} with optional {@code policy} for pulling. */

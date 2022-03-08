@@ -116,7 +116,7 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         super.tearDown();
     }
 
-    private EpsQos createEpsQos(int dlMbr, int ulMbr, int dlGbr, int ulGbr) {
+    public static EpsQos createEpsQos(int dlMbr, int ulMbr, int dlGbr, int ulGbr) {
         // Build android.hardware.radio.V1_6.EpsQos
         android.hardware.radio.V1_6.EpsQos halEpsQos = new android.hardware.radio.V1_6.EpsQos();
         halEpsQos.qci = 4;
@@ -129,7 +129,7 @@ public class QosCallbackTrackerTest extends TelephonyTest {
                 new Qos.QosBandwidth(dlMbr, dlGbr), new Qos.QosBandwidth(ulMbr, ulGbr), 4);
     }
 
-    private QosBearerFilter createIpv4QosFilter(String localAddress,
+    public static QosBearerFilter createIpv4QosFilter(String localAddress,
             QosBearerFilter.PortRange localPort, int precedence) {
         return new QosBearerFilter(
                 Arrays.asList(
@@ -138,7 +138,7 @@ public class QosCallbackTrackerTest extends TelephonyTest {
                 7, 987, 678, QosBearerFilter.QOS_FILTER_DIRECTION_BIDIRECTIONAL, precedence);
     }
 
-    private QosBearerFilter createIpv4QosFilter(String localAddress, String remoteAddress,
+    public static QosBearerFilter createIpv4QosFilter(String localAddress, String remoteAddress,
             QosBearerFilter.PortRange localPort, QosBearerFilter.PortRange remotePort,
             int precedence) {
         return new QosBearerFilter(
