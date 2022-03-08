@@ -124,7 +124,7 @@ import java.util.stream.Collectors;
  * {@link DisconnectingState} when performing graceful tear down or when sending the data
  * deactivation request. At the end, it enters {@link DisconnectedState} when {@link DataService}
  * notifies data disconnected. Note that an unsolicited disconnected event from {@link DataService}
- * or a RADIO_NOT_AVAILABLE response can immediately move data network from {@link ConnectedState}
+ * or any vendor HAL failure response can immediately move data network from {@link ConnectedState}
  * to {@link DisconnectedState}. {@link DisconnectedState} is the final state of a data network.
  *
  * State machine diagram:
@@ -1955,8 +1955,8 @@ public class DataNetwork extends StateMachine {
     private void onDeactivateResponse(@DataServiceCallback.ResultCode int resultCode) {
         logl("onDeactivateResponse: resultCode="
                 + DataServiceCallback.resultCodeToString(resultCode));
-        if (resultCode == DataServiceCallback.RESULT_ERROR_RADIO_NOT_AVAILABLE) {
-            log("Remove network since deactivate request returned RADIO_NOT_AVAILABLE.");
+        if (resultCode == DataServiceCallback.RESULT_ERROR_INVALID_RESPONSE) {
+            log("Remove network since deactivate request returned an error.");
             mDataNetworkCallback.invokeFromExecutor(
                     () -> mDataNetworkCallback.onDisconnected(
                             DataNetwork.this, DataFailCause.RADIO_NOT_AVAILABLE));
