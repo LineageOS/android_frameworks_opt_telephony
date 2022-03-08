@@ -79,6 +79,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SubscriptionInfoUpdater;
+import com.android.internal.telephony.TelephonyComponentFactory;
 import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksManagerCallback;
 import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataEvaluation.DataDisallowedReason;
@@ -714,45 +715,52 @@ public class DataNetworkController extends Handler {
                             AccessNetworkConstants.TRANSPORT_TYPE_WLAN));
         }
         mDataConfigManager = new DataConfigManager(mPhone, looper);
-        mDataSettingsManager = new DataSettingsManager(mPhone, this, looper,
-                new DataSettingsManagerCallback(this::post) {
-                    @Override
-                    public void onDataEnabledChanged(boolean enabled,
-                            @TelephonyManager.DataEnabledChangedReason int reason) {
-                        // If mobile data is enabled by the user, evaluate the unsatisfied network
-                        // requests and then attempt to setup data networks to satisfy them.
-                        // If mobile data is disabled, evaluate the existing data networks and
-                        // see if they need to be torn down.
-                        logl("onDataEnabledChanged: enabled=" + enabled);
-                        sendMessage(obtainMessage(enabled
-                                        ? EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS
-                                        : EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
-                                DataEvaluationReason.DATA_ENABLED_CHANGED));
-                    }
-                    @Override
-                    public void onDataRoamingEnabledChanged(boolean enabled) {
-                        // If data roaming is enabled by the user, evaluate the unsatisfied network
-                        // requests and then attempt to setup data networks to satisfy them.
-                        // If data roaming is disabled, evaluate the existing data networks and
-                        // see if they need to be torn down.
-                        logl("onDataRoamingEnabledChanged: enabled=" + enabled);
-                        sendMessage(obtainMessage(enabled
-                                        ? EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS
-                                        : EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
-                                DataEvaluationReason.ROAMING_ENABLED_CHANGED));
-                    }
-                });
-        mDataProfileManager = new DataProfileManager(mPhone, this, mDataServiceManagers
-                .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), looper,
-                new DataProfileManagerCallback(this::post) {
-                    @Override
-                    public void onDataProfilesChanged() {
-                        sendMessage(obtainMessage(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
-                                DataEvaluationReason.DATA_PROFILES_CHANGED));
-                        sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
-                                DataEvaluationReason.DATA_PROFILES_CHANGED));
-                    }
-                });
+
+        mDataSettingsManager = TelephonyComponentFactory.getInstance().inject(
+                DataSettingsManager.class.getName())
+                .makeDataSettingsManager(mPhone, this, looper,
+                        new DataSettingsManagerCallback(this::post) {
+                            @Override
+                            public void onDataEnabledChanged(boolean enabled,
+                                    @TelephonyManager.DataEnabledChangedReason int reason) {
+                                // If mobile data is enabled by the user, evaluate the unsatisfied
+                                // network requests and then attempt to setup data networks to
+                                // satisfy them. If mobile data is disabled, evaluate the existing
+                                // data networks and see if they need to be torn down.
+                                logl("onDataEnabledChanged: enabled=" + enabled);
+                                sendMessage(obtainMessage(enabled
+                                                ? EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS
+                                                : EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
+                                        DataEvaluationReason.DATA_ENABLED_CHANGED));
+                            }
+                            @Override
+                            public void onDataRoamingEnabledChanged(boolean enabled) {
+                                // If data roaming is enabled by the user, evaluate the unsatisfied
+                                // network requests and then attempt to setup data networks to
+                                // satisfy them. If data roaming is disabled, evaluate the existing
+                                // data networks and see if they need to be torn down.
+                                logl("onDataRoamingEnabledChanged: enabled=" + enabled);
+                                sendMessage(obtainMessage(enabled
+                                                ? EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS
+                                                : EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
+                                        DataEvaluationReason.ROAMING_ENABLED_CHANGED));
+                            }
+                        });
+        mDataProfileManager = TelephonyComponentFactory.getInstance().inject(
+                DataProfileManager.class.getName())
+                .makeDataProfileManager(mPhone, this, mDataServiceManagers
+                                .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), looper,
+                        new DataProfileManagerCallback(this::post) {
+                            @Override
+                            public void onDataProfilesChanged() {
+                                sendMessage(
+                                        obtainMessage(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
+                                        DataEvaluationReason.DATA_PROFILES_CHANGED));
+                                sendMessage(
+                                        obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
+                                        DataEvaluationReason.DATA_PROFILES_CHANGED));
+                            }
+                        });
         mDataStallRecoveryManager = new DataStallRecoveryManager(mPhone, this, mDataServiceManagers
                 .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), looper,
                 new DataStallRecoveryManagerCallback(this::post) {
