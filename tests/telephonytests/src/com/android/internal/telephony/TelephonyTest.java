@@ -651,6 +651,7 @@ public abstract class TelephonyTest {
         doReturn(mDataProfileManager).when(mDataNetworkController).getDataProfileManager();
         doReturn(mDataRetryManager).when(mDataNetworkController).getDataRetryManager();
         doReturn(mCarrierPrivilegesTracker).when(mPhone).getCarrierPrivilegesTracker();
+        doReturn(true).when(mPhone).isUsingNewDataStack();
 
         //mUiccController
         doReturn(mUiccCardApplication3gpp).when(mUiccController).getUiccCardApplication(anyInt(),
