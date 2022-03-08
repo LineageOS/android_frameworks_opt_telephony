@@ -1824,11 +1824,9 @@ public class DataNetwork extends StateMachine {
             return TelephonyManager.DATA_CONNECTED;
         } else if (isDisconnecting()) {
             return TelephonyManager.DATA_DISCONNECTING;
+        } else if (isUnderHandover()) {
+            return TelephonyManager.DATA_HANDOVER_IN_PROGRESS;
         }
-        // TODO: Support handover
-        /* else if (state == mHandoverState) {
-            return TelephonyManager.DATA_UNDER_HANDOVER;
-        }*/
 
         return TelephonyManager.DATA_UNKNOWN;
     }
