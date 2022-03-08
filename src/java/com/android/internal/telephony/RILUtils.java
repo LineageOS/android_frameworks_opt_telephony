@@ -349,6 +349,10 @@ import com.android.telephony.Rlog;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.util.ArrayList;
@@ -356,6 +360,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -378,6 +383,10 @@ public class RILUtils {
             "316f3801-fa21-4954-a42f-0041eada3b32";
     public static final String RADIO_POWER_FAILURE_NO_RF_CALIBRATION_UUID =
             "316f3801-fa21-4954-a42f-0041eada3b33";
+
+    private static final Set<Class> WRAPPER_CLASSES = new HashSet(Arrays.asList(
+            Boolean.class, Character.class, Byte.class, Short.class, Integer.class, Long.class,
+            Float.class, Double.class));
 
     /**
      * Convert to PersoSubstate defined in radio/1.5/types.hal
@@ -5154,6 +5163,93 @@ public class RILUtils {
             }
         }
         return caps;
+    }
+
+    private static boolean isPrimitiveOrWrapper(Class c) {
+        return c.isPrimitive() || WRAPPER_CLASSES.contains(c);
+    }
+
+    /**
+     * Return a general String representation of a class
+     * @param o The object to convert to String
+     * @return A string containing all public non-static local variables of a class
+     */
+    public static String convertToString(Object o) {
+        if (isPrimitiveOrWrapper(o.getClass()) || o.getClass() == String.class) return o.toString();
+        if (o.getClass().isArray()) {
+            // Special handling for arrays
+            StringBuilder sb = new StringBuilder("[");
+            boolean added = false;
+            for (Object element : (Object[]) o) {
+                sb.append(convertToString(element)).append(", ");
+                added = true;
+            }
+            if (added) {
+                // Remove extra ,
+                sb.delete(sb.length() - 2, sb.length());
+            }
+            sb.append("]");
+            return sb.toString();
+        }
+        StringBuilder sb = new StringBuilder(o.getClass().getSimpleName());
+        sb.append("{");
+        Field[] fields = o.getClass().getDeclaredFields();
+        int tag = -1;
+        try {
+            tag = (int) o.getClass().getDeclaredMethod("getTag").invoke(o);
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+            loge(e.getMessage());
+        }
+        if (tag != -1) {
+            // Special handling for unions
+            String tagName = null;
+            try {
+                Method method = o.getClass().getDeclaredMethod("_tagString", int.class);
+                method.setAccessible(true);
+                tagName = (String) method.invoke(o, tag);
+            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+                loge(e.getMessage());
+            }
+            if (tagName != null) {
+                sb.append(tagName);
+                sb.append("=");
+                // From tag, create method name getTag
+                String getTagMethod = "get" + tagName.substring(0, 1).toUpperCase(Locale.ROOT)
+                        + tagName.substring(1);
+                Object val = null;
+                try {
+                    val = o.getClass().getDeclaredMethod(getTagMethod).invoke(o);
+                } catch (NoSuchMethodException | IllegalAccessException
+                        | InvocationTargetException e) {
+                    loge(e.getMessage());
+                }
+                if (val != null) {
+                    sb.append(convertToString(val));
+                }
+            }
+        } else {
+            boolean added = false;
+            for (Field field : fields) {
+                // Ignore static variables
+                if (Modifier.isStatic(field.getModifiers())) continue;
+                sb.append(field.getName()).append("=");
+                Object val = null;
+                try {
+                    val = field.get(o);
+                } catch (IllegalAccessException e) {
+                    loge(e.getMessage());
+                }
+                if (val == null) continue;
+                sb.append(convertToString(val)).append(", ");
+                added = true;
+            }
+            if (added) {
+                // Remove extra ,
+                sb.delete(sb.length() - 2, sb.length());
+            }
+        }
+        sb.append("}");
+        return sb.toString();
     }
 
     private static void logd(String log) {
