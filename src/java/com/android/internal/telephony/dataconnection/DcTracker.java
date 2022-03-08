@@ -4926,7 +4926,7 @@ public class DcTracker extends Handler {
         }
     }
 
-    private void stopNetStatPoll() {
+    protected void stopNetStatPoll() {
         mNetStatPollEnabled = false;
         removeCallbacks(mPollNetStat);
         if (DBG) {
