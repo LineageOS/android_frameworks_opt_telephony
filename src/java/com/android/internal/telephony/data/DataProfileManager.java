@@ -684,7 +684,8 @@ public class DataProfileManager extends Handler {
         return mAllDataProfiles.contains(dataProfile)
                 && (dataProfile.getApnSetting() == null
                 || dataProfile.getApnSetting().getApnSetId() == mPreferredDataProfileSetId
-                || mPreferredDataProfileSetId == Telephony.Carriers.MATCH_ALL_APN_SET_ID);
+                || dataProfile.getApnSetting().getApnSetId()
+                == Telephony.Carriers.MATCH_ALL_APN_SET_ID);
     }
 
     /**
