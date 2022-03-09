@@ -33,6 +33,7 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.telephony.Rlog;
 
 import java.util.ArrayList;

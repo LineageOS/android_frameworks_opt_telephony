@@ -33,7 +33,6 @@ import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneSwitcher;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.dataconnection.ApnContext;
 import com.android.internal.telephony.dataconnection.DataConnection;
