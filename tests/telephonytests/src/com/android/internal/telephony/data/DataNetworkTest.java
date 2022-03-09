@@ -245,7 +245,8 @@ public class DataNetworkTest extends TelephonyTest {
         setSuccessfulSetupDataResponse(mWwanDataServiceManager, 123);
 
         mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
-                mInternetDataProfile, networkRequestList, mDataNetworkCallback);
+                mInternetDataProfile, networkRequestList,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, mDataNetworkCallback);
         mDataNetworkUT.sendMessage(9/*EVENT_SERVICE_STATE_CHANGED*/);
 
         processAllMessages();
@@ -348,7 +349,8 @@ public class DataNetworkTest extends TelephonyTest {
         setSuccessfulSetupDataResponse(mWlanDataServiceManager, 123);
 
         mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
-                mImsDataProfile, networkRequestList, mDataNetworkCallback);
+                mImsDataProfile, networkRequestList, AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
+                mDataNetworkCallback);
         mDataNetworkUT.sendMessage(9/*EVENT_SERVICE_STATE_CHANGED*/);
 
         processAllMessages();

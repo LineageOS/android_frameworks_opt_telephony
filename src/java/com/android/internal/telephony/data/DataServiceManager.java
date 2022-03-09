@@ -208,7 +208,7 @@ public class DataServiceManager extends Handler {
     private final class CellularDataServiceConnection implements ServiceConnection {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            if (DBG) log("onServiceConnected");
+            if (DBG) log("onServiceConnected: " + name);
             mIDataService = IDataService.Stub.asInterface(service);
             mDeathRecipient = new DataServiceManagerDeathRecipient();
             mBound = true;
@@ -353,7 +353,7 @@ public class DataServiceManager extends Handler {
         super(looper);
         mPhone = phone;
         mTransportType = transportType;
-        mTag = "DSMGR-" + (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN ? "C-"
+        mTag = "DSM-" + (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN ? "C-"
                 : "I-") + mPhone.getPhoneId();
         mBound = false;
         mCarrierConfigManager = (CarrierConfigManager) phone.getContext().getSystemService(
