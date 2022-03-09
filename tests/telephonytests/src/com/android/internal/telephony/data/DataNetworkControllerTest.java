@@ -246,6 +246,12 @@ public class DataNetworkControllerTest extends TelephonyTest {
                         "ims:40", "dun:30", "enterprise:20", "internet:20"
                 });
         mCarrierConfig.putBoolean(CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL, true);
+        mCarrierConfig.putStringArray(
+                CarrierConfigManager.KEY_CARRIER_METERED_APN_TYPES_STRINGS,
+                new String[]{"default", "mms", "dun", "supl"});
+        mCarrierConfig.putStringArray(
+                CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS,
+                new String[]{"default", "mms", "dun", "supl"});
         doReturn(true).when(mSST).getDesiredPowerState();
         doReturn(true).when(mSST).getPowerStateFromCarrier();
         doReturn(true).when(mSST).isConcurrentVoiceAndDataAllowed();
@@ -288,7 +294,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         replaceInstance(DataNetworkController.class, "mAccessNetworksManager",
                 mDataNetworkControllerUT, mAccessNetworksManager);
         doReturn(mDataProfile1).when(mDataProfileManager).getDataProfileForNetworkRequest(
-                any(TelephonyNetworkRequest.class), anyInt());
+                any(TelephonyNetworkRequest.class), eq(TelephonyManager.NETWORK_TYPE_LTE));
 
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
                 .getPreferredTransportByNetworkCapability(anyInt());
@@ -579,14 +585,16 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verifyInternetConnected();
 
         // Now RAT changes from UMTS to GSM
+        doReturn(null).when(mDataProfileManager).getDataProfileForNetworkRequest(
+                any(TelephonyNetworkRequest.class), eq(TelephonyManager.NETWORK_TYPE_GSM));
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_GSM,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         verifyAllDataDisconnected();
 
-        doReturn(null).when(mDataProfileManager).getDataProfileForNetworkRequest(
-                any(TelephonyNetworkRequest.class), anyInt());
         Mockito.clearInvocations(mSpiedDataNetworkcallback);
         // Now RAT changes from GSM to UMTS
+        doReturn(null).when(mDataProfileManager).getDataProfileForNetworkRequest(
+                any(TelephonyNetworkRequest.class), eq(TelephonyManager.NETWORK_TYPE_UMTS));
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_UMTS,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         verifyNoInternetSetup();

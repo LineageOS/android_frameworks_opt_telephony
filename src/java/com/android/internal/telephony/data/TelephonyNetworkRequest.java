@@ -16,13 +16,14 @@
 
 package com.android.internal.telephony.data;
 
-import android.annotation.CurrentTimeMillisLong;
+import android.annotation.ElapsedRealtimeLong;
 import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.NetworkSpecifier;
+import android.os.SystemClock;
 import android.telephony.Annotation.NetCapability;
 import android.telephony.data.ApnSetting;
 
@@ -92,7 +93,7 @@ public class TelephonyNetworkRequest {
     private @RequestState int mState;
 
     /** The timestamp when this network request enters telephony. */
-    private final @CurrentTimeMillisLong long mCreatedTimeMillis;
+    private final @ElapsedRealtimeLong long mCreatedTimeMillis;
 
     /** The data evaluation result. */
     private @Nullable DataEvaluation mEvaluation;
@@ -112,7 +113,7 @@ public class TelephonyNetworkRequest {
         // When the request was first created, it is in active state so we can actively attempt
         // to satisfy it.
         mState = REQUEST_STATE_UNSATISFIED;
-        mCreatedTimeMillis = System.currentTimeMillis();
+        mCreatedTimeMillis = SystemClock.elapsedRealtime();
 
         updatePriority();
     }
@@ -271,7 +272,7 @@ public class TelephonyNetworkRequest {
                 + ", state=" + requestStateToString(mState)
                 + ", mAttachedDataNetwork=" + (mAttachedDataNetwork != null
                 ? mAttachedDataNetwork.name() : null) + ", created time="
-                + DataUtils.systemTimeToString(mCreatedTimeMillis)
+                + DataUtils.elapsedTimeToString(mCreatedTimeMillis)
                 + ", evaluation result=" + mEvaluation + "]";
     }
 

@@ -370,6 +370,7 @@ public class DataServiceManager extends Handler {
         mPermissionManager = (LegacyPermissionManager) phone.getContext().getSystemService(
                 Context.LEGACY_PERMISSION_SERVICE);
         mAppOps = (AppOpsManager) phone.getContext().getSystemService(Context.APP_OPS_SERVICE);
+        if (phone.isUsingNewDataStack()) return;
 
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
