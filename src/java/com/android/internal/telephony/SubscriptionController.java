@@ -301,7 +301,8 @@ public class SubscriptionController extends ISub.Stub {
             SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES,
             SubscriptionManager.UICC_APPLICATIONS_ENABLED,
             SubscriptionManager.IMS_RCS_UCE_ENABLED,
-            SubscriptionManager.CROSS_SIM_CALLING_ENABLED
+            SubscriptionManager.CROSS_SIM_CALLING_ENABLED,
+            SubscriptionManager.NR_ADVANCED_CALLING_ENABLED
     ));
 
     public static SubscriptionController init(Context c) {
@@ -905,6 +906,19 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public List<SubscriptionInfo> getAllSubInfoList(String callingPackage,
             String callingFeatureId) {
+        return getAllSubInfoList(callingPackage, callingFeatureId, false);
+    }
+
+    /**
+     * @param callingPackage The package making the IPC.
+     * @param callingFeatureId The feature in the package
+     * @param skipConditionallyRemoveIdentifier if set, skip removing identifier conditionally
+     * @return List of all SubscriptionInfo records in database,
+     * include those that were inserted before, maybe empty but not null.
+     * @hide
+     */
+    public List<SubscriptionInfo> getAllSubInfoList(String callingPackage,
+            String callingFeatureId, boolean skipConditionallyRemoveIdentifier) {
         if (VDBG) logd("[getAllSubInfoList]+");
 
         // This API isn't public, so no need to provide a valid subscription ID - we're not worried
@@ -923,9 +937,9 @@ public class SubscriptionController extends ISub.Stub {
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
-        if (subList != null) {
+        if (subList != null && !skipConditionallyRemoveIdentifier) {
             if (VDBG) logd("[getAllSubInfoList]- " + subList.size() + " infos return");
-            subList.stream().map(
+            subList = subList.stream().map(
                     subscriptionInfo -> conditionallyRemoveIdentifiers(subscriptionInfo,
                             callingPackage, callingFeatureId, "getAllSubInfoList"))
                     .collect(Collectors.toList());
@@ -2260,6 +2274,7 @@ public class SubscriptionController extends ISub.Stub {
             case SubscriptionManager.DATA_ROAMING:
             case SubscriptionManager.IMS_RCS_UCE_ENABLED:
             case SubscriptionManager.CROSS_SIM_CALLING_ENABLED:
+            case SubscriptionManager.NR_ADVANCED_CALLING_ENABLED:
                 values.put(propKey, cursor.getInt(columnIndex));
                 break;
             case SubscriptionManager.DISPLAY_NAME:
@@ -3198,6 +3213,7 @@ public class SubscriptionController extends ISub.Stub {
             case SubscriptionManager.IMS_RCS_UCE_ENABLED:
             case SubscriptionManager.CROSS_SIM_CALLING_ENABLED:
             case SubscriptionManager.VOIMS_OPT_IN_STATUS:
+            case SubscriptionManager.NR_ADVANCED_CALLING_ENABLED:
                 value.put(propKey, Integer.parseInt(propValue));
                 break;
             case SubscriptionManager.ALLOWED_NETWORK_TYPES:
@@ -3278,6 +3294,7 @@ public class SubscriptionController extends ISub.Stub {
                         case SubscriptionManager.VOIMS_OPT_IN_STATUS:
                         case SubscriptionManager.D2D_STATUS_SHARING:
                         case SubscriptionManager.D2D_STATUS_SHARING_SELECTED_CONTACTS:
+                        case SubscriptionManager.NR_ADVANCED_CALLING_ENABLED:
                             resultValue = cursor.getString(0);
                             break;
                         default:
@@ -3896,8 +3913,10 @@ public class SubscriptionController extends ISub.Stub {
         List<SubscriptionInfo> subInfoList;
 
         try {
+            // need to bypass removing identifier check because that will remove the subList without
+            // group id.
             subInfoList = getAllSubInfoList(mContext.getOpPackageName(),
-                    mContext.getAttributionTag());
+                    mContext.getAttributionTag(), true);
             if (groupUuid == null || subInfoList == null || subInfoList.isEmpty()) {
                 return new ArrayList<>();
             }

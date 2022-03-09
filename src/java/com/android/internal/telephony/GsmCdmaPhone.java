@@ -439,7 +439,8 @@ public class GsmCdmaPhone extends Phone {
                 CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         filter.addAction(TelecomManager.ACTION_CURRENT_TTY_MODE_CHANGED);
         filter.addAction(TelecomManager.ACTION_TTY_PREFERRED_MODE_CHANGED);
-        mContext.registerReceiver(mBroadcastReceiver, filter);
+        mContext.registerReceiver(mBroadcastReceiver, filter,
+                android.Manifest.permission.MODIFY_PHONE_STATE, null);
 
         mCDM = new CarrierKeyDownloadManager(this);
         mCIM = new CarrierInfoManager();
@@ -2976,6 +2977,7 @@ public class GsmCdmaPhone extends Phone {
                 updateCdmaRoamingSettingsAfterCarrierConfigChanged(b);
 
                 updateNrSettingsAfterCarrierConfigChanged(b);
+                updateVoNrSettings(b);
                 updateSsOverCdmaSupported(b);
                 loadAllowedNetworksFromSubscriptionDatabase();
                 // Obtain new radio capabilities from the modem, since some are SIM-dependent
@@ -3288,6 +3290,10 @@ public class GsmCdmaPhone extends Phone {
                 resetCarrierKeysForImsiEncryption();
                 break;
             }
+            case EVENT_SET_VONR_ENABLED_DONE:
+                logd("EVENT_SET_VONR_ENABLED_DONE is done");
+                break;
+
             default:
                 super.handleMessage(msg);
         }
@@ -4710,6 +4716,45 @@ public class GsmCdmaPhone extends Phone {
         int[] nrAvailabilities = config.getIntArray(
                 CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY);
         mIsCarrierNrSupported = !ArrayUtils.isEmpty(nrAvailabilities);
+    }
+
+    private void updateVoNrSettings(PersistableBundle config) {
+        UiccSlot slot = mUiccController.getUiccSlotForPhone(mPhoneId);
+
+        // If no card is present, do nothing.
+        if (slot == null || slot.getCardState() != IccCardStatus.CardState.CARDSTATE_PRESENT) {
+            return;
+        }
+
+        if (config == null) {
+            loge("didn't get the vonr_enabled_bool from the carrier config.");
+            return;
+        }
+
+        boolean mIsVonrEnabledByCarrier =
+                config.getBoolean(CarrierConfigManager.KEY_VONR_ENABLED_BOOL);
+
+        String result = SubscriptionController.getInstance().getSubscriptionProperty(
+                getSubId(),
+                SubscriptionManager.NR_ADVANCED_CALLING_ENABLED);
+
+        int setting = -1;
+        if (result != null) {
+            setting = Integer.parseInt(result);
+        }
+
+        logd("VoNR setting from telephony.db:"
+                + setting
+                + " ,vonr_enabled_bool:"
+                + mIsVonrEnabledByCarrier);
+
+        if (!mIsVonrEnabledByCarrier) {
+            mCi.setVoNrEnabled(false, obtainMessage(EVENT_SET_VONR_ENABLED_DONE), null);
+        } else if (setting == 1 || setting == -1) {
+            mCi.setVoNrEnabled(true, obtainMessage(EVENT_SET_VONR_ENABLED_DONE), null);
+        } else if (setting == 0) {
+            mCi.setVoNrEnabled(false, obtainMessage(EVENT_SET_VONR_ENABLED_DONE), null);
+        }
     }
 
     private void updateCdmaRoamingSettingsAfterCarrierConfigChanged(PersistableBundle config) {

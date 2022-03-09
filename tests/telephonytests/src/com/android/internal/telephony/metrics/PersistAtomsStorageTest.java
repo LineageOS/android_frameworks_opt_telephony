@@ -16,6 +16,12 @@
 
 package com.android.internal.telephony.metrics;
 
+import static com.android.internal.telephony.TelephonyStatsLog.GBA_EVENT__FAILED_REASON__FEATURE_NOT_READY;
+import static com.android.internal.telephony.TelephonyStatsLog.GBA_EVENT__FAILED_REASON__UNKNOWN;
+import static com.android.internal.telephony.TelephonyStatsLog.RCS_ACS_PROVISIONING_STATS__RESPONSE_TYPE__ERROR;
+import static com.android.internal.telephony.TelephonyStatsLog.RCS_ACS_PROVISIONING_STATS__RESPONSE_TYPE__PROVISIONING_XML;
+import static com.android.internal.telephony.TelephonyStatsLog.RCS_CLIENT_PROVISIONING_STATS__EVENT__CLIENT_PARAMS_SENT;
+import static com.android.internal.telephony.TelephonyStatsLog.RCS_CLIENT_PROVISIONING_STATS__EVENT__TRIGGER_RCS_RECONFIGURATION;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_IMS;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__DIRECTION__CALL_DIRECTION_MO;
@@ -41,15 +47,32 @@ import android.os.Build;
 import android.telephony.DisconnectCause;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyProtoEnums;
 import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.SipDelegateManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
+import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
+import com.android.internal.telephony.nano.PersistAtomsProto.GbaEvent;
+import com.android.internal.telephony.nano.PersistAtomsProto.ImsDedicatedBearerEvent;
+import com.android.internal.telephony.nano.PersistAtomsProto.ImsDedicatedBearerListenerEvent;
+import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationFeatureTagStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationServiceDescStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationTermination;
 import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
+import com.android.internal.telephony.nano.PersistAtomsProto.PresenceNotifyEvent;
+import com.android.internal.telephony.nano.PersistAtomsProto.RcsAcsProvisioningStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.RcsClientProvisioningStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.SipDelegateStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.SipMessageResponse;
+import com.android.internal.telephony.nano.PersistAtomsProto.SipTransportFeatureTagStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.SipTransportSession;
+import com.android.internal.telephony.nano.PersistAtomsProto.UceEventStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallRatUsage;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.AudioCodec;
@@ -79,6 +102,10 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     private static final int CARRIER1_ID = 1;
     private static final int CARRIER2_ID = 1187;
     private static final int CARRIER3_ID = 1435;
+    private static final int SLOT_ID1 = 1;
+    private static final int SLOT_ID2 = 2;
+    private static final int REGISTRATION1_TECH = 1;
+    private static final int REGISTRATION2_TECH = 2;
 
     @Mock private FileOutputStream mTestFileOutputStream;
 
@@ -129,6 +156,68 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
     private ImsRegistrationStats[] mImsRegistrationStats;
     private ImsRegistrationTermination[] mImsRegistrationTerminations;
+
+    // Data call sessions
+    private DataCallSession mDataCallSession0;
+    private DataCallSession mDataCallSession1;
+
+    // RCS registration feature tags for slot 0 and 1
+    private ImsRegistrationFeatureTagStats mImsRegistrationFeatureTagStats1Proto;
+    private ImsRegistrationFeatureTagStats mImsRegistrationFeatureTagStats2Proto;
+    private ImsRegistrationFeatureTagStats[] mImsRegistrationFeatureTagStatses;
+
+    // RCS provisioning client stats for slot 0 and 1
+    private RcsClientProvisioningStats mRcsClientProvisioningStats1Proto;
+    private RcsClientProvisioningStats mRcsClientProvisioningStats2Proto;
+    private RcsClientProvisioningStats[] mRcsClientProvisioningStatses;
+
+    // RCS provisioning ACS stats for slot 0 and 1
+    private RcsAcsProvisioningStats mRcsAcsProvisioningStats1Proto;
+    private RcsAcsProvisioningStats mRcsAcsProvisioningStats2Proto;
+    private RcsAcsProvisioningStats[] mRcsAcsProvisioningStatses;
+
+    private ImsRegistrationServiceDescStats mImsRegistrationServiceIm;
+    private ImsRegistrationServiceDescStats mImsRegistrationServiceFt;
+    private ImsRegistrationServiceDescStats[] mImsRegistrationServiceDescStats;
+
+    // IMS dedicated bearer listener event stats for slot 0 and 1
+    private ImsDedicatedBearerListenerEvent mImsDedicatedBearerListenerEvent1;
+    private ImsDedicatedBearerListenerEvent mImsDedicatedBearerListenerEvent2;
+    private ImsDedicatedBearerListenerEvent[] mImsDedicatedBearerListenerEvents;
+
+    // IMS dedicated bearer event stats for slot 0 and 1
+    private ImsDedicatedBearerEvent mImsDedicatedBearerEvent1;
+    private ImsDedicatedBearerEvent mImsDedicatedBearerEvent2;
+    private ImsDedicatedBearerEvent[] mImsDedicatedBearerEvents;
+
+    private UceEventStats mUceEventStats1;
+    private UceEventStats mUceEventStats2;
+    private UceEventStats[] mUceEventStatses;
+
+    private PresenceNotifyEvent mPresenceNotifyEvent1;
+    private PresenceNotifyEvent mPresenceNotifyEvent2;
+    private PresenceNotifyEvent[] mPresenceNotifyEvents;
+
+    private SipTransportFeatureTagStats mSipTransportFeatureTagStats1;
+    private SipTransportFeatureTagStats mSipTransportFeatureTagStats2;
+    private SipTransportFeatureTagStats[] mSipTransportFeatureTagStatsArray;
+
+    private SipDelegateStats mSipDelegateStats1;
+    private SipDelegateStats mSipDelegateStats2;
+    private SipDelegateStats mSipDelegateStats3;
+    private SipDelegateStats[] mSipDelegateStatsArray;
+
+    private GbaEvent mGbaEvent1;
+    private GbaEvent mGbaEvent2;
+    private GbaEvent[] mGbaEvent;
+
+    private SipMessageResponse mSipMessageResponse1;
+    private SipMessageResponse mSipMessageResponse2;
+    private SipMessageResponse[] mSipMessageResponse;
+
+    private SipTransportSession mSipTransportSession1;
+    private SipTransportSession mSipTransportSession2;
+    private SipTransportSession[] mSipTransportSession;
 
     private void makeTestData() {
         // MO call with SRVCC (LTE to UMTS)
@@ -432,6 +521,327 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                 new ImsRegistrationTermination[] {
                     mImsRegistrationTerminationLte, mImsRegistrationTerminationWifi
                 };
+
+        mDataCallSession0 = new DataCallSession();
+        mDataCallSession0.dimension = 111;
+        mDataCallSession0.carrierId = CARRIER1_ID;
+        mDataCallSession0.oosAtEnd = false;
+        mDataCallSession0.ratSwitchCount = 3L;
+        mDataCallSession0.setupFailed = false;
+        mDataCallSession0.durationMinutes = 20;
+        mDataCallSession0.ongoing = true;
+
+        mDataCallSession1 = new DataCallSession();
+        mDataCallSession1.dimension = 222;
+        mDataCallSession1.carrierId = CARRIER2_ID;
+        mDataCallSession1.oosAtEnd = true;
+        mDataCallSession1.ratSwitchCount = 1L;
+        mDataCallSession1.setupFailed = false;
+        mDataCallSession1.durationMinutes = 5;
+        mDataCallSession1.ongoing = false;
+
+        // RCS registrtion feature tag slot 0
+        mImsRegistrationFeatureTagStats1Proto = new ImsRegistrationFeatureTagStats();
+        mImsRegistrationFeatureTagStats1Proto.carrierId = CARRIER1_ID;
+        mImsRegistrationFeatureTagStats1Proto.slotId = 0;
+        mImsRegistrationFeatureTagStats1Proto.featureTagName = 1;
+        mImsRegistrationFeatureTagStats1Proto.registrationTech = TelephonyManager.NETWORK_TYPE_LTE;
+        mImsRegistrationFeatureTagStats1Proto.registeredMillis = 3600L;
+
+        // RCS registrtion feature tag slot 1
+        mImsRegistrationFeatureTagStats2Proto = new ImsRegistrationFeatureTagStats();
+        mImsRegistrationFeatureTagStats2Proto.carrierId = CARRIER2_ID;
+        mImsRegistrationFeatureTagStats2Proto.slotId = 1;
+        mImsRegistrationFeatureTagStats2Proto.featureTagName = 0;
+        mImsRegistrationFeatureTagStats2Proto.registrationTech = TelephonyManager.NETWORK_TYPE_LTE;
+        mImsRegistrationFeatureTagStats2Proto.registeredMillis = 3600L;
+
+        mImsRegistrationFeatureTagStatses =
+                new ImsRegistrationFeatureTagStats[] {
+                        mImsRegistrationFeatureTagStats1Proto,
+                        mImsRegistrationFeatureTagStats2Proto
+                };
+
+        // RCS client provisioning stats slot 0
+        mRcsClientProvisioningStats1Proto = new RcsClientProvisioningStats();
+        mRcsClientProvisioningStats1Proto.carrierId = CARRIER1_ID;
+        mRcsClientProvisioningStats1Proto.slotId = 0;
+        mRcsClientProvisioningStats1Proto.event =
+                RCS_CLIENT_PROVISIONING_STATS__EVENT__CLIENT_PARAMS_SENT;
+        mRcsClientProvisioningStats1Proto.count = 1;
+
+        // RCS client provisioning stats slot 1
+        mRcsClientProvisioningStats2Proto = new RcsClientProvisioningStats();
+        mRcsClientProvisioningStats2Proto.carrierId = CARRIER2_ID;
+        mRcsClientProvisioningStats2Proto.slotId = 1;
+        mRcsClientProvisioningStats2Proto.event =
+                RCS_CLIENT_PROVISIONING_STATS__EVENT__TRIGGER_RCS_RECONFIGURATION;
+        mRcsClientProvisioningStats2Proto.count = 1;
+
+        mRcsClientProvisioningStatses =
+                new RcsClientProvisioningStats[] {
+                        mRcsClientProvisioningStats1Proto,
+                        mRcsClientProvisioningStats2Proto
+                };
+
+        // RCS ACS provisioning stats : error response
+        mRcsAcsProvisioningStats1Proto = new RcsAcsProvisioningStats();
+        mRcsAcsProvisioningStats1Proto.carrierId = CARRIER1_ID;
+        mRcsAcsProvisioningStats1Proto.slotId = 0;
+        mRcsAcsProvisioningStats1Proto.responseCode = 401;
+        mRcsAcsProvisioningStats1Proto.responseType =
+                RCS_ACS_PROVISIONING_STATS__RESPONSE_TYPE__ERROR;
+        mRcsAcsProvisioningStats1Proto.isSingleRegistrationEnabled = true;
+        mRcsAcsProvisioningStats1Proto.count = 1;
+        mRcsAcsProvisioningStats1Proto.stateTimerMillis = START_TIME_MILLIS;
+
+        // RCS ACS provisioning stats : xml
+        mRcsAcsProvisioningStats2Proto = new RcsAcsProvisioningStats();
+        mRcsAcsProvisioningStats2Proto.carrierId = CARRIER1_ID;
+        mRcsAcsProvisioningStats2Proto.slotId = 0;
+        mRcsAcsProvisioningStats2Proto.responseCode = 200;
+        mRcsAcsProvisioningStats2Proto.responseType =
+                RCS_ACS_PROVISIONING_STATS__RESPONSE_TYPE__PROVISIONING_XML;
+        mRcsAcsProvisioningStats2Proto.isSingleRegistrationEnabled = true;
+        mRcsAcsProvisioningStats2Proto.count = 1;
+        mRcsAcsProvisioningStats2Proto.stateTimerMillis = START_TIME_MILLIS;
+
+        mRcsAcsProvisioningStatses =
+                new RcsAcsProvisioningStats[] {
+                        mRcsAcsProvisioningStats1Proto,
+                        mRcsAcsProvisioningStats2Proto
+                };
+
+        mImsRegistrationServiceIm = new ImsRegistrationServiceDescStats();
+        mImsRegistrationServiceIm.carrierId = CARRIER1_ID;
+        mImsRegistrationServiceIm.slotId = SLOT_ID1;
+        mImsRegistrationServiceIm.serviceIdName = 0;
+        mImsRegistrationServiceIm.serviceIdVersion = 1.0f;
+        mImsRegistrationServiceIm.registrationTech = REGISTRATION1_TECH;
+        mImsRegistrationServiceIm.publishedMillis = START_TIME_MILLIS;
+
+        mImsRegistrationServiceFt = new ImsRegistrationServiceDescStats();
+        mImsRegistrationServiceFt.carrierId = CARRIER2_ID;
+        mImsRegistrationServiceFt.slotId = SLOT_ID2;
+        mImsRegistrationServiceFt.serviceIdName = 1;
+        mImsRegistrationServiceFt.serviceIdVersion = 2.0f;
+        mImsRegistrationServiceFt.registrationTech = REGISTRATION2_TECH;
+        mImsRegistrationServiceIm.publishedMillis = START_TIME_MILLIS;
+
+        mImsRegistrationServiceDescStats =
+            new ImsRegistrationServiceDescStats[] {
+                mImsRegistrationServiceIm, mImsRegistrationServiceFt
+            };
+
+
+        mImsDedicatedBearerListenerEvent1 = new ImsDedicatedBearerListenerEvent();
+        mImsDedicatedBearerListenerEvent1.carrierId = CARRIER1_ID;
+        mImsDedicatedBearerListenerEvent1.slotId = SLOT_ID1;
+        mImsDedicatedBearerListenerEvent1.ratAtEnd = TelephonyManager.NETWORK_TYPE_LTE;
+        mImsDedicatedBearerListenerEvent1.qci = 5;
+        mImsDedicatedBearerListenerEvent1.dedicatedBearerEstablished = true;
+        mImsDedicatedBearerListenerEvent1.eventCount = 1;
+
+        mImsDedicatedBearerListenerEvent2 = new ImsDedicatedBearerListenerEvent();
+        mImsDedicatedBearerListenerEvent2.carrierId = CARRIER2_ID;
+        mImsDedicatedBearerListenerEvent2.slotId = SLOT_ID1;
+        mImsDedicatedBearerListenerEvent2.ratAtEnd = TelephonyManager.NETWORK_TYPE_NR;
+        mImsDedicatedBearerListenerEvent2.qci = 6;
+        mImsDedicatedBearerListenerEvent2.dedicatedBearerEstablished = true;
+        mImsDedicatedBearerListenerEvent2.eventCount = 1;
+
+        mImsDedicatedBearerListenerEvents =
+                new ImsDedicatedBearerListenerEvent[] {
+                    mImsDedicatedBearerListenerEvent1, mImsDedicatedBearerListenerEvent2
+                };
+
+
+        mImsDedicatedBearerEvent1 = new ImsDedicatedBearerEvent();
+        mImsDedicatedBearerEvent1.carrierId = CARRIER1_ID;
+        mImsDedicatedBearerEvent1.slotId = SLOT_ID1;
+        mImsDedicatedBearerEvent1.ratAtEnd = TelephonyManager.NETWORK_TYPE_LTE;
+        mImsDedicatedBearerEvent1.qci = 5;
+        mImsDedicatedBearerEvent1.bearerState =
+                TelephonyStatsLog.IMS_DEDICATED_BEARER_EVENT__BEARER_STATE__STATE_ADDED;
+        mImsDedicatedBearerEvent1.localConnectionInfoReceived = true;
+        mImsDedicatedBearerEvent1.remoteConnectionInfoReceived = true;
+        mImsDedicatedBearerEvent1.hasListeners = true;
+        mImsDedicatedBearerEvent1.count = 1;
+
+        mImsDedicatedBearerEvent2 = new ImsDedicatedBearerEvent();
+        mImsDedicatedBearerEvent2.carrierId = CARRIER1_ID;
+        mImsDedicatedBearerEvent2.slotId = SLOT_ID1;
+        mImsDedicatedBearerEvent2.ratAtEnd = TelephonyManager.NETWORK_TYPE_NR;
+        mImsDedicatedBearerEvent2.qci = 6;
+        mImsDedicatedBearerEvent2.bearerState =
+                TelephonyStatsLog.IMS_DEDICATED_BEARER_EVENT__BEARER_STATE__STATE_MODIFIED;
+        mImsDedicatedBearerEvent2.localConnectionInfoReceived = true;
+        mImsDedicatedBearerEvent2.remoteConnectionInfoReceived = true;
+        mImsDedicatedBearerEvent2.hasListeners = true;
+        mImsDedicatedBearerEvent2.count = 1;
+
+        mImsDedicatedBearerEvents =
+                new ImsDedicatedBearerEvent[] {
+                    mImsDedicatedBearerEvent1, mImsDedicatedBearerEvent2
+                };
+
+
+        mUceEventStats1 = new UceEventStats();
+        mUceEventStats1.carrierId = CARRIER1_ID;
+        mUceEventStats1.slotId = SLOT_ID1;
+        mUceEventStats1.type = 1;
+        mUceEventStats1.successful = true;
+        mUceEventStats1.commandCode = 0;
+        mUceEventStats1.networkResponse = 200;
+        mUceEventStats1.count = 1;
+
+        mUceEventStats2 = new UceEventStats();
+        mUceEventStats2.carrierId = CARRIER2_ID;
+        mUceEventStats2.slotId = SLOT_ID2;
+        mUceEventStats2.type = 2;
+        mUceEventStats2.successful = false;
+        mUceEventStats2.commandCode = 2;
+        mUceEventStats2.networkResponse = 0;
+        mUceEventStats2.count = 1;
+        mUceEventStatses = new UceEventStats[] {mUceEventStats1, mUceEventStats2};
+
+        mPresenceNotifyEvent1 = new PresenceNotifyEvent();
+        mPresenceNotifyEvent1.carrierId = CARRIER1_ID;
+        mPresenceNotifyEvent1.slotId = SLOT_ID1;
+        mPresenceNotifyEvent1.reason = 1;
+        mPresenceNotifyEvent1.contentBodyReceived = true;
+        mPresenceNotifyEvent1.rcsCapsCount = 1;
+        mPresenceNotifyEvent1.mmtelCapsCount = 1;
+        mPresenceNotifyEvent1.noCapsCount = 0;
+        mPresenceNotifyEvent1.count = 1;
+
+        mPresenceNotifyEvent2 = new PresenceNotifyEvent();
+        mPresenceNotifyEvent2.carrierId = CARRIER2_ID;
+        mPresenceNotifyEvent2.slotId = SLOT_ID2;
+        mPresenceNotifyEvent2.reason = 1;
+        mPresenceNotifyEvent2.contentBodyReceived = false;
+        mPresenceNotifyEvent2.rcsCapsCount = 0;
+        mPresenceNotifyEvent2.mmtelCapsCount = 0;
+        mPresenceNotifyEvent2.noCapsCount = 1;
+        mPresenceNotifyEvent2.count = 1;
+        mPresenceNotifyEvents = new PresenceNotifyEvent[] {mPresenceNotifyEvent1,
+                mPresenceNotifyEvent2};
+
+        //A destroyed SipDelegate
+        mSipDelegateStats1 = new SipDelegateStats();
+        mSipDelegateStats1.carrierId = CARRIER1_ID;
+        mSipDelegateStats1.slotId = SLOT_ID1;
+        mSipDelegateStats1.uptimeMillis = 1000L;
+        mSipDelegateStats1.destroyReason =
+                SipDelegateManager.SIP_DELEGATE_DESTROY_REASON_REQUESTED_BY_APP;
+
+        //An active SipDelegate
+        mSipDelegateStats2 = new SipDelegateStats();
+        mSipDelegateStats2.carrierId = CARRIER1_ID;
+        mSipDelegateStats2.slotId = SLOT_ID1;
+        mSipDelegateStats2.uptimeMillis = 1000L;
+        mSipDelegateStats2.destroyReason =
+                SipDelegateManager.SIP_DELEGATE_DESTROY_REASON_SERVICE_DEAD;
+
+        //An active SipDelegate
+        mSipDelegateStats3 = new SipDelegateStats();
+        mSipDelegateStats3.carrierId = CARRIER2_ID;
+        mSipDelegateStats3.slotId = SLOT_ID2;
+        mSipDelegateStats3.uptimeMillis = 3000L;
+        mSipDelegateStats3.destroyReason =
+                SipDelegateManager.SIP_DELEGATE_DESTROY_REASON_SUBSCRIPTION_TORN_DOWN;
+
+        //A registered SipTransportFeatureTag
+        mSipTransportFeatureTagStats1 = new SipTransportFeatureTagStats();
+        mSipTransportFeatureTagStats1.carrierId = CARRIER1_ID;
+        mSipTransportFeatureTagStats1.slotId = SLOT_ID1;
+        mSipTransportFeatureTagStats1.featureTagName = TelephonyProtoEnums.IMS_FEATURE_TAG_CHAT_IM;
+        mSipTransportFeatureTagStats1.sipTransportDeniedReason =  RcsStats.NONE;
+        mSipTransportFeatureTagStats1.sipTransportDeregisteredReason = RcsStats.NONE;
+        mSipTransportFeatureTagStats1.associatedMillis = 1000L;
+
+        //A denied SipTransportFeatureTag
+        mSipTransportFeatureTagStats2 = new SipTransportFeatureTagStats();
+        mSipTransportFeatureTagStats2.carrierId = CARRIER1_ID;
+        mSipTransportFeatureTagStats2.slotId = SLOT_ID1;
+        mSipTransportFeatureTagStats2.featureTagName = 1;
+        mSipTransportFeatureTagStats2.sipTransportDeniedReason =
+                SipDelegateManager.DENIED_REASON_IN_USE_BY_ANOTHER_DELEGATE;
+        mSipTransportFeatureTagStats2.sipTransportDeregisteredReason = RcsStats.NONE;
+        mSipTransportFeatureTagStats2.associatedMillis = 1000L;
+
+        mSipDelegateStatsArray = new SipDelegateStats[]{mSipDelegateStats2, mSipDelegateStats3};
+
+        mSipTransportFeatureTagStatsArray = new SipTransportFeatureTagStats[]
+                {mSipTransportFeatureTagStats1, mSipTransportFeatureTagStats2};
+
+        mGbaEvent1 = new GbaEvent();
+        mGbaEvent1.carrierId = CARRIER1_ID;
+        mGbaEvent1.slotId = SLOT_ID1;
+        mGbaEvent1.successful = true;
+        mGbaEvent1.failedReason = GBA_EVENT__FAILED_REASON__UNKNOWN;
+        mGbaEvent1.count = 1;
+
+        mGbaEvent2 = new GbaEvent();
+        mGbaEvent2.carrierId = CARRIER2_ID;
+        mGbaEvent2.slotId = SLOT_ID2;
+        mGbaEvent2.successful = false;
+        mGbaEvent2.failedReason = GBA_EVENT__FAILED_REASON__FEATURE_NOT_READY;
+        mGbaEvent2.count = 1;
+
+        mGbaEvent = new GbaEvent[] {mGbaEvent1, mGbaEvent2};
+
+        //stats slot 0
+        mSipMessageResponse1 = new SipMessageResponse();
+        mSipMessageResponse1.carrierId = CARRIER1_ID;
+        mSipMessageResponse1.slotId = SLOT_ID1;
+        //"INVITE"
+        mSipMessageResponse1.sipMessageMethod = 2;
+        mSipMessageResponse1.sipMessageResponse = 200;
+        mSipMessageResponse1.sipMessageDirection = 1;
+        mSipMessageResponse1.messageError = 0;
+        mSipMessageResponse1.count = 1;
+
+        //stats slot 1
+        mSipMessageResponse2 = new SipMessageResponse();
+        mSipMessageResponse2.carrierId = CARRIER2_ID;
+        mSipMessageResponse2.slotId = SLOT_ID2;
+        //"INVITE"
+        mSipMessageResponse2.sipMessageMethod = 2;
+        mSipMessageResponse2.sipMessageResponse = 200;
+        mSipMessageResponse2.sipMessageDirection = 0;
+        mSipMessageResponse2.messageError = 0;
+        mSipMessageResponse2.count = 1;
+
+        mSipMessageResponse =
+                new SipMessageResponse[] {mSipMessageResponse1, mSipMessageResponse2};
+
+        // stats slot 0
+        mSipTransportSession1 = new SipTransportSession();
+        mSipTransportSession1.carrierId = CARRIER1_ID;
+        mSipTransportSession1.slotId = SLOT_ID1;
+        //"INVITE"
+        mSipTransportSession1.sessionMethod = 2;
+        mSipTransportSession1.sipMessageDirection = 1;
+        mSipTransportSession1.sipResponse = 200;
+        mSipTransportSession1.sessionCount = 1;
+        mSipTransportSession1.endedGracefullyCount = 1;
+        mSipTransportSession1.isEndedGracefully = true;
+
+        // stats slot 1
+        mSipTransportSession2 = new SipTransportSession();
+        mSipTransportSession2.carrierId = CARRIER2_ID;
+        mSipTransportSession2.slotId = SLOT_ID2;
+        //"INVITE"
+        mSipTransportSession2.sessionMethod = 2;
+        mSipTransportSession2.sipMessageDirection = 0;
+        mSipTransportSession2.sipResponse = 200;
+        mSipTransportSession2.sessionCount = 1;
+        mSipTransportSession2.endedGracefullyCount = 1;
+        mSipTransportSession2.isEndedGracefully = true;
+
+        mSipTransportSession =
+                new SipTransportSession[] {mSipTransportSession1, mSipTransportSession2};
     }
 
     private static class TestablePersistAtomsStorage extends PersistAtomsStorage {
@@ -1273,6 +1683,1293 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         inOrder.verifyNoMoreInteractions();
     }
 
+    @Test
+    @SmallTest
+    public void addDataCallSession_newEntry()
+            throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        mPersistAtomsStorage.addDataCallSession(mDataCallSession0);
+        mPersistAtomsStorage.addDataCallSession(mDataCallSession1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // there should be 2 data calls
+        verifyCurrentStateSavedToFileOnce();
+        DataCallSession[] dataCalls = mPersistAtomsStorage.getDataCallSessions(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new DataCallSession[]{mDataCallSession0, mDataCallSession1},
+                dataCalls);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsRegistrationFeatureTagStats_emptyProto() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage
+                .addImsRegistrationFeatureTagStats(mImsRegistrationFeatureTagStats1Proto);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        verifyCurrentStateSavedToFileOnce();
+
+        ImsRegistrationFeatureTagStats[] expected =
+                new ImsRegistrationFeatureTagStats[] {
+                        mImsRegistrationFeatureTagStats1Proto
+                };
+        assertProtoArrayEquals(
+                expected, mPersistAtomsStorage.getImsRegistrationFeatureTagStats(0L));
+    }
+
+    @Test
+    @SmallTest
+    public void addDataCallSession_existingEntry()
+            throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        DataCallSession newDataCallSession0 = copyOf(mDataCallSession0);
+        newDataCallSession0.ongoing = false;
+        newDataCallSession0.ratAtEnd = TelephonyManager.NETWORK_TYPE_LTE;
+        newDataCallSession0.durationMinutes = 10;
+        newDataCallSession0.ratSwitchCount = 5;
+        DataCallSession totalDataCallSession0 = copyOf(newDataCallSession0);
+        totalDataCallSession0.durationMinutes =
+                mDataCallSession0.durationMinutes + newDataCallSession0.durationMinutes;
+        totalDataCallSession0.ratSwitchCount =
+                mDataCallSession0.ratSwitchCount + newDataCallSession0.ratSwitchCount;
+
+        mPersistAtomsStorage.addDataCallSession(mDataCallSession0);
+        mPersistAtomsStorage.addDataCallSession(newDataCallSession0);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // there should be 1 data call
+        verifyCurrentStateSavedToFileOnce();
+        DataCallSession[] dataCalls = mPersistAtomsStorage.getDataCallSessions(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new DataCallSession[]{totalDataCallSession0}, dataCalls);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsRegistrationFeatureTagStats_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage
+                .addImsRegistrationFeatureTagStats(mImsRegistrationFeatureTagStats1Proto);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        mPersistAtomsStorage
+                .addImsRegistrationFeatureTagStats(mImsRegistrationFeatureTagStats2Proto);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        verifyCurrentStateSavedToFileOnce();
+
+        ImsRegistrationFeatureTagStats[] expected =
+                new ImsRegistrationFeatureTagStats[] {
+                        mImsRegistrationFeatureTagStats1Proto,
+                        mImsRegistrationFeatureTagStats2Proto
+                };
+        // 2 atoms stored on initially and when try to add 2 same atoms, should be increased.
+        assertProtoArrayEqualsIgnoringOrder(
+                expected, mPersistAtomsStorage.getImsRegistrationFeatureTagStats(0L));
+    }
+
+    @Test
+    @SmallTest
+    public void addImsRegistrationFeatureTagStats_tooManyEntries() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        int maxCount = 10;
+        for (int i = 0; i < maxCount; i++) {
+            mPersistAtomsStorage
+                    .addImsRegistrationFeatureTagStats(
+                            copyOf(mImsRegistrationFeatureTagStats1Proto));
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+
+        mPersistAtomsStorage
+                .addImsRegistrationFeatureTagStats(copyOf(mImsRegistrationFeatureTagStats2Proto));
+
+        verifyCurrentStateSavedToFileOnce();
+
+        ImsRegistrationFeatureTagStats[] result =
+                mPersistAtomsStorage.getImsRegistrationFeatureTagStats(0L);
+
+        // tried store 26 statses, but only 2 statses stored
+        // total time 3600L * maxCount
+        assertHasStatsCountTime(result, mImsRegistrationFeatureTagStats1Proto, 1,
+                maxCount * 3600L);
+        // total time 3600L * 1
+        assertHasStatsCountTime(result, mImsRegistrationFeatureTagStats2Proto, 1,
+                1 * 3600L);
+    }
+
+    @Test
+    @SmallTest
+    public void getImsRegistrationFeatureTagStats_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
+        ImsRegistrationFeatureTagStats[] result =
+                mPersistAtomsStorage.getImsRegistrationFeatureTagStats(100L);
+
+        // should be denied
+        assertNull(result);
+    }
+
+    @Test
+    @SmallTest
+    public void getImsRegistrationFeatureTagStats_withSavedAtoms() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        ImsRegistrationFeatureTagStats[] statses1 =
+                mPersistAtomsStorage.getImsRegistrationFeatureTagStats(50L);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        ImsRegistrationFeatureTagStats[] statses2 =
+                mPersistAtomsStorage.getImsRegistrationFeatureTagStats(50L);
+
+        // first results of get should have two atoms, second should be empty
+        // pull timestamp should be updated and saved
+        assertProtoArrayEqualsIgnoringOrder(mImsRegistrationFeatureTagStatses, statses1);
+        assertProtoArrayEquals(new ImsRegistrationFeatureTagStats[0], statses2);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                mPersistAtomsStorage.getAtomsProto()
+                        .imsRegistrationFeatureTagStatsPullTimestampMillis);
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+        assertEquals(
+                START_TIME_MILLIS + 100L,
+                getAtomsWritten(inOrder).imsRegistrationFeatureTagStatsPullTimestampMillis);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                getAtomsWritten(inOrder).imsRegistrationFeatureTagStatsPullTimestampMillis);
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    @SmallTest
+    public void addRcsClientProvisioningStats_emptyProto() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage
+                .addRcsClientProvisioningStats(mRcsClientProvisioningStats1Proto);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        mPersistAtomsStorage
+                .addRcsClientProvisioningStats(mRcsClientProvisioningStats2Proto);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        verifyCurrentStateSavedToFileOnce();
+
+        RcsClientProvisioningStats[] expected =
+                new RcsClientProvisioningStats[] {
+                        mRcsClientProvisioningStats1Proto,
+                        mRcsClientProvisioningStats2Proto
+                };
+
+        assertProtoArrayEqualsIgnoringOrder(
+                expected, mPersistAtomsStorage.getRcsClientProvisioningStats(0L));
+    }
+
+    @Test
+    @SmallTest
+    public void addRcsClientProvisioningStats_tooManyEntries() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        // store 11 same atoms, but only 1 atoms stored with count 11
+        for (int i = 0; i < 11; i++) {
+            mPersistAtomsStorage
+                    .addRcsClientProvisioningStats(mRcsClientProvisioningStats1Proto);
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+        // store 1 different atom and count 1
+        mPersistAtomsStorage
+                .addRcsClientProvisioningStats(mRcsClientProvisioningStats2Proto);
+
+        verifyCurrentStateSavedToFileOnce();
+
+        RcsClientProvisioningStats[] result =
+                mPersistAtomsStorage.getRcsClientProvisioningStats(0L);
+
+        // first atom has count 11, the other has 1
+        assertHasStatsAndCount(result, mRcsClientProvisioningStats1Proto, 11);
+        assertHasStatsAndCount(result, mRcsClientProvisioningStats2Proto, 1);
+    }
+
+    @Test
+    @SmallTest
+    public void getRcsClientProvisioningStats_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
+        RcsClientProvisioningStats[] result =
+                mPersistAtomsStorage.getRcsClientProvisioningStats(100L);
+
+        // should be denied
+        assertNull(result);
+    }
+
+    @Test
+    @SmallTest
+    public void getRcsClientProvisioningStats_withSavedAtoms() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        RcsClientProvisioningStats[] statses1 =
+                mPersistAtomsStorage.getRcsClientProvisioningStats(50L);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        RcsClientProvisioningStats[] statses2 =
+                mPersistAtomsStorage.getRcsClientProvisioningStats(50L);
+
+        // first results of get should have two atoms, second should be empty
+        // pull timestamp should be updated and saved
+        assertProtoArrayEqualsIgnoringOrder(mRcsClientProvisioningStatses, statses1);
+        assertProtoArrayEquals(new RcsClientProvisioningStats[0], statses2);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                mPersistAtomsStorage.getAtomsProto()
+                        .rcsClientProvisioningStatsPullTimestampMillis);
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+        assertEquals(
+                START_TIME_MILLIS + 100L,
+                getAtomsWritten(inOrder).rcsClientProvisioningStatsPullTimestampMillis);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                getAtomsWritten(inOrder).rcsClientProvisioningStatsPullTimestampMillis);
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    @SmallTest
+    public void addRcsAcsProvisioningStats_emptyProto() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage
+                .addRcsAcsProvisioningStats(mRcsAcsProvisioningStats1Proto);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        mPersistAtomsStorage
+                .addRcsAcsProvisioningStats(mRcsAcsProvisioningStats2Proto);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        verifyCurrentStateSavedToFileOnce();
+
+        RcsAcsProvisioningStats[] expected =
+                new RcsAcsProvisioningStats[] {
+                        mRcsAcsProvisioningStats1Proto,
+                        mRcsAcsProvisioningStats2Proto
+                };
+
+        assertProtoArrayEqualsIgnoringOrder(
+                expected, mPersistAtomsStorage.getRcsAcsProvisioningStats(0L));
+    }
+
+    @Test
+    @SmallTest
+    public void addRcsAcsProvisioningStats_updateExistingEntries() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        // store 5 same atoms (1Proto), but only 1 atoms stored with count 5, total time 2000L * 5
+        // store 5 same atoms (2Proto), but only 1 atoms stored with count 5, total time 2000L * 5
+        for (int i = 0; i < 5; i++) {
+            mPersistAtomsStorage
+                    .addRcsAcsProvisioningStats(copyOf(mRcsAcsProvisioningStats1Proto));
+            mPersistAtomsStorage.incTimeMillis(100L);
+            mPersistAtomsStorage
+                    .addRcsAcsProvisioningStats(copyOf(mRcsAcsProvisioningStats2Proto));
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+        // add one more atoms (2Proto), count 6, total time 2000L * 6
+        mPersistAtomsStorage
+                .addRcsAcsProvisioningStats(copyOf(mRcsAcsProvisioningStats2Proto));
+
+        verifyCurrentStateSavedToFileOnce();
+
+        RcsAcsProvisioningStats[] result =
+                mPersistAtomsStorage.getRcsAcsProvisioningStats(0L);
+
+        // atom (1Proto) : count = 5, time = 2000L * 5
+        assertHasStatsAndCountDuration(result, mRcsAcsProvisioningStats1Proto, 5, 2000L * 5);
+        // atom (2Proto) : count = 6, time = 2000L * 6
+        assertHasStatsAndCountDuration(result, mRcsAcsProvisioningStats2Proto, 6, 2000L * 6);
+    }
+
+    @Test
+    @SmallTest
+    public void getRcsAcsProvisioningStats_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
+        RcsAcsProvisioningStats[] result =
+                mPersistAtomsStorage.getRcsAcsProvisioningStats(100L);
+
+        // should be denied
+        assertNull(result);
+    }
+
+    @Test
+    @SmallTest
+    public void getRcsAcstProvisioningStats_withSavedAtoms() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        RcsAcsProvisioningStats[] statses1 =
+                mPersistAtomsStorage.getRcsAcsProvisioningStats(50L);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        RcsAcsProvisioningStats[] statses2 =
+                mPersistAtomsStorage.getRcsAcsProvisioningStats(50L);
+
+        // first results of get should have two atoms, second should be empty
+        // pull timestamp should be updated and saved
+        assertProtoArrayEqualsIgnoringOrder(mRcsAcsProvisioningStatses, statses1);
+        assertProtoArrayEquals(new RcsAcsProvisioningStats[0], statses2);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                mPersistAtomsStorage.getAtomsProto()
+                        .rcsAcsProvisioningStatsPullTimestampMillis);
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+        assertEquals(
+                START_TIME_MILLIS + 100L,
+                getAtomsWritten(inOrder).rcsAcsProvisioningStatsPullTimestampMillis);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                getAtomsWritten(inOrder).rcsAcsProvisioningStatsPullTimestampMillis);
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    @SmallTest
+    public void addImsRegistrationServiceDescStats_emptyProto() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addImsRegistrationServiceDescStats(mImsRegistrationServiceIm);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        ImsRegistrationServiceDescStats[] outputs =
+            mPersistAtomsStorage.getImsRegistrationServiceDescStats(0L);
+        assertProtoArrayEquals(
+                new ImsRegistrationServiceDescStats[] {mImsRegistrationServiceIm}, outputs);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsRegistrationServiceDescStats_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addImsRegistrationServiceDescStats(mImsRegistrationServiceIm);
+
+        mPersistAtomsStorage.addImsRegistrationServiceDescStats(mImsRegistrationServiceFt);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        ImsRegistrationServiceDescStats[] output =
+            mPersistAtomsStorage.getImsRegistrationServiceDescStats(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new ImsRegistrationServiceDescStats[] {
+                    mImsRegistrationServiceIm,
+                    mImsRegistrationServiceFt
+                },
+                output);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsRegistrationServiceDescStats_tooManyServiceDesc() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        Queue<ImsRegistrationServiceDescStats> expectedOutput = new LinkedList<>();
+        // Add 101 registration terminations
+        for (int i = 0; i < 26 + 1; i++) {
+            ImsRegistrationServiceDescStats stats = copyOf(mImsRegistrationServiceIm);
+            stats.registrationTech = i;
+            expectedOutput.add(stats);
+            mPersistAtomsStorage.addImsRegistrationServiceDescStats(stats);
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // The least recent (the first) registration termination should be evicted
+        verifyCurrentStateSavedToFileOnce();
+        ImsRegistrationServiceDescStats[] output =
+            mPersistAtomsStorage.getImsRegistrationServiceDescStats(0L);
+        expectedOutput.remove();
+        assertEquals(expectedOutput.size() - 1, output.length);
+    }
+
+    @Test
+    @SmallTest
+    public void getImsRegistrationServiceDescStats_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
+        ImsRegistrationServiceDescStats[] output =
+            mPersistAtomsStorage.getImsRegistrationServiceDescStats(100L);
+
+        // should be denied
+        assertNull(output);
+    }
+
+    @Test
+    @SmallTest
+    public void getImsRegistrationServiceDescStats_withSavedAtoms() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        ImsRegistrationServiceDescStats[] output1 =
+            mPersistAtomsStorage.getImsRegistrationServiceDescStats(50L);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        ImsRegistrationServiceDescStats[] output2 =
+            mPersistAtomsStorage.getImsRegistrationServiceDescStats(50L);
+
+        // first set of results should equal to file contents, second should be empty, corresponding
+        // pull timestamp should be updated and saved
+        assertProtoArrayEqualsIgnoringOrder(
+                new ImsRegistrationServiceDescStats[] {
+                    mImsRegistrationServiceIm,
+                    mImsRegistrationServiceFt
+                },
+                output1);
+        assertProtoArrayEquals(new ImsRegistrationServiceDescStats[0], output2);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                mPersistAtomsStorage.getAtomsProto()
+                    .imsRegistrationServiceDescStatsPullTimestampMillis);
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+        assertEquals(
+                START_TIME_MILLIS + 100L,
+                getAtomsWritten(inOrder).imsRegistrationServiceDescStatsPullTimestampMillis);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                getAtomsWritten(inOrder).imsRegistrationServiceDescStatsPullTimestampMillis);
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    @SmallTest
+    public void addImsDedicatedBearerListenerEvent_emptyProto() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addImsDedicatedBearerListenerEvent(mImsDedicatedBearerListenerEvent1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        ImsDedicatedBearerListenerEvent[] outputs =
+                mPersistAtomsStorage.getImsDedicatedBearerListenerEvent(0L);
+        assertProtoArrayEquals(
+                new ImsDedicatedBearerListenerEvent[] {mImsDedicatedBearerListenerEvent1}, outputs);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsDedicatedBearerListenerEvent_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addImsDedicatedBearerListenerEvent(mImsDedicatedBearerListenerEvent1);
+
+        mPersistAtomsStorage.addImsDedicatedBearerListenerEvent(mImsDedicatedBearerListenerEvent2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        ImsDedicatedBearerListenerEvent[] output =
+                mPersistAtomsStorage.getImsDedicatedBearerListenerEvent(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new ImsDedicatedBearerListenerEvent[] {
+                    mImsDedicatedBearerListenerEvent1, mImsDedicatedBearerListenerEvent2}, output);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsDedicatedBearerListenerEvent_withSameProto() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        mPersistAtomsStorage.addImsDedicatedBearerListenerEvent(mImsDedicatedBearerListenerEvent1);
+        mPersistAtomsStorage.addImsDedicatedBearerListenerEvent(mImsDedicatedBearerListenerEvent1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // The least recent (the first) registration termination should be evicted
+        verifyCurrentStateSavedToFileOnce();
+        ImsDedicatedBearerListenerEvent[] output =
+                mPersistAtomsStorage.getImsDedicatedBearerListenerEvent(0L);
+        assertEquals(mImsDedicatedBearerListenerEvent1.carrierId, output[0].carrierId);
+        assertEquals(mImsDedicatedBearerListenerEvent1.slotId, output[0].slotId);
+        assertEquals(mImsDedicatedBearerListenerEvent1.ratAtEnd, output[0].ratAtEnd);
+        assertEquals(mImsDedicatedBearerListenerEvent1.qci, output[0].qci);
+        assertEquals(mImsDedicatedBearerListenerEvent1.dedicatedBearerEstablished,
+                output[0].dedicatedBearerEstablished);
+        assertEquals(mImsDedicatedBearerListenerEvent1.eventCount,
+                output[0].eventCount);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsDedicatedBearerEvent_emptyProto() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addImsDedicatedBearerEvent(mImsDedicatedBearerEvent1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        ImsDedicatedBearerEvent[] outputs =
+            mPersistAtomsStorage.getImsDedicatedBearerEvent(0L);
+        assertProtoArrayEquals(
+                new ImsDedicatedBearerEvent[] {mImsDedicatedBearerEvent1}, outputs);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsDedicatedBearerEvent_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addImsDedicatedBearerEvent(mImsDedicatedBearerEvent1);
+
+        mPersistAtomsStorage.addImsDedicatedBearerEvent(mImsDedicatedBearerEvent2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        ImsDedicatedBearerEvent[] output =
+            mPersistAtomsStorage.getImsDedicatedBearerEvent(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                    new ImsDedicatedBearerEvent[] {
+                        mImsDedicatedBearerEvent1, mImsDedicatedBearerEvent2}, output);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsDedicatedBearerEvent_withSameProto() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        mPersistAtomsStorage.addImsDedicatedBearerEvent(mImsDedicatedBearerEvent1);
+        mPersistAtomsStorage.addImsDedicatedBearerEvent(mImsDedicatedBearerEvent1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // The least recent (the first) registration termination should be evicted
+        verifyCurrentStateSavedToFileOnce();
+        ImsDedicatedBearerEvent[] output =
+            mPersistAtomsStorage.getImsDedicatedBearerEvent(0L);
+        assertEquals(mImsDedicatedBearerEvent1.carrierId, output[0].carrierId);
+        assertEquals(mImsDedicatedBearerEvent1.slotId, output[0].slotId);
+        assertEquals(mImsDedicatedBearerEvent1.ratAtEnd, output[0].ratAtEnd);
+        assertEquals(mImsDedicatedBearerEvent1.qci, output[0].qci);
+        assertEquals(mImsDedicatedBearerEvent1.localConnectionInfoReceived,
+                output[0].localConnectionInfoReceived);
+        assertEquals(mImsDedicatedBearerEvent1.remoteConnectionInfoReceived,
+                output[0].remoteConnectionInfoReceived);
+        assertEquals(mImsDedicatedBearerEvent1.hasListeners,
+                output[0].hasListeners);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsDedicatedBearerEvent_tooManyEntries() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        // Add 11 stats, but max is 10
+        for (int i = 0; i < 11; i++) {
+            mPersistAtomsStorage.addImsDedicatedBearerEvent(mImsDedicatedBearerEvent1);
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+        mPersistAtomsStorage.addImsDedicatedBearerEvent(mImsDedicatedBearerEvent2);
+
+        verifyCurrentStateSavedToFileOnce();
+        ImsDedicatedBearerEvent[] stats =
+            mPersistAtomsStorage.getImsDedicatedBearerEvent(0L);
+        assertHasStatsAndCount(stats, mImsDedicatedBearerEvent1, 11);
+        assertHasStatsAndCount(stats, mImsDedicatedBearerEvent2, 1);
+    }
+
+    @Test
+    @SmallTest
+    public void addImsDedicatedBearerEvent_updateExistingEntries() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+        ImsDedicatedBearerEvent newStats = copyOf(mImsDedicatedBearerEvent1);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        mPersistAtomsStorage.addImsDedicatedBearerEvent(copyOf(mImsDedicatedBearerEvent1));
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // mImsDedicatedBearerEvent1's count should be doubled
+        verifyCurrentStateSavedToFileOnce();
+        ImsDedicatedBearerEvent[] stats =
+            mPersistAtomsStorage.getImsDedicatedBearerEvent(0L);
+        newStats.count *= 2;
+        assertProtoArrayEqualsIgnoringOrder(new ImsDedicatedBearerEvent[] {
+                mImsDedicatedBearerEvent2, newStats}, stats);
+    }
+
+
+    @Test
+    @SmallTest
+    public void addUceEventStats_emptyProto() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addUceEventStats(mUceEventStats1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        UceEventStats[] outputs = mPersistAtomsStorage.getUceEventStats(0L);
+        assertProtoArrayEquals(
+                new UceEventStats[] {mUceEventStats1}, outputs);
+    }
+
+    @Test
+    @SmallTest
+    public void addUceEventStats_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addUceEventStats(mUceEventStats1);
+
+        mPersistAtomsStorage.addUceEventStats(mUceEventStats2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        UceEventStats[] output = mPersistAtomsStorage.getUceEventStats(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new UceEventStats[] {mUceEventStats1, mUceEventStats2}, output);
+    }
+
+    @Test
+    @SmallTest
+    public void addUceEventStats_withSameProto() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        mPersistAtomsStorage.addUceEventStats(mUceEventStats1);
+        mPersistAtomsStorage.addUceEventStats(mUceEventStats1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // The least recent (the first) registration termination should be evicted
+        verifyCurrentStateSavedToFileOnce();
+        UceEventStats[] output = mPersistAtomsStorage.getUceEventStats(0L);
+        assertEquals(mUceEventStats1.carrierId, output[0].carrierId);
+        assertEquals(mUceEventStats1.slotId, output[0].slotId);
+        assertEquals(mUceEventStats1.type, output[0].type);
+        assertEquals(mUceEventStats1.successful, output[0].successful);
+        assertEquals(mUceEventStats1.commandCode, output[0].commandCode);
+        assertEquals(mUceEventStats1.networkResponse, output[0].networkResponse);
+        assertEquals(2, output[0].count);
+    }
+
+    @Test
+    @SmallTest
+    public void addPresenceNotifyEvent_withSameProto() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        PresenceNotifyEvent event1 = new PresenceNotifyEvent();
+        event1.carrierId = CARRIER1_ID;
+        event1.slotId = SLOT_ID1;
+        event1.reason = 1;
+        event1.contentBodyReceived = true;
+        event1.rcsCapsCount = 1;
+        event1.mmtelCapsCount = 1;
+        event1.noCapsCount = 0;
+        event1.count = 1;
+
+        PresenceNotifyEvent event2 = copyOf(event1);
+        event2.rcsCapsCount = 0;
+
+        mPersistAtomsStorage.addPresenceNotifyEvent(event1);
+        mPersistAtomsStorage.addPresenceNotifyEvent(event2);
+
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // The least recent (the first) registration termination should be evicted
+        verifyCurrentStateSavedToFileOnce();
+        PresenceNotifyEvent[] output = mPersistAtomsStorage.getPresenceNotifyEvent(0L);
+
+        assertEquals(event1.carrierId, output[0].carrierId);
+        assertEquals(event1.slotId, output[0].slotId);
+        assertEquals(event1.contentBodyReceived, output[0].contentBodyReceived);
+        assertEquals(1, output[0].rcsCapsCount);
+        assertEquals(2, output[0].mmtelCapsCount);
+        assertEquals(2, output[0].count);
+
+    }
+    @Test
+    @SmallTest
+    public void addPresenceNotifyEvent_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addPresenceNotifyEvent(mPresenceNotifyEvent1);
+        mPersistAtomsStorage.addPresenceNotifyEvent(mPresenceNotifyEvent2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        PresenceNotifyEvent[] output = mPersistAtomsStorage.getPresenceNotifyEvent(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new PresenceNotifyEvent[] {mPresenceNotifyEvent1, mPresenceNotifyEvent2}, output);
+    }
+
+    @Test
+    @SmallTest
+    public void getPresenceNotifyEvent_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
+        PresenceNotifyEvent[] output = mPersistAtomsStorage.getPresenceNotifyEvent(100L);
+
+        // should be denied
+        assertNull(output);
+    }
+
+    @Test
+    @SmallTest
+    public void getPresenceNotifyEvent_withSavedAtoms() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        PresenceNotifyEvent[] output1 = mPersistAtomsStorage.getPresenceNotifyEvent(50L);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        PresenceNotifyEvent[] output2 = mPersistAtomsStorage.getPresenceNotifyEvent(50L);
+
+        // first set of results should equal to file contents, second should be empty, corresponding
+        // pull timestamp should be updated and saved
+        assertProtoArrayEqualsIgnoringOrder(
+                new PresenceNotifyEvent[] {mPresenceNotifyEvent1, mPresenceNotifyEvent2}, output1);
+        assertProtoArrayEquals(new PresenceNotifyEvent[0], output2);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                mPersistAtomsStorage.getAtomsProto().presenceNotifyEventPullTimestampMillis);
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+        assertEquals(
+                START_TIME_MILLIS + 100L,
+                getAtomsWritten(inOrder).presenceNotifyEventPullTimestampMillis);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                getAtomsWritten(inOrder).presenceNotifyEventPullTimestampMillis);
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    @SmallTest
+    public void addSipTransportFeatureTag_emptyProto() throws Exception {
+        // verify add atom into new file
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSipTransportFeatureTagStats(mSipTransportFeatureTagStats1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        verifyCurrentStateSavedToFileOnce();
+
+        SipTransportFeatureTagStats[] outputs =
+                mPersistAtomsStorage.getSipTransportFeatureTagStats(0L);
+        assertProtoArrayEquals(
+                new SipTransportFeatureTagStats[] {mSipTransportFeatureTagStats1}, outputs);
+    }
+
+    @Test
+    @SmallTest
+    public void addSipTransportFeatureTagStats_withExistingEntries() throws Exception {
+        // verify add atom on existing atom already stored
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        //Add two different SipTransportFeatureTagStats.
+        mPersistAtomsStorage.addSipTransportFeatureTagStats(mSipTransportFeatureTagStats1);
+        mPersistAtomsStorage.addSipTransportFeatureTagStats(mSipTransportFeatureTagStats2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // SipTransportFeatureTagStats should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        SipTransportFeatureTagStats[] outputs =
+                mPersistAtomsStorage.getSipTransportFeatureTagStats(0L);
+
+        assertProtoArrayEqualsIgnoringOrder(new SipTransportFeatureTagStats[]
+                {mSipTransportFeatureTagStats1, mSipTransportFeatureTagStats2}, outputs);
+    }
+
+    @Test
+    @SmallTest
+    public void addSipTransportFeatureTagStats_tooManyEntries() throws Exception {
+        // verify add atom excess MAX count (100)
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        // Try to add 26 stats where MAX is 25
+        int max = 26;
+        SipTransportFeatureTagStats[] overMaxSipTransportFeatureTagStats =
+                new SipTransportFeatureTagStats[max];
+
+        for (int i = 0; i < max; i++) {
+            overMaxSipTransportFeatureTagStats[i] = copyOf(mSipTransportFeatureTagStats1);
+            overMaxSipTransportFeatureTagStats[i].sipTransportDeniedReason = i;
+            mPersistAtomsStorage
+                    .addSipTransportFeatureTagStats(overMaxSipTransportFeatureTagStats[i]);
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+
+        mPersistAtomsStorage
+                .addSipTransportFeatureTagStats(mSipTransportFeatureTagStats2);
+        verifyCurrentStateSavedToFileOnce();
+
+        SipTransportFeatureTagStats[] outputs =
+                mPersistAtomsStorage.getSipTransportFeatureTagStats(0L);
+
+        // The last added SipTransportFeatureTagStat remains
+        // and two old stats should be removed
+        assertHasStats(outputs, overMaxSipTransportFeatureTagStats, max - 2);
+        assertHasStats(outputs, mSipTransportFeatureTagStats2, 1);
+    }
+
+    @Test
+    @SmallTest
+    public void addSipTransportFeatureTagStats_updateExistingEntries() throws Exception {
+        // verify count
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSipTransportFeatureTagStats(copyOf(mSipTransportFeatureTagStats1));
+        mPersistAtomsStorage.incTimeMillis(100L);
+        verifyCurrentStateSavedToFileOnce();
+
+        // SipTransportFeatureTag's durations should be doubled
+        SipTransportFeatureTagStats newSipTransportFeatureTagStats1 =
+                copyOf(mSipTransportFeatureTagStats1);
+        newSipTransportFeatureTagStats1.associatedMillis *= 2;
+
+        SipTransportFeatureTagStats[] outputs =
+                mPersistAtomsStorage.getSipTransportFeatureTagStats(0L);
+
+        assertProtoArrayEqualsIgnoringOrder(
+                new SipTransportFeatureTagStats[] {
+                        newSipTransportFeatureTagStats1,
+                        mSipTransportFeatureTagStats2
+                }, outputs);
+    }
+
+    @Test
+    @SmallTest
+    public void getSipTransportFeatureTagStats_tooFrequent() throws Exception {
+        // verify get frequently
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
+
+        SipTransportFeatureTagStats[] outputs =
+                mPersistAtomsStorage.getSipTransportFeatureTagStats(100L);
+
+        // should be denied
+        assertNull(outputs);
+    }
+
+    @Test
+    @SmallTest
+    public void getSipTransportFeatureTagStats_withSavedAtoms() throws Exception {
+        // verify last get time after get atoms
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        SipTransportFeatureTagStats[] output1 =
+                mPersistAtomsStorage.getSipTransportFeatureTagStats(50L);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        SipTransportFeatureTagStats[] output2 =
+                mPersistAtomsStorage.getSipTransportFeatureTagStats(50L);
+
+        // first set of results should equal to file contents, second should be empty, corresponding
+        // pull timestamp should be updated and saved
+        assertProtoArrayEqualsIgnoringOrder(
+                new SipTransportFeatureTagStats[] {
+                        mSipTransportFeatureTagStats1,
+                        mSipTransportFeatureTagStats2
+                }, output1);
+        assertProtoArrayEquals(new SipTransportFeatureTagStats[0], output2);
+        assertEquals(START_TIME_MILLIS + 200L,
+                mPersistAtomsStorage.getAtomsProto()
+                        .sipTransportFeatureTagStatsPullTimestampMillis);
+
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+        assertEquals(START_TIME_MILLIS + 100L,
+                getAtomsWritten(inOrder).sipTransportFeatureTagStatsPullTimestampMillis);
+        assertEquals(START_TIME_MILLIS + 200L,
+                getAtomsWritten(inOrder).sipTransportFeatureTagStatsPullTimestampMillis);
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    @SmallTest
+    public void addSipDelegateStats_emptyProto() throws Exception {
+        // verify add atom into new file
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSipDelegateStats(mSipDelegateStats1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        verifyCurrentStateSavedToFileOnce();
+
+        SipDelegateStats[] outputs = mPersistAtomsStorage.getSipDelegateStats(0L);
+        assertProtoArrayEquals(new SipDelegateStats[] {mSipDelegateStats1}, outputs);
+    }
+
+    @Test
+    @SmallTest
+    public void addSipDelegateStats_withExistingEntries() throws Exception {
+        // verify add atom on existing atom already stored
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSipDelegateStats(copyOf(mSipDelegateStats1));
+        mPersistAtomsStorage.addSipDelegateStats(copyOf(mSipDelegateStats2));
+        mPersistAtomsStorage.addSipDelegateStats(copyOf(mSipDelegateStats3));
+        mPersistAtomsStorage.incTimeMillis(100L);
+        // Three SipDelegateStats should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+
+        SipDelegateStats[] outputs =
+                mPersistAtomsStorage.getSipDelegateStats(0L);
+
+        assertProtoArrayEqualsIgnoringOrder(
+                new SipDelegateStats[] {mSipDelegateStats1, mSipDelegateStats2, mSipDelegateStats3},
+                outputs);
+    }
+
+    @Test
+    @SmallTest
+    public void addSipDelegateStats_tooManyEntries() throws Exception {
+        // verify add atom excess MAX count
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        // Try to add 11 stats where MAX is 10
+        int max = 11;
+        SipDelegateStats[] overMaxSipDelegateStats = new SipDelegateStats[max];
+        for (int i = 0; i < max; i++) {
+            overMaxSipDelegateStats[i] = copyOf(mSipDelegateStats1);
+            mPersistAtomsStorage
+                    .addSipDelegateStats(overMaxSipDelegateStats[i]);
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+        mPersistAtomsStorage.addSipDelegateStats(mSipDelegateStats3);
+        verifyCurrentStateSavedToFileOnce();
+
+        SipDelegateStats[] outputs =
+                mPersistAtomsStorage.getSipDelegateStats(0L);
+
+        // The last added SipDelegate remains
+        // and two old stats should be removed
+        assertHasStats(outputs, overMaxSipDelegateStats, max - 2);
+        assertHasStats(outputs, mSipDelegateStats3, 1);
+    }
+
+    @Test
+    @SmallTest
+    public void addSipDelegateStats_updateExistingEntries() throws Exception {
+        // verify count
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        SipDelegateStats newSipDelegateStats3 = copyOf(mSipDelegateStats3);
+        newSipDelegateStats3.destroyReason =
+                SipDelegateManager.SIP_DELEGATE_DESTROY_REASON_SERVICE_DEAD;
+        mPersistAtomsStorage.addSipDelegateStats(newSipDelegateStats3);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        SipDelegateStats newSipDelegateStats1 = copyOf(mSipDelegateStats1);
+        newSipDelegateStats1.destroyReason =
+                SipDelegateManager.SIP_DELEGATE_DESTROY_REASON_REQUESTED_BY_APP;
+        mPersistAtomsStorage.addSipDelegateStats(newSipDelegateStats1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        verifyCurrentStateSavedToFileOnce();
+
+        SipDelegateStats[] outputs = mPersistAtomsStorage.getSipDelegateStats(0L);
+
+        assertProtoArrayEqualsIgnoringOrder(
+                new SipDelegateStats[] {mSipDelegateStats2, mSipDelegateStats3,
+                        newSipDelegateStats3, newSipDelegateStats1}, outputs);
+    }
+
+    @Test
+    @SmallTest
+    public void getSipDelegateStats_tooFrequent() throws Exception {
+        // verify get frequently
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
+
+        SipDelegateStats[] outputs = mPersistAtomsStorage.getSipDelegateStats(100L);
+        // should be denied
+        assertNull(outputs);
+    }
+
+    @Test
+    @SmallTest
+    public void getSipDelegateStats_withSavedAtoms() throws Exception {
+        // verify last get time after get atoms
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        SipDelegateStats[] output1 = mPersistAtomsStorage.getSipDelegateStats(50L);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        SipDelegateStats[] output2 = mPersistAtomsStorage.getSipDelegateStats(50L);
+
+        // first set of results should equal to file contents, second should be empty, corresponding
+        // pull timestamp should be updated and saved
+        assertProtoArrayEqualsIgnoringOrder(
+                new SipDelegateStats[] {
+                        mSipDelegateStats2,
+                        mSipDelegateStats3}, output1);
+        assertProtoArrayEquals(new SipDelegateStats[0], output2);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                mPersistAtomsStorage.getAtomsProto().sipDelegateStatsPullTimestampMillis);
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+        assertEquals(
+                START_TIME_MILLIS + 100L,
+                getAtomsWritten(inOrder).sipDelegateStatsPullTimestampMillis);
+        assertEquals(
+                START_TIME_MILLIS + 200L,
+                getAtomsWritten(inOrder).sipDelegateStatsPullTimestampMillis);
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    @SmallTest
+    public void addGbaEvent_emptyProto() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addGbaEvent(mGbaEvent1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // gba event should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        GbaEvent[] stats = mPersistAtomsStorage.getGbaEvent(0L);
+        assertProtoArrayEquals(new GbaEvent[] {mGbaEvent1}, stats);
+    }
+
+    @Test
+    @SmallTest
+    public void addGbaEvent_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addGbaEvent(mGbaEvent1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        mPersistAtomsStorage.addGbaEvent(mGbaEvent2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // gba event1, gba event2 should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        GbaEvent[] stats = mPersistAtomsStorage.getGbaEvent(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new GbaEvent[] {mGbaEvent1, mGbaEvent2}, stats);
+    }
+
+    @Test
+    @SmallTest
+    public void addGbaEvent_tooManyEntries() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        // Add 11 stats, but max is 10
+        for (int i = 0; i < 11; i++) {
+            mPersistAtomsStorage.addGbaEvent(mGbaEvent1);
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+        mPersistAtomsStorage.addGbaEvent(mGbaEvent2);
+
+        verifyCurrentStateSavedToFileOnce();
+        GbaEvent[] stats = mPersistAtomsStorage.getGbaEvent(0L);
+        assertHasStatsAndCount(stats, mGbaEvent1, 11);
+        assertHasStatsAndCount(stats, mGbaEvent2, 1);
+    }
+
+    @Test
+    @SmallTest
+    public void addGbaEvent_updateExistingEntries() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+        GbaEvent newStats = copyOf(mGbaEvent1);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        mPersistAtomsStorage.addGbaEvent(copyOf(mGbaEvent1));
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // mGbaEvent1's count should be doubled
+        verifyCurrentStateSavedToFileOnce();
+        GbaEvent[] stats =
+                mPersistAtomsStorage.getGbaEvent(0L);
+        newStats.count *= 2;
+        assertProtoArrayEqualsIgnoringOrder(new GbaEvent[] {mGbaEvent2, newStats}, stats);
+    }
+
+    @Test
+    @SmallTest
+    public void addSipMessageResponse_emptyProto() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSipMessageResponse(mSipMessageResponse1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        verifyCurrentStateSavedToFileOnce();
+        SipMessageResponse[] expected = mPersistAtomsStorage.getSipMessageResponse(0L);
+        assertProtoArrayEquals(new SipMessageResponse[] {mSipMessageResponse1}, expected);
+    }
+
+    @Test
+    @SmallTest
+    public void addSipMessageResponse_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSipMessageResponse(mSipMessageResponse1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        mPersistAtomsStorage.addSipMessageResponse(mSipMessageResponse2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        verifyCurrentStateSavedToFileOnce();
+        SipMessageResponse[] expected =
+                new SipMessageResponse[] {mSipMessageResponse1, mSipMessageResponse2};
+
+        assertProtoArrayEqualsIgnoringOrder(
+                expected, mPersistAtomsStorage.getSipMessageResponse(0L));
+    }
+
+    @Test
+    @SmallTest
+    public void addSipMessageResponse_tooManyEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        // store 11 same atoms, but only 1 atoms stored with count 11
+        for (int i = 0; i < 11; i++) {
+            mPersistAtomsStorage.addSipMessageResponse(mSipMessageResponse1);
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+        // store 1 different atom and count 1
+        mPersistAtomsStorage.addSipMessageResponse(mSipMessageResponse2);
+
+        verifyCurrentStateSavedToFileOnce();
+        SipMessageResponse[] result = mPersistAtomsStorage.getSipMessageResponse(0L);
+
+        // first atom has count 11, the other has 1
+        assertHasStats(result, mSipMessageResponse1, 11);
+        assertHasStats(result, mSipMessageResponse2, 1);
+    }
+
+    @Test
+    @SmallTest
+    public void addSipMessageResponse_updateExistingEntries() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSipMessageResponse(copyOf(mSipMessageResponse2));
+        mPersistAtomsStorage.incTimeMillis(100L);
+        verifyCurrentStateSavedToFileOnce();
+
+        SipMessageResponse[] outputs = mPersistAtomsStorage.getSipMessageResponse(0L);
+        SipMessageResponse newSipMessageResponse = copyOf(mSipMessageResponse2);
+        newSipMessageResponse.count *= 2;
+        assertProtoArrayEqualsIgnoringOrder(
+                new SipMessageResponse[] {mSipMessageResponse1, newSipMessageResponse}, outputs);
+    }
+
+    @Test
+    @SmallTest
+    public void addCompleteSipTransportSession_emptyProto() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addCompleteSipTransportSession(mSipTransportSession1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        verifyCurrentStateSavedToFileOnce();
+        SipTransportSession[] expected = mPersistAtomsStorage.getSipTransportSession(0L);
+        assertProtoArrayEquals(new SipTransportSession[] {mSipTransportSession1}, expected);
+    }
+
+    @Test
+    @SmallTest
+    public void addCompleteSipTransportSession_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addCompleteSipTransportSession(mSipTransportSession1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        mPersistAtomsStorage.addCompleteSipTransportSession(mSipTransportSession2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        verifyCurrentStateSavedToFileOnce();
+        SipTransportSession[] expected =
+                new SipTransportSession[] {mSipTransportSession1, mSipTransportSession2};
+
+        assertProtoArrayEqualsIgnoringOrder(
+                expected, mPersistAtomsStorage.getSipTransportSession(0L));
+    }
+
+    @Test
+    @SmallTest
+    public void addCompleteSipTransportSession_tooManyEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        // store 11 same atoms, but only 1 atoms stored with count 11
+        for (int i = 0; i < 11; i++) {
+            mPersistAtomsStorage.addCompleteSipTransportSession(mSipTransportSession1);
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+        // store 1 different atom and count 1
+        mPersistAtomsStorage.addCompleteSipTransportSession(mSipTransportSession2);
+
+        verifyCurrentStateSavedToFileOnce();
+        SipTransportSession[] result = mPersistAtomsStorage.getSipTransportSession(0L);
+
+        // first atom has count 11, the other has 1
+        assertHasStats(result, mSipTransportSession1, 11);
+        assertHasStats(result, mSipTransportSession2, 1);
+    }
+
+    @Test
+    @SmallTest
+    public void addCompleteSipTransportSession_updateExistingEntries() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addCompleteSipTransportSession(copyOf(mSipTransportSession2));
+        mPersistAtomsStorage.incTimeMillis(100L);
+        verifyCurrentStateSavedToFileOnce();
+
+        SipTransportSession[] outputs = mPersistAtomsStorage.getSipTransportSession(0L);
+        SipTransportSession newSipTransportSession = copyOf(mSipTransportSession2);
+        newSipTransportSession.sessionCount *= 2;
+        newSipTransportSession.endedGracefullyCount *= 2;
+        assertProtoArrayEqualsIgnoringOrder(
+                new SipTransportSession[] {mSipTransportSession1,
+                        newSipTransportSession}, outputs);
+    }
+
     /* Utilities */
 
     private void createEmptyTestFile() throws Exception {
@@ -1297,6 +2994,32 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         atoms.imsRegistrationStats = mImsRegistrationStats;
         atoms.imsRegistrationTerminationPullTimestampMillis = lastPullTimeMillis;
         atoms.imsRegistrationTermination = mImsRegistrationTerminations;
+        atoms.imsRegistrationFeatureTagStatsPullTimestampMillis = lastPullTimeMillis;
+        atoms.imsRegistrationFeatureTagStats = mImsRegistrationFeatureTagStatses;
+        atoms.rcsClientProvisioningStatsPullTimestampMillis = lastPullTimeMillis;
+        atoms.rcsClientProvisioningStats = mRcsClientProvisioningStatses;
+        atoms.rcsAcsProvisioningStatsPullTimestampMillis = lastPullTimeMillis;
+        atoms.rcsAcsProvisioningStats = mRcsAcsProvisioningStatses;
+        atoms.imsRegistrationServiceDescStatsPullTimestampMillis = lastPullTimeMillis;
+        atoms.imsRegistrationServiceDescStats = mImsRegistrationServiceDescStats;
+        atoms.imsDedicatedBearerListenerEventPullTimestampMillis = lastPullTimeMillis;
+        atoms.imsDedicatedBearerListenerEvent = mImsDedicatedBearerListenerEvents;
+        atoms.imsDedicatedBearerEventPullTimestampMillis = lastPullTimeMillis;
+        atoms.imsDedicatedBearerEvent = mImsDedicatedBearerEvents;
+        atoms.uceEventStatsPullTimestampMillis = lastPullTimeMillis;
+        atoms.uceEventStats = mUceEventStatses;
+        atoms.presenceNotifyEventPullTimestampMillis = lastPullTimeMillis;
+        atoms.presenceNotifyEvent = mPresenceNotifyEvents;
+        atoms.sipTransportFeatureTagStatsPullTimestampMillis = lastPullTimeMillis;
+        atoms.sipTransportFeatureTagStats = mSipTransportFeatureTagStatsArray;
+        atoms.sipDelegateStatsPullTimestampMillis = lastPullTimeMillis;
+        atoms.sipDelegateStats = mSipDelegateStatsArray;
+        atoms.gbaEventPullTimestampMillis = lastPullTimeMillis;
+        atoms.gbaEvent = mGbaEvent;
+        atoms.sipMessageResponsePullTimestampMillis = lastPullTimeMillis;
+        atoms.sipMessageResponse = mSipMessageResponse;
+        atoms.sipTransportSessionPullTimestampMillis = lastPullTimeMillis;
+        atoms.sipTransportSession = mSipTransportSession;
         FileOutputStream stream = new FileOutputStream(mTestFile);
         stream.write(PersistAtoms.toByteArray(atoms));
         stream.close();
@@ -1349,6 +3072,70 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     private static ImsRegistrationTermination copyOf(ImsRegistrationTermination source)
             throws Exception {
         return ImsRegistrationTermination.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static DataCallSession copyOf(DataCallSession source)
+            throws Exception {
+        return DataCallSession.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static ImsRegistrationFeatureTagStats copyOf(ImsRegistrationFeatureTagStats source)
+            throws Exception {
+        return ImsRegistrationFeatureTagStats.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static RcsAcsProvisioningStats copyOf(RcsAcsProvisioningStats source)
+            throws Exception {
+        return RcsAcsProvisioningStats.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static ImsRegistrationServiceDescStats copyOf(ImsRegistrationServiceDescStats source)
+            throws Exception {
+        return ImsRegistrationServiceDescStats.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static ImsDedicatedBearerListenerEvent copyOf(ImsDedicatedBearerListenerEvent source)
+            throws Exception {
+        return ImsDedicatedBearerListenerEvent.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static ImsDedicatedBearerEvent copyOf(ImsDedicatedBearerEvent source)
+            throws Exception {
+        return ImsDedicatedBearerEvent.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static UceEventStats copyOf(UceEventStats source)
+            throws Exception {
+        return UceEventStats.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static PresenceNotifyEvent copyOf(PresenceNotifyEvent source)
+            throws Exception {
+        return PresenceNotifyEvent.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static SipDelegateStats copyOf(SipDelegateStats source)
+            throws Exception {
+        return SipDelegateStats.parseFrom(MessageNano.toByteArray(source));
+    }
+    private static SipTransportFeatureTagStats copyOf(SipTransportFeatureTagStats source)
+            throws Exception {
+        return SipTransportFeatureTagStats.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static GbaEvent copyOf(GbaEvent source)
+            throws Exception {
+        return GbaEvent.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static SipMessageResponse copyOf(SipMessageResponse source)
+            throws Exception {
+        return SipMessageResponse.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static SipTransportSession copyOf(SipTransportSession source)
+            throws Exception {
+        return SipTransportSession.parseFrom(MessageNano.toByteArray(source));
     }
 
     private void assertAllPullTimestampEquals(long timestamp) {
@@ -1420,5 +3207,214 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                 .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
         inOrder.verify(mTestFileOutputStream, times(1)).close();
         inOrder.verifyNoMoreInteractions();
+    }
+
+    private static void assertHasStatsCountTime(
+            ImsRegistrationFeatureTagStats[] statses,
+            @Nullable ImsRegistrationFeatureTagStats expectedStats,
+            int expectedCount, long expectedTime) {
+        assertNotNull(statses);
+        int actualCount = 0;
+        long actualTime = 0;
+        for (ImsRegistrationFeatureTagStats stats : statses) {
+            if (stats != null && expectedStats != null) {
+                if (stats.carrierId == expectedStats.carrierId
+                        && stats.slotId == expectedStats.slotId
+                        && stats.featureTagName == expectedStats.featureTagName
+                        && stats.registrationTech == expectedStats.registrationTech) {
+                    actualCount++;
+                    actualTime += stats.registeredMillis;
+                }
+            }
+        }
+        assertEquals(expectedCount, actualCount);
+        assertEquals(expectedTime, actualTime);
+    }
+
+    private static void assertHasStatsAndCount(
+            RcsClientProvisioningStats[] statses,
+            @Nullable RcsClientProvisioningStats expectedStats, int expectedCount) {
+        assertNotNull(statses);
+        int actualCount = -1;
+        for (RcsClientProvisioningStats stats : statses) {
+            if (stats.carrierId == expectedStats.carrierId
+                    && stats.slotId == expectedStats.slotId
+                    && stats.event == expectedStats.event) {
+                actualCount = stats.count;
+            }
+        }
+        assertEquals(expectedCount, actualCount);
+    }
+
+    private static void assertHasStats(
+            ImsDedicatedBearerListenerEvent[] statses,
+            @Nullable ImsDedicatedBearerListenerEvent expectedStats, int expectedCount) {
+        assertNotNull(statses);
+        int actualCount = 0;
+        for (ImsDedicatedBearerListenerEvent stats : statses) {
+            if (stats != null && expectedStats != null) {
+                if (MessageNano.messageNanoEquals(stats, expectedStats)) {
+                    actualCount++;
+                }
+            }
+        }
+        assertEquals(expectedCount, actualCount);
+    }
+
+    private static void assertHasStatsAndCount(
+            ImsDedicatedBearerEvent[] statses,
+            @Nullable ImsDedicatedBearerEvent expectedStats, int expectedCount) {
+        assertNotNull(statses);
+        int actualCount = -1;
+        for (ImsDedicatedBearerEvent stats : statses) {
+            if (stats.carrierId == expectedStats.carrierId
+                    && stats.slotId == expectedStats.slotId
+                    && stats.ratAtEnd == expectedStats.ratAtEnd
+                    && stats.qci == expectedStats.qci
+                    && stats.bearerState == expectedStats.bearerState
+                    && stats.localConnectionInfoReceived
+                            == expectedStats.localConnectionInfoReceived
+                    && stats.remoteConnectionInfoReceived
+                            == expectedStats.remoteConnectionInfoReceived
+                    && stats.hasListeners == expectedStats.hasListeners) {
+                actualCount = stats.count;
+            }
+        }
+        assertEquals(expectedCount, actualCount);
+    }
+
+    private static void assertHasStatsAndCountDuration(
+            RcsAcsProvisioningStats[] statses,
+            @Nullable RcsAcsProvisioningStats expectedStats, int count, long duration) {
+        assertNotNull(statses);
+        int actualCount = -1;
+        long actualDuration = -1;
+        for (RcsAcsProvisioningStats stats : statses) {
+            if (stats.carrierId == expectedStats.carrierId
+                    && stats.slotId == expectedStats.slotId
+                    && stats.responseCode == expectedStats.responseCode
+                    && stats.responseType == expectedStats.responseType
+                    && stats.isSingleRegistrationEnabled
+                            == expectedStats.isSingleRegistrationEnabled) {
+                actualCount = stats.count;
+                actualDuration = stats.stateTimerMillis;
+            }
+        }
+        assertEquals(count, actualCount);
+        assertEquals(duration, actualDuration);
+    }
+
+    private static void assertHasStats(SipDelegateStats[] results,
+            Object expectedStats, int expectedCount) {
+        assertNotNull(results);
+        assertNotNull(expectedStats);
+
+        int realCount = 0;
+        if (expectedStats instanceof SipDelegateStats[]) {
+            SipDelegateStats[] expectedResults = (SipDelegateStats[]) expectedStats;
+            for (SipDelegateStats stat: results) {
+                for (SipDelegateStats estat : expectedResults) {
+                    if (stat != null && estat != null) {
+                        if (MessageNano.messageNanoEquals(stat, estat)) {
+                            realCount++;
+                            break;
+                        }
+                    }
+                }
+            }
+        } else {
+            SipDelegateStats expectedResult = (SipDelegateStats) expectedStats;
+            for (SipDelegateStats stat : results) {
+                if (stat != null && expectedStats != null) {
+                    if (MessageNano.messageNanoEquals(stat, expectedResult)) {
+                        realCount++;
+                    }
+                }
+            }
+        }
+        assertEquals(expectedCount, realCount);
+    }
+
+    private static void assertHasStats(SipTransportFeatureTagStats[] results,
+            Object expectedStats, int expectedCount) {
+        assertNotNull(results);
+        assertNotNull(expectedStats);
+
+        int realCount = 0;
+        if (expectedStats instanceof SipTransportFeatureTagStats[]) {
+            SipTransportFeatureTagStats[] expectedResults =
+                    (SipTransportFeatureTagStats[]) expectedStats;
+            for (SipTransportFeatureTagStats stat: results) {
+                for (SipTransportFeatureTagStats estat : expectedResults) {
+                    if (stat != null && estat != null) {
+                        if (MessageNano.messageNanoEquals(stat, estat)) {
+                            realCount++;
+                            break;
+                        }
+                    }
+                }
+            }
+        } else {
+            SipTransportFeatureTagStats expectedResult =
+                    (SipTransportFeatureTagStats) expectedStats;
+            for (SipTransportFeatureTagStats stat : results) {
+                if (stat != null && expectedStats != null) {
+                    if (MessageNano.messageNanoEquals(stat, expectedResult)) {
+                        realCount++;
+                    }
+                }
+            }
+        }
+        assertEquals(expectedCount, realCount);
+    }
+
+    private static void assertHasStatsAndCount(
+            GbaEvent[] statses,
+            @Nullable GbaEvent expectedStats, int expectedCount) {
+        assertNotNull(statses);
+        int actualCount = -1;
+        for (GbaEvent stats : statses) {
+            if (stats.carrierId == expectedStats.carrierId
+                    && stats.slotId == expectedStats.slotId
+                    && stats.successful == expectedStats.successful
+                    && stats.failedReason == expectedStats.failedReason) {
+                actualCount = stats.count;
+            }
+        }
+        assertEquals(expectedCount, actualCount);
+    }
+
+    private static void assertHasStats(
+            SipMessageResponse[] statses,
+            @Nullable SipMessageResponse expectedStats, int expectedCount) {
+        assertNotNull(statses);
+        int actualCount = -1;
+        for (SipMessageResponse stats : statses) {
+            if (stats.carrierId == expectedStats.carrierId
+                    && stats.slotId == expectedStats.slotId
+                    && stats.sipMessageMethod == expectedStats.sipMessageMethod
+                    && stats.sipMessageResponse == expectedStats.sipMessageResponse
+                    && stats.sipMessageDirection == expectedStats.sipMessageDirection) {
+                actualCount = stats.count;
+            }
+        }
+        assertEquals(expectedCount, actualCount);
+    }
+
+    private static void assertHasStats(
+            SipTransportSession[] statses,
+            @Nullable SipTransportSession expectedStats, int expectedCount) {
+        assertNotNull(statses);
+        int actualCount = -1;
+        for (SipTransportSession stats : statses) {
+            if (stats.carrierId == expectedStats.carrierId
+                    && stats.slotId == expectedStats.slotId
+                    && stats.sessionMethod == expectedStats.sessionMethod
+                    && stats.sipMessageDirection == expectedStats.sipMessageDirection
+                    && stats.sipResponse == expectedStats.sipResponse) {
+                actualCount = stats.sessionCount;
+            }
+        }
+        assertEquals(expectedCount, actualCount);
     }
 }
