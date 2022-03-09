@@ -113,6 +113,7 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.d2d.RtpTransport;
+import com.android.internal.telephony.data.DataSettingsManager;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings.DataEnabledChangedReason;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
@@ -930,6 +931,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     };
 
+    // TODO: make @NonNull after removing DataEnabledSettings
+    private DataSettingsManager.DataSettingsManagerCallback mSettingsCallback;
+
     /**
      * Allows the FeatureConnector used to be swapped for easier testing.
      */
@@ -974,8 +978,38 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mPhone.getContext().registerReceiver(mReceiver, intentfilter);
         updateCarrierConfiguration(mPhone.getSubId(), getCarrierConfigBundle(mPhone.getSubId()));
 
-        mPhone.getDefaultPhone().getDataEnabledSettings().registerForDataEnabledChanged(
-                this, EVENT_DATA_ENABLED_CHANGED, null);
+        if (mPhone.getDefaultPhone().isUsingNewDataStack()) {
+            mSettingsCallback = new DataSettingsManager.DataSettingsManagerCallback(this::post) {
+                    @Override
+                    public void onDataEnabledChanged(boolean enabled,
+                            @TelephonyManager.DataEnabledChangedReason int reason) {
+                        int internalReason;
+                        switch (reason) {
+                            case TelephonyManager.DATA_ENABLED_REASON_USER:
+                                internalReason = DataEnabledSettings.REASON_USER_DATA_ENABLED;
+                                break;
+                            case TelephonyManager.DATA_ENABLED_REASON_POLICY:
+                                internalReason = DataEnabledSettings.REASON_POLICY_DATA_ENABLED;
+                                break;
+                            case TelephonyManager.DATA_ENABLED_REASON_CARRIER:
+                                internalReason = DataEnabledSettings.REASON_DATA_ENABLED_BY_CARRIER;
+                                break;
+                            case TelephonyManager.DATA_ENABLED_REASON_THERMAL:
+                                internalReason = DataEnabledSettings.REASON_THERMAL_DATA_ENABLED;
+                                break;
+                            case TelephonyManager.DATA_ENABLED_REASON_OVERRIDE:
+                                internalReason = DataEnabledSettings.REASON_OVERRIDE_RULE_CHANGED;
+                                break;
+                            default:
+                                internalReason = DataEnabledSettings.REASON_INTERNAL_DATA_ENABLED;
+                        }
+                        ImsPhoneCallTracker.this.onDataEnabledChanged(enabled, internalReason);
+                    }};
+            mPhone.getDefaultPhone().getDataSettingsManager().registerCallback(mSettingsCallback);
+        } else {
+            mPhone.getDefaultPhone().getDataEnabledSettings().registerForDataEnabledChanged(
+                    this, EVENT_DATA_ENABLED_CHANGED, null);
+        }
 
         final TelecomManager telecomManager =
                 (TelecomManager) mPhone.getContext().getSystemService(Context.TELECOM_SERVICE);
@@ -1205,7 +1239,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         clearDisconnected();
         mPhone.getContext().unregisterReceiver(mReceiver);
-        mPhone.getDefaultPhone().getDataEnabledSettings().unregisterForDataEnabledChanged(this);
+        if (mPhone.getDefaultPhone().isUsingNewDataStack()) {
+            mPhone.getDefaultPhone().getDataSettingsManager().unregisterCallback(mSettingsCallback);
+        } else {
+            mPhone.getDefaultPhone().getDataEnabledSettings().unregisterForDataEnabledChanged(this);
+        }
         mImsManagerConnector.disconnect();
 
         final NetworkStatsManager statsManager =
@@ -4862,7 +4900,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * @param reason Reason for data enabled/disabled. See {@link DataEnabledChangedReason}.
      */
     private void onDataEnabledChanged(boolean enabled, @DataEnabledChangedReason int reason) {
-
+        // TODO: TelephonyManager.DataEnabledChangedReason instead once DataEnabledSettings is gone
         log("onDataEnabledChanged: enabled=" + enabled + ", reason=" + reason);
 
         mIsDataEnabled = enabled;
