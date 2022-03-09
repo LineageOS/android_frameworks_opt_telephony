@@ -14,7 +14,7 @@
 * limitations under the License.
 */
 
-package com.android.internal.telephony;
+package com.android.internal.telephony.data;
 
 import static android.net.NetworkCapabilities.TRANSPORT_CELLULAR;
 import static android.telephony.CarrierConfigManager.KEY_DATA_SWITCH_VALIDATION_TIMEOUT_LONG;
@@ -71,7 +71,17 @@ import android.util.LocalLog;
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.Call;
+import com.android.internal.telephony.CommandException;
+import com.android.internal.telephony.ISetOpportunisticDataCallback;
+import com.android.internal.telephony.IccCard;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneConfigurationManager;
+import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.RadioConfig;
+import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.SubscriptionController.WatchedInt;
+import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
 import com.android.internal.telephony.dataconnection.ApnConfigTypeRepository;
 import com.android.internal.telephony.dataconnection.DcRequest;
