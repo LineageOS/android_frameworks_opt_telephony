@@ -43,6 +43,7 @@ import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.UiccCardInfo;
 import android.telephony.UiccPortInfo;
+import android.telephony.UiccSlotInfo;
 import android.telephony.euicc.DownloadableSubscription;
 import android.telephony.euicc.EuiccCardManager.ResetOption;
 import android.telephony.euicc.EuiccInfo;
@@ -56,6 +57,7 @@ import android.util.Pair;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.euicc.EuiccConnector.OtaStatusChangedCallback;
+import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.UiccProfile;
@@ -1164,24 +1166,23 @@ public class EuiccController extends IEuiccController.Stub {
             // Check is to make sure crash is avoided in case of slot is null.
             Log.d(TAG, "Switch to inactive slot, return default port index. slotIndex: "
                     + slotIndex);
-            // This case happens when device is in SS pSIM mode and carrier apps calls
-            // downloadSubscription with switchAfterDownload is set to true.
             return TelephonyManager.DEFAULT_PORT_INDEX;
         }
         if (!slot.isMultipleEnabledProfileSupported()) {
             Log.d(TAG, "Multiple enabled profiles is not supported, return default port index");
             return TelephonyManager.DEFAULT_PORT_INDEX;
         }
-        boolean isPsimHasActiveSub = isRemovalNonEuiccSlotHasActiveSubscription();
+        boolean isPsimActive = getRemovableNonEuiccSlot() != null
+                && getRemovableNonEuiccSlot().isActive();
         if (mTelephonyManager.getActiveModemCount() == 1) {
             // SS Mode
-            if (isPsimHasActiveSub) {
-                // In case of SS Mode and pSim has active subscription, return default port index
-                // for two reasons.
+            if (isPsimActive) {
+                // In case of SS Mode and pSim is active, return default port index for
+                // two reasons.
                 // 1. If psim and esim share the same carrier privilege, then users wouldn't need
                 // to consent, the switch should be seamless.
-                // 2. If psim and esim doesn't share the same carrier privilege, then permission
-                // check dialog will be shown anyway.
+                // 2. If psim is active and empty or psim and esim doesn't share the same carrier
+                // privilege, then permission check dialog will be shown anyway.
                 return TelephonyManager.DEFAULT_PORT_INDEX;
             }
             // If esim port is active, return the active portIndex irrespective of whether port is
@@ -1202,9 +1203,7 @@ public class EuiccController extends IEuiccController.Stub {
                 }
             }
             // Check whether the pSim is active and empty
-            boolean isPsimEmpty = getRemovableNonEuiccSlot() != null
-                    && getRemovableNonEuiccSlot().isActive()
-                    && !isPsimHasActiveSub;
+            boolean isPsimEmpty = isPsimActive && !isRemovalNonEuiccSlotHasActiveSubscription();
             if (isPsimEmpty) {
                 // This logic will execute only if below two conditions are true.
                 // 1. pSim is active and empty
@@ -1286,15 +1285,18 @@ public class EuiccController extends IEuiccController.Stub {
      * Gets the slot index from the card ID.
      */
     private int getSlotIndexFromCardId(int cardId) {
-        List<UiccCardInfo> infos = mTelephonyManager.getUiccCardsInfo();
-        if (infos == null || infos.size() == 0) {
+        UiccSlotInfo[] slotInfos = mTelephonyManager.getUiccSlotsInfo();
+        if (slotInfos == null || slotInfos.length == 0) {
+            Log.e(TAG, "UiccSlotInfo is null or empty");
             return SubscriptionManager.INVALID_SIM_SLOT_INDEX;
         }
-        for (UiccCardInfo info : infos) {
-            if (info.getCardId() == cardId) {
-                return info.getPhysicalSlotIndex();
+        String cardIdString = UiccController.getInstance().convertToCardString(cardId);
+        for (int slotIndex = 0; slotIndex < slotInfos.length; slotIndex++) {
+            if (IccUtils.compareIgnoreTrailingFs(cardIdString, slotInfos[slotIndex].getCardId())) {
+                return slotIndex;
             }
         }
+        Log.i(TAG, "No UiccSlotInfo found for cardId: " + cardId);
         return SubscriptionManager.INVALID_SIM_SLOT_INDEX;
     }
 
