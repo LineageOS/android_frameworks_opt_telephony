@@ -5085,8 +5085,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             pw.println("++++++++++++++++++++++++++++++++");
         }
 
-        if (mTransportManager != null) {
-            mTransportManager.dump(fd, pw, args);
+        if (isUsingNewDataStack()) {
+            if (mAccessNetworksManager != null) {
+                mAccessNetworksManager.dump(fd, pw, args);
+            }
+        } else {
+            if (mTransportManager != null) {
+                mTransportManager.dump(fd, pw, args);
+            }
         }
 
         if (mCi != null && mCi instanceof RIL) {

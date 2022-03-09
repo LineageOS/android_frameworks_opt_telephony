@@ -25,6 +25,8 @@ import android.net.NetworkCapabilities;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.telephony.AccessNetworkConstants;
+import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.NetCapability;
 import android.telephony.DataFailCause;
@@ -47,6 +49,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
@@ -61,14 +64,14 @@ public class DataRetryManager extends Handler {
     /** Event for data config updated. */
     private static final int EVENT_DATA_CONFIG_UPDATED = 1;
 
-    /** Event for evaluating if data retry is needed or not. */
-    private static final int EVENT_DATA_RETRY_EVALUATION = 2;
+    /** Event for data setup retry. */
+    private static final int EVENT_DATA_SETUP_RETRY = 3;
 
-    /** Event for data retry. */
-    private static final int EVENT_DATA_RETRY = 3;
+    /** Event for data handover retry. */
+    private static final int EVENT_DATA_HANDOVER_RETRY = 4;
 
     /** Event for cancelling all data retries. */
-    private static final int EVENT_CANCEL_ALL_DATA_RETRIES = 4;
+    private static final int EVENT_CANCEL_ALL_DATA_RETRIES = 5;
 
     /** The maximum retry entries to preserve. */
     private static final int MAXIMUM_HISTORICAL_RETRY_ENTRIES = 100;
@@ -89,18 +92,20 @@ public class DataRetryManager extends Handler {
     /** Data profile manager. */
     private final @NonNull DataProfileManager mDataProfileManager;
 
-    /** Retry rule list. */
-    private @NonNull List<DataRetryRule> mDataRetryRuleList = new ArrayList<>();
+    /** Data setup retry rule list. */
+    private @NonNull List<DataSetupRetryRule> mDataSetupRetryRuleList = new ArrayList<>();
+
+    /** Data handover retry rule list. */
+    private @NonNull List<DataHandoverRetryRule> mDataHandoverRetryRuleList = new ArrayList<>();
 
     /** Data retry entries. */
-    private final List<DataRetryEntry> mDataRetryEntries = new ArrayList<>();
+    private final @NonNull List<DataRetryEntry> mDataRetryEntries = new ArrayList<>();
 
     /**
      * Represent a data retry rule. A rule consists a retry type (e.g. either by capabilities,
      * fail cause, or both), and a retry interval.
      */
-    public static final class DataRetryRule {
-        private static final String RULE_TAG_CAPABILITIES = "capabilities";
+    public static class DataRetryRule {
         private static final String RULE_TAG_FAIL_CAUSES = "fail_causes";
         private static final String RULE_TAG_RETRY_INTERVAL = "retry_interval";
         private static final String RULE_TAG_MAXIMUM_RETRIES = "maximum_retries";
@@ -109,14 +114,14 @@ public class DataRetryManager extends Handler {
          * The data network setup retry interval. Note that if this is empty, then
          * {@link #getMaxRetries()} must return 0. Default retry interval is 5 seconds.
          */
-        private List<Long> mRetryIntervalsMillis = List.of(TimeUnit.SECONDS.toMillis(5));
+        protected List<Long> mRetryIntervalsMillis = List.of(TimeUnit.SECONDS.toMillis(5));
 
         /**
          * The maximum retry times. After reaching the retry times, data retry will not be scheduled
          * with timer. Only environment changes (e.g. Airplane mode, SIM state, RAT, registration
          * state changes, etc..) can trigger the retry.
          */
-        private int mMaxRetries = 10;
+        protected int mMaxRetries = 10;
 
         /**
          * The network capabilities. Each data setup must be
@@ -124,49 +129,14 @@ public class DataRetryManager extends Handler {
          * capabilities specified here, then retry will happen. Empty set indicates the retry rule
          * is not using network capabilities.
          */
-        private @NonNull @NetCapability Set<Integer> mNetworkCapabilities = new ArraySet<>();
+        protected @NonNull @NetCapability Set<Integer> mNetworkCapabilities = new ArraySet<>();
 
         /**
          * The fail causes. If data setup failed with certain fail causes, then retry will happen.
          * Empty set indicates the retry rule is not using the fail causes.
          */
-        private @NonNull @DataFailureCause Set<Integer> mFailCauses = new ArraySet<>();
+        protected @NonNull @DataFailureCause Set<Integer> mFailCauses = new ArraySet<>();
 
-        /**
-         * Represent a single setup data network retry rule.
-         *
-         * The syntax of the retry rule:
-         * 1. Retry based on {@link NetworkCapabilities}. Note that only APN-type network
-         * capabilities are supported.
-         * "capabilities=[netCaps1|netCaps2|...], [retry_interval=n1|n2|n3|n4...],
-         * [maximum_retries=n]"
-         *
-         * 2. Retry based on {@link DataFailCause}
-         * "fail_causes=[cause1|cause2|cause3|..], [retry_interval=n1|n2|n3|n4...],
-         * [maximum_retries=n]"
-         *
-         * 3. Retry based on {@link NetworkCapabilities} and {@link DataFailCause}. Note that only
-         *    APN-type network capabilities are supported.
-         * "capabilities=[netCaps1|netCaps2|...], fail_causes=[cause1|cause2|cause3|...],
-         *     [retry_interval=n1|n2|n3|n4...], [maximum_retries=n]"
-         *
-         * For example,
-         * "capabilities=eims, retry_interval=1000, maximum_retries=20" means if the attached
-         * network request is emergency, then retry data network setup every 1 second for up to 20
-         * times.
-         *
-         * "fail_causes=8|27|28|29|30|32|33|35|50|51|111|-5|-6|65537|65538|-3|2253|2254
-         * , maximum_retries=0" means for those fail causes, never retry with timers. Note that
-         * when environment changes, retry can still happen.
-         *
-         * "capabilities=internet|enterprise|dun|ims|fota, retry_interval=2500|3000|"
-         * "5000|10000|15000|20000|40000|60000|120000|240000|600000|1200000|1800000"
-         * "1800000, maximum_retries=20" means for those capabilities, retry happens in 2.5s, 3s,
-         * 5s, 10s, 15s, 20s, 40s, 1m, 2m, 4m, 10m, 20m, 30m, 30m, 30m, until reaching 20 retries.
-         *
-         * @param ruleString The retry rule in string format.
-         * @throws IllegalArgumentException if the string can't be parsed to a retry rule.
-         */
         public DataRetryRule(@NonNull String ruleString) {
             if (TextUtils.isEmpty(ruleString)) {
                 throw new IllegalArgumentException("illegal rule " + ruleString);
@@ -182,12 +152,6 @@ public class DataRetryManager extends Handler {
                 String value = tokens[1].trim();
                 try {
                     switch (key) {
-                        case RULE_TAG_CAPABILITIES:
-                            mNetworkCapabilities = Arrays.stream(value.split("\\s*\\|\\s*"))
-                                    .map(String::trim)
-                                    .map(DataUtils::getNetworkCapabilityFromString)
-                                    .collect(Collectors.toSet());
-                            break;
                         case RULE_TAG_FAIL_CAUSES:
                             mFailCauses = Arrays.stream(value.split("\\s*\\|\\s*"))
                                     .map(String::trim)
@@ -203,8 +167,6 @@ public class DataRetryManager extends Handler {
                         case RULE_TAG_MAXIMUM_RETRIES:
                             mMaxRetries = Integer.parseInt(value);
                             break;
-                        default:
-                            throw new IllegalArgumentException("unexpected key " + key);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -224,11 +186,6 @@ public class DataRetryManager extends Handler {
             if (mRetryIntervalsMillis.stream().anyMatch(i -> i <= 0)) {
                 throw new IllegalArgumentException("Retry interval should not be less than 0. "
                         + "mRetryIntervalsMillis=" + mRetryIntervalsMillis);
-            }
-
-            if (mNetworkCapabilities.size() == 0 && mFailCauses.size() == 0) {
-                throw new IllegalArgumentException("illegal rule " + ruleString
-                        + ". Should have either network capabilities or fail causes.");
             }
         }
 
@@ -251,6 +208,82 @@ public class DataRetryManager extends Handler {
         }
 
         /**
+         * @return The fail causes. If data setup failed with certain fail causes, then retry will
+         * happen. Empty set indicates the retry rule is not using the fail causes.
+         */
+        @VisibleForTesting
+        public @NonNull @DataFailureCause Set<Integer> getFailCauses() {
+            return mFailCauses;
+        }
+    }
+
+    /**
+     * Represent a setup data network retry rule.
+     *
+     * The syntax of the retry rule:
+     * 1. Retry based on {@link NetworkCapabilities}. Note that only APN-type network
+     * capabilities are supported.
+     * "capabilities=[netCaps1|netCaps2|...], [retry_interval=n1|n2|n3|n4...],
+     * [maximum_retries=n]"
+     *
+     * 2. Retry based on {@link DataFailCause}
+     * "fail_causes=[cause1|cause2|cause3|..], [retry_interval=n1|n2|n3|n4...],
+     * [maximum_retries=n]"
+     *
+     * 3. Retry based on {@link NetworkCapabilities} and {@link DataFailCause}. Note that only
+     *    APN-type network capabilities are supported.
+     * "capabilities=[netCaps1|netCaps2|...], fail_causes=[cause1|cause2|cause3|...],
+     *     [retry_interval=n1|n2|n3|n4...], [maximum_retries=n]"
+     *
+     * For example,
+     * "capabilities=eims, retry_interval=1000, maximum_retries=20" means if the attached
+     * network request is emergency, then retry data network setup every 1 second for up to 20
+     * times.
+     *
+     * "fail_causes=8|27|28|29|30|32|33|35|50|51|111|-5|-6|65537|65538|-3|2253|2254
+     * , maximum_retries=0" means for those fail causes, never retry with timers. Note that
+     * when environment changes, retry can still happen.
+     *
+     * "capabilities=internet|enterprise|dun|ims|fota, retry_interval=2500|3000|"
+     * "5000|10000|15000|20000|40000|60000|120000|240000|600000|1200000|1800000"
+     * "1800000, maximum_retries=20" means for those capabilities, retry happens in 2.5s, 3s,
+     * 5s, 10s, 15s, 20s, 40s, 1m, 2m, 4m, 10m, 20m, 30m, 30m, 30m, until reaching 20 retries.
+     */
+    public static class DataSetupRetryRule extends DataRetryRule {
+        private static final String RULE_TAG_CAPABILITIES = "capabilities";
+        /**
+         * Constructor
+         *
+         * @param ruleString The retry rule in string format.
+         * @throws IllegalArgumentException if the string can't be parsed to a retry rule.
+         */
+        public DataSetupRetryRule(@NonNull String ruleString) {
+            super(ruleString);
+
+            ruleString = ruleString.trim().toLowerCase(Locale.ROOT);
+            String[] expressions = ruleString.split("\\s*,\\s*");
+            for (String expression : expressions) {
+                String[] tokens = expression.trim().split("\\s*=\\s*");
+                if (tokens.length != 2) {
+                    throw new IllegalArgumentException("illegal rule " + ruleString);
+                }
+                String key = tokens[0].trim();
+                String value = tokens[1].trim();
+                if (key.equals(RULE_TAG_CAPABILITIES)) {
+                    mNetworkCapabilities = Arrays.stream(value.split("\\s*\\|\\s*"))
+                            .map(String::trim)
+                            .map(DataUtils::getNetworkCapabilityFromString)
+                            .collect(Collectors.toSet());
+                }
+            }
+
+            if (mNetworkCapabilities.size() == 0 && mFailCauses.size() == 0) {
+                throw new IllegalArgumentException("illegal rule " + ruleString
+                        + ". Should have either network capabilities or fail causes.");
+            }
+        }
+
+        /**
          * @return The network capabilities. Each data setup must be associated with at least one
          * network request. If that network request contains network capabilities specified here,
          * then retry will happen. Empty set indicates the retry rule is not using network
@@ -262,35 +295,27 @@ public class DataRetryManager extends Handler {
         }
 
         /**
-         * @return The fail causes. If data setup failed with certain fail causes, then retry will
-         * happen. Empty set indicates the retry rule is not using the fail causes.
-         */
-        @VisibleForTesting
-        public @NonNull @DataFailureCause Set<Integer> getFailCauses() {
-            return mFailCauses;
-        }
-
-        /**
          * Check if this rule can be matched.
          *
-         * @param networkCapabilities The network capabilities for matching.
+         * @param networkCapability The network capability for matching.
          * @param cause Fail cause from previous setup data request.
          * @return {@code true} if the retry rule can be matched.
          */
-        public boolean canBeMatched(@NonNull @NetCapability Set<Integer> networkCapabilities,
+        public boolean canBeMatched(@NonNull @NetCapability int networkCapability,
                 @DataFailureCause int cause) {
             if (!mFailCauses.isEmpty() && !mFailCauses.contains(cause)) {
                 return false;
             }
 
             return mNetworkCapabilities.isEmpty()
-                    || mNetworkCapabilities.containsAll(networkCapabilities);
+                    || mNetworkCapabilities.contains(networkCapability);
         }
 
         @Override
         public String toString() {
-            return "[RetryRule: Network capabilities:" + DataUtils.networkCapabilitiesToString(
-                    mNetworkCapabilities.stream().mapToInt(Number::intValue).toArray())
+            return "[DataSetupRetryRule: Network capabilities:"
+                    + DataUtils.networkCapabilitiesToString(mNetworkCapabilities.stream()
+                    .mapToInt(Number::intValue).toArray())
                     + ", Fail causes=" + mFailCauses
                     + ", Retry intervals=" + mRetryIntervalsMillis + ", Maximum retries="
                     + mMaxRetries + "]";
@@ -298,51 +323,41 @@ public class DataRetryManager extends Handler {
     }
 
     /**
-     * Data retry evaluation entry.
+     * Represent a handover data network retry rule.
+     *
+     * The syntax of the retry rule:
+     * 1. Retry when handover fails.
+     * "retry_interval=[n1|n2|n3|...], [maximum_retries=n]"
+     *
+     * For example,
+     * "retry_interval=1000|3000|5000, maximum_retries=10" means handover retry will happen in 1s,
+     * 3s, 5s, 5s, 5s....up to 10 times.
+     *
+     * 2. Retry when handover fails with certain fail causes.
+     * "retry_interval=[n1|n2|n3|...], fail_causes=[cause1|cause2|cause3|...], [maximum_retries=n]
+     *
+     * For example,
+     * "retry_interval=1000, maximum_retries=3, fail_causes=5" means handover retry every 1 second
+     * for up to 3 times when handover fails with the cause 5.
+     *
+     * "maximum_retries=0, fail_causes=6|10|67" means handover retry should not happen for those
+     * causes.
      */
-    private static class DataRetryEvaluationEntry {
+    public static class DataHandoverRetryRule extends DataRetryRule {
         /**
-         * The data profile that has been used in the previous data network setup.
-         */
-        public final @NonNull DataProfile dataProfile;
-
-        /**
-         * The network requests attached to the previous data network setup.
-         */
-        public final @NonNull NetworkRequestList requestList;
-
-        /**
-         * The fail cause of previous data network setup.
-         */
-        public final @DataFailureCause int cause;
-
-        /**
-         * The data retry delay in milliseconds suggested by the network/data service.
-         * {@link android.telephony.data.DataCallResponse#RETRY_DURATION_UNDEFINED} indicates
-         * network /data service did not suggest retry or not. Telephony frameworks would use its
-         * logic to perform data retry.
-         */
-        public final long retryDelayMillis;
-
-        /**
-         * Constructor.
+         * Constructor
          *
-         * @param dataProfile The data profile that has been used in the previous data network
-         * setup.
-         * @param requestList The network requests attached to the previous data network setup.
-         * @param cause The fail cause of previous data network setup.
-         * @param retryDelayMillis The retry duration suggested by the network/data service.
-         * {@link android.telephony.data.DataCallResponse#RETRY_DURATION_UNDEFINED} indicates
-         * network /data service did not suggest retry or not. Telephony frameworks would use its
-         * logic to perform data retry.
+         * @param ruleString The retry rule in string format.
+         * @throws IllegalArgumentException if the string can't be parsed to a retry rule.
          */
-        DataRetryEvaluationEntry(@NonNull DataProfile dataProfile,
-                @NonNull NetworkRequestList requestList, @DataFailureCause int cause,
-                long retryDelayMillis) {
-            this.dataProfile = dataProfile;
-            this.requestList = requestList;
-            this.cause = cause;
-            this.retryDelayMillis = retryDelayMillis;
+        public DataHandoverRetryRule(@NonNull String ruleString) {
+            super(ruleString);
+        }
+
+        @Override
+        public String toString() {
+            return "[DataHandoverRetryRule: Retry intervals=" + mRetryIntervalsMillis
+                    + ", Fail causes=" + mFailCauses + ", Maximum retries=" + mMaxRetries + "]";
         }
     }
 
@@ -350,30 +365,16 @@ public class DataRetryManager extends Handler {
      * Represent a data retry entry.
      */
     public static class DataRetryEntry {
-        /**
-         * To retry setup data with the same data profile.
-         */
-        public static final int RETRY_TYPE_DATA_PROFILE = 1;
-
-        /**
-         * To retry satisfying the network request with certain capabilities. Could be using a
-         * different data profile.
-         */
-        public static final int RETRY_TYPE_NETWORK_CAPABILITIES = 2;
-
-        @IntDef(prefix = {"RETRY_TYPE_"},
-                value = {
-                        RETRY_TYPE_DATA_PROFILE,
-                        RETRY_TYPE_NETWORK_CAPABILITIES,
-                })
-        public @interface DataRetryType {}
-
+        /** Indicates the retry is not happened yet. */
         public static final int RETRY_STATE_NOT_RETRIED = 1;
 
+        /** Indicates the retry happened, but still failed to setup/handover the data network. */
         public static final int RETRY_STATE_FAILED = 2;
 
+        /** Indicates the retry happened and succeeded. */
         public static final int RETRY_STATE_SUCCEEDED = 3;
 
+        /** Indicates the retry was cancelled. */
         public static final int RETRY_STATE_CANCELLED = 4;
 
         @IntDef(prefix = {"RETRY_STATE_"},
@@ -385,15 +386,6 @@ public class DataRetryManager extends Handler {
                 })
         public @interface DataRetryState {}
 
-        /** Data retry type. Could be retry by same data profile or same capabilities. */
-        public final @DataRetryType int retryType;
-
-        /** The network capabilities to satisfy when retry happens. */
-        public final @NonNull @NetCapability Set<Integer> networkCapabilities;
-
-        /** The data profile that will be used for retry. */
-        public final @NonNull DataProfile dataProfile;
-
         /** The rule used for this data retry. {@code null} if the retry is requested by network. */
         public final @Nullable DataRetryRule appliedDataRetryRule;
 
@@ -404,30 +396,21 @@ public class DataRetryManager extends Handler {
          * Retry system time. This is the system time retrieved from
          * {@link System#currentTimeMillis()}. For debugging purposes only.
          */
-        private final @CurrentTimeMillisLong long mRetrySystemTime;
+        protected final @CurrentTimeMillisLong long mRetrySystemTime;
 
         /** The retry state. */
-        private int mRetryState = RETRY_STATE_NOT_RETRIED;
+        protected int mRetryState = RETRY_STATE_NOT_RETRIED;
 
         /** Timestamp when a state is set. For debugging purposes only. */
-        private @CurrentTimeMillisLong long mRetryStateTimestamp = 0;
+        protected @CurrentTimeMillisLong long mRetryStateTimestamp = 0;
 
         /**
          * Constructor
          *
-         * @param retryType Data retry type. Could be retry by same data profile or same
-         * capabilities.
-         * @param networkCapabilities The network capabilities to satisfy when retry happens.
-         * @param dataProfile The data profile that will be used for retry.
          * @param appliedDataRetryRule The applied data retry rule.
          * @param retryDelayMillis The retry delay in milliseconds.
          */
-        private DataRetryEntry(@DataRetryType int retryType,
-                @NonNull Set<Integer> networkCapabilities, @NonNull DataProfile dataProfile,
-                @Nullable DataRetryRule appliedDataRetryRule, long retryDelayMillis) {
-            this.retryType = retryType;
-            this.networkCapabilities = networkCapabilities;
-            this.dataProfile = dataProfile;
+        public DataRetryEntry(@Nullable DataRetryRule appliedDataRetryRule, long retryDelayMillis) {
             this.appliedDataRetryRule = appliedDataRetryRule;
             this.retryDelayMillis = retryDelayMillis;
 
@@ -453,26 +436,12 @@ public class DataRetryManager extends Handler {
         }
 
         /**
-         * Convert retry type to string.
-         *
-         * @param retryType Retry type.
-         * @return Retry type in string format.
-         */
-        private static String retryTypeToString(@DataRetryType int retryType) {
-            switch (retryType) {
-                case RETRY_TYPE_DATA_PROFILE: return "BY_PROFILE";
-                case RETRY_TYPE_NETWORK_CAPABILITIES: return "BY_CAPABILITIES";
-                default: return "Unknown(" + retryType + ")";
-            }
-        }
-
-        /**
          * Convert retry state to string.
          *
          * @param retryState Retry state.
          * @return Retry state in string format.
          */
-        private static String retryStateToString(@DataRetryState int retryState) {
+        public static String retryStateToString(@DataRetryState int retryState) {
             switch (retryState) {
                 case RETRY_STATE_NOT_RETRIED: return "NOT_RETRIED";
                 case RETRY_STATE_FAILED: return "FAILED";
@@ -482,57 +451,164 @@ public class DataRetryManager extends Handler {
             }
         }
 
-        @Override
-        public String toString() {
-            return "[DataRetryEntry: delay=" + retryDelayMillis + "ms, retry time:"
-                    + DataUtils.systemTimeToString(mRetrySystemTime) + ", " + dataProfile
-                    + ", retry type=" + retryTypeToString(retryType) + ", retry capabilities="
-                    + DataUtils.networkCapabilitiesToString(networkCapabilities.stream()
-                    .mapToInt(Number::intValue).toArray()) + ", applied rule="
-                    + appliedDataRetryRule + ", state=" + retryStateToString(mRetryState)
-                    + ", timestamp=" + DataUtils.systemTimeToString(mRetryStateTimestamp) + "]";
+        /**
+         * The generic builder for retry entry.
+         *
+         * @param <T> The type of extended retry entry builder.
+         */
+        public static class Builder<T extends Builder<T>> {
+            /**
+             * The retry delay in milliseconds. Default is 5 seconds.
+             */
+            protected long mRetryDelayMillis = TimeUnit.SECONDS.toMillis(5);
+
+            /** The applied data retry rule. */
+            protected @Nullable DataRetryRule mAppliedDataRetryRule;
+
+            /**
+             * Set the data retry delay.
+             *
+             * @param retryDelayMillis The retry delay in milliseconds.
+             * @return This builder.
+             */
+            public @NonNull T setRetryDelay(long retryDelayMillis) {
+                mRetryDelayMillis = retryDelayMillis;
+                return (T) this;
+            }
+
+            /**
+             * Set the applied retry rule.
+             *
+             * @param dataRetryRule The rule that used for this data retry.
+             * @return This builder.
+             */
+            public @NonNull T setAppliedRetryRule(@NonNull DataRetryRule dataRetryRule) {
+                mAppliedDataRetryRule = dataRetryRule;
+                return (T) this;
+            }
+        }
+    }
+
+    /**
+     * Represent a setup data retry entry.
+     */
+    public static class DataSetupRetryEntry extends DataRetryEntry {
+        /**
+         * To retry setup data with the same data profile.
+         */
+        public static final int RETRY_TYPE_DATA_PROFILE = 1;
+
+        /**
+         * To retry satisfying the network request(s). Could be using a
+         * different data profile.
+         */
+        public static final int RETRY_TYPE_NETWORK_REQUESTS = 2;
+
+        @IntDef(prefix = {"RETRY_TYPE_"},
+                value = {
+                        RETRY_TYPE_DATA_PROFILE,
+                        RETRY_TYPE_NETWORK_REQUESTS,
+                })
+        public @interface SetupRetryType {}
+
+        /** Setup retry type. Could be retry by same data profile or same capability. */
+        public final @SetupRetryType int setupRetryType;
+
+        /** The network requests to satisfy when retry happens. */
+        public final @Nullable NetworkRequestList networkRequestList;
+
+        /** The data profile that will be used for retry. */
+        public final @NonNull DataProfile dataProfile;
+
+        /** The transport to retry data setup. */
+        public final @TransportType int transport;
+
+        /**
+         * Constructor
+         *
+         * @param setupRetryType Data retry type. Could be retry by same data profile or same
+         * capabilities.
+         * @param networkRequestList The network requests to satisfy when retry happens.
+         * @param dataProfile The data profile that will be used for retry.
+         * @param transport The transport to retry data setup.
+         * @param appliedDataSetupRetryRule The applied data setup retry rule.
+         * @param retryDelayMillis The retry delay in milliseconds.
+         */
+        private DataSetupRetryEntry(@SetupRetryType int setupRetryType,
+                @Nullable NetworkRequestList networkRequestList, @NonNull DataProfile dataProfile,
+                @TransportType int transport,
+                @Nullable DataSetupRetryRule appliedDataSetupRetryRule, long retryDelayMillis) {
+            super(appliedDataSetupRetryRule, retryDelayMillis);
+            this.setupRetryType = setupRetryType;
+            this.networkRequestList = networkRequestList;
+            this.dataProfile = dataProfile;
+            this.transport = transport;
         }
 
-        /** Data retry entry builder. */
-        public static class Builder {
-            /** Data retry type. Could be retry by same data profile or same capabilities. */
-            private @DataRetryType int mRetryType;
+        /**
+         * Convert retry type to string.
+         *
+         * @param setupRetryType Data setup retry type.
+         * @return Retry type in string format.
+         */
+        private static String retryTypeToString(@SetupRetryType int setupRetryType) {
+            switch (setupRetryType) {
+                case RETRY_TYPE_DATA_PROFILE: return "BY_PROFILE";
+                case RETRY_TYPE_NETWORK_REQUESTS: return "BY_NETWORK_REQUESTS";
+                default: return "Unknown(" + setupRetryType + ")";
+            }
+        }
 
-            /** The network capabilities to satisfy when retry happens. */
-            private @NonNull @NetCapability Set<Integer> mNetworkCapabilities = new ArraySet<>();
+        @Override
+        public String toString() {
+            return "[DataSetupRetryEntry: delay=" + retryDelayMillis + "ms, retry time:"
+                    + DataUtils.systemTimeToString(mRetrySystemTime) + ", " + dataProfile
+                    + ", transport=" + AccessNetworkConstants.transportTypeToString(transport)
+                    + ", retry type=" + retryTypeToString(setupRetryType) + ", retry requests="
+                    + networkRequestList + ", applied rule=" + appliedDataRetryRule + ", state="
+                    + retryStateToString(mRetryState) + ", timestamp="
+                    + DataUtils.systemTimeToString(mRetryStateTimestamp) + "]";
+        }
+
+        /**
+         * The builder of {@link DataSetupRetryEntry}.
+         *
+         * @param <T> Type of the builder.
+         */
+        public static class Builder<T extends Builder<T>> extends DataRetryEntry.Builder<T> {
+            /** Data setup retry type. Could be retry by same data profile or same capabilities. */
+            private @SetupRetryType int mSetupRetryType;
+
+            /** The network requests to satisfy when retry happens. */
+            private @Nullable NetworkRequestList mNetworkRequestList;
 
             /** The data profile that will be used for retry. */
             private @NonNull DataProfile mDataProfile;
 
-            /**
-             * The retry delay in milliseconds. Default is 5 seconds.
-             */
-            private long mRetryDelayMillis = TimeUnit.SECONDS.toMillis(5);
-
-            /** The applied data retry rule. */
-            private @Nullable DataRetryRule mAppliedDataRetryRule;
+            /** The transport to retry data setup. */
+            private @TransportType int mTransport;
 
             /**
              * Set the data retry type.
              *
-             * @param retryType Data retry type. Could be retry by same data profile or same
+             * @param setupRetryType Data retry type. Could be retry by same data profile or same
              * capabilities.
              * @return This builder.
              */
-            public @NonNull Builder setRetryType(@DataRetryType int retryType) {
-                mRetryType = retryType;
+            public @NonNull Builder<T> setSetupRetryType(@SetupRetryType int setupRetryType) {
+                mSetupRetryType = setupRetryType;
                 return this;
             }
 
             /**
-             * Set the network capabilities to satisfy when retry happens.
+             * Set the network capability to satisfy when retry happens.
              *
-             * @param networkCapabilities the network capabilities to satisfy when retry happens.
+             * @param networkRequestList The network requests to satisfy when retry happens.
              * @return This builder.
              */
-            public @NonNull Builder setNetworkCapabilities(
-                    @NonNull @NetCapability Set<Integer> networkCapabilities) {
-                mNetworkCapabilities = networkCapabilities;
+            public @NonNull Builder<T> setNetworkRequestList(
+                    @NonNull NetworkRequestList networkRequestList) {
+                mNetworkRequestList = networkRequestList;
                 return this;
             }
 
@@ -542,37 +618,93 @@ public class DataRetryManager extends Handler {
              * @param dataProfile The data profile that will be used for retry.
              * @return This builder.
              */
-            public @NonNull Builder setDataProfile(@NonNull DataProfile dataProfile) {
+            public @NonNull Builder<T> setDataProfile(@NonNull DataProfile dataProfile) {
                 mDataProfile = dataProfile;
                 return this;
             }
 
             /**
-             * Set the data retry delay.
+             * Set the transport of the data setup retry.
              *
-             * @param retryDelayMillis The retry delay in milliseconds.
+             * @param transport The transport to retry data setup.
              * @return This builder.
              */
-            public @NonNull Builder setRetryDelay(long retryDelayMillis) {
-                mRetryDelayMillis = retryDelayMillis;
+            public @NonNull Builder<T> setTransport(@TransportType int transport) {
+                mTransport = transport;
                 return this;
             }
 
             /**
-             * Set the applied retry rule.
+             * Build the instance of {@link DataSetupRetryEntry}.
              *
-             * @param dataRetryRule The rule that used for this data retry.
+             * @return The instance of {@link DataSetupRetryEntry}.
+             */
+            public @NonNull DataSetupRetryEntry build() {
+                return new DataSetupRetryEntry(mSetupRetryType, mNetworkRequestList, mDataProfile,
+                        mTransport, (DataSetupRetryRule) mAppliedDataRetryRule, mRetryDelayMillis);
+            }
+        }
+    }
+
+    /**
+     * Represent a data handover retry entry.
+     */
+    public static class DataHandoverRetryEntry extends DataRetryEntry {
+        /** The data network to be retried for handover. */
+        public final @NonNull DataNetwork dataNetwork;
+
+        /**
+         * Constructor.
+         *
+         * @param dataNetwork The data network to be retried for handover.
+         * @param appliedDataHandoverRetryRule The applied data retry rule.
+         * @param retryDelayMillis The retry delay in milliseconds.
+         */
+        public DataHandoverRetryEntry(@NonNull DataNetwork dataNetwork,
+                @Nullable DataHandoverRetryRule appliedDataHandoverRetryRule,
+                long retryDelayMillis) {
+            super(appliedDataHandoverRetryRule, retryDelayMillis);
+            this.dataNetwork = dataNetwork;
+        }
+
+        @Override
+        public String toString() {
+            return "[DataHandoverRetryEntry: delay=" + retryDelayMillis + "ms, retry time:"
+                    + DataUtils.systemTimeToString(mRetrySystemTime) + ", " + dataNetwork
+                     + ", applied rule=" + appliedDataRetryRule + ", state="
+                    + retryStateToString(mRetryState) + ", timestamp="
+                    + DataUtils.systemTimeToString(mRetryStateTimestamp) + "]";
+        }
+
+        /**
+         * The builder of {@link DataHandoverRetryEntry}.
+         *
+         * @param <T> Type of the builder.
+         */
+        public static class Builder<T extends Builder<T>> extends DataRetryEntry.Builder<T> {
+            /** The data network to be retried for handover. */
+            public @NonNull DataNetwork mDataNetwork;
+
+            /**
+             * Set the data retry type.
+             *
+             * @param dataNetwork The data network to be retried for handover.
+             *
              * @return This builder.
              */
-            public @NonNull Builder setAppliedRetryRule(@NonNull DataRetryRule dataRetryRule) {
-                mAppliedDataRetryRule = dataRetryRule;
+            public @NonNull Builder<T> setDataNetwork(@NonNull DataNetwork dataNetwork) {
+                mDataNetwork = dataNetwork;
                 return this;
             }
 
-            /** Builder the retry entry. */
-            public @NonNull DataRetryEntry build() {
-                return new DataRetryEntry(mRetryType, mNetworkCapabilities, mDataProfile,
-                        mAppliedDataRetryRule, mRetryDelayMillis);
+            /**
+             * Build the instance of {@link DataHandoverRetryEntry}.
+             *
+             * @return The instance of {@link DataHandoverRetryEntry}.
+             */
+            public @NonNull DataHandoverRetryEntry build() {
+                return new DataHandoverRetryEntry(mDataNetwork,
+                        (DataHandoverRetryRule) mAppliedDataRetryRule, mRetryDelayMillis);
             }
         }
     }
@@ -589,11 +721,28 @@ public class DataRetryManager extends Handler {
         }
 
         /**
-         * Called when data retry occurs.
+         * Called when data setup retry occurs.
          *
-         * @param dataRetryEntry The data retry entry.
+         * @param dataSetupRetryEntry The data setup retry entry.
          */
-        public abstract void onDataRetry(@NonNull DataRetryEntry dataRetryEntry);
+        public abstract void onDataNetworkSetupRetry(
+                @NonNull DataSetupRetryEntry dataSetupRetryEntry);
+
+        /**
+         * Called when data handover retry occurs.
+         *
+         * @param dataHandoverRetryEntry The data handover retry entry.
+         */
+        public abstract void onDataNetworkHandoverRetry(
+                @NonNull DataHandoverRetryEntry dataHandoverRetryEntry);
+
+        /**
+         * Called when retry manager determines that the retry will no longer be performed on
+         * this data network.
+         *
+         * @param dataNetwork The data network that will never be retried handover.
+         */
+        public abstract void onDataNetworkHandoverRetryStopped(@NonNull DataNetwork dataNetwork);
     }
 
     /**
@@ -624,14 +773,19 @@ public class DataRetryManager extends Handler {
             case EVENT_DATA_CONFIG_UPDATED:
                 onDataConfigUpdated();
                 break;
-            case EVENT_DATA_RETRY_EVALUATION:
-                DataRetryEvaluationEntry evaluationEntry = (DataRetryEvaluationEntry) msg.obj;
-                onEvaluateDataRetry(evaluationEntry.dataProfile, evaluationEntry.requestList,
-                        evaluationEntry.cause, evaluationEntry.retryDelayMillis);
-                break;
-            case EVENT_DATA_RETRY:
+            case EVENT_DATA_SETUP_RETRY:
+                DataSetupRetryEntry dataSetupRetryEntry = (DataSetupRetryEntry) msg.obj;
+                Objects.requireNonNull(dataSetupRetryEntry);
                 mDataRetryManagerCallback.invokeFromExecutor(
-                        () -> mDataRetryManagerCallback.onDataRetry((DataRetryEntry) msg.obj));
+                        () -> mDataRetryManagerCallback
+                                .onDataNetworkSetupRetry(dataSetupRetryEntry));
+                break;
+            case EVENT_DATA_HANDOVER_RETRY:
+                DataHandoverRetryEntry dataHandoverRetryEntry = (DataHandoverRetryEntry) msg.obj;
+                Objects.requireNonNull(dataHandoverRetryEntry);
+                mDataRetryManagerCallback.invokeFromExecutor(
+                        () -> mDataRetryManagerCallback
+                                .onDataNetworkHandoverRetry(dataHandoverRetryEntry));
                 break;
             case EVENT_CANCEL_ALL_DATA_RETRIES:
                 onCancelAllRetries();
@@ -646,7 +800,8 @@ public class DataRetryManager extends Handler {
      */
     private void onDataConfigUpdated() {
         cancelAllDataRetries();
-        mDataRetryRuleList = mDataConfigManager.getDataRetryRules();
+        mDataSetupRetryRuleList = mDataConfigManager.getDataSetupRetryRules();
+        mDataHandoverRetryRuleList = mDataConfigManager.getDataHandoverRetryRules();
     }
 
     /**
@@ -657,29 +812,11 @@ public class DataRetryManager extends Handler {
     }
 
     /**
-     * Called when setup data failed. Evaluate if data retry is needed or not. If needed, retry will
-     * be scheduled automatically after evaluation.
+     * Evaluate if data setup retry is needed or not. If needed, retry will be scheduled
+     * automatically after evaluation.
      *
      * @param dataProfile The data profile that has been used in the previous data network setup.
-     * @param requestList The network requests attached to the previous data network setup.
-     * @param cause The fail cause of previous data network setup.
-     * @param retryTimeMillis The retry time in milliseconds suggested by the network/data service.
-     * {@link android.telephony.data.DataCallResponse#RETRY_DURATION_UNDEFINED} indicates network
-     * /data service did not suggest retry or not. Telephony frameworks would use its logic to
-     * perform data retry.
-     */
-    public void evaluateDataRetry(@NonNull DataProfile dataProfile,
-            @NonNull NetworkRequestList requestList, @DataFailureCause int cause,
-            long retryTimeMillis) {
-        sendMessage(obtainMessage(EVENT_DATA_RETRY_EVALUATION, new DataRetryEvaluationEntry(
-                dataProfile, requestList, cause, retryTimeMillis)));
-    }
-
-    /**
-     * Called when setup data failed to evaluate whether a data retry is needed or not. If
-     * needed, retry will be scheduled automatically after evaluation.
-     *
-     * @param dataProfile The data profile that has been used in the previous data network setup.
+     * @param transport The transport to retry data setup.
      * @param requestList The network requests attached to the previous data network setup.
      * @param cause The fail cause of previous data network setup.
      * @param retryDelayMillis The retry delay in milliseconds suggested by the network/data
@@ -687,11 +824,20 @@ public class DataRetryManager extends Handler {
      * indicates network/data service did not suggest retry or not. Telephony frameworks would use
      * its logic to perform data retry.
      */
-    private void onEvaluateDataRetry(@NonNull DataProfile dataProfile,
-            @NonNull NetworkRequestList requestList, @DataFailureCause int cause,
-            long retryDelayMillis) {
-        log("onEvaluateDataRetry: " + dataProfile + ", cause=" + DataFailCause.toString(cause)
-                + ", retryDelayMillis=" + retryDelayMillis + "ms" + ", " + requestList);
+    public void evaluateDataSetupRetry(@NonNull DataProfile dataProfile,
+            @TransportType int transport, @NonNull NetworkRequestList requestList,
+            @DataFailureCause int cause, long retryDelayMillis) {
+        post(() -> onEvaluateDataSetupRetry(dataProfile, transport, requestList, cause,
+                retryDelayMillis));
+    }
+
+    private void onEvaluateDataSetupRetry(@NonNull DataProfile dataProfile,
+            @TransportType int transport, @NonNull NetworkRequestList requestList,
+            @DataFailureCause int cause, long retryDelayMillis) {
+        log("onEvaluateDataRetry: " + dataProfile + ", transport="
+                + AccessNetworkConstants.transportTypeToString(transport) + ", cause="
+                + DataFailCause.toString(cause) + ", retryDelayMillis=" + retryDelayMillis + "ms"
+                + ", " + requestList);
         // Check if network suggested never retry for this data profile. Note that for HAL 1.5
         // and older, Integer.MAX_VALUE indicates never retry. For 1.6 or above, Long.MAX_VALUE
         // indicates never retry.
@@ -700,77 +846,144 @@ public class DataRetryManager extends Handler {
             // mDataThrottler...
         } else if (retryDelayMillis != DataCallResponse.RETRY_DURATION_UNDEFINED) {
             // Network specifically asks retry the previous data profile again.
-            schedule(new DataRetryEntry.Builder()
-                    .setRetryType(DataRetryEntry.RETRY_TYPE_DATA_PROFILE)
-                    .setDataProfile(dataProfile)
+            schedule(new DataSetupRetryEntry.Builder<>()
                     .setRetryDelay(retryDelayMillis)
+                    .setSetupRetryType(DataSetupRetryEntry.RETRY_TYPE_DATA_PROFILE)
+                    .setDataProfile(dataProfile)
+                    .setTransport(transport)
                     .build());
         } else {
             // Network did not suggest any retry. Use the configured rules to perform retry.
 
-            // Extract APN-types capabilities from each network requests attached to the failed
-            // setup. For most of the cases, there should be only one capability in the inner set,
-            // and there should be only one in the outer set.
-            Set<Set<Integer>> networkCapabilitiesSet = new ArraySet<>();
-            for (TelephonyNetworkRequest networkRequest : requestList) {
-                networkCapabilitiesSet.add(Arrays.stream(networkRequest.getApnTypesCapabilities())
-                        .boxed()
-                        .collect(Collectors.toSet()));
+            boolean retryScheduled = false;
+            List<NetworkRequestList> groupedNetworkRequestLists =
+                    DataUtils.getGroupedNetworkRequestList(requestList);
+            for (NetworkRequestList networkRequestList : groupedNetworkRequestLists) {
+                int capability = networkRequestList.get(0).getHighestPriorityNetworkCapability();
+
+                for (DataSetupRetryRule retryRule : mDataSetupRetryRuleList) {
+                    if (retryRule.canBeMatched(capability, cause)) {
+                        // Try a different data profile that hasn't been tried for the longest
+                        // time and see if that works.
+                        List<DataProfile> dataProfiles = mDataProfileManager
+                                .getDataProfilesForNetworkCapabilities(new int[]{capability});
+                        if (dataProfiles.isEmpty()) {
+                            loge("Cant find data profile for retrying "
+                                    + DataUtils.networkCapabilityToString(capability));
+                            break;
+                        }
+
+                        DataProfile candidateProfile = dataProfiles.get(0);
+
+                        // Check if there is already a retry entry for this data profile.
+                        if (isAnySetupRetryScheduled(candidateProfile)) {
+                            log(candidateProfile + " is already in the retry queue.");
+                            break;
+                        }
+
+                        int failedCount = getRetryFailedCount(capability, retryRule);
+                        log("For capability " + DataUtils.networkCapabilityToString(capability)
+                                + ", found matching rule " + retryRule + ", failed count="
+                                + failedCount);
+                        if (failedCount == retryRule.getMaxRetries()) {
+                            log("Data retry failed for " + failedCount + " times. Stopped "
+                                    + "timer-based data retry for "
+                                    + DataUtils.networkCapabilityToString(capability)
+                                    + ". Condition-based retry will still happen when condition "
+                                    + "changes.");
+                            break;
+                        }
+
+                        retryDelayMillis = retryRule.getRetryIntervalsMillis().get(
+                                Math.min(failedCount, retryRule
+                                        .getRetryIntervalsMillis().size() - 1));
+
+                        // Schedule a data retry.
+                        schedule(new DataSetupRetryEntry.Builder<>()
+                                .setRetryDelay(retryDelayMillis)
+                                .setAppliedRetryRule(retryRule)
+                                .setSetupRetryType(DataSetupRetryEntry.RETRY_TYPE_NETWORK_REQUESTS)
+                                .setDataProfile(dataProfiles.get(0))
+                                .setTransport(transport)
+                                .setNetworkRequestList(networkRequestList)
+                                .build());
+                        retryScheduled = true;
+                        break;
+                    }
+                }
             }
-            logv("networkCapabilitiesSet=" + networkCapabilitiesSet);
+
+            if (!retryScheduled) {
+                log("onEvaluateDataRetry: Did not match any retry rule. Stop timer-based retry.");
+            }
+        }
+    }
+
+    /**
+     * Evaluate if data handover retry is needed or not. If needed, retry will be scheduled
+     * automatically after evaluation.
+     *
+     * @param dataNetwork The data network to be retried for handover.
+     * @param cause The fail cause of previous data network handover.
+     * @param retryDelayMillis The retry delay in milliseconds suggested by the network/data
+     * service. {@link android.telephony.data.DataCallResponse#RETRY_DURATION_UNDEFINED}
+     * indicates network/data service did not suggest retry or not. Telephony frameworks would use
+     * its logic to perform handover retry.
+     */
+    public void evaluateDataHandoverRetry(@NonNull DataNetwork dataNetwork,
+            @DataFailureCause int cause, long retryDelayMillis) {
+        post(() -> onEvaluateDataHandoverRetry(dataNetwork, cause, retryDelayMillis));
+    }
+
+    private void onEvaluateDataHandoverRetry(@NonNull DataNetwork dataNetwork,
+            @DataFailureCause int cause, long retryDelayMillis) {
+        log("onEvaluateDataHandoverRetry: " + dataNetwork + ", cause="
+                + DataFailCause.toString(cause) + ", retryDelayMillis=" + retryDelayMillis + "ms");
+
+        if (retryDelayMillis == Long.MAX_VALUE || retryDelayMillis == Integer.MAX_VALUE) {
+            logl("Network suggested never retry handover for " + dataNetwork);
+            // mDataThrottler...
+        } else if (retryDelayMillis != DataCallResponse.RETRY_DURATION_UNDEFINED) {
+            // Network specifically asks retry the previous data profile again.
+            schedule(new DataHandoverRetryEntry.Builder<>()
+                    .setRetryDelay(retryDelayMillis)
+                    .setDataNetwork(dataNetwork)
+                    .build());
+        } else {
+            // Network did not suggest any retry. Use the configured rules to perform retry.
 
             // Matching the rule in configured order.
-            for (DataRetryRule retryRule : mDataRetryRuleList) {
-                // Now check if the retry rule contains the capabilities from the network request
-                // list.
-                Set<Integer> matchedCapabilities = networkCapabilitiesSet.stream()
-                        .filter(caps -> retryRule.canBeMatched(caps, cause))
-                        .findFirst()
-                        .orElse(Collections.emptySet());
-                logv("retryRule=" + retryRule + ", matchedCapabilities="
-                        + DataUtils.networkCapabilitiesToString(matchedCapabilities.stream()
-                        .mapToInt(Number::intValue).toArray()));
-                if (!matchedCapabilities.isEmpty()) {
-                    int failedCount = getRetryFailedCount(matchedCapabilities, retryRule);
+            for (DataHandoverRetryRule retryRule : mDataHandoverRetryRuleList) {
+                if (retryRule.getFailCauses().isEmpty()
+                        || retryRule.getFailCauses().contains(cause)) {
+                    int failedCount = getRetryFailedCount(dataNetwork, retryRule);
                     log("Found matching rule " + retryRule + ", failed count=" + failedCount);
                     if (failedCount == retryRule.getMaxRetries()) {
-                        log("Data retry failed for " + failedCount + " times. Stopped "
-                                + "timer-based data retry. Condition-based retry will still happen "
-                                + "when condition changes.");
+                        log("Data handover retry failed for " + failedCount + " times. Stopped "
+                                + "handover retry.");
+                        mDataRetryManagerCallback.invokeFromExecutor(() -> mDataRetryManagerCallback
+                                .onDataNetworkHandoverRetryStopped(dataNetwork));
                         return;
                     }
 
                     retryDelayMillis = retryRule.getRetryIntervalsMillis().get(
-                            Math.min(failedCount, retryRule.getRetryIntervalsMillis().size() - 1));
-
-                    // Try a different data profile that hasn't been tried for the longest
-                    // time and see if that works.
-                    List<DataProfile> dataProfiles = mDataProfileManager
-                            .getDataProfilesForNetworkCapabilities(matchedCapabilities.stream()
-                                    .mapToInt(Number::intValue).toArray());
-                    if (dataProfiles.isEmpty()) {
-                        loge("Can't find any data profiles for retrying.");
-                        return;
-                    }
-
-                    // Schedule a data retry.
-                    schedule(new DataRetryEntry.Builder()
-                            .setRetryType(DataRetryEntry.RETRY_TYPE_NETWORK_CAPABILITIES)
+                            Math.min(failedCount, retryRule
+                                    .getRetryIntervalsMillis().size() - 1));
+                    schedule(new DataHandoverRetryEntry.Builder<>()
                             .setRetryDelay(retryDelayMillis)
-                            .setDataProfile(dataProfiles.get(0))
-                            .setNetworkCapabilities(matchedCapabilities)
+                            .setDataNetwork(dataNetwork)
                             .setAppliedRetryRule(retryRule)
                             .build());
-                    return;
                 }
             }
-            log("onEvaluateDataRetry: Did not match any retry rule. Stopped timer-based retry.");
         }
     }
 
     /** Cancel all retries. */
     private void onCancelAllRetries() {
-        removeMessages(EVENT_DATA_RETRY);
+        log("onCancelAllRetries");
+        removeMessages(EVENT_DATA_SETUP_RETRY);
+        removeMessages(EVENT_DATA_HANDOVER_RETRY);
         for (DataRetryEntry retryEntry : mDataRetryEntries) {
             if (retryEntry.getState() == DataRetryEntry.RETRY_STATE_NOT_RETRIED) {
                 retryEntry.setState(DataRetryEntry.RETRY_STATE_CANCELLED);
@@ -779,27 +992,57 @@ public class DataRetryManager extends Handler {
     }
 
     /**
-     * Count how many times the same retry rules has been used for these capabilities since last
-     * success data setup.
+     * Count how many times the same setup retry rule has been used for this data network but
+     * failed.
      *
-     * @param networkCapabilities The network capabilities to check.
+     * @param dataNetwork The data network to check.
      * @param dataRetryRule The data retry rule.
      * @return The failed count since last successful data setup.
      */
-    private int getRetryFailedCount(@NonNull Set<Integer> networkCapabilities,
-            @NonNull DataRetryRule dataRetryRule) {
+    private int getRetryFailedCount(@NonNull DataNetwork dataNetwork,
+            @NonNull DataHandoverRetryRule dataRetryRule) {
         int count = 0;
         for (int i = mDataRetryEntries.size() - 1; i >= 0; i--) {
-            DataRetryEntry entry = mDataRetryEntries.get(i);
-            // count towards the last succeeded data setup.
-            if (entry.retryType == DataRetryEntry.RETRY_TYPE_NETWORK_CAPABILITIES
-                    && entry.networkCapabilities.equals(networkCapabilities)
-                    && entry.appliedDataRetryRule.equals(dataRetryRule)) {
-                if (entry.getState() == DataRetryEntry.RETRY_STATE_SUCCEEDED
-                        || entry.getState() == DataRetryEntry.RETRY_STATE_CANCELLED) {
-                    break;
+            if (mDataRetryEntries.get(i) instanceof DataHandoverRetryEntry) {
+                DataHandoverRetryEntry entry = (DataHandoverRetryEntry) mDataRetryEntries.get(i);
+                if (entry.dataNetwork == dataNetwork
+                        && entry.appliedDataRetryRule.equals(dataRetryRule)) {
+                    if (entry.getState() == DataRetryEntry.RETRY_STATE_SUCCEEDED
+                            || entry.getState() == DataRetryEntry.RETRY_STATE_CANCELLED) {
+                        break;
+                    }
+                    count++;
                 }
-                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Count how many times the same setup retry rule has been used for the capability since
+     * last success data setup.
+     *
+     * @param networkCapability The network capability to check.
+     * @param dataRetryRule The data retry rule.
+     * @return The failed count since last successful data setup.
+     */
+    private int getRetryFailedCount(@NetCapability int networkCapability,
+            @NonNull DataSetupRetryRule dataRetryRule) {
+        int count = 0;
+        for (int i = mDataRetryEntries.size() - 1; i >= 0; i--) {
+            if (mDataRetryEntries.get(i) instanceof DataSetupRetryEntry) {
+                DataSetupRetryEntry entry = (DataSetupRetryEntry) mDataRetryEntries.get(i);
+                // count towards the last succeeded data setup.
+                if (entry.setupRetryType == DataSetupRetryEntry.RETRY_TYPE_NETWORK_REQUESTS
+                        && entry.networkRequestList.get(0)
+                        .getHighestPriorityNetworkCapability() == networkCapability
+                        && entry.appliedDataRetryRule.equals(dataRetryRule)) {
+                    if (entry.getState() == DataRetryEntry.RETRY_STATE_SUCCEEDED
+                            || entry.getState() == DataRetryEntry.RETRY_STATE_CANCELLED) {
+                        break;
+                    }
+                    count++;
+                }
             }
         }
         return count;
@@ -808,7 +1051,7 @@ public class DataRetryManager extends Handler {
     /**
      * Schedule the data retry.
      *
-     * @param dataRetryEntry The retry entry.
+     * @param dataRetryEntry The data retry entry.
      */
     private void schedule(@NonNull DataRetryEntry dataRetryEntry) {
         logl("Scheduled data retry: " + dataRetryEntry);
@@ -822,8 +1065,37 @@ public class DataRetryManager extends Handler {
         // When the device enters doze mode, the handler message might be extremely delayed than the
         // original scheduled time. There is no need to wake up the device to perform data retry in
         // that case.
-        sendMessageDelayed(obtainMessage(EVENT_DATA_RETRY, dataRetryEntry),
+        sendMessageDelayed(obtainMessage(dataRetryEntry instanceof DataSetupRetryEntry
+                        ? EVENT_DATA_SETUP_RETRY : EVENT_DATA_HANDOVER_RETRY, dataRetryEntry),
                 dataRetryEntry.retryDelayMillis);
+    }
+
+    /**
+     * Check if there is any data setup retry scheduled with specified data profile.
+     *
+     * @param dataProfile The data profile to retry.
+     * @return {@code true} if there is retry scheduled for this data profile.
+     */
+    public boolean isAnySetupRetryScheduled(@NonNull DataProfile dataProfile) {
+        return mDataRetryEntries.stream()
+                .filter(DataSetupRetryEntry.class::isInstance)
+                .map(DataSetupRetryEntry.class::cast)
+                .anyMatch(entry -> entry.getState() == DataRetryEntry.RETRY_STATE_NOT_RETRIED
+                        && entry.dataProfile.equals(dataProfile));
+    }
+
+    /**
+     * Check if there is any data handover retry scheduled.
+     *
+     * @param dataNetwork The network network to retry handover.
+     * @return {@code true} if there is retry scheduled for this network capability.
+     */
+    public boolean isAnyHandoverRetryScheduled(@NonNull DataNetwork dataNetwork) {
+        return mDataRetryEntries.stream()
+                .filter(DataHandoverRetryEntry.class::isInstance)
+                .map(DataHandoverRetryEntry.class::cast)
+                .anyMatch(entry -> entry.getState() == DataRetryEntry.RETRY_STATE_NOT_RETRIED
+                        && entry.dataNetwork == dataNetwork);
     }
 
     /**
@@ -870,11 +1142,13 @@ public class DataRetryManager extends Handler {
         IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         pw.println(DataRetryManager.class.getSimpleName() + "-" + mPhone.getPhoneId() + ":");
         pw.increaseIndent();
-        pw.println("Retry rules:");
+        pw.println("Data Setup Retry rules:");
         pw.increaseIndent();
-        for (DataRetryRule rule : mDataRetryRuleList) {
-            pw.println(rule);
-        }
+        mDataSetupRetryRuleList.forEach(pw::println);
+        pw.decreaseIndent();
+        pw.println("Data Handover Retry rules:");
+        pw.increaseIndent();
+        mDataHandoverRetryRuleList.forEach(pw::println);
         pw.decreaseIndent();
 
         pw.println("Retry entries:");
