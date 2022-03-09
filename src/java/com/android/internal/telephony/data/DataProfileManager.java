@@ -684,7 +684,8 @@ public class DataProfileManager extends Handler {
         return mAllDataProfiles.contains(dataProfile)
                 && (dataProfile.getApnSetting() == null
                 || dataProfile.getApnSetting().getApnSetId() == mPreferredDataProfileSetId
-                || mPreferredDataProfileSetId == Telephony.Carriers.MATCH_ALL_APN_SET_ID);
+                || dataProfile.getApnSetting().getApnSetId()
+                == Telephony.Carriers.MATCH_ALL_APN_SET_ID);
     }
 
     /**
@@ -695,6 +696,18 @@ public class DataProfileManager extends Handler {
      */
     public boolean isDataProfilePreferred(@NonNull DataProfile dataProfile) {
         return dataProfile.equals(mPreferredDataProfile);
+    }
+
+    /**
+     * Check if any preferred data profile exists.
+     *
+     * @return {@code true} if any preferred data profile exists
+     */
+    public boolean isAnyPreferredDataProfileExisting() {
+        for (DataProfile dataProfile : mAllDataProfiles) {
+            if (dataProfile.isPreferred()) return true;
+        }
+        return false;
     }
 
     /**

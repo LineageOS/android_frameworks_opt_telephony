@@ -606,6 +606,10 @@ public abstract class TelephonyTest {
                 .makeEriManager(nullable(Phone.class), anyInt());
         doReturn(mLinkBandwidthEstimator).when(mTelephonyComponentFactory)
                 .makeLinkBandwidthEstimator(nullable(Phone.class));
+        doReturn(mDataProfileManager).when(mTelephonyComponentFactory)
+                .makeDataProfileManager(any(Phone.class), any(DataNetworkController.class),
+                        any(DataServiceManager.class), any(Looper.class),
+                        any(DataProfileManager.DataProfileManagerCallback.class));
 
         //mPhone
         doReturn(mContext).when(mPhone).getContext();
@@ -647,6 +651,7 @@ public abstract class TelephonyTest {
         doReturn(mDataProfileManager).when(mDataNetworkController).getDataProfileManager();
         doReturn(mDataRetryManager).when(mDataNetworkController).getDataRetryManager();
         doReturn(mCarrierPrivilegesTracker).when(mPhone).getCarrierPrivilegesTracker();
+        doReturn(true).when(mPhone).isUsingNewDataStack();
 
         //mUiccController
         doReturn(mUiccCardApplication3gpp).when(mUiccController).getUiccCardApplication(anyInt(),

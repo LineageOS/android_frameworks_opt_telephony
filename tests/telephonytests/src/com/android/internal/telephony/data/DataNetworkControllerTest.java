@@ -37,6 +37,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.annotation.NonNull;
 import android.content.Intent;
@@ -82,6 +83,7 @@ import android.util.ArraySet;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.ISub;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.DataNetworkController.HandoverRule;
@@ -374,9 +376,11 @@ public class DataNetworkControllerTest extends TelephonyTest {
         mIsub = Mockito.mock(ISub.class);
         mMockedDataNetworkControllerCallback = Mockito.mock(DataNetworkControllerCallback.class);
         mMockedDataRetryManagerCallback = Mockito.mock(DataRetryManagerCallback.class);
+        when(mTelephonyComponentFactory.makeDataSettingsManager(any(Phone.class),
+                any(DataNetworkController.class), any(Looper.class),
+                any(DataSettingsManager.DataSettingsManagerCallback.class))).thenCallRealMethod();
 
         initializeConfig();
-        doReturn(true).when(mPhone).isUsingNewDataStack();
         mMockedDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 mMockedWwanDataServiceManager);
         mMockedDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
@@ -407,7 +411,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                                 transport).values()), null));
                 return null;
             }).when(mMockedDataServiceManagers.get(transport)).deactivateDataCall(
-                    anyInt(), anyInt(), eq(null));
+                    anyInt(), anyInt(), any(Message.class));
 
             doAnswer(invocation -> {
                 Handler h = (Handler) invocation.getArguments()[0];
