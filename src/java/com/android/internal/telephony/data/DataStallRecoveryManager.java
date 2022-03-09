@@ -188,8 +188,7 @@ public class DataStallRecoveryManager extends Handler {
     private void registerAllEvents() {
         mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
         mDataNetworkController.registerDataNetworkControllerCallback(
-                this::post,
-                new DataNetworkControllerCallback() {
+                new DataNetworkControllerCallback(this::post) {
                     @Override
                     public void onInternetDataNetworkValidationStatusChanged(
                             @ValidationStatus int validationStatus) {
@@ -205,8 +204,7 @@ public class DataStallRecoveryManager extends Handler {
                     public void onInternetDataNetworkDisconnected() {
                         // onInternetDataNetworkDisconnected();
                     }
-                },
-                false);
+                });
         mPhone.mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
     }
 

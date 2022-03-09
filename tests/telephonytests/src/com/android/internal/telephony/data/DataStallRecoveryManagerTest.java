@@ -21,7 +21,6 @@ import static com.android.internal.telephony.data.DataNetworkController.DataNetw
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
@@ -40,8 +39,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-
-import java.util.concurrent.Executor;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -87,9 +84,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
                 ArgumentCaptor.forClass(DataNetworkControllerCallback.class);
         verify(mDataNetworkController)
                 .registerDataNetworkControllerCallback(
-                        any(Executor.class),
-                        dataNetworkControllerCallbackCaptor.capture(),
-                        eq(false));
+                        dataNetworkControllerCallbackCaptor.capture());
         DataNetworkControllerCallback dataNetworkControllerCallback =
                 dataNetworkControllerCallbackCaptor.getValue();
         dataNetworkControllerCallback.onInternetDataNetworkValidationStatusChanged(
