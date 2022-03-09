@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony;
+package com.android.internal.telephony.data;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
@@ -45,6 +45,8 @@ import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+
+import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
 import org.junit.Before;
