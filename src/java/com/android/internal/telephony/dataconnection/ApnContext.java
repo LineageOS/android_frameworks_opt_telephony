@@ -537,7 +537,13 @@ public class ApnContext {
         return mRetryManager.getRetryAfterDisconnectDelay();
     }
 
-    static @ApnType int getApnTypeFromNetworkRequest(NetworkRequest nr) {
+    /**
+     * Get APN type from the network request.
+     *
+     * @param nr The network request.
+     * @return The APN type.
+     */
+    public static @ApnType int getApnTypeFromNetworkRequest(NetworkRequest nr) {
         // For now, ignore the bandwidth stuff
         if (nr.getTransportTypes().length > 0
                 && !nr.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
