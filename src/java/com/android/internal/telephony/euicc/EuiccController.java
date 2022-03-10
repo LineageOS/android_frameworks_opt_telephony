@@ -55,14 +55,15 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.CarrierPrivilegesTracker;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.euicc.EuiccConnector.OtaStatusChangedCallback;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccPort;
-import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.uicc.UiccSlot;
-import com.android.internal.telephony.util.ArrayUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -1903,33 +1904,51 @@ public class EuiccController extends IEuiccController.Stub {
         } finally {
             Binder.restoreCallingIdentity(token);
         }
-        if (ArrayUtils.isEmpty(cardInfos)) {
-            return false;
-        }
         for (UiccCardInfo info : cardInfos) {
-            //return false if physical card
-            if (info != null && info.getCardId() == cardId && !info.isEuicc()) {
+            if (info == null || info.getCardId() != cardId) {
+                continue;
+            }
+            // Return false in case of non esim or passed port index is greater than
+            // the available ports.
+            if (!info.isEuicc() || (portIndex == TelephonyManager.INVALID_PORT_INDEX)
+                    || portIndex >= info.getPorts().size()) {
                 return false;
             }
             for (UiccPortInfo portInfo : info.getPorts()) {
-                if (portInfo.isActive()) {
-                    // A port is available if it has no profiles enabled on it or calling app has
-                    // Carrier privilege over the profile installed on the selected port.
-                    if (TextUtils.isEmpty(portInfo.getIccId())) {
-                        return true;
-                    }
-                    UiccPort uiccPort =
-                            UiccController.getInstance().getUiccPortForSlot(
-                                    info.getPhysicalSlotIndex(), portIndex);
-                    if (uiccPort != null) {
-                        UiccProfile uiccProfile = uiccPort.getUiccProfile();
-                        if (uiccProfile != null && uiccProfile.getCarrierPrivilegeStatus(
-                                mContext.getPackageManager(), callingPackage)
-                                == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
-                            return true;
-                        }
-                    }
+                if (portInfo == null || portInfo.getPortIndex() != portIndex) {
+                    continue;
                 }
+                // Return false if port is not active.
+                if (!portInfo.isActive()) {
+                    return false;
+                }
+                // A port is available if it has no profiles enabled on it or calling app has
+                // Carrier privilege over the profile installed on the selected port.
+                if (TextUtils.isEmpty(portInfo.getIccId())) {
+                    return true;
+                }
+                UiccPort uiccPort =
+                        UiccController.getInstance().getUiccPortForSlot(
+                                info.getPhysicalSlotIndex(), portIndex);
+                // Some eSim Vendors return boot profile iccid if no profile is installed.
+                // So in this case if profile is empty, port is available.
+                if (uiccPort != null
+                        && uiccPort.getUiccProfile() != null
+                        && uiccPort.getUiccProfile().isEmptyProfile()) {
+                    return true;
+                }
+                Phone phone = PhoneFactory.getPhone(portInfo.getLogicalSlotIndex());
+                if (phone == null) {
+                    Log.e(TAG, "Invalid logical slot: " + portInfo.getLogicalSlotIndex());
+                    return false;
+                }
+                CarrierPrivilegesTracker cpt = phone.getCarrierPrivilegesTracker();
+                if (cpt == null) {
+                    Log.e(TAG, "No CarrierPrivilegesTracker");
+                    return false;
+                }
+                return (cpt.getCarrierPrivilegeStatusForPackage(callingPackage)
+                        == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
             }
         }
         return false;
