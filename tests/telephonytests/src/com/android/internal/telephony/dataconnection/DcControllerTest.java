@@ -90,7 +90,6 @@ public class DcControllerTest extends TelephonyTest {
         doReturn("fake.action_detached").when(mPhone).getActionDetached();
         doReturn(1).when(mApnContexts).size();
         doReturn(mApnContexts).when(mDc).getApnContexts();
-        doReturn(false).when(mPhone).isUsingNewDataStack();
 
         LinkProperties lp = new LinkProperties();
         mResult = new UpdateLinkPropertyResult(lp);
