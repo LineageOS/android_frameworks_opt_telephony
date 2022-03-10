@@ -25,13 +25,13 @@ import android.net.NetworkRequest;
 import android.net.NetworkSpecifier;
 import android.os.SystemClock;
 import android.telephony.Annotation.NetCapability;
-import android.telephony.data.ApnSetting;
 
 import com.android.internal.telephony.Phone;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.Arrays;
+import java.util.Comparator;
 
 /**
  * TelephonyNetworkRequest is a wrapper class on top of {@link NetworkRequest}, which is originated
@@ -106,7 +106,6 @@ public class TelephonyNetworkRequest {
      */
     public TelephonyNetworkRequest(NetworkRequest request, Phone phone) {
         mNativeNetworkRequest = request;
-        mDataConfigManager = phone.getDataNetworkController().getDataConfigManager();
 
         mPriority = 0;
         mAttachedDataNetwork = null;
@@ -114,8 +113,12 @@ public class TelephonyNetworkRequest {
         // to satisfy it.
         mState = REQUEST_STATE_UNSATISFIED;
         mCreatedTimeMillis = SystemClock.elapsedRealtime();
-
-        updatePriority();
+        if (phone.isUsingNewDataStack()) {
+            mDataConfigManager = phone.getDataNetworkController().getDataConfigManager();
+            updatePriority();
+        } else {
+            mDataConfigManager = null;
+        }
     }
 
     /**
@@ -166,42 +169,15 @@ public class TelephonyNetworkRequest {
     }
 
     /**
-     * Get the highest priority network capability from the network request. Note that only APN-type
-     * capabilities are supported here because this is currently used for transport selection and
-     * data retry.
+     * Get the network capability which are APN-type based from the network request. If there are
+     * multiple APN types capability, the highest priority one will be returned.
      *
-     * @return The highest priority network capability from this network request.
+     * @return The highest priority APN type based network capability from this network request.
      */
-    public @NetCapability int getHighestPriorityNetworkCapability() {
-        int highestPriority = 0;
-        int highestPriorityCapability = -1;
-        for (int capability : getCapabilities()) {
-            // Convert the capability to APN type. For non-APN-type capabilities, TYPE_NONE is
-            // returned.
-            int apnType = DataUtils.networkCapabilityToApnType(capability);
-            if (apnType != ApnSetting.TYPE_NONE) {
-                int priority = mDataConfigManager.getNetworkCapabilityPriority(capability);
-                if (priority > highestPriority) {
-                    highestPriority = priority;
-                    highestPriorityCapability = capability;
-                }
-            }
-        }
-        return highestPriorityCapability;
+    public @NetCapability int getApnTypeNetworkCapability() {
+        return Arrays.stream(getCapabilities()).boxed().max(Comparator.comparingInt(
+                mDataConfigManager::getNetworkCapabilityPriority)).orElse(-1);
     }
-
-    /**
-     * Get the capabilities that can be translated to APN types.
-     *
-     * @return The capabilities that can be translated to APN types.
-     */
-    public @NonNull @NetCapability int[] getApnTypesCapabilities() {
-        return Arrays.stream(getCapabilities()).boxed()
-                .filter(cap -> DataUtils.networkCapabilityToApnType(cap) != ApnSetting.TYPE_NONE)
-                .mapToInt(Number::intValue)
-                .toArray();
-    }
-
     /**
      * @return The native network request.
      */

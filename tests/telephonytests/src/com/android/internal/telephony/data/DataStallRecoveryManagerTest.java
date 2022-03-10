@@ -44,7 +44,6 @@ import org.mockito.Mock;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class DataStallRecoveryManagerTest extends TelephonyTest {
-    @Mock private DataNetworkController mDataNetworkController;
     @Mock private DataServiceManager mDataServiceManager;
     @Mock private DataStallRecoveryManagerCallback mDataStallRecoveryManagerCallback;
     private DataStallRecoveryManager mDataStallRecoveryManager;
@@ -53,9 +52,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("DataStallRecoveryManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
-
-        doReturn(mDataNetworkController).when(mPhone).getDataNetworkController();
-        doReturn(mDataConfigManager).when(mDataNetworkController).getDataConfigManager();
+        doReturn(true).when(mPhone).isUsingNewDataStack();
         doReturn(mSST).when(mPhone).getServiceStateTracker();
         doAnswer(
                 invocation -> {
