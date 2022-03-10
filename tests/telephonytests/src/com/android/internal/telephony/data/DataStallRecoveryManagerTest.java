@@ -57,6 +57,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
         logd("DataStallRecoveryManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
         mDataStallRecoveryManagerCallback = mock(DataStallRecoveryManagerCallback.class);
+        doReturn(true).when(mPhone).isUsingNewDataStack();
         mCarrierConfigManager = mPhone.getContext().getSystemService(CarrierConfigManager.class);
         long[] dataStallRecoveryTimersArray = new long[] {100, 100, 100};
         boolean[] dataStallRecoveryStepsArray = new boolean[] {false, false, false, false};
