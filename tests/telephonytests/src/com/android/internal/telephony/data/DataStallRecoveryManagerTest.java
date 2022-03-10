@@ -23,6 +23,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.net.NetworkAgent;
@@ -43,7 +44,6 @@ import org.mockito.Mock;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class DataStallRecoveryManagerTest extends TelephonyTest {
-
     @Mock private DataNetworkController mDataNetworkController;
     @Mock private DataServiceManager mDataServiceManager;
     @Mock private DataStallRecoveryManagerCallback mDataStallRecoveryManagerCallback;
@@ -56,6 +56,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
 
         doReturn(mDataNetworkController).when(mPhone).getDataNetworkController();
         doReturn(mDataConfigManager).when(mDataNetworkController).getDataConfigManager();
+        doReturn(mSST).when(mPhone).getServiceStateTracker();
         doAnswer(
                 invocation -> {
                     ((Runnable) invocation.getArguments()[0]).run();
@@ -99,10 +100,8 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
 
         logd("Sending validation failed callback");
         sendValidationFailedCallback();
-        processAllMessages();
-        moveTimeForward(180000);
+        processAllFutureMessages();
 
-        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(2);
         verify(mDataStallRecoveryManagerCallback).onDataStallReestablishInternet();
     }
 
@@ -114,10 +113,9 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
 
         logd("Sending validation failed callback");
         sendValidationFailedCallback();
-        processAllMessages();
-        moveTimeForward(180000);
+        processAllFutureMessages();
 
-        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(3);
+        verify(mSST, times(1)).powerOffRadioSafely();
     }
 
     @Test
@@ -129,10 +127,9 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
         logd("Sending validation failed callback");
         sendValidationFailedCallback();
 
-        processAllMessages();
-        moveTimeForward(180000);
+        processAllFutureMessages();
 
-        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(0);
+        verify(mPhone, times(1)).rebootModem(any());
     }
 
     @Test
@@ -145,8 +142,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
         logd("Sending validation failed callback");
         sendValidationFailedCallback();
 
-        processAllMessages();
-        moveTimeForward(180000);
+        processAllFutureMessages();
 
         assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(0);
     }
@@ -161,8 +157,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
         logd("Sending validation failed callback");
         sendValidationFailedCallback();
 
-        processAllMessages();
-        moveTimeForward(180000);
+        processAllFutureMessages();
 
         assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(2);
     }
