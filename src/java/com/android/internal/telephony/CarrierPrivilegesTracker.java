@@ -69,12 +69,12 @@ import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.IntArray;
 import android.util.LocalLog;
+import android.util.Pair;
 
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.UiccProfile;
-import com.android.internal.util.ArrayUtils;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -85,6 +85,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
@@ -216,19 +217,21 @@ public class CarrierPrivilegesTracker extends Handler {
     /** Small snapshot to hold package names and UIDs of privileged packages. */
     private static final class PrivilegedPackageInfo {
         @NonNull final Set<String> mPackageNames;
-        @NonNull final int[] mUids; // Note: must be kept sorted for equality purposes
+        @NonNull final Set<Integer> mUids;
+        // The carrier service (packageName, UID) pair
+        @NonNull final Pair<String, Integer> mCarrierService;
 
         PrivilegedPackageInfo() {
             mPackageNames = Collections.emptySet();
-            mUids = new int[0];
+            mUids = Collections.emptySet();
+            mCarrierService = new Pair<>(null, Process.INVALID_UID);
         }
 
-        PrivilegedPackageInfo(@NonNull Set<String> packageNames, @NonNull Set<Integer> uids) {
+        PrivilegedPackageInfo(@NonNull Set<String> packageNames, @NonNull Set<Integer> uids,
+                @NonNull Pair<String, Integer> carrierService) {
             mPackageNames = packageNames;
-            IntArray converter = new IntArray(uids.size());
-            uids.forEach(converter::add);
-            mUids = converter.toArray();
-            Arrays.sort(mUids); // for equality purposes
+            mUids = uids;
+            mCarrierService = carrierService;
         }
 
         @Override
@@ -236,7 +239,11 @@ public class CarrierPrivilegesTracker extends Handler {
             return "{packageNames="
                     + getObfuscatedPackages(mPackageNames, pkg -> Rlog.pii(TAG, pkg))
                     + ", uids="
-                    + Arrays.toString(mUids)
+                    + mUids
+                    + ", carrierServicePackageName="
+                    + Rlog.pii(TAG, mCarrierService.first)
+                    + ", carrierServiceUid="
+                    + mCarrierService.second
                     + "}";
         }
 
@@ -249,13 +256,13 @@ public class CarrierPrivilegesTracker extends Handler {
                 return false;
             }
             PrivilegedPackageInfo other = (PrivilegedPackageInfo) o;
-            return mPackageNames.equals(other.mPackageNames) && Arrays.equals(mUids, other.mUids);
+            return mPackageNames.equals(other.mPackageNames) && mUids.equals(other.mUids)
+                    && mCarrierService.equals(other.mCarrierService);
         }
 
         @Override
         public int hashCode() {
-            // Since we have an array, we have to use deepHashCode instead of "regular" Objects.hash
-            return Arrays.deepHashCode(new Object[] {mPackageNames, mUids});
+            return Objects.hash(mPackageNames, mUids, mCarrierService);
         }
     }
 
@@ -406,9 +413,10 @@ public class CarrierPrivilegesTracker extends Handler {
         mRegistrantList.add(registrant);
         mPrivilegedPackageInfoLock.readLock().lock();
         try {
+            // Old registrant callback still takes int[] as parameter, need conversion here
+            int[] uids = intSetToArray(mPrivilegedPackageInfo.mUids);
             registrant.notifyResult(
-                    Arrays.copyOf(
-                            mPrivilegedPackageInfo.mUids, mPrivilegedPackageInfo.mUids.length));
+                    Arrays.copyOf(uids, uids.length));
         } finally {
             mPrivilegedPackageInfoLock.readLock().unlock();
         }
@@ -641,9 +649,24 @@ public class CarrierPrivilegesTracker extends Handler {
         PrivilegedPackageInfo currentPrivilegedPackageInfo =
                 getCurrentPrivilegedPackagesForAllUsers();
 
+        boolean carrierPrivilegesPackageNamesChanged;
+        boolean carrierPrivilegesUidsChanged;
+        boolean carrierServiceChanged;
+
         mPrivilegedPackageInfoLock.readLock().lock();
         try {
             if (mPrivilegedPackageInfo.equals(currentPrivilegedPackageInfo)) return;
+
+            mLocalLog.log("Privileged packages info changed. New state = "
+                    + currentPrivilegedPackageInfo);
+
+            carrierPrivilegesPackageNamesChanged =
+                    !currentPrivilegedPackageInfo.mPackageNames.equals(
+                            mPrivilegedPackageInfo.mPackageNames);
+            carrierPrivilegesUidsChanged =
+                    !currentPrivilegedPackageInfo.mUids.equals(mPrivilegedPackageInfo.mUids);
+            carrierServiceChanged = !currentPrivilegedPackageInfo.mCarrierService.equals(
+                    mPrivilegedPackageInfo.mCarrierService);
         } finally {
             mPrivilegedPackageInfoLock.readLock().unlock();
         }
@@ -657,16 +680,24 @@ public class CarrierPrivilegesTracker extends Handler {
 
         mPrivilegedPackageInfoLock.readLock().lock();
         try {
-            mLocalLog.log("Privileged packages changed. New state = " + mPrivilegedPackageInfo);
-            mRegistrantList.notifyResult(
-                    Arrays.copyOf(
-                            mPrivilegedPackageInfo.mUids, mPrivilegedPackageInfo.mUids.length));
-            mTelephonyRegistryManager.notifyCarrierPrivilegesChanged(
-                    mPhone.getPhoneId(),
-                    Collections.unmodifiableList(
-                            new ArrayList<>(mPrivilegedPackageInfo.mPackageNames)),
-                    Arrays.copyOf(
-                            mPrivilegedPackageInfo.mUids, mPrivilegedPackageInfo.mUids.length));
+            // The obsoleted callback only care about UIDs
+            if (carrierPrivilegesUidsChanged) {
+                int[] uids = intSetToArray(mPrivilegedPackageInfo.mUids);
+                mRegistrantList.notifyResult(Arrays.copyOf(uids, uids.length));
+            }
+
+            if (carrierPrivilegesPackageNamesChanged || carrierPrivilegesUidsChanged) {
+                mTelephonyRegistryManager.notifyCarrierPrivilegesChanged(
+                        mPhone.getPhoneId(),
+                        Collections.unmodifiableSet(mPrivilegedPackageInfo.mPackageNames),
+                        Collections.unmodifiableSet(mPrivilegedPackageInfo.mUids));
+            }
+
+            if (carrierServiceChanged) {
+                mTelephonyRegistryManager.notifyCarrierServiceChanged(mPhone.getPhoneId(),
+                        mPrivilegedPackageInfo.mCarrierService.first,
+                        mPrivilegedPackageInfo.mCarrierService.second);
+            }
         } finally {
             mPrivilegedPackageInfoLock.readLock().unlock();
         }
@@ -687,7 +718,8 @@ public class CarrierPrivilegesTracker extends Handler {
                 privilegedUids.addAll(getUidsForPackage(e.getKey(), /* invalidateCache= */ false));
             }
         }
-        return new PrivilegedPackageInfo(privilegedPackageNames, privilegedUids);
+        return new PrivilegedPackageInfo(privilegedPackageNames, privilegedUids,
+                getCarrierService(privilegedPackageNames));
     }
 
     /**
@@ -744,6 +776,16 @@ public class CarrierPrivilegesTracker extends Handler {
         }
         mCachedUids.put(pkgName, uids);
         return uids;
+    }
+
+    private int getPackageUid(@Nullable String pkgName) {
+        int uid = Process.INVALID_UID;
+        try {
+            uid = mPackageManager.getPackageUid(pkgName, /* flags= */0);
+        } catch (NameNotFoundException e) {
+            Rlog.e(TAG, "Unable to find uid for package " + pkgName);
+        }
+        return uid;
     }
 
     /**
@@ -880,7 +922,7 @@ public class CarrierPrivilegesTracker extends Handler {
         try {
             if (mSimIsReadyButNotLoaded) {
                 return CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED;
-            } else if (ArrayUtils.contains(mPrivilegedPackageInfo.mUids, uid)) {
+            } else if (mPrivilegedPackageInfo.mUids.contains(uid)) {
                 return CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
             } else {
                 return CARRIER_PRIVILEGE_STATUS_NO_ACCESS;
@@ -922,7 +964,6 @@ public class CarrierPrivilegesTracker extends Handler {
             mPrivilegedPackageInfoLock.readLock().unlock();
         }
 
-
         // Do the PackageManager queries before we take the lock, as these are the longest-running
         // pieces of this method and don't depend on the set of carrier apps.
         List<ResolveInfo> resolveInfos = new ArrayList<>();
@@ -959,5 +1000,29 @@ public class CarrierPrivilegesTracker extends Handler {
         if (resolveInfo.serviceInfo != null) return resolveInfo.serviceInfo.packageName;
         if (resolveInfo.providerInfo != null) return resolveInfo.providerInfo.packageName;
         return null;
+    }
+
+    @NonNull
+    private Pair<String, Integer> getCarrierService(@NonNull Set<String> privilegedPackageNames) {
+        List<ResolveInfo> carrierServiceResolveInfos = mPackageManager.queryIntentServices(
+                new Intent(CarrierService.CARRIER_SERVICE_INTERFACE), /* flags= */ 0);
+        String carrierServicePackageName = null;
+        for (ResolveInfo resolveInfo : carrierServiceResolveInfos) {
+            String packageName = getPackageName(resolveInfo);
+            if (privilegedPackageNames.contains(packageName)) {
+                carrierServicePackageName = packageName;
+                break;
+            }
+        }
+        return carrierServicePackageName == null
+                ? new Pair<>(null, Process.INVALID_UID)
+                : new Pair<>(carrierServicePackageName, getPackageUid(carrierServicePackageName));
+    }
+
+    @NonNull
+    private static int[] intSetToArray(@NonNull Set<Integer> intSet) {
+        IntArray converter = new IntArray(intSet.size());
+        intSet.forEach(converter::add);
+        return converter.toArray();
     }
 }
