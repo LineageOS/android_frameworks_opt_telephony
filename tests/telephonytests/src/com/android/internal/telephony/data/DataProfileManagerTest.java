@@ -403,7 +403,6 @@ public class DataProfileManagerTest extends TelephonyTest {
         logd("DataProfileManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
         mDataProfileManagerCallback = Mockito.mock(DataProfileManagerCallback.class);
-        doReturn(true).when(mPhone).isUsingNewDataStack();
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
                 Telephony.Carriers.CONTENT_URI.getAuthority(), mApnSettingContentProvider);
 
@@ -679,7 +678,6 @@ public class DataProfileManagerTest extends TelephonyTest {
 
     @Test
     public void testDedupeDataProfiles2() throws Exception {
-
         DataProfile dataProfile1 = new DataProfile.Builder()
                 .setApnSetting(new ApnSetting.Builder()
                         .setEntryName("general")
@@ -745,5 +743,26 @@ public class DataProfileManagerTest extends TelephonyTest {
         assertThat(dataProfile.getApnSetting().getProtocol()).isEqualTo(ApnSetting.PROTOCOL_IPV4V6);
         assertThat(dataProfile.getApnSetting().getRoamingProtocol())
                 .isEqualTo(ApnSetting.PROTOCOL_IPV4V6);
+    }
+
+    @Test
+    public void testIsDataProfileValid() {
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build(), mPhone);
+        DataProfile dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
+                tnr, TelephonyManager.NETWORK_TYPE_LTE);
+        assertThat(dataProfile.getApnSetting().getApnSetId()).isEqualTo(
+                Telephony.Carriers.NO_APN_SET_ID);
+        assertThat(mDataProfileManagerUT.isDataProfileValid(dataProfile)).isTrue();
+
+        tnr = new TelephonyNetworkRequest(new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)
+                .build(), mPhone);
+        dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
+                tnr, TelephonyManager.NETWORK_TYPE_LTE);
+        assertThat(dataProfile.getApnSetting().getApnSetId()).isEqualTo(
+                Telephony.Carriers.MATCH_ALL_APN_SET_ID);
+        assertThat(mDataProfileManagerUT.isDataProfileValid(dataProfile)).isTrue();
     }
 }
