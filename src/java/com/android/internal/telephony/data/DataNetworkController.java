@@ -1483,8 +1483,7 @@ public class DataNetworkController extends Handler {
 
         // If users switch preferred profile in APN editor, we need to tear down network.
         if (dataNetwork.isInternetSupported()
-                && !mDataProfileManager.isDataProfilePreferred(dataProfile)
-                && mDataProfileManager.isAnyPreferredDataProfileExisting()) {
+                && !mDataProfileManager.isDataProfilePreferred(dataProfile)) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_PROFILE_NOT_PREFERRED);
         }
 
