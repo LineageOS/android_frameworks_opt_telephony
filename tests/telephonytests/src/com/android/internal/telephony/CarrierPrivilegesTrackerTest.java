@@ -23,9 +23,13 @@ import static android.telephony.CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX;
 import static android.telephony.CarrierConfigManager.KEY_CARRIER_CERTIFICATE_STRING_ARRAY;
 import static android.telephony.CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL;
 import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+import static android.telephony.TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
+import static android.telephony.TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED;
 import static android.telephony.TelephonyManager.EXTRA_SIM_STATE;
+import static android.telephony.TelephonyManager.SIM_STATE_ABSENT;
 import static android.telephony.TelephonyManager.SIM_STATE_LOADED;
 import static android.telephony.TelephonyManager.SIM_STATE_NOT_READY;
+import static android.telephony.TelephonyManager.SIM_STATE_READY;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -77,9 +81,11 @@ import org.mockito.Mock;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -272,12 +278,12 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
                 expectedPackageNames, mCarrierPrivilegesTracker.getPackagesWithCarrierPrivileges());
         for (String packageName : expectedPackageNames) {
             assertEquals(
-                    TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS,
+                    CARRIER_PRIVILEGE_STATUS_HAS_ACCESS,
                     mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForPackage(packageName));
         }
         for (int uid : expectedUids) {
             assertEquals(
-                    TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS,
+                    CARRIER_PRIVILEGE_STATUS_HAS_ACCESS,
                     mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForUid(uid));
         }
     }
@@ -535,12 +541,154 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         sendSimCardStateChangedIntent(PHONE_ID, SIM_STATE_NOT_READY);
         mTestableLooper.processAllMessages();
 
+        // Immediately check current state, nothing should change
+        verifyCurrentState(Set.of(PACKAGE_1, PACKAGE_2), new int[]{UID_1, UID_2});
+
+        // Wait for 30 seconds
+        Thread.sleep(TimeUnit.SECONDS.toMillis(30));
+        mTestableLooper.processAllMessages();
+
+        // Check again, the carrier privileges should be emptied
         verifyCurrentState(Set.of(), new int[0]);
         verifyRegistrantUpdates(new int[0], 1 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
                 List.of(
                         new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS),
                         new Pair<>(Set.of(), new int[0])));
+    }
+
+    @Test
+    public void testSimStateChangedSimStateAbsentThenLoadedWithSameRules() throws Exception {
+        // Start with privileges
+        setupCarrierPrivilegesTrackerWithSimLoadedUids();
+        // CPT initialization process may trigger notification, remove the interfere here
+        reset(mTelephonyRegistryManager);
+
+        // SIM is removed
+        sendSimCardStateChangedIntent(PHONE_ID, SIM_STATE_ABSENT);
+        mTestableLooper.processAllMessages();
+
+
+        // Wait for 20 seconds and the same SIM is inserted
+        Thread.sleep(TimeUnit.SECONDS.toMillis(20));
+        sendSimCardStateChangedIntent(PHONE_ID, SIM_STATE_LOADED);
+        mTestableLooper.processAllMessages();
+        // Wait for another 20 seconds
+        Thread.sleep(TimeUnit.SECONDS.toMillis(20));
+
+        // verify all carrier privileges should remain, no CP change notified
+        verifyCurrentState(Set.of(PACKAGE_1, PACKAGE_2), new int[]{UID_1, UID_2});
+        verifyRegistrantUpdates(null /* expectedUidUpdates */, 0 /* expectedUidUpdates */);
+        verifyCarrierPrivilegesChangedUpdates(List.of());
+    }
+
+    @Test
+    public void testSimStateChangedSimStateAbsentForever() throws Exception {
+        // Start with privileges
+        setupCarrierPrivilegesTrackerWithSimLoadedUids();
+        // CPT initialization process may trigger notification, remove the interfere here
+        reset(mTelephonyRegistryManager);
+
+        // SIM is removed
+        sendSimCardStateChangedIntent(PHONE_ID, SIM_STATE_ABSENT);
+        mTestableLooper.processAllMessages();
+
+        // Wait for 30 seconds
+        Thread.sleep(TimeUnit.SECONDS.toMillis(30));
+        mTestableLooper.processAllMessages();
+
+        // verify the carrier privileges should be emptied
+        verifyCurrentState(Set.of(), new int[0]);
+        verifyRegistrantUpdates(new int[0], 1 /* expectedUidUpdates */);
+        verifyCarrierPrivilegesChangedUpdates(
+                List.of(new Pair<>(Set.of(), new int[0])));
+    }
+
+    @Test
+    public void testSimStateChangedSimStateNotReadyForever() throws Exception {
+        // Start with privileges
+        setupCarrierPrivilegesTrackerWithSimLoadedUids();
+        // CPT initialization process may trigger notification, remove the interfere here
+        reset(mTelephonyRegistryManager);
+
+        // eSIM profile disabled and leave in state SIM_STATE_NOT_READY
+        sendSimCardStateChangedIntent(PHONE_ID, SIM_STATE_NOT_READY);
+        mTestableLooper.processAllMessages();
+
+        // Wait for 30 seconds
+        Thread.sleep(TimeUnit.SECONDS.toMillis(30));
+        mTestableLooper.processAllMessages();
+
+        // verify the carrier privileges should be emptied
+        verifyCurrentState(Set.of(), new int[0]);
+        verifyRegistrantUpdates(new int[0], 1 /* expectedUidUpdates */);
+        verifyCarrierPrivilegesChangedUpdates(
+                List.of(new Pair<>(Set.of(), new int[0])));
+    }
+
+    @Test
+    public void testSimStateChangedSimStateAbsentThenLoadedWithUpdatedRules() throws Exception {
+        // Start with privileges
+        setupCarrierPrivilegesTrackerWithSimLoadedUids();
+        reset(mTelephonyRegistryManager);
+
+        // SIM is removed
+        sendSimCardStateChangedIntent(PHONE_ID, SIM_STATE_ABSENT);
+        mTestableLooper.processAllMessages();
+
+
+        // Wait for 20 seconds and a different SIM is inserted
+        Thread.sleep(TimeUnit.SECONDS.toMillis(20));
+        setupSimLoadedRules(ruleWithHashOnly(getHash(CERT_1)));
+        sendSimCardStateChangedIntent(PHONE_ID, SIM_STATE_LOADED);
+        mTestableLooper.processAllMessages();
+        // Wait for another 20 seconds
+        Thread.sleep(TimeUnit.SECONDS.toMillis(20));
+
+        // Carrier privileges should be updated and CP change should be notified
+        verifyCurrentState(Set.of(PACKAGE_1), new int[] {UID_1});
+        verifyRegistrantUpdates(new int[] {UID_1}, 1 /* expectedUidUpdates */);
+        verifyCarrierPrivilegesChangedUpdates(
+                List.of(new Pair<>(Set.of(PACKAGE_1), new int[] {UID_1})));
+    }
+
+    @Test
+    public void testSimStateChangedSimStateReadyThenLoaded() throws Exception {
+        // Start with privileges (from carrier config)
+        setupCarrierPrivilegesTrackerWithCarrierConfigUids();
+
+        ResolveInfo pkg1ResolveInfo = new ResolveInfoBuilder().setActivity(PACKAGE_1).build();
+        ResolveInfo pkg2ResolveInfo = new ResolveInfoBuilder().setActivity(PACKAGE_2).build();
+        when(mPackageManager.queryBroadcastReceivers(any(), anyInt())).thenReturn(
+                List.of(pkg1ResolveInfo, pkg2ResolveInfo));
+
+        // SIM is READY
+        sendSimCardStateChangedIntent(PHONE_ID, SIM_STATE_READY);
+        mTestableLooper.processAllMessages();
+
+        assertEquals(Collections.emptyList(),
+                mCarrierPrivilegesTracker.getCarrierPackageNamesForIntent(
+                        new Intent(CarrierService.CARRIER_SERVICE_INTERFACE)));
+        assertEquals(CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED,
+                mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForUid(UID_1));
+        assertEquals(Collections.EMPTY_SET,
+                mCarrierPrivilegesTracker.getPackagesWithCarrierPrivileges());
+        assertEquals(CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED,
+                mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForPackage(PACKAGE_1));
+
+        // SIM is LOADED
+        sendSimCardStateChangedIntent(PHONE_ID, SIM_STATE_LOADED);
+        mTestableLooper.processAllMessages();
+
+        assertEquals(List.of(PACKAGE_1, PACKAGE_2),
+                mCarrierPrivilegesTracker.getCarrierPackageNamesForIntent(
+                        new Intent(CarrierService.CARRIER_SERVICE_INTERFACE)));
+        assertEquals(CARRIER_PRIVILEGE_STATUS_HAS_ACCESS,
+                mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForUid(UID_1));
+        assertEquals(PRIVILEGED_PACKAGES,
+                mCarrierPrivilegesTracker.getPackagesWithCarrierPrivileges());
+        assertEquals(CARRIER_PRIVILEGE_STATUS_HAS_ACCESS,
+                mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForPackage(PACKAGE_1));
     }
 
     @Test
