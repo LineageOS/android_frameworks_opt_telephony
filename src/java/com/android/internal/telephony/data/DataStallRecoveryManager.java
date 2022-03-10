@@ -38,6 +38,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
+import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
 import com.android.internal.telephony.metrics.DataStallRecoveryStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.telephony.Rlog;
@@ -91,15 +92,11 @@ public class DataStallRecoveryManager extends Handler {
     /** Event for data config updated. */
     private static final int EVENT_DATA_CONFIG_UPDATED = 1;
 
-
     /** Event for triggering recovery action. */
     private static final int EVENT_DO_RECOVERY = 2;
 
-    /** Event for mobile data setting changed. */
-    private static final int EVENT_MOBILE_DATA_SETTINGS_CHANGED = 3;
-
     /** Event for radio state changed. */
-    private static final int EVENT_RADIO_STATE_CHANGED = 4;
+    private static final int EVENT_RADIO_STATE_CHANGED = 3;
 
     private final @NonNull Phone mPhone;
     private final @NonNull String mLogTag;
@@ -132,6 +129,10 @@ public class DataStallRecoveryManager extends Handler {
     private @RadioPowerState int mRadioPowerState;
     /** Whether the NetworkCheckTimer start. */
     private boolean mNetworkCheckTimerStarted = false;
+    /** Whether radio state changed during data stall. */
+    private boolean mRadioStateChangedDuringDataStall;
+    /** Whether mobile data change to Enabled during data stall. */
+    private boolean mMobileDataChangedToEnabledDuringDataStall;
 
     private @NonNull DataStallRecoveryManagerCallback mDataStallRecoveryManagerCallback;
 
@@ -175,9 +176,21 @@ public class DataStallRecoveryManager extends Handler {
         super(looper);
         mPhone = phone;
         mLogTag = "DSRM-" + mPhone.getPhoneId();
+        log("DataStallRecoveryManager created.");
         mDataNetworkController = dataNetworkController;
         mWwanDataServiceManager = dataServiceManager;
         mDataConfigManager = mDataNetworkController.getDataConfigManager();
+        mDataNetworkController
+                .getDataSettingsManager()
+                .registerCallback(
+                        new DataSettingsManagerCallback(this::post) {
+                            @Override
+                            public void onDataEnabledChanged(
+                                    boolean enabled,
+                                    @TelephonyManager.DataEnabledChangedReason int reason) {
+                                onMobileDataEnabledChanged(enabled);
+                            }
+                        });
         mDataStallRecoveryManagerCallback = callback;
         mRadioPowerState = mPhone.getRadioPowerState();
 
@@ -197,12 +210,12 @@ public class DataStallRecoveryManager extends Handler {
 
                     @Override
                     public void onInternetDataNetworkConnected() {
-                        // onInternetDataNetworkConnected();
+                        // onInternetNetworkConnected();
                     }
 
                     @Override
                     public void onInternetDataNetworkDisconnected() {
-                        // onInternetDataNetworkDisconnected();
+                        // onInternetNetworkDisconnected();
                     }
                 });
         mPhone.mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
@@ -218,11 +231,12 @@ public class DataStallRecoveryManager extends Handler {
             case EVENT_DO_RECOVERY:
                 doRecovery();
                 break;
-            case EVENT_MOBILE_DATA_SETTINGS_CHANGED:
-                onMobileDataSettingsChanged();
-                break;
             case EVENT_RADIO_STATE_CHANGED:
                 mRadioPowerState = mPhone.getRadioPowerState();
+                if (mDataStalled) {
+                    // Store the radio state changed flag only when data stall occurred.
+                    mRadioStateChangedDuringDataStall = true;
+                }
                 break;
             default:
                 loge("Unexpected message = " + msg);
@@ -233,6 +247,16 @@ public class DataStallRecoveryManager extends Handler {
     /** Called when data config was updated. */
     private void onDataConfigUpdated() {
         // TODO: (b/178670629): Get the new config from DataConfigManager.
+    }
+
+    /** Called when mobile data setting changed. */
+    private void onMobileDataEnabledChanged(boolean enabled) {
+        logl("onMobileDataEnabledChanged: DataEnabled:" + enabled + ",DataStalled:" + mDataStalled);
+        // Store the mobile data changed flag (from disabled to enabled) as TRUE
+        // during data stalled.
+        if (mDataStalled && enabled) {
+            mMobileDataChangedToEnabledDuringDataStall = true;
+        }
     }
 
     /**
@@ -260,15 +284,11 @@ public class DataStallRecoveryManager extends Handler {
         }
     }
 
-    /** Called when mobile data setiings changed. */
-    private void onMobileDataSettingsChanged() {
-        logv("onMobileDataSettingsChanged");
-        // TODO: (b/178670629): Get mobile data settings from DataSettingsManager.
-    }
-
     /** Reset the action to initial step. */
     private void resetAction() {
         mTimeLastRecoveryStartMs = 0;
+        mMobileDataChangedToEnabledDuringDataStall = false;
+        mRadioStateChangedDuringDataStall = false;
         setRecoveryAction(RECOVERY_ACTION_GET_DATA_CALL_LIST);
     }
 
@@ -292,6 +312,21 @@ public class DataStallRecoveryManager extends Handler {
     @VisibleForTesting
     public void setRecoveryAction(@RecoveryAction int action) {
         mRecovryAction = action;
+
+        // Check if the mobile data enabled is TRUE, it means that the mobile data setting changed
+        // from DISABLED to ENABLED, we will set the next recovery action to
+        // RECOVERY_ACTION_RADIO_RESTART due to already did the RECOVERY_ACTION_CLEANUP.
+        if (mMobileDataChangedToEnabledDuringDataStall
+                && mRecovryAction < RECOVERY_ACTION_RADIO_RESTART) {
+            mRecovryAction = RECOVERY_ACTION_RADIO_RESTART;
+        }
+        // Check if the radio state changed from off to on, it means that the modem already
+        // did the radio restart, we will set the next action to RECOVERY_ACTION_RESET_MODEM.
+        if (mRadioStateChangedDuringDataStall
+                && mRadioPowerState == TelephonyManager.RADIO_POWER_ON) {
+            mRecovryAction = RECOVERY_ACTION_RESET_MODEM;
+        }
+
         log("setRecoveryAction: " + recoveryActionToString(mRecovryAction));
     }
 
@@ -492,6 +527,25 @@ public class DataStallRecoveryManager extends Handler {
     }
 
     /**
+     * Convert RadioPowerState to string
+     *
+     * @param state The radio power state
+     * @return The radio power state in string format.
+     */
+    private static @NonNull String radioPowerStateToString(@RadioPowerState int state) {
+        switch (state) {
+            case TelephonyManager.RADIO_POWER_OFF:
+                return "RADIO_POWER_OFF";
+            case TelephonyManager.RADIO_POWER_ON:
+                return "RADIO_POWER_ON";
+            case TelephonyManager.RADIO_POWER_UNAVAILABLE:
+                return "RADIO_POWER_UNAVAILABLE";
+            default:
+                return "Unknown(" + state + ")";
+        }
+    }
+
+    /**
      * Convert RecoveryAction to string
      *
      * @param action The recovery action
@@ -572,10 +626,15 @@ public class DataStallRecoveryManager extends Handler {
         pw.println("mIsValidNetwork=" + mIsValidNetwork);
         pw.println("mDataStalled=" + mDataStalled);
         pw.println("mDataStallStartMs=" + mDataStallStartMs);
-        pw.println("mRadioPowerState=" + mRadioPowerState);
+        pw.println("mMobileDataEnabled=" + mMobileDataEnabled);
+        pw.println("mRadioPowerState=" + radioPowerStateToString(mRadioPowerState));
         pw.println("mLastActionReported=" + mLastActionReported);
         pw.println("mTimeLastRecoveryStartMs=" + mTimeLastRecoveryStartMs);
         pw.println("getRecoveryAction()=" + recoveryActionToString(getRecoveryAction()));
+        pw.println("mRadioStateChangedDuringDataStall=" + mRadioStateChangedDuringDataStall);
+        pw.println(
+                "mMobileDataChangedToEnabledDuringDataStall="
+                        + mMobileDataChangedToEnabledDuringDataStall);
         pw.println("");
 
         pw.println("Local logs:");
