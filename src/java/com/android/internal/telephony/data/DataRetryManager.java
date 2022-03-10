@@ -859,7 +859,7 @@ public class DataRetryManager extends Handler {
             List<NetworkRequestList> groupedNetworkRequestLists =
                     DataUtils.getGroupedNetworkRequestList(requestList);
             for (NetworkRequestList networkRequestList : groupedNetworkRequestLists) {
-                int capability = networkRequestList.get(0).getHighestPriorityNetworkCapability();
+                int capability = networkRequestList.get(0).getApnTypeNetworkCapability();
 
                 for (DataSetupRetryRule retryRule : mDataSetupRetryRuleList) {
                     if (retryRule.canBeMatched(capability, cause)) {
@@ -1035,7 +1035,7 @@ public class DataRetryManager extends Handler {
                 // count towards the last succeeded data setup.
                 if (entry.setupRetryType == DataSetupRetryEntry.RETRY_TYPE_NETWORK_REQUESTS
                         && entry.networkRequestList.get(0)
-                        .getHighestPriorityNetworkCapability() == networkCapability
+                        .getApnTypeNetworkCapability() == networkCapability
                         && entry.appliedDataRetryRule.equals(dataRetryRule)) {
                     if (entry.getState() == DataRetryEntry.RETRY_STATE_SUCCEEDED
                             || entry.getState() == DataRetryEntry.RETRY_STATE_CANCELLED) {
