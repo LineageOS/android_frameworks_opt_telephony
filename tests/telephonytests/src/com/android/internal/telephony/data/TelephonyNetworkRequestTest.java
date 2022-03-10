@@ -18,6 +18,8 @@ package com.android.internal.telephony.data;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.mockito.Mockito.doReturn;
+
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.TelephonyNetworkSpecifier;
@@ -34,7 +36,7 @@ public class TelephonyNetworkRequestTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("TelephonyNetworkRequestTest +Setup!");
         super.setUp(getClass().getSimpleName());
-
+        doReturn(true).when(mPhone).isUsingNewDataStack();
         logd("TelephonyNetworkRequestTest -Setup!");
     }
 
@@ -110,7 +112,7 @@ public class TelephonyNetworkRequestTest extends TelephonyTest {
     }
 
     @Test
-    public void testGetHighestPriorityNetworkCapability() {
+    public void testGetApnTypeNetworkCapability() {
         TelephonyNetworkRequest request = new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -118,8 +120,26 @@ public class TelephonyNetworkRequestTest extends TelephonyTest {
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL)
                         .build(), mPhone);
-        assertThat(request.getHighestPriorityNetworkCapability())
+        assertThat(request.getApnTypeNetworkCapability())
                 .isEqualTo(NetworkCapabilities.NET_CAPABILITY_SUPL);
+
+        request = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_FOTA)
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
+                        .build(), mPhone);
+        assertThat(request.getApnTypeNetworkCapability())
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_FOTA);
+
+        request = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
+                        .build(), mPhone);
+        assertThat(request.getApnTypeNetworkCapability())
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_EIMS);
     }
 
     @Test

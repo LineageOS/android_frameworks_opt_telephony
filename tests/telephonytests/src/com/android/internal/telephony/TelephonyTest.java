@@ -608,6 +608,7 @@ public abstract class TelephonyTest {
         doReturn(mAccessNetworksManager).when(mPhone).getAccessNetworksManager();
         doReturn(mDataEnabledSettings).when(mPhone).getDataEnabledSettings();
         doReturn(mDcTracker).when(mPhone).getDcTracker(anyInt());
+        doReturn(mDataSettingsManager).when(mDataNetworkController).getDataSettingsManager();
         doReturn(mDataNetworkController).when(mPhone).getDataNetworkController();
         doReturn(mDataSettingsManager).when(mPhone).getDataSettingsManager();
         doReturn(mCarrierPrivilegesTracker).when(mPhone).getCarrierPrivilegesTracker();
