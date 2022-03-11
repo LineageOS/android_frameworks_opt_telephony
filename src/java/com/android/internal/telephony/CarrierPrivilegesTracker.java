@@ -21,12 +21,17 @@ import static android.telephony.CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX;
 import static android.telephony.CarrierConfigManager.KEY_CARRIER_CERTIFICATE_STRING_ARRAY;
 import static android.telephony.SubscriptionManager.INVALID_SIM_SLOT_INDEX;
 import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+import static android.telephony.TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
+import static android.telephony.TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS;
+import static android.telephony.TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED;
 import static android.telephony.TelephonyManager.EXTRA_SIM_STATE;
 import static android.telephony.TelephonyManager.SIM_STATE_ABSENT;
 import static android.telephony.TelephonyManager.SIM_STATE_LOADED;
 import static android.telephony.TelephonyManager.SIM_STATE_NOT_READY;
+import static android.telephony.TelephonyManager.SIM_STATE_READY;
 import static android.telephony.TelephonyManager.SIM_STATE_UNKNOWN;
 
+import android.annotation.ElapsedRealtimeLong;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.ActivityManager;
@@ -49,6 +54,7 @@ import android.os.PersistableBundle;
 import android.os.Process;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.SystemClock;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.service.carrier.CarrierService;
@@ -81,6 +87,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
@@ -97,6 +104,12 @@ public class CarrierPrivilegesTracker extends Handler {
 
     private static final String SHA_1 = "SHA-1";
     private static final String SHA_256 = "SHA-256";
+
+    /**
+     * Time delay to clear UICC rules after UICC is gone.
+     * This introduces the grace period to retain carrier privileges when SIM is removed.
+     */
+    private static final long CLEAR_UICC_RULES_DELAY_MILLIS = TimeUnit.SECONDS.toMillis(30);
 
     /**
      * Action to register a Registrant with this Tracker.
@@ -147,6 +160,11 @@ public class CarrierPrivilegesTracker extends Handler {
      */
     private static final int ACTION_SET_TEST_OVERRIDE_RULE = 8;
 
+    /**
+     * Action to clear UICC rules.
+     */
+    private static final int ACTION_CLEAR_UICC_RULES = 9;
+
     private final Context mContext;
     private final Phone mPhone;
     private final PackageManager mPackageManager;
@@ -171,10 +189,29 @@ public class CarrierPrivilegesTracker extends Handler {
     // Map of PackageName -> UIDs for that Package
     @NonNull private final Map<String, Set<Integer>> mCachedUids = new ArrayMap<>();
 
+    // This should be used to guard critical section either with
+    // mPrivilegedPackageInfoLock.readLock() or mPrivilegedPackageInfoLock.writeLock(), but never
+    // with the mPrivilegedPackageInfoLock object itself.
     @NonNull private final ReadWriteLock mPrivilegedPackageInfoLock = new ReentrantReadWriteLock();
     // Package names and UIDs of apps that currently hold carrier privileges.
-    @GuardedBy({"mPrivilegedPackageInfoLock.readLock()", "mPrivilegedPackageInfoLock.writeLock()"})
+    @GuardedBy(anyOf = {"mPrivilegedPackageInfoLock.readLock()",
+            "mPrivilegedPackageInfoLock.writeLock()"})
     @NonNull private PrivilegedPackageInfo mPrivilegedPackageInfo = new PrivilegedPackageInfo();
+
+    // Uptime in millis on when the NEXT clear-up of UiccRules are scheduled
+    @ElapsedRealtimeLong
+    private long mClearUiccRulesUptimeMillis = CLEAR_UICC_RULE_NOT_SCHEDULED;
+    // Constant indicates no schedule to clear UiccRules
+    private static final long CLEAR_UICC_RULE_NOT_SCHEDULED = -1;
+
+    // Indicates SIM has reached SIM_STATE_READY but not SIM_STATE_LOADED yet. During this transient
+    // state, all the information previously loaded from SIM may be updated soon later and thus
+    // unreliable. For security's concern, any carrier privileges check should return
+    // CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED (instead of neither HAS_ACCESS nor NO_ACCESS) until
+    // SIM becomes LOADED again, or grace period specified by CLEAR_UICC_RULES_DELAY_MILLIS expires.
+    @GuardedBy(anyOf = {"mPrivilegedPackageInfoLock.readLock()",
+            "mPrivilegedPackageInfoLock.writeLock()"})
+    private boolean mSimIsReadyButNotLoaded = false;
 
     /** Small snapshot to hold package names and UIDs of privileged packages. */
     private static final class PrivilegedPackageInfo {
@@ -252,7 +289,10 @@ public class CarrierPrivilegesTracker extends Handler {
 
                             if (simState != SIM_STATE_ABSENT
                                     && simState != SIM_STATE_NOT_READY
-                                    && simState != SIM_STATE_LOADED) return;
+                                    && simState != SIM_STATE_READY
+                                    && simState != SIM_STATE_LOADED) {
+                                return;
+                            }
 
                             sendMessage(obtainMessage(ACTION_SIM_STATE_UPDATED, slotId, simState));
                             break;
@@ -351,6 +391,10 @@ public class CarrierPrivilegesTracker extends Handler {
                 handleSetTestOverrideRules(carrierPrivilegeRules);
                 break;
             }
+            case ACTION_CLEAR_UICC_RULES: {
+                handleClearUiccRules();
+                break;
+            }
             default: {
                 Rlog.e(TAG, "Received unknown msg type: " + msg.what);
                 break;
@@ -413,16 +457,45 @@ public class CarrierPrivilegesTracker extends Handler {
 
         List<UiccAccessRule> updatedUiccRules = Collections.EMPTY_LIST;
 
-        // Only include the UICC rules if the SIM is fully loaded
-        if (simState == SIM_STATE_LOADED) {
-            updatedUiccRules = getSimRules();
+        mPrivilegedPackageInfoLock.writeLock().lock();
+        try {
+            mSimIsReadyButNotLoaded = simState == SIM_STATE_READY;
+        } finally {
+            mPrivilegedPackageInfoLock.writeLock().unlock();
         }
 
-        mLocalLog.log("SIM State Changed:"
-                + " slotId=" + slotId
-                + " simState=" + simState
-                + " updated SIM-loaded rules=" + updatedUiccRules);
-        maybeUpdateRulesAndNotifyRegistrants(mUiccRules, updatedUiccRules);
+        // Only include the UICC rules if the SIM is fully loaded
+        if (simState == SIM_STATE_LOADED) {
+            mClearUiccRulesUptimeMillis = CLEAR_UICC_RULE_NOT_SCHEDULED;
+            removeMessages(ACTION_CLEAR_UICC_RULES);
+
+            updatedUiccRules = getSimRules();
+
+            mLocalLog.log("SIM fully loaded:"
+                    + " slotId=" + slotId
+                    + " simState=" + simState
+                    + " updated SIM-loaded rules=" + updatedUiccRules);
+            maybeUpdateRulesAndNotifyRegistrants(mUiccRules, updatedUiccRules);
+        } else {
+            if (!mUiccRules.isEmpty()
+                    && mClearUiccRulesUptimeMillis == CLEAR_UICC_RULE_NOT_SCHEDULED) {
+                mClearUiccRulesUptimeMillis =
+                        SystemClock.uptimeMillis() + CLEAR_UICC_RULES_DELAY_MILLIS;
+                sendMessageAtTime(obtainMessage(ACTION_CLEAR_UICC_RULES),
+                        mClearUiccRulesUptimeMillis);
+                mLocalLog.log("SIM is gone. Delay " + TimeUnit.MILLISECONDS.toSeconds(
+                        CLEAR_UICC_RULES_DELAY_MILLIS) + " seconds to clear UICC rules.");
+            } else {
+                mLocalLog.log(
+                        "Ignore SIM gone event while UiccRules is empty or waiting to be emptied.");
+            }
+        }
+    }
+
+    private void handleClearUiccRules() {
+        mClearUiccRulesUptimeMillis = CLEAR_UICC_RULE_NOT_SCHEDULED;
+        removeMessages(ACTION_CLEAR_UICC_RULES);
+        maybeUpdateRulesAndNotifyRegistrants(mUiccRules, Collections.EMPTY_LIST);
     }
 
     @NonNull
@@ -685,6 +758,7 @@ public class CarrierPrivilegesTracker extends Handler {
             pw.println(
                     "CarrierPrivilegesTracker - Privileged package info: "
                             + mPrivilegedPackageInfo);
+            pw.println("mSimIsReadyButNotLoaded: " + mSimIsReadyButNotLoaded);
         } finally {
             mPrivilegedPackageInfoLock.readLock().unlock();
         }
@@ -698,6 +772,7 @@ public class CarrierPrivilegesTracker extends Handler {
                                     mInstalledPackageCerts.entrySet(),
                                     e -> "pkg(" + Rlog.pii(TAG, e.getKey()) + ")=" + e.getValue()));
         }
+        pw.println("mClearUiccRulesUptimeMillis: " + mClearUiccRulesUptimeMillis);
     }
 
     /**
@@ -768,9 +843,13 @@ public class CarrierPrivilegesTracker extends Handler {
         // errors) always supersede them unless something goes super wrong when getting CC.
         mPrivilegedPackageInfoLock.readLock().lock();
         try {
-            return mPrivilegedPackageInfo.mPackageNames.contains(packageName)
-                    ? TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS
-                    : TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS;
+            if (mSimIsReadyButNotLoaded) {
+                return CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED;
+            } else if (mPrivilegedPackageInfo.mPackageNames.contains(packageName)) {
+                return CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
+            } else {
+                return CARRIER_PRIVILEGE_STATUS_NO_ACCESS;
+            }
         } finally {
             mPrivilegedPackageInfoLock.readLock().unlock();
         }
@@ -781,7 +860,8 @@ public class CarrierPrivilegesTracker extends Handler {
     public Set<String> getPackagesWithCarrierPrivileges() {
         mPrivilegedPackageInfoLock.readLock().lock();
         try {
-            return Collections.unmodifiableSet(mPrivilegedPackageInfo.mPackageNames);
+            return mSimIsReadyButNotLoaded ? Collections.emptySet() :
+                    Collections.unmodifiableSet(mPrivilegedPackageInfo.mPackageNames);
         } finally {
             mPrivilegedPackageInfoLock.readLock().unlock();
         }
@@ -798,9 +878,13 @@ public class CarrierPrivilegesTracker extends Handler {
         // errors) always supersede them unless something goes super wrong when getting CC.
         mPrivilegedPackageInfoLock.readLock().lock();
         try {
-            return ArrayUtils.contains(mPrivilegedPackageInfo.mUids, uid)
-                    ? TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS
-                    : TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS;
+            if (mSimIsReadyButNotLoaded) {
+                return CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED;
+            } else if (ArrayUtils.contains(mPrivilegedPackageInfo.mUids, uid)) {
+                return CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
+            } else {
+                return CARRIER_PRIVILEGE_STATUS_NO_ACCESS;
+            }
         } finally {
             mPrivilegedPackageInfoLock.readLock().unlock();
         }
@@ -831,6 +915,14 @@ public class CarrierPrivilegesTracker extends Handler {
      */
     @NonNull
     public List<String> getCarrierPackageNamesForIntent(@NonNull Intent intent) {
+        mPrivilegedPackageInfoLock.readLock().lock();
+        try {
+            if (mSimIsReadyButNotLoaded) return Collections.emptyList();
+        } finally {
+            mPrivilegedPackageInfoLock.readLock().unlock();
+        }
+
+
         // Do the PackageManager queries before we take the lock, as these are the longest-running
         // pieces of this method and don't depend on the set of carrier apps.
         List<ResolveInfo> resolveInfos = new ArrayList<>();
@@ -842,19 +934,16 @@ public class CarrierPrivilegesTracker extends Handler {
         // Now actually check which of the resolved packages have carrier privileges.
         mPrivilegedPackageInfoLock.readLock().lock();
         try {
+            // Check mSimIsReadyButNotLoaded again here since the PackageManager queries above are
+            // pretty time-consuming, mSimIsReadyButNotLoaded state may change since last check
+            if (mSimIsReadyButNotLoaded) return Collections.emptyList();
+
             Set<String> packageNames = new ArraySet<>(); // For deduping purposes
             for (ResolveInfo resolveInfo : resolveInfos) {
                 String packageName = getPackageName(resolveInfo);
-                if (packageName == null) continue;
-                switch (getCarrierPrivilegeStatusForPackage(packageName)) {
-                    case TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS:
-                        packageNames.add(packageName);
-                        break;
-                    case TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS:
-                        continue;
-                    default:
-                        // Any other status is considered an error.
-                        return Collections.emptyList();
+                if (packageName != null && CARRIER_PRIVILEGE_STATUS_HAS_ACCESS
+                        == getCarrierPrivilegeStatusForPackage(packageName)) {
+                    packageNames.add(packageName);
                 }
             }
             return new ArrayList<>(packageNames);
