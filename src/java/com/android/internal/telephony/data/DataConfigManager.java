@@ -40,6 +40,7 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
+import android.text.TextUtils;
 import android.util.IndentingPrintWriter;
 
 import com.android.internal.R;
@@ -811,6 +812,15 @@ public class DataConfigManager extends Handler {
     public @NonNull boolean[] getDataStallRecoveryShouldSkipArray() {
         return mCarrierConfig.getBooleanArray(
             CarrierConfigManager.KEY_DATA_STALL_RECOVERY_SHOULD_SKIP_BOOL_ARRAY);
+    }
+
+    /**
+     * @return The default preferred APN. An empty string if not configured. This is used for the
+     * first time boot up where preferred APN is not set.
+     */
+    public @NonNull String getDefaultPreferredApn() {
+        return TextUtils.emptyIfNull(mCarrierConfig.getString(
+                CarrierConfigManager.KEY_DEFAULT_PREFERRED_APN_NAME_STRING));
     }
 
     /**

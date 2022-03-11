@@ -19,6 +19,8 @@ package com.android.internal.telephony.data;
 import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.NetworkCapabilities;
@@ -35,17 +37,23 @@ import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
 import android.telephony.data.TrafficDescriptor;
+import android.text.TextUtils;
+import android.util.ArraySet;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
@@ -76,9 +84,6 @@ public class DataProfileManager extends Handler {
     /** Cellular data service. */
     private final @NonNull DataServiceManager mWwanDataServiceManager;
 
-    /** Access networks manager. */
-    private final @NonNull AccessNetworksManager mAccessNetworksManager;
-
     /** All data profiles for the current carrier. */
     private final @NonNull List<DataProfile> mAllDataProfiles = new ArrayList<>();
 
@@ -91,8 +96,9 @@ public class DataProfileManager extends Handler {
     /** Preferred data profile set id. */
     private int mPreferredDataProfileSetId = Telephony.Carriers.NO_APN_SET_ID;
 
-    /** Data profile manager callback. */
-    private final @NonNull DataProfileManagerCallback mDataProfileManagerCallback;
+    /** Data profile manager callbacks. */
+    private final @NonNull Set<DataProfileManagerCallback> mDataProfileManagerCallbacks =
+            new ArraySet<>();
 
     /**
      * Data profile manager callback. This should be only used by {@link DataNetworkController}.
@@ -133,8 +139,7 @@ public class DataProfileManager extends Handler {
         mDataNetworkController = dataNetworkController;
         mWwanDataServiceManager = dataServiceManager;
         mDataConfigManager = dataNetworkController.getDataConfigManager();
-        mAccessNetworksManager = phone.getAccessNetworksManager();
-        mDataProfileManagerCallback = callback;
+        mDataProfileManagerCallbacks.add(callback);
         registerAllEvents();
     }
 
@@ -142,6 +147,13 @@ public class DataProfileManager extends Handler {
      * Register for all events that data network controller is interested.
      */
     private void registerAllEvents() {
+        mDataNetworkController.registerDataNetworkControllerCallback(
+                new DataNetworkControllerCallback(this::post) {
+                    @Override
+                    public void onInternetDataNetworkConnected(
+                            @NonNull List<DataProfile> dataProfiles) {
+                        DataProfileManager.this.onInternetDataNetworkConnected(dataProfiles);
+                    }});
         mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
         mPhone.getContext().getContentResolver().registerContentObserver(
                 Telephony.Carriers.CONTENT_URI, true, new ContentObserver(this) {
@@ -161,24 +173,24 @@ public class DataProfileManager extends Handler {
                 onDataConfigUpdated();
                 break;
             case EVENT_SIM_REFRESH:
-                log("SIM refreshed.");
+                log("Update data profiles due to SIM refresh.");
                 updateDataProfiles();
                 break;
             case EVENT_APN_DATABASE_CHANGED:
-                log("APN database changed.");
+                log("Update data profiles due to APN db updated.");
                 updateDataProfiles();
                 break;
+            default:
+                loge("Unexpected event " + msg);
+                break;
         }
-    }
-
-    private void onApnDatabaseChanged() {
-        updateDataProfiles();
     }
 
     /**
      * Called when data config was updated.
      */
     private void onDataConfigUpdated() {
+        log("Update data profiles due to config updated.");
         updateDataProfiles();
 
         //TODO: more works needed to be done here.
@@ -189,7 +201,6 @@ public class DataProfileManager extends Handler {
      * Also send those profiles down to the modem if needed.
      */
     private void updateDataProfiles() {
-        log("updateDataProfiles");
         List<DataProfile> profiles = new ArrayList<>();
         if (mDataConfigManager.isConfigCarrierSpecific()) {
             Cursor cursor = mPhone.getContext().getContentResolver().query(
@@ -243,34 +254,47 @@ public class DataProfileManager extends Handler {
 
         log("Found " + profiles.size() + " data profiles. profiles = " + profiles);
 
+        boolean profilesChanged = false;
         if (mAllDataProfiles.size() != profiles.size() || !mAllDataProfiles.containsAll(profiles)) {
             log("Data profiles changed.");
             mAllDataProfiles.clear();
             mAllDataProfiles.addAll(profiles);
-            mDataProfileManagerCallback.invokeFromExecutor(
-                    mDataProfileManagerCallback::onDataProfilesChanged);
+            profilesChanged = true;
         }
 
-        mPreferredDataProfileSetId = getPreferredDataProfileSetId();
-        updatePreferredDataProfile();
+        int setId = getPreferredDataProfileSetId();
+        if (setId != mPreferredDataProfileSetId) {
+            logl("Changed preferred data profile set id to " + setId);
+            mPreferredDataProfileSetId = setId;
+            profilesChanged = true;
+        }
+        // Reload the latest preferred data profile from either database or config.
+        profilesChanged |= updatePreferredDataProfile();
 
-        updateInitialAttachDataProfileAtModem();
         updateDataProfilesAtModem();
+        updateInitialAttachDataProfileAtModem();
+
+        if (profilesChanged) {
+            mDataProfileManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                    callback::onDataProfilesChanged));
+        }
     }
 
     /**
      * @return The preferred data profile set id.
      */
     private int getPreferredDataProfileSetId() {
-        // preferapnset uri returns all APNs for the current carrier which have an apn_set_id
-        // equal to the preferred APN (if no preferred APN, or if the preferred APN has no set id,
-        // the query will return null)
+        // Query the preferred APN set id. The set id is automatically set when we set by
+        // TelephonyProvider when setting preferred APN in setPreferredDataProfile().
         Cursor cursor = mPhone.getContext().getContentResolver()
                 .query(Uri.withAppendedPath(Telephony.Carriers.PREFERRED_APN_SET_URI,
                         String.valueOf(mPhone.getSubId())),
                         new String[] {Telephony.Carriers.APN_SET_ID}, null, null, null);
+        // Returns all APNs for the current carrier which have an apn_set_id
+        // equal to the preferred APN (if no preferred APN, or if the preferred APN has no set id,
+        // the query will return null)
         if (cursor == null) {
-            loge("getPreferredDataProfileSetId: cursor is null");
+            log("getPreferredDataProfileSetId: cursor is null");
             return Telephony.Carriers.NO_APN_SET_ID;
         }
 
@@ -280,7 +304,7 @@ public class DataProfileManager extends Handler {
             setId = Telephony.Carriers.NO_APN_SET_ID;
         } else {
             cursor.moveToFirst();
-            setId = cursor.getInt(0 /* index of Telephony.Carriers.APN_SET_ID */);
+            setId = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.APN_SET_ID));
         }
 
         cursor.close();
@@ -288,34 +312,118 @@ public class DataProfileManager extends Handler {
     }
 
     /**
-     * Update the preferred data profile used for internet.
+     * Called when internet data is connected.
+     *
+     * @param dataProfiles The connected internet data networks' profiles.
      */
-    private void updatePreferredDataProfile() {
-        if (SubscriptionManager.isValidSubscriptionId(mPhone.getSubId())) {
-            Cursor cursor = mPhone.getContext().getContentResolver().query(
-                    Uri.withAppendedPath(Telephony.Carriers.PREFERRED_APN_URI,
-                            String.valueOf(mPhone.getSubId())), null, null, null,
-                    Telephony.Carriers.DEFAULT_SORT_ORDER);
-            if (cursor != null) {
-                if (cursor.getCount() > 0) {
-                    cursor.moveToFirst();
-                    int id = ApnSetting.makeApnSetting(cursor).getId();
-                    DataProfile dataProfile = mAllDataProfiles.stream()
-                            .filter(dp -> dp.getApnSetting() != null
-                                    && dp.getApnSetting().getId() == id)
-                            .findFirst()
-                            .orElse(null);
-                    if (!Objects.equals(mPreferredDataProfile, dataProfile)) {
-                        // Replaced the data profile with preferred bit set.
-                        dataProfile.setPreferred(true);
-                        mPreferredDataProfile = dataProfile;
+    private void onInternetDataNetworkConnected(@NonNull List<DataProfile> dataProfiles) {
+        // If there is already a preferred data profile set, then we don't need to do anything.
+        if (mPreferredDataProfile != null) return;
 
-                        log("Updated preferred data profile with " + mPreferredDataProfile);
-                    }
-                }
-                cursor.close();
+        // If there is no preferred data profile, then we should use one of the data profiles,
+        // which is good for internet, as the preferred data profile.
+
+        // Most of the cases there should be only one, but in case there are multiple, choose the
+        // one which has longest life cycle.
+        DataProfile dataProfile = dataProfiles.stream()
+                .max(Comparator.comparingLong(DataProfile::getLastSetupTimestamp).reversed())
+                .orElse(null);
+        // Save the preferred data profile into database.
+        setPreferredDataProfile(dataProfile);
+    }
+
+    /**
+     * Get the preferred data profile for internet data.
+     *
+     * @return The preferred data profile.
+     */
+    private @Nullable DataProfile getPreferredDataProfileFromDb() {
+        Cursor cursor = mPhone.getContext().getContentResolver().query(
+                Uri.withAppendedPath(Telephony.Carriers.PREFERRED_APN_URI,
+                        String.valueOf(mPhone.getSubId())), null, null, null,
+                Telephony.Carriers.DEFAULT_SORT_ORDER);
+        DataProfile dataProfile = null;
+        if (cursor != null) {
+            if (cursor.getCount() > 0) {
+                cursor.moveToFirst();
+                int apnId = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers._ID));
+                dataProfile = mAllDataProfiles.stream()
+                        .filter(dp -> dp.getApnSetting() != null
+                                && dp.getApnSetting().getId() == apnId)
+                        .findFirst()
+                        .orElse(null);
             }
+            cursor.close();
         }
+        log("getPreferredDataProfileFromDb: " + dataProfile);
+        return dataProfile;
+    }
+
+    /**
+     * @return The preferred data profile from carrier config.
+     */
+    private @Nullable DataProfile getPreferredDataProfileFromConfig() {
+        // Check if there is configured default preferred data profile.
+        String defaultPreferredApn = mDataConfigManager.getDefaultPreferredApn();
+        if (!TextUtils.isEmpty(defaultPreferredApn)) {
+            return mAllDataProfiles.stream()
+                    .filter(dp -> dp.getApnSetting() != null && defaultPreferredApn.equals(
+                                    dp.getApnSetting().getApnName()))
+                    .findFirst()
+                    .orElse(null);
+        }
+        return null;
+    }
+
+    /**
+     * Save the preferred data profile into the database.
+     *
+     * @param dataProfile The preferred data profile used for internet data. {@code null} to clear
+     * the preferred data profile from database.
+     */
+    private void setPreferredDataProfile(@Nullable DataProfile dataProfile) {
+        log("setPreferredDataProfile: " + dataProfile);
+
+        String subId = Long.toString(mPhone.getSubId());
+        Uri uri = Uri.withAppendedPath(Telephony.Carriers.PREFERRED_APN_URI, subId);
+        ContentResolver resolver = mPhone.getContext().getContentResolver();
+        resolver.delete(uri, null, null);
+
+        if (dataProfile != null && dataProfile.getApnSetting() != null) {
+            ContentValues values = new ContentValues();
+            // Fill only the id here. TelephonyProvider will pull the rest of key fields and write
+            // into the database.
+            values.put(Telephony.Carriers.APN_ID, dataProfile.getApnSetting().getId());
+            resolver.insert(uri, values);
+        }
+    }
+
+    /**
+     * Reload the latest preferred data profile from either database or the config. This is to
+     * make sure the cached {@link #mPreferredDataProfile} is in-sync.
+     *
+     * @return {@code true} if preferred data profile changed.
+     */
+    private boolean updatePreferredDataProfile() {
+        DataProfile preferredDataProfile;
+        if (SubscriptionManager.isValidSubscriptionId(mPhone.getSubId())) {
+            preferredDataProfile = getPreferredDataProfileFromDb();
+            if (preferredDataProfile == null) {
+                preferredDataProfile = getPreferredDataProfileFromConfig();
+            }
+        } else {
+            preferredDataProfile = null;
+        }
+
+        if (!Objects.equals(mPreferredDataProfile, preferredDataProfile)) {
+            // Replaced the data profile with preferred bit set.
+            if (preferredDataProfile != null) preferredDataProfile.setPreferred(true);
+            mPreferredDataProfile = preferredDataProfile;
+
+            logl("Changed preferred data profile to " + mPreferredDataProfile);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -345,7 +453,7 @@ public class DataProfileManager extends Handler {
 
         if (!Objects.equals(mInitialAttachDataProfile, initialAttachDataProfile)) {
             mInitialAttachDataProfile = initialAttachDataProfile;
-            log("Initial attach data profile updated as " + mInitialAttachDataProfile);
+            logl("Initial attach data profile updated as " + mInitialAttachDataProfile);
             mWwanDataServiceManager.setInitialAttachApn(mInitialAttachDataProfile,
                     mPhone.getServiceState().getDataRoamingFromRegistration(), null);
         }
@@ -390,13 +498,8 @@ public class DataProfileManager extends Handler {
      */
     public @Nullable DataProfile getDataProfileForNetworkRequest(
             @NonNull TelephonyNetworkRequest networkRequest, @NetworkType int networkType) {
-        // Step 1: Check if preferred data profile can satisfy the request.
-        if (mPreferredDataProfile != null
-                && mPreferredDataProfile.canSatisfy(networkRequest.getCapabilities())) {
-            return mPreferredDataProfile;
-        }
-
-        // Step 2: Filter out the data profile that can't satisfy the request.
+        // Filter out the data profile that can't satisfy the request.
+        // Preferred data profile should be returned in the top of the list.
         List<DataProfile> dataProfiles = getDataProfilesForNetworkCapabilities(
                 networkRequest.getCapabilities());
         if (dataProfiles.size() == 0) {
@@ -416,21 +519,17 @@ public class DataProfileManager extends Handler {
         }
 
         // Step 4: Check if preferred data profile set id matches.
-        int preferredDataProfileSetId = getPreferredDataProfileSetId();
         dataProfiles = dataProfiles.stream()
                 .filter(dp -> dp.getApnSetting() != null
                         && (dp.getApnSetting().getApnSetId()
                         == Telephony.Carriers.MATCH_ALL_APN_SET_ID
-                        || dp.getApnSetting().getApnSetId() == preferredDataProfileSetId))
+                        || dp.getApnSetting().getApnSetId() == mPreferredDataProfileSetId))
                 .collect(Collectors.toList());
         if (dataProfiles.size() == 0) {
-            log("Can't find any data profile has APN set id matched. preferredDataProfileSetId="
-                    + preferredDataProfileSetId);
+            log("Can't find any data profile has APN set id matched. mPreferredDataProfileSetId="
+                    + mPreferredDataProfileSetId);
             return null;
         }
-
-        // TODO: Need a lot more works here.
-        //   1. Should consider data throttling.
 
         return dataProfiles.get(0);
     }
@@ -441,13 +540,61 @@ public class DataProfileManager extends Handler {
      * @param networkCapabilities The network capabilities.
      * @return data profiles that can satisfy given network capabilities.
      */
+    @VisibleForTesting
     public @NonNull List<DataProfile> getDataProfilesForNetworkCapabilities(
             @NonNull @NetCapability int[] networkCapabilities) {
         return mAllDataProfiles.stream()
                 .filter(dp -> dp.canSatisfy(networkCapabilities))
-                .sorted((dp1, dp2) ->
-                        Long.compare(dp1.getLastSetupTimestamp(), dp2.getLastSetupTimestamp()))
+                // Put the preferred data profile at the top of the list, then the longest time
+                // hasn't used data profile will be in the front so all the data profiles can be
+                // tried.
+                .sorted(Comparator.comparing((DataProfile dp) -> !dp.equals(mPreferredDataProfile))
+                        .thenComparingLong(DataProfile::getLastSetupTimestamp))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Check if the data profile is valid. Profiles can change dynamically when users add/remove/
+     * switch APNs in APN editors, when SIM refreshes, or when SIM swapped. This is used to check
+     * if the data profile which is used for current data network is still valid. If the profile
+     * is not valid anymore, the data network should be torn down.
+     *
+     * @param dataProfile The data profile to check.
+     * @return {@code true} if the data profile is still valid for current environment.
+     */
+    public boolean isDataProfileValid(@NonNull DataProfile dataProfile) {
+        return mAllDataProfiles.contains(dataProfile)
+                && (dataProfile.getApnSetting() == null
+                || dataProfile.getApnSetting().getApnSetId() == mPreferredDataProfileSetId
+                || mPreferredDataProfileSetId == Telephony.Carriers.MATCH_ALL_APN_SET_ID);
+    }
+
+    /**
+     * Check if the data profile is the preferred data profile.
+     *
+     * @param dataProfile The data profile to check.
+     * @return {@code true} if the data profile is the preferred data profile.
+     */
+    public boolean isDataProfilePreferred(@NonNull DataProfile dataProfile) {
+        return dataProfile.equals(mPreferredDataProfile);
+    }
+
+    /**
+     * Register the callback for receiving information from {@link DataProfileManager}.
+     *
+     * @param callback The callback.
+     */
+    public void registerCallback(@NonNull DataProfileManagerCallback callback) {
+        mDataProfileManagerCallbacks.add(callback);
+    }
+
+    /**
+     * Unregister the previously registered {@link DataProfileManagerCallback}.
+     *
+     * @param callback The callback to unregister.
+     */
+    public void unregisterCallback(@NonNull DataProfileManagerCallback callback) {
+        mDataProfileManagerCallbacks.remove(callback);
     }
 
     /**
@@ -495,15 +642,12 @@ public class DataProfileManager extends Handler {
                     dp.getLastSetupTimestamp()));
         }
         pw.decreaseIndent();
-        pw.println("Preferred data profile:");
-        pw.increaseIndent();
-        pw.println(mPreferredDataProfile);
-        pw.decreaseIndent();
-        pw.println("Initial attach data profile:");
-        pw.increaseIndent();
-        pw.println(mInitialAttachDataProfile);
-        pw.decreaseIndent();
-        pw.println("mPreferredDataProfileSetId=" + mPreferredDataProfileSetId);
+
+        pw.println("Preferred data profile=" + mPreferredDataProfile);
+        pw.println("Preferred data profile from db=" + getPreferredDataProfileFromDb());
+        pw.println("Preferred data profile from config=" + getPreferredDataProfileFromConfig());
+        pw.println("Preferred data profile set id=" + mPreferredDataProfileSetId);
+        pw.println("Initial attach data profile=" + mInitialAttachDataProfile);
 
         pw.println("Local logs:");
         pw.increaseIndent();

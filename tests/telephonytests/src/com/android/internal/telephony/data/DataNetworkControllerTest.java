@@ -21,7 +21,10 @@ import static com.android.internal.telephony.data.DataNetworkController.NetworkR
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -36,6 +39,7 @@ import android.annotation.NonNull;
 import android.net.InetAddresses;
 import android.net.LinkAddress;
 import android.net.NetworkCapabilities;
+import android.net.NetworkPolicyManager;
 import android.net.NetworkRequest;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -50,6 +54,7 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo.RegistrationState;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionPlan;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
@@ -57,6 +62,7 @@ import android.telephony.data.DataProfile;
 import android.telephony.data.DataServiceCallback;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+import android.util.ArraySet;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.ISub;
@@ -72,11 +78,14 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
+import java.time.Period;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -87,10 +96,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
     @Mock
     private PhoneSwitcher mMockedPhoneSwitcher;
     @Mock
-    private DataServiceManager mMockedWwanDataServiceManager;
-    @Mock
-    private DataServiceManager mMockedWlanDataServiceManager;
-    @Mock
     protected ISub mIsub;
 
     private final SparseArray<DataServiceManager> mMockedDataServiceManagers = new SparseArray<>();
@@ -98,7 +103,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
     private DataNetworkController mDataNetworkControllerUT;
     private PersistableBundle mCarrierConfig;
     @Mock
-    private DataNetworkControllerCallback mMockedDataNetworkcallback;
+    private DataNetworkControllerCallback mMockedDataNetworkCallback;
 
     private DataProfile mDataProfile1 = new DataProfile.Builder()
             .setApnSetting(new ApnSetting.Builder()
@@ -115,7 +120,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
                     .setCarrierEnabled(true)
                     .setNetworkTypeBitmask((int) TelephonyManager.NETWORK_TYPE_BITMASK_LTE)
                     .setLingeringNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_LTE
-                            | TelephonyManager.NETWORK_TYPE_BITMASK_UMTS))
+                            | TelephonyManager.NETWORK_TYPE_BITMASK_UMTS
+                            | TelephonyManager.NETWORK_TYPE_BITMASK_NR))
                     .setProfileId(1234)
                     .setMaxConns(321)
                     .setWaitTime(456)
@@ -178,6 +184,13 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 any(Message.class));
     }
 
+    private void clearCallbacks() throws Exception {
+        Field field = DataNetworkController.class
+                .getDeclaredField("mDataNetworkControllerCallbacks");
+        field.setAccessible(true);
+        ((Set<DataNetworkControllerCallback>) field.get(mDataNetworkControllerUT)).clear();
+    }
+
     private void serviceStateChanged(@NetworkType int networkType,
             @RegistrationState int regState) {
         ServiceState ss = new ServiceState();
@@ -224,6 +237,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(mIsub).when(mIBinder).queryLocalInterface(anyString());
         doReturn(mPhone).when(mPhone).getImsPhone();
         mServiceManagerMockedServices.put("isub", mIBinder);
+        doReturn(new SubscriptionPlan[]{}).when(mNetworkPolicyManager)
+                .getSubscriptionPlans(anyInt(), any());
 
         mCarrierConfig = mContextFixture.getCarrierConfigBundle();
         mCarrierConfig.putStringArray(
@@ -269,6 +284,9 @@ public class DataNetworkControllerTest extends TelephonyTest {
         }
 
         mDataNetworkControllerUT = new DataNetworkController(mPhone, Looper.myLooper());
+        processAllMessages();
+        // Clear the callbacks created by the real sub-modules created by DataNetworkController.
+        clearCallbacks();
         SparseArray<DataServiceManager> dataServiceManagers = new SparseArray<>();
         dataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 mMockedWwanDataServiceManager);
@@ -285,12 +303,14 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
                 .getPreferredTransportByNetworkCapability(anyInt());
+        doReturn(true).when(mDataProfileManager).isDataProfilePreferred(any(DataProfile.class));
+        doReturn(true).when(mDataProfileManager).isDataProfileValid(any(DataProfile.class));
 
         doAnswer(invocation -> {
             ((Runnable) invocation.getArguments()[0]).run();
             return null;
-        }).when(mMockedDataNetworkcallback).invokeFromExecutor(any(Runnable.class));
-        mDataNetworkControllerUT.registerDataNetworkControllerCallback(mMockedDataNetworkcallback);
+        }).when(mMockedDataNetworkCallback).invokeFromExecutor(any(Runnable.class));
+        mDataNetworkControllerUT.registerDataNetworkControllerCallback(mMockedDataNetworkCallback);
 
         mDataNetworkControllerUT.obtainMessage(9/*EVENT_SIM_STATE_CHANGED*/,
                 10/*SIM_STATE_LOADED*/, 0).sendToTarget();
@@ -302,7 +322,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .sendToTarget();
 
         processAllMessages();
-        //Mockito.clearInvocations(mMockedDataNetworkcallback);
 
         logd("DataNetworkControllerTest -Setup!");
     }
@@ -409,12 +428,12 @@ public class DataNetworkControllerTest extends TelephonyTest {
         assertThat(dataNetworkList.get(0).isConnected()).isTrue();
         assertThat(dataNetworkList.get(0).getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_INTERNET)).isTrue();
-        verify(mMockedDataNetworkcallback).onInternetDataNetworkConnected();
+        verify(mMockedDataNetworkCallback).onInternetDataNetworkConnected(any());
     }
 
     private void verifyNoInternetSetup() throws Exception {
         // Make sure internet is not connected.
-        verify(mMockedDataNetworkcallback, never()).onInternetDataNetworkConnected();
+        verify(mMockedDataNetworkCallback, never()).onInternetDataNetworkConnected(any());
         List<DataNetwork> dataNetworkList = getDataNetworks();
         assertThat(dataNetworkList).isEmpty();
     }
@@ -425,8 +444,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         List<DataNetwork> dataNetworkList = getDataNetworks();
         assertThat(dataNetworkList).isEmpty();
 
-        verify(mMockedDataNetworkcallback).onAnyDataNetworkExistingChanged(eq(false));
-        verify(mMockedDataNetworkcallback).onInternetDataNetworkDisconnected();
+        verify(mMockedDataNetworkCallback).onAnyDataNetworkExistingChanged(eq(false));
+        verify(mMockedDataNetworkCallback).onInternetDataNetworkDisconnected();
     }
 
     // To test the basic data setup. Copy this as example for other tests.
@@ -446,19 +465,19 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 InetAddresses.parseNumericAddress(IPV4_ADDRESS),
                 InetAddresses.parseNumericAddress(IPV6_ADDRESS));
 
-        verify(mMockedDataNetworkcallback).onInternetDataNetworkConnected();
+        verify(mMockedDataNetworkCallback).onInternetDataNetworkConnected(any());
     }
 
     @Test
     public void testDataNetworkControllerCallback() throws Exception {
-        mDataNetworkControllerUT.registerDataNetworkControllerCallback(mMockedDataNetworkcallback);
+        mDataNetworkControllerUT.registerDataNetworkControllerCallback(mMockedDataNetworkCallback);
         processAllMessages();
         testSetupDataNetwork();
-        verify(mMockedDataNetworkcallback).onAnyDataNetworkExistingChanged(eq(true));
-        verify(mMockedDataNetworkcallback).onInternetDataNetworkConnected();
+        verify(mMockedDataNetworkCallback).onAnyDataNetworkExistingChanged(eq(true));
+        verify(mMockedDataNetworkCallback).onInternetDataNetworkConnected(any());
 
         mDataNetworkControllerUT.unregisterDataNetworkControllerCallback(
-                mMockedDataNetworkcallback);
+                mMockedDataNetworkCallback);
         processAllMessages();
     }
 
@@ -474,7 +493,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
     @Test
     public void testSimRemovalAndThenInserted() throws Exception {
         testSimRemovalDataTearDown();
-        Mockito.clearInvocations(mMockedDataNetworkcallback);
+        Mockito.clearInvocations(mMockedDataNetworkCallback);
 
         // Insert the SIM again.
         mDataNetworkControllerUT.obtainMessage(9/*EVENT_SIM_STATE_CHANGED*/,
@@ -520,7 +539,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
     @Test
     public void testPsRestrictedAndLifted() throws Exception {
         testSetupDataNetwork();
-        Mockito.clearInvocations(mMockedDataNetworkcallback);
+        Mockito.clearInvocations(mMockedDataNetworkCallback);
 
         // PS restricted.
         mDataNetworkControllerUT.obtainMessage(6/*EVENT_PS_RESTRICT_ENABLED*/).sendToTarget();
@@ -528,7 +547,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         List<DataNetwork> dataNetworkList = getDataNetworks();
         assertThat(dataNetworkList).isEmpty();
-        verify(mMockedDataNetworkcallback).onInternetDataNetworkDisconnected();
+        verify(mMockedDataNetworkCallback).onInternetDataNetworkDisconnected();
 
         // PS unrestricted.
         mDataNetworkControllerUT.obtainMessage(7/*EVENT_PS_RESTRICT_DISABLED*/).sendToTarget();
@@ -556,7 +575,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         verifyAllDataDisconnected();
 
-        Mockito.clearInvocations(mMockedDataNetworkcallback);
+        Mockito.clearInvocations(mMockedDataNetworkCallback);
         // Now RAT changes from GSM to UMTS
         doReturn(null).when(mDataProfileManager).getDataProfileForNetworkRequest(
                 any(TelephonyNetworkRequest.class), eq(TelephonyManager.NETWORK_TYPE_UMTS));
@@ -623,7 +642,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Data should not be allowed when roaming data is disabled.
         verifyNoInternetSetup();
-        Mockito.clearInvocations(mMockedDataNetworkcallback);
+        Mockito.clearInvocations(mMockedDataNetworkCallback);
 
         // Roaming data enabled
         mDataNetworkControllerUT.getDataSettingsManager().setDataRoamingEnabled(true);
@@ -631,7 +650,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Verify data is restored.
         verifyInternetConnected();
-        Mockito.clearInvocations(mMockedDataNetworkcallback);
+        Mockito.clearInvocations(mMockedDataNetworkCallback);
 
         // Roaming data disabled
         mDataNetworkControllerUT.getDataSettingsManager().setDataRoamingEnabled(false);
@@ -651,7 +670,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Data should not be allowed when user data is disabled.
         verifyNoInternetSetup();
-        Mockito.clearInvocations(mMockedDataNetworkcallback);
+        Mockito.clearInvocations(mMockedDataNetworkCallback);
 
         // User data enabled
         mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
@@ -660,7 +679,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Verify data is restored.
         verifyInternetConnected();
-        Mockito.clearInvocations(mMockedDataNetworkcallback);
+        Mockito.clearInvocations(mMockedDataNetworkCallback);
 
         // User data disabled
         mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
@@ -765,5 +784,139 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> new HandoverRule("source=IWLAN, target=WTFRAN, type=allowed"));
+    }
+
+    @Test
+    public void testIsNetworkTypeCongested() throws Exception {
+        Set<Integer> congestedNetworkTypes = new ArraySet<>();
+        doReturn(congestedNetworkTypes).when(mDataNetworkController)
+                .getCongestedOverrideNetworkTypes();
+        testSetupDataNetwork();
+        DataNetwork dataNetwork = getDataNetworks().get(0);
+
+        // Set 5G unmetered
+        congestedNetworkTypes.add(TelephonyManager.NETWORK_TYPE_NR);
+        mDataNetworkControllerUT.obtainMessage(23/*EVENT_SUBSCRIPTION_OVERRIDE*/,
+                NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_CONGESTED,
+                NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_CONGESTED,
+                new int[]{TelephonyManager.NETWORK_TYPE_NR}).sendToTarget();
+        dataNetwork.sendMessage(16/*EVENT_SUBSCRIPTION_PLAN_OVERRIDE*/);
+        processAllMessages();
+        assertEquals(congestedNetworkTypes,
+                mDataNetworkControllerUT.getCongestedOverrideNetworkTypes());
+        assertTrue(dataNetwork.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED));
+
+        // Change data network type to NR
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_NR,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        dataNetwork.sendMessage(13/*EVENT_DISPLAY_INFO_CHANGED*/);
+        processAllMessages();
+        assertFalse(dataNetwork.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED));
+
+        // Set all network types metered
+        congestedNetworkTypes.clear();
+        mDataNetworkControllerUT.obtainMessage(23/*EVENT_SUBSCRIPTION_OVERRIDE*/,
+                NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_CONGESTED, 0,
+                TelephonyManager.getAllNetworkTypes()).sendToTarget();
+        dataNetwork.sendMessage(16/*EVENT_SUBSCRIPTION_PLAN_OVERRIDE*/);
+        processAllMessages();
+        assertTrue(mDataNetworkControllerUT.getCongestedOverrideNetworkTypes().isEmpty());
+        assertTrue(dataNetwork.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED));
+    }
+
+    @Test
+    public void testIsNetworkTypeUnmeteredViaSubscriptionOverride() throws Exception {
+        doReturn(true).when(mDataConfigManager).isTempNotMeteredSupportedByCarrier();
+        Set<Integer> unmeteredNetworkTypes = new ArraySet<>();
+        doReturn(unmeteredNetworkTypes).when(mDataNetworkController)
+                .getUnmeteredOverrideNetworkTypes();
+        testSetupDataNetwork();
+        DataNetwork dataNetwork = getDataNetworks().get(0);
+
+        // Set 5G unmetered
+        unmeteredNetworkTypes.add(TelephonyManager.NETWORK_TYPE_NR);
+        mDataNetworkControllerUT.obtainMessage(23/*EVENT_SUBSCRIPTION_OVERRIDE*/,
+                NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_UNMETERED,
+                NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_UNMETERED,
+                new int[]{TelephonyManager.NETWORK_TYPE_NR}).sendToTarget();
+        dataNetwork.sendMessage(16/*EVENT_SUBSCRIPTION_PLAN_OVERRIDE*/);
+        processAllMessages();
+        assertEquals(unmeteredNetworkTypes,
+                mDataNetworkControllerUT.getUnmeteredOverrideNetworkTypes());
+        assertFalse(dataNetwork.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+
+        // Change data network type to NR
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_NR,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        dataNetwork.sendMessage(13/*EVENT_DISPLAY_INFO_CHANGED*/);
+        processAllMessages();
+        assertTrue(dataNetwork.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+
+        // Set all network types metered
+        unmeteredNetworkTypes.clear();
+        mDataNetworkControllerUT.obtainMessage(23/*EVENT_SUBSCRIPTION_OVERRIDE*/,
+                NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_UNMETERED, 0,
+                TelephonyManager.getAllNetworkTypes()).sendToTarget();
+        dataNetwork.sendMessage(16/*EVENT_SUBSCRIPTION_PLAN_OVERRIDE*/);
+        processAllMessages();
+        assertTrue(mDataNetworkControllerUT.getUnmeteredOverrideNetworkTypes().isEmpty());
+        assertFalse(dataNetwork.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+    }
+
+    @Test
+    public void testIsNetworkTypeUnmeteredViaSubscriptionPlans() throws Exception {
+        doReturn(true).when(mDataConfigManager).isTempNotMeteredSupportedByCarrier();
+        List<SubscriptionPlan> subscriptionPlans = new ArrayList<>();
+        doReturn(subscriptionPlans).when(mDataNetworkController).getSubscriptionPlans();
+        testSetupDataNetwork();
+        DataNetwork dataNetwork = getDataNetworks().get(0);
+
+        // Set 5G unmetered
+        SubscriptionPlan unmetered5GPlan = SubscriptionPlan.Builder
+                .createRecurring(ZonedDateTime.parse("2007-03-14T00:00:00.000Z"),
+                        Period.ofMonths(1))
+                .setDataLimit(SubscriptionPlan.BYTES_UNLIMITED,
+                        SubscriptionPlan.LIMIT_BEHAVIOR_THROTTLED)
+                .setNetworkTypes(new int[] {TelephonyManager.NETWORK_TYPE_NR})
+                .build();
+        SubscriptionPlan generalMeteredPlan = SubscriptionPlan.Builder
+                .createRecurring(ZonedDateTime.parse("2007-03-14T00:00:00.000Z"),
+                        Period.ofMonths(1))
+                .setDataLimit(1_000_000_000, SubscriptionPlan.LIMIT_BEHAVIOR_DISABLED)
+                .setDataUsage(500_000_000, System.currentTimeMillis())
+                .build();
+        subscriptionPlans.add(generalMeteredPlan);
+        subscriptionPlans.add(unmetered5GPlan);
+        mDataNetworkControllerUT.obtainMessage(22/*EVENT_SUBSCRIPTION_PLANS_CHANGED*/,
+                new SubscriptionPlan[]{generalMeteredPlan, unmetered5GPlan}).sendToTarget();
+        dataNetwork.sendMessage(16/*EVENT_SUBSCRIPTION_PLAN_OVERRIDE*/);
+        processAllMessages();
+        assertEquals(subscriptionPlans, mDataNetworkControllerUT.getSubscriptionPlans());
+        assertFalse(dataNetwork.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+
+        // Change data network type to NR
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_NR,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        dataNetwork.sendMessage(13/*EVENT_DISPLAY_INFO_CHANGED*/);
+        processAllMessages();
+        assertTrue(dataNetwork.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+
+        // Set all network types metered
+        subscriptionPlans.clear();
+        mDataNetworkControllerUT.obtainMessage(22/*EVENT_SUBSCRIPTION_PLANS_CHANGED*/,
+                new SubscriptionPlan[]{}).sendToTarget();
+        dataNetwork.sendMessage(16/*EVENT_SUBSCRIPTION_PLAN_OVERRIDE*/);
+        processAllMessages();
+        assertTrue(mDataNetworkControllerUT.getSubscriptionPlans().isEmpty());
+        assertFalse(dataNetwork.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
     }
 }
