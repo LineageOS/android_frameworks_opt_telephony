@@ -295,6 +295,15 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
     }
 
     /**
+     * Unregister the previously registered {@link TelephonyNetworkAgentCallback}.
+     *
+     * @param callback The callback to unregister.
+     */
+    public void unregisterCallback(@NonNull TelephonyNetworkAgentCallback callback) {
+        mTelephonyNetworkAgentCallbacks.remove(callback);
+    }
+
+    /**
      * Log debug messages.
      * @param s debug messages
      */
