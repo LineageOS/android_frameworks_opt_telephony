@@ -21,7 +21,10 @@ import static com.android.internal.telephony.data.DataNetworkController.NetworkR
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -36,6 +39,7 @@ import android.annotation.NonNull;
 import android.net.InetAddresses;
 import android.net.LinkAddress;
 import android.net.NetworkCapabilities;
+import android.net.NetworkPolicyManager;
 import android.net.NetworkRequest;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -50,6 +54,7 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo.RegistrationState;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionPlan;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
@@ -57,6 +62,7 @@ import android.telephony.data.DataProfile;
 import android.telephony.data.DataServiceCallback;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+import android.util.ArraySet;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.ISub;
@@ -72,6 +78,8 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
+import java.time.Period;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -112,7 +120,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
                     .setCarrierEnabled(true)
                     .setNetworkTypeBitmask((int) TelephonyManager.NETWORK_TYPE_BITMASK_LTE)
                     .setLingeringNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_LTE
-                            | TelephonyManager.NETWORK_TYPE_BITMASK_UMTS))
+                            | TelephonyManager.NETWORK_TYPE_BITMASK_UMTS
+                            | TelephonyManager.NETWORK_TYPE_BITMASK_NR))
                     .setProfileId(1234)
                     .setMaxConns(321)
                     .setWaitTime(456)
@@ -228,6 +237,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(mIsub).when(mIBinder).queryLocalInterface(anyString());
         doReturn(mPhone).when(mPhone).getImsPhone();
         mServiceManagerMockedServices.put("isub", mIBinder);
+        doReturn(new SubscriptionPlan[]{}).when(mNetworkPolicyManager)
+                .getSubscriptionPlans(anyInt(), any());
 
         mCarrierConfig = mContextFixture.getCarrierConfigBundle();
         mCarrierConfig.putStringArray(
@@ -773,5 +784,139 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> new HandoverRule("source=IWLAN, target=WTFRAN, type=allowed"));
+    }
+
+    @Test
+    public void testIsNetworkTypeCongested() throws Exception {
+        Set<Integer> congestedNetworkTypes = new ArraySet<>();
+        doReturn(congestedNetworkTypes).when(mDataNetworkController)
+                .getCongestedOverrideNetworkTypes();
+        testSetupDataNetwork();
+        DataNetwork dataNetwork = getDataNetworks().get(0);
+
+        // Set 5G unmetered
+        congestedNetworkTypes.add(TelephonyManager.NETWORK_TYPE_NR);
+        mDataNetworkControllerUT.obtainMessage(23/*EVENT_SUBSCRIPTION_OVERRIDE*/,
+                NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_CONGESTED,
+                NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_CONGESTED,
+                new int[]{TelephonyManager.NETWORK_TYPE_NR}).sendToTarget();
+        dataNetwork.sendMessage(16/*EVENT_SUBSCRIPTION_PLAN_OVERRIDE*/);
+        processAllMessages();
+        assertEquals(congestedNetworkTypes,
+                mDataNetworkControllerUT.getCongestedOverrideNetworkTypes());
+        assertTrue(dataNetwork.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED));
+
+        // Change data network type to NR
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_NR,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        dataNetwork.sendMessage(13/*EVENT_DISPLAY_INFO_CHANGED*/);
+        processAllMessages();
+        assertFalse(dataNetwork.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED));
+
+        // Set all network types metered
+        congestedNetworkTypes.clear();
+        mDataNetworkControllerUT.obtainMessage(23/*EVENT_SUBSCRIPTION_OVERRIDE*/,
+                NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_CONGESTED, 0,
+                TelephonyManager.getAllNetworkTypes()).sendToTarget();
+        dataNetwork.sendMessage(16/*EVENT_SUBSCRIPTION_PLAN_OVERRIDE*/);
+        processAllMessages();
+        assertTrue(mDataNetworkControllerUT.getCongestedOverrideNetworkTypes().isEmpty());
+        assertTrue(dataNetwork.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED));
+    }
+
+    @Test
+    public void testIsNetworkTypeUnmeteredViaSubscriptionOverride() throws Exception {
+        doReturn(true).when(mDataConfigManager).isTempNotMeteredSupportedByCarrier();
+        Set<Integer> unmeteredNetworkTypes = new ArraySet<>();
+        doReturn(unmeteredNetworkTypes).when(mDataNetworkController)
+                .getUnmeteredOverrideNetworkTypes();
+        testSetupDataNetwork();
+        DataNetwork dataNetwork = getDataNetworks().get(0);
+
+        // Set 5G unmetered
+        unmeteredNetworkTypes.add(TelephonyManager.NETWORK_TYPE_NR);
+        mDataNetworkControllerUT.obtainMessage(23/*EVENT_SUBSCRIPTION_OVERRIDE*/,
+                NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_UNMETERED,
+                NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_UNMETERED,
+                new int[]{TelephonyManager.NETWORK_TYPE_NR}).sendToTarget();
+        dataNetwork.sendMessage(16/*EVENT_SUBSCRIPTION_PLAN_OVERRIDE*/);
+        processAllMessages();
+        assertEquals(unmeteredNetworkTypes,
+                mDataNetworkControllerUT.getUnmeteredOverrideNetworkTypes());
+        assertFalse(dataNetwork.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+
+        // Change data network type to NR
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_NR,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        dataNetwork.sendMessage(13/*EVENT_DISPLAY_INFO_CHANGED*/);
+        processAllMessages();
+        assertTrue(dataNetwork.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+
+        // Set all network types metered
+        unmeteredNetworkTypes.clear();
+        mDataNetworkControllerUT.obtainMessage(23/*EVENT_SUBSCRIPTION_OVERRIDE*/,
+                NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_UNMETERED, 0,
+                TelephonyManager.getAllNetworkTypes()).sendToTarget();
+        dataNetwork.sendMessage(16/*EVENT_SUBSCRIPTION_PLAN_OVERRIDE*/);
+        processAllMessages();
+        assertTrue(mDataNetworkControllerUT.getUnmeteredOverrideNetworkTypes().isEmpty());
+        assertFalse(dataNetwork.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+    }
+
+    @Test
+    public void testIsNetworkTypeUnmeteredViaSubscriptionPlans() throws Exception {
+        doReturn(true).when(mDataConfigManager).isTempNotMeteredSupportedByCarrier();
+        List<SubscriptionPlan> subscriptionPlans = new ArrayList<>();
+        doReturn(subscriptionPlans).when(mDataNetworkController).getSubscriptionPlans();
+        testSetupDataNetwork();
+        DataNetwork dataNetwork = getDataNetworks().get(0);
+
+        // Set 5G unmetered
+        SubscriptionPlan unmetered5GPlan = SubscriptionPlan.Builder
+                .createRecurring(ZonedDateTime.parse("2007-03-14T00:00:00.000Z"),
+                        Period.ofMonths(1))
+                .setDataLimit(SubscriptionPlan.BYTES_UNLIMITED,
+                        SubscriptionPlan.LIMIT_BEHAVIOR_THROTTLED)
+                .setNetworkTypes(new int[] {TelephonyManager.NETWORK_TYPE_NR})
+                .build();
+        SubscriptionPlan generalMeteredPlan = SubscriptionPlan.Builder
+                .createRecurring(ZonedDateTime.parse("2007-03-14T00:00:00.000Z"),
+                        Period.ofMonths(1))
+                .setDataLimit(1_000_000_000, SubscriptionPlan.LIMIT_BEHAVIOR_DISABLED)
+                .setDataUsage(500_000_000, System.currentTimeMillis())
+                .build();
+        subscriptionPlans.add(generalMeteredPlan);
+        subscriptionPlans.add(unmetered5GPlan);
+        mDataNetworkControllerUT.obtainMessage(22/*EVENT_SUBSCRIPTION_PLANS_CHANGED*/,
+                new SubscriptionPlan[]{generalMeteredPlan, unmetered5GPlan}).sendToTarget();
+        dataNetwork.sendMessage(16/*EVENT_SUBSCRIPTION_PLAN_OVERRIDE*/);
+        processAllMessages();
+        assertEquals(subscriptionPlans, mDataNetworkControllerUT.getSubscriptionPlans());
+        assertFalse(dataNetwork.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+
+        // Change data network type to NR
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_NR,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        dataNetwork.sendMessage(13/*EVENT_DISPLAY_INFO_CHANGED*/);
+        processAllMessages();
+        assertTrue(dataNetwork.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+
+        // Set all network types metered
+        subscriptionPlans.clear();
+        mDataNetworkControllerUT.obtainMessage(22/*EVENT_SUBSCRIPTION_PLANS_CHANGED*/,
+                new SubscriptionPlan[]{}).sendToTarget();
+        dataNetwork.sendMessage(16/*EVENT_SUBSCRIPTION_PLAN_OVERRIDE*/);
+        processAllMessages();
+        assertTrue(mDataNetworkControllerUT.getSubscriptionPlans().isEmpty());
+        assertFalse(dataNetwork.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
     }
 }

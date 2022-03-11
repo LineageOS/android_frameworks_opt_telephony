@@ -44,6 +44,7 @@ import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
+import android.net.NetworkPolicyManager;
 import android.net.vcn.VcnManager;
 import android.net.vcn.VcnNetworkPolicyResult;
 import android.net.wifi.WifiInfo;
@@ -371,6 +372,7 @@ public abstract class TelephonyTest {
     protected UserManager mUserManager;
     protected KeyguardManager mKeyguardManager;
     protected VcnManager mVcnManager;
+    protected NetworkPolicyManager mNetworkPolicyManager;
     protected SimulatedCommands mSimulatedCommands;
     protected ContextFixture mContextFixture;
     protected Context mContext;
@@ -532,6 +534,7 @@ public abstract class TelephonyTest {
         mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
         mKeyguardManager = (KeyguardManager) mContext.getSystemService(Context.KEYGUARD_SERVICE);
         mVcnManager = mContext.getSystemService(VcnManager.class);
+        mNetworkPolicyManager = mContext.getSystemService(NetworkPolicyManager.class);
         mLocationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
 
         //mTelephonyComponentFactory
