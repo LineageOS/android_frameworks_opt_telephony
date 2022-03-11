@@ -145,9 +145,6 @@ public class DataNetworkController extends Handler {
     /** Event for SIM state changed. */
     private static final int EVENT_SIM_STATE_CHANGED = 9;
 
-    /** Event for data profile changed. */
-    private static final int EVENT_DATA_PROFILES_CHANGED = 10;
-
     /** Event for tearing down all data networks. */
     private static final int EVENT_TEAR_DOWN_ALL_DATA_NETWORKS = 12;
 
@@ -461,8 +458,13 @@ public class DataNetworkController extends Handler {
         public void onInternetDataNetworkValidationStatusChanged(
                 @ValidationStatus int validationStatus) {}
 
-        /** Called when internet data network is connected. */
-        public void onInternetDataNetworkConnected() {}
+        /**
+         * Called when internet data network is connected.
+         *
+         * @param dataProfiles The data profiles of the connected internet data network. It should
+         * be only one in most of the cases.
+         */
+        public void onInternetDataNetworkConnected(@NonNull List<DataProfile> dataProfiles) {}
 
         /** Called when internet data network is disconnected. */
         public void onInternetDataNetworkDisconnected() {}
@@ -677,7 +679,10 @@ public class DataNetworkController extends Handler {
                 new DataProfileManagerCallback(this::post) {
                     @Override
                     public void onDataProfilesChanged() {
-                        DataNetworkController.this.onDataStallReestablishInternet();
+                        sendMessage(obtainMessage(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
+                                DataEvaluationReason.DATA_PROFILES_CHANGED));
+                        sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
+                                DataEvaluationReason.DATA_PROFILES_CHANGED));
                     }
                 });
         mDataStallRecoveryManager = new DataStallRecoveryManager(mPhone, this, mDataServiceManagers
@@ -828,12 +833,6 @@ public class DataNetworkController extends Handler {
             case EVENT_SIM_STATE_CHANGED:
                 int simState = msg.arg1;
                 onSimStateChanged(simState);
-                break;
-            case EVENT_DATA_PROFILES_CHANGED:
-                sendMessage(obtainMessage(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
-                        DataEvaluationReason.DATA_PROFILES_CHANGED));
-                sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
-                        DataEvaluationReason.DATA_PROFILES_CHANGED));
                 break;
             case EVENT_TEAR_DOWN_ALL_DATA_NETWORKS:
                 onTearDownAllDataNetworks(msg.arg1);
@@ -1128,7 +1127,8 @@ public class DataNetworkController extends Handler {
         if (dataProfile == null) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.NO_SUITABLE_DATA_PROFILE);
         } else if (reason == DataEvaluationReason.NEW_REQUEST
-                && mDataRetryManager.isAnySetupRetryScheduled(dataProfile)) {
+                && (mDataRetryManager.isAnySetupRetryScheduled(dataProfile)
+                || mDataRetryManager.isSimilarNetworkRequestRetryScheduled(networkRequest))) {
             // If this is a new request, check if there is any retry already scheduled. For all
             // other evaluation reasons, since they are all condition changes, so if there is any
             // retry scheduled, we still want to go ahead and setup the data network.
@@ -1275,6 +1275,18 @@ public class DataNetworkController extends Handler {
 
         if (dataDisabled) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_DISABLED);
+        }
+
+        // Check if the data profile is still valid, sometimes the users can remove it from the APN
+        // editor.
+        if (!mDataProfileManager.isDataProfileValid(dataProfile)) {
+            evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_PROFILE_INVALID);
+        }
+
+        // If users switch preferred profile in APN editor, we need to tear down network.
+        if (dataNetwork.isInternetSupported()
+                && !mDataProfileManager.isDataProfilePreferred(dataProfile)) {
+            evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_PROFILE_NOT_PREFERRED);
         }
 
         if (evaluation.isDataAllowed()) {
@@ -1740,8 +1752,14 @@ public class DataNetworkController extends Handler {
     private void onDataNetworkSetupRetry(@NonNull DataSetupRetryEntry dataSetupRetryEntry) {
         TelephonyNetworkRequest telephonyNetworkRequest =
                 dataSetupRetryEntry.networkRequestList.get(0);
-        if (!mAllNetworkRequestList.contains(telephonyNetworkRequest)) {
-            log("onDataNetworkSetupRetry: " + telephonyNetworkRequest + " no longer in the list.");
+        // Since this is a retry, the network request might be already removed. So we need to double
+        // check and remove request if necessary.
+        dataSetupRetryEntry.networkRequestList.removeIf(
+                networkRequest -> !mAllNetworkRequestList.contains(networkRequest));
+
+        if (dataSetupRetryEntry.networkRequestList.isEmpty()) {
+            log("onDataNetworkSetupRetry: all network requests in the retry entry has been "
+                    + "released. Retry cancelled.");
             dataSetupRetryEntry.setState(DataRetryEntry.RETRY_STATE_CANCELLED);
             return;
         }
@@ -1761,7 +1779,11 @@ public class DataNetworkController extends Handler {
         DataEvaluation evaluation = evaluateNetworkRequest(
                 telephonyNetworkRequest, DataEvaluationReason.DATA_RETRY);
         if (evaluation.isDataAllowed()) {
-            setupDataNetwork(dataSetupRetryEntry.dataProfile, dataSetupRetryEntry);
+            DataProfile dataProfile = dataSetupRetryEntry.dataProfile;
+            if (dataProfile == null) {
+                dataProfile = evaluation.getCandidateDataProfile();
+            }
+            setupDataNetwork(dataProfile, dataSetupRetryEntry);
         }
     }
 
@@ -1887,9 +1909,9 @@ public class DataNetworkController extends Handler {
 
         // Sometimes network was unsolicitedly reported lost for reasons. We should re-evaluate
         // and see if data network can be re-established again.
-        //TODO: Add some dalays here
-        sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
-                DataEvaluationReason.DATA_NETWORK_DISCONNECTED));
+        sendMessageDelayed(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
+                DataEvaluationReason.RETRY_AFTER_DISCONNECTED),
+                mDataConfigManager.getRetrySetupAfterDisconnectMillis());
     }
 
     /**
@@ -2176,11 +2198,12 @@ public class DataNetworkController extends Handler {
     private void updateOverallInternetDataState() {
         boolean anyInternetConnected = mDataNetworkList.stream()
                 .anyMatch(dataNetwork -> dataNetwork.isInternetSupported()
-                        && (dataNetwork.isConnected() || dataNetwork.isUnderHandover()));
+                        && (dataNetwork.isConnected() || dataNetwork.isHandoverInProgress()));
         // If any one is not suspended, then the overall is not suspended.
         List<DataNetwork> allConnectedInternetDataNetworks = mDataNetworkList.stream()
                 .filter(DataNetwork::isInternetSupported)
-                .filter(dataNetwork -> dataNetwork.isConnected() || dataNetwork.isUnderHandover())
+                .filter(dataNetwork -> dataNetwork.isConnected()
+                        || dataNetwork.isHandoverInProgress())
                 .collect(Collectors.toList());
         boolean isSuspended = !allConnectedInternetDataNetworks.isEmpty()
                 && allConnectedInternetDataNetworks.stream().allMatch(DataNetwork::isSuspended);
@@ -2199,14 +2222,17 @@ public class DataNetworkController extends Handler {
                     + TelephonyUtils.dataStateToString(mInternetDataNetworkState) + " to "
                     + TelephonyUtils.dataStateToString(dataNetworkState) + ".");
             // TODO: Create a new route to notify TelephonyRegistry.
-            mInternetDataNetworkState = dataNetworkState;
-            if (mInternetDataNetworkState == TelephonyManager.DATA_CONNECTED) {
+            if (dataNetworkState == TelephonyManager.DATA_CONNECTED) {
                 mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
-                        callback::onInternetDataNetworkConnected));
-            } else if (mInternetDataNetworkState == TelephonyManager.DATA_DISCONNECTED) {
+                        () -> callback.onInternetDataNetworkConnected(
+                                allConnectedInternetDataNetworks.stream()
+                                        .map(DataNetwork::getDataProfile)
+                                        .collect(Collectors.toList()))));
+            } else if (dataNetworkState == TelephonyManager.DATA_DISCONNECTED) {
                 mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                         callback::onInternetDataNetworkDisconnected));
             } // TODO: Add suspended callback if needed.
+            mInternetDataNetworkState = dataNetworkState;
         }
     }
 
