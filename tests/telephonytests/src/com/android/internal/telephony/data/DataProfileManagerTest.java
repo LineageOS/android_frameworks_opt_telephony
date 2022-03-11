@@ -61,9 +61,6 @@ public class DataProfileManagerTest extends TelephonyTest {
     private static final String PLMN = "330123";
 
     @Mock
-    private DataServiceManager mDataServiceManager;
-
-    @Mock
     private DataProfileManagerCallback mDataProfileManagerCallback;
 
     private DataProfileManager mDataProfileManagerUT;
@@ -360,7 +357,7 @@ public class DataProfileManagerTest extends TelephonyTest {
             return null;
         }).when(mDataProfileManagerCallback).invokeFromExecutor(any(Runnable.class));
         mDataProfileManagerUT = new DataProfileManager(mPhone, mDataNetworkController,
-                mDataServiceManager, Looper.myLooper(), mDataProfileManagerCallback);
+                mMockedWwanDataServiceManager, Looper.myLooper(), mDataProfileManagerCallback);
         mDataProfileManagerUT.obtainMessage(1).sendToTarget();
         processAllMessages();
 
