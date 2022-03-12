@@ -381,6 +381,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 any(DataSettingsManager.DataSettingsManagerCallback.class))).thenCallRealMethod();
 
         initializeConfig();
+        doReturn(true).when(mPhone).isUsingNewDataStack();
         mMockedDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 mMockedWwanDataServiceManager);
         mMockedDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
