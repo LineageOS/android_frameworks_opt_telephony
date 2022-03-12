@@ -184,7 +184,7 @@ public class DataServiceManager extends Handler {
     private void revokePermissionsFromUnusedDataServices() {
         // Except the current data services from having their permissions removed.
         Set<String> dataServices = getAllDataServicePackageNames();
-        for (int transportType : mPhone.getTransportManager().getAvailableTransports()) {
+        for (int transportType : mPhone.getAccessNetworksManager().getAvailableTransports()) {
             dataServices.remove(getDataServicePackageName(transportType));
         }
 
@@ -370,7 +370,6 @@ public class DataServiceManager extends Handler {
         mPermissionManager = (LegacyPermissionManager) phone.getContext().getSystemService(
                 Context.LEGACY_PERMISSION_SERVICE);
         mAppOps = (AppOpsManager) phone.getContext().getSystemService(Context.APP_OPS_SERVICE);
-        if (phone.isUsingNewDataStack()) return;
 
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
@@ -446,7 +445,6 @@ public class DataServiceManager extends Handler {
             loge("can't bindDataService with invalid phone or phoneId.");
             return;
         }
-        if (mPhone.isUsingNewDataStack()) return;
 
         if (TextUtils.isEmpty(packageName)) {
             loge("Can't find the binding package");

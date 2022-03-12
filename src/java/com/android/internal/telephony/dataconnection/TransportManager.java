@@ -16,27 +16,23 @@
 
 package com.android.internal.telephony.dataconnection;
 
-import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.os.Handler;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.telephony.AccessNetworkConstants;
-import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.ApnType;
 import android.telephony.CarrierConfigManager;
 import android.telephony.data.ApnSetting;
-import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 import android.util.SparseIntArray;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.data.AccessNetworksManager;
+import com.android.internal.telephony.data.TelephonyNetworkFactory;
 import com.android.telephony.Rlog;
 
-import java.io.FileDescriptor;
-import java.io.PrintWriter;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -146,7 +142,6 @@ public class TransportManager extends Handler {
         mHandoverNeededEventRegistrants = new RegistrantList();
         mLogTag = TransportManager.class.getSimpleName() + "-" + mPhone.getPhoneId();
         mAccessNetworksManager = mPhone.getAccessNetworksManager();
-        if (phone.isUsingNewDataStack()) return;
         mAccessNetworksManager.registerForQualifiedNetworksChanged(this,
                 EVENT_QUALIFIED_NETWORKS_CHANGED);
     }
@@ -191,8 +186,8 @@ public class TransportManager extends Handler {
         if (isHandoverPending()) return;
         logl("evaluateTransportPreference");
         for (int apnType : AccessNetworksManager.SUPPORTED_APN_TYPES) {
-            int targetTransport = getPreferredTransport(apnType);
-            if (targetTransport != getCurrentTransport(apnType)) {
+            int targetTransport = mAccessNetworksManager.getPreferredTransport(apnType);
+            if (targetTransport != mAccessNetworksManager.getCurrentTransport(apnType)) {
                 logl("Handover started for APN type: "
                         + ApnSetting.getApnTypeString(apnType)
                         + ", target transport: "
@@ -240,42 +235,6 @@ public class TransportManager extends Handler {
     }
 
     /**
-     * @return The available transports. Note that on legacy devices, the only available transport
-     * would be WWAN only. If the device is configured as AP-assisted mode, the available transport
-     * will always be WWAN and WLAN (even if the device is not camped on IWLAN).
-     * See {@link #isInLegacyMode()} for mode details.
-     */
-    public synchronized @NonNull int[] getAvailableTransports() {
-        return mAccessNetworksManager.getAvailableTransports();
-    }
-
-    /**
-     * @return {@code true} if the device operates in legacy mode, otherwise {@code false}.
-     */
-    public boolean isInLegacyMode() {
-        return mAccessNetworksManager.isInLegacyMode();
-    }
-
-    /**
-     * Get the transport based on the APN type.
-     *
-     * @param apnType APN type
-     * @return The transport type
-     */
-    public int getCurrentTransport(@ApnType int apnType) {
-        return mAccessNetworksManager.getCurrentTransport(apnType);
-    }
-
-    /**
-     * Check if there is any APN type's current transport is on IWLAN.
-     *
-     * @return {@code true} if there is any APN is on IWLAN, otherwise {@code false}.
-     */
-    public boolean isAnyApnOnIwlan() {
-        return mAccessNetworksManager.isAnyApnOnIwlan();
-    }
-
-    /**
      * Register for data handover needed event
      *
      * @param h The handler of the event
@@ -303,53 +262,6 @@ public class TransportManager extends Handler {
         if (mAccessNetworksManager != null) {
             mAccessNetworksManager.registerDataThrottler(dataThrottler);
         }
-    }
-
-    /**
-     * Get the  preferred transport.
-     *
-     * @param apnType APN type
-     * @return The preferred transport.
-     */
-    public @TransportType int getPreferredTransport(@ApnType int apnType) {
-        return mAccessNetworksManager.getPreferredTransport(apnType);
-    }
-
-    /**
-     * Dump the state of transport manager
-     *
-     * @param fd File descriptor
-     * @param printwriter Print writer
-     * @param args Arguments
-     */
-    public void dump(FileDescriptor fd, PrintWriter printwriter, String[] args) {
-        IndentingPrintWriter pw = new IndentingPrintWriter(printwriter, "  ");
-        pw.println(mLogTag);
-        pw.increaseIndent();
-        pw.println("mPendingHandoverApns=" + mPendingHandoverApns);
-        pw.println("current transports=");
-        pw.increaseIndent();
-        for (int apnType : AccessNetworksManager.SUPPORTED_APN_TYPES) {
-            pw.println(ApnSetting.getApnTypeString(apnType)
-                    + ": " + AccessNetworkConstants.transportTypeToString(
-                            getCurrentTransport(apnType)));
-        }
-        pw.decreaseIndent();
-        pw.println("preferred transports=");
-        pw.increaseIndent();
-        for (int apnType : AccessNetworksManager.SUPPORTED_APN_TYPES) {
-            pw.println(ApnSetting.getApnTypeString(apnType)
-                    + ": " + AccessNetworkConstants.transportTypeToString(
-                            getPreferredTransport(apnType)));
-        }
-
-        pw.decreaseIndent();
-        pw.println("Local logs=");
-        pw.increaseIndent();
-        mLocalLog.dump(fd, pw, args);
-        pw.decreaseIndent();
-        pw.decreaseIndent();
-        pw.flush();
     }
 
     private void logl(String s) {

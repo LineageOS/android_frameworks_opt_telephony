@@ -24,6 +24,7 @@ import android.content.ContentValues;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
@@ -626,52 +627,6 @@ public class DataProfileManager extends Handler {
     }
 
     /**
-     * Generate a traffic-descriptor type data profile from a network request.
-     *
-     * @param networkRequest The network request.
-     * @return The generated data profile. {@code null} if not available.
-     */
-    private @Nullable DataProfile getTrafficDescriptorTypeDataProfile(
-            @NonNull TelephonyNetworkRequest networkRequest) {
-        if (!networkRequest.hasAttribute(
-                TelephonyNetworkRequest.CAPABILITY_ATTRIBUTE_TRAFFIC_DESCRIPTOR_OS_APP_ID)) {
-            return null;
-        }
-
-        // If the network request also contains APN-type capabilities (for example, enterprise
-        // is also an APN-type capability, then we fill in the corresponding APN setting in
-        // data profile as well.
-        ApnSetting apnSetting = null;
-        if (networkRequest.hasAttribute(
-                TelephonyNetworkRequest.CAPABILITY_ATTRIBUTE_APN_SETTING)) {
-            // Put the preferred data profile at the top of the list, then the longest time
-            // hasn't used data profile will be in the front so all the data profiles can be
-            // tried.
-            apnSetting = mAllDataProfiles.stream()
-                    .filter(dataProfile -> dataProfile.getApnSetting() != null)
-                    .filter(networkRequest::canBeSatisfiedBy)
-                    .min(Comparator.comparing(
-                            (DataProfile dp) -> !dp.equals(mPreferredDataProfile))
-                            .thenComparingLong(DataProfile::getLastSetupTimestamp))
-                    .map(DataProfile::getApnSetting)
-                    .orElse(null);
-        }
-
-        byte[] osAppId = networkRequest.getOsAppId() != null
-                ? networkRequest.getOsAppId().getBytes() : null;
-        DataProfile dataProfile = new DataProfile.Builder()
-                .setApnSetting(apnSetting)
-                .setTrafficDescriptor(new TrafficDescriptor(
-                        apnSetting != null ? apnSetting.getApnName() : null,
-                        osAppId))
-                .build();
-        if (!mAllDataProfiles.contains(dataProfile)) {
-            mAllDataProfiles.add(dataProfile);
-        }
-        return dataProfile;
-    }
-
-    /**
      * Check if the data profile is valid. Profiles can change dynamically when users add/remove/
      * switch APNs in APN editors, when SIM refreshes, or when SIM swapped. This is used to check
      * if the data profile which is used for current data network is still valid. If the profile
@@ -699,6 +654,20 @@ public class DataProfileManager extends Handler {
     }
 
     /**
+     * Check if there is tethering data profile for certain network type.
+     *
+     * @param networkType The network type
+     * @return {@code true} if tethering data profile is found.
+     */
+    public boolean isTetheringDataProfileExisting(@NetworkType int networkType) {
+        TelephonyNetworkRequest networkRequest = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_DUN)
+                        .build(), mPhone);
+        return null != getDataProfileForNetworkRequest(networkRequest, networkType);
+    }
+
+     /**
      * Check if any preferred data profile exists.
      *
      * @return {@code true} if any preferred data profile exists
