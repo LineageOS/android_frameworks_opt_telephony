@@ -105,7 +105,6 @@ import com.android.internal.telephony.data.LinkBandwidthEstimator;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 import com.android.internal.telephony.dataconnection.DataThrottler;
 import com.android.internal.telephony.dataconnection.DcTracker;
-import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
@@ -233,7 +232,6 @@ public abstract class TelephonyTest {
     protected IccSmsInterfaceManager mIccSmsInterfaceManager;
     protected SmsDispatchersController mSmsDispatchersController;
     protected DeviceStateMonitor mDeviceStateMonitor;
-    protected TransportManager mTransportManager;
     protected AccessNetworksManager mAccessNetworksManager;
     protected IntentBroadcaster mIntentBroadcaster;
     protected NitzStateMachine mNitzStateMachine;
@@ -467,7 +465,6 @@ public abstract class TelephonyTest {
         mIccSmsInterfaceManager = Mockito.mock(IccSmsInterfaceManager.class);
         mSmsDispatchersController = Mockito.mock(SmsDispatchersController.class);
         mDeviceStateMonitor = Mockito.mock(DeviceStateMonitor.class);
-        mTransportManager = Mockito.mock(TransportManager.class);
         mAccessNetworksManager = Mockito.mock(AccessNetworksManager.class);
         mIntentBroadcaster = Mockito.mock(IntentBroadcaster.class);
         mNitzStateMachine = Mockito.mock(NitzStateMachine.class);
@@ -591,8 +588,6 @@ public abstract class TelephonyTest {
                 .makeCarrierActionAgent(nullable(Phone.class));
         doReturn(mDeviceStateMonitor).when(mTelephonyComponentFactory)
                 .makeDeviceStateMonitor(nullable(Phone.class));
-        doReturn(mTransportManager).when(mTelephonyComponentFactory)
-                .makeTransportManager(nullable(Phone.class));
         doReturn(mAccessNetworksManager).when(mTelephonyComponentFactory)
                 .makeAccessNetworksManager(nullable(Phone.class));
         doReturn(mNitzStateMachine).when(mTelephonyComponentFactory)
@@ -630,7 +625,6 @@ public abstract class TelephonyTest {
         doReturn(mCarrierActionAgent).when(mPhone).getCarrierActionAgent();
         doReturn(mAppSmsManager).when(mPhone).getAppSmsManager();
         doReturn(mIccSmsInterfaceManager).when(mPhone).getIccSmsInterfaceManager();
-        doReturn(mTransportManager).when(mPhone).getTransportManager();
         doReturn(mAccessNetworksManager).when(mPhone).getAccessNetworksManager();
         doReturn(mDataEnabledSettings).when(mPhone).getDataEnabledSettings();
         doReturn(mDcTracker).when(mPhone).getDcTracker(anyInt());
@@ -734,11 +728,11 @@ public abstract class TelephonyTest {
         logd("mMockLegacyPermissionManager replaced");
         doReturn(new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN})
-                .when(mTransportManager).getAvailableTransports();
+                .when(mAccessNetworksManager).getAvailableTransports();
         doReturn(new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN})
                 .when(mAccessNetworksManager).getAvailableTransports();
-        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mTransportManager)
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
                 .getCurrentTransport(anyInt());
         doReturn(true).when(mDataEnabledSettings).isDataEnabled();
         doReturn(true).when(mDataEnabledSettings).isDataEnabled(anyInt());
