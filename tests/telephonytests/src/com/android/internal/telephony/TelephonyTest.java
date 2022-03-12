@@ -651,7 +651,6 @@ public abstract class TelephonyTest {
         doReturn(mDataProfileManager).when(mDataNetworkController).getDataProfileManager();
         doReturn(mDataRetryManager).when(mDataNetworkController).getDataRetryManager();
         doReturn(mCarrierPrivilegesTracker).when(mPhone).getCarrierPrivilegesTracker();
-        doReturn(true).when(mPhone).isUsingNewDataStack();
 
         //mUiccController
         doReturn(mUiccCardApplication3gpp).when(mUiccController).getUiccCardApplication(anyInt(),
@@ -743,6 +742,7 @@ public abstract class TelephonyTest {
         doReturn(true).when(mDataEnabledSettings).isDataEnabled();
         doReturn(true).when(mDataEnabledSettings).isDataEnabled(anyInt());
         doReturn(true).when(mDataEnabledSettings).isInternalDataEnabled();
+        doReturn(true).when(mDataSettingsManager).isDataEnabled();
         doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
                 anyInt(), anyInt());
         doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion();
