@@ -55,6 +55,7 @@ import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataCallResponse.HandoverFailureMode;
+import android.telephony.data.DataCallResponse.LinkStatus;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.telephony.data.DataServiceCallback;
@@ -393,6 +394,9 @@ public class DataNetwork extends StateMachine {
     /** The network slice info. */
     private @Nullable NetworkSliceInfo mNetworkSliceInfo;
 
+    /** The link status (i.e. RRC state). */
+    private @LinkStatus int mLinkStatus = DataCallResponse.LINK_STATUS_UNKNOWN;
+
     /** The network bandwidth. */
     private @NonNull NetworkBandwidth mNetworkBandwidth = new NetworkBandwidth(14, 14);
 
@@ -578,6 +582,15 @@ public class DataNetwork extends StateMachine {
         public abstract void onHandoverFailed(@NonNull DataNetwork dataNetwork,
                 @DataFailureCause int cause, long retryDurationMillis,
                 @HandoverFailureMode int handoverFailureMode);
+
+        /**
+         * Called when data network link status (i.e. RRC state) changed.
+         *
+         * @param dataNetwork The data network.
+         * @param linkStatus The link status (i.e. RRC state).
+         */
+        public abstract void onLinkStatusChanged(@NonNull DataNetwork dataNetwork,
+                @LinkStatus int linkStatus);
     }
 
     /**
@@ -783,7 +796,7 @@ public class DataNetwork extends StateMachine {
                 case EVENT_DATA_STATE_CHANGED: {
                     AsyncResult ar = (AsyncResult) msg.obj;
                     int transport = (int) ar.userObj;
-                    onDataStateChanged(transport, (ArrayList<DataCallResponse>) ar.result);
+                    onDataStateChanged(transport, (List<DataCallResponse>) ar.result);
                     break;
                 }
                 case EVENT_START_HANDOVER:
@@ -1382,8 +1395,16 @@ public class DataNetwork extends StateMachine {
 
         // Set PDU session id
         if (mPduSessionId != response.getPduSessionId()) {
-            log("PDU session id updated to " + mPduSessionId);
             mPduSessionId = response.getPduSessionId();
+            log("PDU session id updated to " + mPduSessionId);
+        }
+
+        // Set the link status
+        if (mLinkStatus != response.getLinkStatus()) {
+            mLinkStatus = response.getLinkStatus();
+            log("Link status updated to " + DataUtils.linkStatusToString(mLinkStatus));
+            mDataNetworkCallback.invokeFromExecutor(
+                    () -> mDataNetworkCallback.onLinkStatusChanged(DataNetwork.this, mLinkStatus));
         }
 
         // Set link addresses
@@ -1864,6 +1885,13 @@ public class DataNetwork extends StateMachine {
             return nrs.getAccessNetworkTechnology();
         }
         return TelephonyManager.NETWORK_TYPE_UNKNOWN;
+    }
+
+    /**
+     * @return The physical link status (i.e. RRC state).
+     */
+    public @LinkStatus int getLinkStatus() {
+        return mLinkStatus;
     }
 
     /**

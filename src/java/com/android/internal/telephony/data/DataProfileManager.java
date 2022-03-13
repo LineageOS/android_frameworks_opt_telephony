@@ -214,13 +214,14 @@ public class DataProfileManager extends Handler {
             while (cursor.moveToNext()) {
                 ApnSetting apn = ApnSetting.makeApnSetting(cursor);
                 if (apn != null) {
-                    profiles.add(new DataProfile.Builder()
+                    DataProfile dataProfile = new DataProfile.Builder()
                             .setApnSetting(apn)
                             // TODO: Support TD correctly once ENTERPRISE becomes an APN type.
                             .setTrafficDescriptor(new TrafficDescriptor(apn.getApnName(), null))
                             .setPreferred(false)
-                            .build());
-                    log("Added " + apn);
+                            .build();
+                    profiles.add(dataProfile);
+                    log("Added " + dataProfile);
                 }
             }
             cursor.close();
