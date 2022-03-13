@@ -354,7 +354,7 @@ public class DcTracker extends Handler {
     private boolean mNrSaSub6Unmetered = false;
     private boolean mNrNsaRoamingUnmetered = false;
 
-    // it effect the PhysicalLinkStateChanged
+    // it effect the PhysicalLinkStatusChanged
     private boolean mLteEndcUsingUserDataForRrcDetection = false;
 
     // stats per data call recovery event
@@ -5628,24 +5628,24 @@ public class DcTracker extends Handler {
     }
 
     /**
-     * Register for physical link state (i.e. RRC state) changed event.
+     * Register for physical link status (i.e. RRC state) changed event.
      * if {@link CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL} is true,
      * then physical link state is focusing on "internet data connection" instead of RRC state.
      *
      * @param h The handler
      * @param what The event
      */
-    public void registerForPhysicalLinkStateChanged(Handler h, int what) {
-        mDcc.registerForPhysicalLinkStateChanged(h, what);
+    public void registerForPhysicalLinkStatusChanged(Handler h, int what) {
+        mDcc.registerForPhysicalLinkStatusChanged(h, what);
     }
 
     /**
-     * Unregister from physical link state (i.e. RRC state) changed event.
+     * Unregister from physical link status (i.e. RRC state) changed event.
      *
      * @param h The previously registered handler
      */
-    public void unregisterForPhysicalLinkStateChanged(Handler h) {
-        mDcc.unregisterForPhysicalLinkStateChanged(h);
+    public void unregisterForPhysicalLinkStatusChanged(Handler h) {
+        mDcc.unregisterForPhysicalLinkStatusChanged(h);
     }
 
     // We use a specialized equals function in Apn setting when checking if an active
