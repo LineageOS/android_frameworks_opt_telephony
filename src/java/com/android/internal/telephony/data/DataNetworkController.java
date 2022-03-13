@@ -176,8 +176,8 @@ public class DataNetworkController extends Handler {
     /** Event for emergency call started or ended. */
     private static final int EVENT_EMERGENCY_CALL_CHANGED = 20;
 
-    /** Event for re-evaluating preferred transport. */
-    private static final int EVENT_REEVALUATE_PREFERRED_TRANSPORT = 21;
+    /** Event for preferred transport changed. */
+    private static final int EVENT_PREFERRED_TRANSPORT_CHANGED = 21;
 
     /** Event for subscription plans changed. */
     private static final int EVENT_SUBSCRIPTION_PLANS_CHANGED = 22;
@@ -551,7 +551,7 @@ public class DataNetworkController extends Handler {
         private static final String RULE_TAG_ROAMING = "roaming";
 
         /** Handover rule type. */
-        public final @HandoverRuleType int ruleType;
+        public final @HandoverRuleType int type;
 
         /** The applicable source access networks for handover. */
         public final @NonNull @RadioAccessNetworkType Set<Integer> sourceAccessNetworks;
@@ -560,7 +560,7 @@ public class DataNetworkController extends Handler {
         public final @NonNull @RadioAccessNetworkType Set<Integer> targetAccessNetworks;
 
         /** {@code true} indicates this policy is only applicable when the device is roaming. */
-        public final boolean isRoaming;
+        public final boolean isOnlyForRoaming;
 
         /**
          * Constructor
@@ -652,17 +652,17 @@ public class DataNetworkController extends Handler {
 
             sourceAccessNetworks = source;
             targetAccessNetworks = target;
-            ruleType = type;
-            isRoaming = roaming;
+            this.type = type;
+            isOnlyForRoaming = roaming;
         }
 
         @Override
         public String toString() {
-            return "[HandoverRule: type=" + (ruleType == RULE_TYPE_ALLOWED ? "allowed"
+            return "[HandoverRule: type=" + (type == RULE_TYPE_ALLOWED ? "allowed"
                     : "disallowed") + ", source=" + sourceAccessNetworks.stream()
                     .map(AccessNetworkType::toString).collect(Collectors.joining("|"))
                     + ", target=" + targetAccessNetworks.stream().map(AccessNetworkType::toString)
-                    .collect(Collectors.joining("|")) + ", isRoaming=" + isRoaming + "]";
+                    .collect(Collectors.joining("|")) + ", isRoaming=" + isOnlyForRoaming + "]";
         }
     }
 
@@ -783,7 +783,9 @@ public class DataNetworkController extends Handler {
         mAccessNetworksManager.registerCallback(new AccessNetworksManagerCallback(this::post) {
             @Override
             public void onPreferredTransportChanged(@NetCapability int capability) {
-                DataNetworkController.this.onReevaluatePreferredTransport(capability);
+                DataNetworkController.this.onPreferredTransportChanged(capability);
+                sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
+                        DataEvaluationReason.PREFERRED_TRANSPORT_CHANGED));
             }
         });
 
@@ -919,8 +921,8 @@ public class DataNetworkController extends Handler {
                             DataEvaluationReason.EMERGENCY_CALL_CHANGED));
                 }
                 break;
-            case EVENT_REEVALUATE_PREFERRED_TRANSPORT:
-                onReevaluatePreferredTransport(msg.arg1);
+            case EVENT_PREFERRED_TRANSPORT_CHANGED:
+                onPreferredTransportChanged(msg.arg1);
                 break;
             case EVENT_SUBSCRIPTION_PLANS_CHANGED:
                 SubscriptionPlan[] plans = (SubscriptionPlan[]) msg.obj;
@@ -1425,6 +1427,67 @@ public class DataNetworkController extends Handler {
     }
 
     /**
+     * Evaluate if it is allowed to handover the data network between IWLAN and cellular. Some
+     * carriers do not allow handover in certain conditions.
+     *
+     * @param dataNetwork The data network to be handover.
+     * @return The evaluation result.
+     *
+     * @see CarrierConfigManager#KEY_IWLAN_HANDOVER_POLICY_STRING_ARRAY
+     */
+    private @NonNull DataEvaluation evaluateDataNetworkHandover(@NonNull DataNetwork dataNetwork) {
+        DataEvaluation dataEvaluation = new DataEvaluation(DataEvaluationReason.DATA_HANDOVER);
+        if (!dataNetwork.isConnecting() && !dataNetwork.isConnected()) {
+            log("evaluateDataNetworkHandover:" + dataNetwork
+                    + " it not in the right state.");
+            dataEvaluation.addDataDisallowedReason(DataDisallowedReason.ILLEGAL_STATE);
+            return dataEvaluation;
+        }
+
+        if (mDataRetryManager.isAnyHandoverRetryScheduled(dataNetwork)) {
+            log("evaluateDataNetworkHandover: Found handover retry entry for "
+                    + dataNetwork);
+            dataEvaluation.addDataDisallowedReason(DataDisallowedReason.RETRY_SCHEDULED);
+            return dataEvaluation;
+        }
+
+        List<HandoverRule> handoverRules = mDataConfigManager.getHandoverRules();
+
+        int sourceAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
+                getDataNetworkType(dataNetwork.getTransport()));
+        int targetAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
+                getDataNetworkType(DataUtils.getTargetTransport(dataNetwork.getTransport())));
+        log("evaluateDataNetworkHandover: "
+                + "source=" + AccessNetworkType.toString(sourceAccessNetwork)
+                + ", target=" + AccessNetworkType.toString(targetAccessNetwork)
+                + ", ServiceState=" + mServiceState);
+
+        // Matching the rules by the configured order. Bail out if find first matching rule.
+        for (HandoverRule rule : handoverRules) {
+            // Check if the rule is only for roaming and we are not roaming.
+            if (rule.isOnlyForRoaming && !mServiceState.getDataRoaming()) continue;
+
+            if (rule.sourceAccessNetworks.contains(sourceAccessNetwork)
+                    && rule.targetAccessNetworks.contains(targetAccessNetwork)) {
+                log("evaluateDataNetworkHandover: Matched " + rule);
+                if (rule.type == HandoverRule.RULE_TYPE_DISALLOWED) {
+                    dataEvaluation.addDataDisallowedReason(
+                            DataDisallowedReason.NOT_ALLOWED_BY_POLICY);
+                } else {
+                    dataEvaluation.addDataAllowedReason(DataAllowedReason.NORMAL);
+                }
+                log("evaluateDataNetworkHandover: " + dataEvaluation);
+                return dataEvaluation;
+            }
+        }
+
+        log("evaluateDataNetworkHandover: Did not find matching rule. " + dataEvaluation);
+        // Allow handover anyway if no rule is found.
+        dataEvaluation.addDataAllowedReason(DataAllowedReason.NORMAL);
+        return dataEvaluation;
+    }
+
+    /**
      * Get tear down reason from the evaluation result.
      *
      * @param dataEvaluation The evaluation result from
@@ -1688,7 +1751,7 @@ public class DataNetworkController extends Handler {
     private void setupDataNetwork(@NonNull DataProfile dataProfile,
             @Nullable DataSetupRetryEntry dataSetupRetryEntry) {
         log("onSetupDataNetwork: dataProfile=" + dataProfile + ", retryEntry="
-                + dataSetupRetryEntry);
+                + dataSetupRetryEntry + ", service state=" + mServiceState);
         for (DataNetwork dataNetwork : mDataNetworkList) {
             if (dataNetwork.getDataProfile().equals(dataProfile)) {
                 log("onSetupDataNetwork: Found existing data network " + dataNetwork
@@ -2047,7 +2110,7 @@ public class DataNetworkController extends Handler {
             // to the original one, but we should re-evaluate the preferred transport again to
             // make sure QNS does change it back, if not, we still need to perform handover at that
             // time.
-            sendMessageDelayed(obtainMessage(EVENT_REEVALUATE_PREFERRED_TRANSPORT,
+            sendMessageDelayed(obtainMessage(EVENT_PREFERRED_TRANSPORT_CHANGED,
                     dataNetwork.getHighestPriorityNetworkCapability(), 0),
                     REEVALUATE_PREFERRED_TRANSPORT_DELAY_MILLIS);
         } else if (handoverFailureMode == DataCallResponse
@@ -2143,14 +2206,15 @@ public class DataNetworkController extends Handler {
     }
 
     /**
-     * Called when needed to re-evaluate preferred transport for certain capability.
+     * Called when preferred transport changed for certain capability.
      *
      * @param capability The network capability that has preferred transport changed.
      */
-    private void onReevaluatePreferredTransport(@NetCapability int capability) {
+    private void onPreferredTransportChanged(@NetCapability int capability) {
         int preferredTransport = mAccessNetworksManager
                 .getPreferredTransportByNetworkCapability(capability);
-        logl(DataUtils.networkCapabilityToString(capability) + " preferred on "
+        logl("onPreferredTransportChanged: " + DataUtils.networkCapabilityToString(capability)
+                + " preferred on "
                 + AccessNetworkConstants.transportTypeToString(preferredTransport));
         for (DataNetwork dataNetwork : mDataNetworkList) {
             if (dataNetwork.getHighestPriorityNetworkCapability() == capability) {
@@ -2162,20 +2226,20 @@ public class DataNetworkController extends Handler {
                     continue;
                 }
 
-                if (!dataNetwork.isConnecting() && !dataNetwork.isConnected()) {
-                    log("onReevaluatePreferredTransport:" + dataNetwork
-                            + " it not in the right state.");
-                    continue;
+                DataEvaluation dataEvaluation = evaluateDataNetworkHandover(dataNetwork);
+                if (dataEvaluation.isDataAllowed()) {
+                    logl("Start handover " + dataNetwork + " to "
+                            + AccessNetworkConstants.transportTypeToString(preferredTransport));
+                    dataNetwork.startHandover(preferredTransport, null);
+                } else if (dataEvaluation.containsOnly(
+                        DataDisallowedReason.NOT_ALLOWED_BY_POLICY)) {
+                    logl("onPreferredTransportChanged: Handover not allowed by policy. Tear "
+                            + "down the network so a new network can be setup on "
+                            + AccessNetworkConstants.transportTypeToString(preferredTransport)
+                            + ".");
+                    tearDownGracefully(dataNetwork,
+                            DataNetwork.TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED);
                 }
-
-                if (mDataRetryManager.isAnyHandoverRetryScheduled(dataNetwork)) {
-                    log("onReevaluatePreferredTransport: Found handover retry entry for "
-                            + dataNetwork);
-                    continue;
-                }
-                logl("Start handover " + dataNetwork + " to "
-                        + AccessNetworkConstants.transportTypeToString(preferredTransport));
-                dataNetwork.startHandover(preferredTransport, null);
             }
         }
     }
