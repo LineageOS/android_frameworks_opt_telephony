@@ -241,6 +241,7 @@ public class DataNetwork extends StateMachine {
                     TEAR_DOWN_REASON_DATA_PROFILE_NOT_PREFERRED,
                     TEAR_DOWN_REASON_NOT_ALLOWED_BY_POLICY,
                     TEAR_DOWN_REASON_ILLEGAL_STATE,
+                    TEAR_DOWN_ONLY_ALLOWED_SINGLE_NETWORK,
             })
     public @interface TearDownReason {}
 
@@ -327,6 +328,9 @@ public class DataNetwork extends StateMachine {
 
     /** Data network tear down due to illegal state. */
     public static final int TEAR_DOWN_REASON_ILLEGAL_STATE = 28;
+
+    /** Data network tear down due to only allowed single network. */
+    public static final int TEAR_DOWN_ONLY_ALLOWED_SINGLE_NETWORK = 29;
 
     @IntDef(prefix = {"BANDWIDTH_SOURCE_"},
             value = {
@@ -2274,6 +2278,17 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
+     * @return The priority of the network. The priority is derived from the highest priority
+     * capability of the network.
+     */
+    public int getPriority() {
+        return Arrays.stream(getNetworkCapabilities().getCapabilities()).boxed()
+                .map(mDataConfigManager::getNetworkCapabilityPriority)
+                .max(Integer::compare)
+                .orElse(-1);
+    }
+
+    /**
      * @return The attached network request list.
      */
     public @NonNull NetworkRequestList getAttachedNetworkRequestList() {
@@ -2619,6 +2634,8 @@ public class DataNetwork extends StateMachine {
                 return "TEAR_DOWN_REASON_NOT_ALLOWED_BY_POLICY";
             case TEAR_DOWN_REASON_ILLEGAL_STATE:
                 return "TEAR_DOWN_REASON_ILLEGAL_STATE";
+            case TEAR_DOWN_ONLY_ALLOWED_SINGLE_NETWORK:
+                return "TEAR_DOWN_ONLY_ALLOWED_SINGLE_NETWORK";
             default:
                 return "UNKNOWN(" + reason + ")";
         }
