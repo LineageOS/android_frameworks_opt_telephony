@@ -102,10 +102,8 @@ public class DcController extends Handler {
         mDcTesterDeactivateAll = (TelephonyUtils.IS_DEBUGGABLE)
                 ? new DcTesterDeactivateAll(mPhone, DcController.this, this)
                 : null;
-        if (!mPhone.isUsingNewDataStack()) {
-            mDataServiceManager.registerForDataCallListChanged(this,
-                    DataConnection.EVENT_DATA_STATE_CHANGED);
-        }
+        mDataServiceManager.registerForDataCallListChanged(this,
+                DataConnection.EVENT_DATA_STATE_CHANGED);
     }
 
     public static DcController makeDcc(Phone phone, DcTracker dct,
