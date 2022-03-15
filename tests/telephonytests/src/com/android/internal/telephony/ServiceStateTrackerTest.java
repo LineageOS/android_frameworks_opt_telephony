@@ -2257,7 +2257,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @SmallTest
     @Test
     public void testRilDataTechnologyChangeTransportPreference() {
-        when(mTransportManager.isAnyApnOnIwlan()).thenReturn(false);
+        when(mAccessNetworksManager.isAnyApnOnIwlan()).thenReturn(false);
 
         // Start state: Cell data only LTE + IWLAN
         CellIdentityLte cellIdentity =
@@ -2276,7 +2276,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 mTestHandler, EVENT_DATA_RAT_CHANGED, null);
         // transport preference change for a PDN for IWLAN occurred, no registration change, but
         // trigger unrelated poll to pick up transport preference.
-        when(mTransportManager.isAnyApnOnIwlan()).thenReturn(true);
+        when(mAccessNetworksManager.isAnyApnOnIwlan()).thenReturn(true);
         changeRegStateWithIwlan(
                 // WWAN
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME, cellIdentity,
