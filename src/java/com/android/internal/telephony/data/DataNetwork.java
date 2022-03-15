@@ -50,6 +50,7 @@ import android.telephony.Annotation.DataState;
 import android.telephony.Annotation.NetCapability;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.Annotation.ValidationStatus;
+import android.telephony.AnomalyReporter;
 import android.telephony.DataFailCause;
 import android.telephony.DataSpecificRegistrationInfo;
 import android.telephony.LinkCapacityEstimate;
@@ -108,7 +109,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -200,6 +203,13 @@ public class DataNetwork extends StateMachine {
     /** Event for deactivate data network response. */
     private static final int EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE = 19;
 
+    /**
+     * Event for data network stuck in transient (i.e. connecting/disconnecting/handover) state for
+     * too long time. Timeout value specified in {@link #MAXIMUM_CONNECTING_DURATION_MILLIS},
+     * {@link #MAXIMUM_DISCONNECTING_DURATION_MILLIS}, {@link #MAXIMUM_HANDOVER_DURATION_MILLIS}.
+     */
+    private static final int EVENT_STUCK_IN_TRANSIENT_STATE = 20;
+
     /** The default MTU for IPv4 network. */
     private static final int DEFAULT_MTU_V4 = 1280;
 
@@ -208,6 +218,18 @@ public class DataNetwork extends StateMachine {
 
     /** Invalid context id. */
     private static final int INVALID_CID = -1;
+
+    /** The maximum time the data network can stay in {@link ConnectingState}. */
+    private static final long MAXIMUM_CONNECTING_DURATION_MILLIS =
+            TimeUnit.SECONDS.toMillis(60);
+
+    /** The maximum time the data network can stay in {@link DisconnectingState}. */
+    private static final long MAXIMUM_DISCONNECTING_DURATION_MILLIS =
+            TimeUnit.SECONDS.toMillis(15);
+
+    /** The maximum time the data network can stay in {@link HandoverState}. */
+    private static final long MAXIMUM_HANDOVER_DURATION_MILLIS =
+            TimeUnit.SECONDS.toMillis(60);
 
     /**
      * The data network providing default internet will have a higher score of 50. Other network
@@ -962,6 +984,7 @@ public class DataNetwork extends StateMachine {
                 case EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED:
                 case EVENT_TEAR_DOWN_NETWORK:
                 case EVENT_PCO_DATA_RECEIVED:
+                case EVENT_STUCK_IN_TRANSIENT_STATE:
                     // Ignore the events when not in the correct state.
                     break;
                 default:
@@ -980,6 +1003,8 @@ public class DataNetwork extends StateMachine {
     private final class ConnectingState extends State {
         @Override
         public void enter() {
+            sendMessageDelayed(EVENT_STUCK_IN_TRANSIENT_STATE,
+                    MAXIMUM_CONNECTING_DURATION_MILLIS);
             // Need to calculate the initial capabilities before creating the network agent.
             updateNetworkCapabilities();
             mNetworkAgent = createNetworkAgent();
@@ -1003,6 +1028,7 @@ public class DataNetwork extends StateMachine {
 
         @Override
         public void exit() {
+            removeMessages(EVENT_STUCK_IN_TRANSIENT_STATE);
         }
 
         @Override
@@ -1030,6 +1056,19 @@ public class DataNetwork extends StateMachine {
                 case EVENT_PCO_DATA_RECEIVED:
                     // Defer the request until connected or disconnected.
                     deferMessage(msg);
+                    break;
+                case EVENT_STUCK_IN_TRANSIENT_STATE:
+                    String message = "Data network stuck in connecting state for "
+                            + TimeUnit.MILLISECONDS.toSeconds(
+                                    MAXIMUM_CONNECTING_DURATION_MILLIS) + " seconds.";
+                    logl(message);
+                    AnomalyReporter.reportAnomaly(
+                            UUID.fromString("58c56403-7ea7-4e56-a0c7-e467114d09b8"), message);
+                    // Setup data failed. Use the retry logic defined in
+                    // CarrierConfigManager.KEY_TELEPHONY_DATA_SETUP_RETRY_RULES_STRING_ARRAY.
+                    mRetryDelayMillis = DataCallResponse.RETRY_DURATION_UNDEFINED;
+                    mFailCause = DataFailCause.NO_RETRY_FAILURE;
+                    transitionTo(mDisconnectedState);
                     break;
                 default:
                     return NOT_HANDLED;
@@ -1149,11 +1188,13 @@ public class DataNetwork extends StateMachine {
     private final class HandoverState extends State {
         @Override
         public void enter() {
+            sendMessageDelayed(EVENT_STUCK_IN_TRANSIENT_STATE, MAXIMUM_HANDOVER_DURATION_MILLIS);
             notifyPreciseDataConnectionState();
         }
 
         @Override
         public void exit() {
+            removeMessages(EVENT_STUCK_IN_TRANSIENT_STATE);
         }
 
         @Override
@@ -1184,6 +1225,26 @@ public class DataNetwork extends StateMachine {
                 case EVENT_PCO_DATA_RECEIVED:
                     AsyncResult ar = (AsyncResult) msg.obj;
                     onPcoDataReceived((PcoData) ar.result);
+                    break;
+                case EVENT_STUCK_IN_TRANSIENT_STATE:
+                    String message = "Data service did not respond the handover request within "
+                            + TimeUnit.MILLISECONDS.toSeconds(
+                            MAXIMUM_HANDOVER_DURATION_MILLIS) + " seconds.";
+                    logl(message);
+                    AnomalyReporter.reportAnomaly(
+                            UUID.fromString("15f60e1d-c985-48a9-abc4-be76e343864f"), message);
+
+                    // Handover failed. Use the retry logic defined in
+                    // CarrierConfigManager.KEY_TELEPHONY_DATA_HANDOVER_RETRY_RULES_STRING_ARRAY.
+                    long retry = DataCallResponse.RETRY_DURATION_UNDEFINED;
+                    int handoverFailureMode =
+                            DataCallResponse.HANDOVER_FAILURE_MODE_NO_FALLBACK_RETRY_SETUP_NORMAL;
+                    mFailCause = DataFailCause.ERROR_UNSPECIFIED;
+                    mDataNetworkCallback.invokeFromExecutor(
+                            () -> mDataNetworkCallback.onHandoverFailed(DataNetwork.this,
+                                    mFailCause, retry, handoverFailureMode));
+                    // No matter handover succeeded or not, transit back to connected state.
+                    transitionTo(mConnectedState);
                     break;
                 default:
                     return NOT_HANDLED;
@@ -1236,7 +1297,14 @@ public class DataNetwork extends StateMachine {
     private final class DisconnectingState extends State {
         @Override
         public void enter() {
+            sendMessageDelayed(EVENT_STUCK_IN_TRANSIENT_STATE,
+                    MAXIMUM_DISCONNECTING_DURATION_MILLIS);
             notifyPreciseDataConnectionState();
+        }
+
+        @Override
+        public void exit() {
+            removeMessages(EVENT_STUCK_IN_TRANSIENT_STATE);
         }
 
         @Override
@@ -1246,6 +1314,19 @@ public class DataNetwork extends StateMachine {
                 case EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE:
                     int resultCode = msg.arg1;
                     onDeactivateResponse(resultCode);
+                    break;
+                case EVENT_STUCK_IN_TRANSIENT_STATE:
+                    // After frameworks issues deactivate data call request, RIL should report
+                    // data disconnected through data call list changed event subsequently.
+                    String message = "RIL did not send data call list changed event after "
+                            + "deactivate data call request within "
+                            + TimeUnit.MILLISECONDS.toSeconds(
+                                    MAXIMUM_DISCONNECTING_DURATION_MILLIS) + " seconds.";
+                    logl(message);
+                    AnomalyReporter.reportAnomaly(
+                            UUID.fromString("d0e4fa1c-c57b-4ba5-b4b6-8955487012ca"), message);
+                    mFailCause = DataFailCause.LOST_CONNECTION;
+                    transitionTo(mDisconnectedState);
                     break;
                 default:
                     return NOT_HANDLED;
@@ -1262,10 +1343,13 @@ public class DataNetwork extends StateMachine {
     private final class DisconnectedState extends State {
         @Override
         public void enter() {
-            logl("Data network disconnected.");
+            logl("Data network disconnected. mEverConnected=" + mEverConnected);
             if (mEverConnected) {
                 mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
                         .onDisconnected(DataNetwork.this, mFailCause));
+                if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
+                    unregisterForWwanEvents();
+                }
             } else {
                 mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
                         .onSetupDataFailed(DataNetwork.this,
@@ -1285,10 +1369,6 @@ public class DataNetwork extends StateMachine {
             if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN
                     && mPduSessionId != DataCallResponse.PDU_SESSION_ID_NOT_SET) {
                 mRil.releasePduSessionId(null, mPduSessionId);
-            }
-
-            if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN && mEverConnected) {
-                unregisterForWwanEvents();
             }
 
             if (mVcnManager != null && mVcnPolicyChangeListener != null) {
@@ -2797,6 +2877,8 @@ public class DataNetwork extends StateMachine {
                 return "EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED";
             case EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE:
                 return "EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE";
+            case EVENT_STUCK_IN_TRANSIENT_STATE:
+                return "EVENT_STUCK_IN_TRANSIENT_STATE";
             default:
                 return "Unknown(" + event + ")";
         }
