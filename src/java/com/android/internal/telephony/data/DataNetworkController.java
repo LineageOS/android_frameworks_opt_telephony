@@ -136,9 +136,6 @@ public class DataNetworkController extends Handler {
     /** Event for removing a network request. */
     private static final int EVENT_REMOVE_NETWORK_REQUEST = 3;
 
-    /** Event for satisfying a single network request. */
-    private static final int EVENT_SATISFY_NETWORK_REQUEST = 4;
-
     /** Re-evaluate all unsatisfied network requests. */
     private static final int EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS = 5;
 
@@ -546,6 +543,13 @@ public class DataNetworkController extends Handler {
          * capable.
          */
         public void onNrAdvancedCapableByPcoChanged(boolean nrAdvancedCapable) {}
+
+        /**
+         * Called when data service is bound.
+         *
+         * @param transport The transport of the data service.
+         */
+        public void onDataServiceBound(@TransportType int transport) {}
     }
 
     /**
@@ -892,9 +896,6 @@ public class DataNetworkController extends Handler {
             case EVENT_ADD_NETWORK_REQUEST:
                 onAddNetworkRequest((TelephonyNetworkRequest) msg.obj);
                 break;
-            case EVENT_SATISFY_NETWORK_REQUEST:
-                onSatisfyNetworkRequest((TelephonyNetworkRequest) msg.obj);
-                break;
             case EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS:
                 DataEvaluationReason reason = (DataEvaluationReason) msg.obj;
                 onReevaluateUnsatisfiedNetworkRequests(reason);
@@ -1037,7 +1038,7 @@ public class DataNetworkController extends Handler {
             return;
         }
         logv("onAddNetworkRequest: added " + networkRequest);
-        sendMessage(obtainMessage(EVENT_SATISFY_NETWORK_REQUEST, networkRequest));
+        onSatisfyNetworkRequest(networkRequest);
     }
 
     /**
@@ -1071,6 +1072,12 @@ public class DataNetworkController extends Handler {
                 setupDataNetwork(dataProfile, null,
                         evaluation.getDataAllowedReason());
             }
+        } else if (evaluation.contains(DataDisallowedReason.ONLY_ALLOWED_SINGLE_NETWORK)) {
+            // Re-evaluate the existing data networks. If this request's priority is higher than
+            // the existing data network, the data network will be torn down so this request will
+            // get a chance to be satisfied.
+            sendMessage(obtainMessage(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
+                    DataEvaluationReason.SINGLE_DATA_NETWORK_ARBITRATION));
         }
     }
 
@@ -1137,7 +1144,6 @@ public class DataNetworkController extends Handler {
      */
     private boolean shouldCheckRegistrationState() {
         // Always don't check registration state on non-DDS sub.
-        log("shouldCheckRegistrationState: phoneSwitcher=" + PhoneSwitcher.getInstance());
         if (mPhone.getPhoneId() != PhoneSwitcher.getInstance().getPreferredDataPhoneId()) {
             return false;
         }
@@ -1147,6 +1153,16 @@ public class DataNetworkController extends Handler {
         //  it's for the old 2G network. If there are other scenarios that we need to support
         //  auto-attach, can implement the logic in this method.
         return true;
+    }
+
+    /**
+     * @return {@code true} if the network only allows single data network at one time.
+     */
+    private boolean isOnlySingleDataNetworkAllowed(@TransportType int transport) {
+        if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) return false;
+
+        return mDataConfigManager.getNetworkTypesOnlySupportSingleDataNetwork()
+                .contains(getDataNetworkType(transport));
     }
 
     /**
@@ -1254,6 +1270,12 @@ public class DataNetworkController extends Handler {
         // Check if device is CDMA and is currently in ECBM
         if (mPhone.isInEcm() && mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.EMERGENCY_CALL);
+        }
+
+        // Check if only one data network is allowed.
+        if (isOnlySingleDataNetworkAllowed(transport) && !mDataNetworkList.isEmpty()) {
+            evaluation.addDataDisallowedReason(
+                    DataDisallowedReason.ONLY_ALLOWED_SINGLE_NETWORK);
         }
 
         if (!mDataSettingsManager.isDataEnabled(DataUtils.networkCapabilityToApnType(
@@ -1431,6 +1453,24 @@ public class DataNetworkController extends Handler {
         // Check if device is CDMA and is currently in ECBM
         if (mPhone.isInEcm() && mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.EMERGENCY_CALL);
+        }
+
+        // Check if there are other network that has higher priority, and only single data network
+        // is allowed.
+        if (isOnlySingleDataNetworkAllowed(dataNetwork.getTransport())) {
+            // If there is network request that has higher priority than this data network, then
+            // tear down the network, regardless that network request is satisfied or not.
+            if (mAllNetworkRequestList.stream()
+                    .filter(request -> dataNetwork.getTransport()
+                            == mAccessNetworksManager.getPreferredTransportByNetworkCapability(
+                                    request.getApnTypeNetworkCapability()))
+                    .anyMatch(request -> request.getPriority() > dataNetwork.getPriority())) {
+                evaluation.addDataDisallowedReason(
+                        DataDisallowedReason.ONLY_ALLOWED_SINGLE_NETWORK);
+            } else {
+                log("evaluateDataNetwork: " + dataNetwork + " has the highest priority. "
+                        + "No need to tear down");
+            }
         }
 
         // Check if data is disabled
@@ -1656,6 +1696,8 @@ public class DataNetworkController extends Handler {
                     return DataNetwork.TEAR_DOWN_REASON_ILLEGAL_STATE;
                 case VOPS_NOT_SUPPORTED:
                     return DataNetwork.TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED;
+                case ONLY_ALLOWED_SINGLE_NETWORK:
+                    return DataNetwork.TEAR_DOWN_ONLY_ALLOWED_SINGLE_NETWORK;
             }
         }
         return 0;
@@ -2342,7 +2384,8 @@ public class DataNetworkController extends Handler {
                 }
             }
         } else {
-            mDataRetryManager.reset();
+            mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                    () -> callback.onDataServiceBound(transport)));
         }
         mDataServiceBound.put(transport, bound);
     }
