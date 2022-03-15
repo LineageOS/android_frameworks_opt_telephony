@@ -18,6 +18,7 @@ package com.android.internal.telephony.dataconnection;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -42,6 +43,7 @@ public class DcRequestTest extends TelephonyTest {
     public void setUp() throws Exception {
         mApnConfigTypeRepo = mock(ApnConfigTypeRepository.class);
         super.setUp(getClass().getSimpleName());
+        doReturn(false).when(mPhone).isUsingNewDataStack();
     }
 
     @After
