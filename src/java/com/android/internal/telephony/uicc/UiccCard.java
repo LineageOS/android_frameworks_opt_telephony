@@ -49,7 +49,7 @@ public class UiccCard {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private CardState mCardState;
     protected String mCardId;
-    private boolean mIsSupportsMultipleEnabledProfiles;
+    protected boolean mIsSupportsMultipleEnabledProfiles;
 
     protected HashMap<Integer, UiccPort> mUiccPorts = new HashMap<>();
     private HashMap<Integer, Integer> mPhoneIdToPortIdx = new HashMap<>();
@@ -215,6 +215,7 @@ public class UiccCard {
         pw.println(" mCardState=" + mCardState);
         pw.println(" mCardId=" + mCardId);
         pw.println(" mNumberOfPorts=" + mUiccPorts.size());
+        pw.println( "mIsSupportsMultipleEnabledProfiles=" + mIsSupportsMultipleEnabledProfiles);
         pw.println();
         for (UiccPort uiccPort : mUiccPorts.values()) {
             uiccPort.dump(fd, pw, args);

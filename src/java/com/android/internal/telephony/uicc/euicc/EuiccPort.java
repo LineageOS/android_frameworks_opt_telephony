@@ -165,6 +165,15 @@ public class EuiccPort extends UiccPort {
     }
 
     /**
+     * Updates MEP(Multiple Enabled Profile) support flag.
+     * The flag can be updated after the port creation.
+     */
+    public void updateSupportMultipleEnabledProfile(boolean supported) {
+        logd("updateSupportMultipleEnabledProfile");
+        mIsSupportsMultipleEnabledProfiles = supported;
+    }
+
+    /**
      * Gets a list of user-visible profiles.
      *
      * @param callback The callback to get the result.
