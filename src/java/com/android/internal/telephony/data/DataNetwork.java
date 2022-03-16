@@ -83,7 +83,6 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
-import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataRetryManager.DataHandoverRetryEntry;
@@ -577,11 +576,6 @@ public class DataNetwork extends StateMachine {
     private @DataFailureCause int mFailCause = DataFailCause.NONE;
 
     /**
-     * The retry delay in milliseconds from setup data failure.
-     */
-    private long mRetryDelayMillis = DataCallResponse.RETRY_DURATION_UNDEFINED;
-
-    /**
      * Indicates if data network is suspended. Note this is slightly different from the
      * {@link TelephonyManager#DATA_SUSPENDED}, which is only possible when data network is in
      * connected state. This flag reflects to the
@@ -1066,8 +1060,10 @@ public class DataNetwork extends StateMachine {
                             UUID.fromString("58c56403-7ea7-4e56-a0c7-e467114d09b8"), message);
                     // Setup data failed. Use the retry logic defined in
                     // CarrierConfigManager.KEY_TELEPHONY_DATA_SETUP_RETRY_RULES_STRING_ARRAY.
-                    mRetryDelayMillis = DataCallResponse.RETRY_DURATION_UNDEFINED;
-                    mFailCause = DataFailCause.NO_RETRY_FAILURE;
+                    mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                            .onSetupDataFailed(DataNetwork.this, mAttachedNetworkRequestList,
+                                    DataFailCause.NO_RETRY_FAILURE,
+                                    DataCallResponse.RETRY_DURATION_UNDEFINED));
                     transitionTo(mDisconnectedState);
                     break;
                 default:
@@ -1344,18 +1340,6 @@ public class DataNetwork extends StateMachine {
         @Override
         public void enter() {
             logl("Data network disconnected. mEverConnected=" + mEverConnected);
-            if (mEverConnected) {
-                mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
-                        .onDisconnected(DataNetwork.this, mFailCause));
-                if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
-                    unregisterForWwanEvents();
-                }
-            } else {
-                mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
-                        .onSetupDataFailed(DataNetwork.this,
-                                new NetworkRequestList(mAttachedNetworkRequestList),
-                                mFailCause, mRetryDelayMillis));
-            }
             // The detach all network requests must be the last message to handle.
             sendMessage(EVENT_DETACH_ALL_NETWORK_REQUESTS);
             // Gracefully handle all the un-processed events then quit the state machine.
@@ -2071,8 +2055,12 @@ public class DataNetwork extends StateMachine {
             transitionTo(mConnectedState);
         } else {
             // Setup data failed.
-            mRetryDelayMillis = response != null ? response.getRetryDurationMillis()
+            long retryDelayMillis = response != null ? response.getRetryDurationMillis()
                     : DataCallResponse.RETRY_DURATION_UNDEFINED;
+            NetworkRequestList requestList = new NetworkRequestList(mAttachedNetworkRequestList);
+            mDataNetworkCallback.invokeFromExecutor(()
+                    -> mDataNetworkCallback.onSetupDataFailed(
+                            DataNetwork.this, requestList, mFailCause, retryDelayMillis));
             transitionTo(mDisconnectedState);
         }
 
@@ -2099,7 +2087,9 @@ public class DataNetwork extends StateMachine {
                 + DataServiceCallback.resultCodeToString(resultCode));
         if (resultCode == DataServiceCallback.RESULT_ERROR_INVALID_RESPONSE) {
             log("Remove network since deactivate request returned an error.");
-            mFailCause = DataFailCause.RADIO_NOT_AVAILABLE;
+            mDataNetworkCallback.invokeFromExecutor(
+                    () -> mDataNetworkCallback.onDisconnected(
+                            DataNetwork.this, DataFailCause.RADIO_NOT_AVAILABLE));
             transitionTo(mDisconnectedState);
         }
     }
@@ -2195,24 +2185,23 @@ public class DataNetwork extends StateMachine {
                 log("onDataStateChanged: " + response);
                 mDataCallResponse = response;
                 if (response.getLinkStatus() != DataCallResponse.LINK_STATUS_INACTIVE) {
-                    if (mPhone.getHalVersion().greaterOrEqual(RIL.RADIO_HAL_VERSION_1_6)
-                            && response.getTrafficDescriptors().isEmpty()) {
-                        log("onDataStateChanged: No traffic descriptors reported by "
-                                + AccessNetworkConstants.transportTypeToString(mTransport)
-                                + " data service.");
-                        mFailCause = DataFailCause.NO_TRAFFIC_DESCRIPTORS;
-                        mRetryDelayMillis = DataCallResponse.RETRY_DURATION_UNDEFINED;
-                        transitionTo(mDisconnectedState);
-                    } else {
-                        updateDataNetwork(response);
-                    }
+                    updateDataNetwork(response);
                 } else {
                     log("onDataStateChanged: PDN inactive reported by "
                             + AccessNetworkConstants.transportTypeToString(mTransport)
                             + " data service.");
-                    mFailCause = mEverConnected ? response.getCause()
-                            : DataFailCause.NO_RETRY_FAILURE;
-                    mRetryDelayMillis = DataCallResponse.RETRY_DURATION_UNDEFINED;
+                    if (mEverConnected) {
+                        mDataNetworkCallback.invokeFromExecutor(
+                                () -> mDataNetworkCallback.onDisconnected(
+                                        DataNetwork.this, response.getCause()));
+                    } else {
+                        log("onDataStateChanged: never in connected state. Treated as a setup "
+                                + "failure.");
+                        mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                                .onSetupDataFailed(DataNetwork.this, mAttachedNetworkRequestList,
+                                        DataFailCause.NO_RETRY_FAILURE,
+                                        DataCallResponse.RETRY_DURATION_UNDEFINED));
+                    }
                     transitionTo(mDisconnectedState);
                 }
             }
@@ -2222,9 +2211,16 @@ public class DataNetwork extends StateMachine {
             // for that
             log("onDataStateChanged: PDN disconnected reported by "
                     + AccessNetworkConstants.transportTypeToString(mTransport) + " data service.");
-            mFailCause = mEverConnected ? DataFailCause.LOST_CONNECTION
-                    : DataFailCause.NO_RETRY_FAILURE;
-            mRetryDelayMillis = DataCallResponse.RETRY_DURATION_UNDEFINED;
+            if (mEverConnected) {
+                mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                        .onDisconnected(DataNetwork.this, DataFailCause.LOST_CONNECTION));
+            } else {
+                log("onDataStateChanged: never in connected state. Treated as a setup failure.");
+                mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                        .onSetupDataFailed(DataNetwork.this, mAttachedNetworkRequestList,
+                                DataFailCause.NO_RETRY_FAILURE,
+                                DataCallResponse.RETRY_DURATION_UNDEFINED));
+            }
             transitionTo(mDisconnectedState);
         }
     }
