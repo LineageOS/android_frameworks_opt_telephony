@@ -79,11 +79,11 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
     private String mTestName = "";
 
     // List of all requests filed by a test
-    private final ArraySet<NetworkRequest> mAllNetworkRequestSet = new ArraySet<>();
+    private final ArraySet<TelephonyNetworkRequest> mAllNetworkRequestSet = new ArraySet<>();
     // List of requests active in DcTracker
-    private final ArrayList<NetworkRequest> mNetworkRequestList = new ArrayList<>();
+    private final ArrayList<TelephonyNetworkRequest> mNetworkRequestList = new ArrayList<>();
     // List of complete messages associated with the network requests
-    private final Map<NetworkRequest, Message> mNetworkRequestMessageMap = new HashMap<>();
+    private final Map<TelephonyNetworkRequest, Message> mNetworkRequestMessageMap = new HashMap<>();
 
     private TelephonyNetworkFactory mTelephonyNetworkFactoryUT;
     private int mRequestId = 0;
@@ -168,18 +168,19 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
                         "mobile_ia,14,0,2,-1,true", "mobile_emergency,15,0,2,-1,true"});
 
         doAnswer(invocation -> {
-            final NetworkRequest req = (NetworkRequest) invocation.getArguments()[0];
-            final Message msg = (Message) invocation.getArguments()[2];
+            final TelephonyNetworkRequest req =
+                    (TelephonyNetworkRequest) invocation.getArguments()[0];
+            //final Message msg = (Message) invocation.getArguments()[2];
             mNetworkRequestList.add(req);
             mAllNetworkRequestSet.add(req);
-            mNetworkRequestMessageMap.put(req, msg);
+            //mNetworkRequestMessageMap.put(req, msg);
             return null;
-        }).when(mDcTracker).requestNetwork(any(), anyInt(), any());
+        }).when(mDataNetworkController).addNetworkRequest(any());
 
         doAnswer(invocation -> {
-            mNetworkRequestList.remove((NetworkRequest) invocation.getArguments()[0]);
+            mNetworkRequestList.remove((TelephonyNetworkRequest) invocation.getArguments()[0]);
             return null;
-        }).when(mDcTracker).releaseNetwork(any(), anyInt());
+        }).when(mDataNetworkController).removeNetworkRequest(any());
     }
 
     @After
@@ -218,10 +219,11 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
             final NetworkCapabilities capabilitiesFilter =
                     mTelephonyNetworkFactoryUT.makeNetworkFilter(
                             mSubscriptionController.getSubIdUsingPhoneId(0));
-            for (final NetworkRequest request : mAllNetworkRequestSet) {
+            for (final TelephonyNetworkRequest request : mAllNetworkRequestSet) {
                 final int message = request.canBeSatisfiedBy(capabilitiesFilter)
                         ? CMD_REQUEST_NETWORK : CMD_CANCEL_REQUEST;
-                mTelephonyNetworkFactoryUT.obtainMessage(message, 0, 0, request).sendToTarget();
+                mTelephonyNetworkFactoryUT.obtainMessage(message, 0, 0,
+                        request.getNativeNetworkRequest()).sendToTarget();
             }
             return null;
         }).when(mConnectivityManager).offerNetwork(anyInt(), any(), any(), any());
@@ -392,7 +394,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         h.sendMessage(h.obtainMessage(5, ar));
         processAllMessages();
 
-        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mTransportManager)
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
                 .getCurrentTransport(anyInt());
 
         hp = new HandoverParams(ApnSetting.TYPE_MMS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
@@ -424,7 +426,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         Handler h = (Handler) f.get(mTelephonyNetworkFactoryUT);
 
         HandoverCallback handoverCallback = mock(HandoverCallback.class);
-        Mockito.reset(mDcTracker);
+        Mockito.reset(mDataNetworkController);
         doReturn(mDataConnection).when(mDcTracker).getDataConnectionByApnType(anyString());
         doReturn(false).when(mDataConnection).isActive();
 
@@ -434,8 +436,8 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         h.sendMessage(h.obtainMessage(5, ar));
         processAllMessages();
 
-        verify(mDcTracker, times(1)).releaseNetwork(any(), eq(1));
-        verify(mDcTracker, times(1)).requestNetwork(any(), eq(1), any());
+        verify(mDataNetworkController, times(1)).removeNetworkRequest(any());
+        verify(mDataNetworkController, times(1)).addNetworkRequest(any());
     }
 
     @Test
@@ -472,6 +474,6 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         processAllMessages();
 
         // Ensure the release is called one more time after the normal release
-        verify(mDcTracker, times(2)).releaseNetwork(any(), eq(1));
+        verify(mDataNetworkController, times(2)).removeNetworkRequest(any());
     }
 }
