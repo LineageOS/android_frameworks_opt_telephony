@@ -18,8 +18,6 @@ package com.android.internal.telephony.data;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import static org.mockito.Mockito.doReturn;
-
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 
@@ -38,7 +36,6 @@ public class DataUtilsTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("DataUtilsTest +Setup!");
         super.setUp(getClass().getSimpleName());
-        doReturn(true).when(mPhone).isUsingNewDataStack();
         logd("DataUtilsTest -Setup!");
     }
 

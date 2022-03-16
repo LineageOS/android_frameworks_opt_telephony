@@ -110,7 +110,6 @@ import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyComponentFactory;
 import com.android.internal.telephony.TelephonyIntents;
-import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.metrics.ImsStats;
@@ -459,8 +458,8 @@ public class ImsPhone extends ImsPhoneBase {
         mExternalCallTracker.setCallPuller(mCT);
 
         boolean legacyMode = true;
-        if (mDefaultPhone.getTransportManager() != null) {
-            legacyMode = mDefaultPhone.getTransportManager().isInLegacyMode();
+        if (mDefaultPhone.getAccessNetworksManager() != null) {
+            legacyMode = mDefaultPhone.getAccessNetworksManager().isInLegacyMode();
         }
         mSS.setOutOfService(legacyMode, false);
 
@@ -476,8 +475,9 @@ public class ImsPhone extends ImsPhoneBase {
         mWakeLock.setReferenceCounted(false);
 
         if (mDefaultPhone.getServiceStateTracker() != null
-                && mDefaultPhone.getTransportManager() != null) {
-            for (int transport : mDefaultPhone.getTransportManager().getAvailableTransports()) {
+                && mDefaultPhone.getAccessNetworksManager() != null) {
+            for (int transport : mDefaultPhone.getAccessNetworksManager()
+                    .getAvailableTransports()) {
                 mDefaultPhone.getServiceStateTracker()
                         .registerForDataRegStateOrRatChanged(transport, this,
                                 EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED, null);
@@ -509,7 +509,8 @@ public class ImsPhone extends ImsPhoneBase {
 
         //Force all referenced classes to unregister their former registered events
         if (mDefaultPhone != null && mDefaultPhone.getServiceStateTracker() != null) {
-            for (int transport : mDefaultPhone.getTransportManager().getAvailableTransports()) {
+            for (int transport : mDefaultPhone.getAccessNetworksManager()
+                    .getAvailableTransports()) {
                 mDefaultPhone.getServiceStateTracker()
                         .unregisterForDataRegStateOrRatChanged(transport, this);
             }
@@ -2421,9 +2422,9 @@ public class ImsPhone extends ImsPhoneBase {
      * for PS domain over WWAN transport.
      */
     private boolean isCsNotInServiceAndPsWwanReportingWlan(ServiceState ss) {
-        TransportManager tm = mDefaultPhone.getTransportManager();
         // We can not get into this condition if we are in AP-Assisted mode.
-        if (tm == null || !tm.isInLegacyMode()) {
+        if (mDefaultPhone.getAccessNetworksManager() == null
+                || !mDefaultPhone.getAccessNetworksManager().isInLegacyMode()) {
             return false;
         }
         NetworkRegistrationInfo csInfo = ss.getNetworkRegistrationInfo(
