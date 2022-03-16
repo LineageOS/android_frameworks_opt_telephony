@@ -667,6 +667,18 @@ public class DataProfileManager extends Handler {
         return null != getDataProfileForNetworkRequest(networkRequest, networkType);
     }
 
+     /**
+     * Check if any preferred data profile exists.
+     *
+     * @return {@code true} if any preferred data profile exists
+     */
+    public boolean isAnyPreferredDataProfileExisting() {
+        for (DataProfile dataProfile : mAllDataProfiles) {
+            if (dataProfile.isPreferred()) return true;
+        }
+        return false;
+    }
+
     /**
      * Dedupe the similar data profiles.
      */
