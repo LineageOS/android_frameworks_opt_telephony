@@ -1981,10 +1981,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
+                        + ",reason=" + RILUtils.setupDataReasonToString(reason)
                         + ",accessNetworkType=" + AccessNetworkType.toString(accessNetworkType)
                         + ",dataProfile=" + dataProfile + ",isRoaming=" + isRoaming
-                        + ",allowRoaming=" + allowRoaming + ",reason" + reason
-                        + ",linkProerties=" + linkProperties + ",pduSessionId=" + pduSessionId
+                        + ",allowRoaming=" + allowRoaming
+                        + ",linkProperties=" + linkProperties + ",pduSessionId=" + pduSessionId
                         + ",sliceInfo=" + sliceInfo + ",trafficDescriptor=" + trafficDescriptor
                         + ",matchAllRuleAllowed=" + matchAllRuleAllowed);
             }
@@ -2248,7 +2249,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
-                        + " cid = " + cid + " reason = " + reason);
+                        + " cid = " + cid + " reason = "
+                        + RILUtils.deactivateDataReasonToString(reason));
             }
 
             try {
