@@ -20,6 +20,7 @@ import static com.android.internal.telephony.dataconnection.DcTracker.REQUEST_TY
 import static com.android.internal.telephony.dataconnection.DcTracker.REQUEST_TYPE_NORMAL;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -65,6 +66,7 @@ public class DataThrottlerTest extends TelephonyTest {
         mMockChangedCallback2 = mock(DataThrottler.Callback.class);
         mDataThrottler = new DataThrottler(mPhone, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
         mDataThrottler.registerForThrottleStatusChanges(mMockChangedCallback1);
+        doReturn(false).when(mPhone).isUsingNewDataStack();
     }
 
     @After

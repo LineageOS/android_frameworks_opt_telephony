@@ -403,7 +403,6 @@ public class DataProfileManagerTest extends TelephonyTest {
         logd("DataProfileManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
         mDataProfileManagerCallback = Mockito.mock(DataProfileManagerCallback.class);
-        doReturn(true).when(mPhone).isUsingNewDataStack();
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
                 Telephony.Carriers.CONTENT_URI.getAuthority(), mApnSettingContentProvider);
 
@@ -487,6 +486,18 @@ public class DataProfileManagerTest extends TelephonyTest {
                 TelephonyManager.NETWORK_TYPE_NR);
         assertThat(dp.canSatisfy(tnr.getCapabilities())).isTrue();
         assertThat(dp.getApnSetting().getApnName()).isEqualTo(TETHERING_APN);
+    }
+
+    @Test
+    public void testGetDataProfileForNetworkRequestNoCompatibleRat() {
+        NetworkRequest request = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build();
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+        DataProfile dp = mDataProfileManagerUT.getDataProfileForNetworkRequest(tnr,
+                TelephonyManager.NETWORK_TYPE_GSM);
+        // Should not find data profile due to RAT incompatible.
+        assertThat(dp).isNull();
     }
 
     @Test
