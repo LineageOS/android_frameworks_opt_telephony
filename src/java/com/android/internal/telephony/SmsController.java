@@ -151,14 +151,6 @@ public class SmsController extends ISmsImplBase {
         if (callingPackage == null) {
             callingPackage = getCallingPackage();
         }
-
-        // Perform FDN check
-        if (FdnUtils.isNumberBlockedByFDN(mContext, subId, destAddr,
-                getSmscAddressFromIccEfForSubscriber(subId, callingPackage))) {
-            sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE);
-            return;
-        }
-
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendData(callingPackage, callingAttributionTag, destAddr, scAddr, destPort,
@@ -209,14 +201,6 @@ public class SmsController extends ISmsImplBase {
         } finally {
             Binder.restoreCallingIdentity(token);
         }
-
-        // Perform FDN check
-        if (FdnUtils.isNumberBlockedByFDN(mContext, subId, destAddr,
-                getSmscAddressFromIccEfForSubscriber(subId, callingPackage))) {
-            sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE);
-            return;
-        }
-
         if (isBluetoothSubscription(info)) {
             sendBluetoothText(info, destAddr, text, sentIntent, deliveryIntent);
         } else {
@@ -275,14 +259,6 @@ public class SmsController extends ISmsImplBase {
         if (callingPackage == null) {
             callingPackage = getCallingPackage();
         }
-
-        // Perform FDN check
-        if (FdnUtils.isNumberBlockedByFDN(mContext, subId, destAddr,
-                getSmscAddressFromIccEfForSubscriber(subId, callingPackage))) {
-            sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE);
-            return;
-        }
-
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendTextWithOptions(callingPackage, callingAttributionTag, destAddr,
@@ -305,14 +281,6 @@ public class SmsController extends ISmsImplBase {
         if (getCallingPackage() != null) {
             callingPackage = getCallingPackage();
         }
-
-        // Perform FDN check
-        if (FdnUtils.isNumberBlockedByFDN(mContext, subId, destAddr,
-                getSmscAddressFromIccEfForSubscriber(subId, callingPackage))) {
-            sendErrorInPendingIntents(sentIntents, SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE);
-            return;
-        }
-
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendMultipartText(callingPackage, callingAttributionTag, destAddr, scAddr,
@@ -333,14 +301,6 @@ public class SmsController extends ISmsImplBase {
         if (callingPackage == null) {
             callingPackage = getCallingPackage();
         }
-
-        // Perform FDN check
-        if (FdnUtils.isNumberBlockedByFDN(mContext, subId, destAddr,
-                getSmscAddressFromIccEfForSubscriber(subId, callingPackage))) {
-            sendErrorInPendingIntents(sentIntents, SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE);
-            return;
-        }
-
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendMultipartTextWithOptions(callingPackage, callingAttributionTag,
