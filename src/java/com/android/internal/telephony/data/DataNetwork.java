@@ -1609,7 +1609,7 @@ public class DataNetwork extends StateMachine {
         if (mCarrierServicePackageUid != Process.INVALID_UID
                 && ArrayUtils.contains(mAdministratorUids, mCarrierServicePackageUid)) {
             builder.setOwnerUid(mCarrierServicePackageUid);
-            builder.setAccessUids(Collections.singleton(mCarrierServicePackageUid));
+            builder.setAllowedUids(Collections.singleton(mCarrierServicePackageUid));
         }
         builder.setAdministratorUids(mAdministratorUids);
 

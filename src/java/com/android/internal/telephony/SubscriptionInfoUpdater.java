@@ -249,7 +249,10 @@ public class SubscriptionInfoUpdater extends Handler {
         for (int i = 0; i < TelephonyManager.getDefault().getActiveModemCount(); i++) {
             UiccSlot slot = UiccController.getInstance().getUiccSlotForPhone(i);
             int slotId = UiccController.getInstance().getSlotIdFromPhoneId(i);
-            if  (sIccId[i] == null || UiccController.getInstance().getUiccPort(i) == null) {
+            // When psim card is absent there is no port object even the port state is active.
+            // We should check the slot state for psim and port state for esim(MEP eUICC).
+            if  (sIccId[i] == null || slot == null || !slot.isActive()
+                    || (slot.isEuicc() && UiccController.getInstance().getUiccPort(i) == null)) {
                 if (sIccId[i] == null) {
                     logd("Wait for SIM " + i + " Iccid");
                 } else {
