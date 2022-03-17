@@ -537,10 +537,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             if (mMockModem != null) {
                 mRadioVersion = RADIO_HAL_VERSION_UNKNOWN;
-                for (int service = MIN_SERVICE_IDX; service <= MAX_SERVICE_IDX; service++) {
-                    mMockModem.unbindMockModemService(service);
-                    resetProxyAndRequestList(service);
-                }
                 mMockModem = null;
             }
         }
@@ -669,8 +665,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     mRadioProxy.setResponseFunctions(mRadioResponse, mRadioIndication);
                 } else {
                     mDisabledRadioServices.get(RADIO_SERVICE).add(mPhoneId);
-                    riljLoge("getRadioProxy: mRadioProxy for "
-                            + HIDL_SERVICE_NAME[mPhoneId] + " is disabled");
+                    riljLoge("getRadioProxy: set mRadioProxy for "
+                            + HIDL_SERVICE_NAME[mPhoneId] + " as disabled");
                 }
             }
         } catch (RemoteException e) {
@@ -964,8 +960,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     }
                 } else {
                     mDisabledRadioServices.get(service).add(mPhoneId);
-                    riljLoge("getRadioServiceProxy: " + serviceToString(service) + " for "
-                            + HIDL_SERVICE_NAME[mPhoneId] + " is disabled");
+                    riljLoge("getRadioServiceProxy: set " + serviceToString(service) + " for "
+                            + HIDL_SERVICE_NAME[mPhoneId] + " as disabled");
                 }
             }
         } catch (RemoteException e) {
