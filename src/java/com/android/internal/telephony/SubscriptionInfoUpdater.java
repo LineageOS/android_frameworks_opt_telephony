@@ -37,7 +37,6 @@ import android.os.PersistableBundle;
 import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.service.carrier.CarrierIdentifier;
-import android.service.carrier.CarrierService;
 import android.service.euicc.EuiccProfileInfo;
 import android.service.euicc.EuiccService;
 import android.service.euicc.GetEuiccProfileInfoListResult;
@@ -65,10 +64,8 @@ import com.android.telephony.Rlog;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.stream.Collectors;
 
 /**
  *@hide
@@ -1083,11 +1080,10 @@ public class SubscriptionInfoUpdater extends Handler {
     private boolean isCarrierServicePackage(int phoneId, String pkgName) {
         if (pkgName.equals(getDefaultCarrierServicePackageName())) return false;
 
-        List<String> carrierPackageNames = TelephonyManager.from(sContext)
-                .getCarrierPackageNamesForIntentAndPhone(
-                        new Intent(CarrierService.CARRIER_SERVICE_INTERFACE), phoneId);
-        if (DBG) logd("Carrier Packages For Subscription = " + carrierPackageNames);
-        return carrierPackageNames != null && carrierPackageNames.contains(pkgName);
+        String carrierPackageName = TelephonyManager.from(sContext)
+                .getCarrierServicePackageNameForLogicalSlot(phoneId);
+        if (DBG) logd("Carrier service package for subscription = " + carrierPackageName);
+        return pkgName.equals(carrierPackageName);
     }
 
     /**
