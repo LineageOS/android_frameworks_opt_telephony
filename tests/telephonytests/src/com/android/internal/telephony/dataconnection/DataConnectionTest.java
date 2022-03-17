@@ -923,7 +923,7 @@ public class DataConnectionTest extends TelephonyTest {
         assertEquals(carrierConfigPkgUid, getNetworkCapabilities().getOwnerUid());
         assertEquals(
                 Collections.singleton(carrierConfigPkgUid),
-                getNetworkCapabilities().getAccessUids());
+                getNetworkCapabilities().getAllowedUids());
     }
 
     @Test
