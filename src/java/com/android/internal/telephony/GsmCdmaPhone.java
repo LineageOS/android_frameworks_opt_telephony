@@ -308,7 +308,7 @@ public class GsmCdmaPhone extends Phone {
                 .makeCarrierSignalAgent(this);
         mAccessNetworksManager = mTelephonyComponentFactory
                 .inject(AccessNetworksManager.class.getName())
-                .makeAccessNetworksManager(this);
+                .makeAccessNetworksManager(this, getLooper());
         if (!isUsingNewDataStack()) {
             mTransportManager = mTelephonyComponentFactory.inject(TransportManager.class.getName())
                     .makeTransportManager(this);
