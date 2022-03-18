@@ -3720,8 +3720,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             // Check with the DCTracker to see if data is enabled; there may be a case when
             // ImsPhoneCallTracker isn't being informed of the right data enabled state via its
             // registration, so we'll refresh now.
-            boolean isDataEnabled = mPhone.getDefaultPhone().getDataEnabledSettings()
-                    .isDataEnabled();
+            boolean isDataEnabled;
+            if (mPhone.getDefaultPhone().isUsingNewDataStack()) {
+                isDataEnabled = mPhone.getDefaultPhone().getDataSettingsManager().isDataEnabled();
+            } else {
+                isDataEnabled = mPhone.getDefaultPhone().getDataEnabledSettings().isDataEnabled();
+            }
 
             if (DBG) {
                 log("onCallHandover ::  srcAccessTech=" + srcAccessTech + ", targetAccessTech="
