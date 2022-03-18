@@ -804,7 +804,6 @@ public class DataNetworkController extends Handler {
                         networkTypes).sendToTarget();
             }
         });
-        updateSubscriptionPlans();
 
         mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, this, EVENT_SERVICE_STATE_CHANGED,
