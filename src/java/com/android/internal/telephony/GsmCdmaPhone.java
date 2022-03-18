@@ -1494,6 +1494,12 @@ public class GsmCdmaPhone extends Phone {
                     + ((imsPhone != null) ? imsPhone.getServiceState().getState() : "N/A"));
         }
 
+        // Perform FDN check for non-emergency calls - shouldn't dial if number is blocked by FDN
+        if(!isEmergency && FdnUtils.isNumberBlockedByFDN(mPhoneId, dialString, getCountryIso())) {
+            throw new CallStateException(CallStateException.ERROR_FDN_BLOCKED,
+                    "cannot dial number blocked by FDN");
+        }
+
         // Bypass WiFi Only WFC check if this is an emergency call - we should still try to
         // place over cellular if possible.
         if (!isEmergency) {
