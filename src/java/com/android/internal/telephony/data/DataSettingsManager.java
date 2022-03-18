@@ -163,7 +163,7 @@ public class DataSettingsManager extends Handler {
         mDataConfigManager = dataNetworkController.getDataConfigManager();
         mDataEnabledOverride = getDataEnabledOverride();
         mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
-        mSettingsObserver = new SettingsObserver(mPhone.getContext(), mPhone);
+        mSettingsObserver = new SettingsObserver(mPhone.getContext(), this);
         mSettingsObserver.observe(Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONED),
                 EVENT_PROVISIONED_CHANGED);
         mSettingsObserver.observe(
