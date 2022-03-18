@@ -1799,6 +1799,17 @@ public class DataNetworkController extends Handler {
     }
 
     /**
+     * Check if the network request is existing. Note this method is not thread safe so can be only
+     * called within the modules in {@link com.android.internal.telephony.data}.
+     *
+     * @param networkRequest Telephony network request to check.
+     * @return {@code true} if the network request exists.
+     */
+    public boolean isNetworkRequestExisting(@NonNull TelephonyNetworkRequest networkRequest) {
+        return mAllNetworkRequestList.contains(networkRequest);
+    }
+
+    /**
      * Register for IMS feature registration state.
      *
      * @param subId The subscription index.
@@ -2425,7 +2436,7 @@ public class DataNetworkController extends Handler {
      */
     private void onAttachNetworkRequestsFailed(@NonNull DataNetwork dataNetwork,
             @NonNull NetworkRequestList requestList) {
-        // TODO: Perform retry if needed.
+        log("Failed to attach " + requestList + " to " + dataNetwork);
     }
 
     /**
