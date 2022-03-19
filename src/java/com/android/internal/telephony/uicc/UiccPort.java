@@ -21,7 +21,6 @@ import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
-import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.RemoteException;
@@ -107,37 +106,6 @@ public class UiccPort {
     @Override
     protected void finalize() {
         if (DBG) log("UiccPort finalized");
-    }
-
-    /**
-     * Notifies handler when carrier privilege rules are loaded.
-     * @deprecated Please use
-     * {@link UiccProfile#registerForCarrierPrivilegeRulesLoaded(Handler, int, Object)} instead.
-     */
-    @Deprecated
-    public void registerForCarrierPrivilegeRulesLoaded(Handler h, int what, Object obj) {
-        synchronized (mLock) {
-            if (mUiccProfile != null) {
-                mUiccProfile.registerForCarrierPrivilegeRulesLoaded(h, what, obj);
-            } else {
-                loge("registerForCarrierPrivilegeRulesLoaded Failed!");
-            }
-        }
-    }
-
-    /**
-     * @deprecated Please use
-     * {@link UiccProfile#unregisterForCarrierPrivilegeRulesLoaded(Handler)} instead.
-     */
-    @Deprecated
-    public void unregisterForCarrierPrivilegeRulesLoaded(Handler h) {
-        synchronized (mLock) {
-            if (mUiccProfile != null) {
-                mUiccProfile.unregisterForCarrierPrivilegeRulesLoaded(h);
-            } else {
-                loge("unregisterForCarrierPrivilegeRulesLoaded Failed!");
-            }
-        }
     }
 
     /**
