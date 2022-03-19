@@ -3317,12 +3317,22 @@ public class ServiceStateTracker extends Handler {
     private void pollStateInternal(boolean modemTriggered) {
         mPollingContext = new int[1];
         mPollingContext[0] = 0;
+        NetworkRegistrationInfo nri;
 
         log("pollState: modemTriggered=" + modemTriggered);
 
         switch (mCi.getRadioState()) {
             case TelephonyManager.RADIO_POWER_UNAVAILABLE:
+                // Preserve the IWLAN registration state, because that should not be affected by
+                // radio availability.
+                nri = mNewSS.getNetworkRegistrationInfo(
+                        NetworkRegistrationInfo.DOMAIN_PS,
+                        AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
                 mNewSS.setOutOfService(mAccessNetworksManager.isInLegacyMode(), false);
+                // Add the IWLAN registration info back to service state.
+                if (nri != null) {
+                    mNewSS.addNetworkRegistrationInfo(nri);
+                }
                 mPhone.getSignalStrengthController().setSignalStrengthDefaultValues();
                 mLastNitzData = null;
                 mNitzState.handleNetworkUnavailable();
@@ -3330,7 +3340,16 @@ public class ServiceStateTracker extends Handler {
                 break;
 
             case TelephonyManager.RADIO_POWER_OFF:
+                // Preserve the IWLAN registration state, because that should not be affected by
+                // radio availability.
+                nri = mNewSS.getNetworkRegistrationInfo(
+                        NetworkRegistrationInfo.DOMAIN_PS,
+                        AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
                 mNewSS.setOutOfService(mAccessNetworksManager.isInLegacyMode(), true);
+                // Add the IWLAN registration info back to service state.
+                if (nri != null) {
+                    mNewSS.addNetworkRegistrationInfo(nri);
+                }
                 mPhone.getSignalStrengthController().setSignalStrengthDefaultValues();
                 mLastNitzData = null;
                 mNitzState.handleNetworkUnavailable();
