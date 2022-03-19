@@ -883,6 +883,8 @@ public class DataNetwork extends StateMachine {
     private final class ConnectedState extends State {
         @Override
         public void enter() {
+            // Note that reaching here could mean from connecting -> connected, or from
+            // handover -> connected.
             if (!mEverConnected) {
                 // Transited from ConnectingState
                 log("network connected.");
@@ -895,20 +897,13 @@ public class DataNetwork extends StateMachine {
                 mQosCallbackTracker.updateSessions(mQosBearerSessions);
                 mKeepaliveTracker = new KeepaliveTracker(mPhone,
                         getHandler().getLooper(), DataNetwork.this, mNetworkAgent);
+                if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
+                    registerForWwanEvents();
+                }
             }
 
             notifyPreciseDataConnectionState();
             updateSuspendState();
-
-            if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
-                // Reaching here means
-                // 1. The network was first time connected on cellular.
-                // 2. The network handover successfully from IWLAN to cellular.
-                // 3. The network failed to handover to IWLAN and re-entered connected state.
-                // TODO: Correctly support (3) later. We do not need to perform the following works.
-                registerForBandwidthUpdate();
-                mKeepaliveTracker.registerForKeepaliveStatus();
-            }
         }
 
         @Override
@@ -1055,6 +1050,24 @@ public class DataNetwork extends StateMachine {
             logv("event=" + eventToString(msg.what));
             return NOT_HANDLED;
         }
+    }
+
+    /**
+     * Register for events that can only happen on cellular networks.
+     */
+    private void registerForWwanEvents() {
+        registerForBandwidthUpdate();
+        mKeepaliveTracker.registerForKeepaliveStatus();
+        // Todo: Register for PCO events.
+    }
+
+    /**
+     * Unregister for events that can only happen on cellular networks.
+     */
+    private void unregisterForWwanEvents() {
+        unregisterForBandwidthUpdate();
+        mKeepaliveTracker.unregisterForKeepaliveStatus();
+        // Todo: Unregister for PCO events.
     }
 
     @Override
@@ -1521,8 +1534,8 @@ public class DataNetwork extends StateMachine {
             @Nullable DataCallResponse response) {
         logl("onSetupResponse: resultCode=" + DataServiceCallback.resultCodeToString(resultCode)
                 + ", response=" + response);
-        int failCause = getFailCauseFromDataCallResponse(resultCode, response);
-        if (failCause == DataFailCause.NONE) {
+        mFailCause = getFailCauseFromDataCallResponse(resultCode, response);
+        if (mFailCause == DataFailCause.NONE) {
             updateDataNetwork(response);
 
             // TODO: Check if the cid already exists. If yes, should notify DNC and let it force
@@ -1553,7 +1566,7 @@ public class DataNetwork extends StateMachine {
             NetworkRequestList requestList = new NetworkRequestList(mAttachedNetworkRequestList);
             mDataNetworkCallback.invokeFromExecutor(()
                     -> mDataNetworkCallback.onSetupDataFailed(
-                            DataNetwork.this, requestList, failCause, retryDelayMillis));
+                            DataNetwork.this, requestList, mFailCause, retryDelayMillis));
             transitionTo(mDisconnectedState);
         }
     }
@@ -2092,14 +2105,21 @@ public class DataNetwork extends StateMachine {
             @Nullable DataCallResponse response, @Nullable DataHandoverRetryEntry retryEntry) {
         logl("onHandoverResponse: resultCode=" + DataServiceCallback.resultCodeToString(resultCode)
                 + ", response=" + response);
-        int failCause = getFailCauseFromDataCallResponse(resultCode, response);
-        if (failCause == DataFailCause.NONE) {
+        mFailCause = getFailCauseFromDataCallResponse(resultCode, response);
+        if (mFailCause == DataFailCause.NONE) {
             // Clean up on the source transport.
             mDataServiceManagers.get(mTransport).deactivateDataCall(mCid.get(mTransport),
                     DataService.REQUEST_REASON_HANDOVER, null);
             // Switch the transport to the target.
             mTransport = DataUtils.getTargetTransport(mTransport);
             updateDataNetwork(response);
+            if (mTransport != AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
+                // Handover from WWAN to WLAN
+                unregisterForWwanEvents();
+            } else {
+                // Handover from WLAN to WWAN
+                registerForWwanEvents();
+            }
             if (retryEntry != null) retryEntry.setState(DataRetryEntry.RETRY_STATE_SUCCEEDED);
             mDataNetworkCallback.invokeFromExecutor(
                     () -> mDataNetworkCallback.onHandoverSucceeded(DataNetwork.this));
@@ -2112,7 +2132,7 @@ public class DataNetwork extends StateMachine {
             if (retryEntry != null) retryEntry.setState(DataRetryEntry.RETRY_STATE_FAILED);
             mDataNetworkCallback.invokeFromExecutor(
                     () -> mDataNetworkCallback.onHandoverFailed(DataNetwork.this,
-                            failCause, retry, handoverFailureMode));
+                            mFailCause, retry, handoverFailureMode));
         }
 
         // No matter handover succeeded or not, transit back to connected state.

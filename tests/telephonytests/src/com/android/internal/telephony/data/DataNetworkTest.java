@@ -65,6 +65,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
@@ -202,6 +203,8 @@ public class DataNetworkTest extends TelephonyTest {
         doReturn(true).when(mSST).isConcurrentVoiceAndDataAllowed();
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
                 .getPreferredTransportByNetworkCapability(anyInt());
+        doReturn(DataNetwork.BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR)
+                .when(mDataConfigManager).getBandwidthEstimateSource();
     }
 
     @After
@@ -424,5 +427,81 @@ public class DataNetworkTest extends TelephonyTest {
         assertThat(pdcsList.get(3).getNetworkType()).isEqualTo(TelephonyManager.NETWORK_TYPE_IWLAN);
         assertThat(pdcsList.get(3).getTransportType())
                 .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+    }
+
+    @Test
+    public void testHandover() {
+        testCreateDataNetwork();
+
+        setSuccessfulSetupDataResponse(mMockedWlanDataServiceManager, 456);
+        // Now handover to IWLAN
+        mDataNetworkUT.startHandover(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, null);
+        processAllMessages();
+
+        verify(mLinkBandwidthEstimator).unregisterForBandwidthChanged(
+                eq(mDataNetworkUT.getHandler()));
+        assertThat(mDataNetworkUT.getTransport())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+        assertThat(mDataNetworkUT.getId()).isEqualTo(456);
+        verify(mDataNetworkCallback).onHandoverSucceeded(eq(mDataNetworkUT));
+
+        ArgumentCaptor<PreciseDataConnectionState> pdcsCaptor =
+                ArgumentCaptor.forClass(PreciseDataConnectionState.class);
+        verify(mPhone, times(4)).notifyDataConnection(pdcsCaptor.capture());
+        List<PreciseDataConnectionState> pdcsList = pdcsCaptor.getAllValues();
+
+        assertThat(pdcsList).hasSize(4);
+        assertThat(pdcsList.get(0).getState()).isEqualTo(TelephonyManager.DATA_CONNECTING);
+        assertThat(pdcsList.get(1).getState()).isEqualTo(TelephonyManager.DATA_CONNECTED);
+        assertThat(pdcsList.get(2).getState())
+                .isEqualTo(TelephonyManager.DATA_HANDOVER_IN_PROGRESS);
+        assertThat(pdcsList.get(3).getState()).isEqualTo(TelephonyManager.DATA_CONNECTED);
+
+        // Now handover back to cellular
+        Mockito.clearInvocations(mDataNetworkCallback);
+        Mockito.clearInvocations(mLinkBandwidthEstimator);
+        mDataNetworkUT.startHandover(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, null);
+        processAllMessages();
+
+        verify(mLinkBandwidthEstimator).registerForBandwidthChanged(
+                eq(mDataNetworkUT.getHandler()), anyInt(), eq(null));
+        assertThat(mDataNetworkUT.getTransport())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        assertThat(mDataNetworkUT.getId()).isEqualTo(123);
+        verify(mDataNetworkCallback).onHandoverSucceeded(eq(mDataNetworkUT));
+    }
+
+    @Test
+    public void testHandoverFailed() {
+        testCreateDataNetwork();
+
+        setFailedSetupDataResponse(mMockedWlanDataServiceManager,
+                DataServiceCallback.RESULT_ERROR_TEMPORARILY_UNAVAILABLE);
+        // Now attempt to handover to IWLAN but fail it.
+        mDataNetworkUT.startHandover(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, null);
+        processAllMessages();
+
+        verify(mDataNetworkCallback).onHandoverFailed(eq(mDataNetworkUT),
+                eq(DataFailCause.SERVICE_TEMPORARILY_UNAVAILABLE), eq(-1L),
+                eq(DataCallResponse.HANDOVER_FAILURE_MODE_LEGACY));
+        verify(mLinkBandwidthEstimator, never()).unregisterForBandwidthChanged(
+                eq(mDataNetworkUT.getHandler()));
+        assertThat(mDataNetworkUT.getTransport())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        assertThat(mDataNetworkUT.getId()).isEqualTo(123);
+
+        ArgumentCaptor<PreciseDataConnectionState> pdcsCaptor =
+                ArgumentCaptor.forClass(PreciseDataConnectionState.class);
+        verify(mPhone, times(4)).notifyDataConnection(pdcsCaptor.capture());
+        List<PreciseDataConnectionState> pdcsList = pdcsCaptor.getAllValues();
+
+        assertThat(pdcsList).hasSize(4);
+        assertThat(pdcsList.get(0).getState()).isEqualTo(TelephonyManager.DATA_CONNECTING);
+        assertThat(pdcsList.get(1).getState()).isEqualTo(TelephonyManager.DATA_CONNECTED);
+        assertThat(pdcsList.get(2).getState())
+                .isEqualTo(TelephonyManager.DATA_HANDOVER_IN_PROGRESS);
+        assertThat(pdcsList.get(3).getState()).isEqualTo(TelephonyManager.DATA_CONNECTED);
+        assertThat(pdcsList.get(3).getLastCauseCode())
+                .isEqualTo(DataFailCause.SERVICE_TEMPORARILY_UNAVAILABLE);
     }
 }
