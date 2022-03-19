@@ -2695,8 +2695,7 @@ public class DataNetwork extends StateMachine {
 
             // Clean up on the source transport.
             mDataServiceManagers.get(mTransport).deactivateDataCall(mCid.get(mTransport),
-                    DataService.REQUEST_REASON_HANDOVER,
-                    obtainMessage(EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE));
+                    DataService.REQUEST_REASON_HANDOVER, null);
             // Switch the transport to the target.
             mTransport = DataUtils.getTargetTransport(mTransport);
             // Update the logging tag
