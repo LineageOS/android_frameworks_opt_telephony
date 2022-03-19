@@ -1118,12 +1118,49 @@ public abstract class TelephonyTest {
     }
 
     /**
+     * @return The longest delay from all the message queues.
+     */
+    private long getLongestDelay() {
+        long delay = 0;
+        for (TestableLooper looper : mTestableLoopers) {
+            MessageQueue queue = looper.getLooper().getQueue();
+            try {
+                Message msg = (Message) MESSAGE_QUEUE_FIELD.get(queue);
+                while (msg != null) {
+                    delay = Math.max(msg.getWhen(), delay);
+                    msg = (Message) MESSAGE_NEXT_FIELD.get(msg);
+                }
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException("Access failed in TelephonyTest", e);
+            }
+        }
+        return delay;
+    }
+
+    /**
+     * @return {@code true} if there are any messages in the queue.
+     */
+    private boolean messagesExist() {
+        for (TestableLooper looper : mTestableLoopers) {
+            MessageQueue queue = looper.getLooper().getQueue();
+            try {
+                Message msg = (Message) MESSAGE_QUEUE_FIELD.get(queue);
+                if (msg != null) return true;
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException("Access failed in TelephonyTest", e);
+            }
+        }
+        return false;
+    }
+
+    /**
      * Handle all messages including the delayed messages.
      */
     public void processAllFutureMessages() {
-        processAllMessages();
-        moveTimeForward(TimeUnit.DAYS.toMillis(1));
-        processAllMessages();
+        while (messagesExist()) {
+            moveTimeForward(getLongestDelay());
+            processAllMessages();
+        }
     }
 
     /**

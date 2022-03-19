@@ -278,7 +278,7 @@ public class DataRetryManagerTest extends TelephonyTest {
         assertThat(entry.setupRetryType).isEqualTo(DataSetupRetryEntry.RETRY_TYPE_DATA_PROFILE);
         assertThat(entry.dataProfile).isEqualTo(mDataProfile1);
         assertThat(entry.retryDelayMillis).isEqualTo(1000);
-        assertThat(entry.networkRequestList).isNull();
+        assertThat(entry.networkRequestList).isEqualTo(networkRequestList);
         assertThat(entry.appliedDataRetryRule).isNull();
     }
 
