@@ -45,6 +45,7 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo.RegistrationState;
+import android.telephony.PcoData;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
@@ -221,19 +222,21 @@ public class DataNetworkController extends Handler {
     private @NonNull ServiceState mServiceState;
 
     /** The list of SubscriptionPlans, updated when initialized and when plans are changed. */
-    private @NonNull List<SubscriptionPlan> mSubscriptionPlans = new ArrayList<>();
+    private final @NonNull List<SubscriptionPlan> mSubscriptionPlans = new ArrayList<>();
 
     /**
      * The set of network types an unmetered override applies to, set by onSubscriptionOverride
      * and cleared when the device is rebooted or the override expires.
      */
-    private @NonNull @NetworkType Set<Integer> mUnmeteredOverrideNetworkTypes = new ArraySet<>();
+    private final @NonNull @NetworkType Set<Integer> mUnmeteredOverrideNetworkTypes =
+            new ArraySet<>();
 
     /**
      * The set of network types a congested override applies to, set by onSubscriptionOverride
      * and cleared when the device is rebooted or the override expires.
      */
-    private @NonNull @NetworkType Set<Integer> mCongestedOverrideNetworkTypes = new ArraySet<>();
+    private final @NonNull @NetworkType Set<Integer> mCongestedOverrideNetworkTypes =
+            new ArraySet<>();
 
     /**
      * The list of all network requests.
@@ -274,6 +277,9 @@ public class DataNetworkController extends Handler {
 
     /** Indicates if packet switch data is restricted by the network. */
     private boolean mPsRestricted = false;
+
+    /** Indicates if NR advanced is allowed by PCO. */
+    private boolean mNrAdvancedCapableByPco = false;
 
     /**
      * Indicates if the data services are bound. Key if the transport type, and value is the boolean
@@ -520,6 +526,14 @@ public class DataNetworkController extends Handler {
          * @param status The latest link status.
          */
         public void onPhysicalLinkStatusChanged(@LinkStatus int status) {}
+
+        /**
+         * Called when NR advanced capable by PCO changed.
+         *
+         * @param nrAdvancedCapable {@code true} if at least one of the data network is NR advanced
+         * capable.
+         */
+        public void onNrAdvancedCapableByPcoChanged(boolean nrAdvancedCapable) {}
     }
 
     /**
@@ -927,7 +941,8 @@ public class DataNetworkController extends Handler {
             case EVENT_SUBSCRIPTION_PLANS_CHANGED:
                 SubscriptionPlan[] plans = (SubscriptionPlan[]) msg.obj;
                 log("Subscription plans changed: " + Arrays.toString(plans));
-                mSubscriptionPlans = Arrays.asList(plans);
+                mSubscriptionPlans.clear();
+                mSubscriptionPlans.addAll(Arrays.asList(plans));
                 mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                         () -> callback.onSubscriptionPlanOverride()));
                 break;
@@ -1848,6 +1863,11 @@ public class DataNetworkController extends Handler {
                             @LinkStatus int linkStatus) {
                         DataNetworkController.this.onLinkStatusChanged(dataNetwork, linkStatus);
                     }
+
+                    @Override
+                    public void onPcoDataChanged(@NonNull DataNetwork dataNetwork) {
+                        DataNetworkController.this.onPcoDataChanged(dataNetwork);
+                    }
                 }));
         if (!mAnyDataNetworkExisting) {
             mAnyDataNetworkExisting = true;
@@ -2243,7 +2263,8 @@ public class DataNetworkController extends Handler {
     private void updateSubscriptionPlans() {
         SubscriptionPlan[] plans = mNetworkPolicyManager.getSubscriptionPlans(
                 mSubId, mPhone.getContext().getOpPackageName());
-        mSubscriptionPlans = plans != null ? Arrays.asList(plans) : Collections.emptyList();
+        mSubscriptionPlans.clear();
+        mSubscriptionPlans.addAll(plans != null ? Arrays.asList(plans) : Collections.emptyList());
         mCongestedOverrideNetworkTypes.clear();
         mUnmeteredOverrideNetworkTypes.clear();
         log("Subscription plans initialized: " + mSubscriptionPlans);
@@ -2271,6 +2292,34 @@ public class DataNetworkController extends Handler {
             mInternetLinkStatus = status;
             mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                     () -> callback.onPhysicalLinkStatusChanged(mInternetLinkStatus)));
+        }
+    }
+
+    /**
+     * Called when PCO data changed.
+     *
+     * @param dataNetwork The data network.
+     */
+    private void onPcoDataChanged(@NonNull DataNetwork dataNetwork) {
+        // Check if any data network is using NR advanced bands.
+        int nrAdvancedPcoId = mDataConfigManager.getNrAdvancedCapablePcoId();
+        if (nrAdvancedPcoId != 0) {
+            boolean nrAdvancedCapableByPco = false;
+            for (DataNetwork network : mDataNetworkList) {
+                PcoData pcoData = network.getPcoData().get(nrAdvancedPcoId);
+                if (pcoData != null && pcoData.contents.length > 0
+                        && pcoData.contents[pcoData.contents.length - 1] == 1) {
+                    nrAdvancedCapableByPco = true;
+                    break;
+                }
+            }
+
+            if (nrAdvancedCapableByPco != mNrAdvancedCapableByPco) {
+                log("onPcoDataChanged: mNrAdvancedCapableByPco = " + mNrAdvancedCapableByPco);
+                mNrAdvancedCapableByPco = nrAdvancedCapableByPco;
+                mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                        () -> callback.onNrAdvancedCapableByPcoChanged(mNrAdvancedCapableByPco)));
+            }
         }
     }
 
