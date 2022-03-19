@@ -1912,17 +1912,6 @@ public class DataNetworkController extends Handler {
     private void onDataNetworkSetupRetry(@NonNull DataSetupRetryEntry dataSetupRetryEntry) {
         TelephonyNetworkRequest telephonyNetworkRequest =
                 dataSetupRetryEntry.networkRequestList.get(0);
-        // Since this is a retry, the network request might be already removed. So we need to double
-        // check and remove request if necessary.
-        dataSetupRetryEntry.networkRequestList.removeIf(
-                networkRequest -> !mAllNetworkRequestList.contains(networkRequest));
-
-        if (dataSetupRetryEntry.networkRequestList.isEmpty()) {
-            log("onDataNetworkSetupRetry: all network requests in the retry entry has been "
-                    + "released. Retry cancelled.");
-            dataSetupRetryEntry.setState(DataRetryEntry.RETRY_STATE_CANCELLED);
-            return;
-        }
         int networkCapability = telephonyNetworkRequest.getApnTypeNetworkCapability();
         int preferredTransport = mAccessNetworksManager.getPreferredTransportByNetworkCapability(
                 networkCapability);
@@ -1943,7 +1932,11 @@ public class DataNetworkController extends Handler {
             if (dataProfile == null) {
                 dataProfile = evaluation.getCandidateDataProfile();
             }
-            setupDataNetwork(dataProfile, dataSetupRetryEntry);
+            if (dataProfile != null) {
+                setupDataNetwork(dataProfile, dataSetupRetryEntry);
+            } else {
+                loge("onDataNetworkSetupRetry: Not able to find a suitable data profile to retry.");
+            }
         }
     }
 
