@@ -39,6 +39,7 @@ import android.telephony.TelephonyFrameworkInitializer;
 import android.util.EventLog;
 
 import com.android.internal.telephony.uicc.IsimRecords;
+import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccPort;
 import com.android.telephony.Rlog;
@@ -415,6 +416,29 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
                     } else {
                         return null;
                     }
+                });
+    }
+
+    /**
+     * Returns the USIM service table that fetched from EFUST elementary field that are loaded
+     * based on the appType.
+     */
+    public String getSimServiceTable(int subId, int appType) throws RemoteException {
+        return callPhoneMethodForSubIdWithPrivilegedCheck(subId, "getSimServiceTable",
+                (phone) -> {
+                    UiccPort uiccPort = phone.getUiccPort();
+                    if (uiccPort == null || uiccPort.getUiccProfile() == null) {
+                        loge("getSimServiceTable(): uiccPort or uiccProfile is null");
+                        return null;
+                    }
+                    UiccCardApplication uiccApp = uiccPort.getUiccProfile().getApplicationByType(
+                            appType);
+                    if (uiccApp == null) {
+                        loge("getSimServiceTable(): no app with specified apptype="
+                                + appType);
+                        return null;
+                    }
+                    return ((SIMRecords)uiccApp.getIccRecords()).getSimServiceTable();
                 });
     }
 

@@ -167,7 +167,7 @@ public class SIMRecords extends IccRecords {
     private static final int EVENT_UPDATE_DONE = 14 + SIM_RECORD_EVENT_BASE;
     protected static final int EVENT_GET_PNN_DONE = 15 + SIM_RECORD_EVENT_BASE;
     protected static final int EVENT_GET_OPL_DONE = 16 + SIM_RECORD_EVENT_BASE;
-    private static final int EVENT_GET_SST_DONE = 17 + SIM_RECORD_EVENT_BASE;
+    protected static final int EVENT_GET_SST_DONE = 17 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_GET_ALL_SMS_DONE = 18 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_MARK_SMS_READ_DONE = 19 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_SET_MBDN_DONE = 20 + SIM_RECORD_EVENT_BASE;
@@ -277,6 +277,18 @@ public class SIMRecords extends IccRecords {
     @Override
     public UsimServiceTable getUsimServiceTable() {
         return mUsimServiceTable;
+    }
+
+    /**
+     * Fetches the USIM service table from UsimServiceTable
+     *
+     * @return HexString representation of USIM service table
+     */
+    public String getSimServiceTable() {
+        if (mUsimServiceTable != null) {
+            return IccUtils.bytesToHexString(mUsimServiceTable.getUSIMServiceTable());
+        }
+        return null;
     }
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
