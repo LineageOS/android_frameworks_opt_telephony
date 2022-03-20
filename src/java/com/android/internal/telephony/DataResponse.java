@@ -75,7 +75,9 @@ public class DataResponse extends IRadioDataResponse.Stub {
 
         if (rr != null) {
             int response = responseInfo.error;
-            RadioResponse.sendMessageResponse(rr.mResult, response);
+            if (responseInfo.error == RadioError.NONE) {
+                RadioResponse.sendMessageResponse(rr.mResult, response);
+            }
             mRil.processResponseDone(rr, responseInfo, response);
         }
     }

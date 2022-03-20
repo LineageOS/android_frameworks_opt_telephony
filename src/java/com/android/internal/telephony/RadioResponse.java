@@ -744,7 +744,9 @@ public class RadioResponse extends IRadioResponse.Stub {
 
         if (rr != null) {
             int response = responseInfo.error;
-            sendMessageResponse(rr.mResult, response);
+            if (responseInfo.error == RadioError.NONE) {
+                sendMessageResponse(rr.mResult, response);
+            }
             mRil.processResponseDone(rr, responseInfo, response);
         }
     }
