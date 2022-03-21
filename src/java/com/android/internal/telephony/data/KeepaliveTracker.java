@@ -188,6 +188,10 @@ public class KeepaliveTracker extends Handler {
      */
     private void onStartSocketKeepaliveRequested(int slotIndex, @NonNull Duration interval,
             @NonNull KeepalivePacketData packet) {
+        log("onStartSocketKeepaliveRequested: slot=" + slotIndex + ", interval="
+                + interval.getSeconds() + "s, src=" + packet.getSrcAddress() + ":"
+                + packet.getSrcPort() + ", dst=" + packet.getDstAddress() + ":"
+                + packet.getDstPort() + ", packet.length=" + packet.getPacket().length);
         if (packet instanceof NattKeepalivePacketData) {
             if (mDataNetwork.getTransport() == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                 mPhone.mCi.startNattKeepalive(mDataNetwork.getId(), packet,
@@ -216,6 +220,7 @@ public class KeepaliveTracker extends Handler {
      * @param slotIndex the hardware slot on which to stop the keepalive.
      */
     private void onStopSocketKeepaliveRequested(int slotIndex) {
+        log("onStopSocketKeepaliveRequested: slot=" + slotIndex);
         int handle = getHandleForSlot(slotIndex);
         if (handle < 0) {
             loge("No slot found for stopSocketKeepalive! " + slotIndex);
@@ -271,6 +276,7 @@ public class KeepaliveTracker extends Handler {
      * @param ks Keepalive status.
      */
     private void onSocketKeepaliveStarted(int slotIndex, @NonNull KeepaliveStatus ks) {
+        log("onSocketKeepaliveStarted: slot=" + slotIndex + ", keepaliveStatus=" + ks);
         switch (ks.statusCode) {
             case KeepaliveStatus.STATUS_INACTIVE:
                 mNetworkAgent.sendSocketKeepaliveEvent(slotIndex,
@@ -295,6 +301,7 @@ public class KeepaliveTracker extends Handler {
      * @param ks Keepalive status.
      */
     private void onKeepaliveStatus(@NonNull KeepaliveStatus ks) {
+        log("onKeepaliveStatus: " + ks);
         final KeepaliveRecord kr;
         kr = mKeepalives.get(ks.sessionHandle);
 
