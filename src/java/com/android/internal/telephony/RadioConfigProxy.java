@@ -19,9 +19,11 @@ package com.android.internal.telephony;
 import android.os.HwBinder;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.telephony.UiccSlotMapping;
 
 import com.android.telephony.Rlog;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -217,15 +219,16 @@ public class RadioConfigProxy {
     }
 
     /**
-     * Wrapper function for IRadioConfig.setSimSlotsMapping(int32_t serial, vec<uint32_t> slotMap).
-     * TODO(ag/15898089): Interface for setSimSlotsMapping was changes but underlying implementation
-     *                    was not provided. Need to update this with proper implementation.
+     * Wrapper function for IRadioConfig.setSimSlotsMapping(int32_t serial,
+     * vec<SlotPortMapping> portMap).
      */
-    public void setSimSlotsMapping(int serial, int[] slots) throws RemoteException {
+    public void setSimSlotsMapping(int serial, List<UiccSlotMapping> slotMapping)
+            throws RemoteException {
         if (isAidl()) {
-            getAidl().setSimSlotsMapping(serial, RILUtils.convertSimSlotsMapping(slots));
+            getAidl().setSimSlotsMapping(serial, RILUtils.convertSimSlotsMapping(slotMapping));
         } else {
-            getHidl10().setSimSlotsMapping(serial, RILUtils.primitiveArrayToArrayList(slots));
+            getHidl10().setSimSlotsMapping(serial,
+                    RILUtils.convertSlotMappingToList(slotMapping));
         }
     }
 

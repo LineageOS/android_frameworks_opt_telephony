@@ -309,6 +309,7 @@ import android.telephony.SignalStrength;
 import android.telephony.SignalThresholdInfo;
 import android.telephony.SmsManager;
 import android.telephony.TelephonyManager;
+import android.telephony.UiccSlotMapping;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
@@ -338,6 +339,7 @@ import com.android.internal.telephony.data.KeepaliveStatus.KeepaliveStatusCode;
 import com.android.internal.telephony.uicc.AdnCapacity;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
+import com.android.internal.telephony.uicc.IccSimPortInfo;
 import com.android.internal.telephony.uicc.IccSlotPortMapping;
 import com.android.internal.telephony.uicc.IccSlotStatus;
 import com.android.internal.telephony.uicc.IccUtils;
@@ -4406,10 +4408,16 @@ public class RILUtils {
             for (android.hardware.radio.config.SimSlotStatus slotStatus : halSlotStatusArray) {
                 IccSlotStatus iccSlotStatus = new IccSlotStatus();
                 iccSlotStatus.setCardState(slotStatus.cardState);
-                iccSlotStatus.setSlotState(slotStatus.portInfo[0].portActive ? 1 : 0);
-                iccSlotStatus.logicalSlotIndex = slotStatus.portInfo[0].logicalSlotId;
+                int portCount = slotStatus.portInfo.length;
+                iccSlotStatus.mSimPortInfos = new IccSimPortInfo[portCount];
+                for (int i = 0; i < portCount; i++) {
+                    IccSimPortInfo simPortInfo = new IccSimPortInfo();
+                    simPortInfo.mIccId = slotStatus.portInfo[i].iccId;
+                    simPortInfo.mLogicalSlotIndex = slotStatus.portInfo[i].logicalSlotId;
+                    simPortInfo.mPortActive = slotStatus.portInfo[i].portActive;
+                    iccSlotStatus.mSimPortInfos[i] = simPortInfo;
+                }
                 iccSlotStatus.atr = slotStatus.atr;
-                iccSlotStatus.iccid = slotStatus.portInfo[0].iccId;
                 iccSlotStatus.eid = slotStatus.eid;
                 response.add(iccSlotStatus);
             }
@@ -4423,10 +4431,14 @@ public class RILUtils {
                     halSlotStatusArray) {
                 IccSlotStatus iccSlotStatus = new IccSlotStatus();
                 iccSlotStatus.setCardState(slotStatus.base.cardState);
-                iccSlotStatus.setSlotState(slotStatus.base.slotState);
-                iccSlotStatus.logicalSlotIndex = slotStatus.base.logicalSlotId;
+                // Old HAL versions does not support MEP, so only one port is available.
+                iccSlotStatus.mSimPortInfos = new IccSimPortInfo[1];
+                IccSimPortInfo simPortInfo = new IccSimPortInfo();
+                simPortInfo.mIccId = slotStatus.base.iccid;
+                simPortInfo.mLogicalSlotIndex = slotStatus.base.logicalSlotId;
+                simPortInfo.mPortActive = (slotStatus.base.slotState == IccSlotStatus.STATE_ACTIVE);
+                iccSlotStatus.mSimPortInfos[TelephonyManager.DEFAULT_PORT_INDEX] = simPortInfo;
                 iccSlotStatus.atr = slotStatus.base.atr;
-                iccSlotStatus.iccid = slotStatus.base.iccid;
                 iccSlotStatus.eid = slotStatus.eid;
                 response.add(iccSlotStatus);
             }
@@ -4440,10 +4452,14 @@ public class RILUtils {
                     halSlotStatusArray) {
                 IccSlotStatus iccSlotStatus = new IccSlotStatus();
                 iccSlotStatus.setCardState(slotStatus.cardState);
-                iccSlotStatus.setSlotState(slotStatus.slotState);
-                iccSlotStatus.logicalSlotIndex = slotStatus.logicalSlotId;
+                // Old HAL versions does not support MEP, so only one port is available.
+                iccSlotStatus.mSimPortInfos = new IccSimPortInfo[1];
+                IccSimPortInfo simPortInfo = new IccSimPortInfo();
+                simPortInfo.mIccId = slotStatus.iccid;
+                simPortInfo.mLogicalSlotIndex = slotStatus.logicalSlotId;
+                simPortInfo.mPortActive = (slotStatus.slotState == IccSlotStatus.STATE_ACTIVE);
+                iccSlotStatus.mSimPortInfos[TelephonyManager.DEFAULT_PORT_INDEX] = simPortInfo;
                 iccSlotStatus.atr = slotStatus.atr;
-                iccSlotStatus.iccid = slotStatus.iccid;
                 response.add(iccSlotStatus);
             }
             return response;
@@ -4452,19 +4468,31 @@ public class RILUtils {
     }
 
     /**
-     * Convert int[] list to SlotPortMapping[]
-     * @param list int[] of slots mapping
+     * Convert List<UiccSlotMapping> list to SlotPortMapping[]
+     * @param list List<UiccSlotMapping> of slots mapping
      * @return SlotPortMapping[] of slots mapping
      */
     public static android.hardware.radio.config.SlotPortMapping[] convertSimSlotsMapping(
-            int[] list) {
+            List<UiccSlotMapping> slotMapping) {
         android.hardware.radio.config.SlotPortMapping[] res =
-                new android.hardware.radio.config.SlotPortMapping[list.length];
-        for (int i : list) {
-            res[i] = new android.hardware.radio.config.SlotPortMapping();
-            res[i].portId = i;
+                new android.hardware.radio.config.SlotPortMapping[slotMapping.size()];
+        for (UiccSlotMapping mapping : slotMapping) {
+            int logicalSlotIdx = mapping.getLogicalSlotIndex();
+            res[logicalSlotIdx] = new android.hardware.radio.config.SlotPortMapping();
+            res[logicalSlotIdx].physicalSlotId = mapping.getPhysicalSlotIndex();
+            res[logicalSlotIdx].portId = mapping.getPortIndex();
         }
         return res;
+    }
+
+    /** Convert a list of UiccSlotMapping to an ArrayList<Integer>.*/
+    public static ArrayList<Integer> convertSlotMappingToList(
+            List<UiccSlotMapping> slotMapping) {
+        int[] physicalSlots = new int[slotMapping.size()];
+        for (UiccSlotMapping mapping : slotMapping) {
+            physicalSlots[mapping.getLogicalSlotIndex()] = mapping.getPhysicalSlotIndex();
+        }
+        return primitiveArrayToArrayList(physicalSlots);
     }
 
 
