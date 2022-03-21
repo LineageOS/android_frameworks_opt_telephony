@@ -70,6 +70,16 @@ public class DataEvaluation {
     }
 
     /**
+     * Remove a data disallowed reason if one exists.
+     *
+     * @param reason Disallowed reason.
+     */
+    public void removeDataDisallowedReason(DataDisallowedReason reason) {
+        mDataDisallowedReasons.remove(reason);
+        mEvaluatedTime = System.currentTimeMillis();
+    }
+
+    /**
      * Add a data allowed reason. Note that adding an allowed reason will clean up the disallowed
      * reasons because they are mutual exclusive.
      *
