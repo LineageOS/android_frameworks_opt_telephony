@@ -34,6 +34,9 @@ import android.net.ProxyInfo;
 import android.net.RouteInfo;
 import android.net.TelephonyNetworkSpecifier;
 import android.net.Uri;
+import android.net.vcn.VcnManager;
+import android.net.vcn.VcnManager.VcnNetworkPolicyChangeListener;
+import android.net.vcn.VcnNetworkPolicyResult;
 import android.os.AsyncResult;
 import android.os.Looper;
 import android.os.Message;
@@ -81,6 +84,7 @@ import com.android.internal.telephony.data.DataRetryManager.DataHandoverRetryEnt
 import com.android.internal.telephony.data.DataRetryManager.DataRetryEntry;
 import com.android.internal.telephony.data.TelephonyNetworkAgent.TelephonyNetworkAgentCallback;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.util.ArrayUtils;
 import com.android.internal.util.IState;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
@@ -119,13 +123,12 @@ import java.util.stream.Collectors;
  *
  * State machine diagram:
  *
- *                   ┌─────────────────────────────────────────┐
- *                   │                                         │
- *                   │              ┌─────────┐                │
- *                   │              │Handover │                │
- *                   │              └─▲────┬──┘                │
- *                   │                │    │                   │
- *             ┌─────┴─────┐        ┌─┴────▼──┐        ┌───────▼──────┐
+ *
+ *                                  ┌─────────┐
+ *                                  │Handover │
+ *                                  └─▲────┬──┘
+ *                                    │    │
+ *             ┌───────────┐        ┌─┴────▼──┐        ┌───────▼──────┐
  *             │Connecting ├────────►Connected├────────►Disconnecting │
  *             └─────┬─────┘        └────┬────┘        └───────┬──────┘
  *                   │                   │                     │
@@ -220,6 +223,7 @@ public class DataNetwork extends StateMachine {
                     TEAR_DOWN_REASON_DATA_STALL,
                     TEAR_DOWN_REASON_HANDOVER_FAILED,
                     TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED,
+                    TEAR_DOWN_REASON_VCN_REQUESTED,
             })
     public @interface TearDownReason {}
 
@@ -265,6 +269,9 @@ public class DataNetwork extends StateMachine {
     /** Data network tear down due to handover not allowed. */
     public static final int TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED = 14;
 
+    /** Data network tear down due to VCN service requested. */
+    public static final int TEAR_DOWN_REASON_VCN_REQUESTED = 15;
+
     @IntDef(prefix = {"BANDWIDTH_SOURCE_"},
             value = {
                     BANDWIDTH_SOURCE_UNKNOWN,
@@ -285,6 +292,25 @@ public class DataNetwork extends StateMachine {
 
     /** Indicates the bandwidth estimation source is from {@link LinkBandwidthEstimator}. */
     public static final int BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR = 3;
+
+    /**
+     * The capabilities that are allowed to changed dynamically during the life cycle of network.
+     * This is copied from {@code NetworkCapabilities#MUTABLE_CAPABILITIES}. There is no plan to
+     * make this a connectivity manager API since in the future, immutable network capabilities
+     * would be allowed to changed dynamically. (i.e. not immutable anymore.)
+     */
+    private static final List<Integer> MUTABLE_CAPABILITIES = List.of(
+            NetworkCapabilities.NET_CAPABILITY_TRUSTED,
+            NetworkCapabilities.NET_CAPABILITY_VALIDATED,
+            NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL,
+            NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING,
+            NetworkCapabilities.NET_CAPABILITY_FOREGROUND,
+            NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED,
+            NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED,
+            NetworkCapabilities.NET_CAPABILITY_PARTIAL_CONNECTIVITY,
+            NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED,
+            NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED,
+            NetworkCapabilities.NET_CAPABILITY_HEAD_UNIT);
 
     /** The parent state. Any messages not handled by the child state fallback to this. */
     private final DefaultState mDefaultState = new DefaultState();
@@ -313,7 +339,8 @@ public class DataNetwork extends StateMachine {
     /**
      * The disconnecting state. This is the state when data network is about to be disconnected.
      * The network is still usable in this state, but the clients should be prepared to lose the
-     * network in any moment.
+     * network in any moment. This state is particular useful for IMS graceful tear down, where
+     * the network enters disconnecting state while waiting for IMS de-registration signal.
      *
      * @see DataNetwork for the state machine diagram.
      */
@@ -328,6 +355,7 @@ public class DataNetwork extends StateMachine {
 
     /** The phone instance. */
     private final @NonNull Phone mPhone;
+
     /**
      * The subscription id. This is assigned when the network is created, and not supposed to
      * change afterwards.
@@ -366,6 +394,13 @@ public class DataNetwork extends StateMachine {
      */
     private final SparseIntArray mCid = new SparseIntArray(2);
 
+    /**
+     * The initial network agent id. The network agent can be re-created due to immutable capability
+     * changed. This is to preserve the initial network agent id so the id in the logging tag won't
+     * change for the entire life cycle of data network.
+     */
+    private int mInitialNetworkAgentId;
+
     /** PDU session id. */
     private int mPduSessionId = DataCallResponse.PDU_SESSION_ID_NOT_SET;
 
@@ -383,6 +418,12 @@ public class DataNetwork extends StateMachine {
 
     /** Data config manager. */
     private final @NonNull DataConfigManager mDataConfigManager;
+
+    /** VCN manager. */
+    private final @Nullable VcnManager mVcnManager;
+
+    /** VCN policy changed listener. */
+    private @Nullable VcnNetworkPolicyChangeListener mVcnPolicyChangeListener;
 
     /** The network agent associated with this data network. */
     private @NonNull TelephonyNetworkAgent mNetworkAgent;
@@ -607,6 +648,13 @@ public class DataNetwork extends StateMachine {
          * @param dataNetwork The data network.
          */
         public abstract void onPcoDataChanged(@NonNull DataNetwork dataNetwork);
+
+        /**
+         * Called when network capabilities changed.
+         *
+         * @param dataNetwork The data network.
+         */
+        public abstract void onNetworkCapabilitiesChanged(@NonNull DataNetwork dataNetwork);
     }
 
     /**
@@ -634,6 +682,7 @@ public class DataNetwork extends StateMachine {
         mLinkProperties = new LinkProperties();
         mDataServiceManagers = dataServiceManagers;
         mAccessNetworksManager = phone.getAccessNetworksManager();
+        mVcnManager = mPhone.getContext().getSystemService(VcnManager.class);
         mDataNetworkController = phone.getDataNetworkController();
         mDataNetworkController.registerDataNetworkControllerCallback(
                 new DataNetworkController.DataNetworkControllerCallback(getHandler()::post) {
@@ -840,7 +889,8 @@ public class DataNetwork extends StateMachine {
             // Need to calculate the initial capabilities before creating the network agent.
             updateNetworkCapabilities();
             mNetworkAgent = createNetworkAgent();
-            mLogTag = "DN-" + mNetworkAgent.getId() + "-"
+            mInitialNetworkAgentId = mNetworkAgent.getId();
+            mLogTag = "DN-" + mInitialNetworkAgentId + "-"
                     + ((mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) ? "C" : "I");
 
             notifyPreciseDataConnectionState();
@@ -882,9 +932,6 @@ public class DataNetwork extends StateMachine {
                     // Defer the request until connected or disconnected.
                     deferMessage(msg);
                     break;
-                case EVENT_DATA_STATE_CHANGED:
-                    // Ignore any data call list changed event before connected.
-                    break;
                 default:
                     return NOT_HANDLED;
             }
@@ -916,6 +963,19 @@ public class DataNetwork extends StateMachine {
                         getHandler().getLooper(), DataNetwork.this, mNetworkAgent);
                 if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                     registerForWwanEvents();
+                }
+
+                // Create the VCN policy changed listener. When the policy changed, we might need
+                // to tear down the VCN-managed network.
+                if (mVcnManager != null) {
+                    mVcnPolicyChangeListener = () -> {
+                        if (mVcnManager.applyVcnNetworkPolicy(mNetworkCapabilities, mLinkProperties)
+                                .isTeardownRequested()) {
+                            tearDown(TEAR_DOWN_REASON_VCN_REQUESTED);
+                        }
+                    };
+                    mVcnManager.addVcnNetworkPolicyChangeListener(
+                            getHandler()::post, mVcnPolicyChangeListener);
                 }
             }
 
@@ -1021,7 +1081,8 @@ public class DataNetwork extends StateMachine {
     /**
      * The disconnecting state. This is the state when data network is about to be disconnected.
      * The network is still usable in this state, but the clients should be prepared to lose the
-     * network in any moment.
+     * network in any moment. This state is particular useful for IMS graceful tear down, where
+     * the network enters disconnecting state while waiting for IMS de-registration signal.
      *
      * @see DataNetwork for the state machine diagram.
      */
@@ -1029,10 +1090,6 @@ public class DataNetwork extends StateMachine {
         @Override
         public void enter() {
             notifyPreciseDataConnectionState();
-        }
-
-        @Override
-        public void exit() {
         }
 
         @Override
@@ -1067,6 +1124,10 @@ public class DataNetwork extends StateMachine {
 
             if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN && mEverConnected) {
                 unregisterForWwanEvents();
+            }
+
+            if (mVcnManager != null && mVcnPolicyChangeListener != null) {
+                mVcnManager.removeVcnNetworkPolicyChangeListener(mVcnPolicyChangeListener);
             }
         }
 
@@ -1171,6 +1232,47 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
+     * Remove network requests that can't be satisfied anymore.
+     */
+    private void removeUnsatisfiedNetworkRequests() {
+        for (TelephonyNetworkRequest networkRequest : mAttachedNetworkRequestList) {
+            if (!networkRequest.canBeSatisfiedBy(mNetworkCapabilities)) {
+                log("removeUnsatisfiedNetworkRequests: " + networkRequest
+                        + " can't be satisfied anymore. Will be detached.");
+                detachNetworkRequest(networkRequest);
+            }
+        }
+    }
+
+    /**
+     * Check if the there are immutable capabilities changed. The connectivity service is not able
+     * to handle immutable capabilities changed, but in very rare scenarios, immutable capabilities
+     * need to be changed dynamically, such as in setup data call response, modem responded with the
+     * same cid. In that case, we need to merge the new capabilities into the existing data network.
+     *
+     * @param oldCapabilities The old network capabilities.
+     * @param newCapabilities The new network capabilities.
+     * @return {@code true} if there are immutable network capabilities changed.
+     */
+    private static boolean areImmutableCapabilitiesChanged(
+            @NonNull NetworkCapabilities oldCapabilities,
+            @NonNull NetworkCapabilities newCapabilities) {
+        if (oldCapabilities == null
+                || ArrayUtils.isEmpty(oldCapabilities.getCapabilities())) return false;
+
+        // Remove mutable capabilities from both old and new capabilities, the remaining
+        // capabilities would be immutable capabilities.
+        List<Integer> oldImmutableCapabilities = Arrays.stream(oldCapabilities.getCapabilities())
+                .boxed().collect(Collectors.toList());
+        oldImmutableCapabilities.removeAll(MUTABLE_CAPABILITIES);
+        List<Integer> newImmutableCapabilities = Arrays.stream(newCapabilities.getCapabilities())
+                .boxed().collect(Collectors.toList());
+        newImmutableCapabilities.removeAll(MUTABLE_CAPABILITIES);
+        return oldImmutableCapabilities.size() == newImmutableCapabilities.size()
+                && oldImmutableCapabilities.containsAll(newImmutableCapabilities);
+    }
+
+    /**
      * Update the network capabilities.
      */
     private void updateNetworkCapabilities() {
@@ -1209,8 +1311,13 @@ public class DataNetwork extends StateMachine {
         if (mTempNotMeteredSupported && mTempNotMetered) {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED);
         }
-        // TODO: Support NET_CAPABILITY_NOT_VCN_MANAGED correctly
+
+        // Always start with NOT_VCN_MANAGED, then remove if VcnManager indicates this is part of a
+        // VCN.
         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+        if (isVcnManaged(builder.build())) {
+            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+        }
 
         if (!roaming) {
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING);
@@ -1229,12 +1336,41 @@ public class DataNetwork extends StateMachine {
         builder.setLinkUpstreamBandwidthKbps(mNetworkBandwidth.uplinkBandwidthKbps);
 
         NetworkCapabilities nc = builder.build();
-        if (!nc.equals(mNetworkCapabilities)) {
+        if (mNetworkCapabilities == null || mNetworkAgent == null) {
+            // This is the first time when network capabilities is created. The agent is not created
+            // at this time. Just return here. The network capabilities will be used when network
+            // agent is created.
             mNetworkCapabilities = nc;
-            if (mNetworkAgent != null) {
-                log("sendNetworkCapabilities: " + mNetworkCapabilities);
-                mNetworkAgent.sendNetworkCapabilities(mNetworkCapabilities);
+            return;
+        }
+
+        if (!nc.equals(mNetworkCapabilities)) {
+            // Check if we are changing the immutable capabilities. Note that we should be very
+            // careful and limit the use cases of changing immutable capabilities. Connectivity
+            // service would not close sockets for clients if a network request becomes
+            // unsatisfiable.
+            if (mEverConnected && areImmutableCapabilitiesChanged(mNetworkCapabilities, nc)
+                    && (isConnected() || isHandoverInProgress())) {
+                // Before connectivity service supports making all capabilities mutable, it is
+                // suggested to de-register and re-register the network agent if it is needed to
+                // add/remove immutable capabilities.
+                logl("updateNetworkCapabilities: Immutable capabilities changed. Re-create the "
+                        + "network agent.");
+                mNetworkAgent.unregister();
+                // Update the capabilities first so the new network agent would be created with the
+                // new capabilities.
+                mNetworkCapabilities = nc;
+                mNetworkAgent = createNetworkAgent();
+                mNetworkAgent.markConnected();
             }
+
+            // Now we need to inform connectivity service and data network controller
+            // about the capabilities changed.
+            mNetworkCapabilities = nc;
+            mNetworkAgent.sendNetworkCapabilities(mNetworkCapabilities);
+            removeUnsatisfiedNetworkRequests();
+            mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                    .onNetworkCapabilitiesChanged(DataNetwork.this));
         }
     }
 
@@ -1520,6 +1656,8 @@ public class DataNetwork extends StateMachine {
             log("sendLinkProperties " + mLinkProperties);
             mNetworkAgent.sendLinkProperties(mLinkProperties);
         }
+
+        updateNetworkCapabilities();
     }
 
     /**
@@ -1549,24 +1687,30 @@ public class DataNetwork extends StateMachine {
             // TODO: Check if the cid already exists. If yes, should notify DNC and let it force
             //  attach the network requests to that existing data network.
 
-            // TODO: Check if there is still network request attached, if not, silently deactivate
-            //  the network.
-
             // TODO: Evaluate all network requests and see if each request still can be satisfied.
             //  For requests that can't be satisfied anymore, we need to put them back to the
             //  unsatisfied pool. If none of network requests can be satisfied, then there is no
             //  need to mark network agent connected. Just silently deactivate the data network.
-
-            if (mAttachedNetworkRequestList.size() != 0) {
-                // Setup data succeeded.
-                transitionTo(mConnectedState);
-            } else {
+            if (mAttachedNetworkRequestList.size() == 0) {
                 log("Tear down the network since there is no live network request.");
-                // Directly call onTearDown hear. We should not enter disconnecting state for silent
-                // tear down. Once the tear down is complete, the data call list changed event will
-                // move the state into disconnected there.
+                // Directly call onTearDown here. Calling tearDown will cause deadlock because
+                // EVENT_TEAR_DOWN_NETWORK is deferred until state machine enters connected state,
+                // which will never happen in this case.
                 onTearDown(TEAR_DOWN_REASON_NO_LIVE_REQUEST);
+                return;
             }
+
+            if (mVcnManager != null && mVcnManager.applyVcnNetworkPolicy(mNetworkCapabilities,
+                    mLinkProperties).isTeardownRequested()) {
+                log("VCN service requested to tear down the network.");
+                // Directly call onTearDown here. Calling tearDown will cause deadlock because
+                // EVENT_TEAR_DOWN_NETWORK is deferred until state machine enters connected state,
+                // which will never happen in this case.
+                onTearDown(TEAR_DOWN_REASON_VCN_REQUESTED);
+                return;
+            }
+
+            transitionTo(mConnectedState);
         } else {
             // Setup data failed.
             long retryDelayMillis = response != null ? response.getRetryDurationMillis()
@@ -1646,8 +1790,7 @@ public class DataNetwork extends StateMachine {
         // Also if never received data call response from setup call response, which updates the
         // cid, ignore the update here.
         logv("onDataStateChanged: " + responseList);
-        if (transport != mTransport || mCid.get(mTransport) == INVALID_CID || isConnecting()
-                || isDisconnected()) {
+        if (transport != mTransport || mCid.get(mTransport) == INVALID_CID || isDisconnected()) {
             return;
         }
 
@@ -1665,9 +1808,18 @@ public class DataNetwork extends StateMachine {
                     log("onDataStateChanged: PDN inactive reported by "
                             + AccessNetworkConstants.transportTypeToString(mTransport)
                             + " data service.");
-                    mDataNetworkCallback.invokeFromExecutor(
-                            () -> mDataNetworkCallback.onDisconnected(
-                                    DataNetwork.this, response.getCause()));
+                    if (mEverConnected) {
+                        mDataNetworkCallback.invokeFromExecutor(
+                                () -> mDataNetworkCallback.onDisconnected(
+                                        DataNetwork.this, response.getCause()));
+                    } else {
+                        log("onDataStateChanged: never in connected state. Treated as a setup "
+                                + "failure.");
+                        mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                                .onSetupDataFailed(DataNetwork.this, mAttachedNetworkRequestList,
+                                        DataFailCause.NO_RETRY_FAILURE,
+                                        DataCallResponse.RETRY_DURATION_UNDEFINED));
+                    }
                     transitionTo(mDisconnectedState);
                 }
             }
@@ -1677,8 +1829,16 @@ public class DataNetwork extends StateMachine {
             // for that
             log("onDataStateChanged: PDN disconnected reported by "
                     + AccessNetworkConstants.transportTypeToString(mTransport) + " data service.");
-            mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
-                    .onDisconnected(DataNetwork.this, DataFailCause.LOST_CONNECTION));
+            if (mEverConnected) {
+                mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                        .onDisconnected(DataNetwork.this, DataFailCause.LOST_CONNECTION));
+            } else {
+                log("onDataStateChanged: never in connected state. Treated as a setup failure.");
+                mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                        .onSetupDataFailed(DataNetwork.this, mAttachedNetworkRequestList,
+                                DataFailCause.NO_RETRY_FAILURE,
+                                DataCallResponse.RETRY_DURATION_UNDEFINED));
+            }
             transitionTo(mDisconnectedState);
         }
     }
@@ -2115,11 +2275,16 @@ public class DataNetwork extends StateMachine {
                 + ", response=" + response);
         mFailCause = getFailCauseFromDataCallResponse(resultCode, response);
         if (mFailCause == DataFailCause.NONE) {
+            // Handover succeeded.
+
             // Clean up on the source transport.
             mDataServiceManagers.get(mTransport).deactivateDataCall(mCid.get(mTransport),
                     DataService.REQUEST_REASON_HANDOVER, null);
             // Switch the transport to the target.
             mTransport = DataUtils.getTargetTransport(mTransport);
+            // Update the logging tag
+            mLogTag = "DN-" + mInitialNetworkAgentId + "-"
+                    + ((mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) ? "C" : "I");
             updateDataNetwork(response);
             if (mTransport != AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                 // Handover from WWAN to WLAN
@@ -2182,6 +2347,24 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
+     * Check if the this data network is VCN-managed.
+     *
+     * @param networkCapabilities The network capabilities of this data network.
+     * @return {@code true} if this data network is VCN-managed.
+     */
+    private boolean isVcnManaged(NetworkCapabilities networkCapabilities) {
+        if (mVcnManager == null) return false;
+        VcnNetworkPolicyResult policyResult =
+                mVcnManager.applyVcnNetworkPolicy(networkCapabilities, getLinkProperties());
+
+        // if the Network does have capability NOT_VCN_MANAGED, return false to indicate it's not
+        // VCN-managed
+        return !policyResult
+                .getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+    }
+
+    /**
      * Convert the data tear down reason to string.
      *
      * @param reason Data deactivation reason.
@@ -2217,6 +2400,8 @@ public class DataNetwork extends StateMachine {
                 return "TEAR_DOWN_REASON_HANDOVER_FAILED";
             case TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED:
                 return "TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED";
+            case TEAR_DOWN_REASON_VCN_REQUESTED:
+                return "TEAR_DOWN_REASON_VCN_REQUESTED";
             default:
                 return "UNKNOWN(" + reason + ")";
         }
