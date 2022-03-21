@@ -996,6 +996,7 @@ public class DataNetwork extends StateMachine {
             switch (msg.what) {
                 case EVENT_START_HANDOVER:
                 case EVENT_TEAR_DOWN_NETWORK:
+                case EVENT_DATA_STATE_CHANGED:
                     // Defer the request until handover succeeds or fails.
                     deferMessage(msg);
                     break;
