@@ -1014,6 +1014,12 @@ public class DataRetryManager extends Handler {
             // Network did not suggest any retry. Use the configured rules to perform retry.
             logv("mDataSetupRetryRuleList=" + mDataSetupRetryRuleList);
 
+            // Support the legacy permanent failure configuration
+            if (DataFailCause.isPermanentFailure(mPhone.getContext(), cause, mPhone.getSubId())) {
+                log("Stopped timer-based retry. cause=" + DataFailCause.toString(cause));
+                return;
+            }
+
             boolean retryScheduled = false;
             List<NetworkRequestList> groupedNetworkRequestLists =
                     DataUtils.getGroupedNetworkRequestList(requestList);
