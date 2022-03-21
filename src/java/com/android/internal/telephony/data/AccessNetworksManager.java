@@ -711,8 +711,14 @@ public class AccessNetworksManager extends Handler {
      */
     public boolean isAnyApnOnIwlan() {
         for (int apnType : AccessNetworksManager.SUPPORTED_APN_TYPES) {
-            if (getCurrentTransport(apnType) == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
-                return true;
+            if (mPhone.isUsingNewDataStack()) {
+                if (getPreferredTransport(apnType) == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+                    return true;
+                }
+            } else {
+                if (getCurrentTransport(apnType) == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+                    return true;
+                }
             }
         }
         return false;
