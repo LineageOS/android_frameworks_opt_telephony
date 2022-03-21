@@ -85,6 +85,8 @@ public class DataSettingsManager extends Handler {
     private static final int EVENT_PROVISIONED_CHANGED = 14;
     /** Event for provisioning data enabled setting changed. */
     private static final int EVENT_PROVISIONING_DATA_ENABLED_CHANGED = 15;
+    /** Event for registering all events. */
+    private static final int EVENT_REGISTER_ALL_EVENTS = 16;
 
     private final Phone mPhone;
     private final ContentResolver mResolver;
@@ -162,35 +164,14 @@ public class DataSettingsManager extends Handler {
         registerCallback(callback);
         mDataConfigManager = dataNetworkController.getDataConfigManager();
         mDataEnabledOverride = getDataEnabledOverride();
-        mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
         mSettingsObserver = new SettingsObserver(mPhone.getContext(), this);
-        mSettingsObserver.observe(Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONED),
-                EVENT_PROVISIONED_CHANGED);
-        mSettingsObserver.observe(
-                Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONING_MOBILE_DATA_ENABLED),
-                EVENT_PROVISIONING_DATA_ENABLED_CHANGED);
-        mPhone.getCallTracker().registerForVoiceCallStarted(this, EVENT_CALL_STATE_CHANGED, null);
-        mPhone.getCallTracker().registerForVoiceCallEnded(this, EVENT_CALL_STATE_CHANGED, null);
-        if (mPhone.getImsPhone() != null) {
-            mPhone.getImsPhone().getCallTracker().registerForVoiceCallStarted(
-                    this, EVENT_CALL_STATE_CHANGED, null);
-            mPhone.getImsPhone().getCallTracker().registerForVoiceCallEnded(
-                    this, EVENT_CALL_STATE_CHANGED, null);
-        }
-        mPhone.getContext().getSystemService(TelephonyRegistryManager.class)
-                .addOnSubscriptionsChangedListener(new OnSubscriptionsChangedListener() {
-                    @Override
-                    public void onSubscriptionsChanged() {
-                        if (mSubId != mPhone.getSubId()) {
-                            log("onSubscriptionsChanged: " + mSubId + " to " + mPhone.getSubId());
-                            obtainMessage(EVENT_SUBSCRIPTIONS_CHANGED, mPhone.getSubId())
-                                    .sendToTarget();
-                        }
-                    }
-                }, this::post);
         mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_POLICY, true);
         mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_CARRIER, true);
         mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_THERMAL, true);
+
+        // Instead of calling onRegisterAllEvents directly from the constructor, send the event.
+        // The reason is that getImsPhone is null when we are still in the constructor here.
+        sendEmptyMessage(EVENT_REGISTER_ALL_EVENTS);
     }
 
     @Override
@@ -334,10 +315,46 @@ public class DataSettingsManager extends Handler {
             }
             case EVENT_PROVISIONING_DATA_ENABLED_CHANGED: {
                 updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_UNKNOWN);
+                break;
+            }
+            case EVENT_REGISTER_ALL_EVENTS: {
+                onRegisterAllEvents();
+                break;
             }
             default:
                 loge("Unknown msg.what: " + msg.what);
         }
+    }
+
+    /**
+     * Called when needed to register for all events that data network controller is interested.
+     */
+    private void onRegisterAllEvents() {
+        mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
+        mSettingsObserver.observe(Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONED),
+                EVENT_PROVISIONED_CHANGED);
+        mSettingsObserver.observe(
+                Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONING_MOBILE_DATA_ENABLED),
+                EVENT_PROVISIONING_DATA_ENABLED_CHANGED);
+        mPhone.getCallTracker().registerForVoiceCallStarted(this, EVENT_CALL_STATE_CHANGED, null);
+        mPhone.getCallTracker().registerForVoiceCallEnded(this, EVENT_CALL_STATE_CHANGED, null);
+        if (mPhone.getImsPhone() != null) {
+            mPhone.getImsPhone().getCallTracker().registerForVoiceCallStarted(
+                    this, EVENT_CALL_STATE_CHANGED, null);
+            mPhone.getImsPhone().getCallTracker().registerForVoiceCallEnded(
+                    this, EVENT_CALL_STATE_CHANGED, null);
+        }
+        mPhone.getContext().getSystemService(TelephonyRegistryManager.class)
+                .addOnSubscriptionsChangedListener(new OnSubscriptionsChangedListener() {
+                    @Override
+                    public void onSubscriptionsChanged() {
+                        if (mSubId != mPhone.getSubId()) {
+                            log("onSubscriptionsChanged: " + mSubId + " to " + mPhone.getSubId());
+                            obtainMessage(EVENT_SUBSCRIPTIONS_CHANGED, mPhone.getSubId())
+                                    .sendToTarget();
+                        }
+                    }
+                }, this::post);
     }
 
     /**
