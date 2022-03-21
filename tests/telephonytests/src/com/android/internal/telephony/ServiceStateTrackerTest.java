@@ -2054,14 +2054,17 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     }
 
-    private void sendPhyChanConfigChange(int[] bandwidths, int networkType, int pci) {
+    private void sendPhyChanConfigChange(int[] bandwidths, int networkType, int pci,
+            int[][] contextIDs) {
         ArrayList<PhysicalChannelConfig> pc = new ArrayList<>();
         int ssType = PhysicalChannelConfig.CONNECTION_PRIMARY_SERVING;
-        for (int bw : bandwidths) {
+        for (int i = 0; i < bandwidths.length; i++) {
             pc.add(new PhysicalChannelConfig.Builder()
                     .setCellConnectionStatus(ssType)
-                    .setCellBandwidthDownlinkKhz(bw)
+                    .setCellBandwidthDownlinkKhz(bandwidths[i])
+                    .setContextIds(contextIDs != null ? contextIDs[i] : new int[0])
                     .setNetworkType(networkType)
+                    .setBand(1)
                     .setPhysicalCellId(pci)
                     .build());
 
@@ -2071,6 +2074,10 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_PHYSICAL_CHANNEL_CONFIG,
                 new AsyncResult(null, pc, null)));
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+    }
+
+    private void sendPhyChanConfigChange(int[] bandwidths, int networkType, int pci) {
+        sendPhyChanConfigChange(bandwidths, networkType, pci, null);
     }
 
     private void sendRegStateUpdateForLteCellId(CellIdentityLte cellId) {
@@ -2194,6 +2201,15 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertTrue(Arrays.equals(new int[] {10000}, sst.mSS.getCellBandwidths()));
         sendPhyChanConfigChange(new int[] {10000, 5000}, TelephonyManager.NETWORK_TYPE_LTE, 1);
         assertTrue(Arrays.equals(new int[] {10000, 5000}, sst.mSS.getCellBandwidths()));
+    }
+
+    @Test
+    public void testUpdateNrFrequencyRangeFromPhysicalChannelConfigs() {
+        doReturn(true).when(mPhone).isUsingNewDataStack();
+        when(mPhone.getDataNetworkController().isInternetNetwork(eq(3))).thenReturn(true);
+        sendPhyChanConfigChange(new int[] {1000, 500}, TelephonyManager.NETWORK_TYPE_NR, 1,
+                new int[][]{{0, 1}, {2, 3}});
+        assertEquals(ServiceState.FREQUENCY_RANGE_MID, sst.mSS.getNrFrequencyRange());
     }
 
     @Test
