@@ -837,9 +837,8 @@ public class DataNetworkController extends Handler {
                 .registerForServiceBindingChanged(this, EVENT_DATA_SERVICE_BINDING_CHANGED);
 
         if (!mAccessNetworksManager.isInLegacyMode()) {
-            mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
-                    AccessNetworkConstants.TRANSPORT_TYPE_WLAN, this, EVENT_SERVICE_STATE_CHANGED,
-                    AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+            mPhone.getServiceStateTracker().registerForServiceStateChanged(this,
+                    EVENT_SERVICE_STATE_CHANGED);
             mDataServiceManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
                     .registerForServiceBindingChanged(this, EVENT_DATA_SERVICE_BINDING_CHANGED);
         }
@@ -2444,11 +2443,11 @@ public class DataNetworkController extends Handler {
     private void onServiceStateChanged() {
         // Use the raw service state instead of the mPhone.getServiceState().
         ServiceState newServiceState = mPhone.getServiceStateTracker().getServiceState();
-        logv("onServiceStateChanged: " + newServiceState);
         StringBuilder debugMessage = new StringBuilder("onServiceStateChanged: ");
         boolean evaluateNetworkRequests = false, evaluateDataNetworks = false;
 
         if (!mServiceState.equals(newServiceState)) {
+            log("onServiceStateChanged: changed to " + newServiceState);
             for (int transport : mAccessNetworksManager.getAvailableTransports()) {
                 NetworkRegistrationInfo oldNri = mServiceState.getNetworkRegistrationInfo(
                         NetworkRegistrationInfo.DOMAIN_PS, transport);
@@ -2600,10 +2599,10 @@ public class DataNetworkController extends Handler {
      * @return The current network type.
      */
     private @NetworkType int getDataNetworkType(@TransportType int transport) {
-        NetworkRegistrationInfo nrs = mServiceState.getNetworkRegistrationInfo(
+        NetworkRegistrationInfo nri = mServiceState.getNetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, transport);
-        if (nrs != null) {
-            return nrs.getAccessNetworkTechnology();
+        if (nri != null) {
+            return nri.getAccessNetworkTechnology();
         }
         return TelephonyManager.NETWORK_TYPE_UNKNOWN;
     }
@@ -2615,10 +2614,10 @@ public class DataNetworkController extends Handler {
      * @return The registration state.
      */
     private @RegistrationState int getDataRegistrationState(@TransportType int transport) {
-        NetworkRegistrationInfo nrs = mServiceState.getNetworkRegistrationInfo(
+        NetworkRegistrationInfo nri = mServiceState.getNetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, transport);
-        if (nrs != null) {
-            return nrs.getRegistrationState();
+        if (nri != null) {
+            return nri.getRegistrationState();
         }
         return NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN;
     }
