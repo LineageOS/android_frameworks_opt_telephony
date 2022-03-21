@@ -5661,7 +5661,22 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
             s = sb.toString();
         } else {
-            s = ret.toString();
+            // Check if toString() was overridden. Java classes created from HIDL have a built-in
+            // toString() method, but AIDL classes only have it if the parcelable contains a
+            // @JavaDerive annotation. Manually convert to String as a backup for AIDL parcelables
+            // missing the annotation.
+            boolean toStringExists = false;
+            try {
+                toStringExists = ret.getClass().getMethod("toString").getDeclaringClass()
+                        != Object.class;
+            } catch (NoSuchMethodException e) {
+                Rlog.e(RILJ_LOG_TAG, e.getMessage());
+            }
+            if (toStringExists) {
+                s = ret.toString();
+            } else {
+                s = RILUtils.convertToString(ret) + " [convertToString]";
+            }
         }
         return s;
     }
