@@ -357,9 +357,6 @@ public class DcTracker extends Handler {
     // it effect the PhysicalLinkStatusChanged
     private boolean mLteEndcUsingUserDataForRrcDetection = false;
 
-    // stats per data call recovery event
-    private DataStallRecoveryStats mDataStallRecoveryStats;
-
     /* List of SubscriptionPlans, updated when initialized and when plans are changed. */
     private List<SubscriptionPlan> mSubscriptionPlans = null;
     /* List of network types an unmetered override applies to, set by onSubscriptionOverride
