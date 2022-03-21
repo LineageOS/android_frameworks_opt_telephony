@@ -458,7 +458,7 @@ public class UiccPort {
     }
 
     /**
-     * Dispose the card and its related UiccPort objects.
+     * Return the IccId corresponding to the port.
      */
     public String getIccId() {
         if (mIccid != null) {

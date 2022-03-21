@@ -63,7 +63,9 @@ import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.uicc.IccCardStatus;
+import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.UiccSlot;
 
 import org.junit.After;
@@ -1853,7 +1855,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         IccCardStatus.CardState cardState = CARDSTATE_PRESENT;
         doReturn(uiccSlots).when(mUiccController).getUiccSlots();
         doReturn(cardState).when(mUiccSlot).getCardState();
-        doReturn("123").when(mUiccSlot).getIccId();
+        doReturn("123").when(mUiccSlot).getIccId(0); // default port index
         mSubscriptionControllerUT.clearSubInfoRecord(1);
 
         // Active sub list should return 1 now.
@@ -1883,7 +1885,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
         doReturn(uiccSlots).when(mUiccController).getUiccSlots();
         doReturn(cardState).when(mUiccSlot).getCardState();
         // IccId ends with a 'F' which should be ignored and taking into account.
-        doReturn("123F").when(mUiccSlot).getIccId();
+        doReturn("123F").when(mUiccSlot).getIccId(0); // default port index
+
         mSubscriptionControllerUT.clearSubInfoRecord(1);
 
         // Active sub list should return 1 now.

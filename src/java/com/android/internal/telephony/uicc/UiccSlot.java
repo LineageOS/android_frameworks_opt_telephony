@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.uicc;
 
+import android.annotation.NonNull;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
@@ -27,6 +28,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.UserHandle;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.view.WindowManager;
@@ -42,6 +44,8 @@ import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This class represents a physical slot on the device.
@@ -59,15 +63,17 @@ public class UiccSlot extends Handler {
     private boolean mStateIsUnknown = true;
     private CardState mCardState;
     private Context mContext;
-    private CommandsInterface mCi;
     private UiccCard mUiccCard;
-    private int mLastRadioState = TelephonyManager.RADIO_POWER_UNAVAILABLE;
     private boolean mIsEuicc;
-    private String mIccId;
     private String mEid;
     private AnswerToReset mAtr;
-    private int mPhoneId = INVALID_PHONE_ID;
     private boolean mIsRemovable;
+    // Map each available portIdx to phoneId
+    private HashMap<Integer, Integer> mPortIdxToPhoneId = new HashMap<>();
+    //Map each available portIdx with old radio state for state checking
+    private HashMap<Integer, Integer> mLastRadioState = new HashMap<>();
+    // Store iccId of each port.
+    private HashMap<Integer, String> mIccIds = new HashMap<>();
 
     private static final int EVENT_CARD_REMOVED = 13;
     private static final int EVENT_CARD_ADDED = 14;
@@ -85,21 +91,21 @@ public class UiccSlot extends Handler {
     public void update(CommandsInterface ci, IccCardStatus ics, int phoneId, int slotIndex) {
         if (DBG) log("cardStatus update: " + ics.toString());
         synchronized (mLock) {
+            mPortIdxToPhoneId.put(ics.mSlotPortMapping.mPortIndex, phoneId);
             CardState oldState = mCardState;
             mCardState = ics.mCardState;
-            mIccId = ics.iccid;
-            mPhoneId = phoneId;
+            mIccIds.put(ics.mSlotPortMapping.mPortIndex, ics.iccid);
             parseAtr(ics.atr);
-            mCi = ci;
             mIsRemovable = isSlotRemovable(slotIndex);
 
-            int radioState = mCi.getRadioState();
+            int radioState = ci.getRadioState();
             if (DBG) {
                 log("update: radioState=" + radioState + " mLastRadioState=" + mLastRadioState);
             }
 
             if (absentStateUpdateNeeded(oldState)) {
-                updateCardStateAbsent();
+                updateCardStateAbsent(ci.getRadioState(), phoneId,
+                        ics.mSlotPortMapping.mPortIndex);
             // Because mUiccCard may be updated in both IccCardStatus and IccSlotStatus, we need to
             // create a new UiccCard instance in two scenarios:
             //   1. mCardState is changing from ABSENT to non ABSENT.
@@ -108,7 +114,9 @@ public class UiccSlot extends Handler {
                     || mUiccCard == null) && mCardState != CardState.CARDSTATE_ABSENT) {
                 // No notification while we are just powering up
                 if (radioState != TelephonyManager.RADIO_POWER_UNAVAILABLE
-                        && mLastRadioState != TelephonyManager.RADIO_POWER_UNAVAILABLE) {
+                        && mLastRadioState.getOrDefault(ics.mSlotPortMapping.mPortIndex,
+                        TelephonyManager.RADIO_POWER_UNAVAILABLE)
+                        != TelephonyManager.RADIO_POWER_UNAVAILABLE) {
                     if (DBG) log("update: notify card added");
                     sendMessage(obtainMessage(EVENT_CARD_ADDED, null));
                 }
@@ -120,58 +128,131 @@ public class UiccSlot extends Handler {
                 }
 
                 if (!mIsEuicc) {
-                    mUiccCard = new UiccCard(mContext, mCi, ics, mPhoneId, mLock);
+                    mUiccCard = new UiccCard(mContext, ci, ics, phoneId, mLock);
                 } else {
                     // The EID should be reported with the card status, but in case it's not we want
                     // to catch that here
                     if (TextUtils.isEmpty(ics.eid)) {
                         loge("update: eid is missing. ics.eid=" + ics.eid);
                     }
-                    mUiccCard = new EuiccCard(mContext, mCi, ics, phoneId, mLock);
+                    mUiccCard = new EuiccCard(mContext, ci, ics, phoneId, mLock);
                 }
             } else {
                 if (mUiccCard != null) {
-                    mUiccCard.update(mContext, mCi, ics, phoneId);
+                    mUiccCard.update(mContext, ci, ics, phoneId);
                 }
             }
-            mLastRadioState = radioState;
+            mLastRadioState.put(ics.mSlotPortMapping.mPortIndex, radioState);
         }
     }
 
     /**
      * Update slot based on IccSlotStatus.
      */
-    public void update(CommandsInterface ci, IccSlotStatus iss, int slotIndex) {
+    public void update(CommandsInterface[] ci, IccSlotStatus iss, int slotIndex) {
         if (DBG) log("slotStatus update: " + iss.toString());
         synchronized (mLock) {
+            IccSimPortInfo[] simPortInfos = iss.mSimPortInfos;
             CardState oldState = mCardState;
-            mCi = ci;
             parseAtr(iss.atr);
             mCardState = iss.cardState;
-            mIccId = iss.iccid;
             mEid = iss.eid;
             mIsRemovable = isSlotRemovable(slotIndex);
-            if (iss.slotState == IccSlotStatus.SlotState.SLOTSTATE_INACTIVE) {
-                // TODO: (b/79432584) evaluate whether should broadcast card state change
-                // even if it's inactive.
-                UiccController.updateInternalIccStateForInactiveSlot(mContext, mPhoneId, mIccId);
+
+            for (int i = 0; i < simPortInfos.length; i++) {
+                int phoneId = iss.mSimPortInfos[i].mLogicalSlotIndex;
+                mIccIds.put(i, simPortInfos[i].mIccId);
+                if (!iss.mSimPortInfos[i].mPortActive) {
+                    // TODO: (b/79432584) evaluate whether should broadcast card state change
+                    // even if it's inactive.
+                    UiccController.updateInternalIccStateForInactivePort(mContext,
+                            mPortIdxToPhoneId.getOrDefault(i, INVALID_PHONE_ID),
+                            iss.mSimPortInfos[i].mIccId);
+                    mLastRadioState.put(i, TelephonyManager.RADIO_POWER_UNAVAILABLE);
+                    if (mUiccCard != null) {
+                        // Dispose the port
+                        mUiccCard.disposePort(i);
+                    }
+                } else {
+                    if (absentStateUpdateNeeded(oldState)) {
+                        int radioState = SubscriptionManager.isValidPhoneId(phoneId) ?
+                                ci[phoneId].getRadioState() :
+                                TelephonyManager.RADIO_POWER_UNAVAILABLE;
+                        updateCardStateAbsent(radioState, phoneId, i);
+                    }
+                    // TODO: (b/79432584) Create UiccCard or EuiccCard object here.
+                    // Right now It's OK not creating it because Card status update will do it.
+                    // But we should really make them symmetric.
+                }
+            }
+            // From MEP, Card can have multiple ports. So dispose UiccCard only when all the
+            // ports are inactive.
+            if (!hasActivePort(simPortInfos)) {
                 if (mActive) {
                     mActive = false;
-                    mLastRadioState = TelephonyManager.RADIO_POWER_UNAVAILABLE;
-                    mPhoneId = INVALID_PHONE_ID;
                     nullifyUiccCard(true /* sim state is unknown */);
                 }
             } else {
                 mActive = true;
-                mPhoneId = iss.logicalSlotIndex;
-                if (absentStateUpdateNeeded(oldState)) {
-                    updateCardStateAbsent();
-                }
-                // TODO: (b/79432584) Create UiccCard or EuiccCard object here.
-                // Right now It's OK not creating it because Card status update will do it.
-                // But we should really make them symmetric.
+            }
+            mPortIdxToPhoneId.clear();
+            for (int i = 0; i < simPortInfos.length; i++) {
+                mPortIdxToPhoneId.put(i, simPortInfos[i].mLogicalSlotIndex);
             }
         }
+    }
+
+    private boolean hasActivePort(IccSimPortInfo[] simPortInfos) {
+        for (IccSimPortInfo simPortInfo : simPortInfos) {
+            if (simPortInfo.mPortActive) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /* Return valid phoneId if possible from the portIdx mapping*/
+    private int getAnyValidPhoneId() {
+        for (int phoneId : mPortIdxToPhoneId.values()) {
+            if (SubscriptionManager.isValidPhoneId(phoneId)) {
+                return phoneId;
+            }
+        }
+        return INVALID_PHONE_ID;
+    }
+
+    @NonNull
+    public int[] getPortList() {
+        synchronized (mLock) {
+            return mPortIdxToPhoneId.keySet().stream().mapToInt(Integer::valueOf).toArray();
+        }
+    }
+
+    public int getPortIdx(int phoneId) {
+        synchronized (mLock) {
+            for (Map.Entry<Integer, Integer> entry : mPortIdxToPhoneId.entrySet()) {
+                if (entry.getValue() == phoneId) {
+                    return entry.getKey();
+                }
+            }
+            return TelephonyManager.DEFAULT_PORT_INDEX;
+        }
+    }
+
+    public boolean isPortActive(int portIdx) {
+        UiccPort uiccPort = null;
+        synchronized (mLock) {
+            if (mUiccCard != null) {
+                uiccPort = mUiccCard.getUiccPort(portIdx);
+            }
+            return uiccPort != null;
+        }
+    }
+
+    /* Returns true if multiple enabled profiles are supported */
+    public boolean isMultipleEnabledProfileSupported() {
+        // True if num of port indexes are more than 1
+        return mPortIdxToPhoneId.size() > 1;
     }
 
     private boolean absentStateUpdateNeeded(CardState oldState) {
@@ -179,22 +260,20 @@ public class UiccSlot extends Handler {
                 && mCardState == CardState.CARDSTATE_ABSENT;
     }
 
-    private void updateCardStateAbsent() {
-        int radioState =
-                (mCi == null) ? TelephonyManager.RADIO_POWER_UNAVAILABLE : mCi.getRadioState();
+    private void updateCardStateAbsent(int radioState, int phoneId, int portIndex) {
         // No notification while we are just powering up
         if (radioState != TelephonyManager.RADIO_POWER_UNAVAILABLE
-                && mLastRadioState != TelephonyManager.RADIO_POWER_UNAVAILABLE) {
+                && mLastRadioState.getOrDefault(
+                        portIndex, TelephonyManager.RADIO_POWER_UNAVAILABLE)
+                != TelephonyManager.RADIO_POWER_UNAVAILABLE) {
             if (DBG) log("update: notify card removed");
             sendMessage(obtainMessage(EVENT_CARD_REMOVED, null));
         }
-
-        UiccController.updateInternalIccState(
-                mContext, IccCardConstants.State.ABSENT, null, mPhoneId);
-
+        UiccController.updateInternalIccState(mContext, IccCardConstants.State.ABSENT,
+                null, phoneId);
         // no card present in the slot now; dispose card and make mUiccCard null
         nullifyUiccCard(false /* sim state is not unknown */);
-        mLastRadioState = radioState;
+        mLastRadioState.put(portIndex, TelephonyManager.RADIO_POWER_UNAVAILABLE);
     }
 
     // whenever we set mUiccCard to null, we lose the ability to differentiate between absent and
@@ -206,6 +285,7 @@ public class UiccSlot extends Handler {
         }
         mStateIsUnknown = stateUnknown;
         mUiccCard = null;
+        mPortIdxToPhoneId.clear();
     }
 
     public boolean isStateUnknown() {
@@ -256,23 +336,17 @@ public class UiccSlot extends Handler {
         return mActive;
     }
 
-    public int getPhoneId() {
-        return mPhoneId;
-    }
-
     public boolean isRemovable() {
         return mIsRemovable;
     }
 
-    public String getIccId() {
-        if (mIccId != null) {
-            return mIccId;
-        } else if (mUiccCard != null) {
-            //TODO In case of MEP and both ports are active, so which IccId will be returned.
-            return mUiccCard.getIccId();
-        } else {
-            return null;
-        }
+    /**
+     *  Returns the iccId specific to the port index.
+     *  Always use {@link com.android.internal.telephony.uicc.UiccPort#getIccId} to get the iccId.
+     *  Use this API to get the iccId of the inactive port only.
+     */
+    public String getIccId(int portIdx) {
+        return mIccIds.get(portIdx);
     }
 
     public String getEid() {
@@ -297,8 +371,8 @@ public class UiccSlot extends Handler {
             log("onIccSwap: isHotSwapSupported is true, don't prompt for rebooting");
             return;
         }
-
-        Phone phone = PhoneFactory.getPhone(mPhoneId);
+        // As this check is for shutdown status check, use any phoneId
+        Phone phone = PhoneFactory.getPhone(getAnyValidPhoneId());
         if (phone != null && phone.isShuttingDown()) {
             log("onIccSwap: already doing shutdown, no need to prompt");
             return;
@@ -409,16 +483,16 @@ public class UiccSlot extends Handler {
     /**
      * Processes radio state unavailable event
      */
-    public void onRadioStateUnavailable() {
+    public void onRadioStateUnavailable(int phoneId) {
         nullifyUiccCard(true /* sim state is unknown */);
 
-        if (mPhoneId != INVALID_PHONE_ID) {
+        if (phoneId != INVALID_PHONE_ID) {
             UiccController.updateInternalIccState(
-                    mContext, IccCardConstants.State.UNKNOWN, null, mPhoneId);
+                    mContext, IccCardConstants.State.UNKNOWN, null, phoneId);
+            mLastRadioState.put(getPortIdx(phoneId), TelephonyManager.RADIO_POWER_UNAVAILABLE);
         }
 
         mCardState = null;
-        mLastRadioState = TelephonyManager.RADIO_POWER_UNAVAILABLE;
     }
 
     private void log(String msg) {
@@ -434,12 +508,11 @@ public class UiccSlot extends Handler {
      */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("UiccSlot:");
-        pw.println(" mCi=" + mCi);
         pw.println(" mActive=" + mActive);
         pw.println(" mIsEuicc=" + mIsEuicc);
         pw.println(" mIsRemovable=" + mIsRemovable);
         pw.println(" mLastRadioState=" + mLastRadioState);
-        pw.println(" mIccId=" + mIccId);
+        pw.println(" mIccIds=" + mIccIds.values());
         pw.println(" mEid=" + mEid);
         pw.println(" mCardState=" + mCardState);
         if (mUiccCard != null) {

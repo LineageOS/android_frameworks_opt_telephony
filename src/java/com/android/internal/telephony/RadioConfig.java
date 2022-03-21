@@ -38,6 +38,7 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.WorkSource;
 import android.telephony.TelephonyManager;
+import android.telephony.UiccSlotMapping;
 import android.util.SparseArray;
 
 import com.android.telephony.Rlog;
@@ -514,7 +515,7 @@ public class RadioConfig extends Handler {
     /**
      * Wrapper function for IRadioConfig.setSimSlotsMapping(int32_t serial, vec<uint32_t> slotMap).
      */
-    public void setSimSlotsMapping(int[] physicalSlots, Message result) {
+    public void setSimSlotsMapping(List<UiccSlotMapping> slotMapping, Message result) {
         RadioConfigProxy proxy = getRadioConfigProxy(result);
         if (proxy.isEmpty()) return;
 
@@ -522,10 +523,10 @@ public class RadioConfig extends Handler {
                 mDefaultWorkSource);
         if (DBG) {
             logd(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest) + " "
-                    + Arrays.toString(physicalSlots));
+                    + slotMapping);
         }
         try {
-            proxy.setSimSlotsMapping(rr.mSerial, physicalSlots);
+            proxy.setSimSlotsMapping(rr.mSerial, slotMapping);
         } catch (RemoteException | RuntimeException e) {
             resetProxyAndRequestList("setSimSlotsMapping", e);
         }
