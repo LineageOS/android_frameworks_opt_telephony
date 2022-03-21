@@ -45,7 +45,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Matchers;
+import org.mockito.ArgumentMatchers;
 import org.mockito.MockitoAnnotations;
 
 import java.security.PublicKey;
@@ -62,16 +62,27 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
 
     private CarrierKeyDownloadManager mCarrierKeyDM;
 
-    private String mURL = "http://www.google.com";
+    private final String mURL = "http://www.google.com";
 
     private static final String CERT = "-----BEGIN CERTIFICATE-----\r\nMIIFjzCCBHegAwIBAgIUPxj3SLif82Ky1RlUy8p2EWJCh8MwDQYJKoZIhvcNAQELBQAwgY0xCzAJBgNVBAYTAk5MMRIwEAYDVQQHEwlBbXN0ZXJkYW0xJTAjBgNVBAoTHFZlcml6b24gRW50ZXJwcmlzZSBTb2x1dGlvbnMxEzARBgNVBAsTCkN5YmVydHJ1c3QxLjAsBgNVBAMTJVZlcml6b24gUHVibGljIFN1cmVTZXJ2ZXIgQ0EgRzE0LVNIQTIwHhcNMTcwODE0MTc0MzM4WhcNMTkwODE0MTc0MzM4WjCBmTELMAkGA1UEBhMCVVMxEzARBgNVBAgTCk5ldyBKZXJzZXkxFjAUBgNVBAcTDUJhc2tpbmcgUmlkZ2UxIjAgBgNVBAoTGVZlcml6b24gRGF0YSBTZXJ2aWNlcyBMTEMxHzAdBgNVBAsTFk5ldHdvcmsgU3lzdGVtIFN1cHBvcnQxGDAWBgNVBAMTD3ZpMWx2Lmltc3ZtLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALUQKWTHi4Hjpd1LQwJ87RXa0Rs3rVonvVevliqdUH5BikjhAzvIqwPSXeRQqkaRTFIyp0NKcNqGdjAaHRo43gdHeWSH331sS6CMZDg988gZznskzCqJJo6ii5FuLC8qe2YDsHxT+CefXev2rn6Bj1ei2X74uZsy5KlkBRZfFHtPdK6/EK5TpzrvcXfDyOK1rn8FTno1bQOTAhL39GPcLhdrXV7AN+lu+EBpdCqlTdcoDxsqavi/91MwUIVEzxJmycKloT6OWfU44r7+L5SYYgc88NTaGL/BvCFwHRIa1ZgYSGeAPes45792MGG7tfr/ttAGp9UEwTv2zWTxzWnRP/UCAwEAAaOCAdcwggHTMAwGA1UdEwEB/wQCMAAwTAYDVR0gBEUwQzBBBgkrBgEEAbE+ATIwNDAyBggrBgEFBQcCARYmaHR0cHM6Ly9zZWN1cmUub21uaXJvb3QuY29tL3JlcG9zaXRvcnkwgakGCCsGAQUFBwEBBIGcMIGZMC0GCCsGAQUFBzABhiFodHRwOi8vdnBzc2cxNDIub2NzcC5vbW5pcm9vdC5jb20wMwYIKwYBBQUHMAKGJ2h0dHA6Ly9jYWNlcnQub21uaXJvb3QuY29tL3Zwc3NnMTQyLmNydDAzBggrBgEFBQcwAoYnaHR0cDovL2NhY2VydC5vbW5pcm9vdC5jb20vdnBzc2cxNDIuZGVyMBoGA1UdEQQTMBGCD3ZpMWx2Lmltc3ZtLmNvbTAOBgNVHQ8BAf8EBAMCBaAwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMB8GA1UdIwQYMBaAFOQtu5EBZSYftHo/oxUlpM6MRDM7MD4GA1UdHwQ3MDUwM6AxoC+GLWh0dHA6Ly92cHNzZzE0Mi5jcmwub21uaXJvb3QuY29tL3Zwc3NnMTQyLmNybDAdBgNVHQ4EFgQUv5SaSyNM/yXw1v0N9TNpjsFCaPcwDQYJKoZIhvcNAQELBQADggEBACNJusTULj1KyV4RwiskKfp4wI9Hsz3ESbZS/ijF9D57BQ0UwkELU9r6rEAhsYLUvMq4sDhDbYIdupgP4MBzFnjkKult7VQm5W3nCcuHgXYFAJ9Y1a4OZAo/4hrHj70W9TsQ1ioSMjUT4F8bDUYZI0kcyH8e/+2DaTsLUpHw3L+Keu8PsJVBLnvcKJjWrZD/Bgd6JuaTX2G84i0rY0GJuO9CxLNJa6n61Mz5cqLYIuwKgiVgTA2n71YITyFICOFPFX1vSx35AWvD6aVYblxtC8mpCdF2h4s1iyrpXeji2GCJLwsNVtTtNQ4zWX3Gnq683wzkYZeyOHUyftIgAQZ+HsY=\r\n-----END CERTIFICATE-----";
     private static final long CERT_EXPIRATION = 1565804618000L; //milliseconds since the epoch
-    private String mJsonStr = "{ \"carrier-keys\": [ { \"certificate\": \"" + CERT + "\", \"key-type\": \"WLAN\", \"key-identifier\": \"key1=value\", \"expiration-date\": 1502577746000 }, { \"certificate\": \"" + CERT + "\", \"key-type\": \"WLAN\", \"key-identifier\": \"key1=value\", \"expiration-date\": 1502577746000 }]}";
+    private final String mJsonStr = "{ \"carrier-keys\": [ { \"certificate\": \"" + CERT
+            + "\", \"key-type\": \"WLAN\", \"key-identifier\": \"key1=value\", "
+            + "\"expiration-date\": 1502577746000 }, { \"certificate\": \""
+            + CERT
+            + "\", \"key-type\": \"WLAN\", \"key-identifier\": \"key1=value\", "
+            + "\"expiration-date\": 1502577746000 }]}";
 
-    private String mJsonStr1 = "{ \"carrier-keys\": [ { \"public-key\": \"" + CERT + "\", \"key-type\": \"WLAN\", \"key-identifier\": \"key1=value\", \"expiration-date\": 1502577746000 }, { \"public-key\": \"" + CERT + "\", \"key-type\": \"WLAN\", \"key-identifier\": \"key1=value\", \"expiration-date\": 1502577746000 }]}";
+    private final String mJsonStr1 = "{ \"carrier-keys\": [ { \"public-key\": \"" + CERT
+            + "\", \"key-type\": \"WLAN\", \"key-identifier\": \"key1=value\", "
+            + "\"expiration-date\": 1502577746000 }, { \"public-key\": \""
+            + CERT
+            + "\", \"key-type\": \"WLAN\", \"key-identifier\": \"key1=value\", "
+            + "\"expiration-date\": 1502577746000 }]}";
 
-    private String mJsonStr3GppSpec = "{ \"carrier-keys\": [ { \"key-identifier\": \"key1=value\", "
-            + "\"public-key\": \"" + CERT + "\"}]}";
+    private final String mJsonStr3GppSpec =
+            "{ \"carrier-keys\": [ { \"key-identifier\": \"key1=value\", "
+                    + "\"public-key\": \"" + CERT + "\"}]}";
 
     @Before
     public void setUp() throws Exception {
@@ -96,7 +107,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     public void testExpirationDate1Day() {
         java.security.PublicKey publicKey = null;
         mCarrierKeyDM.mKeyAvailability = 3;
-        SimpleDateFormat dt = new SimpleDateFormat("yyyy-mm-dd");
+        SimpleDateFormat dt = new SimpleDateFormat("yyyy-MM-dd");
         Calendar cal = new GregorianCalendar();
         cal.add(Calendar.DATE, 6);
         Date date = cal.getTime();
@@ -104,11 +115,11 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         expectedCal.add(Calendar.DATE, 1);
         String dateExpected = dt.format(expectedCal.getTime());
         ImsiEncryptionInfo imsiEncryptionInfo = new ImsiEncryptionInfo("mcc", "mnc", 1,
-                "keyIdentifier", publicKey, date);
+                "keyIdentifier", publicKey, date, 1);
         when(mPhone.getCarrierInfoForImsiEncryption(anyInt(), anyBoolean()))
                 .thenReturn(imsiEncryptionInfo);
         Date expirationDate = new Date(mCarrierKeyDM.getExpirationDate());
-        assertTrue(dt.format(expirationDate).equals(dateExpected));
+        assertEquals(dt.format(expirationDate), dateExpected);
     }
 
     /**
@@ -120,7 +131,6 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     public void testExpirationDate7Day() {
         java.security.PublicKey publicKey = null;
         mCarrierKeyDM.mKeyAvailability = 3;
-        SimpleDateFormat dt = new SimpleDateFormat("yyyy-mm-dd");
         Calendar cal = new GregorianCalendar();
         cal.add(Calendar.DATE, 30);
         Date date = cal.getTime();
@@ -131,7 +141,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         Date minExpirationDate = minExpirationCal.getTime();
         Date maxExpirationDate = maxExpirationCal.getTime();
         ImsiEncryptionInfo imsiEncryptionInfo = new ImsiEncryptionInfo("mcc", "mnc", 1,
-                "keyIdentifier", publicKey, date);
+                "keyIdentifier", publicKey, date, 1);
         when(mPhone.getCarrierInfoForImsiEncryption(anyInt(), anyBoolean()))
                 .thenReturn(imsiEncryptionInfo);
         Date expirationDate = new Date(mCarrierKeyDM.getExpirationDate());
@@ -148,16 +158,16 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     public void testParseJson() {
         Pair<PublicKey, Long> keyInfo = null;
         try {
-            keyInfo = mCarrierKeyDM.getKeyInformation(CERT.getBytes());
+            keyInfo = CarrierKeyDownloadManager.getKeyInformation(CERT.getBytes());
         } catch (Exception e) {
             fail(LOG_TAG + "exception creating public key");
         }
         ImsiEncryptionInfo imsiEncryptionInfo = new ImsiEncryptionInfo("310", "270", 2,
-                "key1=value", keyInfo.first, new Date(keyInfo.second));
+                "key1=value", keyInfo.first, new Date(keyInfo.second), 1);
         String mccMnc = "310270";
-        mCarrierKeyDM.parseJsonAndPersistKey(mJsonStr, mccMnc);
+        mCarrierKeyDM.parseJsonAndPersistKey(mJsonStr, mccMnc, 1);
         verify(mPhone, times(2)).setCarrierInfoForImsiEncryption(
-                (Matchers.refEq(imsiEncryptionInfo)));
+                (ArgumentMatchers.refEq(imsiEncryptionInfo)));
     }
 
     /**
@@ -169,16 +179,42 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     public void testParseJsonPublicKey() {
         Pair<PublicKey, Long> keyInfo = null;
         try {
-            keyInfo = mCarrierKeyDM.getKeyInformation(CERT.getBytes());
+            keyInfo = CarrierKeyDownloadManager.getKeyInformation(CERT.getBytes());
         } catch (Exception e) {
             fail(LOG_TAG + "exception creating public key");
         }
+        PublicKey publicKey = keyInfo.first;
         ImsiEncryptionInfo imsiEncryptionInfo = new ImsiEncryptionInfo("310", "270", 2,
-                "key1=value", keyInfo.first, new Date(keyInfo.second));
+                "key1=value", publicKey, new Date(keyInfo.second), 1);
         String mccMnc = "310270";
-        mCarrierKeyDM.parseJsonAndPersistKey(mJsonStr1, mccMnc);
+        mCarrierKeyDM.parseJsonAndPersistKey(mJsonStr1, mccMnc, 1);
         verify(mPhone, times(2)).setCarrierInfoForImsiEncryption(
-                (Matchers.refEq(imsiEncryptionInfo)));
+                (ArgumentMatchers.refEq(imsiEncryptionInfo)));
+    }
+
+    public void testParseJsonPublicKey(String mcc, String mnc, int carrierId) {
+        Pair<PublicKey, Long> keyInfo = null;
+        try {
+            keyInfo = CarrierKeyDownloadManager.getKeyInformation(CERT.getBytes());
+        } catch (Exception e) {
+            fail(LOG_TAG + "exception creating public key");
+        }
+        ImsiEncryptionInfo imsiEncryptionInfo = new ImsiEncryptionInfo(mcc, mnc, 2,
+                "key1=value", keyInfo.first, new Date(keyInfo.second), carrierId);
+        String mccMnc = mcc + mnc;
+        mCarrierKeyDM.parseJsonAndPersistKey(mJsonStr1, mccMnc, carrierId);
+        verify(mPhone, times(2)).setCarrierInfoForImsiEncryption(
+                (ArgumentMatchers.refEq(imsiEncryptionInfo)));
+    }
+
+    @Test
+    public void testParseJsonPublicKeyOfMNO() {
+        testParseJsonPublicKey("311", "480", 1839);
+    }
+
+    @Test
+    public void testParseJsonPublicKeyOfMVNO() {
+        testParseJsonPublicKey("311", "480", 2146);
     }
 
     /**
@@ -190,7 +226,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     public void testParseBadJsonFail() {
         String mccMnc = "310290";
         String badJsonStr = "{badJsonString}";
-        mCarrierKeyDM.parseJsonAndPersistKey(badJsonStr, mccMnc);
+        mCarrierKeyDM.parseJsonAndPersistKey(badJsonStr, mccMnc, 1);
         verify(mPhone, times(0)).setCarrierInfoForImsiEncryption(any());
     }
 
@@ -203,11 +239,13 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     public void testIsValidDownload() {
         String currentMccMnc = "310260";
         long currentDownloadId = 1;
+        int carrierId = 1;
         // mock downloadId to match
         mCarrierKeyDM.mMccMncForDownload = currentMccMnc;
         mCarrierKeyDM.mDownloadId = currentDownloadId;
+        mCarrierKeyDM.mCarrierId = carrierId;
 
-        assertTrue(mCarrierKeyDM.isValidDownload(currentMccMnc, currentDownloadId));
+        assertTrue(mCarrierKeyDM.isValidDownload(currentMccMnc, currentDownloadId, carrierId));
     }
 
     /**
@@ -219,16 +257,23 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     public void testIsValidDownloadFail() {
         String currentMccMnc = "310260";
         long currentDownloadId = 1;
+        int carrierId = 1;
 
         // mock downloadId to match, mccmnc so it doesn't match
         mCarrierKeyDM.mMccMncForDownload = "310290";
         mCarrierKeyDM.mDownloadId = currentDownloadId;
-        assertFalse(mCarrierKeyDM.isValidDownload(currentMccMnc, currentDownloadId));
+        mCarrierKeyDM.mCarrierId = carrierId;
+        assertFalse(mCarrierKeyDM.isValidDownload(currentMccMnc, currentDownloadId, carrierId));
 
         // pass in mccmnc to match, and mock shared pref downloadId so it doesn't match
         currentMccMnc = "310290";
         mCarrierKeyDM.mDownloadId = currentDownloadId + 1;
-        assertFalse(mCarrierKeyDM.isValidDownload(currentMccMnc, currentDownloadId));
+        assertFalse(mCarrierKeyDM.isValidDownload(currentMccMnc, currentDownloadId, carrierId));
+
+        // mccmnc and downloadID matches but carrierId don't matches
+        mCarrierKeyDM.mDownloadId = currentDownloadId;
+        mCarrierKeyDM.mCarrierId = carrierId + 1;
+        assertFalse(mCarrierKeyDM.isValidDownload(currentMccMnc, currentDownloadId, carrierId));
     }
 
     /**
@@ -260,19 +305,21 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         long downloadId = 1;
         mCarrierKeyDM.mMccMncForDownload = mccMnc;
         mCarrierKeyDM.mDownloadId = downloadId;
+        mCarrierKeyDM.mCarrierId = 1;
 
-        SimpleDateFormat dt = new SimpleDateFormat("yyyy-mm-dd");
+        SimpleDateFormat dt = new SimpleDateFormat("yyyy-MM-dd");
         Calendar expectedCal = new GregorianCalendar();
         expectedCal.add(Calendar.DATE, 1);
         String dateExpected = dt.format(expectedCal.getTime());
 
         when(mTelephonyManager.getSimOperator(anyInt())).thenReturn("310260");
+        when(mTelephonyManager.getSimCarrierId()).thenReturn(1);
         Intent mIntent = new Intent(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
         mIntent.putExtra(DownloadManager.EXTRA_DOWNLOAD_ID, downloadId);
         mContext.sendBroadcast(mIntent);
         processAllMessages();
         Date expirationDate = new Date(mCarrierKeyDM.getExpirationDate());
-        assertTrue(dt.format(expirationDate).equals(dateExpected));
+        assertEquals(dt.format(expirationDate), dateExpected);
     }
 
     /**
@@ -290,11 +337,13 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         bundle.putString(CarrierConfigManager.IMSI_KEY_DOWNLOAD_URL_STRING, mURL);
 
         when(mTelephonyManager.getSimOperator(anyInt())).thenReturn("310260");
+        when(mTelephonyManager.getSimCarrierId()).thenReturn(1);
         Intent mIntent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         mIntent.putExtra(PhoneConstants.PHONE_KEY, 0);
         mContext.sendBroadcast(mIntent);
         processAllMessages();
         assertEquals("310260", mCarrierKeyDM.mMccMncForDownload);
+        assertEquals(1, mCarrierKeyDM.mCarrierId);
     }
 
     /**
@@ -317,7 +366,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         processAllMessages();
         assertNull(mCarrierKeyDM.mMccMncForDownload);
 
-        verify(mPhone).deleteCarrierInfoForImsiEncryption();
+        verify(mPhone).deleteCarrierInfoForImsiEncryption(0);
     }
 
     /**
@@ -335,6 +384,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         bundle.putString(CarrierConfigManager.IMSI_KEY_DOWNLOAD_URL_STRING, mURL);
 
         when(mTelephonyManager.getSimOperator(anyInt())).thenReturn("310260");
+        when(mTelephonyManager.getSimCarrierId()).thenReturn(1);
         Intent mIntent = new Intent("com.android.internal.telephony.carrier_key_download_alarm");
         mIntent.putExtra(SubscriptionManager.EXTRA_SLOT_INDEX, slotIndex);
         mContext.sendBroadcast(mIntent);
@@ -356,11 +406,12 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         }
         ImsiEncryptionInfo imsiEncryptionInfo = new ImsiEncryptionInfo("310", "270",
                 TelephonyManager.KEY_TYPE_WLAN, "key1=value", keyInfo.first,
-                new Date(CERT_EXPIRATION));
+                new Date(CERT_EXPIRATION), 1);
         String mccMnc = "310270";
-        mCarrierKeyDM.parseJsonAndPersistKey(mJsonStr3GppSpec, mccMnc);
+        int carrierId = 1;
+        mCarrierKeyDM.parseJsonAndPersistKey(mJsonStr3GppSpec, mccMnc, carrierId);
         verify(mPhone).setCarrierInfoForImsiEncryption(
-                (Matchers.refEq(imsiEncryptionInfo)));
+                (ArgumentMatchers.refEq(imsiEncryptionInfo)));
     }
 
     /**
