@@ -205,6 +205,8 @@ public class DataEvaluation {
         DATA_HANDOVER,
         /** Preferred transport changed. */
         PREFERRED_TRANSPORT_CHANGED,
+        /** Slice config changed. */
+        SLICE_CONFIG_CHANGED,
     }
 
     /** Disallowed reasons. There could be multiple reasons if it is not allowed. */
