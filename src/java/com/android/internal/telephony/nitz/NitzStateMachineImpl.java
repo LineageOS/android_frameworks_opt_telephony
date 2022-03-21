@@ -93,7 +93,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
                 @Nullable NitzSignal nitzSignal);
     }
 
-    static final String LOG_TAG = "NewNitzStateMachineImpl";
+    static final String LOG_TAG = "NitzStateMachineImpl";
     static final boolean DBG = true;
 
     // Miscellaneous dependencies and helpers not related to detection state.
