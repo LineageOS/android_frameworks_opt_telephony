@@ -2426,7 +2426,11 @@ public class RILTest extends TelephonyTest {
         android.hardware.radio.V1_6.OptionalOsAppId halOsAppId =
                 new android.hardware.radio.V1_6.OptionalOsAppId();
         android.hardware.radio.V1_6.OsAppId osAppId = new android.hardware.radio.V1_6.OsAppId();
-        byte[] osAppIdArray = {1, 2, 3, 4};
+        // 97a498e3fc925c9489860333d06e4e470a454e5445525052495345.
+        // [OsAppId.ANDROID_OS_ID, "ENTERPRISE", 1]
+        byte[] osAppIdArray = {-105, -92, -104, -29, -4, -110, 92,
+                -108, -119, -122, 3, 51, -48, 110, 78, 71, 10, 69, 78, 84, 69,
+                82, 80, 82, 73, 83, 69};
         osAppId.osAppId = RILUtils.primitiveArrayToArrayList(osAppIdArray);
         halOsAppId.value(osAppId);
 

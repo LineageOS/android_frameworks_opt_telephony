@@ -224,9 +224,13 @@ public class TelephonyNetworkFactory extends NetworkFactory {
 
     private int getTransportTypeFromNetworkRequest(TelephonyNetworkRequest networkRequest) {
         if (PhoneFactory.getDefaultPhone().isUsingNewDataStack()) {
-            return PhoneFactory.getDefaultPhone().getAccessNetworksManager()
-                    .getPreferredTransportByNetworkCapability(
-                            networkRequest.getApnTypeNetworkCapability());
+            int transport = AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
+            int capability = networkRequest.getApnTypeNetworkCapability();
+            if (capability >= 0) {
+                transport = PhoneFactory.getDefaultPhone().getAccessNetworksManager()
+                        .getPreferredTransportByNetworkCapability(capability);
+            }
+            return transport;
         } else {
             int apnType = ApnContext.getApnTypeFromNetworkRequest(
                     networkRequest.getNativeNetworkRequest());

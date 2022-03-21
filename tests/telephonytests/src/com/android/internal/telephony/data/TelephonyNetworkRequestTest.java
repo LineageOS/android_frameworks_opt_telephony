@@ -20,9 +20,13 @@ import static com.google.common.truth.Truth.assertThat;
 
 import static org.mockito.Mockito.doReturn;
 
+import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.TelephonyNetworkSpecifier;
+import android.telephony.data.ApnSetting;
+import android.telephony.data.DataProfile;
+import android.telephony.data.TrafficDescriptor;
 
 import com.android.internal.telephony.TelephonyTest;
 
@@ -31,6 +35,42 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class TelephonyNetworkRequestTest extends TelephonyTest {
+
+    private static final ApnSetting INTERNET_APN_SETTING = new ApnSetting.Builder()
+            .setId(2163)
+            .setOperatorNumeric("12345")
+            .setEntryName("internet")
+            .setApnName("internet")
+            .setUser("user")
+            .setPassword("passwd")
+            .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL)
+            .setProtocol(ApnSetting.PROTOCOL_IPV6)
+            .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
+            .setCarrierEnabled(true)
+            .setNetworkTypeBitmask(0)
+            .setProfileId(1234)
+            .setMaxConns(321)
+            .setWaitTime(456)
+            .setMaxConnsTime(789)
+            .build();
+
+    private static final ApnSetting MMS_APN_SETTING = new ApnSetting.Builder()
+            .setId(2163)
+            .setOperatorNumeric("12345")
+            .setEntryName("mms")
+            .setApnName("mms")
+            .setUser("user")
+            .setPassword("passwd")
+            .setApnTypeBitmask(ApnSetting.TYPE_MMS)
+            .setProtocol(ApnSetting.PROTOCOL_IPV6)
+            .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
+            .setCarrierEnabled(true)
+            .setNetworkTypeBitmask(0)
+            .setProfileId(1234)
+            .setMaxConns(321)
+            .setWaitTime(456)
+            .setMaxConnsTime(789)
+            .build();
 
     @Before
     public void setUp() throws Exception {
@@ -157,5 +197,121 @@ public class TelephonyNetworkRequestTest extends TelephonyTest {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
                 .build();
         assertThat(internetRequest.canBeSatisfiedBy(caps)).isTrue();
+    }
+
+    @Test
+    public void testCanBeSatisfiedByApnDataProfile() {
+        TelephonyNetworkRequest internetRequest = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .build(), mPhone);
+        TelephonyNetworkRequest mmsRequest = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_MMS)
+                        .build(), mPhone);
+        DataProfile internetDataProfile = new DataProfile.Builder()
+                .setApnSetting(INTERNET_APN_SETTING)
+                .build();
+        DataProfile mmsDataProfile = new DataProfile.Builder()
+                .setApnSetting(MMS_APN_SETTING)
+                .build();
+
+        assertThat(internetRequest.canBeSatisfiedBy(internetDataProfile)).isTrue();
+        assertThat(internetRequest.canBeSatisfiedBy(mmsDataProfile)).isFalse();
+        assertThat(mmsRequest.canBeSatisfiedBy(internetDataProfile)).isFalse();
+        assertThat(mmsRequest.canBeSatisfiedBy(mmsDataProfile)).isTrue();
+    }
+
+    @Test
+    public void testCanBeSatisfiedByEnterpriseDataProfile() {
+        TelephonyNetworkRequest enterpriseRequest1 = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)
+                        .build(), mPhone);
+        TelephonyNetworkRequest enterpriseRequest2 = new TelephonyNetworkRequest(
+                new NetworkRequest(new NetworkCapabilities()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)
+                        .addEnterpriseId(2), ConnectivityManager.TYPE_NONE,
+                        0, NetworkRequest.Type.REQUEST), mPhone);
+
+        DataProfile enterpriseDataProfile1 = new DataProfile.Builder()
+                .setTrafficDescriptor(new TrafficDescriptor(null, new TrafficDescriptor.OsAppId(
+                        TrafficDescriptor.OsAppId.ANDROID_OS_ID, "ENTERPRISE", 1).getBytes()))
+                .build();
+        DataProfile enterpriseDataProfile2 = new DataProfile.Builder()
+                .setTrafficDescriptor(new TrafficDescriptor(null, new TrafficDescriptor.OsAppId(
+                        TrafficDescriptor.OsAppId.ANDROID_OS_ID, "ENTERPRISE", 2).getBytes()))
+                .build();
+
+        assertThat(enterpriseRequest1.canBeSatisfiedBy(enterpriseDataProfile1)).isTrue();
+        assertThat(enterpriseRequest1.canBeSatisfiedBy(enterpriseDataProfile2)).isFalse();
+        assertThat(enterpriseRequest2.canBeSatisfiedBy(enterpriseDataProfile1)).isFalse();
+        assertThat(enterpriseRequest2.canBeSatisfiedBy(enterpriseDataProfile2)).isTrue();
+    }
+
+    @Test
+    public void testCanBeSatisfiedByUrllcDataProfile() {
+        TelephonyNetworkRequest urllcRequest = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY)
+                        .build(), mPhone);
+
+        TelephonyNetworkRequest embbRequest = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH)
+                        .build(), mPhone);
+
+        DataProfile urllcDataProfile = new DataProfile.Builder()
+                .setTrafficDescriptor(new TrafficDescriptor(null, new TrafficDescriptor.OsAppId(
+                        TrafficDescriptor.OsAppId.ANDROID_OS_ID, "PRIORITIZE_LATENCY", 1)
+                        .getBytes()))
+                .build();
+
+        assertThat(urllcRequest.canBeSatisfiedBy(urllcDataProfile)).isTrue();
+        assertThat(embbRequest.canBeSatisfiedBy(urllcDataProfile)).isFalse();
+    }
+
+    @Test
+    public void testCanBeSatisfiedByEmbbDataProfile() {
+        TelephonyNetworkRequest urllcRequest = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY)
+                        .build(), mPhone);
+
+        TelephonyNetworkRequest embbRequest = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH)
+                        .build(), mPhone);
+
+        DataProfile embbDataProfile = new DataProfile.Builder()
+                .setTrafficDescriptor(new TrafficDescriptor(null, new TrafficDescriptor.OsAppId(
+                        TrafficDescriptor.OsAppId.ANDROID_OS_ID, "PRIORITIZE_BANDWIDTH", 1)
+                        .getBytes()))
+                .build();
+
+        assertThat(embbRequest.canBeSatisfiedBy(embbDataProfile)).isTrue();
+        assertThat(urllcRequest.canBeSatisfiedBy(embbDataProfile)).isFalse();
+    }
+
+    @Test
+    public void testCanBeSatisfiedByCbsDataProfile() {
+        TelephonyNetworkRequest cbsRequest = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_CBS)
+                        .build(), mPhone);
+
+        TelephonyNetworkRequest embbRequest = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH)
+                        .build(), mPhone);
+
+        DataProfile cbsDataProfile = new DataProfile.Builder()
+                .setTrafficDescriptor(new TrafficDescriptor(null, new TrafficDescriptor.OsAppId(
+                        TrafficDescriptor.OsAppId.ANDROID_OS_ID, "CBS")
+                        .getBytes()))
+                .build();
+
+        assertThat(cbsRequest.canBeSatisfiedBy(cbsDataProfile)).isTrue();
+        assertThat(embbRequest.canBeSatisfiedBy(cbsDataProfile)).isFalse();
     }
 }
