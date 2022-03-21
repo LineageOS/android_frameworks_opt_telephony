@@ -187,6 +187,9 @@ public class DataNetworkController extends Handler {
     /** Event for unmetered or congested subscription override. */
     private static final int EVENT_SUBSCRIPTION_OVERRIDE = 23;
 
+    /** Event for slice config changed. */
+    private static final int EVENT_SLICE_CONFIG_CHANGED = 24;
+
     /** The supported IMS features. This is for IMS graceful tear down support. */
     private static final Collection<Integer> SUPPORTED_IMS_FEATURES =
             List.of(ImsFeature.FEATURE_MMTEL, ImsFeature.FEATURE_RCS);
@@ -859,6 +862,7 @@ public class DataNetworkController extends Handler {
             mPhone.getImsPhone().getCallTracker().registerForVoiceCallEnded(
                     this, EVENT_VOICE_CALL_ENDED, null);
         }
+        mPhone.mCi.registerForSlicingConfigChanged(this, EVENT_SLICE_CONFIG_CHANGED, null);
     }
 
     @Override
@@ -890,6 +894,10 @@ public class DataNetworkController extends Handler {
             case EVENT_VOICE_CALL_ENDED:
                 sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
                         DataEvaluationReason.VOICE_CALL_ENDED));
+                break;
+            case EVENT_SLICE_CONFIG_CHANGED:
+                sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
+                        DataEvaluationReason.SLICE_CONFIG_CHANGED));
                 break;
             case EVENT_PS_RESTRICT_ENABLED:
                 mPsRestricted = true;
