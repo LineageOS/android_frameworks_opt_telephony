@@ -44,6 +44,7 @@ import android.telephony.Annotation.NetworkType;
 import android.telephony.Annotation.ValidationStatus;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
+import android.telephony.DataSpecificRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo.RegistrationState;
 import android.telephony.PcoData;
@@ -898,6 +899,10 @@ public class DataNetworkController extends Handler {
                 onRemoveNetworkRequest((TelephonyNetworkRequest) msg.obj);
                 break;
             case EVENT_VOICE_CALL_ENDED:
+                // In some cases we need to tear down network after call ends. For example, when
+                // delay IMS tear down until call ends is turned on.
+                sendMessage(obtainMessage(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
+                        DataEvaluationReason.VOICE_CALL_ENDED));
                 sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
                         DataEvaluationReason.VOICE_CALL_ENDED));
                 break;
@@ -1052,7 +1057,7 @@ public class DataNetworkController extends Handler {
         // of them.
         DataEvaluation evaluation = evaluateNetworkRequest(networkRequest,
                 DataEvaluationReason.NEW_REQUEST);
-        if (evaluation.isDataAllowed()) {
+        if (!evaluation.containsDisallowedReasons()) {
             DataProfile dataProfile = evaluation.getCandidateDataProfile();
             if (dataProfile != null) {
                 setupDataNetwork(dataProfile, null);
@@ -1183,6 +1188,20 @@ public class DataNetworkController extends Handler {
                     DataDisallowedReason.CONCURRENT_VOICE_DATA_NOT_ALLOWED);
         }
 
+        // Check VoPS support
+        if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
+                && networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL)) {
+            NetworkRegistrationInfo nri = mServiceState.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            if (nri != null) {
+                DataSpecificRegistrationInfo dsri = nri.getDataSpecificInfo();
+                if (dsri != null && dsri.getVopsSupportInfo() != null
+                        && !dsri.getVopsSupportInfo().isVopsSupported()) {
+                    evaluation.addDataDisallowedReason(DataDisallowedReason.VOPS_NOT_SUPPORTED);
+                }
+            }
+        }
+
         // Check if default data is selected.
         if (!SubscriptionManager.isValidSubscriptionId(
                 SubscriptionManager.getDefaultDataSubscriptionId())) {
@@ -1235,7 +1254,7 @@ public class DataNetworkController extends Handler {
         }
 
         // Check whether to allow data in certain situations if data is disallowed for soft reasons
-        if (evaluation.isDataAllowed()) {
+        if (!evaluation.containsDisallowedReasons()) {
             evaluation.addDataAllowedReason(DataAllowedReason.NORMAL);
         } else if (!evaluation.containsHardDisallowedReasons()) {
             // Check if request is MMS and MMS is always allowed
@@ -1248,12 +1267,7 @@ public class DataNetworkController extends Handler {
             if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
                 evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
             } else if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
-                int apnType = DataUtils.networkCapabilityToApnType(
-                        networkRequest.getApnTypeNetworkCapability());
-                Set<Integer> meteredApns = mServiceState.getDataRoaming()
-                        ? mDataConfigManager.getMeteredApnTypesWhenRoaming()
-                        : mDataConfigManager.getMeteredApnTypes();
-                if (!meteredApns.contains(apnType)) {
+                if (!networkRequest.isMeteredRequest()) {
                     evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
                 }
             }
@@ -1280,7 +1294,7 @@ public class DataNetworkController extends Handler {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_THROTTLED);
         }
 
-        if (evaluation.isDataAllowed()) {
+        if (!evaluation.containsDisallowedReasons()) {
             evaluation.setCandidateDataProfile(dataProfile);
         }
 
@@ -1332,7 +1346,7 @@ public class DataNetworkController extends Handler {
             // all the requests in the list have the same capabilities, we can only evaluate one
             // of them.
             DataEvaluation evaluation = evaluateNetworkRequest(requestList.get(0), reason);
-            if (evaluation.isDataAllowed()) {
+            if (!evaluation.containsDisallowedReasons()) {
                 DataProfile dataProfile = evaluation.getCandidateDataProfile();
                 if (dataProfile != null) {
                     setupDataNetwork(dataProfile, null);
@@ -1370,6 +1384,35 @@ public class DataNetworkController extends Handler {
         // Check if data is restricted by the network.
         if (mPsRestricted) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_RESTRICTED_BY_NETWORK);
+        }
+
+        boolean delayImsTearDown = false;
+        if (mDataConfigManager.isImsDelayTearDownEnabled()
+                && dataNetwork.getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
+                && mPhone.getImsPhone() != null
+                && mPhone.getImsPhone().getCallTracker().getState() != PhoneConstants.State.IDLE) {
+            // Some carriers requires delay tearing down IMS network until the call ends even if
+            // VoPS bit is lost.
+            log("Ignore VoPS bit and delay IMS tear down until call ends.");
+            delayImsTearDown = true;
+        }
+
+        // Check VoPS support (except for the case that we want to delay IMS tear down until the
+        // voice call ends.
+        if (!delayImsTearDown
+                && dataNetwork.getTransport() == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
+                && dataNetwork.getNetworkCapabilities().hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_MMTEL)) {
+            NetworkRegistrationInfo nri = mServiceState.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            if (nri != null) {
+                DataSpecificRegistrationInfo dsri = nri.getDataSpecificInfo();
+                if (dsri != null && dsri.getVopsSupportInfo() != null
+                        && !dsri.getVopsSupportInfo().isVopsSupported()) {
+                    evaluation.addDataDisallowedReason(DataDisallowedReason.VOPS_NOT_SUPPORTED);
+                }
+            }
         }
 
         // Check if device is CDMA and is currently in ECBM
@@ -1432,8 +1475,32 @@ public class DataNetworkController extends Handler {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_PROFILE_NOT_PREFERRED);
         }
 
-        if (evaluation.isDataAllowed()) {
+        // Check whether if there are any reason we should tear down the network.
+        if (!evaluation.containsDisallowedReasons()) {
+            // The data is allowed in the current condition.
             evaluation.addDataAllowedReason(DataAllowedReason.NORMAL);
+        } else if (!evaluation.containsHardDisallowedReasons()) {
+            // If there are reasons we should tear down the network, check if those are hard reasons
+            // or soft reasons. In some scenarios, we can make exceptions if they are soft
+            // disallowed reasons.
+
+            // Check if request is unmetered (WiFi or unmetered APN)
+            if (dataNetwork.getTransport() == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+                evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
+            } else {
+                boolean unmeteredNetwork = !mDataConfigManager.isAnyMeteredCapability(
+                        dataNetwork.getNetworkCapabilities()
+                                .getCapabilities(), mServiceState.getDataRoaming());
+                if (unmeteredNetwork) {
+                    evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
+                }
+            }
+
+            // Check if request is restricted
+            if (!dataNetwork.getNetworkCapabilities().hasCapability(
+                    NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
+                evaluation.addDataAllowedReason(DataAllowedReason.RESTRICTED_REQUEST);
+            }
         }
 
         log("Evaluated " + dataNetwork + ", " + evaluation.toString());
@@ -1455,7 +1522,7 @@ public class DataNetworkController extends Handler {
         for (DataNetwork dataNetwork : mDataNetworkList) {
             if (dataNetwork.isConnecting() || dataNetwork.isConnected()) {
                 DataEvaluation dataEvaluation = evaluateDataNetwork(dataNetwork, reason);
-                if (!dataEvaluation.isDataAllowed()) {
+                if (dataEvaluation.containsDisallowedReasons()) {
                     tearDownGracefully(dataNetwork, getTearDownReason(dataEvaluation));
                 }
             }
@@ -1531,7 +1598,7 @@ public class DataNetworkController extends Handler {
      * @return The tear down reason.
      */
     private @TearDownReason int getTearDownReason(@NonNull DataEvaluation dataEvaluation) {
-        if (!dataEvaluation.isDataAllowed()) {
+        if (dataEvaluation.containsDisallowedReasons()) {
             switch (dataEvaluation.getDataDisallowedReasons().get(0)) {
                 case DATA_DISABLED:
                     return DataNetwork.TEAR_DOWN_REASON_DATA_DISABLED;
@@ -1551,6 +1618,8 @@ public class DataNetworkController extends Handler {
                     return DataNetwork.TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY;
                 case DATA_NETWORK_TYPE_NOT_ALLOWED:
                     return DataNetwork.TEAR_DOWN_REASON_RAT_NOT_ALLOWED;
+                case VOPS_NOT_SUPPORTED:
+                    return DataNetwork.TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED;
             }
         }
         return 0;
@@ -1992,7 +2061,7 @@ public class DataNetworkController extends Handler {
 
         DataEvaluation evaluation = evaluateNetworkRequest(
                 telephonyNetworkRequest, DataEvaluationReason.DATA_RETRY);
-        if (evaluation.isDataAllowed()) {
+        if (!evaluation.containsDisallowedReasons()) {
             DataProfile dataProfile = dataSetupRetryEntry.dataProfile;
             if (dataProfile == null) {
                 dataProfile = evaluation.getCandidateDataProfile();
@@ -2286,7 +2355,7 @@ public class DataNetworkController extends Handler {
                 }
 
                 DataEvaluation dataEvaluation = evaluateDataNetworkHandover(dataNetwork);
-                if (dataEvaluation.isDataAllowed()) {
+                if (!dataEvaluation.containsDisallowedReasons()) {
                     logl("Start handover " + dataNetwork + " to "
                             + AccessNetworkConstants.transportTypeToString(preferredTransport));
                     dataNetwork.startHandover(preferredTransport, null);
@@ -2419,6 +2488,20 @@ public class DataNetworkController extends Handler {
             return true;
         }
 
+        DataSpecificRegistrationInfo oldDsri = oldNri.getDataSpecificInfo();
+        DataSpecificRegistrationInfo newDsri = newNri.getDataSpecificInfo();
+
+        if (newDsri == null) return false;
+        if ((oldDsri == null || oldDsri.getVopsSupportInfo() == null
+                || oldDsri.getVopsSupportInfo().isVopsSupported())
+                && (newDsri.getVopsSupportInfo() != null && !newDsri.getVopsSupportInfo()
+                .isVopsSupported())) {
+            // If previously VoPS was supported (or does not exist), and now the network reports
+            // VoPS not supported, we should evaluate existing data networks to see if they need
+            // to be torn down.
+            return true;
+        }
+
         return false;
     }
 
@@ -2441,6 +2524,20 @@ public class DataNetworkController extends Handler {
         if (oldNri == null
                 || oldNri.getAccessNetworkTechnology() != newNri.getAccessNetworkTechnology()
                 || (!oldNri.isInService() && newNri.isInService())) {
+            return true;
+        }
+
+        DataSpecificRegistrationInfo oldDsri = oldNri.getDataSpecificInfo();
+        DataSpecificRegistrationInfo newDsri = newNri.getDataSpecificInfo();
+
+        if (oldDsri == null) return false;
+        if ((newDsri == null || newDsri.getVopsSupportInfo() == null
+                || newDsri.getVopsSupportInfo().isVopsSupported())
+                && (oldDsri.getVopsSupportInfo() != null && !oldDsri.getVopsSupportInfo()
+                .isVopsSupported())) {
+            // If previously VoPS was not supported, and now the network reports
+            // VoPS supported (or does not report), we should evaluate the unsatisfied network
+            // request to see if the can be satisfied again.
             return true;
         }
 
