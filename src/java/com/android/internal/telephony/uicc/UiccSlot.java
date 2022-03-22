@@ -44,10 +44,10 @@ import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.euicc.EuiccCard;
 import com.android.telephony.Rlog;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -608,7 +608,7 @@ public class UiccSlot extends Handler {
                 + isMultipleEnabledProfileSupported());
         pw.println(" mIsRemovable=" + mIsRemovable);
         pw.println(" mLastRadioState=" + mLastRadioState);
-        pw.println(" mIccIds=" + getPrintableIccIds());
+        pw.println(" mIccIds=" + Rlog.pii(TAG, getPrintableIccIds()));
         pw.println(" mPortIdxToPhoneId=" + mPortIdxToPhoneId);
         pw.println(" mEid=" + mEid);
         pw.println(" mCardState=" + mCardState);
