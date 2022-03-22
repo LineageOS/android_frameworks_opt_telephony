@@ -1328,7 +1328,7 @@ public class DataNetwork extends StateMachine {
                                     MAXIMUM_DISCONNECTING_DURATION_MILLIS) + " seconds.";
                     logl(message);
                     AnomalyReporter.reportAnomaly(
-                            UUID.fromString("d0e4fa1c-c57b-4ba5-b4b6-8955487012ca"), message);
+                            UUID.fromString("d0e4fa1c-c57b-4ba5-b4b6-8955487012cb"), message);
                     mFailCause = DataFailCause.LOST_CONNECTION;
                     transitionTo(mDisconnectedState);
                     break;
@@ -2123,7 +2123,7 @@ public class DataNetwork extends StateMachine {
     private void onDeactivateResponse(@DataServiceCallback.ResultCode int resultCode) {
         logl("onDeactivateResponse: resultCode="
                 + DataServiceCallback.resultCodeToString(resultCode));
-        if (resultCode == DataServiceCallback.RESULT_ERROR_INVALID_RESPONSE) {
+        if (resultCode == DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE) {
             log("Remove network since deactivate request returned an error.");
             mFailCause = DataFailCause.RADIO_NOT_AVAILABLE;
             transitionTo(mDisconnectedState);

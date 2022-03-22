@@ -71,15 +71,7 @@ public class DataResponse extends IRadioDataResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void deactivateDataCallResponse(RadioResponseInfo responseInfo) {
-        RILRequest rr = mRil.processResponse(RIL.DATA_SERVICE, responseInfo);
-
-        if (rr != null) {
-            int response = responseInfo.error;
-            if (responseInfo.error == RadioError.NONE) {
-                RadioResponse.sendMessageResponse(rr.mResult, response);
-            }
-            mRil.processResponseDone(rr, responseInfo, response);
-        }
+        RadioResponse.responseVoid(RIL.DATA_SERVICE, mRil, responseInfo);
     }
 
     /**
