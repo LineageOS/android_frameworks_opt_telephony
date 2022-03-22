@@ -229,6 +229,18 @@ public class DataNetwork extends StateMachine {
                     TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED,
                     TEAR_DOWN_REASON_VCN_REQUESTED,
                     TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED,
+                    TEAR_DOWN_REASON_DEFAULT_DATA_UNSELECTED,
+                    TEAR_DOWN_REASON_NOT_IN_SERVICE,
+                    TEAR_DOWN_REASON_DATA_CONFIG_NOT_READY,
+                    TEAR_DOWN_REASON_PENDING_TEAR_DOWN_ALL,
+                    TEAR_DOWN_REASON_NO_SUITABLE_DATA_PROFILE,
+                    TEAR_DOWN_REASON_EMERGENCY_CALL,
+                    TEAR_DOWN_REASON_RETRY_SCHEDULED,
+                    TEAR_DOWN_REASON_DATA_THROTTLED,
+                    TEAR_DOWN_REASON_DATA_PROFILE_INVALID,
+                    TEAR_DOWN_REASON_DATA_PROFILE_NOT_PREFERRED,
+                    TEAR_DOWN_REASON_NOT_ALLOWED_BY_POLICY,
+                    TEAR_DOWN_REASON_ILLEGAL_STATE,
             })
     public @interface TearDownReason {}
 
@@ -279,6 +291,42 @@ public class DataNetwork extends StateMachine {
 
     /** Data network tear down due to VOPS no longer supported. */
     public static final int TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED = 16;
+
+    /** Data network tear down due to default data unselected. */
+    public static final int TEAR_DOWN_REASON_DEFAULT_DATA_UNSELECTED = 17;
+
+    /** Data network tear down due to device not in service. */
+    public static final int TEAR_DOWN_REASON_NOT_IN_SERVICE = 18;
+
+    /** Data network tear down due to data config not ready. */
+    public static final int TEAR_DOWN_REASON_DATA_CONFIG_NOT_READY = 19;
+
+    /** Data network tear down due to tear down all pending. */
+    public static final int TEAR_DOWN_REASON_PENDING_TEAR_DOWN_ALL = 20;
+
+    /** Data network tear down due to no suitable data profile. */
+    public static final int TEAR_DOWN_REASON_NO_SUITABLE_DATA_PROFILE = 21;
+
+    /** Data network tear down due to emergency call. */
+    public static final int TEAR_DOWN_REASON_EMERGENCY_CALL = 22;
+
+    /** Data network tear down due to retry scheduled. */
+    public static final int TEAR_DOWN_REASON_RETRY_SCHEDULED = 23;
+
+    /** Data network tear down due to data throttled. */
+    public static final int TEAR_DOWN_REASON_DATA_THROTTLED = 24;
+
+    /** Data network tear down due to data profile invalid. */
+    public static final int TEAR_DOWN_REASON_DATA_PROFILE_INVALID = 25;
+
+    /** Data network tear down due to data profile not preferred. */
+    public static final int TEAR_DOWN_REASON_DATA_PROFILE_NOT_PREFERRED = 26;
+
+    /** Data network tear down due to not allowed by policy. */
+    public static final int TEAR_DOWN_REASON_NOT_ALLOWED_BY_POLICY = 27;
+
+    /** Data network tear down due to illegal state. */
+    public static final int TEAR_DOWN_REASON_ILLEGAL_STATE = 28;
 
     @IntDef(prefix = {"BANDWIDTH_SOURCE_"},
             value = {
@@ -2547,6 +2595,30 @@ public class DataNetwork extends StateMachine {
                 return "TEAR_DOWN_REASON_VCN_REQUESTED";
             case TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED:
                 return "TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED";
+            case TEAR_DOWN_REASON_DEFAULT_DATA_UNSELECTED:
+                return "TEAR_DOWN_REASON_DEFAULT_DATA_UNSELECTED";
+            case TEAR_DOWN_REASON_NOT_IN_SERVICE:
+                return "TEAR_DOWN_REASON_NOT_IN_SERVICE";
+            case TEAR_DOWN_REASON_DATA_CONFIG_NOT_READY:
+                return "TEAR_DOWN_REASON_DATA_CONFIG_NOT_READY";
+            case TEAR_DOWN_REASON_PENDING_TEAR_DOWN_ALL:
+                return "TEAR_DOWN_REASON_PENDING_TEAR_DOWN_ALL";
+            case TEAR_DOWN_REASON_NO_SUITABLE_DATA_PROFILE:
+                return "TEAR_DOWN_REASON_NO_SUITABLE_DATA_PROFILE";
+            case TEAR_DOWN_REASON_EMERGENCY_CALL:
+                return "TEAR_DOWN_REASON_EMERGENCY_CALL";
+            case TEAR_DOWN_REASON_RETRY_SCHEDULED:
+                return "TEAR_DOWN_REASON_RETRY_SCHEDULED";
+            case TEAR_DOWN_REASON_DATA_THROTTLED:
+                return "TEAR_DOWN_REASON_DATA_THROTTLED";
+            case TEAR_DOWN_REASON_DATA_PROFILE_INVALID:
+                return "TEAR_DOWN_REASON_DATA_PROFILE_INVALID";
+            case TEAR_DOWN_REASON_DATA_PROFILE_NOT_PREFERRED:
+                return "TEAR_DOWN_REASON_DATA_PROFILE_NOT_PREFERRED";
+            case TEAR_DOWN_REASON_NOT_ALLOWED_BY_POLICY:
+                return "TEAR_DOWN_REASON_NOT_ALLOWED_BY_POLICY";
+            case TEAR_DOWN_REASON_ILLEGAL_STATE:
+                return "TEAR_DOWN_REASON_ILLEGAL_STATE";
             default:
                 return "UNKNOWN(" + reason + ")";
         }
