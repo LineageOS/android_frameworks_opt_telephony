@@ -169,6 +169,9 @@ public class DataSettingsManager extends Handler {
         mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_CARRIER, true);
         mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_THERMAL, true);
 
+        mIsDataEnabled = isDataEnabled(ApnSetting.TYPE_ALL);
+        log("mIsDataEnabled=" + mIsDataEnabled);
+
         // Instead of calling onRegisterAllEvents directly from the constructor, send the event.
         // The reason is that getImsPhone is null when we are still in the constructor here.
         sendEmptyMessage(EVENT_REGISTER_ALL_EVENTS);
@@ -220,6 +223,7 @@ public class DataSettingsManager extends Handler {
                 if (isStandAloneOpportunistic(mSubId, mPhone.getContext()) && !enabled) return;
                 boolean changed = GlobalSettingsHelper.setInt(mPhone.getContext(),
                         Settings.Global.MOBILE_DATA, mSubId, (enabled ? 1 : 0));
+                log("Set user data enabled to " + enabled + ", changed=" + changed);
                 if (changed) {
                     logl("UserDataEnabled changed to " + enabled);
                     mPhone.notifyUserMobileDataStateChanged(enabled);
@@ -304,6 +308,7 @@ public class DataSettingsManager extends Handler {
             case EVENT_UPDATE_DATA_ENABLED: {
                 boolean prevDataEnabled = mIsDataEnabled;
                 mIsDataEnabled = isDataEnabled(ApnSetting.TYPE_ALL);
+                log("mIsDataEnabled=" + mIsDataEnabled + ", prevDataEnabled=" + prevDataEnabled);
                 if (prevDataEnabled != mIsDataEnabled) {
                     notifyDataEnabledChanged(mIsDataEnabled, (int) msg.obj);
                 }

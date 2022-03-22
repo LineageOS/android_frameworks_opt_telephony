@@ -1298,4 +1298,31 @@ public class DataNetworkControllerTest extends TelephonyTest {
         List<DataNetwork> dataNetworks = getDataNetworks();
         assertThat(dataNetworks).hasSize(0);
     }
+
+    @Test
+    public void testDataDisableNotTearingDownUnmetered() throws Exception {
+        // User data enabled
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, true);
+        processAllMessages();
+
+        testSetupImsDataNetwork();
+        Mockito.clearInvocations(mMockedDataNetworkControllerCallback);
+
+        // User data disabled
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false);
+        processAllMessages();
+
+        // There shouldn't be all data disconnected event.
+        verify(mMockedDataNetworkControllerCallback, never())
+                .onAnyDataNetworkExistingChanged(anyBoolean());
+
+        // Verify IMS is still alive.
+        List<DataNetwork> dataNetworkList = getDataNetworks();
+        assertThat(dataNetworkList).hasSize(1);
+        assertThat(dataNetworkList.get(0).getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)).isTrue();
+        assertThat(dataNetworkList.get(0).isConnected()).isTrue();
+    }
 }

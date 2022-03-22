@@ -133,6 +133,9 @@ public class TelephonyNetworkRequest {
                     CAPABILITY_ATTRIBUTE_TRAFFIC_DESCRIPTOR_OS_APP_ID)
     );
 
+    /** The phone instance. */
+    private final @NonNull Phone mPhone;
+
     /**
      * Native network request from the clients. See {@link NetworkRequest};
      */
@@ -184,6 +187,7 @@ public class TelephonyNetworkRequest {
      * @param phone The phone instance
      */
     public TelephonyNetworkRequest(NetworkRequest request, Phone phone) {
+        mPhone = phone;
         mNativeNetworkRequest = request;
 
         int capabilitiesAttributes = CAPABILITY_ATTRIBUTE_NONE;
@@ -377,6 +381,14 @@ public class TelephonyNetworkRequest {
             if (ids.length > 0) return ids[0];
         }
         return 0;
+    }
+
+    /**
+     * @return {@code true} if this network request can result in bringing up a metered network.
+     */
+    public boolean isMeteredRequest() {
+        return mDataConfigManager.isAnyMeteredCapability(getCapabilities(),
+                mPhone.getServiceState().getDataRoaming());
     }
 
     /**
