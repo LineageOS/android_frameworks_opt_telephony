@@ -43,6 +43,8 @@ import com.android.internal.telephony.data.DataNetworkController.NetworkRequestL
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -87,6 +89,26 @@ public class DataUtils {
             default:
                 return -1;
         }
+    }
+
+    /**
+     * Get Set of network capabilities from string joined by {@code |}, space is ignored.
+     * If input string contains unknown capability or malformatted(e.g. empty string), -1 is
+     * included in the returned set.
+     *
+     * @param capabilitiesString capability strings joined by {@code |}
+     * @return Set of capabilities
+     */
+    public static @NetCapability Set<Integer> getNetworkCapabilitiesFromString(
+            @NonNull String capabilitiesString) {
+        // e.g. "IMS|" is not allowed
+        if (!capabilitiesString.matches("(\\s*[a-zA-Z]+\\s*)(\\|\\s*[a-zA-Z]+\\s*)*")) {
+            return Collections.singleton(-1);
+        }
+        return Arrays.stream(capabilitiesString.split("\\s*\\|\\s*"))
+                .map(String::trim)
+                .map(DataUtils::getNetworkCapabilityFromString)
+                .collect(Collectors.toSet());
     }
 
     /**
@@ -153,7 +175,7 @@ public class DataUtils {
      * @return Network capabilities in string format.
      */
     public static @NonNull String networkCapabilitiesToString(
-            @NetCapability @Nullable List<Integer> netCaps) {
+            @NetCapability @Nullable Collection<Integer> netCaps) {
         if (netCaps == null || netCaps.isEmpty()) return "";
         return "[" + netCaps.stream()
                 .map(DataUtils::networkCapabilityToString)

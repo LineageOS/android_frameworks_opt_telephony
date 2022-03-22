@@ -269,7 +269,14 @@ public class VoiceResponse extends IRadioVoiceResponse.Stub {
      * @param enable true for "vonr enabled" and false for "vonr disabled"
      */
     public void isVoNrEnabledResponse(RadioResponseInfo responseInfo, boolean enable) {
-        RadioResponse.responseInts(RIL.VOICE_SERVICE, mRil, responseInfo, enable ? 1 : 0);
+        RILRequest rr = mRil.processResponse(RIL.VOICE_SERVICE, responseInfo);
+
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                RadioResponse.sendMessageResponse(rr.mResult, enable);
+            }
+            mRil.processResponseDone(rr, responseInfo, enable);
+        }
     }
 
     /**
