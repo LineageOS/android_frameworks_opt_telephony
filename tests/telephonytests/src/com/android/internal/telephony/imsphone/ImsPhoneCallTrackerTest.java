@@ -433,6 +433,53 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testCarrierConfigSentAfterReadyAndCrash() throws Exception {
+        verify(mImsManager, never()).updateImsServiceConfig();
+
+        // Receive a subscription loaded and IMS connection ready indication.
+        doReturn(true).when(mSubscriptionController).isActiveSubId(anyInt());
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL, true);
+        // CarrierConfigLoader has signalled that the carrier config has been applied for a specific
+        // subscription. This will trigger unavailable -> ready indications.
+        mConnectorListener.connectionUnavailable(FeatureConnector.UNAVAILABLE_REASON_DISCONNECTED);
+        mConnectorListener.connectionReady(mImsManager, SUB_0);
+        processAllMessages();
+        // Did not receive carrier config changed yet
+        verify(mImsManager, never()).updateImsServiceConfig();
+        sendCarrierConfigChanged();
+        processAllMessages();
+        // ImsService crashes and reconnects
+        mConnectorListener.connectionUnavailable(FeatureConnector.UNAVAILABLE_REASON_DISCONNECTED);
+        mConnectorListener.connectionReady(mImsManager, SUB_0);
+        processAllMessages();
+        verify(mImsManager, times(2)).updateImsServiceConfig();
+    }
+
+    @Test
+    @SmallTest
+    public void testCarrierConfigSentBeforeReadyAndCrash() throws Exception {
+        // move to ImsService unavailable state.
+        mConnectorListener.connectionUnavailable(FeatureConnector.UNAVAILABLE_REASON_DISCONNECTED);
+        doReturn(true).when(mSubscriptionController).isActiveSubId(anyInt());
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL, true);
+
+        sendCarrierConfigChanged();
+        // No ImsService connected, so this will cache the config.
+        verify(mImsManager, never()).updateImsServiceConfig();
+
+        // Connect to ImsService and then simulate a crash recovery. We should make sure that the
+        // configs are sent again after recovery.
+        mConnectorListener.connectionReady(mImsManager, SUB_0);
+        mConnectorListener.connectionUnavailable(FeatureConnector.UNAVAILABLE_REASON_DISCONNECTED);
+        mConnectorListener.connectionReady(mImsManager, SUB_0);
+        processAllMessages();
+        verify(mImsManager, times(2)).updateImsServiceConfig();
+    }
+
+    @Test
+    @SmallTest
     public void testImsMTCall() {
         mImsCallProfile.setCallerNumberVerificationStatus(
                 ImsCallProfile.VERIFICATION_STATUS_PASSED);
