@@ -50,6 +50,7 @@ import android.telephony.Annotation.NetCapability;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.Annotation.ValidationStatus;
 import android.telephony.DataFailCause;
+import android.telephony.DataSpecificRegistrationInfo;
 import android.telephony.LinkCapacityEstimate;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PcoData;
@@ -226,6 +227,7 @@ public class DataNetwork extends StateMachine {
                     TEAR_DOWN_REASON_HANDOVER_FAILED,
                     TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED,
                     TEAR_DOWN_REASON_VCN_REQUESTED,
+                    TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED,
             })
     public @interface TearDownReason {}
 
@@ -273,6 +275,9 @@ public class DataNetwork extends StateMachine {
 
     /** Data network tear down due to VCN service requested. */
     public static final int TEAR_DOWN_REASON_VCN_REQUESTED = 15;
+
+    /** Data network tear down due to VOPS no longer supported. */
+    public static final int TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED = 16;
 
     @IntDef(prefix = {"BANDWIDTH_SOURCE_"},
             value = {
@@ -770,22 +775,14 @@ public class DataNetwork extends StateMachine {
         public void enter() {
             logv("Registering all events.");
             mDataConfigManager.registerForConfigUpdate(getHandler(), EVENT_DATA_CONFIG_UPDATED);
-            mDataServiceManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                    .registerForDataCallListChanged(getHandler(), EVENT_DATA_STATE_CHANGED);
-            if (!mAccessNetworksManager.isInLegacyMode()) {
-                mDataServiceManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
-                        .registerForDataCallListChanged(getHandler(), EVENT_DATA_STATE_CHANGED);
-                mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
-                        AccessNetworkConstants.TRANSPORT_TYPE_WLAN, getHandler(),
-                        EVENT_SERVICE_STATE_CHANGED,
-                        AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
-            }
-            mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
-                    AccessNetworkConstants.TRANSPORT_TYPE_WWAN, getHandler(),
-                    EVENT_SERVICE_STATE_CHANGED,
-                    AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
             mPhone.getDisplayInfoController().registerForTelephonyDisplayInfoChanged(
                     getHandler(), EVENT_DISPLAY_INFO_CHANGED, null);
+            for (int transport : mAccessNetworksManager.getAvailableTransports()) {
+                mDataServiceManagers.get(transport)
+                        .registerForDataCallListChanged(getHandler(), EVENT_DATA_STATE_CHANGED);
+                mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
+                        transport, getHandler(), EVENT_SERVICE_STATE_CHANGED, transport);
+            }
 
             // Only add symmetric code here, for example, registering and unregistering.
             // DefaultState.enter() is the starting point in the life cycle of the DataNetwork,
@@ -796,19 +793,14 @@ public class DataNetwork extends StateMachine {
         @Override
         public void exit() {
             logv("Unregistering all events.");
-            mPhone.getDisplayInfoController().unregisterForTelephonyDisplayInfoChanged(
-                    getHandler());
-            mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(
-                    AccessNetworkConstants.TRANSPORT_TYPE_WWAN, getHandler());
-
-            if (!mAccessNetworksManager.isInLegacyMode()) {
-                mDataServiceManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
+            for (int transport : mAccessNetworksManager.getAvailableTransports()) {
+                mDataServiceManagers.get(transport)
                         .unregisterForDataCallListChanged(getHandler());
                 mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(
-                        AccessNetworkConstants.TRANSPORT_TYPE_WLAN, getHandler());
+                        transport, getHandler());
             }
-            mDataServiceManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                    .unregisterForDataCallListChanged(getHandler());
+            mPhone.getDisplayInfoController().unregisterForTelephonyDisplayInfoChanged(
+                    getHandler());
             mDataConfigManager.unregisterForConfigUpdate(getHandler());
         }
 
@@ -1339,6 +1331,35 @@ public class DataNetwork extends StateMachine {
                     .forEach(builder::addCapability);
         }
 
+        // If voice call is on-going, do not change MMTEL capability, which is a immutable
+        // capability. Changing it will result in re-recreating network agent below, and the voice
+        // call will drop. Whether tearing down an IMS network or not when VoPS is lost
+        if (mPhone.getImsPhone() != null && mPhone.getImsPhone().getCallTracker().getState()
+                != PhoneConstants.State.IDLE && mNetworkCapabilities != null
+                && mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL)) {
+            // Previous capability has MMTEL, so add it again.
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL);
+        } else {
+            // Always add MMTEL capability on IMS network unless network explicitly indicates VoPS
+            // not supported.
+            if (mDataProfile.canSatisfy(NetworkCapabilities.NET_CAPABILITY_IMS)) {
+                builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL);
+                if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
+                    NetworkRegistrationInfo nri = mPhone.getServiceStateTracker().getServiceState()
+                            .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
+                                    AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+                    if (nri != null) {
+                        DataSpecificRegistrationInfo dsri = nri.getDataSpecificInfo();
+                        // Check if VoPS is supported by the network.
+                        if (dsri != null && dsri.getVopsSupportInfo() != null
+                                && !dsri.getVopsSupportInfo().isVopsSupported()) {
+                            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL);
+                        }
+                    }
+                }
+            }
+        }
+
         // Extract network capabilities from the traffic descriptor.
         for (TrafficDescriptor trafficDescriptor : mTrafficDescriptors) {
             try {
@@ -1443,12 +1464,13 @@ public class DataNetwork extends StateMachine {
                 mNetworkCapabilities = nc;
                 mNetworkAgent = createNetworkAgent();
                 mNetworkAgent.markConnected();
+            } else {
+                // Now we need to inform connectivity service and data network controller
+                // about the capabilities changed.
+                mNetworkCapabilities = nc;
+                mNetworkAgent.sendNetworkCapabilities(mNetworkCapabilities);
             }
 
-            // Now we need to inform connectivity service and data network controller
-            // about the capabilities changed.
-            mNetworkCapabilities = nc;
-            mNetworkAgent.sendNetworkCapabilities(mNetworkCapabilities);
             removeUnsatisfiedNetworkRequests();
             mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
                     .onNetworkCapabilitiesChanged(DataNetwork.this));
@@ -1810,6 +1832,15 @@ public class DataNetwork extends StateMachine {
 
     private void onTearDown(@TearDownReason int reason) {
         logl("onTearDown: reason=" + tearDownReasonToString(reason));
+        if (mDataConfigManager.isImsDelayTearDownEnabled()
+                && mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
+                && reason == TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED
+                && mPhone.getImsPhone() != null
+                && mPhone.getImsPhone().getCallTracker().getState() != PhoneConstants.State.IDLE) {
+            logl("onTearDown: Delay IMS tear down until call ends.");
+            return;
+        }
+
         // TODO: Need to support DataService.REQUEST_REASON_SHUTDOWN
         mDataServiceManagers.get(mTransport).deactivateDataCall(mCid.get(mTransport),
                 DataService.REQUEST_REASON_NORMAL, null);
@@ -2475,6 +2506,8 @@ public class DataNetwork extends StateMachine {
                 return "TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED";
             case TEAR_DOWN_REASON_VCN_REQUESTED:
                 return "TEAR_DOWN_REASON_VCN_REQUESTED";
+            case TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED:
+                return "TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED";
             default:
                 return "UNKNOWN(" + reason + ")";
         }

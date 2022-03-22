@@ -44,6 +44,7 @@ import android.telephony.Annotation.NetworkType;
 import android.telephony.Annotation.ValidationStatus;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
+import android.telephony.DataSpecificRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo.RegistrationState;
 import android.telephony.PcoData;
@@ -898,6 +899,10 @@ public class DataNetworkController extends Handler {
                 onRemoveNetworkRequest((TelephonyNetworkRequest) msg.obj);
                 break;
             case EVENT_VOICE_CALL_ENDED:
+                // In some cases we need to tear down network after call ends. For example, when
+                // delay IMS tear down until call ends is turned on.
+                sendMessage(obtainMessage(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
+                        DataEvaluationReason.VOICE_CALL_ENDED));
                 sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
                         DataEvaluationReason.VOICE_CALL_ENDED));
                 break;
@@ -1183,6 +1188,20 @@ public class DataNetworkController extends Handler {
                     DataDisallowedReason.CONCURRENT_VOICE_DATA_NOT_ALLOWED);
         }
 
+        // Check VoPS support
+        if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
+                && networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL)) {
+            NetworkRegistrationInfo nri = mServiceState.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            if (nri != null) {
+                DataSpecificRegistrationInfo dsri = nri.getDataSpecificInfo();
+                if (dsri != null && dsri.getVopsSupportInfo() != null
+                        && !dsri.getVopsSupportInfo().isVopsSupported()) {
+                    evaluation.addDataDisallowedReason(DataDisallowedReason.VOPS_NOT_SUPPORTED);
+                }
+            }
+        }
+
         // Check if default data is selected.
         if (!SubscriptionManager.isValidSubscriptionId(
                 SubscriptionManager.getDefaultDataSubscriptionId())) {
@@ -1365,6 +1384,35 @@ public class DataNetworkController extends Handler {
         // Check if data is restricted by the network.
         if (mPsRestricted) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_RESTRICTED_BY_NETWORK);
+        }
+
+        boolean delayImsTearDown = false;
+        if (mDataConfigManager.isImsDelayTearDownEnabled()
+                && dataNetwork.getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
+                && mPhone.getImsPhone() != null
+                && mPhone.getImsPhone().getCallTracker().getState() != PhoneConstants.State.IDLE) {
+            // Some carriers requires delay tearing down IMS network until the call ends even if
+            // VoPS bit is lost.
+            log("Ignore VoPS bit and delay IMS tear down until call ends.");
+            delayImsTearDown = true;
+        }
+
+        // Check VoPS support (except for the case that we want to delay IMS tear down until the
+        // voice call ends.
+        if (!delayImsTearDown
+                && dataNetwork.getTransport() == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
+                && dataNetwork.getNetworkCapabilities().hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_MMTEL)) {
+            NetworkRegistrationInfo nri = mServiceState.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            if (nri != null) {
+                DataSpecificRegistrationInfo dsri = nri.getDataSpecificInfo();
+                if (dsri != null && dsri.getVopsSupportInfo() != null
+                        && !dsri.getVopsSupportInfo().isVopsSupported()) {
+                    evaluation.addDataDisallowedReason(DataDisallowedReason.VOPS_NOT_SUPPORTED);
+                }
+            }
         }
 
         // Check if device is CDMA and is currently in ECBM
@@ -1570,6 +1618,8 @@ public class DataNetworkController extends Handler {
                     return DataNetwork.TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY;
                 case DATA_NETWORK_TYPE_NOT_ALLOWED:
                     return DataNetwork.TEAR_DOWN_REASON_RAT_NOT_ALLOWED;
+                case VOPS_NOT_SUPPORTED:
+                    return DataNetwork.TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED;
             }
         }
         return 0;
@@ -2438,6 +2488,20 @@ public class DataNetworkController extends Handler {
             return true;
         }
 
+        DataSpecificRegistrationInfo oldDsri = oldNri.getDataSpecificInfo();
+        DataSpecificRegistrationInfo newDsri = newNri.getDataSpecificInfo();
+
+        if (newDsri == null) return false;
+        if ((oldDsri == null || oldDsri.getVopsSupportInfo() == null
+                || oldDsri.getVopsSupportInfo().isVopsSupported())
+                && (newDsri.getVopsSupportInfo() != null && !newDsri.getVopsSupportInfo()
+                .isVopsSupported())) {
+            // If previously VoPS was supported (or does not exist), and now the network reports
+            // VoPS not supported, we should evaluate existing data networks to see if they need
+            // to be torn down.
+            return true;
+        }
+
         return false;
     }
 
@@ -2460,6 +2524,20 @@ public class DataNetworkController extends Handler {
         if (oldNri == null
                 || oldNri.getAccessNetworkTechnology() != newNri.getAccessNetworkTechnology()
                 || (!oldNri.isInService() && newNri.isInService())) {
+            return true;
+        }
+
+        DataSpecificRegistrationInfo oldDsri = oldNri.getDataSpecificInfo();
+        DataSpecificRegistrationInfo newDsri = newNri.getDataSpecificInfo();
+
+        if (oldDsri == null) return false;
+        if ((newDsri == null || newDsri.getVopsSupportInfo() == null
+                || newDsri.getVopsSupportInfo().isVopsSupported())
+                && (oldDsri.getVopsSupportInfo() != null && !oldDsri.getVopsSupportInfo()
+                .isVopsSupported())) {
+            // If previously VoPS was not supported, and now the network reports
+            // VoPS supported (or does not report), we should evaluate the unsatisfied network
+            // request to see if the can be satisfied again.
             return true;
         }
 
