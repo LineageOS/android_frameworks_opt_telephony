@@ -43,7 +43,9 @@ import android.util.LocalLog;
 import android.util.SparseArray;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataProfileManager.DataProfileManagerCallback;
 import com.android.telephony.Rlog;
@@ -76,20 +78,61 @@ public class DataRetryManager extends Handler {
     /** Event for data handover retry. */
     private static final int EVENT_DATA_HANDOVER_RETRY = 4;
 
-    /** Event for cancelling all data retries and throttling entries. */
-    private static final int EVENT_RESET = 5;
-
     /** Event for data profile/apn unthrottled. */
     private static final int EVENT_DATA_PROFILE_UNTHROTTLED = 6;
 
     /** Event for cancelling pending handover retry. */
     private static final int EVENT_CANCEL_PENDING_HANDOVER_RETRY = 7;
 
+    /**
+     * Event for radio on. This can happen when airplane mode is turned off, or RIL crashes and came
+     * back online.
+     */
+    private static final int EVENT_RADIO_ON = 8;
+
+    /** Event for modem reset. */
+    private static final int EVENT_MODEM_RESET = 9;
+
     /** The maximum entries to preserve. */
     private static final int MAXIMUM_HISTORICAL_ENTRIES = 100;
 
+    @IntDef(prefix = {"RESET_REASON_"},
+            value = {
+                    RESET_REASON_DATA_PROFILES_CHANGED,
+                    RESET_REASON_RADIO_ON,
+                    RESET_REASON_MODEM_RESTART,
+                    RESET_REASON_DATA_SERVICE_BOUND,
+            })
+    public @interface RetryResetReason {}
+
+    /** Reset due to data profiles changed. */
+    public static final int RESET_REASON_DATA_PROFILES_CHANGED = 1;
+
+    /** Reset due to radio on. This could happen after airplane mode off or RIL restarted. */
+    public static final int RESET_REASON_RADIO_ON = 2;
+
+    /** Reset due to modem restarted. */
+    public static final int RESET_REASON_MODEM_RESTART = 3;
+
+    /**
+     * Reset due to data service bound. This could happen when reboot or when data service crashed
+     * and rebound.
+     */
+    public static final int RESET_REASON_DATA_SERVICE_BOUND = 4;
+
+    /** Reset due to data config changed. */
+    public static final int RESET_REASON_DATA_CONFIG_CHANGED = 5;
+
+    /** The phone instance. */
     private final @NonNull Phone mPhone;
+
+    /** The RIL instance. */
+    private final @NonNull CommandsInterface mRil;
+
+    /** Logging tag. */
     private final @NonNull String mLogTag;
+
+    /** Local log. */
     private final @NonNull LocalLog mLocalLog = new LocalLog(128);
 
     /**
@@ -872,6 +915,7 @@ public class DataRetryManager extends Handler {
             @NonNull Looper looper, @NonNull DataRetryManagerCallback dataRetryManagerCallback) {
         super(looper);
         mPhone = phone;
+        mRil = phone.mCi;
         mLogTag = "DRM-" + mPhone.getPhoneId();
         mDataRetryManagerCallbacks.add(dataRetryManagerCallback);
 
@@ -889,9 +933,18 @@ public class DataRetryManager extends Handler {
         mDataProfileManager.registerCallback(new DataProfileManagerCallback(this::post) {
             @Override
             public void onDataProfilesChanged() {
-                onReset();
+                onReset(RESET_REASON_DATA_PROFILES_CHANGED);
             }
         });
+        dataNetworkController.registerDataNetworkControllerCallback(
+                new DataNetworkControllerCallback(this::post) {
+                    @Override
+                    public void onDataServiceBound() {
+                        onReset(RESET_REASON_DATA_SERVICE_BOUND);
+                    }
+                });
+        mRil.registerForOn(this, EVENT_RADIO_ON, null);
+        mRil.registerForModemReset(this, EVENT_MODEM_RESET, null);
     }
 
     @Override
@@ -917,8 +970,11 @@ public class DataRetryManager extends Handler {
                     log("Handover was cancelled earlier. " + dataHandoverRetryEntry);
                 }
                 break;
-            case EVENT_RESET:
-                onReset();
+            case EVENT_RADIO_ON:
+                onReset(RESET_REASON_RADIO_ON);
+                break;
+            case EVENT_MODEM_RESET:
+                onReset(RESET_REASON_MODEM_RESTART);
                 break;
             case EVENT_DATA_PROFILE_UNTHROTTLED:
                 ar = (AsyncResult) msg.obj;
@@ -945,18 +1001,11 @@ public class DataRetryManager extends Handler {
      * Called when data config is updated.
      */
     private void onDataConfigUpdated() {
-        reset();
+        onReset(RESET_REASON_DATA_CONFIG_CHANGED);
         mDataSetupRetryRuleList = mDataConfigManager.getDataSetupRetryRules();
         mDataHandoverRetryRuleList = mDataConfigManager.getDataHandoverRetryRules();
         log("onDataConfigUpdated: mDataSetupRetryRuleList=" + mDataSetupRetryRuleList
                 + ", mDataHandoverRetryRuleList=" + mDataHandoverRetryRuleList);
-    }
-
-    /**
-     * Cancel all pending data retries and throttling entries.
-     */
-    public void reset() {
-        sendMessageAtFrontOfQueue(obtainMessage(EVENT_RESET));
     }
 
     /**
@@ -1145,13 +1194,32 @@ public class DataRetryManager extends Handler {
     }
 
     /** Cancel all retries and throttling entries. */
-    private void onReset() {
-        logl("Remove all retry and throttling entries.");
+    private void onReset(@RetryResetReason int reason) {
+        logl("Remove all retry and throttling entries, reason=" + resetReasonToString(reason));
         removeMessages(EVENT_DATA_SETUP_RETRY);
         removeMessages(EVENT_DATA_HANDOVER_RETRY);
         mDataRetryEntries.stream()
                 .filter(entry -> entry.getState() == DataRetryEntry.RETRY_STATE_NOT_RETRIED)
                 .forEach(entry -> entry.setState(DataRetryEntry.RETRY_STATE_CANCELLED));
+
+        final List<ThrottleStatus> throttleStatusList = new ArrayList<>();
+        for (DataThrottlingEntry dataThrottlingEntry : mDataThrottlingEntries) {
+            throttleStatusList.addAll(dataThrottlingEntry.dataProfile.getApnSetting().getApnTypes()
+                    .stream()
+                    .map(apnType -> new ThrottleStatus.Builder()
+                            .setApnType(apnType)
+                            .setSlotIndex(mPhone.getPhoneId())
+                            .setNoThrottle()
+                            .setRetryType(dataThrottlingEntry.retryType)
+                            .setTransportType(dataThrottlingEntry.transport)
+                            .build())
+                    .collect(Collectors.toList()));
+        }
+        if (!throttleStatusList.isEmpty()) {
+            mDataRetryManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                    () -> callback.onThrottleStatusChanged(throttleStatusList)));
+        }
+
         mDataThrottlingEntries.clear();
     }
 
@@ -1474,6 +1542,29 @@ public class DataRetryManager extends Handler {
      */
     public void unregisterCallback(@NonNull DataRetryManagerCallback callback) {
         mDataRetryManagerCallbacks.remove(callback);
+    }
+
+    /**
+     * Convert reset reason to string
+     *
+     * @param reason The reason
+     * @return The reason in string format.
+     */
+    private static @NonNull String resetReasonToString(int reason) {
+        switch (reason) {
+            case RESET_REASON_DATA_PROFILES_CHANGED:
+                return "DATA_PROFILES_CHANGED";
+            case RESET_REASON_RADIO_ON:
+                return "RADIO_ON";
+            case RESET_REASON_MODEM_RESTART:
+                return "MODEM_RESTART";
+            case RESET_REASON_DATA_SERVICE_BOUND:
+                return "DATA_SERVICE_BOUND";
+            case RESET_REASON_DATA_CONFIG_CHANGED:
+                return "DATA_CONFIG_CHANGED";
+            default:
+                return "UNKNOWN(" + reason + ")";
+        }
     }
 
     /**
