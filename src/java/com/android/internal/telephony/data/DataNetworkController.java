@@ -2079,7 +2079,10 @@ public class DataNetworkController extends Handler {
                         evaluation.getDataAllowedReason());
             } else {
                 loge("onDataNetworkSetupRetry: Not able to find a suitable data profile to retry.");
+                dataSetupRetryEntry.setState(DataRetryEntry.RETRY_STATE_FAILED);
             }
+        } else {
+            dataSetupRetryEntry.setState(DataRetryEntry.RETRY_STATE_FAILED);
         }
     }
 
