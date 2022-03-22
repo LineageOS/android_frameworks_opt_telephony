@@ -234,6 +234,8 @@ public class DataEvaluation {
         DATA_RESTRICTED_BY_NETWORK(true),
         /** Radio power is off (i.e. airplane mode on) */
         RADIO_POWER_OFF(true),
+        /** Data setup now allowed due to pending tear down all networks. */
+        PENDING_TEAR_DOWN_ALL(true),
         /** Airplane mode is forcibly turned on by the carrier. */
         RADIO_DISABLED_BY_CARRIER(true),
         /** Underlying data service is not bound. */
