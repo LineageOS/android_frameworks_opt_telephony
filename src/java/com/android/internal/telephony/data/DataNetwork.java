@@ -211,6 +211,12 @@ public class DataNetwork extends StateMachine {
      */
     private static final int EVENT_STUCK_IN_TRANSIENT_STATE = 20;
 
+    /**
+     * Event for waiting for tearing down condition met. This will cause data network entering
+     * disconnecting state.
+     */
+    private static final int EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET = 21;
+
     /** The default MTU for IPv4 network. */
     private static final int DEFAULT_MTU_V4 = 1280;
 
@@ -995,7 +1001,9 @@ public class DataNetwork extends StateMachine {
                 case EVENT_PCO_DATA_RECEIVED:
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
                 case EVENT_DISPLAY_INFO_CHANGED:
+                case EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET:
                     // Ignore the events when not in the correct state.
+                    log("Ignored " + eventToString(msg.what));
                     break;
                 case EVENT_START_HANDOVER:
                     log("Ignore the handover to " + AccessNetworkConstants
@@ -1068,6 +1076,7 @@ public class DataNetwork extends StateMachine {
                 case EVENT_START_HANDOVER:
                 case EVENT_TEAR_DOWN_NETWORK:
                 case EVENT_PCO_DATA_RECEIVED:
+                case EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET:
                     // Defer the request until connected or disconnected.
                     deferMessage(msg);
                     break;
@@ -1187,6 +1196,10 @@ public class DataNetwork extends StateMachine {
                     int resultCode = msg.arg1;
                     onDeactivateResponse(resultCode);
                     break;
+                case EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET:
+                    transitionTo(mDisconnectingState);
+                    sendMessageDelayed(EVENT_TEAR_DOWN_NETWORK, msg.arg1, msg.arg2);
+                    break;
                 default:
                     return NOT_HANDLED;
             }
@@ -1224,6 +1237,7 @@ public class DataNetwork extends StateMachine {
                         deferMessage(msg);
                     }
                     break;
+                case EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET:
                 case EVENT_DISPLAY_INFO_CHANGED:
                 case EVENT_TEAR_DOWN_NETWORK:
                     // Defer the request until handover succeeds or fails.
@@ -1325,6 +1339,15 @@ public class DataNetwork extends StateMachine {
         public boolean processMessage(Message msg) {
             logv("event=" + eventToString(msg.what));
             switch (msg.what) {
+                case EVENT_TEAR_DOWN_NETWORK:
+                    if (mInvokedDataDeactivation) {
+                        log("Ignore tear down request because network is being torn down.");
+                        break;
+                    }
+                    removeMessages(EVENT_TEAR_DOWN_NETWORK);
+                    removeDeferredMessages(EVENT_TEAR_DOWN_NETWORK);
+                    onTearDown(msg.arg1);
+                    break;
                 case EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE:
                     int resultCode = msg.arg1;
                     onDeactivateResponse(resultCode);
@@ -2162,15 +2185,15 @@ public class DataNetwork extends StateMachine {
      * will be performed. {@code null} if the data network is already disconnected or being
      * disconnected.
      */
-    public @Nullable Runnable tearDownWithCondition(@TearDownReason int reason,
+    public @Nullable Runnable tearDownWhenConditionMet(@TearDownReason int reason,
             long timeoutMillis) {
         if (getCurrentState() == null || isDisconnected() || isDisconnecting()) {
-            loge("tearDownGracefully: Not in the right state. State=" + getCurrentState());
+            loge("tearDownWhenConditionMet: Not in the right state. State=" + getCurrentState());
             return null;
         }
-        logl("tearDownWithCondition: reason=" + tearDownReasonToString(reason) + ", timeout="
+        logl("tearDownWhenConditionMet: reason=" + tearDownReasonToString(reason) + ", timeout="
                 + timeoutMillis + "ms.");
-        sendMessageDelayed(EVENT_TEAR_DOWN_NETWORK, reason, timeoutMillis);
+        sendMessage(EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET, reason, (int) timeoutMillis);
         return () -> this.tearDown(reason);
     }
 
@@ -2895,6 +2918,8 @@ public class DataNetwork extends StateMachine {
                 return "EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE";
             case EVENT_STUCK_IN_TRANSIENT_STATE:
                 return "EVENT_STUCK_IN_TRANSIENT_STATE";
+            case EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET:
+                return "EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET";
             default:
                 return "Unknown(" + event + ")";
         }
