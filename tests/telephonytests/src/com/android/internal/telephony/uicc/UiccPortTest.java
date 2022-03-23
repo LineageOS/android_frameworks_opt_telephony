@@ -89,8 +89,6 @@ public class UiccPortTest extends TelephonyTest {
         assertEquals(0, mUiccPort.getNumApplications());
         assertNull(mUiccPort.getUniversalPinState());
         assertNull(mUiccPort.getOperatorBrandOverride());
-        /* UiccProfile mock should return false */
-        assertFalse(mUiccPort.areCarrierPrivilegeRulesLoaded());
         for (IccCardApplicationStatus.AppType mAppType :
                 IccCardApplicationStatus.AppType.values()) {
             assertFalse(mUiccPort.isApplicationOnIcc(mAppType));
