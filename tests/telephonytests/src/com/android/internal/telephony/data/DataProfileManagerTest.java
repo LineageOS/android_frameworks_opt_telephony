@@ -488,6 +488,18 @@ public class DataProfileManagerTest extends TelephonyTest {
     }
 
     @Test
+    public void testGetDataProfileForNetworkRequestNoCompatibleRat() {
+        NetworkRequest request = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build();
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+        DataProfile dp = mDataProfileManagerUT.getDataProfileForNetworkRequest(tnr,
+                TelephonyManager.NETWORK_TYPE_GSM);
+        // Should not find data profile due to RAT incompatible.
+        assertThat(dp).isNull();
+    }
+
+    @Test
     public void testGetDataProfileForNetworkRequestRotation() {
         TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
