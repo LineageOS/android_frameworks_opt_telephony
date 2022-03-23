@@ -241,4 +241,14 @@ public class ModemResponse extends IRadioModemResponse.Stub {
                     "Radio power failure");
         }
     }
+
+    @Override
+    public String getInterfaceHash() {
+        return IRadioModemResponse.HASH;
+    }
+
+    @Override
+    public int getInterfaceVersion() {
+        return IRadioModemResponse.VERSION;
+    }
 }

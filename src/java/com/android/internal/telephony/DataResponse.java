@@ -227,4 +227,14 @@ public class DataResponse extends IRadioDataResponse.Stub {
             mRil.processResponseDone(rr, responseInfo, null);
         }
     }
+
+    @Override
+    public String getInterfaceHash() {
+        return IRadioDataResponse.HASH;
+    }
+
+    @Override
+    public int getInterfaceVersion() {
+        return IRadioDataResponse.VERSION;
+    }
 }

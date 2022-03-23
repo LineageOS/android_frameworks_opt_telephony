@@ -214,4 +214,14 @@ public class RadioConfigResponseAidl extends
     private static void loge(RILRequest rr, String log) {
         loge(rr.serialString() + "< " + log);
     }
+
+    @Override
+    public String getInterfaceHash() {
+        return android.hardware.radio.config.IRadioConfigResponse.HASH;
+    }
+
+    @Override
+    public int getInterfaceVersion() {
+        return android.hardware.radio.config.IRadioConfigResponse.VERSION;
+    }
 }
