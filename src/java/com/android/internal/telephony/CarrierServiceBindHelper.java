@@ -47,7 +47,6 @@ import com.android.internal.telephony.util.TelephonyUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
-import java.util.List;
 
 /**
  * Manages long-lived bindings to carrier services
@@ -56,6 +55,10 @@ import java.util.List;
 public class CarrierServiceBindHelper {
     private static final String LOG_TAG = "CarrierSvcBindHelper";
 
+    // TODO(b/201423849): Remove the UNBIND_DELAY_MILLIS and switch to CarrierPrivilegesCallback
+    // The grace period has been replaced by CarrierPrivilegesTracker. CarrierPrivilegesCallback has
+    // provided the callback for both carrier privileges change and carrier service change (with
+    // awareness of the grace period), the delay based logic here should be cleaned up.
     /**
      * How long to linger a binding after an app loses carrier privileges, as long as no new
      * binding comes in to take its place.
@@ -212,28 +215,25 @@ public class CarrierServiceBindHelper {
          */
         void rebind() {
             // Get the package name for the carrier app
-            List<String> carrierPackageNames =
-                TelephonyManager.from(mContext).getCarrierPackageNamesForIntentAndPhone(
-                    new Intent(CarrierService.CARRIER_SERVICE_INTERFACE), phoneId
-                );
+            String carrierPackageName = TelephonyManager.from(
+                    mContext).getCarrierServicePackageNameForLogicalSlot(phoneId);
 
-            if (carrierPackageNames == null || carrierPackageNames.size() <= 0) {
+            if (carrierPackageName == null) {
                 logdWithLocalLog("No carrier app for: " + phoneId);
                 // Unbind after a delay in case this is a temporary blip in carrier privileges.
                 unbind(false /* immediate */);
                 return;
             }
 
-            logdWithLocalLog("Found carrier app: " + carrierPackageNames);
-            String candidateCarrierPackage = carrierPackageNames.get(0);
+            logdWithLocalLog("Found carrier app: " + carrierPackageName);
             // If we are binding to a different package, unbind immediately from the current one.
-            if (!TextUtils.equals(carrierPackage, candidateCarrierPackage)) {
+            if (!TextUtils.equals(carrierPackage, carrierPackageName)) {
                 unbind(true /* immediate */);
             }
 
             // Look up the carrier service
             Intent carrierService = new Intent(CarrierService.CARRIER_SERVICE_INTERFACE);
-            carrierService.setPackage(candidateCarrierPackage);
+            carrierService.setPackage(carrierPackageName);
 
             ResolveInfo carrierResolveInfo = mContext.getPackageManager().resolveService(
                 carrierService, PackageManager.GET_META_DATA);
@@ -267,7 +267,7 @@ public class CarrierServiceBindHelper {
                 return;
             }
 
-            carrierPackage = candidateCarrierPackage;
+            carrierPackage = carrierPackageName;
             carrierServiceClass = candidateServiceClass;
 
             logdWithLocalLog("Binding to " + carrierPackage + " for phone " + phoneId);
