@@ -30,6 +30,7 @@ import android.telephony.CellIdentity;
 import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -40,6 +41,7 @@ import com.android.internal.telephony.util.ArrayUtils;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
+import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.lang.annotation.Retention;
@@ -55,8 +57,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  * {@hide}
  */
 public abstract class IccRecords extends Handler implements IccConstants {
+    private static final String LOG_TAG = "IccRecords";
     protected static final boolean DBG = true;
-    protected static final boolean VDBG = false; // STOPSHIP if true
+    private static final boolean FORCE_VERBOSE_STATE_LOGGING = false; /* stopship if true */
+    protected static final boolean VDBG =  FORCE_VERBOSE_STATE_LOGGING ||
+            Rlog.isLoggable(LOG_TAG, Log.VERBOSE);
 
     public static final int PLMN_MIN_LENGTH = CellIdentity.MCC_LENGTH
             + CellIdentity.MNC_MIN_LENGTH;
@@ -121,6 +126,10 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     protected boolean mRecordsRequested = false; // true if we've made requests for the sim records
     protected int mLockedRecordsReqReason = LOCKED_RECORDS_REQ_REASON_NONE;
+    // EF_SMSS fields tpmr invalid, min and max declarations
+    protected static final int SMSS_INVALID_TPMR = -1;
+    private static final int TPMR_MIN = 0x00;
+    private static final int TPMR_MAX = 0xFF;
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PROTECTED)
     public String mIccId;  // Includes only decimals (no hex)
@@ -178,6 +187,10 @@ public abstract class IccRecords extends Handler implements IccConstants {
     // SIP or TEL URI [ Public Service Identity of the SM-SC]
     // Reference: TS 31.102 section 4.5.9
     protected String mPsiSmsc;
+
+    // EF_SMSS value which is combination of TPMR and Memory exceed flag
+    // Reference: TS 31.102 section 4.2.9
+    protected byte[] mSmssValues;
 
     CarrierTestOverride mCarrierTestOverride;
 
@@ -240,6 +253,10 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     // TAG value to retrieve EF_PSISMSC from parsed SimTlv object
     private static final int TAG_TLV_USIM_VALUE_80 = 0x80;
+
+    // call back received on this upon EF_SMSS record update.
+    public static final int EVENT_SET_SMSS_RECORD_DONE = 201;
+
     /**
      * There are two purposes for this class. First, each instance of AuthAsyncResponse acts as a
      * lock to for calling thead to wait in getIccSimChallengeResponse(). Second, pass the IMS
@@ -962,6 +979,26 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 }
                 break;
 
+            case EVENT_SET_SMSS_RECORD_DONE:
+                ar = (AsyncResult) msg.obj;
+                SmssRecord smssRecord = null;
+                if (ar.userObj != null) {
+                    smssRecord = (SmssRecord) ar.userObj;
+                }
+                if (ar.exception == null && smssRecord.getSmssValue() != null) {
+                    mSmssValues = smssRecord.getSmssValue().clone();
+                } else {
+                    loge("SIM EF_SMSS field updating error=" + ar.exception);
+                }
+                if (smssRecord != null && smssRecord.getMessage() != null) {
+                    Message message = smssRecord.getMessage();
+                    AsyncResult.forMessage(message, ar.result, ar.exception);
+                    message.sendToTarget();
+                } else {
+                    loge("smssRecord or smssRecord.getMessage() object is null");
+                }
+                break;
+
             default:
                 super.handleMessage(msg);
         }
@@ -1566,6 +1603,75 @@ public abstract class IccRecords extends Handler implements IccConstants {
         @Override
         public String toString() {
             return "{fullName = " + fullName + ", shortName = " + shortName + "}";
+        }
+    }
+
+    /**
+     * Sets the elementary (EF_SMSS) field with latest last used TP-Message reference value.
+     * First byte of EF_SMSS represents the TPMR value as per the spec
+     * (Section 4.2.9 of 3GPP TS 31.102)
+     *
+     * @param tpmr: Last used TP-Message reference parameter of type int
+     * @param onComplete: android.os.Message to be notified upon completion
+     */
+    public void setSmssTpmrValue(int tpmr, Message onComplete) {
+        if(VDBG) log("setSmssTpmrValue()");
+        if (mSmssValues != null && mSmssValues.length > 0 && tpmr >= TPMR_MIN && tpmr <= TPMR_MAX) {
+            byte[] tempSmss = mSmssValues.clone();
+            tempSmss[0] = (byte) (tpmr & 0xFF);
+            SmssRecord smssRecord = createSmssRecord(onComplete, tempSmss);
+            mFh.updateEFTransparent(IccConstants.EF_SMSS, tempSmss,
+                    obtainMessage(EVENT_SET_SMSS_RECORD_DONE, smssRecord));
+        } else if (onComplete != null) {
+            loge("Failed to set EF_SMSS [TPMR] field to SIM");
+            if (mSmssValues == null || mSmssValues.length <= 0) {
+                AsyncResult.forMessage((onComplete)).exception =
+                        new FileNotFoundException("EF_SMSS file not found");
+            } else if (tpmr < TPMR_MIN || tpmr > TPMR_MAX) {
+                AsyncResult.forMessage((onComplete)).exception =
+                        new IllegalArgumentException("TPMR value is not in allowed range");
+            }
+            onComplete.sendToTarget();
+        }
+    }
+
+    /**
+     * Fetches the last used TPMR value from elementary (EF_SMSS) field. First byte of EF_SMSS
+     * represents the TPMR value as per the spec (Section 4.2.9 of 3GPP TS 31.102)
+     *
+     * @return TP-Message reference parameter of type int, -1 in case if it fails to read the
+     * EF_SMSS field from the sim.
+     */
+    public int getSmssTpmrValue() {
+        if (mSmssValues != null && mSmssValues.length > 0) {
+            return  (mSmssValues[0] & 0xFF);
+        }
+        loge("IccRecords - EF_SMSS is null");
+        return SMSS_INVALID_TPMR;
+    }
+
+    @VisibleForTesting
+    public SmssRecord createSmssRecord(Message msg, byte[] smss) {
+        return new SmssRecord(msg, smss);
+    }
+
+
+    static class SmssRecord {
+
+        private Message mMsg;
+        private byte[] mSmss;
+
+        SmssRecord (Message msg, byte[] smss) {
+            mMsg = msg;
+            mSmss = smss;
+        }
+
+        private byte[] getSmssValue() {
+            return mSmss;
+        }
+
+        private Message getMessage() {
+            return mMsg;
         }
     }
 }

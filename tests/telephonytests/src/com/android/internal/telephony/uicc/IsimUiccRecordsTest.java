@@ -31,14 +31,21 @@ package com.android.internal.telephony.uicc;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
-import android.os.HandlerThread;
+import android.os.Handler;
 import android.os.Message;
+import android.os.test.TestLooper;
 
 import com.android.internal.telephony.CommandException;
+import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.TelephonyTest;
 
@@ -49,31 +56,48 @@ import org.mockito.ArgumentCaptor;
 
 public class IsimUiccRecordsTest extends TelephonyTest {
 
-    private IsimUiccRecords mIsimUiccRecords;
+    // Mocked classes
+    private IccFileHandler mFhMock;
+    private TestLooper mTestLooper;
+    private Handler mTestHandler;
+    private IsimUiccRecordsUT mIsimUiccRecordsUT;
 
-    private class IsimUiccRecordsTestHandler extends HandlerThread {
-        private IsimUiccRecordsTestHandler(String name) {
-            super(name);
-        }
-
-        @Override
-        public void onLooperPrepared() {
-            mIsimUiccRecords = new IsimUiccRecords(mUiccCardApplication3gpp, mContext, mSimulatedCommands);
-            setReady(true);
+    @SuppressWarnings("ClassCanBeStatic")
+    private class IsimUiccRecordsUT extends IsimUiccRecords {
+        IsimUiccRecordsUT(UiccCardApplication app, Context c,
+                CommandsInterface ci, IccFileHandler mFhMock) {
+            super(app, c, ci);
+            mFh = mFhMock;
         }
     }
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        new IsimUiccRecordsTestHandler(TAG).start();
-        waitUntilReady();
+        mFhMock = mock(IccFileHandler.class);
+        mTestLooper = new TestLooper();
+        mTestHandler = new Handler(mTestLooper.getLooper());
+        mTestHandler.post(
+                () -> {
+                    mIsimUiccRecordsUT =
+                            new IsimUiccRecordsUT(
+                                    mUiccCardApplication3gpp,
+                                    mContext,
+                                    mSimulatedCommands,
+                                    mFhMock);
+                });
+        mTestLooper.dispatchAll();
     }
 
     @After
     public void tearDown() throws Exception {
-        mIsimUiccRecords.dispose();
-        mIsimUiccRecords = null;
+        if (mTestLooper != null) {
+            mTestLooper.dispatchAll();
+            mTestLooper = null;
+        }
+        mTestHandler.removeCallbacksAndMessages(null);
+        mTestHandler = null;
+        mIsimUiccRecordsUT = null;
         super.tearDown();
     }
 
@@ -82,12 +106,12 @@ public class IsimUiccRecordsTest extends TelephonyTest {
         Message msg = new Message();
         msg.what = IccRecords.EVENT_REFRESH;
         msg.obj = new AsyncResult(null, null, null);
-        mIsimUiccRecords.handleMessage(msg);
+        mIsimUiccRecordsUT.handleMessage(msg);
         ArgumentCaptor<Intent> intentCapture = ArgumentCaptor.forClass(Intent.class);
         verify(mContext).sendBroadcast(intentCapture.capture());
-
         assertEquals(
-            ((Intent) intentCapture.getValue()).getAction(), IsimUiccRecords.INTENT_ISIM_REFRESH);
+                ((Intent) intentCapture.getValue()).getAction(),
+                IsimUiccRecords.INTENT_ISIM_REFRESH);
     }
 
     @Test
@@ -98,11 +122,11 @@ public class IsimUiccRecordsTest extends TelephonyTest {
                 "801074656C3A2B3133313233313439383130FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
                         + "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
         byte[] smscBytes = getStringToByte(hexSmsc);
-        Message message = mIsimUiccRecords.obtainMessage(
-                IccRecords.EVENT_GET_ICC_RECORD_DONE, mIsimUiccRecords.getPsiSmscObject());
-        AsyncResult ar = AsyncResult.forMessage(message, smscBytes, null);
-        mIsimUiccRecords.handleMessage(message);
-        assertEquals(smscTest, mIsimUiccRecords.getSmscIdentity());
+        Message message = mIsimUiccRecordsUT.obtainMessage(
+                IccRecords.EVENT_GET_ICC_RECORD_DONE, mIsimUiccRecordsUT.getPsiSmscObject());
+        AsyncResult.forMessage(message, smscBytes, null);
+        mIsimUiccRecordsUT.handleMessage(message);
+        assertEquals(smscTest, mIsimUiccRecordsUT.getSmscIdentity());
     }
 
     private byte[] getStringToByte(String hexSmsc) {
@@ -119,11 +143,11 @@ public class IsimUiccRecordsTest extends TelephonyTest {
                         + "52E636F6D3B757365723D70686F6E65FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
                         + "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
                         + "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
-        Message message = mIsimUiccRecords.obtainMessage(
-                IccRecords.EVENT_GET_ICC_RECORD_DONE, mIsimUiccRecords.getPsiSmscObject());
-        AsyncResult ar = AsyncResult.forMessage(message, smscBytes, null);
-        mIsimUiccRecords.handleMessage(message);
-        assertEquals(smscTest, mIsimUiccRecords.getSmscIdentity());
+        Message message = mIsimUiccRecordsUT.obtainMessage(
+                IccRecords.EVENT_GET_ICC_RECORD_DONE, mIsimUiccRecordsUT.getPsiSmscObject());
+        AsyncResult.forMessage(message, smscBytes, null);
+        mIsimUiccRecordsUT.handleMessage(message);
+        assertEquals(smscTest, mIsimUiccRecordsUT.getSmscIdentity());
     }
 
     @Test
@@ -133,13 +157,13 @@ public class IsimUiccRecordsTest extends TelephonyTest {
                 "801074656C3A2B3133313233313439383130FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
                         + "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
         byte[] smscBytes = getStringToByte(hexSmsc);
-        Message message = mIsimUiccRecords.obtainMessage(
-                IccRecords.EVENT_GET_ICC_RECORD_DONE, mIsimUiccRecords.getPsiSmscObject());
-        AsyncResult ar = AsyncResult.forMessage(message, smscBytes,
+        Message message = mIsimUiccRecordsUT.obtainMessage(
+                IccRecords.EVENT_GET_ICC_RECORD_DONE, mIsimUiccRecordsUT.getPsiSmscObject());
+        AsyncResult.forMessage(message, smscBytes,
                 new CommandException(
                         CommandException.Error.OPERATION_NOT_ALLOWED));
-        mIsimUiccRecords.handleMessage(message);
-        assertEquals(null, mIsimUiccRecords.getSmscIdentity());
+        mIsimUiccRecordsUT.handleMessage(message);
+        assertEquals(null, mIsimUiccRecordsUT.getSmscIdentity());
     }
 
     @Test
@@ -147,12 +171,136 @@ public class IsimUiccRecordsTest extends TelephonyTest {
         // Testing smsc invalid data handling case
         String smscTest = "tel:+13123149810";
         byte[] smscBytes = GsmAlphabet.stringToGsm8BitPacked(smscTest);
-        Message message = mIsimUiccRecords.obtainMessage(
-                IccRecords.EVENT_GET_ICC_RECORD_DONE, mIsimUiccRecords.getPsiSmscObject());
-        AsyncResult ar = AsyncResult.forMessage(message, smscBytes,
+        Message message = mIsimUiccRecordsUT.obtainMessage(
+                IccRecords.EVENT_GET_ICC_RECORD_DONE, mIsimUiccRecordsUT.getPsiSmscObject());
+        AsyncResult.forMessage(message, smscBytes,
                 new CommandException(
                         CommandException.Error.OPERATION_NOT_ALLOWED));
-        mIsimUiccRecords.handleMessage(message);
-        assertEquals(null, mIsimUiccRecords.getSmscIdentity());
+        mIsimUiccRecordsUT.handleMessage(message);
+        assertEquals(null, mIsimUiccRecordsUT.getSmscIdentity());
+    }
+
+    @Test
+    public void testGetSmssTpmrValue() {
+        // Testing tpmr successfully reading case
+        byte[] smss = new byte[2];
+        int tpmr = 10;
+        smss[0] = (byte) (tpmr & 0xFF);
+        IccRecords.SmssRecord smssRecord = mIsimUiccRecordsUT.createSmssRecord(null, smss);
+        Message message = mIsimUiccRecordsUT.obtainMessage(
+                IsimUiccRecords.EVENT_SET_SMSS_RECORD_DONE, smssRecord);
+        AsyncResult.forMessage(message, null, null);
+        mIsimUiccRecordsUT.handleMessage(message);
+        assertEquals(tpmr, mIsimUiccRecordsUT.getSmssTpmrValue());
+    }
+
+    @Test
+    public void testGetSmssTpmrValueException() {
+        // Testing tpmr reading fail case [ exception case ]
+        byte[] smss = new byte[2];
+        int tpmr = 10;
+        smss[0] = (byte) (tpmr & 0xFF);
+        IccRecords.SmssRecord smssRecord = mIsimUiccRecordsUT.createSmssRecord(null, smss);
+        Message message = mIsimUiccRecordsUT.obtainMessage(
+                IsimUiccRecords.EVENT_SET_SMSS_RECORD_DONE, smssRecord);
+        AsyncResult.forMessage(message, null,
+                new CommandException(
+                        CommandException.Error.OPERATION_NOT_ALLOWED));
+        mIsimUiccRecordsUT.handleMessage(message);
+        assertEquals(-1, mIsimUiccRecordsUT.getSmssTpmrValue());
+    }
+
+    @Test
+    public void testGetSmssTpmrValueExtreme() {
+        // Testing extreme tpmr value case [ fails ]
+        byte[] smss = new byte[2];
+        int tpmr = 400;
+        smss[0] = (byte) (tpmr & 0xFF);
+        IccRecords.SmssRecord smssRecord = mIsimUiccRecordsUT.createSmssRecord(null, smss);
+        Message message = mIsimUiccRecordsUT.obtainMessage(
+                IsimUiccRecords.EVENT_SET_SMSS_RECORD_DONE, smssRecord);
+        AsyncResult.forMessage(message, null, null);
+        mIsimUiccRecordsUT.handleMessage(message);
+        assertEquals(144, mIsimUiccRecordsUT.getSmssTpmrValue());
+    }
+
+    private void setValidSmssValue() {
+        // preset/ initialize smssvalue
+        byte[] smss = new byte[2];
+        int tpmr = 10;
+        smss[0] = (byte) (tpmr & 0xFF);
+        IccRecords.SmssRecord smssRecord = mIsimUiccRecordsUT.createSmssRecord(null, smss);
+        Message message = mIsimUiccRecordsUT.obtainMessage(
+                IsimUiccRecords.EVENT_SET_SMSS_RECORD_DONE, smssRecord);
+        AsyncResult.forMessage(message, null, null);
+        mIsimUiccRecordsUT.handleMessage(message);
+        assertEquals(tpmr, mIsimUiccRecordsUT.getSmssTpmrValue());
+    }
+
+    @Test
+    public void testSetSmssTpmrValue() {
+        // Testing tpmr successfully setting case
+        setValidSmssValue();
+        int updateTpmr = 30;
+        doAnswer(
+                invocation -> {
+                    Message response = invocation.getArgument(2);
+                    AsyncResult.forMessage(response, true, null);
+                    response.sendToTarget();
+                    return null;
+                })
+                .when(mFhMock)
+                .updateEFTransparent(anyInt(), any(byte[].class), any(Message.class));
+
+        Message message = Message.obtain(mTestHandler);
+        mIsimUiccRecordsUT.setSmssTpmrValue(updateTpmr, message);
+        mTestLooper.dispatchAll();
+        assertEquals(updateTpmr, mIsimUiccRecordsUT.getSmssTpmrValue());
+    }
+
+
+    @Test
+    public void testSetSmssTpmrValueException() {
+        // Testing exception while setting TPMR [ with out setting initial value]
+        int updateTpmr = 30;
+        doAnswer(
+                invocation -> {
+                    Message response = invocation.getArgument(2);
+                    AsyncResult.forMessage(response, true, null);
+                    response.sendToTarget();
+                    return null;
+                })
+                .when(mFhMock)
+                .updateEFTransparent(anyInt(), any(byte[].class), any(Message.class));
+        Message message = Message.obtain(mTestHandler);
+        mIsimUiccRecordsUT.setSmssTpmrValue(updateTpmr, message);
+        mTestLooper.dispatchAll();
+        assertEquals(-1, mIsimUiccRecordsUT.getSmssTpmrValue());
+    }
+
+    @Test
+    public void testSetSmssTpmrValueException2() {
+        // Testing exception while setting TPMR
+        setValidSmssValue();
+        int updateTpmr = 30;
+        doAnswer(
+                invocation -> {
+                    Message response = invocation.getArgument(2);
+
+                    AsyncResult.forMessage(response, true, new CommandException(
+                            CommandException.Error.OPERATION_NOT_ALLOWED));
+                    response.sendToTarget();
+                    return null;
+                })
+                .when(mFhMock)
+                .updateEFTransparent(anyInt(), any(byte[].class), any(Message.class));
+        Message message = Message.obtain(mTestHandler);
+        mIsimUiccRecordsUT.setSmssTpmrValue(updateTpmr, message);
+        mTestLooper.dispatchAll();
+
+        AsyncResult ar = (AsyncResult) message.obj;
+        assertTrue(ar.exception instanceof CommandException);
+        assertTrue(((CommandException) ar.exception).getCommandError() ==
+                CommandException.Error.OPERATION_NOT_ALLOWED);
     }
 }
