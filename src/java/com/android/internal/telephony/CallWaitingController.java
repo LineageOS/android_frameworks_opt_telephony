@@ -67,6 +67,7 @@ public class CallWaitingController extends Handler {
     private static final int EVENT_SET_CALL_WAITING_DONE = 1;
     private static final int EVENT_GET_CALL_WAITING_DONE = 2;
     private static final int EVENT_REGISTERED_TO_NETWORK = 3;
+    private static final int EVENT_CARRIER_CONFIG_CHANGED = 4;
 
     // Class to pack mOnComplete object passed by the caller
     private static class Cw {
@@ -90,7 +91,7 @@ public class CallWaitingController extends Handler {
     @VisibleForTesting
     public static final String KEY_CS_SYNC = "cs_sync";
 
-    private BroadcastReceiver mReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent == null) {
@@ -111,7 +112,7 @@ public class CallWaitingController extends Handler {
                 }
 
                 if (slotId == mPhone.getPhoneId()) {
-                    onCarrierConfigChanged();
+                    sendEmptyMessage(EVENT_CARRIER_CONFIG_CHANGED);
                 }
             }
         }
@@ -168,7 +169,7 @@ public class CallWaitingController extends Handler {
      * {@link #TERMINAL_BASED_ACTIVATED}.
      */
     @VisibleForTesting
-    public int getTerminalBasedCallWaitingState() {
+    public synchronized int getTerminalBasedCallWaitingState() {
         if (!mValidSubscription) return TERMINAL_BASED_NOT_SUPPORTED;
         return mCallWaitingState;
     }
@@ -179,7 +180,7 @@ public class CallWaitingController extends Handler {
      * @return true when terminal-based call waiting is supported, otherwise false
      */
     @VisibleForTesting
-    public boolean getCallWaiting(@Nullable Message onComplete) {
+    public synchronized boolean getCallWaiting(@Nullable Message onComplete) {
         if (mCallWaitingState == TERMINAL_BASED_NOT_SUPPORTED) return false;
 
         Rlog.i(LOG_TAG, "getCallWaiting " + mCallWaitingState);
@@ -219,7 +220,8 @@ public class CallWaitingController extends Handler {
      * @return true when terminal-based call waiting is supported, otherwise false
      */
     @VisibleForTesting
-    public boolean setCallWaiting(boolean enable, int serviceClass, @Nullable Message onComplete) {
+    public synchronized boolean setCallWaiting(boolean enable,
+            int serviceClass, @Nullable Message onComplete) {
         if (mCallWaitingState == TERMINAL_BASED_NOT_SUPPORTED) return false;
 
         if ((serviceClass & SERVICE_CLASS_VOICE) != SERVICE_CLASS_VOICE) return false;
@@ -272,10 +274,15 @@ public class CallWaitingController extends Handler {
             case EVENT_REGISTERED_TO_NETWORK:
                 onRegisteredToNetwork();
                 break;
+            case EVENT_CARRIER_CONFIG_CHANGED:
+                onCarrierConfigChanged();
+                break;
+            default:
+                break;
         }
     }
 
-    private void onSetCallWaitingDone(AsyncResult ar) {
+    private synchronized void onSetCallWaitingDone(AsyncResult ar) {
         if (ar.userObj == null) {
             // For the case, CALL_WAITING_SYNC_FIRST_POWER_UP
             if (DBG) Rlog.d(LOG_TAG, "onSetCallWaitingDone to sync on network attached");
@@ -314,7 +321,7 @@ public class CallWaitingController extends Handler {
         sendToTarget(cw.mOnComplete, ar.result, ar.exception);
     }
 
-    private void onGetCallWaitingDone(AsyncResult ar) {
+    private synchronized void onGetCallWaitingDone(AsyncResult ar) {
         if (ar.userObj == null) {
             // For the case, CALL_WAITING_SYNC_FIRST_POWER_UP
             if (DBG) Rlog.d(LOG_TAG, "onGetCallWaitingDone to sync on network attached");
@@ -413,7 +420,7 @@ public class CallWaitingController extends Handler {
         }
     }
 
-    private void onRegisteredToNetwork() {
+    private synchronized void onRegisteredToNetwork() {
         if (mCsEnabled) return;
 
         if (DBG) Rlog.d(LOG_TAG, "onRegisteredToNetwork");
@@ -422,7 +429,7 @@ public class CallWaitingController extends Handler {
                 obtainMessage(EVENT_GET_CALL_WAITING_DONE));
     }
 
-    private void onCarrierConfigChanged() {
+    private synchronized void onCarrierConfigChanged() {
         int subId = mPhone.getSubId();
         if (!SubscriptionManager.isValidSubscriptionId(subId)) {
             Rlog.i(LOG_TAG, "onCarrierConfigChanged invalid subId=" + subId);
@@ -447,10 +454,10 @@ public class CallWaitingController extends Handler {
     }
 
     /**
-     * @param enforced only used for test
+     * @param ignoreSavedState only used for test
      */
     @VisibleForTesting
-    public void updateCarrierConfig(int subId, PersistableBundle b, boolean enforced) {
+    public void updateCarrierConfig(int subId, PersistableBundle b, boolean ignoreSavedState) {
         mValidSubscription = true;
 
         if (b == null) return;
@@ -481,7 +488,7 @@ public class CallWaitingController extends Handler {
 
         int desiredState = savedState;
 
-        if (enforced) {
+        if (ignoreSavedState) {
             desiredState = defaultState;
         } else if ((mLastSubId != subId)
                 && (syncPreference == CALL_WAITING_SYNC_FIRST_POWER_UP
@@ -495,20 +502,20 @@ public class CallWaitingController extends Handler {
             }
         }
 
-        updateState(desiredState, syncPreference, enforced);
+        updateState(desiredState, syncPreference, ignoreSavedState);
     }
 
     private void updateState(int state) {
         updateState(state, mSyncPreference, false);
     }
 
-    private void updateState(int state, int syncPreference, boolean enforced) {
+    private void updateState(int state, int syncPreference, boolean ignoreSavedState) {
         int subId = mPhone.getSubId();
 
         if (mLastSubId == subId
                 && mCallWaitingState == state
                 && mSyncPreference == syncPreference
-                && (!enforced)) {
+                && (!ignoreSavedState)) {
             return;
         }
 
@@ -516,7 +523,7 @@ public class CallWaitingController extends Handler {
 
         Rlog.i(LOG_TAG, "updateState phoneId=" + phoneId
                 + ", subId=" + subId + ", state=" + state
-                + ", sync=" + syncPreference + ", enforced=" + enforced);
+                + ", sync=" + syncPreference + ", ignoreSavedState=" + ignoreSavedState);
 
         SharedPreferences sp =
                 mContext.getSharedPreferences(PREFERENCE_TBCW, Context.MODE_PRIVATE);
@@ -577,7 +584,7 @@ public class CallWaitingController extends Handler {
     /**
      * Sets the registration state of IMS service.
      */
-    public void setImsRegistrationState(boolean registered) {
+    public synchronized void setImsRegistrationState(boolean registered) {
         Rlog.i(LOG_TAG, "setImsRegistrationState prev=" + mImsRegistered
                 + ", new=" + registered);
         mImsRegistered = registered;
@@ -605,7 +612,7 @@ public class CallWaitingController extends Handler {
      * Only for test
      */
     @VisibleForTesting
-    public void setTerminalBasedCallWaitingSupported(boolean supported) {
+    public synchronized void setTerminalBasedCallWaitingSupported(boolean supported) {
         if (mSupportedByImsService == supported) return;
 
         Rlog.i(LOG_TAG, "setTerminalBasedCallWaitingSupported " + supported);
@@ -633,7 +640,7 @@ public class CallWaitingController extends Handler {
     /**
      * Dump this instance into a readable format for dumpsys usage.
      */
-    public void dump(PrintWriter printWriter) {
+    public synchronized void dump(PrintWriter printWriter) {
         IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         pw.increaseIndent();
         pw.println("CallWaitingController:");

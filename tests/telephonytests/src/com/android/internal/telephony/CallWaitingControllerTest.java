@@ -92,7 +92,7 @@ public class CallWaitingControllerTest extends TelephonyTest {
     @SmallTest
     public void testSetTerminalBasedCallWaitingSupported() {
         mCWC.setTerminalBasedCallWaitingSupported(true);
-        PersistableBundle bundle = getBundle(true, CALL_WAITING_SYNC_NONE, true);
+        PersistableBundle bundle = getConfigBundle(true, CALL_WAITING_SYNC_NONE, true);
         mCWC.updateCarrierConfig(FAKE_SUB_ID, bundle, true);
 
         assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_ACTIVATED);
@@ -107,7 +107,7 @@ public class CallWaitingControllerTest extends TelephonyTest {
         mCWC.setTerminalBasedCallWaitingSupported(false);
         setPreference(mPhone.getPhoneId(), FAKE_SUB_ID,
                 TERMINAL_BASED_ACTIVATED, CALL_WAITING_SYNC_NONE);
-        PersistableBundle bundle = getBundle(true, CALL_WAITING_SYNC_NONE, true);
+        PersistableBundle bundle = getConfigBundle(true, CALL_WAITING_SYNC_NONE, true);
         doReturn(bundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
         mCWC.setTerminalBasedCallWaitingSupported(true);
 
@@ -121,7 +121,7 @@ public class CallWaitingControllerTest extends TelephonyTest {
         assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_NOT_ACTIVATED);
 
         mCWC.setTerminalBasedCallWaitingSupported(false);
-        bundle = getBundle(false, CALL_WAITING_SYNC_NONE, false);
+        bundle = getConfigBundle(false, CALL_WAITING_SYNC_NONE, false);
         doReturn(bundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
         mCWC.setTerminalBasedCallWaitingSupported(true);
 
@@ -132,12 +132,12 @@ public class CallWaitingControllerTest extends TelephonyTest {
     @SmallTest
     public void testCarrierConfigChanged() {
         mCWC.setTerminalBasedCallWaitingSupported(true);
-        PersistableBundle bundle = getBundle(true, CALL_WAITING_SYNC_NONE, true);
+        PersistableBundle bundle = getConfigBundle(true, CALL_WAITING_SYNC_NONE, true);
         mCWC.updateCarrierConfig(FAKE_SUB_ID, bundle, true);
 
         assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_ACTIVATED);
 
-        bundle = getBundle(false, CALL_WAITING_SYNC_NONE, true);
+        bundle = getConfigBundle(false, CALL_WAITING_SYNC_NONE, true);
         mCWC.updateCarrierConfig(FAKE_SUB_ID, bundle, false);
 
         assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_NOT_SUPPORTED);
@@ -170,7 +170,7 @@ public class CallWaitingControllerTest extends TelephonyTest {
         assertFalse(mCWC.getCallWaiting(null));
 
         mCWC.setTerminalBasedCallWaitingSupported(true);
-        PersistableBundle bundle = getBundle(true, CALL_WAITING_SYNC_NONE, true);
+        PersistableBundle bundle = getConfigBundle(true, CALL_WAITING_SYNC_NONE, true);
         mCWC.updateCarrierConfig(FAKE_SUB_ID, bundle, true);
 
         mHandler = new GetTestHandler();
@@ -207,7 +207,7 @@ public class CallWaitingControllerTest extends TelephonyTest {
         assertFalse(mCWC.setCallWaiting(true, SERVICE_CLASS_VOICE, null));
 
         mCWC.setTerminalBasedCallWaitingSupported(true);
-        PersistableBundle bundle = getBundle(true, CALL_WAITING_SYNC_NONE, true);
+        PersistableBundle bundle = getConfigBundle(true, CALL_WAITING_SYNC_NONE, true);
         mCWC.updateCarrierConfig(FAKE_SUB_ID, bundle, true);
 
         assertTrue(mCWC.setCallWaiting(true, SERVICE_CLASS_VOICE, null));
@@ -234,7 +234,7 @@ public class CallWaitingControllerTest extends TelephonyTest {
         setPreference(mPhone.getPhoneId(), FAKE_SUB_ID,
                 TERMINAL_BASED_ACTIVATED, CALL_WAITING_SYNC_USER_CHANGE);
         mCWC.setTerminalBasedCallWaitingSupported(true);
-        PersistableBundle bundle = getBundle(true, CALL_WAITING_SYNC_USER_CHANGE, true);
+        PersistableBundle bundle = getConfigBundle(true, CALL_WAITING_SYNC_USER_CHANGE, true);
         mCWC.updateCarrierConfig(FAKE_SUB_ID, bundle, true);
 
         assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_ACTIVATED);
@@ -286,7 +286,7 @@ public class CallWaitingControllerTest extends TelephonyTest {
         setPreference(mPhone.getPhoneId(), FAKE_SUB_ID,
                 TERMINAL_BASED_NOT_ACTIVATED, CALL_WAITING_SYNC_FIRST_POWER_UP);
         mCWC.setTerminalBasedCallWaitingSupported(true);
-        PersistableBundle bundle = getBundle(true, CALL_WAITING_SYNC_FIRST_POWER_UP, true);
+        PersistableBundle bundle = getConfigBundle(true, CALL_WAITING_SYNC_FIRST_POWER_UP, true);
         mCWC.updateCarrierConfig(FAKE_SUB_ID, bundle, true);
         assertFalse(mCWC.getSyncState());
 
@@ -303,7 +303,7 @@ public class CallWaitingControllerTest extends TelephonyTest {
         setPreference(mPhone.getPhoneId(), FAKE_SUB_ID,
                 TERMINAL_BASED_NOT_ACTIVATED, CALL_WAITING_SYNC_FIRST_CHANGE);
         mCWC.setTerminalBasedCallWaitingSupported(true);
-        PersistableBundle bundle = getBundle(true, CALL_WAITING_SYNC_FIRST_CHANGE, true);
+        PersistableBundle bundle = getConfigBundle(true, CALL_WAITING_SYNC_FIRST_CHANGE, true);
         mCWC.updateCarrierConfig(FAKE_SUB_ID, bundle, true);
         mCWC.setImsRegistrationState(false);
 
@@ -335,7 +335,8 @@ public class CallWaitingControllerTest extends TelephonyTest {
         assertTrue(mSimulatedCommands.mCallWaitActivated);
     }
 
-    private PersistableBundle getBundle(boolean provisioned, int preference, boolean defaultState) {
+    private PersistableBundle getConfigBundle(boolean provisioned,
+            int preference, boolean defaultState) {
         PersistableBundle bundle = new PersistableBundle();
         bundle.putIntArray(KEY_UT_TERMINAL_BASED_SERVICES_INT_ARRAY,
                 provisioned ? new int[] { SUPPLEMENTARY_SERVICE_CW } : new int[] { });

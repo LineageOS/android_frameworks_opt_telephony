@@ -5476,6 +5476,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         if (state == TERMINAL_BASED_NOT_SUPPORTED) return;
         if (mImsManager != null) {
             try {
+                log("setTerminalBasedCallWaitingStatus state=" + state);
                 mImsManager.setTerminalBasedCallWaitingStatus(
                         state == TERMINAL_BASED_ACTIVATED);
             } catch (ImsException e) {
