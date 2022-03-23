@@ -471,7 +471,7 @@ abstract class ImsPhoneBase extends Phone {
     }
 
     @Override
-    public boolean isDataAllowed(int apnType) {
+    public boolean isDataAllowed() {
         return false;
     }
 
