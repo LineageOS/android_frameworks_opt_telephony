@@ -834,13 +834,14 @@ public class SubscriptionController extends ISub.Stub {
                 for (SubscriptionInfo si : subList) {
                     if (iccId.equals(si.getIccId())) {
                         if (DBG)
-                            logd("[getActiveSubInfoUsingIccId]+ iccId=" + iccId + " subInfo=" + si);
+                            logd("[getActiveSubInfoUsingIccId]+ iccId="
+                                    + Rlog.pii(LOG_TAG, iccId) + " subInfo=" + si);
                         return si;
                     }
                 }
             }
             if (DBG) {
-                logd("[getActiveSubInfoUsingIccId]+ iccId=" + iccId
+                logd("[getActiveSubInfoUsingIccId]+ iccId=" + Rlog.pii(LOG_TAG, iccId)
                         + " subList=" + subList + " subInfo=null");
             }
         } finally {
