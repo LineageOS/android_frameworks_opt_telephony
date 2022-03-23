@@ -1643,7 +1643,7 @@ public class PhoneSwitcher extends Handler {
         // in network (DIALING -> ALERTING).
         return (phone.getForegroundCall().getState() == Call.State.ACTIVE
                 || phone.getForegroundCall().getState() == Call.State.ALERTING
-                || phone.getBackgroundCall().getState() == Call.State.HOLDING);
+                || !phone.getBackgroundCall().isIdle());
     }
 
     private void updateHalCommandToUse() {
