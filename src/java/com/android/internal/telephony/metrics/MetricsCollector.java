@@ -714,7 +714,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 session.mainCodecQuality,
                 session.videoEnabled,
                 session.ratAtConnected,
-                session.isMultiparty);
+                session.isMultiparty,
+                session.callDuration);
     }
 
     private static StatsEvent buildStatsEvent(IncomingSms sms) {
