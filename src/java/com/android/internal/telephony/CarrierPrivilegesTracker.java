@@ -37,6 +37,7 @@ import android.content.IntentFilter;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.content.pm.ResolveInfo;
 import android.content.pm.Signature;
 import android.content.pm.UserInfo;
 import android.net.Uri;
@@ -787,5 +788,50 @@ public class CarrierPrivilegesTracker extends Handler {
         } finally {
             mPrivilegedPackageInfoLock.readLock().unlock();
         }
+    }
+
+    /**
+     * Backing of {@link TelephonyManager#getCarrierPackageNamesForIntent} and {@link
+     * TelephonyManager#getCarrierPackageNamesForIntentAndPhone}.
+     */
+    public List<String> getCarrierPackageNamesForIntent(Intent intent) {
+        // Do the PackageManager queries before we take the lock, as these are the longest-running
+        // pieces of this method and don't depend on the set of carrier apps.
+        List<ResolveInfo> resolveInfos = new ArrayList<>();
+        resolveInfos.addAll(mPackageManager.queryBroadcastReceivers(intent, 0));
+        resolveInfos.addAll(mPackageManager.queryIntentActivities(intent, 0));
+        resolveInfos.addAll(mPackageManager.queryIntentServices(intent, 0));
+        resolveInfos.addAll(mPackageManager.queryIntentContentProviders(intent, 0));
+
+        // Now actually check which of the resolved packages have carrier privileges.
+        mPrivilegedPackageInfoLock.readLock().lock();
+        try {
+            Set<String> packageNames = new ArraySet<>(); // For deduping purposes
+            for (ResolveInfo resolveInfo : resolveInfos) {
+                String packageName = getPackageName(resolveInfo);
+                if (packageName == null) continue;
+                switch (getCarrierPrivilegeStatusForPackage(packageName)) {
+                    case TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS:
+                        packageNames.add(packageName);
+                        break;
+                    case TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS:
+                        continue;
+                    default:
+                        // Any other status is considered an error.
+                        return Collections.emptyList();
+                }
+            }
+            return new ArrayList<>(packageNames);
+        } finally {
+            mPrivilegedPackageInfoLock.readLock().unlock();
+        }
+    }
+
+    private static @Nullable String getPackageName(ResolveInfo resolveInfo) {
+        // Note: activityInfo covers both activities + broadcast receivers
+        if (resolveInfo.activityInfo != null) return resolveInfo.activityInfo.packageName;
+        if (resolveInfo.serviceInfo != null) return resolveInfo.serviceInfo.packageName;
+        if (resolveInfo.providerInfo != null) return resolveInfo.providerInfo.packageName;
+        return null;
     }
 }

@@ -1753,17 +1753,6 @@ public class UiccProfile extends IccCard {
         return new ArrayList<>(carrierPrivilegeRules.getAccessRules());
     }
 
-    /**
-     * Exposes {@link UiccCarrierPrivilegeRules#getCarrierPackageNamesForIntent}.
-     */
-    public List<String> getCarrierPackageNamesForIntent(
-            PackageManager packageManager, Intent intent) {
-        UiccCarrierPrivilegeRules carrierPrivilegeRules = getCarrierPrivilegeRules();
-        return carrierPrivilegeRules == null ? null :
-                carrierPrivilegeRules.getCarrierPackageNamesForIntent(
-                        packageManager, intent);
-    }
-
     /** Returns a reference to the current {@link UiccCarrierPrivilegeRules}. */
     private UiccCarrierPrivilegeRules getCarrierPrivilegeRules() {
         synchronized (mLock) {

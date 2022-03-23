@@ -34,6 +34,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.argThat;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -42,8 +43,12 @@ import static org.mockito.Mockito.when;
 
 import android.annotation.Nullable;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ProviderInfo;
+import android.content.pm.ResolveInfo;
+import android.content.pm.ServiceInfo;
 import android.content.pm.Signature;
 import android.content.pm.UserInfo;
 import android.net.Uri;
@@ -51,6 +56,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
+import android.service.carrier.CarrierService;
 import android.telephony.CarrierConfigManager;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
@@ -71,6 +77,7 @@ import org.mockito.Mock;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -91,6 +98,11 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
     private static final String PACKAGE_1 = "android.test.package1";
     private static final String PACKAGE_2 = "android.test.package2";
     private static final String PACKAGE_3 = "android.test.package3";
+    private static final String PACKAGE_4 = "android.test.package4";
+    private static final String PACKAGE_5 = "android.test.package5";
+    private static final String PACKAGE_6 = "android.test.package6";
+    private static final String PACKAGE_7 = "android.test.package7";
+    private static final String PACKAGE_8 = "android.test.package8";
     private static final Set<String> PRIVILEGED_PACKAGES = Set.of(PACKAGE_1, PACKAGE_2);
 
     private static final String CERT_1 = "11223344";
@@ -187,11 +199,6 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         when(mUserManager.getUsers()).thenReturn(new ArrayList<>(users));
         when(mPackageManager.getInstalledPackagesAsUser(eq(PM_FLAGS), eq(SYSTEM.getIdentifier())))
                 .thenReturn(installedPackages);
-    }
-
-    private void setupInstalledPackagesWithFlags(int flags, PackageCertInfo... pkgCertInfos)
-            throws Exception {
-
     }
 
     /**
@@ -765,6 +772,53 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
                 List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS)));
     }
 
+    @Test
+    public void testGetCarrierPackageNameForIntent() throws Exception {
+        // Only packages with CERT_1 have carrier privileges
+        setupCarrierConfigRules(carrierConfigRuleString(getHash(CERT_1)));
+        // Setup all odd packages privileged, even packages not
+        setupInstalledPackages(
+                new PackageCertInfo(PACKAGE_1, CERT_1, USER_1, UID_1),
+                new PackageCertInfo(PACKAGE_2, CERT_2, USER_1, UID_2),
+                new PackageCertInfo(PACKAGE_3, CERT_1, USER_1, UID_1),
+                new PackageCertInfo(PACKAGE_4, CERT_2, USER_1, UID_2),
+                new PackageCertInfo(PACKAGE_5, CERT_1, USER_1, UID_1),
+                new PackageCertInfo(PACKAGE_6, CERT_2, USER_1, UID_2),
+                new PackageCertInfo(PACKAGE_7, CERT_1, USER_1, UID_1),
+                new PackageCertInfo(PACKAGE_8, CERT_2, USER_1, UID_2));
+
+        ResolveInfo privilegeBroadcast = new ResolveInfoBuilder().setActivity(PACKAGE_1).build();
+        ResolveInfo noPrivilegeBroadcast = new ResolveInfoBuilder().setActivity(PACKAGE_2).build();
+        when(mPackageManager.queryBroadcastReceivers(any(), anyInt())).thenReturn(
+                List.of(privilegeBroadcast, noPrivilegeBroadcast));
+
+        ResolveInfo privilegeActivity = new ResolveInfoBuilder().setActivity(PACKAGE_3).build();
+        ResolveInfo noPrivilegeActivity = new ResolveInfoBuilder().setActivity(PACKAGE_4).build();
+        when(mPackageManager.queryIntentActivities(any(), anyInt())).thenReturn(
+                List.of(privilegeActivity, noPrivilegeActivity));
+
+        ResolveInfo privilegeService = new ResolveInfoBuilder().setService(PACKAGE_5).build();
+        ResolveInfo noPrivilegeService = new ResolveInfoBuilder().setService(PACKAGE_6).build();
+        // Use doReturn instead of when/thenReturn which has NPE with unknown reason
+        doReturn(List.of(privilegeService, noPrivilegeService)).when(
+                mPackageManager).queryIntentServices(any(), anyInt());
+
+        ResolveInfo privilegeProvider = new ResolveInfoBuilder().setProvider(PACKAGE_7).build();
+        ResolveInfo noPrivilegeProvider = new ResolveInfoBuilder().setProvider(PACKAGE_8).build();
+        when(mPackageManager.queryIntentContentProviders(any(), anyInt())).thenReturn(
+                List.of(privilegeProvider, noPrivilegeProvider));
+
+        mCarrierPrivilegesTracker = createCarrierPrivilegesTracker();
+        Intent intent = new Intent(CarrierService.CARRIER_SERVICE_INTERFACE);
+        List<String> carrierPackageNames =
+                mCarrierPrivilegesTracker.getCarrierPackageNamesForIntent(intent);
+        mTestableLooper.processAllMessages();
+
+        // Order of the result packages doesn't matter. Comparing the Set instead of the List
+        assertEquals(Set.of(PACKAGE_1, PACKAGE_3, PACKAGE_5, PACKAGE_7),
+                new HashSet<>(carrierPackageNames));
+    }
+
     private void sendCarrierConfigChangedIntent(int subId, int phoneId) {
         mContext.sendBroadcast(
                 new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)
@@ -808,6 +862,41 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
             this.cert = cert;
             this.userInfo = userInfo;
             this.uid = uid;
+        }
+    }
+
+    /**
+     * Utility class to build {@link ResolveInfo} for testing.
+     */
+    private static final class ResolveInfoBuilder {
+        private ActivityInfo mActivityInfo;
+        private ServiceInfo mServiceInfo;
+        private ProviderInfo mProviderInfo;
+
+        public ResolveInfoBuilder setActivity(String packageName) {
+            mActivityInfo = new ActivityInfo();
+            mActivityInfo.packageName = packageName;
+            return this;
+        }
+
+        public ResolveInfoBuilder setService(String packageName) {
+            mServiceInfo = new ServiceInfo();
+            mServiceInfo.packageName = packageName;
+            return this;
+        }
+
+        public ResolveInfoBuilder setProvider(String packageName) {
+            mProviderInfo = new ProviderInfo();
+            mProviderInfo.packageName = packageName;
+            return this;
+        }
+
+        public ResolveInfo build() {
+            ResolveInfo resolveInfo = new ResolveInfo();
+            resolveInfo.activityInfo = mActivityInfo;
+            resolveInfo.serviceInfo = mServiceInfo;
+            resolveInfo.providerInfo = mProviderInfo;
+            return resolveInfo;
         }
     }
 }
