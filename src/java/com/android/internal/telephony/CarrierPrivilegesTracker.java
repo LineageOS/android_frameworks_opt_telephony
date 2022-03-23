@@ -933,6 +933,41 @@ public class CarrierPrivilegesTracker extends Handler {
     }
 
     /**
+     * Backing of {@link TelephonyManager#getCarrierServicePackageName()} and
+     * {@link TelephonyManager#getCarrierServicePackageNameForLogicalSlot(int)}
+     */
+    @Nullable
+    public String getCarrierServicePackageName() {
+        // Return the cached one if present, it is fast and safe (no IPC call to PackageManager)
+        mPrivilegedPackageInfoLock.readLock().lock();
+        try {
+            // If SIM is READY but not LOADED, neither the cache nor the queries below are reliable,
+            // we should return null for this transient state for security/privacy's concern.
+            if (mSimIsReadyButNotLoaded) return null;
+
+            return mPrivilegedPackageInfo.mCarrierService.first;
+        } finally {
+            mPrivilegedPackageInfoLock.readLock().unlock();
+        }
+        // Do NOT query package manager, mPrivilegedPackageInfo.mCarrierService has maintained the
+        // latest CarrierService info. Querying PM will not get better result.
+    }
+
+    /**
+     * @return The UID of carrier service package. {@link Process#INVALID_UID} if not found.
+     */
+    public int getCarrierServicePackageUid() {
+        mPrivilegedPackageInfoLock.readLock().lock();
+        try {
+            if (mSimIsReadyButNotLoaded) return Process.INVALID_UID;
+
+            return mPrivilegedPackageInfo.mCarrierService.second;
+        } finally {
+            mPrivilegedPackageInfoLock.readLock().unlock();
+        }
+    }
+
+    /**
      * Backing of {@link TelephonyManager#getCarrierPackageNamesForIntent} and {@link
      * TelephonyManager#getCarrierPackageNamesForIntentAndPhone}.
      */
