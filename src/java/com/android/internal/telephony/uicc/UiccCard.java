@@ -213,7 +213,7 @@ public class UiccCard {
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("UiccCard:");
         pw.println(" mCardState=" + mCardState);
-        pw.println(" mCardId=" + mCardId);
+        pw.println(" mCardId=" + Rlog.pii(LOG_TAG, mCardId));
         pw.println(" mNumberOfPorts=" + mUiccPorts.size());
         pw.println( "mIsSupportsMultipleEnabledProfiles=" + mIsSupportsMultipleEnabledProfiles);
         pw.println();
