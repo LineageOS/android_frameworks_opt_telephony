@@ -378,7 +378,7 @@ public class DataServiceManager extends Handler {
         PhoneConfigurationManager.registerForMultiSimConfigChange(
                 this, EVENT_BIND_DATA_SERVICE, null);
 
-        sendEmptyMessage(EVENT_BIND_DATA_SERVICE);
+        rebindDataService();
     }
 
     /**
