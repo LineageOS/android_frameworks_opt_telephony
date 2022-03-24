@@ -186,8 +186,9 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
         }
 
         NetworkCapabilities capabilities = mDataNetwork.getNetworkCapabilities();
-        if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
-                || capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+        if ((mDataNetwork.isConnected() || mDataNetwork.isHandoverInProgress())
+                && (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
+                || capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET))) {
             trackNetworkUnwanted();
         }
 
@@ -208,7 +209,7 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
     private void trackNetworkUnwanted() {
         if (sNetworkUnwantedCounter.addOccurrence()) {
             AnomalyReporter.reportAnomaly(
-                    UUID.fromString("9f3bc55b-bfa6-4e26-afaa-5031426a66d1"),
+                    UUID.fromString("9f3bc55b-bfa6-4e26-afaa-5031426a66d2"),
                     "Network Unwanted called 12 times in 5 minutes.");
         }
     }
