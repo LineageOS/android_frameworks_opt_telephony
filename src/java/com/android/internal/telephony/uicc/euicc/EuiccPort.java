@@ -101,6 +101,9 @@ public class EuiccPort extends UiccPort {
     private static final String DEV_CAP_NR5GC = "nr5gc";
     private static final String DEV_CAP_EUTRAN5GC = "eutran5gc";
 
+    private static final String ATR_ESIM_OS_V_M5 =
+            "3B9F97C00AB1FE453FC6838031E073FE211F65D002341569810F21";
+
     // These interfaces are used for simplifying the code by leveraging lambdas.
     private interface ApduRequestBuilder {
         void build(RequestBuilder requestBuilder)
@@ -125,6 +128,7 @@ public class EuiccPort extends UiccPort {
     private volatile String mEid;
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     public boolean mIsSupportsMultipleEnabledProfiles;
+    private String mAtr;
 
     public EuiccPort(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock,
             UiccCard card, boolean isSupportsMultipleEnabledProfiles) {
@@ -137,6 +141,7 @@ public class EuiccPort extends UiccPort {
             mEid = ics.eid;
             mCardId = ics.eid;
         }
+        mAtr = ics.atr;
         mIsSupportsMultipleEnabledProfiles = isSupportsMultipleEnabledProfiles;
     }
 
@@ -160,6 +165,7 @@ public class EuiccPort extends UiccPort {
             if (!TextUtils.isEmpty(ics.eid)) {
                 mEid = ics.eid;
             }
+            mAtr = ics.atr;
             super.update(c, ci, ics, uiccCard);
         }
     }
@@ -181,8 +187,13 @@ public class EuiccPort extends UiccPort {
      * @since 1.1.0 [GSMA SGP.22]
      */
     public void getAllProfiles(AsyncResultCallback<EuiccProfileInfo[]> callback, Handler handler) {
-        byte[] profileTags = mIsSupportsMultipleEnabledProfiles ? Tags.EUICC_PROFILE_MEP_TAGS
-                : Tags.EUICC_PROFILE_TAGS;
+        byte[] profileTags;
+        if (mIsSupportsMultipleEnabledProfiles) {
+            profileTags = ATR_ESIM_OS_V_M5.equals(mAtr)
+                    ? Tags.EUICC_PROFILE_MEP_TAGS : Tags.EUICC_PROFILE_MEP_TAGS_WITH_9F20;
+        } else {
+            profileTags = Tags.EUICC_PROFILE_TAGS;
+        }
         sendApdu(
                 newRequestProvider((RequestBuilder requestBuilder) ->
                         requestBuilder.addStoreData(Asn1Node.newBuilder(Tags.TAG_GET_PROFILES)
@@ -223,8 +234,13 @@ public class EuiccPort extends UiccPort {
      */
     public final void getProfile(String iccid, AsyncResultCallback<EuiccProfileInfo> callback,
             Handler handler) {
-        byte[] profileTags = mIsSupportsMultipleEnabledProfiles ? Tags.EUICC_PROFILE_MEP_TAGS
-                : Tags.EUICC_PROFILE_TAGS;
+        byte[] profileTags;
+        if (mIsSupportsMultipleEnabledProfiles) {
+            profileTags = ATR_ESIM_OS_V_M5.equals(mAtr)
+                    ? Tags.EUICC_PROFILE_MEP_TAGS : Tags.EUICC_PROFILE_MEP_TAGS_WITH_9F20;
+        } else {
+            profileTags = Tags.EUICC_PROFILE_TAGS;
+        }
         sendApdu(
                 newRequestProvider((RequestBuilder requestBuilder) ->
                         requestBuilder.addStoreData(Asn1Node.newBuilder(Tags.TAG_GET_PROFILES)
@@ -1244,8 +1260,10 @@ public class EuiccPort extends UiccPort {
             // if the Profile is in the Enabled state on the same eSIM Port as where this
             // getProfilesInfo command was sent. So should check for enabledOnEsimPort(TAG_PORT)
             // tag and verify its value is a valid port (means port value is >=0) or not.
-            if (profileNode.hasChild(Tags.TAG_PORT)
-                    && profileNode.getChild(Tags.TAG_PORT).asInteger() >= 0) {
+            if ((profileNode.hasChild(Tags.TAG_PORT)
+                    && profileNode.getChild(Tags.TAG_PORT).asInteger() >= 0)
+                    || (profileNode.hasChild(Tags.TAG_PORT_9F20)
+                    && profileNode.getChild(Tags.TAG_PORT_9F20).asInteger() >= 0)) {
                 profileBuilder.setState(EuiccProfileInfo.PROFILE_STATE_ENABLED);
             } else {
                 // noinspection WrongConstant
