@@ -19,7 +19,6 @@ package com.android.internal.telephony.data;
 import static android.telephony.data.DataServiceCallback.RESULT_SUCCESS;
 
 import android.annotation.Nullable;
-import android.hardware.radio.RadioError;
 import android.net.LinkProperties;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -89,11 +88,9 @@ public class CellularDataService extends DataService {
                                     response);
                             break;
                         case DEACTIVATE_DATA_CALL_COMPLETE:
-                            int error = (int) ar.result;
                             callback.onDeactivateDataCallComplete(ar.exception != null
                                     ? DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE
-                                    : error == RadioError.NONE ? RESULT_SUCCESS
-                                            : DataServiceCallback.RESULT_ERROR_INVALID_RESPONSE);
+                                    : RESULT_SUCCESS);
                             break;
                         case SET_INITIAL_ATTACH_APN_COMPLETE:
                             callback.onSetInitialAttachApnComplete(ar.exception != null
