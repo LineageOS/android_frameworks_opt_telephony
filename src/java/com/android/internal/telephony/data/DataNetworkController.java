@@ -29,6 +29,7 @@ import android.net.NetworkAgent;
 import android.net.NetworkCapabilities;
 import android.net.NetworkPolicyManager;
 import android.net.NetworkPolicyManager.SubscriptionCallback;
+import android.net.NetworkRequest;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -867,9 +868,8 @@ public class DataNetworkController extends Handler {
             }
         });
 
-        mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
-                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, this, EVENT_SERVICE_STATE_CHANGED,
-                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        mPhone.getServiceStateTracker().registerForServiceStateChanged(this,
+                EVENT_SERVICE_STATE_CHANGED);
         mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
         mPhone.getServiceStateTracker().registerForPsRestrictedEnabled(this,
                 EVENT_PS_RESTRICT_ENABLED, null);
@@ -1187,6 +1187,26 @@ public class DataNetworkController extends Handler {
 
         return mDataConfigManager.getNetworkTypesOnlySupportSingleDataNetwork()
                 .contains(getDataNetworkType(transport));
+    }
+
+    /**
+     * Evaluate if telephony frameworks would allow data setup for internet in current environment.
+     *
+     * @return {@code true} if the environment is allowed for internet data. {@code false} if not
+     * allowed. For example, if SIM is absent, or airplane mode is on, then data is NOT allowed.
+     * This API does not reflect the currently internet data network status. It's possible there is
+     * no internet data due to weak cellular signal or network side issue, but internet data is
+     * still allowed in this case.
+     */
+    public boolean isInternetDataAllowed() {
+        TelephonyNetworkRequest internetRequest = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                        .build(), mPhone);
+        DataEvaluation evaluation = evaluateNetworkRequest(internetRequest,
+                DataEvaluationReason.EXTERNAL_QUERY);
+        return !evaluation.containsDisallowedReasons();
     }
 
     /**
@@ -1899,7 +1919,7 @@ public class DataNetworkController extends Handler {
     }
 
     /**
-     * Unregister IMS faeture state callbacks.
+     * Unregister IMS feature state callbacks.
      *
      * @param subId Subscription index.
      */
@@ -2983,7 +3003,7 @@ public class DataNetworkController extends Handler {
                     ? "registered" : "not registered")
             );
             mPendingImsDeregDataNetworks.put(dataNetwork,
-                    dataNetwork.tearDownWithCondition(reason, deregDelay));
+                    dataNetwork.tearDownWhenConditionMet(reason, deregDelay));
         } else {
             // Graceful tear down is not turned on. Tear down the network immediately.
             log("tearDownGracefully: Safe to tear down " + dataNetwork);
