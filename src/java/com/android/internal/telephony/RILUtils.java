@@ -5222,7 +5222,15 @@ public class RILUtils {
      * @return A string containing all public non-static local variables of a class
      */
     public static String convertToString(Object o) {
-        if (isPrimitiveOrWrapper(o.getClass()) || o.getClass() == String.class) return o.toString();
+        boolean toStringExists = false;
+        try {
+            toStringExists = o.getClass().getMethod("toString").getDeclaringClass() != Object.class;
+        } catch (NoSuchMethodException e) {
+            loge(e.toString());
+        }
+        if (toStringExists || isPrimitiveOrWrapper(o.getClass()) || o instanceof ArrayList) {
+            return o.toString();
+        }
         if (o.getClass().isArray()) {
             // Special handling for arrays
             StringBuilder sb = new StringBuilder("[");
