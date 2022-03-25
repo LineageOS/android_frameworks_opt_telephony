@@ -1361,13 +1361,14 @@ public class DataNetworkController extends Handler {
         if (dataProfile == null) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.NO_SUITABLE_DATA_PROFILE);
         } else if (reason == DataEvaluationReason.NEW_REQUEST
-                && (mDataRetryManager.isAnySetupRetryScheduled(dataProfile)
-                || mDataRetryManager.isSimilarNetworkRequestRetryScheduled(networkRequest))) {
+                && (mDataRetryManager.isAnySetupRetryScheduled(dataProfile, transport)
+                || mDataRetryManager.isSimilarNetworkRequestRetryScheduled(
+                        networkRequest, transport))) {
             // If this is a new request, check if there is any retry already scheduled. For all
             // other evaluation reasons, since they are all condition changes, so if there is any
             // retry scheduled, we still want to go ahead and setup the data network.
             evaluation.addDataDisallowedReason(DataDisallowedReason.RETRY_SCHEDULED);
-        } else if (mDataRetryManager.isDataProfileThrottled(dataProfile)) {
+        } else if (mDataRetryManager.isDataProfileThrottled(dataProfile, transport)) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_THROTTLED);
         }
 
