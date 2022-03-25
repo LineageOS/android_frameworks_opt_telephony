@@ -1208,7 +1208,8 @@ public class NetworkTypeController extends StateMachine {
 
         // Check if meeting minimum bandwidth requirement. For most carriers, there is no minimum
         // bandwidth requirement and mNrAdvancedThresholdBandwidth is 0.
-        if (IntStream.of(mPhone.getServiceState().getCellBandwidths()).sum()
+        if (mNrAdvancedThresholdBandwidth > 0
+                && IntStream.of(mPhone.getServiceState().getCellBandwidths()).sum()
                 < mNrAdvancedThresholdBandwidth) {
             return false;
         }
