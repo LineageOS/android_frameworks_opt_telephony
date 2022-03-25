@@ -75,8 +75,8 @@ public class DataSettingsManager extends Handler {
     private static final int EVENT_PROVISIONED_CHANGED = 9;
     /** Event for provisioning data enabled setting changed. */
     private static final int EVENT_PROVISIONING_DATA_ENABLED_CHANGED = 10;
-    /** Event for registering all events. */
-    private static final int EVENT_REGISTER_ALL_EVENTS = 11;
+    /** Event for initializing DataSettingsManager. */
+    private static final int EVENT_INITIALIZE = 11;
 
     private final Phone mPhone;
     private final ContentResolver mResolver;
@@ -100,7 +100,13 @@ public class DataSettingsManager extends Handler {
      * Flag indicating whether data is allowed or not for the device.
      * It can be disabled by user, carrier, policy or thermal.
      */
-    private boolean mIsDataEnabled = false;
+    private boolean mIsDataEnabled;
+
+    /**
+     * Used to indicate that the initial value for mIsDataEnabled was set.
+     * Prevent race condition where the initial value might be incorrect.
+     */
+    private boolean mInitialized = false;
 
     /**
      * Data settings manager callback. This should be only used by {@link DataNetworkController}.
@@ -159,12 +165,9 @@ public class DataSettingsManager extends Handler {
         mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_CARRIER, true);
         mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_THERMAL, true);
 
-        mIsDataEnabled = isDataEnabled(ApnSetting.TYPE_ALL);
-        log("mIsDataEnabled=" + mIsDataEnabled);
-
-        // Instead of calling onRegisterAllEvents directly from the constructor, send the event.
+        // Instead of calling onInitialize directly from the constructor, send the event.
         // The reason is that getImsPhone is null when we are still in the constructor here.
-        sendEmptyMessage(EVENT_REGISTER_ALL_EVENTS);
+        sendEmptyMessage(EVENT_INITIALIZE);
     }
 
     @Override
@@ -255,8 +258,8 @@ public class DataSettingsManager extends Handler {
                 updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_UNKNOWN);
                 break;
             }
-            case EVENT_REGISTER_ALL_EVENTS: {
-                onRegisterAllEvents();
+            case EVENT_INITIALIZE: {
+                onInitialize();
                 break;
             }
             default:
@@ -267,7 +270,7 @@ public class DataSettingsManager extends Handler {
     /**
      * Called when needed to register for all events that data network controller is interested.
      */
-    private void onRegisterAllEvents() {
+    private void onInitialize() {
         mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
         mSettingsObserver.observe(Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONED),
                 EVENT_PROVISIONED_CHANGED);
@@ -293,6 +296,7 @@ public class DataSettingsManager extends Handler {
                         }
                     }
                 }, this::post);
+        updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_UNKNOWN);
     }
 
     /**
@@ -320,7 +324,8 @@ public class DataSettingsManager extends Handler {
         boolean prevDataEnabled = mIsDataEnabled;
         mIsDataEnabled = isDataEnabled(ApnSetting.TYPE_ALL);
         log("mIsDataEnabled=" + mIsDataEnabled + ", prevDataEnabled=" + prevDataEnabled);
-        if (prevDataEnabled != mIsDataEnabled) {
+        if (!mInitialized || prevDataEnabled != mIsDataEnabled) {
+            if (!mInitialized) mInitialized = true;
             notifyDataEnabledChanged(mIsDataEnabled, reason);
         }
     }
@@ -347,11 +352,24 @@ public class DataSettingsManager extends Handler {
     }
 
     /**
-     * Check whether the overall data is enabled for the device.
+     * Check whether the overall data is enabled for the device. Note that this value will only
+     * be accurate if {@link #isDataInitialized} is {@code true}.
      * @return {@code true} if the overall data is enabled and {@code false} otherwise.
      */
     public boolean isDataEnabled() {
         return mIsDataEnabled;
+    }
+
+    /**
+     * Check whether data enabled value has been initialized. If this is {@code false}, then
+     * {@link #isDataEnabled} is not guaranteed to be accurate. Once data is initialized,
+     * {@link DataSettingsManagerCallback#onDataEnabledChanged} will be invoked with reason
+     * {@link TelephonyManager#DATA_ENABLED_REASON_UNKNOWN}.
+     * @return {@code true} if the data enabled value is initialized and {@code false} otherwise.
+     */
+    public boolean isDataInitialized() {
+        // TODO: Create a new DATA_ENABLED_REASON_INITIALIZED for initial value broadcast
+        return mInitialized;
     }
 
     /**

@@ -1322,9 +1322,13 @@ public class DataNetworkController extends Handler {
                     DataDisallowedReason.ONLY_ALLOWED_SINGLE_NETWORK);
         }
 
-        if (!mDataSettingsManager.isDataEnabled(DataUtils.networkCapabilityToApnType(
-                networkRequest.getApnTypeNetworkCapability()))) {
-            evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_DISABLED);
+        if (mDataSettingsManager.isDataInitialized()) {
+            if (!mDataSettingsManager.isDataEnabled(DataUtils.networkCapabilityToApnType(
+                    networkRequest.getApnTypeNetworkCapability()))) {
+                evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_DISABLED);
+            }
+        } else {
+            evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_SETTINGS_NOT_READY);
         }
 
         // Check whether to allow data in certain situations if data is disallowed for soft reasons
