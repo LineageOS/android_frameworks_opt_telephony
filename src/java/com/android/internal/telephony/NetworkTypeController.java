@@ -440,7 +440,7 @@ public class NetworkTypeController extends StateMachine {
         if (mIsPhysicalChannelConfigOn && (nrNsa || nrSa)) {
             // Process NR display network type
             displayNetworkType = getNrDisplayType(nrSa);
-            if (displayNetworkType == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE) {
+            if (displayNetworkType == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE && !nrSa) {
                 // Use LTE values if 5G values aren't defined
                 displayNetworkType = getLteDisplayType();
             }
@@ -1208,7 +1208,8 @@ public class NetworkTypeController extends StateMachine {
 
         // Check if meeting minimum bandwidth requirement. For most carriers, there is no minimum
         // bandwidth requirement and mNrAdvancedThresholdBandwidth is 0.
-        if (IntStream.of(mPhone.getServiceState().getCellBandwidths()).sum()
+        if (mNrAdvancedThresholdBandwidth > 0
+                && IntStream.of(mPhone.getServiceState().getCellBandwidths()).sum()
                 < mNrAdvancedThresholdBandwidth) {
             return false;
         }
