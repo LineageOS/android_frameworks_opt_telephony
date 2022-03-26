@@ -1241,6 +1241,21 @@ public class DataNetworkController extends Handler {
     }
 
     /**
+     * @return List of the reasons why internet data is not allowed. An empty list if internet
+     * is allowed.
+     */
+    public @NonNull List<DataDisallowedReason> getInternetDataDisallowedReasons() {
+        TelephonyNetworkRequest internetRequest = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                        .build(), mPhone);
+        DataEvaluation evaluation = evaluateNetworkRequest(internetRequest,
+                DataEvaluationReason.EXTERNAL_QUERY);
+        return evaluation.getDataDisallowedReasons();
+    }
+
+    /**
      * Evaluate a network request. The goal is to find a suitable {@link DataProfile} that can be
      * used to setup the data network.
      *
