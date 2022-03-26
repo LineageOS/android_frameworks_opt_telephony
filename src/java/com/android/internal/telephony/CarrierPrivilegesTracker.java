@@ -792,6 +792,7 @@ public class CarrierPrivilegesTracker extends Handler {
      * Dump the local log buffer and other internal state of CarrierPrivilegesTracker.
      */
     public void dump(@NonNull FileDescriptor fd, @NonNull PrintWriter pw, @NonNull String[] args) {
+        pw.println("CarrierPrivilegesTracker - phoneId: " + mPhone.getPhoneId());
         pw.println("CarrierPrivilegesTracker - Log Begin ----");
         mLocalLog.dump(fd, pw, args);
         pw.println("CarrierPrivilegesTracker - Log End ----");
