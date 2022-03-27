@@ -555,13 +555,19 @@ public class EuiccController extends IEuiccController.Stub {
             Bundle resolvedBundle, PendingIntent callbackIntent) {
         boolean callerCanWriteEmbeddedSubscriptions = callerCanWriteEmbeddedSubscriptions();
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
+        // Don't try to resolve the port index for apps which are not targeting on T for backward
+        // compatibility. instead always use default port 0.
+        boolean shouldResolvePortIndex = isCompatChangeEnabled(callingPackage,
+                EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS);
 
         long token = Binder.clearCallingIdentity();
         try {
             boolean isConsentNeededToResolvePortIndex = false;
             if (switchAfterDownload && portIndex == TelephonyManager.INVALID_PORT_INDEX) {
                 // If switchAfterDownload is true, resolve the portIndex
-                portIndex = getResolvedPortIndexForSubscriptionSwitch(cardId);
+                portIndex = shouldResolvePortIndex ?
+                        getResolvedPortIndexForSubscriptionSwitch(cardId)
+                        : TelephonyManager.DEFAULT_PORT_INDEX;
                 isConsentNeededToResolvePortIndex = (portIndex
                         == TelephonyManager.INVALID_PORT_INDEX);
             }
@@ -569,7 +575,8 @@ public class EuiccController extends IEuiccController.Stub {
                     + switchAfterDownload + " portIndex: " + portIndex
                     + " forceDeactivateSim: " + forceDeactivateSim + " callingPackage: "
                     + callingPackage
-                    + " isConsentNeededToResolvePortIndex: " + isConsentNeededToResolvePortIndex);
+                    + " isConsentNeededToResolvePortIndex: " + isConsentNeededToResolvePortIndex
+                    + " shouldResolvePortIndex:" + shouldResolvePortIndex);
             if (!isConsentNeededToResolvePortIndex && callerCanWriteEmbeddedSubscriptions) {
                 // With WRITE_EMBEDDED_SUBSCRIPTIONS, we can skip profile-specific permission checks
                 // and move straight to the profile download.
@@ -1023,9 +1030,14 @@ public class EuiccController extends IEuiccController.Stub {
             boolean usePortIndex) {
         boolean callerCanWriteEmbeddedSubscriptions = callerCanWriteEmbeddedSubscriptions();
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
+        // Resolve the portIndex internally if apps targeting T and beyond are calling
+        // switchToSubscription API without portIndex.
+        boolean shouldResolvePortIndex = isCompatChangeEnabled(callingPackage,
+                EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS);
         Log.d(TAG, " subId: " + subscriptionId + " portIndex: " + portIndex
                 + " forceDeactivateSim: " + forceDeactivateSim + " usePortIndex: " + usePortIndex
-                + " callingPackage: " + callingPackage);
+                + " callingPackage: " + callingPackage + " shouldResolvePortIndex: "
+                + shouldResolvePortIndex);
         long token = Binder.clearCallingIdentity();
         try {
             if (callerCanWriteEmbeddedSubscriptions) {
@@ -1096,9 +1108,11 @@ public class EuiccController extends IEuiccController.Stub {
                         return;
                     }
                 } else {
-                    // Resolve the portIndex internally if apps are calling switchToSubscription
-                    // API without portIndex.
-                    portIndex = getResolvedPortIndexForSubscriptionSwitch(cardId);
+                    // Resolve the portIndex internally if apps targeting T and beyond are calling
+                    // switchToSubscription API without portIndex.
+                    portIndex = shouldResolvePortIndex ?
+                            getResolvedPortIndexForSubscriptionSwitch(cardId)
+                            : TelephonyManager.DEFAULT_PORT_INDEX;
                     isConsentNeededToResolvePortIndex = (portIndex
                             == TelephonyManager.INVALID_PORT_INDEX);
                     usePortIndex = true;
