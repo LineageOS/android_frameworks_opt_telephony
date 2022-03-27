@@ -311,11 +311,11 @@ public class UiccSlot extends Handler {
     private void promptForRestart(boolean isAdded) {
         synchronized (mLock) {
             final Resources res = mContext.getResources();
-            final String dialogComponent = res.getString(
-                    R.string.config_iccHotswapPromptForRestartDialogComponent);
+            final ComponentName dialogComponent = ComponentName.unflattenFromString(
+                    res.getString(R.string.config_iccHotswapPromptForRestartDialogComponent));
             if (dialogComponent != null) {
-                Intent intent = new Intent().setComponent(ComponentName.unflattenFromString(
-                        dialogComponent)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                Intent intent = new Intent().setComponent(dialogComponent)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         .putExtra(EXTRA_ICC_CARD_ADDED, isAdded);
                 try {
                     mContext.startActivityAsUser(intent, UserHandle.CURRENT);
