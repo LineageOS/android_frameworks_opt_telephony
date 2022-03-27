@@ -1089,7 +1089,8 @@ public class DataRetryManager extends Handler {
                 for (DataSetupRetryRule retryRule : mDataSetupRetryRuleList) {
                     if (retryRule.canBeMatched(capability, cause)) {
                         // Check if there is already a similar network request retry scheduled.
-                        if (isSimilarNetworkRequestRetryScheduled(networkRequestList.get(0))) {
+                        if (isSimilarNetworkRequestRetryScheduled(
+                                networkRequestList.get(0), transport)) {
                             log(networkRequestList.get(0) + " already had similar retry "
                                     + "scheduled.");
                             return;
@@ -1456,20 +1457,22 @@ public class DataRetryManager extends Handler {
 
     /**
      * Check if there is any similar network request scheduled to retry. The definition of similar
-     * is that network requests have same APN capability.
+     * is that network requests have same APN capability and on the same transport.
      *
      * @param networkRequest The network request to check.
+     * @param transport The transport that this request is on.
      * @return {@code true} if similar network request scheduled to retry.
      */
     public boolean isSimilarNetworkRequestRetryScheduled(
-            @NonNull TelephonyNetworkRequest networkRequest) {
+            @NonNull TelephonyNetworkRequest networkRequest, @TransportType int transport) {
         for (int i = mDataRetryEntries.size() - 1; i >= 0; i--) {
             if (mDataRetryEntries.get(i) instanceof DataSetupRetryEntry) {
                 DataSetupRetryEntry entry = (DataSetupRetryEntry) mDataRetryEntries.get(i);
                 if (entry.getState() == DataRetryEntry.RETRY_STATE_NOT_RETRIED
                         && entry.setupRetryType == DataSetupRetryEntry.RETRY_TYPE_NETWORK_REQUESTS
                         && entry.networkRequestList.get(0).getApnTypeNetworkCapability()
-                        == networkRequest.getApnTypeNetworkCapability()) {
+                        == networkRequest.getApnTypeNetworkCapability()
+                        && entry.transport == transport) {
                     return true;
                 }
             }
@@ -1481,26 +1484,32 @@ public class DataRetryManager extends Handler {
      * Check if there is any data setup retry scheduled with specified data profile.
      *
      * @param dataProfile The data profile to retry.
+     * @param transport The transport that the request is on.
      * @return {@code true} if there is retry scheduled for this data profile.
      */
-    public boolean isAnySetupRetryScheduled(@NonNull DataProfile dataProfile) {
+    public boolean isAnySetupRetryScheduled(@NonNull DataProfile dataProfile,
+            @TransportType int transport) {
         return mDataRetryEntries.stream()
                 .filter(DataSetupRetryEntry.class::isInstance)
                 .map(DataSetupRetryEntry.class::cast)
                 .anyMatch(entry -> entry.getState() == DataRetryEntry.RETRY_STATE_NOT_RETRIED
-                        && dataProfile.equals(entry.dataProfile));
+                        && dataProfile.equals(entry.dataProfile)
+                        && entry.transport == transport);
     }
 
     /**
      * Check if a specific data profile is explicitly throttled by the network.
      *
      * @param dataProfile The data profile to check.
+     * @param transport The transport that the request is on.
      * @return {@code true} if the data profile is currently throttled.
      */
-    public boolean isDataProfileThrottled(@NonNull DataProfile dataProfile) {
+    public boolean isDataProfileThrottled(@NonNull DataProfile dataProfile,
+            @TransportType int transport) {
         long now = SystemClock.elapsedRealtime();
         return mDataThrottlingEntries.stream().anyMatch(
-                entry -> entry.dataProfile.equals(dataProfile) && entry.expirationTimeMillis > now);
+                entry -> entry.dataProfile.equals(dataProfile) && entry.expirationTimeMillis > now
+                        && entry.transport == transport);
     }
 
     /**
