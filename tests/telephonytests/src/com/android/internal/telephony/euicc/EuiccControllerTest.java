@@ -149,7 +149,7 @@ public class EuiccControllerTest extends TelephonyTest {
         public void addResolutionIntent(
                 Intent extrasIntent, String resolutionAction, String callingPackage,
                 int resolvableErrors, boolean confirmationCodeRetried, EuiccOperation op,
-                int cardId, int portIndex) {
+                int cardId, int portIndex, boolean usePortIndex) {
             mResolutionAction = resolutionAction;
             mOp = op;
         }
@@ -767,7 +767,7 @@ public class EuiccControllerTest extends TelephonyTest {
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
                 0 /* detailedCode */);
         verify(mMockConnector, never()).switchToSubscription(anyInt(), anyInt(), anyString(),
-                anyBoolean(), any());
+                anyBoolean(), any(), anyBoolean());
     }
 
     @Test
@@ -779,7 +779,7 @@ public class EuiccControllerTest extends TelephonyTest {
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
                 0 /* detailedCode */);
         verify(mMockConnector, never()).switchToSubscription(anyInt(), anyInt(), anyString(),
-                anyBoolean(), any());
+                anyBoolean(), any(), anyBoolean());
     }
 
     @Test
@@ -792,7 +792,7 @@ public class EuiccControllerTest extends TelephonyTest {
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
                 0 /* detailedCode */);
         verify(mMockConnector).switchToSubscription(anyInt(), anyInt(), anyString(), anyBoolean(),
-                any());
+                any(), anyBoolean());
     }
 
     @Test
@@ -835,7 +835,7 @@ public class EuiccControllerTest extends TelephonyTest {
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
                 0 /* detailedCode */);
         verify(mMockConnector, never()).switchToSubscription(anyInt(), anyInt(), anyString(),
-                anyBoolean(), any());
+                anyBoolean(), any(), anyBoolean());
     }
 
     @Test
@@ -871,7 +871,7 @@ public class EuiccControllerTest extends TelephonyTest {
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
                 0 /* detailedCode */);
         verify(mMockConnector, never()).switchToSubscription(anyInt(), anyInt(), anyString(),
-                anyBoolean(), any());
+                anyBoolean(), any(), anyBoolean());
         verifyResolutionIntent(EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
                 EuiccOperation.ACTION_SWITCH_NO_PRIVILEGES);
     }
@@ -888,7 +888,7 @@ public class EuiccControllerTest extends TelephonyTest {
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
                 0 /* detailedCode */);
         verify(mMockConnector, never()).switchToSubscription(anyInt(), anyInt(), anyString(),
-                anyBoolean(), any());
+                anyBoolean(), any(), anyBoolean());
         verifyResolutionIntent(EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
                 EuiccOperation.ACTION_SWITCH_NO_PRIVILEGES);
     }
@@ -905,7 +905,7 @@ public class EuiccControllerTest extends TelephonyTest {
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_RESOLVABLE_ERROR,
                 0 /* detailedCode */);
         verify(mMockConnector, never()).switchToSubscription(anyInt(), anyInt(), anyString(),
-                anyBoolean(), any());
+                anyBoolean(), any(), anyBoolean());
         verifyResolutionIntent(EuiccService.ACTION_RESOLVE_NO_PRIVILEGES,
                 EuiccOperation.ACTION_SWITCH_NO_PRIVILEGES);
     }
@@ -1394,7 +1394,7 @@ public class EuiccControllerTest extends TelephonyTest {
                 return null;
             }
         }).when(mMockConnector).switchToSubscription(anyInt(), anyInt(), eq(iccid), anyBoolean(),
-                any());
+                any(), anyBoolean());
         mController.switchToSubscription(CARD_ID, subscriptionId, callingPackage,
                 resultCallback);
     }
