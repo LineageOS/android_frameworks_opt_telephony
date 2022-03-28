@@ -149,7 +149,7 @@ public class EuiccConnectorTest extends TelephonyTest {
             public void onEuiccServiceUnavailable() {
                 assertTrue("Callback called twice", called.compareAndSet(false, true));
             }
-        });
+        }, false /* usePortIndex */);
         mLooper.dispatchAll();
         assertTrue(called.get());
     }
