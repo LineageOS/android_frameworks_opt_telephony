@@ -589,6 +589,8 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.GROUP_UUID));
         int profileClass = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.PROFILE_CLASS));
+        int portIndex = cursor.getInt(cursor.getColumnIndexOrThrow(
+                SubscriptionManager.PORT_INDEX));
         int subType = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.SUBSCRIPTION_TYPE));
         String groupOwner = getOptionalStringFromCursor(cursor, SubscriptionManager.GROUP_OWNER,
@@ -606,7 +608,8 @@ public class SubscriptionController extends ISub.Stub {
                     + " countIso:" + countryIso + " isEmbedded:"
                     + isEmbedded + " accessRules:" + Arrays.toString(accessRules)
                     + " carrierConfigAccessRules: " + Arrays.toString(carrierConfigAccessRules)
-                    + " cardId:" + cardIdToPrint + " publicCardId:" + publicCardId
+                    + " cardId:" + cardIdToPrint + " portIndex:" + portIndex
+                    + " publicCardId:" + publicCardId
                     + " isOpportunistic:" + isOpportunistic + " groupUUID:" + groupUUID
                     + " profileClass:" + profileClass + " subscriptionType: " + subType
                     + " carrierConfigAccessRules:" + carrierConfigAccessRules
@@ -622,7 +625,8 @@ public class SubscriptionController extends ISub.Stub {
                 carrierName, nameSource, iconTint, number, dataRoaming, /* icon= */ null,
                 mcc, mnc, countryIso, isEmbedded, accessRules, cardId, publicCardId,
                 isOpportunistic, groupUUID, /* isGroupDisabled= */ false , carrierId, profileClass,
-                subType, groupOwner, carrierConfigAccessRules, areUiccApplicationsEnabled);
+                subType, groupOwner, carrierConfigAccessRules, areUiccApplicationsEnabled,
+                portIndex);
         info.setAssociatedPlmns(ehplmns, hplmns);
         return info;
     }
@@ -1367,7 +1371,8 @@ public class SubscriptionController extends ISub.Stub {
             Cursor cursor = resolver.query(SubscriptionManager.CONTENT_URI,
                     new String[]{SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID,
                             SubscriptionManager.SIM_SLOT_INDEX, SubscriptionManager.NAME_SOURCE,
-                            SubscriptionManager.ICC_ID, SubscriptionManager.CARD_ID},
+                            SubscriptionManager.ICC_ID, SubscriptionManager.CARD_ID,
+                            SubscriptionManager.PORT_INDEX},
                     selection, args, null);
 
             boolean setDisplayName = false;
@@ -1394,6 +1399,7 @@ public class SubscriptionController extends ISub.Stub {
                         int nameSource = cursor.getInt(2);
                         String oldIccId = cursor.getString(3);
                         String oldCardId = cursor.getString(4);
+                        int oldPortIndex = cursor.getInt(5);
                         ContentValues value = new ContentValues();
 
                         if (slotIndex != oldSimInfoId) {
@@ -1410,6 +1416,15 @@ public class SubscriptionController extends ISub.Stub {
                             String cardId = card.getCardId();
                             if (cardId != null && cardId != oldCardId) {
                                 value.put(SubscriptionManager.CARD_ID, cardId);
+                            }
+                        }
+
+                        //update portIndex for pSim
+                        UiccSlot slot = mUiccController.getUiccSlotForPhone(slotIndex);
+                        if (slot != null && !slot.isEuicc()) {
+                            int portIndex = slot.getPortIndexFromIccId(uniqueId);
+                            if (portIndex != oldPortIndex) {
+                                value.put(SubscriptionManager.PORT_INDEX, portIndex);
                             }
                         }
 
@@ -1729,6 +1744,10 @@ public class SubscriptionController extends ISub.Stub {
                 if (cardId != null) {
                     value.put(SubscriptionManager.CARD_ID, cardId);
                 }
+            }
+            UiccSlot slot = mUiccController.getUiccSlotForPhone(slotIndex);
+            if (slot != null) {
+                value.put(SubscriptionManager.PORT_INDEX, slot.getPortIndexFromIccId(uniqueId));
             }
         }
         value.put(SubscriptionManager.ALLOWED_NETWORK_TYPES,
