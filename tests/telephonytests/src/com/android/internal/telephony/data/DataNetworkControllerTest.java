@@ -77,6 +77,7 @@ import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataCallResponse.LinkStatus;
 import android.telephony.data.DataProfile;
+import android.telephony.data.DataService;
 import android.telephony.data.DataServiceCallback;
 import android.telephony.data.ThrottleStatus;
 import android.telephony.ims.ImsManager;
@@ -483,6 +484,9 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         mContextFixture.putIntResource(com.android.internal.R.integer
                         .config_delay_for_ims_dereg_millis, 3000);
+
+        mContextFixture.putBooleanResource(com.android.internal.R.bool
+                .config_enable_iwlan_handover_policy, true);
     }
 
     @Before
@@ -1530,13 +1534,16 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
         mDataNetworkControllerUT.obtainMessage(21/*EVENT_PREFERRED_TRANSPORT_CHANGED*/,
                 NetworkCapabilities.NET_CAPABILITY_IMS, 0).sendToTarget();
-        // After this, IMS data network should be disconnected, and DNC should attempt to
-        // establish a new one on IWLAN
+        Mockito.clearInvocations(mMockedWwanDataServiceManager);
         processAllMessages();
-        DataNetwork dataNetwork = getDataNetworks().get(0);
         // Verify that IWWAN handover succeeded.
-        assertThat(dataNetwork.getTransport()).isEqualTo(
+        assertThat(getDataNetworks().get(0).getTransport()).isEqualTo(
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        verify(mMockedWwanDataServiceManager, times(1)).setupDataCall(
+                anyInt(), any(), anyBoolean(), anyBoolean(),
+                eq(DataService.REQUEST_REASON_HANDOVER),
+                any(), anyInt(), any(), any(), eq(true), any());
+
     }
 
     @Test

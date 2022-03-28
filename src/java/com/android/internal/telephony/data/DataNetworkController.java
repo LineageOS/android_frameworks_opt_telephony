@@ -1702,47 +1702,53 @@ public class DataNetworkController extends Handler {
             return dataEvaluation;
         }
 
-        List<HandoverRule> handoverRules = mDataConfigManager.getHandoverRules();
+        if (mDataConfigManager.isIwlanHandoverPolicyEnabled()) {
+            List<HandoverRule> handoverRules = mDataConfigManager.getHandoverRules();
 
-        int sourceAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
-                getDataNetworkType(dataNetwork.getTransport()));
-        int targetAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
-                getDataNetworkType(DataUtils.getTargetTransport(dataNetwork.getTransport())));
-        NetworkCapabilities capabilities = dataNetwork.getNetworkCapabilities();
-        log("evaluateDataNetworkHandover: "
-                + "source=" + AccessNetworkType.toString(sourceAccessNetwork)
-                + ", target=" + AccessNetworkType.toString(targetAccessNetwork)
-                + ", ServiceState=" + mServiceState
-                + ", capabilities=" + capabilities);
+            int sourceAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
+                    getDataNetworkType(dataNetwork.getTransport()));
+            int targetAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
+                    getDataNetworkType(DataUtils.getTargetTransport(dataNetwork.getTransport())));
+            NetworkCapabilities capabilities = dataNetwork.getNetworkCapabilities();
+            log("evaluateDataNetworkHandover: "
+                    + "source=" + AccessNetworkType.toString(sourceAccessNetwork)
+                    + ", target=" + AccessNetworkType.toString(targetAccessNetwork)
+                    + ", ServiceState=" + mServiceState
+                    + ", capabilities=" + capabilities);
 
-        // Matching the rules by the configured order. Bail out if find first matching rule.
-        for (HandoverRule rule : handoverRules) {
-            // Check if the rule is only for roaming and we are not roaming.
-            if (rule.isOnlyForRoaming && !mServiceState.getDataRoaming()) continue;
+            // Matching the rules by the configured order. Bail out if find first matching rule.
+            for (HandoverRule rule : handoverRules) {
+                // Check if the rule is only for roaming and we are not roaming.
+                if (rule.isOnlyForRoaming && !mServiceState.getDataRoaming()) continue;
 
-            if (rule.sourceAccessNetworks.contains(sourceAccessNetwork)
-                    && rule.targetAccessNetworks.contains(targetAccessNetwork)) {
-                // if no capability rule specified, data network capability is considered matched.
-                // otherwise, any capabilities overlap is also considered matched.
-                if (rule.networkCapabilities.isEmpty()
-                        || rule.networkCapabilities.stream()
-                        .anyMatch(capabilities::hasCapability)) {
-                    log("evaluateDataNetworkHandover: Matched " + rule);
-                    if (rule.type == HandoverRule.RULE_TYPE_DISALLOWED) {
-                        dataEvaluation.addDataDisallowedReason(
-                                DataDisallowedReason.NOT_ALLOWED_BY_POLICY);
-                    } else {
-                        dataEvaluation.addDataAllowedReason(DataAllowedReason.NORMAL);
+                if (rule.sourceAccessNetworks.contains(sourceAccessNetwork)
+                        && rule.targetAccessNetworks.contains(targetAccessNetwork)) {
+                    // if no capability rule specified,
+                    // data network capability is considered matched.
+                    // otherwise, any capabilities overlap is also considered matched.
+                    if (rule.networkCapabilities.isEmpty()
+                            || rule.networkCapabilities.stream()
+                            .anyMatch(capabilities::hasCapability)) {
+                        log("evaluateDataNetworkHandover: Matched " + rule);
+                        if (rule.type == HandoverRule.RULE_TYPE_DISALLOWED) {
+                            dataEvaluation.addDataDisallowedReason(
+                                    DataDisallowedReason.NOT_ALLOWED_BY_POLICY);
+                        } else {
+                            dataEvaluation.addDataAllowedReason(DataAllowedReason.NORMAL);
+                        }
+                        log("evaluateDataNetworkHandover: " + dataEvaluation);
+                        return dataEvaluation;
                     }
-                    log("evaluateDataNetworkHandover: " + dataEvaluation);
-                    return dataEvaluation;
                 }
             }
+            log("evaluateDataNetworkHandover: Did not find matching rule.");
+        } else {
+            log("evaluateDataNetworkHandover: IWLAN handover policy not enabled.");
         }
 
-        log("evaluateDataNetworkHandover: Did not find matching rule. " + dataEvaluation);
-        // Allow handover anyway if no rule is found.
+        // Allow handover by default if no rule is found/not enabled by config.
         dataEvaluation.addDataAllowedReason(DataAllowedReason.NORMAL);
+        log("evaluateDataNetworkHandover: " + dataEvaluation);
         return dataEvaluation;
     }
 
