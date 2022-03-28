@@ -307,9 +307,13 @@ public class EuiccOperation implements Parcelable {
                 final int portIndex = resolutionExtras.getInt(
                         EuiccService.EXTRA_RESOLUTION_PORT_INDEX,
                         0);
+                // get whether legacy API was called from original operation
+                final boolean usePortIndex = resolutionExtras.getBoolean(
+                        EuiccService.EXTRA_RESOLUTION_USE_PORT_INDEX,
+                        false);
                 resolvedSwitchDeactivateSim(cardId, portIndex,
                         resolutionExtras.getBoolean(EuiccService.EXTRA_RESOLUTION_CONSENT),
-                        callbackIntent);
+                        callbackIntent, usePortIndex);
                 break;
             }
             case ACTION_SWITCH_NO_PRIVILEGES: {
@@ -317,9 +321,13 @@ public class EuiccOperation implements Parcelable {
                 final int portIndex = resolutionExtras.getInt(
                         EuiccService.EXTRA_RESOLUTION_PORT_INDEX,
                         0);
+                // get whether port index was passed in from original operation
+                final boolean usePortIndex = resolutionExtras.getBoolean(
+                        EuiccService.EXTRA_RESOLUTION_USE_PORT_INDEX,
+                        false);
                 resolvedSwitchNoPrivileges(cardId, portIndex,
                         resolutionExtras.getBoolean(EuiccService.EXTRA_RESOLUTION_CONSENT),
-                        callbackIntent);
+                        callbackIntent, usePortIndex);
                 break;
             }
             default:
@@ -493,7 +501,7 @@ public class EuiccOperation implements Parcelable {
     }
 
     private void resolvedSwitchDeactivateSim(int cardId, int portIndex, boolean consent,
-            PendingIntent callbackIntent) {
+            PendingIntent callbackIntent, boolean usePortIndex) {
         if (consent) {
             // User has consented; perform the switch, but this time, tell the LPA to deactivate any
             // required active SIMs.
@@ -504,7 +512,8 @@ public class EuiccOperation implements Parcelable {
                     mSubscriptionId,
                     true /* forceDeactivateSim */,
                     mCallingPackage,
-                    euiccController.getCallbackFromPendingIntent(callbackIntent));
+                    callbackIntent,
+                    usePortIndex);
         } else {
             // User has not consented; fail the operation.
             fail(callbackIntent);
@@ -512,7 +521,7 @@ public class EuiccOperation implements Parcelable {
     }
 
     private void resolvedSwitchNoPrivileges(int cardId, int portIndex, boolean consent,
-            PendingIntent callbackIntent) {
+            PendingIntent callbackIntent, boolean usePortIndex) {
         if (consent) {
             // User has consented; perform the switch with full privileges.
             long token = Binder.clearCallingIdentity();
@@ -531,7 +540,8 @@ public class EuiccOperation implements Parcelable {
                         mSubscriptionId,
                         true /* forceDeactivateSim */,
                         mCallingPackage,
-                        euiccController.getCallbackFromPendingIntent(callbackIntent));
+                        callbackIntent,
+                        usePortIndex);
             } finally {
                 Binder.restoreCallingIdentity(token);
             }
