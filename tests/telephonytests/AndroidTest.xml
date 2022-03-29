@@ -16,6 +16,7 @@
 <configuration description="Runs Frameworks Telephony Tests.">
     <target_preparer class="com.android.tradefed.targetprep.TestAppInstallSetup">
         <option name="test-file-name" value="FrameworksTelephonyTests.apk" />
+        <option name="install-arg" value="-t" />
     </target_preparer>
 
     <option name="test-suite-tag" value="apct" />
