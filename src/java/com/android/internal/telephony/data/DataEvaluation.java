@@ -273,7 +273,9 @@ public class DataEvaluation {
         /** VoPS is not supported by the network. */
         VOPS_NOT_SUPPORTED(true),
         /** Only one data network is allowed at one time. */
-        ONLY_ALLOWED_SINGLE_NETWORK(true);
+        ONLY_ALLOWED_SINGLE_NETWORK(true),
+        /** Data enabled settings are not ready. */
+        DATA_SETTINGS_NOT_READY(true);
 
         private final boolean mIsHardReason;
 
