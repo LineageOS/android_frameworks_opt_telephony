@@ -38,7 +38,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
+import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
 
@@ -51,11 +51,8 @@ public class DcNetworkAgentTest extends TelephonyTest {
     private DcController mDcc;
     private DcFailBringUp mDcFailBringUp;
 
-    @Mock
     private DataServiceManager mDataServiceManager;
-    @Mock
     private DcTesterFailBringUpAll mDcTesterFailBringUpAll;
-    @Mock
     private NetworkProvider mNetworkProvider;
 
     @Before
@@ -65,6 +62,11 @@ public class DcNetworkAgentTest extends TelephonyTest {
         if (Looper.myLooper() == null) {
             Looper.prepare();
         }
+
+        doReturn(false).when(mPhone).isUsingNewDataStack();
+        mDataServiceManager = Mockito.mock(DataServiceManager.class);
+        mDcTesterFailBringUpAll = Mockito.mock(DcTesterFailBringUpAll.class);
+        mNetworkProvider = Mockito.mock(NetworkProvider.class);
 
         final NetworkAgentConfig.Builder configBuilder = new NetworkAgentConfig.Builder();
         configBuilder.setLegacyType(ConnectivityManager.TYPE_MOBILE);
@@ -110,9 +112,7 @@ public class DcNetworkAgentTest extends TelephonyTest {
     public void testUnwantedTimeout() throws Exception {
         mDcNetworkAgent.markConnected();
         mDcNetworkAgent.onNetworkUnwanted();
-        processAllMessages();
-        moveTimeForward(60000);
-        processAllMessages();
+        processAllFutureMessages();
         verifyDisconnected();
     }
 }
