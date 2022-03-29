@@ -16,9 +16,6 @@
 
 package com.android.internal.telephony;
 
-import android.content.Context;
-import android.telephony.SubscriptionManager;
-import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
 import com.android.i18n.phonenumbers.NumberParseException;
@@ -36,7 +33,6 @@ import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
-import java.util.Locale;
 
 /**
  * This is a basic utility class for common functions related to Fixed Dialing Numbers
@@ -52,40 +48,30 @@ public class FdnUtils {
      * @param phoneId The phone object id for which the FDN check is performed
      * @param dialStr dialed phone number
      * @param defaultCountryIso country ISO for the subscription associated with this phone
-     * @return true if dialStr is blocked due to FDN check.
+     * @return {@code true} if dialStr is blocked due to FDN check.
      */
     public static boolean isNumberBlockedByFDN(int phoneId, String dialStr,
             String defaultCountryIso) {
-        final UiccCardApplication app = getUiccCardApplication(phoneId);
-
-        if (!isFdnEnabled(app)) {
+        if (!isFdnEnabled(phoneId)) {
             return false;
         }
 
-        final ArrayList<AdnRecord> fdnList = getFdnList(app);
+        ArrayList<AdnRecord> fdnList = getFdnList(phoneId);
         return !isFDN(dialStr, defaultCountryIso, fdnList);
     }
 
     /**
-     * The following function checks if destination address or smsc is blocked due to FDN.
-     * @param context context
-     * @param subId subscription ID
-     * @param destAddr destination address of the message
-     * @param smscAddr smsc address of the subscription
-     * @return true if either destAddr or smscAddr is blocked due to FDN.
+     * Checks if FDN is enabled
+     * @param phoneId The phone object id for which the FDN check is performed
+     * @return {@code true} if FDN is enabled
      */
-    public static boolean isNumberBlockedByFDN(Context context, int subId, String destAddr,
-            String smscAddr) {
-        // Skip FDN check for emergency numbers
-        final TelephonyManager tm = context.getSystemService(TelephonyManager.class);
-        if(tm.isEmergencyNumber(destAddr)) {
+    public static boolean isFdnEnabled(int phoneId) {
+        UiccCardApplication app = getUiccCardApplication(phoneId);
+        if (app == null || (!app.getIccFdnAvailable())) {
             return false;
         }
 
-        final int phoneId = SubscriptionManager.getPhoneId(subId);
-        final String defaultCountryIso = tm.getSimCountryIso().toUpperCase(Locale.ENGLISH);
-        return (isNumberBlockedByFDN(phoneId, smscAddr, defaultCountryIso) ||
-                isNumberBlockedByFDN(phoneId, destAddr, defaultCountryIso));
+        return app.getIccFdnEnabled();
     }
 
     /**
@@ -94,7 +80,7 @@ public class FdnUtils {
      * @param fdnList List of all FDN records associated with a sim card
      * @param dialStr dialed phone number
      * @param defaultCountryIso country ISO for the subscription associated with this phone
-     * @return true if dialStr is present in the fdnList.
+     * @return {@code true} if dialStr is present in the fdnList.
      */
     @VisibleForTesting
     public static boolean isFDN(String dialStr, String defaultCountryIso,
@@ -109,7 +95,7 @@ public class FdnUtils {
         String dialStrNational = null;
         final PhoneNumberUtil phoneNumberUtil = PhoneNumberUtil.getInstance();
         try {
-            final PhoneNumber phoneNumber = phoneNumberUtil.parse(dialStr, defaultCountryIso);
+            PhoneNumber phoneNumber = phoneNumberUtil.parse(dialStr, defaultCountryIso);
             dialStrE164 = phoneNumberUtil.format(phoneNumber, PhoneNumberFormat.E164);
             dialStrNational = String.valueOf(phoneNumber.getNationalNumber());
         } catch (NumberParseException ignored) {
@@ -150,17 +136,18 @@ public class FdnUtils {
         return false;
     }
 
-    private static ArrayList<AdnRecord> getFdnList(UiccCardApplication app) {
+    private static ArrayList<AdnRecord> getFdnList(int phoneId) {
+        UiccCardApplication app = getUiccCardApplication(phoneId);
         if (app == null) {
             return null;
         }
 
-        final IccRecords iccRecords = app.getIccRecords();
+        IccRecords iccRecords = app.getIccRecords();
         if (iccRecords == null) {
             return null;
         }
 
-        final AdnRecordCache adnRecordCache = iccRecords.getAdnCache();
+        AdnRecordCache adnRecordCache = iccRecords.getAdnCache();
         if(adnRecordCache == null) {
             return null;
         }
@@ -168,20 +155,8 @@ public class FdnUtils {
         return adnRecordCache.getRecordsIfLoaded(IccConstants.EF_FDN);
     }
 
-    private static boolean isFdnEnabled(UiccCardApplication app) {
-        if (app == null) {
-            return false;
-        }
-
-        if (!app.getIccFdnAvailable()) {
-            return false;
-        }
-
-        return app.getIccFdnEnabled();
-    }
-
     private static UiccCardApplication getUiccCardApplication(int phoneId) {
-        final UiccProfile uiccProfile = UiccController.getInstance()
+        UiccProfile uiccProfile = UiccController.getInstance()
                 .getUiccProfileForPhone(phoneId);
         if (uiccProfile == null) {
             return null;
