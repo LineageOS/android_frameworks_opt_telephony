@@ -22,8 +22,8 @@ package com.android.internal.telephony;
 public class SrvccConnection {
     private static final String TAG = "SrvccConnection";
 
-    private static final int CALL_TYPE_NORMAL = 0;
-    private static final int CALL_TYPE_EMERGENCY = 1;
+    public static final int CALL_TYPE_NORMAL = 0;
+    public static final int CALL_TYPE_EMERGENCY = 1;
 
     public static final int SUBSTATE_NONE = 0;
     /** Pre-alerting state. Applicable for MT calls only */

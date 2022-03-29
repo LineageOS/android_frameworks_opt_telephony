@@ -116,7 +116,6 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mSimPhonebookRecordsReceivedRegistrants = new RegistrantList();
     protected RegistrantList mEmergencyNetworkScanRegistrants = new RegistrantList();
     protected RegistrantList mConnectionSetupFailureRegistrants = new RegistrantList();
-    protected RegistrantList mAccessAllowedRegistrants = new RegistrantList();
     protected RegistrantList mNotifyAnbrRegistrants = new RegistrantList();
 
     @UnsupportedAppUsage
@@ -1167,16 +1166,6 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void unregisterForConnectionSetupFailure(Handler h) {
         mConnectionSetupFailureRegistrants.remove(h);
-    }
-
-    @Override
-    public void registerForAccessAllowed(Handler h, int what, Object obj) {
-        mAccessAllowedRegistrants.addUnique(h, what, obj);
-    }
-
-    @Override
-    public void unregisterForAccessAllowed(Handler h) {
-        mAccessAllowedRegistrants.remove(h);
     }
 
     @Override

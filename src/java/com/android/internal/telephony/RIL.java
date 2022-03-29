@@ -5152,7 +5152,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void updateImsRegistrationInfo(int state,
-            int ipcan, int reason, int features, Message result) {
+            int accessNetworkType, int reason, int capabilities, Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
         if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
@@ -5166,10 +5166,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             android.hardware.radio.ims.ImsRegistration registrationInfo =
                     new android.hardware.radio.ims.ImsRegistration();
-            registrationInfo.state = state;
-            registrationInfo.ipcan = ipcan;
+            registrationInfo.regState = RILUtils.convertImsRegistrationState(state);
+            registrationInfo.accessNetworkType = accessNetworkType;
             registrationInfo.reason = reason;
-            registrationInfo.features = features;
+            registrationInfo.capabilities = RILUtils.convertImsCapability(capabilities);
 
             try {
                 imsProxy.updateImsRegistrationInfo(rr.mSerial, registrationInfo);
@@ -5189,11 +5189,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void notifyImsTraffic(int token, int trafficType, boolean isStart, Message result) {
+    public void startImsTraffic(String token,
+            int trafficType, int accessNetworkType, Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
         if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_NOTIFY_IMS_TRAFFIC, result,
+            RILRequest rr = obtainRequest(RIL_REQUEST_START_IMS_TRAFFIC, result,
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
@@ -5201,13 +5202,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                imsProxy.notifyImsTraffic(rr.mSerial, token, trafficType, isStart);
+                imsProxy.startImsTraffic(rr.mSerial, token, trafficType, accessNetworkType);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(IMS_SERVICE, "notifyImsTraffic", e);
+                handleRadioProxyExceptionForRR(IMS_SERVICE, "startImsTraffic", e);
             }
         } else {
             if (RILJ_LOGD) {
-                Rlog.d(RILJ_LOG_TAG, "notifyImsTraffic: REQUEST_NOT_SUPPORTED");
+                Rlog.d(RILJ_LOG_TAG, "startImsTraffic: REQUEST_NOT_SUPPORTED");
             }
             if (result != null) {
                 AsyncResult.forMessage(result, null,
@@ -5218,11 +5219,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void performAcbCheck(int token, int trafficType, Message result) {
+    public void stopImsTraffic(String token, Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
         if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_PERFORM_ACB_CHECK, result,
+            RILRequest rr = obtainRequest(RIL_REQUEST_STOP_IMS_TRAFFIC, result,
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
@@ -5230,13 +5231,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                imsProxy.performAcbCheck(rr.mSerial, token, trafficType);
+                imsProxy.stopImsTraffic(rr.mSerial, token);
             } catch (RemoteException | RuntimeException e) {
-                handleRadioProxyExceptionForRR(IMS_SERVICE, "performAcbCheck", e);
+                handleRadioProxyExceptionForRR(IMS_SERVICE, "stopImsTraffic", e);
             }
         } else {
             if (RILJ_LOGD) {
-                Rlog.d(RILJ_LOG_TAG, "performAcbCheck: REQUEST_NOT_SUPPORTED");
+                Rlog.d(RILJ_LOG_TAG, "stopImsTraffic: REQUEST_NOT_SUPPORTED");
             }
             if (result != null) {
                 AsyncResult.forMessage(result, null,

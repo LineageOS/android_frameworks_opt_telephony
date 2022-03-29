@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.hardware.radio.RadioError;
 import android.hardware.radio.RadioResponseInfo;
 import android.hardware.radio.ims.IRadioImsResponse;
 
@@ -44,16 +45,33 @@ public class ImsResponse extends IRadioImsResponse.Stub {
     }
 
     /**
-     * @param info Response info struct containing response type, serial no. and error.
+     * @param responseInfo Response info struct containing response type, serial no. and error.
+     * @param failureInfo Failure information.
      */
-    public void notifyImsTrafficResponse(RadioResponseInfo info) {
-        RadioResponse.responseVoid(RIL.IMS_SERVICE, mRil, info);
+    public void startImsTrafficResponse(RadioResponseInfo responseInfo,
+            android.hardware.radio.ims.ConnectionFailureInfo failureInfo) {
+        RILRequest rr = mRil.processResponse(RIL.IMS_SERVICE, responseInfo);
+
+        if (rr != null) {
+            Object[] response = { "", null };
+
+            if (responseInfo.error == RadioError.NONE) {
+                int[] info = new int[3];
+                info[0] = failureInfo.failureReason;
+                info[1] = failureInfo.causeCode;
+                info[2] = failureInfo.waitTimeMillis;
+                response[1] = info;
+
+                RadioResponse.sendMessageResponse(rr.mResult, response);
+            }
+            mRil.processResponseDone(rr, responseInfo, response);
+        }
     }
 
     /**
      * @param info Response info struct containing response type, serial no. and error.
      */
-    public void performAcbCheckResponse(RadioResponseInfo info) {
+    public void stopImsTrafficResponse(RadioResponseInfo info) {
         RadioResponse.responseVoid(RIL.IMS_SERVICE, mRil, info);
     }
 

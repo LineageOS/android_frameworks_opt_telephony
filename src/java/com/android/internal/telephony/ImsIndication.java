@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ACCESS_ALLOWED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CONNECTION_SETUP_FAILURE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NOTIFY_ANBR;
 
@@ -38,41 +37,26 @@ public class ImsIndication extends IRadioImsIndication.Stub {
      * on cellular networks.
      *
      * @param indicationType Type of radio indication.
-     * @param token The token provided by {@link #notifyImsTraffic} or {@link #performACBcheck}.
-     * @param info Connection failure information.
+     * @param token The token provided by {@link #startImsTraffic}.
+     * @param failureInfo Connection failure information.
      */
-    public void onConnectionSetupFailure(int indicationType, int token,
-            android.hardware.radio.ims.ConnectionFailureInfo info) {
+    public void onConnectionSetupFailure(int indicationType, String token,
+            android.hardware.radio.ims.ConnectionFailureInfo failureInfo) {
         mRil.processIndication(RIL.IMS_SERVICE, indicationType);
 
-        int[] response = new int[4];
+        int[] info = new int[3];
+        info[0] = failureInfo.failureReason;
+        info[1] = failureInfo.causeCode;
+        info[2] = failureInfo.waitTimeMillis;
+
+        Object[] response = new Object[2];
         response[0] = token;
-        response[1] = info.failureReason;
-        response[2] = info.causeCode;
-        response[3] = info.waitTimeMillis;
+        response[1] = info;
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CONNECTION_SETUP_FAILURE, response);
 
         mRil.mConnectionSetupFailureRegistrants.notifyRegistrants(
                 new AsyncResult(null, response, null));
-    }
-
-    /**
-     * Fired by radio in response to {@link #performAcbCheck}
-     * if the access class check is allowed for the requested traffic type.
-     *
-     * @param indicationType Type of radio indication
-     * @param token The token provided by {@link #performAcbCheck}
-     */
-    public void onAccessAllowed(int indicationType, int token) {
-        mRil.processIndication(RIL.IMS_SERVICE, indicationType);
-
-        int[] response = new int[1];
-        response[0] = token;
-
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_ACCESS_ALLOWED, response);
-
-        mRil.mAccessAllowedRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
     }
 
     /**

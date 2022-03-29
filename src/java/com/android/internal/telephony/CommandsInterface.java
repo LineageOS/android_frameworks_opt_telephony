@@ -25,6 +25,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.WorkSource;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.ClientRequestStats;
@@ -123,6 +124,15 @@ public interface CommandsInterface {
     static final int CDMA_SMS_FAIL_CAUSE_RESOURCE_SHORTAGE          = 35;
     static final int CDMA_SMS_FAIL_CAUSE_OTHER_TERMINAL_PROBLEM     = 39;
     static final int CDMA_SMS_FAIL_CAUSE_ENCODING_PROBLEM           = 96;
+
+    /** IMS voice capability */
+    int IMS_MMTEL_CAPABILITY_VOICE = 1 << 0;
+    /** IMS video capability */
+    int IMS_MMTEL_CAPABILITY_VIDEO = 1 << 1;
+    /** IMS SMS capability */
+    int IMS_MMTEL_CAPABILITY_SMS = 1 << 2;
+    /** IMS RCS capabilities */
+    int IMS_RCS_CAPABILITIES = 1 << 3;
 
     //***** Methods
 
@@ -2763,22 +2773,6 @@ public interface CommandsInterface {
     default void unregisterForConnectionSetupFailure(Handler h) {}
 
     /**
-     * Register for notifications when IMS traffic access is allowed
-     *
-     * @param h Handler for notification message.
-     * @param what User-defined message code.
-     * @param obj User object.
-     */
-    default void registerForAccessAllowed(Handler h, int what, Object obj) {}
-
-    /**
-     * Unregister for notifications when IMS traffic access is allowed
-     *
-     * @param h Handler to be removed from the registrant list.
-     */
-    default void unregisterForAccessAllowed(Handler h) {}
-
-    /**
      * Registers for notifications when ANBR is received form the network.
      *
      * @param h Handler for notification message.
@@ -2836,30 +2830,32 @@ public interface CommandsInterface {
     /**
      * Updates the IMS registration information to the radio.
      *
-     * @param state the current IMS registration state.
-     * @param ipcan the type of IP connectivity access network where IMS features are registered.
-     * @param reason a failure reason for IMS registration.
-     * @param features IMS features such as VOICE, VIDEO and SMS.
+     * @param state The current IMS registration state.
+     * @param accessNetworkType The type of underlying radio access network used.
+     * @param reason A failure reason for IMS registration.
+     * @param capabilities IMS capabilities such as VOICE, VIDEO and SMS.
      */
     default void updateImsRegistrationInfo(int state,
-            int ipcan, int reason, int features, Message result) {}
+            @AccessNetworkConstants.RadioAccessNetworkType int accessNetworkType,
+            int reason, int capabilities, Message result) {}
 
     /**
      * Notifies the NAS and RRC layers of the radio the type of upcoming IMS traffic.
      *
-     * @param token The token of the request.
+     * @param token A nonce to identify the request.
      * @param trafficType IMS traffic type like registration, voice, video, SMS, emergency, and etc.
-     * @param isStart true when the traffic flow starts, false when traffic flow stops.
+     * @param accessNetworkType The type of underlying radio access network used.
      */
-    default void notifyImsTraffic(int token, int trafficType, boolean isStart, Message result) {}
+    default void startImsTraffic(String token, int trafficType,
+            @AccessNetworkConstants.RadioAccessNetworkType int accessNetworkType,
+            Message result) {}
 
     /**
-     * Checks access class barring checks based on ImsTrafficType.
+     * Notifies IMS traffic has been stopped.
      *
-     * @param token The token of the request.
-     * @param trafficType IMS traffic type like registration, voice, video, SMS, emergency, and etc.
+     * @param token The token assigned by startImsTraffic.
      */
-    default void performAcbCheck(int token, int trafficType, Message result) {}
+    default void stopImsTraffic(String token, Message result) {}
 
     /**
      * Enable or disable the ANBR feature

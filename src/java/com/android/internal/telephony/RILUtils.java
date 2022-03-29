@@ -116,7 +116,6 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_NR_DUAL
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_VONR_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_LAST_CALL_FAIL_CAUSE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_LAST_DATA_CALL_FAIL_CAUSE;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_NOTIFY_IMS_TRAFFIC;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_NV_READ_ITEM;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_NV_RESET_CONFIG;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_NV_WRITE_CDMA_PRL;
@@ -124,7 +123,6 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_NV_WRITE_I
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_OEM_HOOK_RAW;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_OEM_HOOK_STRINGS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_OPERATOR;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_PERFORM_ACB_CHECK;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_PULL_LCEDATA;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_QUERY_AVAILABLE_BAND_MODE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_QUERY_AVAILABLE_NETWORKS;
@@ -190,6 +188,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SIM_TRANSM
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SIM_TRANSMIT_APDU_CHANNEL;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SMS_ACKNOWLEDGE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_START_HANDOVER;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_START_IMS_TRAFFIC;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_START_KEEPALIVE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_START_LCE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_START_NETWORK_SCAN;
@@ -199,6 +198,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STK_SEND_E
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STK_SEND_ENVELOPE_WITH_STATUS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STK_SEND_TERMINAL_RESPONSE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STK_SET_PROFILE;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STOP_IMS_TRAFFIC;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STOP_KEEPALIVE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STOP_LCE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STOP_NETWORK_SCAN;
@@ -210,7 +210,6 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_UPDATE_SIM
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_VOICE_RADIO_TECH;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_VOICE_REGISTRATION_STATE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_WRITE_SMS_TO_SIM;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ACCESS_ALLOWED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_BARRING_INFO_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CALL_RING;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CARRIER_INFO_IMSI_ENCRYPTION;
@@ -335,6 +334,7 @@ import android.telephony.data.QosBearerSession;
 import android.telephony.data.RouteSelectionDescriptor;
 import android.telephony.data.TrafficDescriptor;
 import android.telephony.data.UrspRule;
+import android.telephony.ims.RegistrationManager;
 import android.text.TextUtils;
 import android.util.ArraySet;
 import android.util.SparseArray;
@@ -5055,10 +5055,10 @@ public class RILUtils {
                 return "SET_SRVCC_CALL_INFO";
             case RIL_REQUEST_UPDATE_IMS_REGISTRATION_INFO:
                 return "UPDATE_IMS_REGISTRATION_INFO";
-            case RIL_REQUEST_NOTIFY_IMS_TRAFFIC:
-                return "NOTIFY_IMS_TRAFFIC";
-            case RIL_REQUEST_PERFORM_ACB_CHECK:
-                return "PERFORM_ACB_CHECK";
+            case RIL_REQUEST_START_IMS_TRAFFIC:
+                return "START_IMS_TRAFFIC";
+            case RIL_REQUEST_STOP_IMS_TRAFFIC:
+                return "STOP_IMS_TRAFFIC";
             case RIL_REQUEST_SET_ANBR_ENABLED:
                 return "SET_ANBR_ENABLED";
             case RIL_REQUEST_SEND_ANBR_QUERY:
@@ -5195,8 +5195,6 @@ public class RILUtils {
                 return "UNSOL_REGISTRATION_FAILED";
             case RIL_UNSOL_BARRING_INFO_CHANGED:
                 return "UNSOL_BARRING_INFO_CHANGED";
-            case RIL_UNSOL_ACCESS_ALLOWED:
-                return "UNSOL_ACCESS_ALLOWED";
             case RIL_UNSOL_CONNECTION_SETUP_FAILURE:
                 return "UNSOL_CONNECTION_SETUP_FAILURE";
             case RIL_UNSOL_NOTIFY_ANBR:
@@ -5368,10 +5366,12 @@ public class RILUtils {
         for (int i = 0; i < length; i++) {
             srvccCalls[i] = new android.hardware.radio.ims.SrvccCall();
             srvccCalls[i].index = i + 1;
-            srvccCalls[i].callType = srvccConnections[i].getType();
+            srvccCalls[i].callType = convertSrvccCallType(srvccConnections[i].getType());
             srvccCalls[i].callState = convertCallState(srvccConnections[i].getState());
-            srvccCalls[i].callSubstate = srvccConnections[i].getSubState();
-            srvccCalls[i].ringbackToneType = srvccConnections[i].getRingbackToneType();
+            srvccCalls[i].callSubstate =
+                    convertSrvccCallSubState(srvccConnections[i].getSubState());
+            srvccCalls[i].ringbackToneType =
+                    convertSrvccCallRingbackToneType(srvccConnections[i].getRingbackToneType());
             srvccCalls[i].isMpty = srvccConnections[i].isMultiParty();
             srvccCalls[i].isMT = srvccConnections[i].isIncoming();
             srvccCalls[i].number = TextUtils.emptyIfNull(srvccConnections[i].getNumber());
@@ -5383,6 +5383,23 @@ public class RILUtils {
         }
 
         return srvccCalls;
+    }
+
+    /**
+     * Converts the call type.
+     *
+     * @param type The call type.
+     * @return The converted call type.
+     */
+    public static int convertSrvccCallType(int type) {
+        switch (type) {
+            case  SrvccConnection.CALL_TYPE_NORMAL:
+                return android.hardware.radio.ims.SrvccCall.CallType.NORMAL;
+            case  SrvccConnection.CALL_TYPE_EMERGENCY:
+                return android.hardware.radio.ims.SrvccCall.CallType.EMERGENCY;
+            default:
+                throw new RuntimeException("illegal call type " + type);
+        }
     }
 
     /**
@@ -5405,6 +5422,42 @@ public class RILUtils {
     }
 
     /**
+     * Converts the substate of a call.
+     *
+     * @param state The substate of a call.
+     * @return The converted substate.
+     */
+    public static int convertSrvccCallSubState(int state) {
+        switch (state) {
+            case SrvccConnection.SUBSTATE_NONE:
+                return android.hardware.radio.ims.SrvccCall.CallSubState.NONE;
+            case SrvccConnection.SUBSTATE_PREALERTING:
+                return android.hardware.radio.ims.SrvccCall.CallSubState.PREALERTING;
+            default:
+                throw new RuntimeException("illegal substate " + state);
+        }
+    }
+
+    /**
+     * Converts the ringback tone type.
+     *
+     * @param type The ringback tone type.
+     * @return The converted ringback tone type.
+     */
+    public static int convertSrvccCallRingbackToneType(int type) {
+        switch (type) {
+            case SrvccConnection.TONE_NONE:
+                return android.hardware.radio.ims.SrvccCall.ToneType.NONE;
+            case SrvccConnection.TONE_LOCAL:
+                return android.hardware.radio.ims.SrvccCall.ToneType.LOCAL;
+            case SrvccConnection.TONE_NETWORK:
+                return android.hardware.radio.ims.SrvccCall.ToneType.NETWORK;
+            default:
+                throw new RuntimeException("illegal ringback tone type " + type);
+        }
+    }
+
+    /**
      * Converts the number presentation type for caller id display.
      *
      * @param presentation The number presentation type.
@@ -5423,6 +5476,38 @@ public class RILUtils {
             default:
                 throw new RuntimeException("illegal presentation " + presentation);
         }
+    }
+
+    /** Convert IMS registration state */
+    public static int convertImsRegistrationState(int state) {
+        switch (state) {
+            case RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED:
+                return android.hardware.radio.ims.ImsRegistrationState.NOT_REGISTERED;
+            case RegistrationManager.REGISTRATION_STATE_REGISTERED:
+                return android.hardware.radio.ims.ImsRegistrationState.REGISTERED;
+            default:
+                throw new RuntimeException("illegal state " + state);
+        }
+    }
+
+    /** Convert IMS capability */
+    public static int convertImsCapability(int capabilities) {
+        int halCapabilities = android.hardware.radio.ims.ImsRegistration.IMS_MMTEL_CAPABILITY_NONE;
+        if ((capabilities & CommandsInterface.IMS_MMTEL_CAPABILITY_VOICE) > 0) {
+            halCapabilities |=
+                    android.hardware.radio.ims.ImsRegistration.IMS_MMTEL_CAPABILITY_VOICE;
+        }
+        if ((capabilities & CommandsInterface.IMS_MMTEL_CAPABILITY_VIDEO) > 0) {
+            halCapabilities |=
+                    android.hardware.radio.ims.ImsRegistration.IMS_MMTEL_CAPABILITY_VIDEO;
+        }
+        if ((capabilities & CommandsInterface.IMS_MMTEL_CAPABILITY_SMS) > 0) {
+            halCapabilities |= android.hardware.radio.ims.ImsRegistration.IMS_MMTEL_CAPABILITY_SMS;
+        }
+        if ((capabilities & CommandsInterface.IMS_RCS_CAPABILITIES) > 0) {
+            halCapabilities |= android.hardware.radio.ims.ImsRegistration.IMS_RCS_CAPABILITIES;
+        }
+        return halCapabilities;
     }
 
     private static void logd(String log) {

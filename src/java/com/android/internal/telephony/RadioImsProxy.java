@@ -108,25 +108,30 @@ public class RadioImsProxy extends RadioServiceProxy {
     /**
      * Calls IRadioIms#startImsTraffic.
      * @param serial Serial number of request.
+     * @param token A nonce to identify the request.
+     * @param trafficType IMS traffic type like registration, voice, video, SMS, emergency, and etc.
+     * @param accessNetworkType The type of underlying radio access network used.
      * @throws RemoteException.
      */
-    public void notifyImsTraffic(int serial, int token, int trafficType, boolean isStart)
+    public void startImsTraffic(int serial, String token, int trafficType, int accessNetworkType)
             throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mImsProxy.notifyImsTraffic(serial, token, trafficType, isStart);
+            mImsProxy.startImsTraffic(serial, token, trafficType, accessNetworkType);
         }
     }
 
     /**
-     * Calls IRadioIms#performAcbCheck.
+     * Calls IRadioIms#stopImsTraffic.
      * @param serial Serial number of request.
+     * @param token The token assigned by startImsTraffic.
      * @throws RemoteException.
      */
-    public void performAcbCheck(int serial, int token, int trafficType) throws RemoteException {
+    public void stopImsTraffic(int serial, String token)
+            throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mImsProxy.performAcbCheck(serial, token, trafficType);
+            mImsProxy.stopImsTraffic(serial, token);
         }
     }
 
