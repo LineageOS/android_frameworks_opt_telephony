@@ -36,6 +36,8 @@ import static android.telephony.TelephonyManager.SRVCC_STATE_HANDOVER_STARTED;
 import static android.telephony.emergency.EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE;
 import static android.telephony.ims.ImsStreamMediaProfile.DIRECTION_INACTIVE;
 import static android.telephony.ims.ImsStreamMediaProfile.DIRECTION_SEND_RECEIVE;
+import static android.telephony.ims.feature.MmTelFeature.IMS_TRAFFIC_DIRECTION_INCOMING;
+import static android.telephony.ims.feature.MmTelFeature.IMS_TRAFFIC_DIRECTION_OUTGOING;
 
 import static com.android.testutils.NetworkStatsUtilsKt.assertNetworkStatsEquals;
 
@@ -80,6 +82,7 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RemoteException;
 import android.telecom.VideoProfile;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
@@ -94,6 +97,7 @@ import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
 import android.telephony.ims.RtpHeaderExtensionType;
 import android.telephony.ims.SrvccCall;
+import android.telephony.ims.aidl.IImsTrafficSessionCallback;
 import android.telephony.ims.aidl.ISrvccStartedCallback;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
@@ -130,6 +134,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -2415,6 +2420,70 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 new ImsReasonInfo(ImsReasonInfo.CODE_USER_TERMINATED, 0));
 
         verify(mImsPhone, times(7)).updateImsCallStatus(any(), any());
+    }
+
+    /** Verifies that the request from ImsService is passed to ImsPhone as expected. */
+    @Test
+    @SmallTest
+    public void testStartAndStopImsTrafficSession() {
+        IImsTrafficSessionCallback binder = Mockito.mock(IImsTrafficSessionCallback.class);
+        mMmTelListener.onStartImsTrafficSession(1, MmTelFeature.IMS_TRAFFIC_TYPE_EMERGENCY,
+                AccessNetworkConstants.AccessNetworkType.EUTRAN,
+                IMS_TRAFFIC_DIRECTION_OUTGOING, binder);
+        verify(mImsPhone, times(1)).startImsTraffic(eq(1),
+                eq(MmTelFeature.IMS_TRAFFIC_TYPE_EMERGENCY),
+                eq(AccessNetworkConstants.AccessNetworkType.EUTRAN),
+                eq(IMS_TRAFFIC_DIRECTION_OUTGOING), any());
+
+        mMmTelListener.onStopImsTrafficSession(1);
+        verify(mImsPhone, times(1)).stopImsTraffic(eq(1), any());
+
+        mMmTelListener.onStartImsTrafficSession(2, MmTelFeature.IMS_TRAFFIC_TYPE_EMERGENCY_SMS,
+                AccessNetworkConstants.AccessNetworkType.IWLAN,
+                IMS_TRAFFIC_DIRECTION_OUTGOING, binder);
+        verify(mImsPhone, times(1)).startImsTraffic(eq(2),
+                eq(MmTelFeature.IMS_TRAFFIC_TYPE_EMERGENCY_SMS),
+                eq(AccessNetworkConstants.AccessNetworkType.IWLAN),
+                eq(IMS_TRAFFIC_DIRECTION_OUTGOING), any());
+
+        mMmTelListener.onStartImsTrafficSession(3, MmTelFeature.IMS_TRAFFIC_TYPE_VOICE,
+                AccessNetworkConstants.AccessNetworkType.EUTRAN,
+                IMS_TRAFFIC_DIRECTION_INCOMING, binder);
+        verify(mImsPhone, times(1)).startImsTraffic(eq(3),
+                eq(MmTelFeature.IMS_TRAFFIC_TYPE_VOICE),
+                eq(AccessNetworkConstants.AccessNetworkType.EUTRAN),
+                eq(IMS_TRAFFIC_DIRECTION_INCOMING), any());
+
+        mMmTelListener.onStartImsTrafficSession(4, MmTelFeature.IMS_TRAFFIC_TYPE_VIDEO,
+                AccessNetworkConstants.AccessNetworkType.EUTRAN,
+                IMS_TRAFFIC_DIRECTION_OUTGOING, binder);
+        verify(mImsPhone, times(1)).startImsTraffic(eq(4),
+                eq(MmTelFeature.IMS_TRAFFIC_TYPE_VIDEO),
+                eq(AccessNetworkConstants.AccessNetworkType.EUTRAN),
+                eq(IMS_TRAFFIC_DIRECTION_OUTGOING), any());
+
+        mMmTelListener.onStartImsTrafficSession(5, MmTelFeature.IMS_TRAFFIC_TYPE_SMS,
+                AccessNetworkConstants.AccessNetworkType.EUTRAN,
+                IMS_TRAFFIC_DIRECTION_OUTGOING, binder);
+        verify(mImsPhone, times(1)).startImsTraffic(eq(5),
+                eq(MmTelFeature.IMS_TRAFFIC_TYPE_SMS),
+                eq(AccessNetworkConstants.AccessNetworkType.EUTRAN),
+                eq(IMS_TRAFFIC_DIRECTION_OUTGOING), any());
+
+        mMmTelListener.onStartImsTrafficSession(6, MmTelFeature.IMS_TRAFFIC_TYPE_REGISTRATION,
+                AccessNetworkConstants.AccessNetworkType.EUTRAN,
+                IMS_TRAFFIC_DIRECTION_OUTGOING, binder);
+        verify(mImsPhone, times(1)).startImsTraffic(eq(6),
+                eq(MmTelFeature.IMS_TRAFFIC_TYPE_REGISTRATION),
+                eq(AccessNetworkConstants.AccessNetworkType.EUTRAN),
+                eq(IMS_TRAFFIC_DIRECTION_OUTGOING), any());
+
+        mMmTelListener.onModifyImsTrafficSession(6,
+                AccessNetworkConstants.AccessNetworkType.IWLAN);
+        verify(mImsPhone, times(1)).startImsTraffic(eq(6),
+                eq(MmTelFeature.IMS_TRAFFIC_TYPE_REGISTRATION),
+                eq(AccessNetworkConstants.AccessNetworkType.IWLAN),
+                eq(IMS_TRAFFIC_DIRECTION_OUTGOING), any());
     }
 
     private void sendCarrierConfigChanged() {
