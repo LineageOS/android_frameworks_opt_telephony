@@ -557,6 +557,9 @@ public class DataNetwork extends StateMachine {
     /** The network bandwidth. */
     private @NonNull NetworkBandwidth mNetworkBandwidth = new NetworkBandwidth(14, 14);
 
+    /** The TCP buffer sizes config. */
+    private @NonNull String mTcpBufferSizes;
+
     /** Whether {@link NetworkCapabilities#NET_CAPABILITY_TEMPORARILY_NOT_METERED} is supported. */
     private boolean mTempNotMeteredSupported = false;
 
@@ -826,6 +829,7 @@ public class DataNetwork extends StateMachine {
         mAttachedNetworkRequestList.addAll(networkRequestList);
         mCid.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, INVALID_CID);
         mCid.put(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, INVALID_CID);
+        mTcpBufferSizes = mDataConfigManager.getDefaultTcpConfigString();
 
         for (TelephonyNetworkRequest networkRequest : networkRequestList) {
             networkRequest.setAttachedNetwork(DataNetwork.this);
@@ -974,6 +978,7 @@ public class DataNetwork extends StateMachine {
                     // TODO: Should update suspend state when CSS indicator changes.
                     // TODO: Should update suspend state when call started/ended.
                     updateSuspendState();
+                    updateTcpBufferSizes();
                     updateBandwidthFromDataConfig();
                     updateDataCallSessionStatsOfDrsOrRatChange((AsyncResult) msg.obj);
                     break;
@@ -2063,7 +2068,7 @@ public class DataNetwork extends StateMachine {
             linkProperties.setHttpProxy(proxy);
         }
 
-        linkProperties.setTcpBufferSizes(mDataConfigManager.getTcpConfigString());
+        linkProperties.setTcpBufferSizes(mTcpBufferSizes);
 
         mNetworkSliceInfo = response.getSliceInfo();
 
@@ -2093,6 +2098,28 @@ public class DataNetwork extends StateMachine {
         return mPhone.getServiceState().getNrState() == NetworkRegistrationInfo.NR_STATE_CONNECTED
                 && mPhone.getServiceStateTracker().getNrContextIds().contains(
                         mCid.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN));
+    }
+
+    /**
+     * Get the TCP buffer sizes config string.
+     *
+     * @return The TCP buffer sizes config used in {@link LinkProperties#setTcpBufferSizes(String)}.
+     */
+    private @Nullable String getTcpConfig() {
+        ServiceState ss = mPhone.getServiceState();
+        NetworkRegistrationInfo nrs = ss.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, mTransport);
+        int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        if (nrs != null) {
+            networkType = nrs.getAccessNetworkTechnology();
+            if (networkType == TelephonyManager.NETWORK_TYPE_LTE
+                    && nrs.isUsingCarrierAggregation()) {
+                // Although LTE_CA is not a real RAT, but since LTE CA generally has higher speed
+                // we use LTE_CA to get a different TCP config for LTE CA.
+                networkType = TelephonyManager.NETWORK_TYPE_LTE_CA;
+            }
+        }
+        return mDataConfigManager.getTcpConfigString(networkType, ss);
     }
 
     /**
@@ -2293,6 +2320,7 @@ public class DataNetwork extends StateMachine {
         log("onDataConfigUpdated");
 
         updateBandwidthFromDataConfig();
+        updateTcpBufferSizes();
         updateMeteredAndCongested();
     }
 
@@ -2358,6 +2386,7 @@ public class DataNetwork extends StateMachine {
      */
     private void onDisplayInfoChanged() {
         updateBandwidthFromDataConfig();
+        updateTcpBufferSizes();
         updateMeteredAndCongested();
     }
 
@@ -2373,6 +2402,21 @@ public class DataNetwork extends StateMachine {
         mNetworkBandwidth = mDataConfigManager.getBandwidthForNetworkType(
                 getDataNetworkType(), mPhone.getServiceState());
         updateNetworkCapabilities();
+    }
+
+    /**
+     * Update the TCP buffer sizes from resource overlays.
+     */
+    private void updateTcpBufferSizes() {
+        log("updateTcpBufferSizes");
+        mTcpBufferSizes = getTcpConfig();
+        LinkProperties linkProperties = new LinkProperties(mLinkProperties);
+        linkProperties.setTcpBufferSizes(mTcpBufferSizes);
+        if (!linkProperties.equals(mLinkProperties)) {
+            mLinkProperties = linkProperties;
+            log("sendLinkProperties " + mLinkProperties);
+            mNetworkAgent.sendLinkProperties(mLinkProperties);
+        }
     }
 
     /**
@@ -3015,6 +3059,7 @@ public class DataNetwork extends StateMachine {
         pw.println("mLinkProperties=" + mLinkProperties);
         pw.println("mNetworkSliceInfo=" + mNetworkSliceInfo);
         pw.println("mNetworkBandwidth=" + mNetworkBandwidth);
+        pw.println("mTcpBufferSizes=" + mTcpBufferSizes);
         pw.println("mTempNotMeteredSupported=" + mTempNotMeteredSupported);
         pw.println("mTempNotMetered=" + mTempNotMetered);
         pw.println("mCongested=" + mCongested);
