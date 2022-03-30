@@ -43,6 +43,7 @@ import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.NetCapability;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.Annotation.ValidationStatus;
+import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
 import android.telephony.DataSpecificRegistrationInfo;
@@ -79,6 +80,7 @@ import android.util.SparseBooleanArray;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.SlidingWindowEventCounter;
 import com.android.internal.telephony.SubscriptionInfoUpdater;
 import com.android.internal.telephony.TelephonyComponentFactory;
 import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksManagerCallback;
@@ -113,6 +115,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -201,6 +204,13 @@ public class DataNetworkController extends Handler {
     /** The delay to re-evaluate preferred transport when handover failed and fallback to source. */
     private static final long REEVALUATE_PREFERRED_TRANSPORT_DELAY_MILLIS =
             TimeUnit.SECONDS.toMillis(3);
+
+    /**
+     * The maximum number of occurrences within a time window defined by
+     * {@link DataConfigManager#getImsRequestReleaseThrottleAnomalyWindowMs}
+     * for duplicate release-request for IMS, the violation of which triggers anomaly report.
+     */
+    private static final int IMS_REQUEST_RELEASE_THROTTLE_ANOMALY_NUM_OCCURRENCES = 2;
 
     private final Phone mPhone;
     private final String mLogTag;
@@ -325,6 +335,15 @@ public class DataNetworkController extends Handler {
      * networks torn down.
      */
     private boolean mPendingTearDownAllNetworks = false;
+
+    /** The counter to detect back to back release/request IMS network. */
+    private final @NonNull SlidingWindowEventCounter mImsThrottleCounter;
+
+    /**
+     * The capabilities of the latest released IMS request. To detect back to back release/request
+     * IMS network.
+     */
+    private int[] mLastReleasedImsRequestCapabilities;
 
     /** The broadcast receiver. */
     private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
@@ -740,6 +759,9 @@ public class DataNetworkController extends Handler {
         }
         mDataConfigManager = new DataConfigManager(mPhone, looper);
 
+        mImsThrottleCounter = new SlidingWindowEventCounter(
+                mDataConfigManager.getImsRequestReleaseThrottleAnomalyWindowMs(),
+                IMS_REQUEST_RELEASE_THROTTLE_ANOMALY_NUM_OCCURRENCES);
         mDataSettingsManager = TelephonyComponentFactory.getInstance().inject(
                 DataSettingsManager.class.getName())
                 .makeDataSettingsManager(mPhone, this, looper,
@@ -1057,6 +1079,15 @@ public class DataNetworkController extends Handler {
      * @param networkRequest The network request.
      */
     private void onAddNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
+        if (Arrays.equals(mLastReleasedImsRequestCapabilities, networkRequest.getCapabilities())
+                && mImsThrottleCounter.addOccurrence()) {
+            AnomalyReporter.reportAnomaly(
+                    UUID.fromString("ead6f8db-d2f2-4ed3-8da5-1d8560fe7daf"),
+                    networkRequest.getNativeNetworkRequest().getRequestorPackageName()
+                            + " requested with same capabilities falls under "
+                            + mDataConfigManager.getImsRequestReleaseThrottleAnomalyWindowMs()
+                            + " ms window.");
+        }
         if (!mAllNetworkRequestList.add(networkRequest)) {
             loge("onAddNetworkRequest: Duplicate network request. " + networkRequest);
             return;
@@ -1811,6 +1842,10 @@ public class DataNetworkController extends Handler {
     }
 
     private void onRemoveNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
+        if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
+            mImsThrottleCounter.addOccurrence();
+            mLastReleasedImsRequestCapabilities = networkRequest.getCapabilities();
+        }
         if (!mAllNetworkRequestList.remove(networkRequest)) {
             loge("onRemoveNetworkRequest: Network request does not exist. " + networkRequest);
             return;
