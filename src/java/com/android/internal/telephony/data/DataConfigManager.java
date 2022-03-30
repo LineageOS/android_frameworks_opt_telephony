@@ -217,6 +217,9 @@ public class DataConfigManager extends Handler {
     /** A map of network types to the downlink and uplink bandwidth values for that network type */
     private @NonNull final @DataConfigNetworkType Map<String, DataNetwork.NetworkBandwidth>
             mBandwidthMap = new ConcurrentHashMap<>();
+    /** A map of network types to the TCP buffer sizes for that network type */
+    private @NonNull final @DataConfigNetworkType Map<String, String> mTcpBufferSizeMap =
+            new ConcurrentHashMap<>();
     /** Rules for handover between IWLAN and cellular network. */
     private @NonNull final List<HandoverRule> mHandoverRuleList = new ArrayList<>();
 
@@ -293,6 +296,7 @@ public class DataConfigManager extends Handler {
         updateSingleDataNetworkTypeList();
         updateUnmeteredNetworkTypes();
         updateBandwidths();
+        updateTcpBuffers();
         updateHandoverRules();
 
         log("Data config updated. Config is " + (isConfigCarrierSpecific() ? "" : "not ")
@@ -626,17 +630,56 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * Update the TCP buffer sizes from the resource overlays.
+     */
+    private void updateTcpBuffers() {
+        synchronized (this) {
+            mTcpBufferSizeMap.clear();
+            String[] configs = mResources.getStringArray(
+                    com.android.internal.R.array.config_network_type_tcp_buffers);
+            if (configs != null) {
+                for (String config : configs) {
+                    // split[0] = network type as string
+                    // split[1] = rmem_min,rmem_def,rmem_max,wmem_min,wmem_def,wmem_max
+                    String[] split = config.split(":");
+                    if (split.length != 2) {
+                        loge("Invalid TCP buffer sizes entry: " + config);
+                        continue;
+                    }
+                    if (split[1].split(",").length != 6) {
+                        loge("Invalid TCP buffer sizes for " + split[0] + ": " + split[1]);
+                        continue;
+                    }
+                    mTcpBufferSizeMap.put(split[0], split[1]);
+                }
+            }
+        }
+    }
+
+    /**
      * Get the TCP config string, used by {@link LinkProperties#setTcpBufferSizes(String)}.
      * The config string will have the following form, with values in bytes:
      * "read_min,read_default,read_max,write_min,write_default,write_max"
      *
-     * Note that starting from Android 13, the TCP buffer size is fixed after boot up, and should
-     * never be changed based on carriers or the network types. The value should be configured
-     * appropriately based on the device's memory and performance.
-     *
-     * @return The TCP configuration string.
+     * @param networkType The network type. Note that {@link TelephonyManager#NETWORK_TYPE_LTE_CA}
+     *                    can be used for LTE CA even though it's not a radio access technology.
+     * @param serviceState The service state, used to determine NR state.
+     * @return The TCP configuration string for the given network type or the default value from
+     *         config_tcp_buffers if unavailable.
      */
-    public @NonNull String getTcpConfigString() {
+    public @NonNull String getTcpConfigString(@NetworkType int networkType,
+            @NonNull ServiceState serviceState) {
+        String config = mTcpBufferSizeMap.get(getDataConfigNetworkType(networkType, serviceState));
+        if (TextUtils.isEmpty(config)) {
+            config = getDefaultTcpConfigString();
+        }
+        return config;
+    }
+
+    /**
+     * @return The fixed TCP buffer size configured based on the device's memory and performance.
+     */
+    public @NonNull String getDefaultTcpConfigString() {
         return mResources.getString(com.android.internal.R.string.config_tcp_buffers);
     }
 
@@ -932,7 +975,11 @@ public class DataConfigManager extends Handler {
                 + shouldResetDataThrottlingWhenTacChanges());
         pw.println("Data service package name=" + getDataServicePackageName());
         pw.println("Default MTU=" + getDefaultMtu());
-        pw.println("TCP buffer sizes:" + getTcpConfigString());
+        pw.println("TCP buffer sizes by RAT:");
+        pw.increaseIndent();
+        mTcpBufferSizeMap.forEach((key, value) -> pw.println(key + ":" + value));
+        pw.decreaseIndent();
+        pw.println("Default TCP buffer sizes=" + getDefaultTcpConfigString());
         pw.println("getImsDeregistrationDelay=" + getImsDeregistrationDelay());
         pw.println("shouldPersistIwlanDataNetworksWhenDataServiceRestarted="
                 + shouldPersistIwlanDataNetworksWhenDataServiceRestarted());
