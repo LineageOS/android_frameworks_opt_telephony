@@ -578,6 +578,8 @@ public class DataNetworkController extends Handler {
 
         private static final String RULE_TAG_TYPE = "type";
 
+        private static final String RULE_TAG_CAPABILITIES = "capabilities";
+
         private static final String RULE_TAG_ROAMING = "roaming";
 
         /** Handover rule type. */
@@ -588,6 +590,12 @@ public class DataNetworkController extends Handler {
 
         /** The applicable target access networks for handover. */
         public final @NonNull @RadioAccessNetworkType Set<Integer> targetAccessNetworks;
+
+        /**
+         * The network capabilities to any of which this handover rule applies.
+         * If is empty, then capability is ignored as a rule matcher.
+         */
+        public final @NonNull @NetCapability Set<Integer> networkCapabilities;
 
         /** {@code true} indicates this policy is only applicable when the device is roaming. */
         public final boolean isOnlyForRoaming;
@@ -604,7 +612,7 @@ public class DataNetworkController extends Handler {
                 throw new IllegalArgumentException("illegal rule " + ruleString);
             }
 
-            Set<Integer> source = null, target = null;
+            Set<Integer> source = null, target = null, capabilities = Collections.emptySet();
             int type = 0;
             boolean roaming = false;
 
@@ -641,6 +649,9 @@ public class DataNetworkController extends Handler {
                                 throw new IllegalArgumentException("unexpected rule type " + value);
                             }
                             break;
+                        case RULE_TAG_CAPABILITIES:
+                            capabilities = DataUtils.getNetworkCapabilitiesFromString(value);
+                            break;
                         case RULE_TAG_ROAMING:
                             roaming = Boolean.parseBoolean(value);
                             break;
@@ -654,7 +665,7 @@ public class DataNetworkController extends Handler {
                 }
             }
 
-            if (source == null || target == null) {
+            if (source == null || target == null || source.isEmpty() || target.isEmpty()) {
                 throw new IllegalArgumentException("Need to specify both source and target. "
                         + "\"" + ruleString + "\"");
             }
@@ -674,6 +685,11 @@ public class DataNetworkController extends Handler {
                         + "\"" + ruleString + "\"");
             }
 
+            if (capabilities != null && capabilities.contains(-1)) {
+                throw new IllegalArgumentException("Network capabilities contains unknown. "
+                            + "\"" + ruleString + "\"");
+            }
+
             if (!source.contains(AccessNetworkType.IWLAN)
                     && !target.contains(AccessNetworkType.IWLAN)) {
                 throw new IllegalArgumentException("IWLAN must be specified in either source or "
@@ -683,6 +699,7 @@ public class DataNetworkController extends Handler {
             sourceAccessNetworks = source;
             targetAccessNetworks = target;
             this.type = type;
+            networkCapabilities = capabilities;
             isOnlyForRoaming = roaming;
         }
 
@@ -692,7 +709,9 @@ public class DataNetworkController extends Handler {
                     : "disallowed") + ", source=" + sourceAccessNetworks.stream()
                     .map(AccessNetworkType::toString).collect(Collectors.joining("|"))
                     + ", target=" + targetAccessNetworks.stream().map(AccessNetworkType::toString)
-                    .collect(Collectors.joining("|")) + ", isRoaming=" + isOnlyForRoaming + "]";
+                    .collect(Collectors.joining("|")) + ", isRoaming=" + isOnlyForRoaming
+                    + ", capabilities=" + DataUtils.networkCapabilitiesToString(networkCapabilities)
+                    + "]";
         }
     }
 
@@ -1609,10 +1628,12 @@ public class DataNetworkController extends Handler {
                 getDataNetworkType(dataNetwork.getTransport()));
         int targetAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
                 getDataNetworkType(DataUtils.getTargetTransport(dataNetwork.getTransport())));
+        NetworkCapabilities capabilities = dataNetwork.getNetworkCapabilities();
         log("evaluateDataNetworkHandover: "
                 + "source=" + AccessNetworkType.toString(sourceAccessNetwork)
                 + ", target=" + AccessNetworkType.toString(targetAccessNetwork)
-                + ", ServiceState=" + mServiceState);
+                + ", ServiceState=" + mServiceState
+                + ", capabilities=" + capabilities);
 
         // Matching the rules by the configured order. Bail out if find first matching rule.
         for (HandoverRule rule : handoverRules) {
@@ -1621,15 +1642,21 @@ public class DataNetworkController extends Handler {
 
             if (rule.sourceAccessNetworks.contains(sourceAccessNetwork)
                     && rule.targetAccessNetworks.contains(targetAccessNetwork)) {
-                log("evaluateDataNetworkHandover: Matched " + rule);
-                if (rule.type == HandoverRule.RULE_TYPE_DISALLOWED) {
-                    dataEvaluation.addDataDisallowedReason(
-                            DataDisallowedReason.NOT_ALLOWED_BY_POLICY);
-                } else {
-                    dataEvaluation.addDataAllowedReason(DataAllowedReason.NORMAL);
+                // if no capability rule specified, data network capability is considered matched.
+                // otherwise, any capabilities overlap is also considered matched.
+                if (rule.networkCapabilities.isEmpty()
+                        || rule.networkCapabilities.stream()
+                        .anyMatch(capabilities::hasCapability)) {
+                    log("evaluateDataNetworkHandover: Matched " + rule);
+                    if (rule.type == HandoverRule.RULE_TYPE_DISALLOWED) {
+                        dataEvaluation.addDataDisallowedReason(
+                                DataDisallowedReason.NOT_ALLOWED_BY_POLICY);
+                    } else {
+                        dataEvaluation.addDataAllowedReason(DataAllowedReason.NORMAL);
+                    }
+                    log("evaluateDataNetworkHandover: " + dataEvaluation);
+                    return dataEvaluation;
                 }
-                log("evaluateDataNetworkHandover: " + dataEvaluation);
-                return dataEvaluation;
             }
         }
 
