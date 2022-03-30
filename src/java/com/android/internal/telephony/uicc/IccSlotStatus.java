@@ -16,8 +16,10 @@
 
 package com.android.internal.telephony.uicc;
 
-import android.telephony.SubscriptionInfo;
 import android.text.TextUtils;
+
+import com.android.internal.telephony.util.TelephonyUtils;
+import com.android.telephony.Rlog;
 
 import java.util.Arrays;
 
@@ -61,7 +63,7 @@ public class IccSlotStatus {
         StringBuilder sb = new StringBuilder();
         sb.append("IccSlotStatus {").append(cardState).append(",")
                 .append("atr=").append(atr).append(",")
-                .append("eid=").append(eid).append(",");
+                .append("eid=").append(Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, eid)).append(",");
         if (mSimPortInfos != null) {
             sb.append("num_ports=").append(mSimPortInfos.length);
             for (int i =0; i < mSimPortInfos.length; i++) {
