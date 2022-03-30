@@ -549,9 +549,12 @@ public class NetworkTypeController extends StateMachine {
                 case EVENT_NR_STATE_CHANGED:
                 case EVENT_NR_FREQUENCY_CHANGED:
                 case EVENT_PCO_DATA_CHANGED:
-                case EVENT_BANDWIDTH_CHANGED:
                 case EVENT_UPDATE_NR_ADVANCED_STATE:
                     // ignored
+                    break;
+                case EVENT_BANDWIDTH_CHANGED:
+                    // Update in case of LTE/LTE+ switch
+                    updateOverrideNetworkType();
                     break;
                 case EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED:
                     if (isUsingPhysicalChannelConfigForRrcDetection()) {
