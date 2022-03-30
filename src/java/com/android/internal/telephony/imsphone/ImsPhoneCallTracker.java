@@ -1193,7 +1193,19 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @VisibleForTesting
     public void hangupAllOrphanedConnections(int disconnectCause) {
         Log.w(LOG_TAG, "hangupAllOngoingConnections called for cause " + disconnectCause);
-
+        // Send a call terminate request to all available connections.
+        // In the ImsPhoneCallTrackerTest, when the hangup() of the connection call,
+        // onCallTerminated() is called immediately and the connection is removed.
+        // As a result, an IndexOutOfBoundsException is thrown.
+        // This is why it counts backwards.
+        int size = getConnections().size();
+        for (int index = size - 1; index > -1; index--) {
+            try {
+                getConnections().get(index).hangup();
+            } catch (CallStateException e) {
+                loge("Failed to disconnet call...");
+            }
+        }
         // Move connections to disconnected and notify the reason why.
         for (ImsPhoneConnection connection : mConnections) {
             connection.update(connection.getImsCall(), ImsPhoneCall.State.DISCONNECTED);
