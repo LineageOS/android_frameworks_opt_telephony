@@ -979,7 +979,10 @@ public class RILUtils {
         dpi.mtuV6 = dp.getMtuV6();
         dpi.persistent = dp.isPersistent();
         dpi.preferred = dp.isPreferred();
-        dpi.alwaysOn = dp.getApnSetting().isAlwaysOn();
+        dpi.alwaysOn = false;
+        if (dp.getApnSetting() != null) {
+            dpi.alwaysOn = dp.getApnSetting().isAlwaysOn();
+        }
         dpi.trafficDescriptor = convertToHalTrafficDescriptorAidl(dp.getTrafficDescriptor());
 
         // profile id is only meaningful when it's persistent on the modem.
