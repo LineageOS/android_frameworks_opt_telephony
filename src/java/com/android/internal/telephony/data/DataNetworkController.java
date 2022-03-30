@@ -1210,6 +1210,21 @@ public class DataNetworkController extends Handler {
     }
 
     /**
+     * @return List of the reasons why internet data is not allowed. An empty list if internet
+     * is allowed.
+     */
+    public @NonNull List<DataDisallowedReason> getInternetDataDisallowedReasons() {
+        TelephonyNetworkRequest internetRequest = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                        .build(), mPhone);
+        DataEvaluation evaluation = evaluateNetworkRequest(internetRequest,
+                DataEvaluationReason.EXTERNAL_QUERY);
+        return evaluation.getDataDisallowedReasons();
+    }
+
+    /**
      * Evaluate a network request. The goal is to find a suitable {@link DataProfile} that can be
      * used to setup the data network.
      *
@@ -1322,9 +1337,13 @@ public class DataNetworkController extends Handler {
                     DataDisallowedReason.ONLY_ALLOWED_SINGLE_NETWORK);
         }
 
-        if (!mDataSettingsManager.isDataEnabled(DataUtils.networkCapabilityToApnType(
-                networkRequest.getApnTypeNetworkCapability()))) {
-            evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_DISABLED);
+        if (mDataSettingsManager.isDataInitialized()) {
+            if (!mDataSettingsManager.isDataEnabled(DataUtils.networkCapabilityToApnType(
+                    networkRequest.getApnTypeNetworkCapability()))) {
+                evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_DISABLED);
+            }
+        } else {
+            evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_SETTINGS_NOT_READY);
         }
 
         // Check whether to allow data in certain situations if data is disallowed for soft reasons
@@ -1796,6 +1815,17 @@ public class DataNetworkController extends Handler {
             networkRequest.getAttachedNetwork().detachNetworkRequest(networkRequest);
         }
         logv("onRemoveNetworkRequest: Removed " + networkRequest);
+    }
+
+    /**
+     * Check if the network request is existing. Note this method is not thread safe so can be only
+     * called within the modules in {@link com.android.internal.telephony.data}.
+     *
+     * @param networkRequest Telephony network request to check.
+     * @return {@code true} if the network request exists.
+     */
+    public boolean isNetworkRequestExisting(@NonNull TelephonyNetworkRequest networkRequest) {
+        return mAllNetworkRequestList.contains(networkRequest);
     }
 
     /**
@@ -2425,7 +2455,7 @@ public class DataNetworkController extends Handler {
      */
     private void onAttachNetworkRequestsFailed(@NonNull DataNetwork dataNetwork,
             @NonNull NetworkRequestList requestList) {
-        // TODO: Perform retry if needed.
+        log("Failed to attach " + requestList + " to " + dataNetwork);
     }
 
     /**
