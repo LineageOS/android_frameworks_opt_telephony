@@ -402,16 +402,14 @@ public class DataRetryManager extends Handler {
                 String key = tokens[0].trim();
                 String value = tokens[1].trim();
                 if (key.equals(RULE_TAG_CAPABILITIES)) {
-                    mNetworkCapabilities = Arrays.stream(value.split("\\s*\\|\\s*"))
-                            .map(String::trim)
-                            .map(DataUtils::getNetworkCapabilityFromString)
-                            .collect(Collectors.toSet());
+                    mNetworkCapabilities = DataUtils.getNetworkCapabilitiesFromString(value);
                 }
             }
 
-            if (mNetworkCapabilities.size() == 0 && mFailCauses.size() == 0) {
+            if (mFailCauses.isEmpty() && (mNetworkCapabilities.isEmpty()
+                    || mNetworkCapabilities.contains(-1))) {
                 throw new IllegalArgumentException("illegal rule " + ruleString
-                        + ". Should have either network capabilities or fail causes.");
+                            + ". Should have either valid network capabilities or fail causes.");
             }
         }
 
