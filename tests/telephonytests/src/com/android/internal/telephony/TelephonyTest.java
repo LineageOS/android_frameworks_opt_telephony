@@ -775,6 +775,7 @@ public abstract class TelephonyTest {
         Settings.Global.putInt(resolver, Settings.Global.DEVICE_PROVISIONED, 1);
         Settings.Global.putInt(resolver,
                 Settings.Global.DEVICE_PROVISIONING_MOBILE_DATA_ENABLED, 1);
+        Settings.Global.putInt(resolver, Settings.Global.DATA_ROAMING, 0);
         doReturn(mDataThrottler).when(mDcTracker).getDataThrottler();
         doReturn(-1L).when(mDataThrottler).getRetryTime(anyInt());
 

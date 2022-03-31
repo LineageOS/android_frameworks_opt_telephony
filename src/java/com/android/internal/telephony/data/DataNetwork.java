@@ -962,6 +962,7 @@ public class DataNetwork extends StateMachine {
                         networkRequest.setState(TelephonyNetworkRequest.REQUEST_STATE_UNSATISFIED);
                         networkRequest.setAttachedNetwork(null);
                     }
+                    log("All network requests detached.");
                     mAttachedNetworkRequestList.clear();
                     break;
                 }
@@ -1366,6 +1367,24 @@ public class DataNetwork extends StateMachine {
         @Override
         public void enter() {
             logl("Data network disconnected. mEverConnected=" + mEverConnected);
+            // Preserve the list for onSetupDataFailed callback, because we need to pass that list
+            // back to DataNetworkController, but after EVENT_DETACH_ALL_NETWORK_REQUESTS gets
+            // processed, the network request list would become empty.
+            NetworkRequestList requestList = new NetworkRequestList(mAttachedNetworkRequestList);
+
+            // The detach all network requests must be the last message to handle.
+            sendMessage(EVENT_DETACH_ALL_NETWORK_REQUESTS);
+            // Gracefully handle all the un-processed events then quit the state machine.
+            // quit() throws a QUIT event to the end of message queue. All the events before quit()
+            // will be processed. Events after quit() will not be processed.
+            quit();
+
+            //************************************************************//
+            // DO NOT POST ANY EVENTS AFTER HERE.                         //
+            // THE STATE MACHINE WONT PROCESS EVENTS AFTER QUIT.          //
+            // ONLY CLEANUP SHOULD BE PERFORMED AFTER THIS.               //
+            //************************************************************//
+
             if (mEverConnected) {
                 mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
                         .onDisconnected(DataNetwork.this, mFailCause));
@@ -1375,15 +1394,8 @@ public class DataNetwork extends StateMachine {
             } else {
                 mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
                         .onSetupDataFailed(DataNetwork.this,
-                                new NetworkRequestList(mAttachedNetworkRequestList),
-                                mFailCause, mRetryDelayMillis));
+                                requestList, mFailCause, mRetryDelayMillis));
             }
-            // The detach all network requests must be the last message to handle.
-            sendMessage(EVENT_DETACH_ALL_NETWORK_REQUESTS);
-            // Gracefully handle all the un-processed events then quit the state machine.
-            // quit() throws a QUIT event to the end of message queue. All the events before quit()
-            // will be processed. Events after quit() will not be processed.
-            quit();
             notifyPreciseDataConnectionState();
             mNetworkAgent.unregister();
             mDataCallSessionStats.onDataCallDisconnected(mFailCause);
@@ -1491,7 +1503,6 @@ public class DataNetwork extends StateMachine {
      */
     public void detachNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
         if (getCurrentState() == null || isDisconnected()) {
-            mAttachedNetworkRequestList.remove(networkRequest);
             return;
         }
         sendMessage(obtainMessage(EVENT_DETACH_NETWORK_REQUEST, networkRequest));
