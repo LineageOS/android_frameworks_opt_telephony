@@ -43,6 +43,7 @@ import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.NetCapability;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.Annotation.ValidationStatus;
+import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
 import android.telephony.DataSpecificRegistrationInfo;
@@ -79,6 +80,7 @@ import android.util.SparseBooleanArray;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.SlidingWindowEventCounter;
 import com.android.internal.telephony.SubscriptionInfoUpdater;
 import com.android.internal.telephony.TelephonyComponentFactory;
 import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksManagerCallback;
@@ -113,6 +115,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -201,6 +204,13 @@ public class DataNetworkController extends Handler {
     /** The delay to re-evaluate preferred transport when handover failed and fallback to source. */
     private static final long REEVALUATE_PREFERRED_TRANSPORT_DELAY_MILLIS =
             TimeUnit.SECONDS.toMillis(3);
+
+    /**
+     * The maximum number of occurrences within a time window defined by
+     * {@link DataConfigManager#getImsRequestReleaseThrottleAnomalyWindowMs}
+     * for duplicate release-request for IMS, the violation of which triggers anomaly report.
+     */
+    private static final int IMS_REQUEST_RELEASE_THROTTLE_ANOMALY_NUM_OCCURRENCES = 2;
 
     private final Phone mPhone;
     private final String mLogTag;
@@ -325,6 +335,15 @@ public class DataNetworkController extends Handler {
      * networks torn down.
      */
     private boolean mPendingTearDownAllNetworks = false;
+
+    /** The counter to detect back to back release/request IMS network. */
+    private final @NonNull SlidingWindowEventCounter mImsThrottleCounter;
+
+    /**
+     * The capabilities of the latest released IMS request. To detect back to back release/request
+     * IMS network.
+     */
+    private int[] mLastReleasedImsRequestCapabilities;
 
     /** The broadcast receiver. */
     private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
@@ -740,6 +759,9 @@ public class DataNetworkController extends Handler {
         }
         mDataConfigManager = new DataConfigManager(mPhone, looper);
 
+        mImsThrottleCounter = new SlidingWindowEventCounter(
+                mDataConfigManager.getImsRequestReleaseThrottleAnomalyWindowMs(),
+                IMS_REQUEST_RELEASE_THROTTLE_ANOMALY_NUM_OCCURRENCES);
         mDataSettingsManager = TelephonyComponentFactory.getInstance().inject(
                 DataSettingsManager.class.getName())
                 .makeDataSettingsManager(mPhone, this, looper,
@@ -1057,6 +1079,15 @@ public class DataNetworkController extends Handler {
      * @param networkRequest The network request.
      */
     private void onAddNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
+        if (Arrays.equals(mLastReleasedImsRequestCapabilities, networkRequest.getCapabilities())
+                && mImsThrottleCounter.addOccurrence()) {
+            AnomalyReporter.reportAnomaly(
+                    UUID.fromString("ead6f8db-d2f2-4ed3-8da5-1d8560fe7daf"),
+                    networkRequest.getNativeNetworkRequest().getRequestorPackageName()
+                            + " requested with same capabilities falls under "
+                            + mDataConfigManager.getImsRequestReleaseThrottleAnomalyWindowMs()
+                            + " ms window.");
+        }
         if (!mAllNetworkRequestList.add(networkRequest)) {
             loge("onAddNetworkRequest: Duplicate network request. " + networkRequest);
             return;
@@ -1359,18 +1390,21 @@ public class DataNetworkController extends Handler {
                 evaluation.addDataAllowedReason(DataAllowedReason.MMS_REQUEST);
             }
         } else if (!evaluation.containsHardDisallowedReasons()) {
-            // Check if request is unmetered (WiFi or unmetered APN)
-            if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+            if ((mPhone.isInEmergencyCall() || mPhone.isInEcm())
+                    && networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_SUPL)) {
+                // Check if it's SUPL during emergency call.
+                evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_SUPL);
+            } else if (!networkRequest.hasCapability(
+                    NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
+                // Check if request is restricted.
+                evaluation.addDataAllowedReason(DataAllowedReason.RESTRICTED_REQUEST);
+            } else if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+                // Check if request is unmetered (WiFi or unmetered APN).
                 evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
             } else if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                 if (!networkRequest.isMeteredRequest()) {
                     evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
                 }
-            }
-
-            // Check if request is restricted
-            if (!networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
-                evaluation.addDataAllowedReason(DataAllowedReason.RESTRICTED_REQUEST);
             }
         }
 
@@ -1600,9 +1634,17 @@ public class DataNetworkController extends Handler {
             // If there are reasons we should tear down the network, check if those are hard reasons
             // or soft reasons. In some scenarios, we can make exceptions if they are soft
             // disallowed reasons.
-
-            // Check if request is unmetered (WiFi or unmetered APN)
-            if (dataNetwork.getTransport() == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+            if ((mPhone.isInEmergencyCall() || mPhone.isInEcm())
+                    && dataNetwork.getNetworkCapabilities().hasCapability(
+                            NetworkCapabilities.NET_CAPABILITY_SUPL)) {
+                // Check if it's SUPL during emergency call.
+                evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_SUPL);
+            } else if (!dataNetwork.getNetworkCapabilities().hasCapability(
+                    NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
+                // Check if request is restricted
+                evaluation.addDataAllowedReason(DataAllowedReason.RESTRICTED_REQUEST);
+            } else if (dataNetwork.getTransport() == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+                // Check if request is unmetered (WiFi or unmetered APN)
                 evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
             } else {
                 boolean unmeteredNetwork = !mDataConfigManager.isAnyMeteredCapability(
@@ -1611,12 +1653,6 @@ public class DataNetworkController extends Handler {
                 if (unmeteredNetwork) {
                     evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
                 }
-            }
-
-            // Check if request is restricted
-            if (!dataNetwork.getNetworkCapabilities().hasCapability(
-                    NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
-                evaluation.addDataAllowedReason(DataAllowedReason.RESTRICTED_REQUEST);
             }
         }
 
@@ -1671,47 +1707,53 @@ public class DataNetworkController extends Handler {
             return dataEvaluation;
         }
 
-        List<HandoverRule> handoverRules = mDataConfigManager.getHandoverRules();
+        if (mDataConfigManager.isIwlanHandoverPolicyEnabled()) {
+            List<HandoverRule> handoverRules = mDataConfigManager.getHandoverRules();
 
-        int sourceAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
-                getDataNetworkType(dataNetwork.getTransport()));
-        int targetAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
-                getDataNetworkType(DataUtils.getTargetTransport(dataNetwork.getTransport())));
-        NetworkCapabilities capabilities = dataNetwork.getNetworkCapabilities();
-        log("evaluateDataNetworkHandover: "
-                + "source=" + AccessNetworkType.toString(sourceAccessNetwork)
-                + ", target=" + AccessNetworkType.toString(targetAccessNetwork)
-                + ", ServiceState=" + mServiceState
-                + ", capabilities=" + capabilities);
+            int sourceAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
+                    getDataNetworkType(dataNetwork.getTransport()));
+            int targetAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
+                    getDataNetworkType(DataUtils.getTargetTransport(dataNetwork.getTransport())));
+            NetworkCapabilities capabilities = dataNetwork.getNetworkCapabilities();
+            log("evaluateDataNetworkHandover: "
+                    + "source=" + AccessNetworkType.toString(sourceAccessNetwork)
+                    + ", target=" + AccessNetworkType.toString(targetAccessNetwork)
+                    + ", ServiceState=" + mServiceState
+                    + ", capabilities=" + capabilities);
 
-        // Matching the rules by the configured order. Bail out if find first matching rule.
-        for (HandoverRule rule : handoverRules) {
-            // Check if the rule is only for roaming and we are not roaming.
-            if (rule.isOnlyForRoaming && !mServiceState.getDataRoaming()) continue;
+            // Matching the rules by the configured order. Bail out if find first matching rule.
+            for (HandoverRule rule : handoverRules) {
+                // Check if the rule is only for roaming and we are not roaming.
+                if (rule.isOnlyForRoaming && !mServiceState.getDataRoaming()) continue;
 
-            if (rule.sourceAccessNetworks.contains(sourceAccessNetwork)
-                    && rule.targetAccessNetworks.contains(targetAccessNetwork)) {
-                // if no capability rule specified, data network capability is considered matched.
-                // otherwise, any capabilities overlap is also considered matched.
-                if (rule.networkCapabilities.isEmpty()
-                        || rule.networkCapabilities.stream()
-                        .anyMatch(capabilities::hasCapability)) {
-                    log("evaluateDataNetworkHandover: Matched " + rule);
-                    if (rule.type == HandoverRule.RULE_TYPE_DISALLOWED) {
-                        dataEvaluation.addDataDisallowedReason(
-                                DataDisallowedReason.NOT_ALLOWED_BY_POLICY);
-                    } else {
-                        dataEvaluation.addDataAllowedReason(DataAllowedReason.NORMAL);
+                if (rule.sourceAccessNetworks.contains(sourceAccessNetwork)
+                        && rule.targetAccessNetworks.contains(targetAccessNetwork)) {
+                    // if no capability rule specified,
+                    // data network capability is considered matched.
+                    // otherwise, any capabilities overlap is also considered matched.
+                    if (rule.networkCapabilities.isEmpty()
+                            || rule.networkCapabilities.stream()
+                            .anyMatch(capabilities::hasCapability)) {
+                        log("evaluateDataNetworkHandover: Matched " + rule);
+                        if (rule.type == HandoverRule.RULE_TYPE_DISALLOWED) {
+                            dataEvaluation.addDataDisallowedReason(
+                                    DataDisallowedReason.NOT_ALLOWED_BY_POLICY);
+                        } else {
+                            dataEvaluation.addDataAllowedReason(DataAllowedReason.NORMAL);
+                        }
+                        log("evaluateDataNetworkHandover: " + dataEvaluation);
+                        return dataEvaluation;
                     }
-                    log("evaluateDataNetworkHandover: " + dataEvaluation);
-                    return dataEvaluation;
                 }
             }
+            log("evaluateDataNetworkHandover: Did not find matching rule.");
+        } else {
+            log("evaluateDataNetworkHandover: IWLAN handover policy not enabled.");
         }
 
-        log("evaluateDataNetworkHandover: Did not find matching rule. " + dataEvaluation);
-        // Allow handover anyway if no rule is found.
+        // Allow handover by default if no rule is found/not enabled by config.
         dataEvaluation.addDataAllowedReason(DataAllowedReason.NORMAL);
+        log("evaluateDataNetworkHandover: " + dataEvaluation);
         return dataEvaluation;
     }
 
@@ -1806,6 +1848,10 @@ public class DataNetworkController extends Handler {
     }
 
     private void onRemoveNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
+        if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
+            mImsThrottleCounter.addOccurrence();
+            mLastReleasedImsRequestCapabilities = networkRequest.getCapabilities();
+        }
         if (!mAllNetworkRequestList.remove(networkRequest)) {
             loge("onRemoveNetworkRequest: Network request does not exist. " + networkRequest);
             return;
