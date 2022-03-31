@@ -22,6 +22,7 @@ import static android.telephony.CarrierConfigManager.USSD_OVER_IMS_ONLY;
 import static com.android.internal.annotations.VisibleForTesting.Visibility.PRIVATE;
 import static com.android.internal.telephony.Phone.CS_FALLBACK;
 
+import android.Manifest;
 import android.annotation.NonNull;
 import android.app.usage.NetworkStatsManager;
 import android.compat.annotation.UnsupportedAppUsage;
@@ -4097,7 +4098,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             configChangedIntent.putExtra(ImsConfig.EXTRA_CHANGED_ITEM, item);
             configChangedIntent.putExtra(ImsConfig.EXTRA_NEW_VALUE, value);
             if (mPhone != null && mPhone.getContext() != null) {
-                mPhone.getContext().sendBroadcast(configChangedIntent);
+                mPhone.getContext().sendBroadcast(
+                        configChangedIntent, Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
             }
         }
     };

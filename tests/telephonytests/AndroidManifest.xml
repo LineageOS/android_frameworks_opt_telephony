@@ -18,6 +18,7 @@
      package="com.android.frameworks.telephonytests">
 
     <application android:name="com.android.internal.telephony.TestApplication"
+        android:testOnly="true"
         android:largeHeap="true">
         <uses-library android:name="android.test.runner"/>
         <activity android:label="TelephonyTest"

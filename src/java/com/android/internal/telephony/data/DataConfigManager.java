@@ -30,6 +30,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RegistrantList;
+import android.provider.DeviceConfig;
 import android.telephony.Annotation.ApnType;
 import android.telephony.Annotation.NetCapability;
 import android.telephony.Annotation.NetworkType;
@@ -183,6 +184,14 @@ public class DataConfigManager extends Handler {
     })
     @Retention(RetentionPolicy.SOURCE)
     private @interface DataConfigNetworkType {}
+
+    /**
+     * The minimal time window for duplicate release-request for IMS, the violation of which
+     * triggers anomaly report in {@link DataNetworkController}.
+     */
+    private final long mImsRequestReleaseThrottleAnomalyWindowMs =
+            DeviceConfig.getInt(DeviceConfig.NAMESPACE_TELEPHONY,
+                    "ims_release_request_window", 0);
 
     private @NonNull final Phone mPhone;
     private @NonNull final String mLogTag;
@@ -656,6 +665,13 @@ public class DataConfigManager extends Handler {
         }
     }
 
+     /**
+     * @return The IMS back to back request/release minimal interval.
+     */
+    public long getImsRequestReleaseThrottleAnomalyWindowMs() {
+        return mImsRequestReleaseThrottleAnomalyWindowMs;
+    }
+
     /**
      * Get the TCP config string, used by {@link LinkProperties#setTcpBufferSizes(String)}.
      * The config string will have the following form, with values in bytes:
@@ -699,6 +715,15 @@ public class DataConfigManager extends Handler {
     public boolean shouldPersistIwlanDataNetworksWhenDataServiceRestarted() {
         return mResources.getBoolean(com.android.internal.R.bool
                 .config_wlan_data_service_conn_persistence_on_restart);
+    }
+
+    /**
+     * @return {@code true} if adopt predefined IWLAN handover policy. If {@code false}, handover is
+     * allowed by default.
+     */
+    public boolean isIwlanHandoverPolicyEnabled() {
+        return mResources.getBoolean(com.android.internal.R.bool
+                .config_enable_iwlan_handover_policy);
     }
 
     /**
@@ -951,10 +976,13 @@ public class DataConfigManager extends Handler {
         pw.increaseIndent();
         mDataSetupRetryRules.forEach(pw::println);
         pw.decreaseIndent();
+        pw.println("isIwlanHandoverPolicyEnabled=" + isIwlanHandoverPolicyEnabled());
         pw.println("Data handover retry rules:");
         pw.increaseIndent();
         mDataHandoverRetryRules.forEach(pw::println);
         pw.decreaseIndent();
+        pw.println("IMS request release throttle anomaly window in ms="
+                + mImsRequestReleaseThrottleAnomalyWindowMs);
         pw.println("Metered APN types=" + mMeteredApnTypes.stream()
                 .map(ApnSetting::getApnTypeString).collect(Collectors.joining(",")));
         pw.println("Roaming metered APN types=" + mRoamingMeteredApnTypes.stream()
