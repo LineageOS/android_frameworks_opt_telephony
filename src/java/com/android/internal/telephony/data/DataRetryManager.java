@@ -903,7 +903,7 @@ public class DataRetryManager extends Handler {
          *
          * @param throttleStatusList List of throttle status.
          */
-        public void onThrottleStatusChanged(List<ThrottleStatus> throttleStatusList) {}
+        public void onThrottleStatusChanged(@NonNull List<ThrottleStatus> throttleStatusList) {}
     }
 
     /**
@@ -1216,20 +1216,22 @@ public class DataRetryManager extends Handler {
 
         final List<ThrottleStatus> throttleStatusList = new ArrayList<>();
         for (DataThrottlingEntry dataThrottlingEntry : mDataThrottlingEntries) {
-            throttleStatusList.addAll(dataThrottlingEntry.dataProfile.getApnSetting().getApnTypes()
-                    .stream()
-                    .map(apnType -> new ThrottleStatus.Builder()
-                            .setApnType(apnType)
-                            .setSlotIndex(mPhone.getPhoneId())
-                            .setNoThrottle()
-                            .setRetryType(dataThrottlingEntry.retryType)
-                            .setTransportType(dataThrottlingEntry.transport)
-                            .build())
-                    .collect(Collectors.toList()));
-        }
-        if (!throttleStatusList.isEmpty()) {
-            mDataRetryManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
-                    () -> callback.onThrottleStatusChanged(throttleStatusList)));
+            DataProfile dataProfile = dataThrottlingEntry.dataProfile;
+            String apn = dataProfile.getApnSetting() != null
+                    ? dataProfile.getApnSetting().getApnName() : null;
+            onDataProfileUnthrottled(dataProfile, apn, dataThrottlingEntry.transport);
+            if (dataProfile.getApnSetting() != null) {
+                throttleStatusList.addAll(dataProfile.getApnSetting().getApnTypes()
+                        .stream()
+                        .map(apnType -> new ThrottleStatus.Builder()
+                                .setApnType(apnType)
+                                .setSlotIndex(mPhone.getPhoneId())
+                                .setNoThrottle()
+                                .setRetryType(dataThrottlingEntry.retryType)
+                                .setTransportType(dataThrottlingEntry.transport)
+                                .build())
+                        .collect(Collectors.toList()));
+            }
         }
 
         mDataThrottlingEntries.clear();
