@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.metrics;
 
+import static android.text.format.DateUtils.DAY_IN_MILLIS;
+
 import static com.android.internal.telephony.TelephonyStatsLog.GBA_EVENT__FAILED_REASON__FEATURE_NOT_READY;
 import static com.android.internal.telephony.TelephonyStatsLog.GBA_EVENT__FAILED_REASON__UNKNOWN;
 import static com.android.internal.telephony.TelephonyStatsLog.RCS_ACS_PROVISIONING_STATS__RESPONSE_TYPE__ERROR;
@@ -1496,8 +1498,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         createEmptyTestFile();
 
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
-        mPersistAtomsStorage.addImsRegistrationStats(mImsRegistrationStatsLte0);
-        mPersistAtomsStorage.incTimeMillis(100L);
+        mPersistAtomsStorage.addImsRegistrationStats(copyOf(mImsRegistrationStatsLte0));
+        mPersistAtomsStorage.incTimeMillis(DAY_IN_MILLIS);
 
         // service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
@@ -1510,10 +1512,10 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     public void addImsRegistrationStats_withExistingEntries() throws Exception {
         createEmptyTestFile();
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
-        mPersistAtomsStorage.addImsRegistrationStats(mImsRegistrationStatsLte0);
+        mPersistAtomsStorage.addImsRegistrationStats(copyOf(mImsRegistrationStatsLte0));
 
-        mPersistAtomsStorage.addImsRegistrationStats(mImsRegistrationStatsWifi0);
-        mPersistAtomsStorage.incTimeMillis(100L);
+        mPersistAtomsStorage.addImsRegistrationStats(copyOf(mImsRegistrationStatsWifi0));
+        mPersistAtomsStorage.incTimeMillis(DAY_IN_MILLIS);
 
         // service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
@@ -1531,7 +1533,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
 
         mPersistAtomsStorage.addImsRegistrationStats(copyOf(mImsRegistrationStatsLte0));
-        mPersistAtomsStorage.incTimeMillis(100L);
+        mPersistAtomsStorage.incTimeMillis(DAY_IN_MILLIS);
 
         // mImsRegistrationStatsLte0's durations should be doubled
         verifyCurrentStateSavedToFileOnce();
@@ -1680,7 +1682,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         createTestFile(START_TIME_MILLIS);
 
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
-        mPersistAtomsStorage.incTimeMillis(100L);
+        mPersistAtomsStorage.incTimeMillis(DAY_IN_MILLIS);
         ImsRegistrationStats[] stats1 = mPersistAtomsStorage.getImsRegistrationStats(50L);
         mPersistAtomsStorage.incTimeMillis(100L);
         ImsRegistrationStats[] stats2 = mPersistAtomsStorage.getImsRegistrationStats(50L);
@@ -1694,14 +1696,14 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                 stats1);
         assertProtoArrayEquals(new ImsRegistrationStats[0], stats2);
         assertEquals(
-                START_TIME_MILLIS + 200L,
+                START_TIME_MILLIS + DAY_IN_MILLIS + 100L,
                 mPersistAtomsStorage.getAtomsProto().imsRegistrationStatsPullTimestampMillis);
         InOrder inOrder = inOrder(mTestFileOutputStream);
         assertEquals(
-                START_TIME_MILLIS + 100L,
+                START_TIME_MILLIS + DAY_IN_MILLIS,
                 getAtomsWritten(inOrder).imsRegistrationStatsPullTimestampMillis);
         assertEquals(
-                START_TIME_MILLIS + 200L,
+                START_TIME_MILLIS + DAY_IN_MILLIS + 100L,
                 getAtomsWritten(inOrder).imsRegistrationStatsPullTimestampMillis);
         inOrder.verifyNoMoreInteractions();
     }
@@ -2233,6 +2235,31 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                 START_TIME_MILLIS + 200L,
                 getAtomsWritten(inOrder).imsRegistrationServiceDescStatsPullTimestampMillis);
         inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    @SmallTest
+    public void getImsRegistrationStats_24hNormalization() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addImsRegistrationStats(copyOf(mImsRegistrationStatsWifi0));
+        mPersistAtomsStorage.incTimeMillis(DAY_IN_MILLIS / 2);
+
+        ImsRegistrationStats[] serviceStates = mPersistAtomsStorage.getImsRegistrationStats(0L);
+        mImsRegistrationStatsWifi0.registeredMillis *= 2;
+        mImsRegistrationStatsWifi0.voiceCapableMillis *= 2;
+        mImsRegistrationStatsWifi0.voiceAvailableMillis *= 2;
+        mImsRegistrationStatsWifi0.smsCapableMillis *= 2;
+        mImsRegistrationStatsWifi0.smsAvailableMillis *= 2;
+        mImsRegistrationStatsWifi0.videoCapableMillis *= 2;
+        mImsRegistrationStatsWifi0.videoAvailableMillis *= 2;
+        mImsRegistrationStatsWifi0.utCapableMillis *= 2;
+        mImsRegistrationStatsWifi0.utAvailableMillis *= 2;
+        assertProtoArrayEqualsIgnoringOrder(
+                new ImsRegistrationStats[] {
+                    mImsRegistrationStatsWifi0
+                },
+                serviceStates);
     }
 
     @Test
