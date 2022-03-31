@@ -34,7 +34,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
-import android.os.storage.StorageManager;
 import android.preference.PreferenceManager;
 import android.sysprop.TelephonyProperties;
 import android.telephony.CarrierConfigManager;
@@ -244,13 +243,7 @@ public class UiccController extends Handler {
         mRadioConfig.registerForSimSlotStatusChanged(this, EVENT_SLOT_STATUS_CHANGED, null);
         for (int i = 0; i < mCis.length; i++) {
             mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, i);
-
-            if (!StorageManager.inCryptKeeperBounce()) {
-                mCis[i].registerForAvailable(this, EVENT_RADIO_AVAILABLE, i);
-            } else {
-                mCis[i].registerForOn(this, EVENT_RADIO_ON, i);
-            }
-
+            mCis[i].registerForAvailable(this, EVENT_RADIO_AVAILABLE, i);
             mCis[i].registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, i);
             mCis[i].registerForIccRefresh(this, EVENT_SIM_REFRESH, i);
         }
@@ -624,18 +617,7 @@ public class UiccController extends Handler {
         for (int i = prevActiveModemCount; i < newActiveModemCount; i++) {
             mPhoneIdToSlotId[i] = INVALID_SLOT_ID;
             mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, i);
-
-            /*
-             * To support FDE (deprecated), additional check is needed:
-             *
-             * if (!StorageManager.inCryptKeeperBounce()) {
-             *     mCis[i].registerForAvailable(this, EVENT_RADIO_AVAILABLE, i);
-             * } else {
-             *     mCis[i].registerForOn(this, EVENT_RADIO_ON, i);
-             * }
-             */
             mCis[i].registerForAvailable(this, EVENT_RADIO_AVAILABLE, i);
-
             mCis[i].registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, i);
             mCis[i].registerForIccRefresh(this, EVENT_SIM_REFRESH, i);
         }
