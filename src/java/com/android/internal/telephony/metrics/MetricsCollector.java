@@ -16,10 +16,6 @@
 
 package com.android.internal.telephony.metrics;
 
-import static android.text.format.DateUtils.HOUR_IN_MILLIS;
-import static android.text.format.DateUtils.MINUTE_IN_MILLIS;
-import static android.text.format.DateUtils.SECOND_IN_MILLIS;
-
 import static com.android.internal.telephony.TelephonyStatsLog.CARRIER_ID_TABLE_VERSION;
 import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_DATA_SERVICE_SWITCH;
 import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_SERVICE_STATE;
@@ -84,6 +80,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
 import com.android.internal.util.ConcurrentUtils;
 import com.android.telephony.Rlog;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -103,6 +100,10 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     /** Disables various restrictions to ease debugging during development. */
     private static final boolean DBG = false; // STOPSHIP if true
 
+    private static final long MILLIS_PER_HOUR = Duration.ofHours(1).toMillis();
+    private static final long MILLIS_PER_MINUTE = Duration.ofMinutes(1).toMillis();
+    private static final long MILLIS_PER_SECOND = Duration.ofSeconds(1).toMillis();
+
     /**
      * Sets atom pull cool down to 23 hours to help enforcing privacy requirement.
      *
@@ -110,7 +111,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
      * that occur once a day.
      */
     private static final long MIN_COOLDOWN_MILLIS =
-            DBG ? 10L * SECOND_IN_MILLIS : 23L * HOUR_IN_MILLIS;
+            DBG ? 10L * MILLIS_PER_SECOND : 23L * MILLIS_PER_HOUR;
 
     /**
      * Buckets with less than these many calls will be dropped.
@@ -121,7 +122,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
 
     /** Bucket size in milliseconds to round call durations into. */
     private static final long DURATION_BUCKET_MILLIS =
-            DBG ? 2L * SECOND_IN_MILLIS : 5L * MINUTE_IN_MILLIS;
+            DBG ? 2L * MILLIS_PER_SECOND : 5L * MILLIS_PER_MINUTE;
 
     private static final StatsManager.PullAtomMetadata POLICY_PULL_DAILY =
             new StatsManager.PullAtomMetadata.Builder()
@@ -701,7 +702,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 state.simSlotIndex,
                 state.isMultiSim,
                 state.carrierId,
-                (int) (round(state.totalTimeMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS));
+                roundAndConvertMillisToSeconds(state.totalTimeMillis));
     }
 
     private static StatsEvent buildStatsEvent(VoiceCallRatUsage usage) {
@@ -709,7 +710,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 VOICE_CALL_RAT_USAGE,
                 usage.carrierId,
                 usage.rat,
-                round(usage.totalDurationMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS,
+                roundAndConvertMillisToSeconds(usage.totalDurationMillis),
                 usage.callCount);
     }
 
@@ -809,7 +810,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 dataCallSession.failureCause,
                 dataCallSession.suggestedRetryMillis,
                 dataCallSession.deactivateReason,
-                round(dataCallSession.durationMinutes, DURATION_BUCKET_MILLIS / MINUTE_IN_MILLIS),
+                roundAndConvertMillisToMinutes(
+                        dataCallSession.durationMinutes * MILLIS_PER_MINUTE),
                 dataCallSession.ongoing,
                 dataCallSession.bandAtEnd);
     }
@@ -820,19 +822,15 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 stats.carrierId,
                 stats.simSlotIndex,
                 stats.rat,
-                (int) (round(stats.registeredMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
-                (int) (round(stats.voiceCapableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
-                (int)
-                        (round(stats.voiceAvailableMillis, DURATION_BUCKET_MILLIS)
-                                / SECOND_IN_MILLIS),
-                (int) (round(stats.smsCapableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
-                (int) (round(stats.smsAvailableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
-                (int) (round(stats.videoCapableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
-                (int)
-                        (round(stats.videoAvailableMillis, DURATION_BUCKET_MILLIS)
-                                / SECOND_IN_MILLIS),
-                (int) (round(stats.utCapableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
-                (int) (round(stats.utAvailableMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS));
+                roundAndConvertMillisToSeconds(stats.registeredMillis),
+                roundAndConvertMillisToSeconds(stats.voiceCapableMillis),
+                roundAndConvertMillisToSeconds(stats.voiceAvailableMillis),
+                roundAndConvertMillisToSeconds(stats.smsCapableMillis),
+                roundAndConvertMillisToSeconds(stats.smsAvailableMillis),
+                roundAndConvertMillisToSeconds(stats.videoCapableMillis),
+                roundAndConvertMillisToSeconds(stats.videoAvailableMillis),
+                roundAndConvertMillisToSeconds(stats.utCapableMillis),
+                roundAndConvertMillisToSeconds(stats.utAvailableMillis));
     }
 
     private static StatsEvent buildStatsEvent(ImsRegistrationTermination termination) {
@@ -863,7 +861,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 stats.slotId,
                 stats.featureTagName,
                 stats.registrationTech,
-                (int) (round(stats.registeredMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS));
+                roundAndConvertMillisToSeconds(stats.registeredMillis));
     }
 
     private static StatsEvent buildStatsEvent(RcsClientProvisioningStats stats) {
@@ -884,7 +882,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 stats.responseType,
                 stats.isSingleRegistrationEnabled,
                 stats.count,
-                (int) (round(stats.stateTimerMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS));
+                roundAndConvertMillisToSeconds(stats.stateTimerMillis));
     }
 
     private static StatsEvent buildStatsEvent(SipDelegateStats stats) {
@@ -893,7 +891,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 stats.dimension,
                 stats.carrierId,
                 stats.slotId,
-                (int) (round(stats.uptimeMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS),
+                roundAndConvertMillisToSeconds(stats.uptimeMillis),
                 stats.destroyReason);
     }
 
@@ -905,7 +903,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 stats.featureTagName,
                 stats.sipTransportDeniedReason,
                 stats.sipTransportDeregisteredReason,
-                (int) (round(stats.associatedMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS));
+                roundAndConvertMillisToSeconds(stats.associatedMillis));
     }
 
     private static StatsEvent buildStatsEvent(SipMessageResponse stats) {
@@ -965,7 +963,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 stats.serviceIdName,
                 stats.serviceIdVersion,
                 stats.registrationTech,
-                (int) (round(stats.publishedMillis, DURATION_BUCKET_MILLIS) / SECOND_IN_MILLIS));
+                roundAndConvertMillisToSeconds(stats.publishedMillis));
     }
 
     private static StatsEvent buildStatsEvent(UceEventStats stats) {
@@ -1013,8 +1011,21 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         }
     }
 
-    /** Returns the value rounded to the bucket. */
-    private static long round(long value, long bucket) {
-        return bucket == 0 ? value : ((value + bucket / 2) / bucket) * bucket;
+    /**
+     * Rounds the duration and converts it from milliseconds to seconds.
+     */
+    private static int roundAndConvertMillisToSeconds(long valueMillis) {
+        long roundedValueMillis = Math.round((double) valueMillis / DURATION_BUCKET_MILLIS)
+                * DURATION_BUCKET_MILLIS;
+        return (int) (roundedValueMillis / MILLIS_PER_SECOND);
+    }
+
+    /**
+     * Rounds the duration and converts it from milliseconds to minutes.
+     */
+    private static int roundAndConvertMillisToMinutes(long valueMillis) {
+        long roundedValueMillis = Math.round((double) valueMillis / DURATION_BUCKET_MILLIS)
+                * DURATION_BUCKET_MILLIS;
+        return (int) (roundedValueMillis / MILLIS_PER_MINUTE);
     }
 }
