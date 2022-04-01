@@ -647,6 +647,7 @@ public abstract class TelephonyTest {
         doReturn(mDataRetryManager).when(mDataNetworkController).getDataRetryManager();
         doReturn(mCarrierPrivilegesTracker).when(mPhone).getCarrierPrivilegesTracker();
         doReturn(true).when(mPhone).isUsingNewDataStack();
+        doReturn(0).when(mPhone).getPhoneId();
 
         //mUiccController
         doReturn(mUiccCardApplication3gpp).when(mUiccController).getUiccCardApplication(anyInt(),
@@ -801,6 +802,16 @@ public abstract class TelephonyTest {
                 eq(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE));
         doReturn(20).when(mDataConfigManager).getNetworkCapabilityPriority(
                 eq(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        doReturn(60000).when(mDataConfigManager).getAnomalyNetworkConnectingTimeoutMs();
+        doReturn(60000).when(mDataConfigManager)
+                .getAnomalyNetworkDisconnectingTimeoutMs();
+        doReturn(60000).when(mDataConfigManager).getNetworkHandoverTimeoutMs();
+        doReturn(new DataConfigManager.EventFrequency(300000, 12))
+                .when(mDataConfigManager).getAnomalySetupDataCallThreshold();
+        doReturn(new DataConfigManager.EventFrequency(0, 2))
+                .when(mDataConfigManager).getAnomalyImsReleaseRequestThreshold();
+        doReturn(new DataConfigManager.EventFrequency(300000, 12))
+                .when(mDataConfigManager).getAnomalyNetworkUnwantedThreshold();
 
         // CellularNetworkValidator
         doReturn(SubscriptionManager.INVALID_PHONE_INDEX)
