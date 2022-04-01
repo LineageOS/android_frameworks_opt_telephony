@@ -3288,7 +3288,8 @@ public class GsmCdmaPhone extends Phone {
                 boolean enabled = (boolean) ar.result;
                 if (isUsingNewDataStack()) {
                     getDataSettingsManager().setDataEnabled(
-                            TelephonyManager.DATA_ENABLED_REASON_CARRIER, enabled);
+                            TelephonyManager.DATA_ENABLED_REASON_CARRIER, enabled,
+                            mContext.getOpPackageName());
                     return;
                 }
                 mDataEnabledSettings.setDataEnabled(TelephonyManager.DATA_ENABLED_REASON_CARRIER,
