@@ -1088,6 +1088,7 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
+    @NonNull
     public CarrierPrivilegesTracker getCarrierPrivilegesTracker() {
         return mCarrierPrivilegesTracker;
     }
