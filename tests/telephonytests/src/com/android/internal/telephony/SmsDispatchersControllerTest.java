@@ -27,6 +27,7 @@ import static org.mockito.Matchers.isNull;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,21 +47,22 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 import java.util.HashMap;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class SmsDispatchersControllerTest extends TelephonyTest {
-    @Mock
+    // Mocked classes
     private SMSDispatcher.SmsTracker mTracker;
 
     private SmsDispatchersController mSmsDispatchersController;
     private boolean mInjectionCallbackTriggered = false;
+
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mTracker = mock(SMSDispatcher.SmsTracker.class);
         setupMockPackagePermissionChecks();
 
         mSmsDispatchersController = new SmsDispatchersController(mPhone, mSmsStorageMonitor,

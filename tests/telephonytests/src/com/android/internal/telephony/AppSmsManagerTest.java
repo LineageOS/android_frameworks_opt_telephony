@@ -50,12 +50,13 @@ public class AppSmsManagerTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        super.setUp("AppSmsManagerTest");
+        super.setUp(getClass().getSimpleName());
         mAppSmsManagerUT = new AppSmsManager(mContextFixture.getTestDouble());
     }
 
     @After
     public void tearDown() throws Exception {
+        mAppSmsManagerUT = null;
         super.tearDown();
     }
 

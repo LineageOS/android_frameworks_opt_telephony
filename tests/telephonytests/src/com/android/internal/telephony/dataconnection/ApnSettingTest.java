@@ -55,6 +55,7 @@ public class ApnSettingTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mBundle = null;
         super.tearDown();
     }
 

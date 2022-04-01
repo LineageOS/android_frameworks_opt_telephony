@@ -43,7 +43,7 @@ public class CarrierServiceBindHelperTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
-        // Restore system properties.
+        mCarrierServiceBindHelper = null;
         super.tearDown();
     }
 

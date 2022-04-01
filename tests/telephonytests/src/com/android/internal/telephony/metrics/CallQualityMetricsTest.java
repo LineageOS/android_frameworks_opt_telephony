@@ -17,6 +17,7 @@
 package com.android.internal.telephony.metrics;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import android.telephony.CallQuality;
@@ -35,11 +36,9 @@ import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.E
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
 
 public class CallQualityMetricsTest extends TelephonyTest {
-
-    @Mock
+    // Mocked classes
     SignalStrengthController mSsc;
 
     private CallQualityMetrics mCallQualityMetrics;
@@ -47,6 +46,7 @@ public class CallQualityMetricsTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mSsc = mock(SignalStrengthController.class);
         mCallQualityMetrics = new CallQualityMetrics(mPhone);
 
         // the ImsPhone does not return a ServiceStateTracker, so CallQualityMetrics gets the
@@ -58,6 +58,7 @@ public class CallQualityMetricsTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mCallQualityMetrics = null;
         super.tearDown();
     }
 

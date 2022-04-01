@@ -29,20 +29,20 @@
 
 package com.android.internal.telephony.uicc;
 
-import org.mockito.Mock;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.*;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import com.android.internal.telephony.TelephonyTest;
-import org.mockito.ArgumentCaptor;
 
-import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.HandlerThread;
 import android.os.Message;
+
+import com.android.internal.telephony.TelephonyTest;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 
 public class IsimUiccRecordsTest extends TelephonyTest {
 
@@ -62,16 +62,16 @@ public class IsimUiccRecordsTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        super.setUp(this.getClass().getSimpleName());
+        super.setUp(getClass().getSimpleName());
         new IsimUiccRecordsTestHandler(TAG).start();
         waitUntilReady();
     }
 
     @After
     public void tearDown() throws Exception {
-        super.tearDown();
         mIsimUiccRecords.dispose();
-
+        mIsimUiccRecords = null;
+        super.tearDown();
     }
 
     @Test

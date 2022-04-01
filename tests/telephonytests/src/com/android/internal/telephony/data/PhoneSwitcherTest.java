@@ -45,6 +45,7 @@ import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -85,7 +86,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -97,34 +97,21 @@ public class PhoneSwitcherTest extends TelephonyTest {
     private static final int EVENT_RADIO_ON = 108;
     private static final int EVENT_MODEM_COMMAND_DONE = 112;
 
-    @Mock
+    // Mocked classes
+    CompletableFuture<Boolean> mFuturePhone;
     private CommandsInterface mCommandsInterface0;
-    @Mock
     private CommandsInterface mCommandsInterface1;
-    @Mock
     private Phone mPhone2; // mPhone as phone 1 is already defined in TelephonyTest.
-    @Mock
     private Phone mImsPhone;
     // TODO: Add logic for DataSettingsManager
-    @Mock
     private DataEnabledSettings mDataEnabledSettings2;
-    @Mock
     private Handler mActivePhoneSwitchHandler;
-    @Mock
     private GsmCdmaCall mActiveCall;
-    @Mock
     private GsmCdmaCall mHoldingCall;
-    @Mock
     private GsmCdmaCall mInactiveCall;
-    @Mock
     private ISetOpportunisticDataCallback mSetOpptDataCallback1;
-    @Mock
     private ISetOpportunisticDataCallback mSetOpptDataCallback2;
-    @Mock
-    CompletableFuture<Boolean> mFuturePhone;
-    @Mock
     PhoneSwitcher.ImsRegTechProvider mMockImsRegTechProvider;
-    @Mock
     private SubscriptionInfo mSubscriptionInfo;
 
     private PhoneSwitcher mPhoneSwitcher;
@@ -142,6 +129,20 @@ public class PhoneSwitcherTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mFuturePhone = mock(CompletableFuture.class);
+        mCommandsInterface0 = mock(CommandsInterface.class);
+        mCommandsInterface1 = mock(CommandsInterface.class);
+        mPhone2 = mock(Phone.class); // mPhone as phone 1 is already defined in TelephonyTest.
+        mImsPhone = mock(Phone.class);
+        mDataEnabledSettings2 = mock(DataEnabledSettings.class);
+        mActivePhoneSwitchHandler = mock(Handler.class);
+        mActiveCall = mock(GsmCdmaCall.class);
+        mHoldingCall = mock(GsmCdmaCall.class);
+        mInactiveCall = mock(GsmCdmaCall.class);
+        mSetOpptDataCallback1 = mock(ISetOpportunisticDataCallback.class);
+        mSetOpptDataCallback2 = mock(ISetOpportunisticDataCallback.class);
+        mMockImsRegTechProvider = mock(PhoneSwitcher.ImsRegTechProvider.class);
+        mSubscriptionInfo = mock(SubscriptionInfo.class);
 
         PhoneCapability phoneCapability = new PhoneCapability(1, 1, null, false, new int[0]);
         doReturn(phoneCapability).when(mPhoneConfigurationManager).getCurrentPhoneCapability();
@@ -156,6 +157,10 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mPhoneSwitcher = null;
+        mSubChangedListener = null;
+        mConnectivityManager = null;
+        mNetworkProviderMessenger = null;
         super.tearDown();
     }
 
