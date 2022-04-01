@@ -28,7 +28,6 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
-import android.os.storage.StorageManager;
 import android.sysprop.TelephonyProperties;
 import android.telephony.PhoneCapability;
 import android.telephony.SubscriptionManager;
@@ -113,11 +112,7 @@ public class PhoneConfigurationManager {
     }
 
     private void registerForRadioState(Phone phone) {
-        if (!StorageManager.inCryptKeeperBounce()) {
-            phone.mCi.registerForAvailable(mHandler, Phone.EVENT_RADIO_AVAILABLE, phone);
-        } else {
-            phone.mCi.registerForOn(mHandler, Phone.EVENT_RADIO_ON, phone);
-        }
+        phone.mCi.registerForAvailable(mHandler, Phone.EVENT_RADIO_AVAILABLE, phone);
     }
 
     private PhoneCapability getDefaultCapability() {
