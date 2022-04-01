@@ -93,6 +93,9 @@ public class DataRetryManager extends Handler {
     /** Event for modem reset. */
     private static final int EVENT_MODEM_RESET = 9;
 
+    /** Event for tracking area code change. */
+    private static final int EVENT_TAC_CHANGED = 10;
+
     /** The maximum entries to preserve. */
     private static final int MAXIMUM_HISTORICAL_ENTRIES = 100;
 
@@ -102,26 +105,31 @@ public class DataRetryManager extends Handler {
                     RESET_REASON_RADIO_ON,
                     RESET_REASON_MODEM_RESTART,
                     RESET_REASON_DATA_SERVICE_BOUND,
+                    RESET_REASON_DATA_CONFIG_CHANGED,
+                    RESET_REASON_TAC_CHANGED,
             })
     public @interface RetryResetReason {}
 
     /** Reset due to data profiles changed. */
-    public static final int RESET_REASON_DATA_PROFILES_CHANGED = 1;
+    private static final int RESET_REASON_DATA_PROFILES_CHANGED = 1;
 
     /** Reset due to radio on. This could happen after airplane mode off or RIL restarted. */
-    public static final int RESET_REASON_RADIO_ON = 2;
+    private static final int RESET_REASON_RADIO_ON = 2;
 
     /** Reset due to modem restarted. */
-    public static final int RESET_REASON_MODEM_RESTART = 3;
+    private static final int RESET_REASON_MODEM_RESTART = 3;
 
     /**
      * Reset due to data service bound. This could happen when reboot or when data service crashed
      * and rebound.
      */
-    public static final int RESET_REASON_DATA_SERVICE_BOUND = 4;
+    private static final int RESET_REASON_DATA_SERVICE_BOUND = 4;
 
     /** Reset due to data config changed. */
-    public static final int RESET_REASON_DATA_CONFIG_CHANGED = 5;
+    private static final int RESET_REASON_DATA_CONFIG_CHANGED = 5;
+
+    /** Reset due to tracking area code changed. */
+    private static final int RESET_REASON_TAC_CHANGED = 6;
 
     /** The phone instance. */
     private final @NonNull Phone mPhone;
@@ -943,6 +951,8 @@ public class DataRetryManager extends Handler {
                 });
         mRil.registerForOn(this, EVENT_RADIO_ON, null);
         mRil.registerForModemReset(this, EVENT_MODEM_RESET, null);
+
+        mPhone.getServiceStateTracker().registerForAreaCodeChanged(this, EVENT_TAC_CHANGED, null);
     }
 
     @Override
@@ -973,6 +983,9 @@ public class DataRetryManager extends Handler {
                 break;
             case EVENT_MODEM_RESET:
                 onReset(RESET_REASON_MODEM_RESTART);
+                break;
+            case EVENT_TAC_CHANGED:
+                onReset(RESET_REASON_TAC_CHANGED);
                 break;
             case EVENT_DATA_PROFILE_UNTHROTTLED:
                 ar = (AsyncResult) msg.obj;
@@ -1569,6 +1582,8 @@ public class DataRetryManager extends Handler {
                 return "DATA_SERVICE_BOUND";
             case RESET_REASON_DATA_CONFIG_CHANGED:
                 return "DATA_CONFIG_CHANGED";
+            case RESET_REASON_TAC_CHANGED:
+                return "TAC_CHANGED";
             default:
                 return "UNKNOWN(" + reason + ")";
         }
