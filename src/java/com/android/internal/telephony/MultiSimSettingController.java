@@ -792,7 +792,8 @@ public class MultiSimSettingController extends Handler {
                 log("setting data to false on " + phone.getSubId());
                 if (phone.isUsingNewDataStack()) {
                     phone.getDataSettingsManager().setDataEnabled(
-                            TelephonyManager.DATA_ENABLED_REASON_USER, false);
+                            TelephonyManager.DATA_ENABLED_REASON_USER, false,
+                            mContext.getOpPackageName());
                 } else {
                     phone.getDataEnabledSettings().setDataEnabled(
                             TelephonyManager.DATA_ENABLED_REASON_USER, false);
@@ -834,7 +835,8 @@ public class MultiSimSettingController extends Handler {
                 if (phone != null) {
                     if (phone.isUsingNewDataStack()) {
                         phone.getDataSettingsManager().setDataEnabled(
-                                TelephonyManager.DATA_ENABLED_REASON_USER, enable);
+                                TelephonyManager.DATA_ENABLED_REASON_USER, enable,
+                                mContext.getOpPackageName());
                     } else {
                         phone.getDataEnabledSettings().setUserDataEnabled(enable, false);
                     }
