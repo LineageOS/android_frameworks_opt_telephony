@@ -66,7 +66,7 @@ public class PinStorageTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        super.setUp(this.getClass().getSimpleName());
+        super.setUp(getClass().getSimpleName());
 
         // Store boot count, so that correct value can be restored at the end.
         mBootCount = Settings.Global.getInt(
@@ -91,8 +91,7 @@ public class PinStorageTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
-        super.tearDown();
-
+        mPinStorage = null;
         // Restore boot count
         if (mBootCount == -1) {
             Settings.Global.resetToDefaults(
@@ -101,6 +100,7 @@ public class PinStorageTest extends TelephonyTest {
             Settings.Global.putInt(
                     mContext.getContentResolver(), Settings.Global.BOOT_COUNT, mBootCount);
         }
+        super.tearDown();
     }
 
     @Test

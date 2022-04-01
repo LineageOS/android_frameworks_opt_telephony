@@ -21,6 +21,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 
 import android.os.Handler;
 import android.os.Looper;
@@ -28,7 +29,6 @@ import android.os.Looper;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
 
 /**
  * Unit test verifying the methods of the connection class.
@@ -37,7 +37,7 @@ public class ConnectionTest extends TelephonyTest {
 
     private static final int TEST_PHONE_TYPE = 1;
 
-    @Mock
+    // Mocked classes
     protected Call mCall;
 
     private class TestConnection extends Connection {
@@ -115,6 +115,7 @@ public class ConnectionTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mCall = mock(Call.class);
         doReturn(mPhone).when(mCall).getPhone();
         replaceInstance(Handler.class, "mLooper", mCT, Looper.getMainLooper());
     }

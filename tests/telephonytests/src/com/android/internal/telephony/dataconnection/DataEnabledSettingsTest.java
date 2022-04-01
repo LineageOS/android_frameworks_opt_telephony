@@ -82,6 +82,10 @@ public class DataEnabledSettingsTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mDataEnabledSettingsTestHandler.quit();
+        mDataEnabledSettingsTestHandler.join();
+        mDataEnabledSettingsTestHandler = null;
+        mDataEnabledSettingsUT = null;
         super.tearDown();
     }
 

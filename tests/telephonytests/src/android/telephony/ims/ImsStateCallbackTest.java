@@ -16,7 +16,6 @@
 
 package android.telephony.ims;
 
-
 import static android.telephony.ims.feature.ImsFeature.FEATURE_MMTEL;
 import static android.telephony.ims.feature.ImsFeature.FEATURE_RCS;
 
@@ -24,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import android.telephony.BinderCacheManager;
@@ -38,7 +38,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 public class ImsStateCallbackTest extends TelephonyTest {
     private static final int ON_ERROR = Integer.MAX_VALUE;
@@ -46,9 +45,10 @@ public class ImsStateCallbackTest extends TelephonyTest {
 
     private static final int SUB_ID_ONE = 1;
 
-    @Mock ITelephony mMockTelephonyInterface;
-    @Mock BinderCacheManager<ITelephony> mBinderCache;
-    @Mock BinderCacheManager<IImsRcsController> mRcsBinderCache;
+    // Mocked classes
+    ITelephony mMockTelephonyInterface;
+    BinderCacheManager<ITelephony> mBinderCache;
+    BinderCacheManager<IImsRcsController> mRcsBinderCache;
 
     public class LocalCallback extends ImsStateCallback {
         int mRegResult = -1;
@@ -72,6 +72,9 @@ public class ImsStateCallbackTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp("ImsStateCallbackTests");
+        mMockTelephonyInterface = mock(ITelephony.class);
+        mBinderCache = mock(BinderCacheManager.class);
+        mRcsBinderCache = mock(BinderCacheManager.class);
         doReturn(mMockTelephonyInterface).when(mBinderCache)
                 .listenOnBinder(any(), any(Runnable.class));
         doReturn(mMockTelephonyInterface).when(mBinderCache)

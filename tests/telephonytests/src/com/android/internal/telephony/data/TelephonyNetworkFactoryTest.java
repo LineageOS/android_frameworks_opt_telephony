@@ -59,7 +59,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
@@ -72,12 +71,9 @@ import java.util.Map;
 public class TelephonyNetworkFactoryTest extends TelephonyTest {
     private static final String LOG_TAG = "TelephonyNetworkFactoryTest";
 
-    @Mock
+    // Mocked classes
     PhoneSwitcher mPhoneSwitcher;
-    @Mock
     private RadioConfig mMockRadioConfig;
-
-    @Mock
     private DataConnection mDataConnection;
 
     private String mTestName = "";
@@ -158,6 +154,9 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mPhoneSwitcher = mock(PhoneSwitcher.class);
+        mMockRadioConfig = mock(RadioConfig.class);
+        mDataConnection = mock(DataConnection.class);
         replaceInstance(RadioConfig.class, "sRadioConfig", null, mMockRadioConfig);
 
         mContextFixture.putStringArrayResource(com.android.internal.R.array.networkAttributes,
@@ -185,6 +184,10 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mAllNetworkRequestSet.clear();
+        mNetworkRequestList.clear();
+        mNetworkRequestMessageMap.clear();
+        mTelephonyNetworkFactoryUT = null;
         super.tearDown();
     }
 

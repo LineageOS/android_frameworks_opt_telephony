@@ -43,6 +43,7 @@ import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -82,7 +83,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -94,27 +94,25 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     private static final int CARRIER_ID_SLOT_0 = 1;
     private static final int CARRIER_ID_SLOT_1 = 1187;
 
-    @Mock private Phone mSecondPhone;
-    @Mock private ServiceStateTracker mSecondServiceStateTracker;
-    @Mock private ServiceState mSecondServiceState;
-
-    @Mock private UiccSlot mPhysicalSlot;
-    @Mock private UiccSlot mEsimSlot;
-    @Mock private UiccSlot mEmptySlot;
-    @Mock private UiccCard mInactiveCard;
-    @Mock private UiccCard mActiveCard;
-    @Mock private UiccPort mInactivePort;
-    @Mock private UiccPort mActivePort;
-
-    @Mock private ImsPhoneConnection mImsConnection0;
-    @Mock private ImsPhoneConnection mImsConnection1;
-    @Mock private GsmCdmaConnection mGsmConnection0;
-    @Mock private GsmCdmaConnection mGsmConnection1;
-
-    @Mock private GsmCdmaCall mCsCall0;
-    @Mock private GsmCdmaCall mCsCall1;
-    @Mock private ImsPhoneCall mImsCall0;
-    @Mock private ImsPhoneCall mImsCall1;
+    // Mocked classes
+    private Phone mSecondPhone;
+    private ServiceStateTracker mSecondServiceStateTracker;
+    private ServiceState mSecondServiceState;
+    private UiccSlot mPhysicalSlot;
+    private UiccSlot mEsimSlot;
+    private UiccSlot mEmptySlot;
+    private UiccCard mInactiveCard;
+    private UiccCard mActiveCard;
+    private UiccPort mInactivePort;
+    private UiccPort mActivePort;
+    private ImsPhoneConnection mImsConnection0;
+    private ImsPhoneConnection mImsConnection1;
+    private GsmCdmaConnection mGsmConnection0;
+    private GsmCdmaConnection mGsmConnection1;
+    private GsmCdmaCall mCsCall0;
+    private GsmCdmaCall mCsCall1;
+    private ImsPhoneCall mImsCall0;
+    private ImsPhoneCall mImsCall1;
 
     private static class TestableVoiceCallSessionStats extends VoiceCallSessionStats {
         private long mTimeMillis = 0L;
@@ -143,6 +141,24 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mSecondPhone = mock(Phone.class);
+        mSecondServiceStateTracker = mock(ServiceStateTracker.class);
+        mSecondServiceState = mock(ServiceState.class);
+        mPhysicalSlot = mock(UiccSlot.class);
+        mEsimSlot = mock(UiccSlot.class);
+        mEmptySlot = mock(UiccSlot.class);
+        mInactiveCard = mock(UiccCard.class);
+        mActiveCard = mock(UiccCard.class);
+        mInactivePort = mock(UiccPort.class);
+        mActivePort = mock(UiccPort.class);
+        mImsConnection0 = mock(ImsPhoneConnection.class);
+        mImsConnection1 = mock(ImsPhoneConnection.class);
+        mGsmConnection0 = mock(GsmCdmaConnection.class);
+        mGsmConnection1 = mock(GsmCdmaConnection.class);
+        mCsCall0 = mock(GsmCdmaCall.class);
+        mCsCall1 = mock(GsmCdmaCall.class);
+        mImsCall0 = mock(ImsPhoneCall.class);
+        mImsCall1 = mock(ImsPhoneCall.class);
 
         replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone, mSecondPhone});
         doReturn(CARRIER_ID_SLOT_0).when(mPhone).getCarrierId();
@@ -192,6 +208,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mVoiceCallSessionStats0 = null;
+        mVoiceCallSessionStats1 = null;
         super.tearDown();
     }
 

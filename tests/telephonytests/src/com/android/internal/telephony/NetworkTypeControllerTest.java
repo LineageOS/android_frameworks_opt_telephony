@@ -21,6 +21,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 
 import android.content.Intent;
 import android.os.AsyncResult;
@@ -48,7 +49,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -74,9 +74,9 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     private NetworkTypeController mNetworkTypeController;
     private PersistableBundle mBundle;
-    @Mock
+
+    // Mocked classes
     DataConnection mDataConnection;
-    @Mock
     ApnSetting mApnSetting;
 
     private IState getCurrentState() throws Exception {
@@ -102,6 +102,8 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mDataConnection = mock(DataConnection.class);
+        mApnSetting = mock(ApnSetting.class);
         mBundle = mContextFixture.getCarrierConfigBundle();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING,
                 "connected_mmwave:5G_Plus,connected:5G,not_restricted_rrc_idle:5G,"
@@ -123,6 +125,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mNetworkTypeController.getHandler().removeCallbacksAndMessages(null);
         mNetworkTypeController = null;
+        mBundle = null;
         super.tearDown();
     }
 

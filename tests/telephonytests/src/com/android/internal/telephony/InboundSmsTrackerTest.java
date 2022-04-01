@@ -28,6 +28,7 @@ import androidx.test.InstrumentationRegistry;
 
 import com.android.internal.util.HexDump;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -54,6 +55,11 @@ public class InboundSmsTrackerTest {
                 FAKE_ADDRESS, FAKE_DISPLAY_ADDRESS, FAKE_REFERENCE_NUMBER, FAKE_SEQUENCE_NUMBER,
                 FAKE_MESSAGE_COUNT, false, FAKE_MESSAGE_BODY, false /* isClass0 */, FAKE_SUBID,
                 InboundSmsHandler.SOURCE_NOT_INJECTED);
+    }
+
+    @After
+    public void tearDown() {
+        mInboundSmsTracker = null;
     }
 
     public static MatrixCursor createFakeCursor() {

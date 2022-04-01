@@ -54,7 +54,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 import java.util.HashSet;
 
@@ -77,13 +76,15 @@ public class ImsServiceControllerCompatTest extends ImsTestBase {
                 }
             };
 
-    @Mock MmTelInterfaceAdapter mMockMmTelInterfaceAdapter;
-    @Mock IImsMMTelFeature mMockRemoteMMTelFeature;
-    @Mock IBinder mMockMMTelBinder;
-    @Mock IImsServiceController mMockServiceControllerBinder;
-    @Mock ImsServiceController.ImsServiceControllerCallbacks mMockCallbacks;
-    @Mock IImsConfig mMockImsConfig;
-    @Mock Context mMockContext;
+    // Mocked classes
+    MmTelInterfaceAdapter mMockMmTelInterfaceAdapter;
+    IImsMMTelFeature mMockRemoteMMTelFeature;
+    IBinder mMockMMTelBinder;
+    IImsServiceController mMockServiceControllerBinder;
+    ImsServiceController.ImsServiceControllerCallbacks mMockCallbacks;
+    IImsConfig mMockImsConfig;
+    Context mMockContext;
+
     private final ComponentName mTestComponentName = new ComponentName("TestPkg",
             "ImsServiceControllerTest");
     private final Handler mHandler = new Handler(Looper.getMainLooper());
@@ -95,6 +96,13 @@ public class ImsServiceControllerCompatTest extends ImsTestBase {
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        mMockMmTelInterfaceAdapter = mock(MmTelInterfaceAdapter.class);
+        mMockRemoteMMTelFeature = mock(IImsMMTelFeature.class);
+        mMockMMTelBinder = mock(IBinder.class);
+        mMockServiceControllerBinder = mock(IImsServiceController.class);
+        mMockCallbacks = mock(ImsServiceController.ImsServiceControllerCallbacks.class);
+        mMockImsConfig = mock(IImsConfig.class);
+        mMockContext = mock(Context.class);
         mRepo = new ImsFeatureBinderRepository();
         // Can't mock MmTelFeatureCompatAdapter due to final getBinder() method.
         mMmTelCompatAdapterSpy = spy(new MmTelFeatureCompatAdapter(mMockContext, SLOT_0,
@@ -109,7 +117,6 @@ public class ImsServiceControllerCompatTest extends ImsTestBase {
         when(mMockRemoteMMTelFeature.asBinder()).thenReturn(mMockMMTelBinder);
     }
 
-
     @After
     @Override
     public void tearDown() throws Exception {
@@ -117,6 +124,9 @@ public class ImsServiceControllerCompatTest extends ImsTestBase {
         mTestImsServiceController = null;
         // Make sure the handler is empty before finishing the test.
         waitForHandlerAction(mHandler, 1000);
+        mTestImsServiceController = null;
+        mRepo = null;
+        mMmTelCompatAdapterSpy = null;
         super.tearDown();
     }
 

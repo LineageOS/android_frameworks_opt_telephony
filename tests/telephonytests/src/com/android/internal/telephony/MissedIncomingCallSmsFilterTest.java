@@ -51,15 +51,15 @@ public class MissedIncomingCallSmsFilterTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        super.setUp(MissedIncomingCallSmsFilterTest.class.getSimpleName());
-
+        super.setUp(getClass().getSimpleName());
         mBundle = mContextFixture.getCarrierConfigBundle();
-
         mFilterUT = new MissedIncomingCallSmsFilter(mPhone);
     }
 
     @After
     public void tearDown() throws Exception {
+        mFilterUT = null;
+        mBundle = null;
         super.tearDown();
     }
 

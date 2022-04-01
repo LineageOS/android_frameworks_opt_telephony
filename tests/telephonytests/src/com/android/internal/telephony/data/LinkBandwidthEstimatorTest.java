@@ -34,6 +34,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -60,7 +61,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -82,15 +82,17 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
     private long mElapsedTimeMs = 0;
     private long mTxBytes = 0;
     private long mRxBytes = 0;
-    @Mock
-    TelephonyFacade mTelephonyFacade;
-    @Mock
-    private Handler mTestHandler;
     private NetworkRegistrationInfo mNri;
+
+    // Mocked classes
+    TelephonyFacade mTelephonyFacade;
+    private Handler mTestHandler;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mTelephonyFacade = mock(TelephonyFacade.class);
+        mTestHandler = mock(Handler.class);
         mNetworkCapabilities = new NetworkCapabilities.Builder()
                 .addTransportType(TRANSPORT_CELLULAR)
                 .build();
@@ -139,6 +141,10 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mLBE = null;
+        mNri = null;
+        mNetworkCapabilities = null;
+        mCellIdentity = null;
         super.tearDown();
     }
 

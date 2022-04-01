@@ -24,6 +24,7 @@ import android.telephony.PhysicalChannelConfig.Builder;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 
+import org.junit.After;
 import org.junit.Test;
 
 /** Unit test for {@link android.telephony.PhysicalChannelConfig}. */
@@ -59,6 +60,11 @@ public class PhysicalChannelConfigTest {
                 .setUplinkChannelNumber(uplinkChannelNumber)
                 .setBand(band)
                 .build();
+    }
+
+    @After
+    public void tearDown() {
+        mPhysicalChannelConfig = null;
     }
 
     @Test
