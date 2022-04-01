@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyObject;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import android.os.Handler;
@@ -39,16 +40,13 @@ import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
 
 public class UiccSlotTest extends TelephonyTest {
     private UiccSlot mUiccSlot;
     private UiccSlotTestHandlerThread mTestHandlerThread;
     private Handler mTestHandler;
 
-    @Mock
-    private Handler mMockedHandler;
-    @Mock
+    // Mocked classes
     private IccCardStatus mIccCardStatus;
 
     private static final int UICCCARD_ABSENT = 1;
@@ -84,6 +82,7 @@ public class UiccSlotTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mIccCardStatus = mock(IccCardStatus.class);
         mContextFixture.putBooleanResource(com.android.internal.R.bool.config_hotswapCapable, true);
         /* initially there are no application available */
         mIccCardStatus.mApplications = new IccCardApplicationStatus[]{};
@@ -102,6 +101,10 @@ public class UiccSlotTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mTestHandlerThread.quit();
         mTestHandlerThread.join();
+        mTestHandlerThread = null;
+        mTestHandler.removeCallbacksAndMessages(null);
+        mTestHandler = null;
+        mUiccSlot = null;
         super.tearDown();
     }
 

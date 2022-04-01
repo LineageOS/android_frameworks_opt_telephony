@@ -20,6 +20,7 @@ import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertTrue;
 
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -32,13 +33,11 @@ import androidx.test.runner.AndroidJUnit4;
 
 import com.android.internal.telephony.TestExecutorService;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -50,15 +49,11 @@ public class DtmfTransportTest {
     private static final long NEGOTIATION_TIMEOUT_MILLIS = 2000L;
     private static final String EXPECTED_PROBE = "AAD";
 
-    @Mock
+    // Mocked classes
     private DtmfAdapter mDtmfAdapter;
-    @Mock
     private TransportProtocol.Callback mCallback;
-    @Mock
     private Timeouts.Adapter mTimeouts;
-    @Captor
     private ArgumentCaptor<Set<Communicator.Message>> mMessagesCaptor;
-    @Captor
     private ArgumentCaptor<Character> mDigitsCaptor;
 
     private TestExecutorService mTestExecutorService = new TestExecutorService();
@@ -66,7 +61,11 @@ public class DtmfTransportTest {
 
     @Before
     public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
+        mDtmfAdapter = mock(DtmfAdapter.class);
+        mCallback = mock(TransportProtocol.Callback.class);
+        mTimeouts = mock(Timeouts.Adapter.class);
+        mMessagesCaptor = ArgumentCaptor.forClass(Set.class);
+        mDigitsCaptor = ArgumentCaptor.forClass(Character.class);
         when(mTimeouts.getDtmfMinimumIntervalMillis()).thenReturn(DIGIT_INTERVAL_MILLIS);
         when(mTimeouts.getMaxDurationOfDtmfMessageMillis()).thenReturn(MSG_TIMEOUT_MILLIS);
         when(mTimeouts.getDtmfNegotiationTimeoutMillis()).thenReturn(NEGOTIATION_TIMEOUT_MILLIS);
@@ -74,6 +73,12 @@ public class DtmfTransportTest {
         mDtmfTransport = new DtmfTransport(mDtmfAdapter, mTimeouts,
                 mTestExecutorService /* Executors.newSingleThreadScheduledExecutor() in prod. */);
         mDtmfTransport.setCallback(mCallback);
+    }
+
+    @After
+    public void tearDown() {
+        mTestExecutorService = null;
+        mDtmfTransport = null;
     }
 
     /**

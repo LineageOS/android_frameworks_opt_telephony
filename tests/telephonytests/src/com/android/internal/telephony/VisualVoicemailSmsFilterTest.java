@@ -30,6 +30,8 @@ import com.android.internal.telephony.VisualVoicemailSmsFilter.PhoneAccountHandl
 
 import junit.framework.TestCase;
 
+import org.junit.After;
+import org.junit.Before;
 import org.mockito.Mockito;
 
 import java.util.Arrays;
@@ -81,7 +83,7 @@ public class VisualVoicemailSmsFilterTest extends TestCase {
     private Context mContext;
     private TelephonyManager mTelephonyManager;
 
-    @Override
+    @Before
     public void setUp() throws Exception {
         super.setUp();
         mContext = Mockito.mock(Context.class);
@@ -102,9 +104,11 @@ public class VisualVoicemailSmsFilterTest extends TestCase {
                 });
     }
 
-    @Override
+    @After
     public void tearDown() throws Exception {
         VisualVoicemailSmsFilter.setPhoneAccountHandleConverterForTest(null);
+        mContext = null;
+        mTelephonyManager = null;
         super.tearDown();
     }
 

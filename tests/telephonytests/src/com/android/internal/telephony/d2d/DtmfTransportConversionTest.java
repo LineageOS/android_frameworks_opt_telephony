@@ -17,21 +17,20 @@
 package com.android.internal.telephony.d2d;
 
 import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertTrue;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.mockito.Mockito.mock;
 
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Pair;
 
 import com.android.internal.telephony.TestExecutorService;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -63,15 +62,13 @@ public class DtmfTransportConversionTest {
         }
     }
 
-    @Mock
+    // Mocked classes
     private DtmfAdapter mDtmfAdapter;
-    @Mock
     private TransportProtocol.Callback mCallback;
-    @Mock
     private Timeouts.Adapter mTimeouts;
-    private TestExecutorService mScheduledExecutorService = new TestExecutorService();
 
-    private final TestParams mParams;
+    private TestExecutorService mScheduledExecutorService = new TestExecutorService();
+    private TestParams mParams;
     private DtmfTransport mDtmfTransport;
 
     public DtmfTransportConversionTest(DtmfTransportConversionTest.TestParams params) {
@@ -80,9 +77,18 @@ public class DtmfTransportConversionTest {
 
     @Before
     public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
+        mDtmfAdapter = mock(DtmfAdapter.class);
+        mCallback = mock(TransportProtocol.Callback.class);
+        mTimeouts = mock(Timeouts.Adapter.class);
         mDtmfTransport = new DtmfTransport(mDtmfAdapter, mTimeouts, mScheduledExecutorService);
         mDtmfTransport.setCallback(mCallback);
+    }
+
+    @After
+    public void tearDown() {
+        mScheduledExecutorService = null;
+        mParams = null;
+        mDtmfTransport = null;
     }
 
     /**

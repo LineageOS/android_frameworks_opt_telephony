@@ -21,6 +21,7 @@ import static junit.framework.Assert.fail;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
@@ -34,8 +35,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 import java.util.concurrent.Executor;
 
@@ -50,19 +49,16 @@ public class ImsPhoneMmiCodeTest extends TelephonyTest {
     private static final String TEST_DIAL_STRING_NON_EMERGENCY_NUMBER = "11976";
     private ImsPhoneMmiCode mImsPhoneMmiCode;
     private ImsPhone mImsPhoneUT;
-    @Mock private ServiceState mServiceState;
 
-    private Executor mExecutor = new Executor() {
-        @Override
-        public void execute(Runnable r) {
-            r.run();
-        }
-    };
+    // Mocked classes
+    private ServiceState mServiceState;
+
+    private final Executor mExecutor = Runnable::run;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        MockitoAnnotations.initMocks(this);
+        mServiceState = mock(ServiceState.class);
         doReturn(mExecutor).when(mContext).getMainExecutor();
         doReturn(mPhone).when(mPhone).getDefaultPhone();
         doReturn(mServiceState).when(mPhone).getServiceState();
@@ -74,6 +70,8 @@ public class ImsPhoneMmiCodeTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mImsPhoneMmiCode = null;
+        mImsPhoneUT = null;
         super.tearDown();
     }
 

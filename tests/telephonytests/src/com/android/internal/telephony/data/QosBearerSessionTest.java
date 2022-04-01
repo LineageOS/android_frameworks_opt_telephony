@@ -25,13 +25,11 @@ import android.os.Parcel;
 import android.telephony.data.QosBearerFilter;
 import android.telephony.data.QosBearerSession;
 
-import com.android.internal.telephony.TelephonyTest;
-
 import org.junit.Test;
 
 import java.util.ArrayList;
 
-public class QosBearerSessionTest extends TelephonyTest {
+public class QosBearerSessionTest {
 
     @Test
     public void testParcel() {

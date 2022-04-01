@@ -22,6 +22,7 @@ import static junit.framework.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import android.content.Intent;
@@ -42,8 +43,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -58,26 +57,26 @@ public class EuiccCardControllerTest extends TelephonyTest {
     private int mLastBootCount;
     private EuiccCardController mEuiccCardController;
     private SharedPreferences mSp;
-    @Mock
-    private UiccSlot mInactivatedEsimSlot;
-    @Mock
-    private UiccSlot mActivatedEsimSlot;
-    @Mock
-    private UiccSlot mNotPresentEsimSlot;
-    @Mock
-    private UiccSlot mActivatedRemovableSlot;
-    @Mock
-    private EuiccController mEuiccController;
-    @Mock
-    private UiccController mUiccController;
     private boolean mOtaStarted;
     private CountDownLatch mOtaLatch;
 
+    // Mocked classes
+    private UiccSlot mInactivatedEsimSlot;
+    private UiccSlot mActivatedEsimSlot;
+    private UiccSlot mNotPresentEsimSlot;
+    private UiccSlot mActivatedRemovableSlot;
+    private EuiccController mEuiccController;
+    private UiccController mUiccController;
 
     @Before
     public void setUp() throws Exception {
-        super.setUp("EuiccCardControllerTest");
-        MockitoAnnotations.initMocks(this);
+        super.setUp(getClass().getSimpleName());
+        mInactivatedEsimSlot = mock(UiccSlot.class);
+        mActivatedEsimSlot = mock(UiccSlot.class);
+        mNotPresentEsimSlot = mock(UiccSlot.class);
+        mActivatedRemovableSlot = mock(UiccSlot.class);
+        mEuiccController = mock(EuiccController.class);
+        mUiccController = mock(UiccController.class);
         mSp = PreferenceManager.getDefaultSharedPreferences(mContext);
 
         mLastBootCount = mSp.getInt(KEY_LAST_BOOT_COUNT, -1);
@@ -113,7 +112,6 @@ public class EuiccCardControllerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
-        super.tearDown();
         if (mBootCount == -1) {
             Settings.Global.resetToDefaults(mContext.getContentResolver(), KEY_LAST_BOOT_COUNT);
         } else {
@@ -122,6 +120,9 @@ public class EuiccCardControllerTest extends TelephonyTest {
         }
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
         sp.edit().putInt(KEY_LAST_BOOT_COUNT, mLastBootCount).apply();
+        mEuiccCardController = null;
+        mSp = null;
+        super.tearDown();
     }
 
     @Test

@@ -50,7 +50,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.util.Collections;
@@ -59,7 +58,7 @@ import java.util.List;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class DataRetryManagerTest extends TelephonyTest {
-    private DataProfile mDataProfile1 = new DataProfile.Builder()
+    private final DataProfile mDataProfile1 = new DataProfile.Builder()
             .setApnSetting(new ApnSetting.Builder()
                     .setId(2163)
                     .setOperatorNumeric("12345")
@@ -80,7 +79,7 @@ public class DataRetryManagerTest extends TelephonyTest {
                 .setPreferred(false)
                 .build();
 
-    private DataProfile mDataProfile2 = new DataProfile.Builder()
+    private final DataProfile mDataProfile2 = new DataProfile.Builder()
             .setApnSetting(new ApnSetting.Builder()
                     .setId(2163)
                     .setOperatorNumeric("12345")
@@ -102,7 +101,7 @@ public class DataRetryManagerTest extends TelephonyTest {
             .setPreferred(false)
             .build();
 
-    private DataProfile mDataProfile3 = new DataProfile.Builder()
+    private final DataProfile mDataProfile3 = new DataProfile.Builder()
             .setApnSetting(new ApnSetting.Builder()
                     .setId(2163)
                     .setOperatorNumeric("12345")
@@ -123,7 +122,7 @@ public class DataRetryManagerTest extends TelephonyTest {
             .setPreferred(false)
             .build();
 
-    @Mock
+    // Mocked classes
     private DataRetryManagerCallback mDataRetryManagerCallbackMock;
 
     private DataRetryManager mDataRetryManagerUT;
@@ -132,6 +131,7 @@ public class DataRetryManagerTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("DataRetryManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
+        mDataRetryManagerCallbackMock = Mockito.mock(DataRetryManagerCallback.class);
         doReturn(true).when(mPhone).isUsingNewDataStack();
         doAnswer(invocation -> {
             ((Runnable) invocation.getArguments()[0]).run();
@@ -150,6 +150,7 @@ public class DataRetryManagerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mDataRetryManagerUT = null;
         super.tearDown();
     }
 

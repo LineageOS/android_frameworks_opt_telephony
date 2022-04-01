@@ -19,6 +19,7 @@ package android.telephony.ims;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import android.telephony.AccessNetworkConstants;
@@ -34,12 +35,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 public class ImsMmTelManagerTests extends TelephonyTest {
-
-    @Mock ITelephony mMockTelephonyInterface;
-    @Mock BinderCacheManager<ITelephony> mBinderCache;
+    // Mocked classes
+    ITelephony mMockTelephonyInterface;
+    BinderCacheManager<ITelephony> mBinderCache;
 
     public class LocalCallback extends ImsMmTelManager.RegistrationCallback {
         int mRegResult = -1;
@@ -53,6 +53,8 @@ public class ImsMmTelManagerTests extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp("ImsMmTelManagerTests");
+        mMockTelephonyInterface = mock(ITelephony.class);
+        mBinderCache = mock(BinderCacheManager.class);
         doReturn(mMockTelephonyInterface).when(mBinderCache).getBinder();
     }
 

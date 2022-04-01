@@ -23,11 +23,11 @@ import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_I
 import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_PCSCF_ADDRESS;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -48,17 +48,13 @@ import android.testing.TestableLooper;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.dataconnection.DataConnection.UpdateLinkPropertyResult;
-import com.android.internal.util.IState;
-import com.android.internal.util.StateMachine;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -73,33 +69,23 @@ public class DcControllerTest extends TelephonyTest {
     private static final int EVENT_DATA_STATE_CHANGED = 0x00040007;
     private static final int EVENT_PHYSICAL_LINK_STATUS_CHANGED = 1;
 
-    @Mock
-    private DataConnection mDc;
-    @Mock
+    // Mocked classes
     private List<ApnContext> mApnContexts;
-    @Mock
+    private DataConnection mDc;
     private DataServiceManager mDataServiceManager;
-    @Mock
     private Handler mTestHandler;
 
     UpdateLinkPropertyResult mResult;
 
     private DcController mDcc;
 
-    private IState getCurrentState() {
-        try {
-            Method method = StateMachine.class.getDeclaredMethod("getCurrentState");
-            method.setAccessible(true);
-            return (IState) method.invoke(mDcc);
-        } catch (Exception e) {
-            fail(e.toString());
-            return null;
-        }
-    }
-
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mApnContexts = mock(List.class);
+        mDc = mock(DataConnection.class);
+        mDataServiceManager = mock(DataServiceManager.class);
+        mTestHandler = mock(Handler.class);
 
         doReturn("fake.action_detached").when(mPhone).getActionDetached();
         doReturn(1).when(mApnContexts).size();
@@ -118,6 +104,9 @@ public class DcControllerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mDcc.removeCallbacksAndMessages(null);
+        mDcc = null;
+        mResult = null;
         super.tearDown();
     }
 

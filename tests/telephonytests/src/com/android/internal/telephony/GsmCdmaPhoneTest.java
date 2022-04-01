@@ -41,7 +41,6 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -94,7 +93,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
@@ -104,13 +102,11 @@ import java.util.List;
 @TestableLooper.RunWithLooper
 public class GsmCdmaPhoneTest extends TelephonyTest {
     private static final String TEST_EMERGENCY_NUMBER = "555";
-    @Mock
+
+    // Mocked classes
     private Handler mTestHandler;
-    @Mock
     private UiccSlot mUiccSlot;
-    @Mock
     private UiccPort mUiccPort;
-    @Mock
     private CommandsInterface mMockCi;
 
     //mPhoneUnderTest
@@ -139,7 +135,10 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-
+        mTestHandler = Mockito.mock(Handler.class);
+        mUiccSlot = Mockito.mock(UiccSlot.class);
+        mUiccPort = Mockito.mock(UiccPort.class);
+        mMockCi = Mockito.mock(CommandsInterface.class);
         doReturn(false).when(mSST).isDeviceShuttingDown();
         doReturn(true).when(mImsManager).isVolteEnabledByPlatform();
 
@@ -1249,7 +1248,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         // If UiccSlot.isStateUnknown is true, we should return a placeholder IccCard with the state
         // set to UNKNOWN
         doReturn(null).when(mUiccController).getUiccProfileForPhone(anyInt());
-        UiccSlot mockSlot = mock(UiccSlot.class);
+        UiccSlot mockSlot = Mockito.mock(UiccSlot.class);
         doReturn(mockSlot).when(mUiccController).getUiccSlotForPhone(anyInt());
         doReturn(true).when(mockSlot).isStateUnknown();
 
@@ -1742,7 +1741,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         doReturn(true).when(mImsManager).isEnhanced4gLteModeSettingEnabledByUser();
         doReturn(true).when(mImsManager).isNonTtyOrTtyOnVolteEnabled();
         doReturn(true).when(mImsPhone).isVoiceOverCellularImsEnabled();
-        ServiceState ss = mock(ServiceState.class);
+        ServiceState ss = Mockito.mock(ServiceState.class);
         doReturn(ServiceState.STATE_IN_SERVICE).when(ss).getState();
         doReturn(ss).when(mImsPhone).getServiceState();
 

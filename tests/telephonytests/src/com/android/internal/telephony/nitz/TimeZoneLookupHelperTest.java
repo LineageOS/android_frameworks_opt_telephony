@@ -35,6 +35,7 @@ import android.timezone.CountryTimeZones.OffsetResult;
 import com.android.internal.telephony.NitzData;
 import com.android.internal.telephony.nitz.TimeZoneLookupHelper.CountryResult;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -56,6 +57,11 @@ public class TimeZoneLookupHelperTest {
     @Before
     public void setUp() {
         mTimeZoneLookupHelper = new TimeZoneLookupHelper();
+    }
+
+    @After
+    public void tearDown() {
+        mTimeZoneLookupHelper = null;
     }
 
     @Test

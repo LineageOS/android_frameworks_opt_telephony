@@ -44,6 +44,7 @@ public class InProgressCallSessionTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mCallSession = null;
         super.tearDown();
     }
 

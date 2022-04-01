@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import android.content.Context;
@@ -45,7 +46,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,13 +60,13 @@ public class SIMRecordsTest extends TelephonyTest {
     private static final int EF_SIZE = 12;
     private static final int MAX_NUM_FPLMN = 4;
 
-    @Mock private IccFileHandler mFhMock;
+    // Mocked classes
+    private IccFileHandler mFhMock;
 
     private SIMRecordsUT mSIMRecordsUT;
     private TestLooper mTestLooper;
     private Handler mTestHandler;
     private SIMRecordsReceiver mSIMRecordsReceiver;
-    private SIMRecords mSIMRecord;
 
     private class SIMRecordsUT extends SIMRecords {
         SIMRecordsUT(UiccCardApplication app, Context c,
@@ -91,6 +91,7 @@ public class SIMRecordsTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mFhMock = mock(IccFileHandler.class);
         mTestLooper = new TestLooper();
         mTestHandler = new Handler(mTestLooper.getLooper());
         mSIMRecordsReceiver = new SIMRecordsReceiver();
@@ -110,6 +111,14 @@ public class SIMRecordsTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        if (mTestLooper != null) {
+            mTestLooper.dispatchAll();
+            mTestLooper = null;
+        }
+        mTestHandler.removeCallbacksAndMessages(null);
+        mTestHandler = null;
+        mSIMRecordsReceiver = null;
+        mSIMRecordsUT = null;
         super.tearDown();
     }
 

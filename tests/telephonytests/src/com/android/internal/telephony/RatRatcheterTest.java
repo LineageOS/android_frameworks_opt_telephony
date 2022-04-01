@@ -46,6 +46,8 @@ public class RatRatcheterTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mServiceState = null;
+        mBundle = null;
         super.tearDown();
     }
 

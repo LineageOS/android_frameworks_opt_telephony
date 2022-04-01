@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -39,7 +40,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -48,9 +48,9 @@ public class CarrierActionAgentTest extends TelephonyTest {
     private FakeContentResolver mFakeContentResolver;
     private static int DATA_CARRIER_ACTION_EVENT = 0;
     private static int RADIO_CARRIER_ACTION_EVENT = 1;
-    @Mock
+
+    // Mocked classes
     private Handler mDataActionHandler;
-    @Mock
     private Handler mRadioActionHandler;
 
     private class FakeContentResolver extends MockContentResolver {
@@ -70,6 +70,8 @@ public class CarrierActionAgentTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("CarrierActionAgentTest +Setup!");
         super.setUp(getClass().getSimpleName());
+        mDataActionHandler = mock(Handler.class);
+        mRadioActionHandler = mock(Handler.class);
         mFakeContentResolver = new FakeContentResolver();
         doReturn(mFakeContentResolver).when(mContext).getContentResolver();
         mCarrierActionAgentUT = new CarrierActionAgent(mPhone);
@@ -170,6 +172,8 @@ public class CarrierActionAgentTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         Settings.Global.putInt(mFakeContentResolver, Settings.Global.AIRPLANE_MODE_ON, 0);
+        mCarrierActionAgentUT = null;
+        mFakeContentResolver = null;
         super.tearDown();
     }
 }

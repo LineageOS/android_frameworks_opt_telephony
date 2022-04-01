@@ -24,6 +24,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -42,18 +43,20 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class DataStallRecoveryManagerTest extends TelephonyTest {
-    @Mock private DataStallRecoveryManagerCallback mDataStallRecoveryManagerCallback;
+    // Mocked classes
+    private DataStallRecoveryManagerCallback mDataStallRecoveryManagerCallback;
+
     private DataStallRecoveryManager mDataStallRecoveryManager;
 
     @Before
     public void setUp() throws Exception {
         logd("DataStallRecoveryManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
+        mDataStallRecoveryManagerCallback = mock(DataStallRecoveryManagerCallback.class);
         doReturn(true).when(mPhone).isUsingNewDataStack();
         mCarrierConfigManager = mPhone.getContext().getSystemService(CarrierConfigManager.class);
         long[] dataStallRecoveryTimersArray = new long[] {100, 100, 100};
@@ -86,10 +89,11 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mDataStallRecoveryManager = null;
         super.tearDown();
     }
 
-    private void sendValidationStatusCallback(@ValidationStatus int status) throws Exception {
+    private void sendValidationStatusCallback(@ValidationStatus int status) {
         ArgumentCaptor<DataNetworkControllerCallback> dataNetworkControllerCallbackCaptor =
                 ArgumentCaptor.forClass(DataNetworkControllerCallback.class);
         verify(mDataNetworkController)

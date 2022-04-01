@@ -78,6 +78,9 @@ public class PhoneStateListenerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mPhoneStateListenerUT = null;
+        mCalledEmergencyNumber = null;
+        mTextedEmergencyNumber = null;
         super.tearDown();
     }
 
