@@ -28,7 +28,6 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
-import android.os.storage.StorageManager;
 import android.sysprop.TelephonyProperties;
 import android.telephony.PhoneCapability;
 import android.telephony.SubscriptionManager;
@@ -113,11 +112,7 @@ public class PhoneConfigurationManager {
     }
 
     private void registerForRadioState(Phone phone) {
-        if (!StorageManager.inCryptKeeperBounce()) {
-            phone.mCi.registerForAvailable(mHandler, Phone.EVENT_RADIO_AVAILABLE, phone);
-        } else {
-            phone.mCi.registerForOn(mHandler, Phone.EVENT_RADIO_ON, phone);
-        }
+        phone.mCi.registerForAvailable(mHandler, Phone.EVENT_RADIO_AVAILABLE, phone);
     }
 
     private PhoneCapability getDefaultCapability() {
@@ -396,6 +391,24 @@ public class PhoneConfigurationManager {
                 Phone phone = mPhones[phoneId];
                 registerForRadioState(phone);
                 phone.mCi.onSlotActiveStatusChange(SubscriptionManager.isValidPhoneId(phoneId));
+            }
+
+            // When the user enables DSDS mode, the default VOICE and SMS subId should be switched
+            // to "No Preference".  Doing so will sync the network/sim settings and telephony.
+            // (see b/198123192)
+            if (numOfActiveModems > oldNumOfActiveModems && numOfActiveModems == 2) {
+                Log.i(LOG_TAG, " onMultiSimConfigChanged: DSDS mode enabled; "
+                        + "setting VOICE & SMS subId to -1 (No Preference)");
+
+                //Set the default VOICE subId to -1 ("No Preference")
+                SubscriptionController.getInstance().setDefaultVoiceSubId(
+                        SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+
+                //TODO:: Set the default SMS sub to "No Preference". Tracking this bug (b/227386042)
+            } else {
+                Log.i(LOG_TAG,
+                        "onMultiSimConfigChanged: DSDS mode NOT detected.  NOT setting the "
+                                + "default VOICE and SMS subId to -1 (No Preference)");
             }
         }
     }
