@@ -393,6 +393,7 @@ public class DataNetworkTest extends TelephonyTest {
         NetworkCapabilities nc = mDataNetworkUT.getNetworkCapabilities();
         assertThat(nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)).isTrue();
         assertThat(nc.getEnterpriseIds()).asList().containsExactly(1, 5);
+        assertThat(nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)).isTrue();
     }
 
     @Test

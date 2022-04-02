@@ -577,6 +577,7 @@ public class DataProfileManager extends Handler {
             @NonNull TelephonyNetworkRequest networkRequest, @NetworkType int networkType) {
         if (!networkRequest.hasAttribute(
                 TelephonyNetworkRequest.CAPABILITY_ATTRIBUTE_APN_SETTING)) {
+            loge("Network request does not have APN setting attribute.");
             return null;
         }
 
