@@ -79,6 +79,8 @@ import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.telephony.data.DataServiceCallback;
 import android.telephony.data.ThrottleStatus;
+import android.telephony.data.TrafficDescriptor;
+import android.telephony.data.TrafficDescriptor.OsAppId;
 import android.telephony.ims.ImsManager;
 import android.telephony.ims.ImsMmTelManager;
 import android.telephony.ims.ImsRcsManager;
@@ -115,6 +117,7 @@ import java.time.Period;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -265,11 +268,21 @@ public class DataNetworkControllerTest extends TelephonyTest {
             .setPreferred(false)
             .build();
 
+    private final DataProfile mEnterpriseDataProfile = new DataProfile.Builder()
+            .setTrafficDescriptor(new TrafficDescriptor(null,
+                    new TrafficDescriptor.OsAppId(TrafficDescriptor.OsAppId.ANDROID_OS_ID,
+                            "ENTERPRISE", 1).getBytes()))
+            .build();
 
     /** Data call response map. The first key is the transport type, the second key is the cid. */
     private final Map<Integer, Map<Integer, DataCallResponse>> mDataCallResponses = new HashMap<>();
 
     private @NonNull DataCallResponse createDataCallResponse(int cid, @LinkStatus int linkStatus) {
+        return createDataCallResponse(cid, linkStatus, Collections.emptyList());
+    }
+
+    private @NonNull DataCallResponse createDataCallResponse(int cid, @LinkStatus int linkStatus,
+            @NonNull List<TrafficDescriptor> tdList) {
         return new DataCallResponse.Builder()
                 .setCause(0)
                 .setRetryDurationMillis(-1L)
@@ -294,7 +307,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .setMtuV6(1500)
                 .setPduSessionId(1)
                 .setQosBearerSessions(new ArrayList<>())
-                .setTrafficDescriptors(new ArrayList<>())
+                .setTrafficDescriptors(tdList)
                 .build();
     }
 
@@ -310,6 +323,31 @@ public class DataNetworkControllerTest extends TelephonyTest {
             msg.getData().putParcelable("data_call_response", response);
             msg.arg1 = DataServiceCallback.RESULT_SUCCESS;
             msg.sendToTarget();
+            return null;
+        }).when(dsm).setupDataCall(anyInt(), any(DataProfile.class), anyBoolean(),
+                anyBoolean(), anyInt(), any(), anyInt(), any(), any(), anyBoolean(),
+                any(Message.class));
+    }
+
+    private void setSuccessfulSetupDataResponse(DataServiceManager dsm, DataCallResponse response) {
+        doAnswer(invocation -> {
+            final Message msg = (Message) invocation.getArguments()[10];
+
+            int transport = AccessNetworkConstants.TRANSPORT_TYPE_INVALID;
+            if (dsm == mMockedWwanDataServiceManager) {
+                transport = AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
+            } else if (dsm == mMockedWlanDataServiceManager) {
+                transport = AccessNetworkConstants.TRANSPORT_TYPE_WLAN;
+            }
+            mDataCallResponses.computeIfAbsent(transport, v -> new HashMap<>());
+            mDataCallResponses.get(transport).put(response.getId(), response);
+            msg.getData().putParcelable("data_call_response", response);
+            msg.arg1 = DataServiceCallback.RESULT_SUCCESS;
+            msg.sendToTarget();
+
+            mDataCallListChangedRegistrants.get(transport).notifyRegistrants(
+                    new AsyncResult(transport, new ArrayList<>(mDataCallResponses.get(
+                            transport).values()), null));
             return null;
         }).when(dsm).setupDataCall(anyInt(), any(DataProfile.class), anyBoolean(),
                 anyBoolean(), anyInt(), any(), anyInt(), any(), any(), anyBoolean(),
@@ -842,6 +880,27 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
         verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
         verifyConnectedNetworkHasDataProfile(mImsDataProfile);
+        List<DataNetwork> dataNetworkList = getDataNetworks();
+        assertThat(dataNetworkList.get(0).getLinkProperties().getAddresses()).containsExactly(
+                InetAddresses.parseNumericAddress(IPV4_ADDRESS),
+                InetAddresses.parseNumericAddress(IPV6_ADDRESS));
+    }
+
+    @Test
+    public void testSetupEnterpriseDataNetwork() throws Exception {
+        List<TrafficDescriptor> tdList = new ArrayList<>();
+        tdList.add(new TrafficDescriptor.Builder()
+                .setOsAppId(new OsAppId(OsAppId.ANDROID_OS_ID, "ENTERPRISE", 1).getBytes())
+                .build());
+        setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager,
+                createDataCallResponse(1, DataCallResponse.LINK_STATUS_ACTIVE, tdList));
+        doReturn(mEnterpriseDataProfile).when(mDataProfileManager)
+                .getDataProfileForNetworkRequest(any(TelephonyNetworkRequest.class), anyInt());
+
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE));
+        processAllMessages();
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE);
         List<DataNetwork> dataNetworkList = getDataNetworks();
         assertThat(dataNetworkList.get(0).getLinkProperties().getAddresses()).containsExactly(
                 InetAddresses.parseNumericAddress(IPV4_ADDRESS),
