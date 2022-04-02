@@ -53,4 +53,14 @@ public class RadioConfigIndicationAidl extends
     private static void logd(String log) {
         Rlog.d(TAG, log);
     }
+
+    @Override
+    public String getInterfaceHash() {
+        return android.hardware.radio.config.IRadioConfigIndication.HASH;
+    }
+
+    @Override
+    public int getInterfaceVersion() {
+        return android.hardware.radio.config.IRadioConfigIndication.VERSION;
+    }
 }
