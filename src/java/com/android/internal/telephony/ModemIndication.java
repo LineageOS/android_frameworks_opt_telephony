@@ -120,4 +120,14 @@ public class ModemIndication extends IRadioModemIndication.Stub {
         // TODO: This should not require a version number. Setting it to latest RIL version for now.
         mRil.notifyRegistrantsRilConnectionChanged(15);
     }
+
+    @Override
+    public String getInterfaceHash() {
+        return IRadioModemIndication.HASH;
+    }
+
+    @Override
+    public int getInterfaceVersion() {
+        return IRadioModemIndication.VERSION;
+    }
 }
