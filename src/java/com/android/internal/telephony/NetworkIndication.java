@@ -366,4 +366,14 @@ public class NetworkIndication extends IRadioNetworkIndication.Stub {
         mRil.mVoiceRadioTechChangedRegistrants.notifyRegistrants(
                 new AsyncResult(null, response, null));
     }
+
+    @Override
+    public String getInterfaceHash() {
+        return IRadioNetworkIndication.HASH;
+    }
+
+    @Override
+    public int getInterfaceVersion() {
+        return IRadioNetworkIndication.VERSION;
+    }
 }
