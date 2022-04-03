@@ -16,6 +16,23 @@
       "message": "Initial observations, Seems to not affect dual sim\n \nAuthor on sdm632 Motorola with single sim VZW carrier.\nThis is not Observed on Single sim sdm660 Lake On T-Mobile but is on sdm632 river.\n\nAlso personally observed by myself at both Lineage / PE on sdm632/sm7250 moto (single sim, carrier Google Fi)\n\n",
       "revId": "92e6f6620667eff4ac627cdab84c81f200758316",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c20f564f_fe2c9e48",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16208
+      },
+      "writtenOn": "2022-04-03T07:11:18Z",
+      "side": 1,
+      "message": "-999 comes from here: https://github.com/LineageOS/android_device_motorola_sdm632-common/blame/15e241085d9d5468e5c9a944fd8279c682dcbb03/overlay/packages/apps/CarrierConfig/res/xml/vendor.xml#L777\n\nremove these invalid carrierconfig?",
+      "revId": "92e6f6620667eff4ac627cdab84c81f200758316",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
