@@ -75,6 +75,29 @@ public class FdnUtils {
     }
 
     /**
+     * If FDN is enabled, check to see if the given supplementary service control strings are
+     * blocked due to FDN.
+     * @param phoneId The phone object id for which the FDN check is performed
+     * @param controlStrings control strings associated with the supplementary service request
+     * @param defaultCountryIso country ISO for the subscription associated with this phone
+     * @return {@code true} if the FDN list does not contain any of the control strings.
+     */
+    public static boolean isSuppServiceRequestBlockedByFdn(int phoneId,
+            ArrayList<String> controlStrings, String defaultCountryIso) {
+        if (!isFdnEnabled(phoneId)) {
+            return false;
+        }
+
+        ArrayList<AdnRecord> fdnList = getFdnList(phoneId);
+        for(String controlString : controlStrings) {
+            if(isFDN(controlString, defaultCountryIso, fdnList)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Checks if dialStr is part of FDN list.
      *
      * @param fdnList List of all FDN records associated with a sim card

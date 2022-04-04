@@ -78,8 +78,11 @@ import androidx.test.filters.FlakyTest;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.test.SimulatedCommandsVerifier;
+import com.android.internal.telephony.uicc.AdnRecord;
+import com.android.internal.telephony.uicc.AdnRecordCache;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
+import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccVmNotSupportedException;
 import com.android.internal.telephony.uicc.UiccController;
@@ -109,6 +112,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     private UiccSlot mUiccSlot;
     private UiccPort mUiccPort;
     private CommandsInterface mMockCi;
+    private AdnRecordCache adnRecordCache;
 
     //mPhoneUnderTest
     private GsmCdmaPhone mPhoneUT;
@@ -140,6 +144,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mUiccSlot = Mockito.mock(UiccSlot.class);
         mUiccPort = Mockito.mock(UiccPort.class);
         mMockCi = Mockito.mock(CommandsInterface.class);
+        adnRecordCache = Mockito.mock(AdnRecordCache.class);
         doReturn(false).when(mSST).isDeviceShuttingDown();
         doReturn(true).when(mImsManager).isVolteEnabledByPlatform();
 
@@ -1874,5 +1879,305 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                         new int[]{SubscriptionManager.USAGE_SETTING_VOICE_CENTRIC}, null)));
         processAllMessages();
         verify(mMockCi, never()).setUsageSetting(any(), anyInt());
+    }
+
+    public void fdnCheckSetup() {
+        // FDN check setup
+        mPhoneUT.mCi = mMockCi;
+        doReturn(adnRecordCache).when(mSimRecords).getAdnCache();
+        doReturn(mUiccProfile).when(mUiccController).getUiccProfileForPhone(anyInt());
+        doReturn(true).when(mUiccCardApplication3gpp).getIccFdnAvailable();
+        doReturn(true).when(mUiccCardApplication3gpp).getIccFdnEnabled();
+    }
+
+    @Test
+    public void testGetCallForwardingOption_FdnCheck() {
+        // FDN check setup
+        fdnCheckSetup();
+        ArrayList<AdnRecord> fdnList = new ArrayList<>();
+        doReturn(fdnList).when(adnRecordCache).getRecordsIfLoaded(IccConstants.EF_FDN);
+        Message message = Message.obtain(mTestHandler);
+
+        // FDN check success - no exception is returned
+        AdnRecord adnRecord = new AdnRecord(null, "*#21");
+        fdnList.add(0, adnRecord);
+        mPhoneUT.getCallForwardingOption(CommandsInterface.CF_REASON_UNCONDITIONAL, message);
+        processAllMessages();
+        verify(mMockCi).queryCallForwardStatus(eq(CommandsInterface.CF_REASON_UNCONDITIONAL),
+                eq(CommandsInterface.SERVICE_CLASS_VOICE), any(), any());
+        // FDN check failure - returns CommandException in onComplete
+        fdnList.remove(0);
+        mPhoneUT.getCallForwardingOption(CommandsInterface.CF_REASON_UNCONDITIONAL, message);
+        processAllMessages();
+        AsyncResult ar = (AsyncResult) message.obj;
+        assertTrue(ar.exception instanceof CommandException);
+        assertEquals(((CommandException) ar.exception).getCommandError(),
+                CommandException.Error.FDN_CHECK_FAILURE);
+
+        // clean up
+        fdnCheckCleanup();
+    }
+
+    @Test
+    public void testSetCallForwardingOption_FdnCheck() {
+        // FDN check setup
+        fdnCheckSetup();
+        ArrayList<AdnRecord> fdnList = new ArrayList<>();
+        doReturn(fdnList).when(adnRecordCache).getRecordsIfLoaded(IccConstants.EF_FDN);
+        Message message = Message.obtain(mTestHandler);
+
+        // FDN check success - no exception is returned
+        AdnRecord adnRecord = new AdnRecord(null, "**21");
+        fdnList.add(0, adnRecord);
+        mPhoneUT.setCallForwardingOption(CommandsInterface.CF_ACTION_REGISTRATION,
+                CommandsInterface.CF_REASON_UNCONDITIONAL, "123", 0,
+                message);
+        processAllMessages();
+        verify(mMockCi).setCallForward(eq(CommandsInterface.CF_ACTION_REGISTRATION),
+                eq(CommandsInterface.CF_REASON_UNCONDITIONAL),
+                eq(CommandsInterface.SERVICE_CLASS_VOICE), eq("123"), eq(0), any());
+        // FDN check failure - returns CommandException in onComplete
+        fdnList.remove(0);
+        mPhoneUT.setCallForwardingOption(CommandsInterface.CF_ACTION_REGISTRATION,
+                CommandsInterface.CF_REASON_UNCONDITIONAL, "", 0, message);
+        processAllMessages();
+        AsyncResult ar = (AsyncResult) message.obj;
+        assertTrue(ar.exception instanceof CommandException);
+        assertEquals(((CommandException) ar.exception).getCommandError(),
+                CommandException.Error.FDN_CHECK_FAILURE);
+
+        // clean up
+        fdnCheckCleanup();
+    }
+
+    @Test
+    public void testGetCallBarring_FdnCheck() {
+        // FDN check setup
+        fdnCheckSetup();
+        ArrayList<AdnRecord> fdnList = new ArrayList<>();
+        doReturn(fdnList).when(adnRecordCache).getRecordsIfLoaded(IccConstants.EF_FDN);
+        Message message = Message.obtain(mTestHandler);
+
+        // FDN check success - no exception is returned
+        AdnRecord adnRecord = new AdnRecord(null, "*#330");
+        fdnList.add(0, adnRecord);
+        mPhoneUT.getCallBarring(CommandsInterface.CB_FACILITY_BA_ALL, "", message,
+                CommandsInterface.SERVICE_CLASS_VOICE);
+        processAllMessages();
+        verify(mMockCi).queryFacilityLock(eq(CommandsInterface.CB_FACILITY_BA_ALL), any(),
+                eq(CommandsInterface.SERVICE_CLASS_VOICE), any());
+        // FDN check failure - returns CommandException in onComplete
+        fdnList.remove(0);
+        mPhoneUT.getCallBarring(CommandsInterface.CB_FACILITY_BA_ALL, "", message,
+                CommandsInterface.SERVICE_CLASS_VOICE);
+        processAllMessages();
+        AsyncResult ar = (AsyncResult) message.obj;
+        assertTrue(ar.exception instanceof CommandException);
+        assertEquals(((CommandException) ar.exception).getCommandError(),
+                CommandException.Error.FDN_CHECK_FAILURE);
+
+        // clean up
+        fdnCheckCleanup();
+    }
+
+    @Test
+    public void testSetCallBarring_FdnCheck() {
+        // FDN check setup
+        fdnCheckSetup();
+        ArrayList<AdnRecord> fdnList = new ArrayList<>();
+        doReturn(fdnList).when(adnRecordCache).getRecordsIfLoaded(IccConstants.EF_FDN);
+        Message message = Message.obtain(mTestHandler);
+
+        // FDN check success - no exception is returned
+        AdnRecord adnRecord = new AdnRecord(null, "*330");
+        fdnList.add(0, adnRecord);
+        mPhoneUT.setCallBarring(CommandsInterface.CB_FACILITY_BA_ALL, true, "",
+                message, CommandsInterface.SERVICE_CLASS_VOICE);
+        processAllMessages();
+        verify(mMockCi).setFacilityLock(eq(CommandsInterface.CB_FACILITY_BA_ALL),
+                eq(true), any(), eq(CommandsInterface.SERVICE_CLASS_VOICE), any());
+        // FDN check failure - returns CommandException in onComplete
+        fdnList.remove(0);
+        mPhoneUT.setCallBarring(CommandsInterface.CB_FACILITY_BA_ALL, true, "",
+                message, CommandsInterface.SERVICE_CLASS_VOICE);
+        processAllMessages();
+        AsyncResult ar = (AsyncResult) message.obj;
+        assertTrue(ar.exception instanceof CommandException);
+        assertEquals(((CommandException) ar.exception).getCommandError(),
+                CommandException.Error.FDN_CHECK_FAILURE);
+
+        // clean up
+        fdnCheckCleanup();
+    }
+
+    @Test
+    public void testChangeCallBarringPassword_FdnCheck() {
+        // FDN check setup
+        fdnCheckSetup();
+        ArrayList<AdnRecord> fdnList = new ArrayList<>();
+        doReturn(fdnList).when(adnRecordCache).getRecordsIfLoaded(IccConstants.EF_FDN);
+        Message message = Message.obtain(mTestHandler);
+
+        // FDN check success - no exception is returned
+        AdnRecord adnRecord = new AdnRecord(null, "**03*330");
+        fdnList.add(0, adnRecord);
+        mPhoneUT.changeCallBarringPassword(CommandsInterface.CB_FACILITY_BA_ALL, "",
+                "", message);
+        processAllMessages();
+        verify(mMockCi).changeBarringPassword(eq(CommandsInterface.CB_FACILITY_BA_ALL), any(),
+                any(), any());
+        // FDN check failure - returns CommandException in onComplete
+        fdnList.remove(0);
+        mPhoneUT.changeCallBarringPassword(CommandsInterface.CB_FACILITY_BA_ALL, "",
+                "", message);
+        processAllMessages();
+        AsyncResult ar = (AsyncResult) message.obj;
+        assertTrue(ar.exception instanceof CommandException);
+        assertEquals(((CommandException) ar.exception).getCommandError(),
+                CommandException.Error.FDN_CHECK_FAILURE);
+
+        // clean up
+        fdnCheckCleanup();
+    }
+
+    @Test
+    public void testGetOutgoingCallerIdDisplay_FdnCheck() {
+        // FDN check setup
+        fdnCheckSetup();
+        ArrayList<AdnRecord> fdnList = new ArrayList<>();
+        doReturn(fdnList).when(adnRecordCache).getRecordsIfLoaded(IccConstants.EF_FDN);
+        Message message = Message.obtain(mTestHandler);
+
+        // FDN check success - no exception is returned
+        AdnRecord adnRecord = new AdnRecord(null, "*#31");
+        fdnList.add(0, adnRecord);
+        mPhoneUT.getOutgoingCallerIdDisplay(message);
+        processAllMessages();
+        verify(mMockCi).getCLIR(any());
+        // FDN check failure - returns CommandException in onComplete
+        fdnList.remove(0);
+        mPhoneUT.getOutgoingCallerIdDisplay(message);
+        processAllMessages();
+        AsyncResult ar = (AsyncResult) message.obj;
+        assertTrue(ar.exception instanceof CommandException);
+        assertEquals(((CommandException) ar.exception).getCommandError(),
+                CommandException.Error.FDN_CHECK_FAILURE);
+
+        // clean up
+        fdnCheckCleanup();
+    }
+
+    @Test
+    public void testSetOutgoingCallerIdDisplay_FdnCheck() {
+        // FDN check setup
+        fdnCheckSetup();
+        ArrayList<AdnRecord> fdnList = new ArrayList<>();
+        doReturn(fdnList).when(adnRecordCache).getRecordsIfLoaded(IccConstants.EF_FDN);
+        Message message = Message.obtain(mTestHandler);
+
+        // FDN check success - no exception is returned
+        AdnRecord adnRecord = new AdnRecord(null, "*31");
+        fdnList.add(0, adnRecord);
+        mPhoneUT.setOutgoingCallerIdDisplay(CommandsInterface.CLIR_SUPPRESSION, message);
+        processAllMessages();
+        verify(mMockCi).setCLIR(eq(CommandsInterface.CLIR_SUPPRESSION), any());
+        // FDN check failure - returns CommandException in onComplete
+        fdnList.remove(0);
+        mPhoneUT.setOutgoingCallerIdDisplay(CommandsInterface.CLIR_SUPPRESSION, message);
+        processAllMessages();
+        AsyncResult ar = (AsyncResult) message.obj;
+        assertTrue(ar.exception instanceof CommandException);
+        assertEquals(((CommandException) ar.exception).getCommandError(),
+                CommandException.Error.FDN_CHECK_FAILURE);
+
+        // clean up
+        fdnCheckCleanup();
+    }
+
+    @Test
+    public void testQueryCLIP_FdnCheck() {
+        // FDN check setup
+        fdnCheckSetup();
+        ArrayList<AdnRecord> fdnList = new ArrayList<>();
+        doReturn(fdnList).when(adnRecordCache).getRecordsIfLoaded(IccConstants.EF_FDN);
+        Message message = Message.obtain(mTestHandler);
+
+        // FDN check success - no exception is returned
+        AdnRecord adnRecord = new AdnRecord(null, "*#30");
+        fdnList.add(0, adnRecord);
+        mPhoneUT.queryCLIP(message);
+        processAllMessages();
+        verify(mMockCi).queryCLIP(any());
+        // FDN check failure - returns CommandException in onComplete
+        fdnList.remove(0);
+        mPhoneUT.queryCLIP(message);
+        processAllMessages();
+        AsyncResult ar = (AsyncResult) message.obj;
+        assertTrue(ar.exception instanceof CommandException);
+        assertEquals(((CommandException) ar.exception).getCommandError(),
+                CommandException.Error.FDN_CHECK_FAILURE);
+
+        // clean up
+        fdnCheckCleanup();
+    }
+
+    @Test
+    public void testGetCallWaiting_FdnCheck() {
+        // FDN check setup
+        fdnCheckSetup();
+        ArrayList<AdnRecord> fdnList = new ArrayList<>();
+        doReturn(fdnList).when(adnRecordCache).getRecordsIfLoaded(IccConstants.EF_FDN);
+        Message message = Message.obtain(mTestHandler);
+
+        // FDN check success - no exception is returned
+        AdnRecord adnRecord = new AdnRecord(null, "*#43");
+        fdnList.add(0, adnRecord);
+        mPhoneUT.getCallWaiting(message);
+        processAllMessages();
+        verify(mMockCi).queryCallWaiting(eq(CommandsInterface.SERVICE_CLASS_NONE), any());
+        // FDN check failure - returns CommandException in onComplete
+        fdnList.remove(0);
+        mPhoneUT.getCallWaiting(message);
+        processAllMessages();
+        AsyncResult ar = (AsyncResult) message.obj;
+        assertTrue(ar.exception instanceof CommandException);
+        assertEquals(((CommandException) ar.exception).getCommandError(),
+                CommandException.Error.FDN_CHECK_FAILURE);
+
+        // clean up
+        fdnCheckCleanup();
+    }
+
+    @Test
+    public void testSetCallWaiting_FdnCheck() {
+        // FDN check setup
+        fdnCheckSetup();
+        ArrayList<AdnRecord> fdnList = new ArrayList<>();
+        doReturn(fdnList).when(adnRecordCache).getRecordsIfLoaded(IccConstants.EF_FDN);
+        Message message = Message.obtain(mTestHandler);
+
+        // FDN check success - no exception is returned
+        AdnRecord adnRecord = new AdnRecord(null, "*43");
+        fdnList.add(0, adnRecord);
+        mPhoneUT.setCallWaiting(true, CommandsInterface.SERVICE_CLASS_VOICE, message);
+        processAllMessages();
+        verify(mMockCi).setCallWaiting(eq(true), eq(CommandsInterface.SERVICE_CLASS_VOICE),
+                any());
+        // FDN check failure - returns CommandException in onComplete
+        fdnList.remove(0);
+        mPhoneUT.setCallWaiting(true, CommandsInterface.SERVICE_CLASS_VOICE, message);
+        processAllMessages();
+        AsyncResult ar = (AsyncResult) message.obj;
+        assertTrue(ar.exception instanceof CommandException);
+        assertEquals(((CommandException) ar.exception).getCommandError(),
+                CommandException.Error.FDN_CHECK_FAILURE);
+
+        // clean up
+        fdnCheckCleanup();
+    }
+
+    public void fdnCheckCleanup() {
+        doReturn(false).when(mUiccCardApplication3gpp).getIccFdnAvailable();
+        doReturn(false).when(mUiccCardApplication3gpp).getIccFdnEnabled();
     }
 }
