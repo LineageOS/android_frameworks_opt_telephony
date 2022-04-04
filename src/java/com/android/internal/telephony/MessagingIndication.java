@@ -157,4 +157,14 @@ public class MessagingIndication extends IRadioMessagingIndication.Stub {
             mRil.mIccSmsFullRegistrant.notifyRegistrant();
         }
     }
+
+    @Override
+    public String getInterfaceHash() {
+        return IRadioMessagingIndication.HASH;
+    }
+
+    @Override
+    public int getInterfaceVersion() {
+        return IRadioMessagingIndication.VERSION;
+    }
 }
