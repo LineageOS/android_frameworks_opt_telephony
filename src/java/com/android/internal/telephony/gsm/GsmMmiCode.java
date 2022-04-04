@@ -61,6 +61,7 @@ import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.util.ArrayUtils;
 import com.android.telephony.Rlog;
 
+import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -455,7 +456,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         return "";
     }
 
-    private String getActionStringFromReqType(SsData.RequestType rType) {
+    private static String getActionStringFromReqType(SsData.RequestType rType) {
         switch (rType) {
             case SS_ACTIVATION:
                 return ACTION_ACTIVATE;
@@ -517,6 +518,40 @@ public final class GsmMmiCode extends Handler implements MmiCode {
            return CommandsInterface.CF_REASON_ALL_CONDITIONAL;
         } else {
             throw new RuntimeException ("invalid call forward sc");
+        }
+    }
+
+    public static SsData.ServiceType cfReasonToServiceType(int commandInterfaceCFReason) {
+        switch (commandInterfaceCFReason) {
+            case CommandsInterface.CF_REASON_UNCONDITIONAL:
+                return  SsData.ServiceType.SS_CFU;
+            case CommandsInterface.CF_REASON_BUSY:
+                return SsData.ServiceType.SS_CF_BUSY;
+            case CommandsInterface.CF_REASON_NO_REPLY:
+                return SsData.ServiceType.SS_CF_NO_REPLY;
+            case CommandsInterface.CF_REASON_NOT_REACHABLE:
+                return SsData.ServiceType.SS_CF_NOT_REACHABLE;
+            case CommandsInterface.CF_REASON_ALL:
+                return SsData.ServiceType.SS_CF_ALL;
+            case CommandsInterface.CF_REASON_ALL_CONDITIONAL:
+                return SsData.ServiceType.SS_CF_ALL_CONDITIONAL;
+            default:
+                return null;
+        }
+    }
+
+    public static SsData.RequestType cfActionToRequestType(int commandInterfaceCFAction) {
+        switch (commandInterfaceCFAction) {
+            case CommandsInterface.CF_ACTION_DISABLE:
+                return SsData.RequestType.SS_DEACTIVATION;
+            case CommandsInterface.CF_ACTION_ENABLE:
+                return SsData.RequestType.SS_ACTIVATION;
+            case CommandsInterface.CF_ACTION_REGISTRATION:
+                return SsData.RequestType.SS_REGISTRATION;
+            case CommandsInterface.CF_ACTION_ERASURE:
+                return SsData.RequestType.SS_ERASURE;
+            default:
+                return null;
         }
     }
 
@@ -620,6 +655,29 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             return CommandsInterface.CB_FACILITY_BA_MT;
         } else {
             throw new RuntimeException ("invalid call barring sc");
+        }
+    }
+
+    public static SsData.ServiceType cbFacilityToServiceType(String commandInterfaceCBFacility) {
+        switch(commandInterfaceCBFacility) {
+            case CommandsInterface.CB_FACILITY_BAOC:
+                return SsData.ServiceType.SS_BAOC;
+            case CommandsInterface.CB_FACILITY_BAOIC:
+                return SsData.ServiceType.SS_BAOIC;
+            case CommandsInterface.CB_FACILITY_BAOICxH:
+                return SsData.ServiceType.SS_BAOIC_EXC_HOME;
+            case CommandsInterface.CB_FACILITY_BAIC:
+                return SsData.ServiceType.SS_BAIC;
+            case CommandsInterface.CB_FACILITY_BAICr:
+                return SsData.ServiceType.SS_BAIC_ROAMING;
+            case CommandsInterface.CB_FACILITY_BA_ALL:
+                return SsData.ServiceType.SS_ALL_BARRING;
+            case CommandsInterface.CB_FACILITY_BA_MO:
+                return SsData.ServiceType.SS_OUTGOING_BARRING;
+            case CommandsInterface.CB_FACILITY_BA_MT:
+                return SsData.ServiceType.SS_INCOMING_BARRING;
+            default:
+                return null;
         }
     }
 
@@ -890,6 +948,17 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         }
 
         return CommandsInterface.CLIR_DEFAULT;
+    }
+
+    public static SsData.RequestType clirModeToRequestType(int commandInterfaceCLIRMode) {
+        switch (commandInterfaceCLIRMode) {
+            case CommandsInterface.CLIR_SUPPRESSION:
+                return SsData.RequestType.SS_ACTIVATION;
+            case CommandsInterface.CLIR_INVOCATION:
+                return SsData.RequestType.SS_DEACTIVATION;
+            default:
+                return null;
+        }
     }
 
     /**
@@ -1825,6 +1894,120 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
     public ResultReceiver getUssdCallbackReceiver() {
         return this.mCallbackReceiver;
+    }
+
+    /**
+     * Returns list of control strings for a supplementary service request
+     * as defined in TS 22.030 6.5
+     * @param requestType request type associated with the supplementary service
+     * @param serviceType supplementary service type
+     * @return list of control strings associated with the supplementary service.
+     */
+    public static ArrayList<String> getControlStrings(SsData.RequestType requestType,
+            SsData.ServiceType serviceType) {
+        ArrayList<String> controlStrings = new ArrayList<>();
+        if (requestType == null || serviceType == null) {
+            return controlStrings;
+        }
+
+        String actionStr = getActionStringFromReqType(requestType);
+        switch (serviceType) {
+            case SS_CFU:
+                controlStrings.add(actionStr + SC_CFU);
+                controlStrings.add(actionStr + SC_CF_All);
+                break;
+            case SS_CF_BUSY:
+                controlStrings.add(actionStr + SC_CFB);
+                controlStrings.add(actionStr + SC_CF_All_Conditional);
+                controlStrings.add(actionStr + SC_CF_All);
+                break;
+            case SS_CF_NO_REPLY:
+                controlStrings.add(actionStr + SC_CFNRy);
+                controlStrings.add(actionStr + SC_CF_All_Conditional);
+                controlStrings.add(actionStr + SC_CF_All);
+                break;
+            case SS_CF_NOT_REACHABLE:
+                controlStrings.add(actionStr + SC_CFNR);
+                controlStrings.add(actionStr + SC_CF_All_Conditional);
+                controlStrings.add(actionStr + SC_CF_All);
+                break;
+            case SS_CF_ALL:
+                controlStrings.add(actionStr + SC_CF_All);
+                break;
+            case SS_CF_ALL_CONDITIONAL:
+                controlStrings.add(actionStr + SC_CF_All_Conditional);
+                controlStrings.add(actionStr + SC_CF_All);
+                break;
+            case SS_CLIP:
+                controlStrings.add(actionStr + SC_CLIP);
+                break;
+            case SS_CLIR:
+                controlStrings.add(actionStr + SC_CLIR);
+                break;
+            case SS_WAIT:
+                controlStrings.add(actionStr + SC_WAIT);
+                break;
+            case SS_BAOC:
+                controlStrings.add(actionStr + SC_BAOC);
+                controlStrings.add(actionStr + SC_BA_MO);
+                controlStrings.add(actionStr + SC_BA_ALL);
+                break;
+            case SS_BAOIC:
+                controlStrings.add(actionStr + SC_BAOIC);
+                controlStrings.add(actionStr + SC_BA_MO);
+                controlStrings.add(actionStr + SC_BA_ALL);
+                break;
+            case SS_BAOIC_EXC_HOME:
+                controlStrings.add(actionStr + SC_BAOICxH);
+                controlStrings.add(actionStr + SC_BA_MO);
+                controlStrings.add(actionStr + SC_BA_ALL);
+                break;
+            case SS_BAIC:
+                controlStrings.add(actionStr + SC_BAIC);
+                controlStrings.add(actionStr + SC_BA_MT);
+                controlStrings.add(actionStr + SC_BA_ALL);
+                break;
+            case SS_BAIC_ROAMING:
+                controlStrings.add(actionStr + SC_BAICr);
+                controlStrings.add(actionStr + SC_BA_MT);
+                controlStrings.add(actionStr + SC_BA_ALL);
+                break;
+            case SS_ALL_BARRING:
+                controlStrings.add(actionStr + SC_BA_ALL);
+                break;
+            case SS_OUTGOING_BARRING:
+                controlStrings.add(actionStr + SC_BA_MO);
+                controlStrings.add(actionStr + SC_BA_ALL);
+                break;
+            case SS_INCOMING_BARRING:
+                controlStrings.add(actionStr + SC_BA_MT);
+                controlStrings.add(actionStr + SC_BA_ALL);
+                break;
+        }
+       return controlStrings;
+    }
+
+    /**
+     * Returns control strings for registration of new password as per TS 22.030 6.5.4
+     * @param requestType request type associated with the supplementary service
+     * @param serviceType supplementary service type
+     * @return list of control strings for new password registration.
+     */
+    public static ArrayList<String> getControlStringsForPwd(SsData.RequestType requestType,
+            SsData.ServiceType serviceType) {
+        ArrayList<String> controlStrings = new ArrayList<>();
+        if (requestType == null || serviceType == null) {
+            return controlStrings;
+        }
+
+        controlStrings = getControlStrings(SsData.RequestType.SS_ACTIVATION, serviceType);
+        String actionStr = getActionStringFromReqType(requestType);
+        ArrayList<String> controlStringsPwd = new ArrayList<>();
+        for(String controlString : controlStrings) {
+            // Prepend each control string with **SC_PWD
+            controlStringsPwd.add(actionStr + SC_PWD + controlString);
+        }
+        return controlStringsPwd;
     }
 
     /***
