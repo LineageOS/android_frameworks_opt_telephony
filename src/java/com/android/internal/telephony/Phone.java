@@ -617,7 +617,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mSmsStats = new SmsStats(this);
 
         mNewDataStackEnabled = Boolean.parseBoolean(DeviceConfig.getProperty(
-                DeviceConfig.NAMESPACE_TELEPHONY, "enable_new_data_stack"));
+                DeviceConfig.NAMESPACE_TELEPHONY, "enable_new_data_stack"))
+                || mContext.getResources().getBoolean(
+                        com.android.internal.R.bool.config_force_enable_telephony_new_data_stack);
 
         if (getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             return;
