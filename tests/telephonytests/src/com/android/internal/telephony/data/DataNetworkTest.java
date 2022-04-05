@@ -23,6 +23,8 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Matchers.argThat;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
@@ -37,6 +39,8 @@ import android.net.LinkProperties;
 import android.net.NetworkAgentConfig;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
+import android.net.vcn.VcnManager.VcnNetworkPolicyChangeListener;
+import android.net.vcn.VcnNetworkPolicyResult;
 import android.os.AsyncResult;
 import android.os.Looper;
 import android.os.Message;
@@ -351,6 +355,12 @@ public class DataNetworkTest extends TelephonyTest {
                 NetworkCapabilities.NET_CAPABILITY_SUPL)).isTrue();
         assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)).isTrue();
+        assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)).isTrue();
+        verify(mVcnManager, atLeastOnce()).applyVcnNetworkPolicy(
+                argThat(caps -> caps.hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)),
+                any());
 
         verify(mDataNetworkCallback).onConnected(eq(mDataNetworkUT));
     }
@@ -746,6 +756,15 @@ public class DataNetworkTest extends TelephonyTest {
 
     @Test
     public void testAdminAndOwnerUids() throws Exception {
+        doReturn(ADMIN_UID2).when(mCarrierPrivilegesTracker).getCarrierServicePackageUid();
+        setupDataNetwork();
+
+        assertThat(mDataNetworkUT.getNetworkCapabilities().getAdministratorUids()).asList()
+                .containsExactly(ADMIN_UID1, ADMIN_UID2);
+        assertThat(mDataNetworkUT.getNetworkCapabilities().getOwnerUid()).isEqualTo(ADMIN_UID2);
+    }
+
+    private void setupDataNetwork() throws Exception {
         DataNetworkController.NetworkRequestList
                 networkRequestList = new DataNetworkController.NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
@@ -753,7 +772,6 @@ public class DataNetworkTest extends TelephonyTest {
                 .build(), mPhone));
 
         setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
-        doReturn(ADMIN_UID2).when(mCarrierPrivilegesTracker).getCarrierServicePackageUid();
 
         mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
                 mInternetDataProfile, networkRequestList,
@@ -767,10 +785,75 @@ public class DataNetworkTest extends TelephonyTest {
         sendServiceStateChangedEvent(ServiceState.STATE_IN_SERVICE,
                 ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN);
         processAllMessages();
+    }
 
-        assertThat(mDataNetworkUT.getNetworkCapabilities().getAdministratorUids()).asList()
-                .containsExactly(ADMIN_UID1, ADMIN_UID2);
-        assertThat(mDataNetworkUT.getNetworkCapabilities().getOwnerUid()).isEqualTo(ADMIN_UID2);
+    @Test
+    public void testVcnPolicy() throws Exception {
+        doAnswer(invocation -> {
+            NetworkCapabilities nc = invocation.getArgument(0);
+            NetworkCapabilities policyNc = new NetworkCapabilities.Builder(nc)
+                    .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
+                    .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                    .build();
+
+            return new VcnNetworkPolicyResult(
+                    false /* isTearDownRequested */, policyNc);
+        }).when(mVcnManager).applyVcnNetworkPolicy(any(), any());
+
+        setupDataNetwork();
+
+        assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)).isFalse();
+        assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)).isFalse();
+    }
+
+    @Test
+    public void testVcnPolicyUpdated() throws Exception {
+        setupDataNetwork();
+
+        assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)).isTrue();
+        assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)).isTrue();
+
+        doAnswer(invocation -> {
+            NetworkCapabilities nc = invocation.getArgument(0);
+            NetworkCapabilities policyNc = new NetworkCapabilities.Builder(nc)
+                    .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
+                    .build();
+
+            return new VcnNetworkPolicyResult(
+                    false /* isTearDownRequested */, policyNc);
+        }).when(mVcnManager).applyVcnNetworkPolicy(any(), any());
+        triggerVcnNetworkPolicyChanged();
+
+        assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)).isFalse();
+    }
+
+    @Test
+    public void testVcnPolicyTeardownRequested() throws Exception {
+        setupDataNetwork();
+
+        doAnswer(invocation -> {
+            NetworkCapabilities nc = invocation.getArgument(0);
+
+            return new VcnNetworkPolicyResult(
+                    true /* isTearDownRequested */, nc);
+        }).when(mVcnManager).applyVcnNetworkPolicy(any(), any());
+        triggerVcnNetworkPolicyChanged();
+
+        assertThat(mDataNetworkUT.isConnected()).isFalse();
+    }
+
+    private void triggerVcnNetworkPolicyChanged() {
+        ArgumentCaptor<VcnNetworkPolicyChangeListener> captor =
+                ArgumentCaptor.forClass(VcnNetworkPolicyChangeListener.class);
+
+        verify(mVcnManager).addVcnNetworkPolicyChangeListener(any(), captor.capture());
+        captor.getValue().onPolicyChanged();
+        processAllMessages();
     }
 
     @Test

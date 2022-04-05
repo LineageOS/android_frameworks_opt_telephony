@@ -1704,7 +1704,9 @@ public class DataNetwork extends StateMachine {
         // Always start with NOT_VCN_MANAGED, then remove if VcnManager indicates this is part of a
         // VCN.
         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
-        if (isVcnManaged(builder.build())) {
+        final VcnNetworkPolicyResult vcnPolicy = getVcnPolicy(builder.build());
+        if (vcnPolicy != null && !vcnPolicy.getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)) {
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
         }
 
@@ -1773,7 +1775,9 @@ public class DataNetwork extends StateMachine {
 
         // If one of the capabilities are for special use, for example, IMS, CBS, then this
         // network should be restricted, regardless data is enabled or not.
-        if (NetworkCapabilitiesUtils.inferRestrictedCapability(builder.build())) {
+        if (NetworkCapabilitiesUtils.inferRestrictedCapability(builder.build())
+                || (vcnPolicy != null && !vcnPolicy.getNetworkCapabilities()
+                        .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED))) {
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
         }
 
@@ -2871,18 +2875,14 @@ public class DataNetwork extends StateMachine {
      * Check if the this data network is VCN-managed.
      *
      * @param networkCapabilities The network capabilities of this data network.
-     * @return {@code true} if this data network is VCN-managed.
+     * @return The VCN's policy for this DataNetwork.
      */
-    private boolean isVcnManaged(NetworkCapabilities networkCapabilities) {
-        if (mVcnManager == null) return false;
-        VcnNetworkPolicyResult policyResult =
-                mVcnManager.applyVcnNetworkPolicy(networkCapabilities, getLinkProperties());
+    private VcnNetworkPolicyResult getVcnPolicy(NetworkCapabilities networkCapabilities) {
+        if (mVcnManager == null) {
+            return null;
+        }
 
-        // if the Network does have capability NOT_VCN_MANAGED, return false to indicate it's not
-        // VCN-managed
-        return !policyResult
-                .getNetworkCapabilities()
-                .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+        return mVcnManager.applyVcnNetworkPolicy(networkCapabilities, getLinkProperties());
     }
 
     /**
