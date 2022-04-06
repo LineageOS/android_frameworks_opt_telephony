@@ -201,9 +201,16 @@ public class DataNetworkController extends Handler {
     /** The maximum number of previously connected data networks for debugging purposes. */
     private static final int MAX_HISTORICAL_CONNECTED_DATA_NETWORKS = 10;
 
-    /** The delay to re-evaluate preferred transport when handover failed and fallback to source. */
+    /**
+     * The delay in milliseconds to re-evaluate preferred transport when handover failed and
+     * fallback to source.
+     */
     private static final long REEVALUATE_PREFERRED_TRANSPORT_DELAY_MILLIS =
             TimeUnit.SECONDS.toMillis(3);
+
+    /** The delay in milliseconds to re-evaluate unsatisfied network requests after call end. */
+    private static final long REEVALUATE_UNSATISFIED_NETWORK_REQUESTS_AFTER_CALL_END_DELAY_MILLIS =
+            TimeUnit.MILLISECONDS.toMillis(500);
 
     /**
      * The maximum number of occurrences within a time window defined by
@@ -958,8 +965,12 @@ public class DataNetworkController extends Handler {
                 // delay IMS tear down until call ends is turned on.
                 sendMessage(obtainMessage(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
                         DataEvaluationReason.VOICE_CALL_ENDED));
-                sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
-                        DataEvaluationReason.VOICE_CALL_ENDED));
+                // Delay evaluating unsatisfied network requests. In temporary DDS switch case, it
+                // takes some time to switch DDS after call end. We do not want to bring up network
+                // before switch completes.
+                sendMessageDelayed(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
+                        DataEvaluationReason.VOICE_CALL_ENDED),
+                        REEVALUATE_UNSATISFIED_NETWORK_REQUESTS_AFTER_CALL_END_DELAY_MILLIS);
                 break;
             case EVENT_SLICE_CONFIG_CHANGED:
                 sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
