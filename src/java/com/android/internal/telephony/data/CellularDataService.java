@@ -92,9 +92,8 @@ public class CellularDataService extends DataService {
                             int error = (int) ar.result;
                             callback.onDeactivateDataCallComplete(ar.exception != null
                                     ? DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE
-                                    : error == RadioError.RADIO_NOT_AVAILABLE
-                                            ? DataServiceCallback.RESULT_ERROR_RADIO_NOT_AVAILABLE
-                                            : RESULT_SUCCESS);
+                                    : error == RadioError.NONE ? RESULT_SUCCESS
+                                            : DataServiceCallback.RESULT_ERROR_INVALID_RESPONSE);
                             break;
                         case SET_INITIAL_ATTACH_APN_COMPLETE:
                             callback.onSetInitialAttachApnComplete(ar.exception != null
