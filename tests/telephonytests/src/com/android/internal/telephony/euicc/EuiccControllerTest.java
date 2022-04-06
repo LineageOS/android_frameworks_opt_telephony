@@ -415,6 +415,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_serviceUnavailable() throws Exception {
         setHasWriteEmbeddedPermission(true);
         setUpUiccSlotData();
@@ -428,6 +429,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_error() throws Exception {
         setHasWriteEmbeddedPermission(true);
         callDownloadSubscription(SUBSCRIPTION, false /* switchAfterDownload */, true /* complete */,
@@ -437,6 +439,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_mustDeactivateSim() throws Exception {
         setHasWriteEmbeddedPermission(true);
         callDownloadSubscription(SUBSCRIPTION, false /* switchAfterDownload */, true /* complete */,
@@ -449,6 +452,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_needConfirmationCode() throws Exception {
         setHasWriteEmbeddedPermission(true);
         callDownloadSubscription(SUBSCRIPTION, false /* switchAfterDownload */, true /* complete */,
@@ -461,6 +465,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_success() throws Exception {
         setHasWriteEmbeddedPermission(true);
         setUpUiccSlotData();
@@ -472,6 +477,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_noSwitch_success() throws Exception {
         setHasWriteEmbeddedPermission(true);
         callDownloadSubscription(SUBSCRIPTION, false /* switchAfterDownload */, true /* complete */,
@@ -481,6 +487,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_noPrivileges_getMetadata_serviceUnavailable()
             throws Exception {
         setHasWriteEmbeddedPermission(false);
@@ -495,6 +502,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_noPrivileges_getMetadata_serviceUnavailable_canManageSim()
             throws Exception {
         setHasWriteEmbeddedPermission(false);
@@ -510,6 +518,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_noPrivileges_getMetadata_error()
             throws Exception {
         setHasWriteEmbeddedPermission(false);
@@ -526,6 +535,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_noPrivileges_getMetadata_error_canManageSim()
             throws Exception {
         setHasWriteEmbeddedPermission(false);
@@ -543,6 +553,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_noPrivileges_getMetadata_mustDeactivateSim()
             throws Exception {
         setHasWriteEmbeddedPermission(false);
@@ -562,6 +573,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_noPrivileges_getMetadata_mustDeactivateSim_canManageSim()
             throws Exception {
         setHasWriteEmbeddedPermission(false);
@@ -582,6 +594,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_noPrivileges_hasCarrierPrivileges() throws Exception {
         setHasWriteEmbeddedPermission(false);
         setUpUiccSlotData();
@@ -599,6 +612,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_noPrivileges_hasCarrierPrivileges_multiSim()
             throws Exception {
         setHasWriteEmbeddedPermission(false);
@@ -617,6 +631,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_noPrivileges_hasCarrierPrivileges_needsConsent()
             throws Exception {
         setHasWriteEmbeddedPermission(false);
@@ -638,6 +653,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_noPrivileges_hasCarrierPrivileges_needsConsent_multiSim()
             throws Exception {
         setHasWriteEmbeddedPermission(false);
@@ -659,6 +675,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_noPriv_hasCarrierPrivi_needsConsent_multiSim_targetPsim()
             throws Exception {
         setHasWriteEmbeddedPermission(false);
@@ -680,6 +697,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_noPrivileges_noCarrierPrivileges() throws Exception {
         setHasWriteEmbeddedPermission(false);
         setUpUiccSlotData();
@@ -701,6 +719,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_noPrivileges_noCarrierPrivileges_canManagerTargetSim()
             throws Exception {
         setHasWriteEmbeddedPermission(false);
@@ -790,6 +809,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testSwitchToSubscription_noSuchSubscription() throws Exception {
         setHasWriteEmbeddedPermission(true);
         callSwitchToSubscription(
@@ -802,6 +822,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testSwitchToSubscription_emptySubscription_noPrivileges() throws Exception {
         setHasWriteEmbeddedPermission(false);
         callSwitchToSubscription(
@@ -814,6 +835,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testSwitchToSubscription_serviceUnavailable() throws Exception {
         setHasWriteEmbeddedPermission(true);
         prepareOperationSubscription(false /* hasPrivileges */);
@@ -828,6 +850,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testSwitchToSubscription_error() throws Exception {
         setHasWriteEmbeddedPermission(true);
         prepareOperationSubscription(false /* hasPrivileges */);
@@ -840,6 +863,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testSwitchToSubscription_success() throws Exception {
         setHasWriteEmbeddedPermission(true);
         prepareOperationSubscription(false /* hasPrivileges */);
@@ -851,6 +875,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testSwitchToSubscription_emptySubscription_noActiveSubscription() throws Exception {
         setHasWriteEmbeddedPermission(true);
         callSwitchToSubscription(
@@ -863,6 +888,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testSwitchToSubscription_emptySubscription_success() throws Exception {
         setHasWriteEmbeddedPermission(true);
         setHasCarrierPrivilegesOnActiveSubscription(false);
@@ -873,6 +899,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testSwitchToSubscription_noPrivileges() throws Exception {
         setHasWriteEmbeddedPermission(false);
         prepareOperationSubscription(false /* hasPrivileges */);
@@ -886,6 +913,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testSwitchToSubscription_hasCarrierPrivileges() throws Exception {
         setHasWriteEmbeddedPermission(false);
         prepareOperationSubscription(true /* hasPrivileges */);
@@ -898,6 +926,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testSwitchToSubscription_hasCarrierPrivileges_multiSim() throws Exception {
         setHasWriteEmbeddedPermission(false);
         prepareOperationSubscription(true /* hasPrivileges */);
@@ -910,6 +939,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testSwitchToSubscription_hasCarrierPrivileges_needsConsent() throws Exception {
         setHasWriteEmbeddedPermission(false);
         prepareOperationSubscription(true /* hasPrivileges */);
@@ -927,6 +957,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testSwitchToSubscription_hasCarrierPrivileges_needsConsent_multiSim()
             throws Exception {
         setHasWriteEmbeddedPermission(false);
@@ -945,6 +976,7 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testSwitchToSubscription_hasCarrierPrivileges_needsConsent_multiSim_targetPsim()
             throws Exception {
         setHasWriteEmbeddedPermission(false);

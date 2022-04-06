@@ -19,6 +19,13 @@ package com.android.internal.telephony.metrics;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_IMS;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_UNKNOWN;
+import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_LESS_THAN_FIVE_MINUTES;
+import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_LESS_THAN_ONE_HOUR;
+import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_LESS_THAN_ONE_MINUTE;
+import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_LESS_THAN_TEN_MINUTES;
+import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_LESS_THAN_THIRTY_MINUTES;
+import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_MORE_THAN_ONE_HOUR;
+import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_UNKNOWN;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__DIRECTION__CALL_DIRECTION_MO;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__DIRECTION__CALL_DIRECTION_MT;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__MAIN_CODEC_QUALITY__CODEC_QUALITY_FULLBAND;
@@ -94,6 +101,13 @@ public class VoiceCallSessionStats {
     private static final int CALL_SETUP_DURATION_ULTRA_SLOW = 10000;
     // CALL_SETUP_DURATION_EXTREMELY_SLOW has no upper bound (it includes everything above 10000)
 
+    // Upper bounds of each call duration category in milliseconds.
+    private static final int CALL_DURATION_ONE_MINUTE = 60000;
+    private static final int CALL_DURATION_FIVE_MINUTES = 300000;
+    private static final int CALL_DURATION_TEN_MINUTES = 600000;
+    private static final int CALL_DURATION_THIRTY_MINUTES = 1800000;
+    private static final int CALL_DURATION_ONE_HOUR = 3600000;
+
     /** Number of buckets for codec quality, from UNKNOWN to FULLBAND. */
     private static final int CODEC_QUALITY_COUNT = 5;
 
@@ -113,6 +127,9 @@ public class VoiceCallSessionStats {
 
     /** Holds setup duration buckets with values as their upper bounds in milliseconds. */
     private static final SparseIntArray CALL_SETUP_DURATION_MAP = buildCallSetupDurationMap();
+
+    /** Holds call duration buckets with values as their upper bounds in milliseconds. */
+    private static final SparseIntArray CALL_DURATION_MAP = buildCallDurationMap();
 
     /**
      * Tracks statistics for each call connection, indexed with ID returned by {@link
@@ -189,6 +206,7 @@ public class VoiceCallSessionStats {
                     proto.disconnectReasonCode = conn.getDisconnectCause();
                     proto.disconnectExtraCode = conn.getPreciseDisconnectCause();
                     proto.disconnectExtraMessage = conn.getVendorDisconnectCause();
+                    proto.callDuration = classifyCallDuration(conn.getDurationMillis());
                     finishCall(id);
                 }
             }
@@ -229,19 +247,19 @@ public class VoiceCallSessionStats {
             List<Integer> imsConnIds = getImsConnectionIds();
             if (imsConnIds.size() == 1) {
                 loge("onImsCallTerminated: ending IMS call w/ conn=null");
-                finishImsCall(imsConnIds.get(0), reasonInfo);
+                finishImsCall(imsConnIds.get(0), reasonInfo, 0);
             } else {
                 loge("onImsCallTerminated: %d IMS calls w/ conn=null", imsConnIds.size());
             }
         } else {
             int id = getConnectionId(conn);
             if (mCallProtos.contains(id)) {
-                finishImsCall(id, reasonInfo);
+                finishImsCall(id, reasonInfo, conn.getDurationMillis());
             } else {
                 loge("onImsCallTerminated: untracked connection, connectionId=%d", id);
                 // fake a call so at least some info can be tracked
                 addCall(conn);
-                finishImsCall(id, reasonInfo);
+                finishImsCall(id, reasonInfo, conn.getDurationMillis());
             }
         }
     }
@@ -557,12 +575,13 @@ public class VoiceCallSessionStats {
         }
     }
 
-    private void finishImsCall(int id, ImsReasonInfo reasonInfo) {
+    private void finishImsCall(int id, ImsReasonInfo reasonInfo, long durationMillis) {
         VoiceCallSession proto = mCallProtos.get(id);
         proto.bearerAtEnd = VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_IMS;
         proto.disconnectReasonCode = reasonInfo.mCode;
         proto.disconnectExtraCode = reasonInfo.mExtraCode;
         proto.disconnectExtraMessage = ImsStats.filterExtraMessage(reasonInfo.mExtraMessage);
+        proto.callDuration = classifyCallDuration(durationMillis);
         finishCall(id);
     }
 
@@ -737,6 +756,19 @@ public class VoiceCallSessionStats {
         return VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_EXTREMELY_SLOW;
     }
 
+    private static int classifyCallDuration(long durationMillis) {
+        if (durationMillis == 0L) {
+            return VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_UNKNOWN;
+        }
+        // keys in CALL_SETUP_DURATION_MAP are upper bounds in ascending order
+        for (int i = 0; i < CALL_DURATION_MAP.size(); i++) {
+            if (durationMillis < CALL_DURATION_MAP.keyAt(i)) {
+                return CALL_DURATION_MAP.valueAt(i);
+            }
+        }
+        return VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_MORE_THAN_ONE_HOUR;
+    }
+
     /**
      * Generates an ID for each connection, which should be the same for IMS and CS connections
      * involved in the same SRVCC.
@@ -833,6 +865,29 @@ public class VoiceCallSessionStats {
                 CALL_SETUP_DURATION_ULTRA_SLOW,
                 VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_ULTRA_SLOW);
         // anything above would be CALL_SETUP_DURATION_EXTREMELY_SLOW
+
+        return map;
+    }
+
+    private static SparseIntArray buildCallDurationMap() {
+        SparseIntArray map = new SparseIntArray();
+
+        map.put(
+                CALL_DURATION_ONE_MINUTE,
+                VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_LESS_THAN_ONE_MINUTE);
+        map.put(
+                CALL_DURATION_FIVE_MINUTES,
+                VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_LESS_THAN_FIVE_MINUTES);
+        map.put(
+                CALL_DURATION_TEN_MINUTES,
+                VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_LESS_THAN_TEN_MINUTES);
+        map.put(
+                CALL_DURATION_THIRTY_MINUTES,
+                VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_LESS_THAN_THIRTY_MINUTES);
+        map.put(
+                CALL_DURATION_ONE_HOUR,
+                VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_LESS_THAN_ONE_HOUR);
+        // anything above would be MORE_THAN_ONE_HOUR
 
         return map;
     }

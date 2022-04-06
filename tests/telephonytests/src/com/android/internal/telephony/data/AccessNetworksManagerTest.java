@@ -18,18 +18,24 @@ package com.android.internal.telephony.data;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assume.assumeFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import android.content.ComponentName;
 import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
+import android.net.NetworkCapabilities;
 import android.os.IBinder;
+import android.os.Looper;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.NetworkService;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.IQualifiedNetworksService;
@@ -38,11 +44,13 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksManagerCallback;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mockito;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -52,6 +60,7 @@ public class AccessNetworksManagerTest extends TelephonyTest {
     // Mocked classes
     private IQualifiedNetworksService mMockedQns;
     private IBinder mMockedIBinder;
+    private AccessNetworksManagerCallback mMockedCallback;
 
     // The real callback passed created by AccessNetworksManager.
     private IQualifiedNetworksServiceCallback.Stub mQnsCallback;
@@ -86,15 +95,20 @@ public class AccessNetworksManagerTest extends TelephonyTest {
         mMockedQns = mock(IQualifiedNetworksService.class);
         mMockedIBinder = mock(IBinder.class);
 
-        doReturn(true).when(mPhone).isUsingNewDataStack();
-
         addQnsService();
         mContextFixture.putResource(
                 com.android.internal.R.string.config_qualified_networks_service_package,
                 "fake.qns");
 
-        mAccessNetworksManager = new AccessNetworksManager(mPhone);
+        mMockedCallback = Mockito.mock(AccessNetworksManagerCallback.class);
+        doAnswer(invocation -> {
+            ((Runnable) invocation.getArguments()[0]).run();
+            return null;
+        }).when(mMockedCallback).invokeFromExecutor(any(Runnable.class));
+
+        mAccessNetworksManager = new AccessNetworksManager(mPhone, Looper.myLooper());
         processAllMessages();
+        assumeFalse(mAccessNetworksManager.isInLegacyMode());
         logd("-setUp");
     }
 
@@ -106,13 +120,11 @@ public class AccessNetworksManagerTest extends TelephonyTest {
 
     @Test
     public void testBindService() {
-        if (mAccessNetworksManager.isInLegacyMode()) return;
         assertThat(mQnsCallback).isNotNull();
     }
 
     @Test
     public void testQualifiedNetworkTypesChanged() throws Exception {
-        if (mAccessNetworksManager.isInLegacyMode()) return;
         assertThat(mQnsCallback).isNotNull();
         assertThat(mAccessNetworksManager.isAnyApnOnIwlan()).isFalse();
         assertThat(mAccessNetworksManager.getPreferredTransport(ApnSetting.TYPE_IMS))
@@ -122,7 +134,7 @@ public class AccessNetworksManagerTest extends TelephonyTest {
         assertThat(mAccessNetworksManager.isAnyApnOnIwlan()).isFalse();
 
         mQnsCallback.onQualifiedNetworkTypesChanged(ApnSetting.TYPE_IMS | ApnSetting.TYPE_MMS,
-                new int[]{AccessNetworkConstants.AccessNetworkType.IWLAN});
+                new int[]{AccessNetworkType.IWLAN});
         processAllMessages();
 
         assertThat(mAccessNetworksManager.getPreferredTransport(ApnSetting.TYPE_IMS))
@@ -130,5 +142,105 @@ public class AccessNetworksManagerTest extends TelephonyTest {
         assertThat(mAccessNetworksManager.getPreferredTransport(ApnSetting.TYPE_MMS))
                 .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
         assertThat(mAccessNetworksManager.isAnyApnOnIwlan()).isTrue();
+    }
+
+    @Test
+    public void testEmptyNetworkTypes() throws Exception {
+        testQualifiedNetworkTypesChanged();
+
+        mQnsCallback.onQualifiedNetworkTypesChanged(ApnSetting.TYPE_IMS | ApnSetting.TYPE_MMS,
+                new int[0]);
+        processAllMessages();
+
+        assertThat(mAccessNetworksManager.getPreferredTransport(ApnSetting.TYPE_IMS))
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        assertThat(mAccessNetworksManager.getPreferredTransport(ApnSetting.TYPE_MMS))
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        assertThat(mAccessNetworksManager.isAnyApnOnIwlan()).isFalse();
+    }
+
+    @Test
+    public void testInvalidNetworkTypes() throws Exception {
+        testQualifiedNetworkTypesChanged();
+
+        // Input unknown would become a no-op
+        mQnsCallback.onQualifiedNetworkTypesChanged(ApnSetting.TYPE_IMS | ApnSetting.TYPE_MMS,
+                new int[]{AccessNetworkType.EUTRAN, AccessNetworkType.UNKNOWN});
+        processAllMessages();
+
+        // There shouldn't be any changes.
+        assertThat(mAccessNetworksManager.getPreferredTransport(ApnSetting.TYPE_IMS))
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+        assertThat(mAccessNetworksManager.getPreferredTransport(ApnSetting.TYPE_MMS))
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+        assertThat(mAccessNetworksManager.isAnyApnOnIwlan()).isTrue();
+    }
+
+    @Test
+    public void testEmptyList() throws Exception {
+        testQualifiedNetworkTypesChanged();
+
+        // Empty list input
+        mQnsCallback.onQualifiedNetworkTypesChanged(ApnSetting.TYPE_IMS | ApnSetting.TYPE_MMS,
+                new int[0]);
+        processAllMessages();
+
+        assertThat(mAccessNetworksManager.getPreferredTransport(ApnSetting.TYPE_IMS))
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        assertThat(mAccessNetworksManager.getPreferredTransport(ApnSetting.TYPE_MMS))
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        assertThat(mAccessNetworksManager.isAnyApnOnIwlan()).isFalse();
+    }
+
+    @Test
+    public void testCallback() throws Exception {
+        mAccessNetworksManager.registerCallback(mMockedCallback);
+
+        mQnsCallback.onQualifiedNetworkTypesChanged(ApnSetting.TYPE_IMS | ApnSetting.TYPE_MMS,
+                new int[]{AccessNetworkType.IWLAN});
+        processAllMessages();
+
+        verify(mMockedCallback).onPreferredTransportChanged(
+                eq(NetworkCapabilities.NET_CAPABILITY_MMS));
+        verify(mMockedCallback).onPreferredTransportChanged(
+                eq(NetworkCapabilities.NET_CAPABILITY_IMS));
+        Mockito.clearInvocations(mMockedCallback);
+        assertThat(mAccessNetworksManager.getPreferredTransportByNetworkCapability(
+                NetworkCapabilities.NET_CAPABILITY_MMS)).isEqualTo(
+                        AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+        assertThat(mAccessNetworksManager.getPreferredTransportByNetworkCapability(
+                NetworkCapabilities.NET_CAPABILITY_IMS)).isEqualTo(
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+
+        mQnsCallback.onQualifiedNetworkTypesChanged(ApnSetting.TYPE_XCAP,
+                new int[]{AccessNetworkType.IWLAN});
+        processAllMessages();
+
+        verify(mMockedCallback).onPreferredTransportChanged(
+                eq(NetworkCapabilities.NET_CAPABILITY_XCAP));
+        Mockito.clearInvocations(mMockedCallback);
+        assertThat(mAccessNetworksManager.getPreferredTransportByNetworkCapability(
+                NetworkCapabilities.NET_CAPABILITY_XCAP)).isEqualTo(
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+
+        mQnsCallback.onQualifiedNetworkTypesChanged(
+                ApnSetting.TYPE_XCAP | ApnSetting.TYPE_IMS | ApnSetting.TYPE_MMS,
+                new int[]{});
+        verify(mMockedCallback).onPreferredTransportChanged(
+                eq(NetworkCapabilities.NET_CAPABILITY_IMS));
+        verify(mMockedCallback).onPreferredTransportChanged(
+                eq(NetworkCapabilities.NET_CAPABILITY_MMS));
+        verify(mMockedCallback).onPreferredTransportChanged(
+                eq(NetworkCapabilities.NET_CAPABILITY_XCAP));
+        assertThat(mAccessNetworksManager.getPreferredTransportByNetworkCapability(
+                NetworkCapabilities.NET_CAPABILITY_IMS)).isEqualTo(
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        assertThat(mAccessNetworksManager.getPreferredTransportByNetworkCapability(
+                NetworkCapabilities.NET_CAPABILITY_MMS)).isEqualTo(
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        assertThat(mAccessNetworksManager.getPreferredTransportByNetworkCapability(
+                NetworkCapabilities.NET_CAPABILITY_XCAP)).isEqualTo(
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+
     }
 }

@@ -21,6 +21,10 @@ import static android.telephony.SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER;
 import static android.telephony.SubscriptionManager.PHONE_NUMBER_SOURCE_IMS;
 import static android.telephony.SubscriptionManager.PHONE_NUMBER_SOURCE_UICC;
 
+import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_A;
+import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_B;
+import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_C;
+import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_UNKNOWN;
 import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS__WFC_MODE__CELLULAR_PREFERRED;
 import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS__WFC_MODE__UNKNOWN;
 import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS__WFC_MODE__WIFI_ONLY;
@@ -33,8 +37,11 @@ import android.telephony.ims.ImsManager;
 import android.telephony.ims.ImsMmTelManager;
 import android.text.TextUtils;
 
+import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccSlot;
 
 import java.util.Optional;
 
@@ -59,6 +66,8 @@ public class PerSimStatus {
     public final boolean dataRoamingEnabled;
     public final long preferredNetworkType;
     public final boolean disabled2g;
+    public final boolean pin1Enabled;
+    public final int minimumVoltageClass;
 
     /** Returns the current sim status of the given {@link Phone}. */
     @Nullable
@@ -66,6 +75,7 @@ public class PerSimStatus {
         int[] numberState = getNumberState(phone);
         if (numberState == null) return null;
         ImsMmTelManager imsMmTelManager = getImsMmTelManager(phone);
+        IccCard iccCard = phone.getIccCard();
         return new PerSimStatus(
                 phone.getCarrierId(),
                 numberState[0],
@@ -82,7 +92,9 @@ public class PerSimStatus {
                 imsMmTelManager == null ? false : imsMmTelManager.isVtSettingEnabled(),
                 phone.getDataRoamingEnabled(),
                 phone.getAllowedNetworkTypes(TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER),
-                is2gDisabled(phone));
+                is2gDisabled(phone),
+                iccCard == null ? false : iccCard.getIccLockEnabled(),
+                getMinimumVoltageClass(phone));
     }
 
     private PerSimStatus(
@@ -97,7 +109,9 @@ public class PerSimStatus {
             boolean vtSettingEnabled,
             boolean dataRoamingEnabled,
             long preferredNetworkType,
-            boolean disabled2g) {
+            boolean disabled2g,
+            boolean pin1Enabled,
+            int minimumVoltageClass) {
         this.carrierId = carrierId;
         this.phoneNumberSourceUicc = phoneNumberSourceUicc;
         this.phoneNumberSourceCarrier = phoneNumberSourceCarrier;
@@ -110,6 +124,8 @@ public class PerSimStatus {
         this.dataRoamingEnabled = dataRoamingEnabled;
         this.preferredNetworkType = preferredNetworkType;
         this.disabled2g = disabled2g;
+        this.pin1Enabled = pin1Enabled;
+        this.minimumVoltageClass = minimumVoltageClass;
     }
 
     @Nullable
@@ -194,6 +210,24 @@ public class PerSimStatus {
                 return PER_SIM_STATUS__WFC_MODE__WIFI_PREFERRED;
             default:
                 return PER_SIM_STATUS__WFC_MODE__UNKNOWN;
+        }
+    }
+
+    /** Returns the minimum voltage class supported by the UICC. */
+    private static int getMinimumVoltageClass(Phone phone) {
+        UiccSlot uiccSlot = UiccController.getInstance().getUiccSlotForPhone(phone.getPhoneId());
+        if (uiccSlot == null) {
+            return PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_UNKNOWN;
+        }
+        switch (uiccSlot.getMinimumVoltageClass()) {
+            case UiccSlot.VOLTAGE_CLASS_A:
+                return PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_A;
+            case UiccSlot.VOLTAGE_CLASS_B:
+                return PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_B;
+            case UiccSlot.VOLTAGE_CLASS_C:
+                return PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_C;
+            default:
+                return PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_UNKNOWN;
         }
     }
 }

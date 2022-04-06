@@ -23,16 +23,20 @@ import static android.telephony.CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX;
 import static android.telephony.CarrierConfigManager.KEY_CARRIER_CERTIFICATE_STRING_ARRAY;
 import static android.telephony.CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL;
 import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+import static android.telephony.TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
+import static android.telephony.TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED;
 import static android.telephony.TelephonyManager.EXTRA_SIM_STATE;
+import static android.telephony.TelephonyManager.SIM_STATE_ABSENT;
 import static android.telephony.TelephonyManager.SIM_STATE_LOADED;
 import static android.telephony.TelephonyManager.SIM_STATE_NOT_READY;
+import static android.telephony.TelephonyManager.SIM_STATE_READY;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.argThat;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
@@ -56,6 +60,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
+import android.os.Process;
 import android.service.carrier.CarrierService;
 import android.telephony.CarrierConfigManager;
 import android.telephony.TelephonyManager;
@@ -77,9 +82,11 @@ import org.mockito.Mock;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -115,6 +122,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
     private static final int UID_2 = 10000002;
     private static final int UID_3 = 10000003;
     private static final int[] PRIVILEGED_UIDS = {UID_1, UID_2};
+    private static final Set<Integer> PRIVILEGED_UIDS_SET = Set.of(UID_1, UID_2);
 
     private static final int PM_FLAGS =
             PackageManager.GET_SIGNING_CERTIFICATES
@@ -272,12 +280,12 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
                 expectedPackageNames, mCarrierPrivilegesTracker.getPackagesWithCarrierPrivileges());
         for (String packageName : expectedPackageNames) {
             assertEquals(
-                    TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS,
+                    CARRIER_PRIVILEGE_STATUS_HAS_ACCESS,
                     mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForPackage(packageName));
         }
         for (int uid : expectedUids) {
             assertEquals(
-                    TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS,
+                    CARRIER_PRIVILEGE_STATUS_HAS_ACCESS,
                     mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForUid(uid));
         }
     }
@@ -288,19 +296,18 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
     }
 
     private void verifyCarrierPrivilegesChangedUpdates(
-            List<Pair<Set<String>, int[]>> expectedUpdates) {
+            List<Pair<Set<String>, Set<Integer>>> expectedUpdates) {
         if (expectedUpdates.isEmpty()) {
             verify(mTelephonyRegistryManager, never())
                     .notifyCarrierPrivilegesChanged(anyInt(), any(), any());
         } else {
             InOrder inOrder = inOrder(mTelephonyRegistryManager);
-            for (Pair<Set<String>, int[]> expectedUpdate : expectedUpdates) {
+            for (Pair<Set<String>, Set<Integer>> expectedUpdate : expectedUpdates) {
                 // By looking at TelephonyRegistryManager, we can see the full flow as it evolves.
                 inOrder.verify(mTelephonyRegistryManager)
                         .notifyCarrierPrivilegesChanged(
                                 eq(PHONE_ID),
-                                // Callback gets a list, but we don't care about order so use Set
-                                argThat(list -> Set.copyOf(list).equals(expectedUpdate.first)),
+                                eq(expectedUpdate.first),
                                 eq(expectedUpdate.second));
             }
         }
@@ -336,7 +343,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS);
         verifyRegistrantUpdates(PRIVILEGED_UIDS /* expectedUids */, 1 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
-                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS)));
+                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS_SET)));
         mHandler.reset();
         reset(mTelephonyRegistryManager);
 
@@ -353,7 +360,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
 
         verifyCurrentState(Set.of(), new int[0]);
         verifyRegistrantUpdates(null /* expectedUids */, 0 /* expectedUidUpdates */);
-        verifyCarrierPrivilegesChangedUpdates(List.of(new Pair<>(Set.of(), new int[0])));
+        verifyCarrierPrivilegesChangedUpdates(List.of(new Pair<>(Set.of(), Set.of())));
     }
 
     @Test
@@ -372,7 +379,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS);
         verifyRegistrantUpdates(PRIVILEGED_UIDS, 1 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
-                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS)));
+                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS_SET)));
     }
 
     @Test
@@ -386,7 +393,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS);
         verifyRegistrantUpdates(null /* expectedUids */, 0 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
-                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS)));
+                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS_SET)));
     }
 
     @Test
@@ -401,8 +408,8 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyRegistrantUpdates(new int[0] /* expectedUids */, 1 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
                 List.of(
-                        new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS),
-                        new Pair<>(Set.of(), new int[0])));
+                        new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS_SET),
+                        new Pair<>(Set.of(), Set.of())));
     }
 
     @Test
@@ -418,7 +425,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
 
         verifyCurrentState(Set.of(), new int[0]);
         verifyRegistrantUpdates(new int[0] /* expectedUids */, 1 /* expectedUidUpdates */);
-        verifyCarrierPrivilegesChangedUpdates(List.of(new Pair<>(Set.of(), new int[0])));
+        verifyCarrierPrivilegesChangedUpdates(List.of(new Pair<>(Set.of(), Set.of())));
     }
 
     @Test
@@ -439,7 +446,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(Set.of(PACKAGE_1), new int[] {UID_1});
         verifyRegistrantUpdates(new int[] {UID_1}, 1 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
-                List.of(new Pair<>(Set.of(PACKAGE_1), new int[] {UID_1})));
+                List.of(new Pair<>(Set.of(PACKAGE_1), Set.of(UID_1))));
 
         // Give package 2 privileges again.
         setupCarrierConfigRules(
@@ -452,7 +459,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS);
         verifyRegistrantUpdates(PRIVILEGED_UIDS, 2 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
-                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS)));
+                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS_SET)));
     }
 
     @Test
@@ -471,7 +478,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS);
         verifyRegistrantUpdates(PRIVILEGED_UIDS, 1 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
-                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS)));
+                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS_SET)));
     }
 
     @Test
@@ -490,7 +497,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS);
         verifyRegistrantUpdates(PRIVILEGED_UIDS, 1 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
-                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS)));
+                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS_SET)));
     }
 
     @Test
@@ -507,8 +514,8 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyRegistrantUpdates(new int[0], 1 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
                 List.of(
-                        new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS),
-                        new Pair<>(Set.of(), new int[0])));
+                        new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS_SET),
+                        new Pair<>(Set.of(), Set.of())));
     }
 
     @Test
@@ -524,7 +531,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS);
         verifyRegistrantUpdates(null /* expectedUids */, 0 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
-                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS)));
+                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS_SET)));
     }
 
     @Test
@@ -535,12 +542,154 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         sendSimCardStateChangedIntent(PHONE_ID, SIM_STATE_NOT_READY);
         mTestableLooper.processAllMessages();
 
+        // Immediately check current state, nothing should change
+        verifyCurrentState(Set.of(PACKAGE_1, PACKAGE_2), new int[]{UID_1, UID_2});
+
+        // Wait for 30 seconds
+        moveTimeForward(TimeUnit.SECONDS.toMillis(30));
+        mTestableLooper.processAllMessages();
+
+        // Check again, the carrier privileges should be emptied
         verifyCurrentState(Set.of(), new int[0]);
         verifyRegistrantUpdates(new int[0], 1 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
                 List.of(
-                        new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS),
-                        new Pair<>(Set.of(), new int[0])));
+                        new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS_SET),
+                        new Pair<>(Set.of(), Set.of())));
+    }
+
+    @Test
+    public void testSimStateChangedSimStateAbsentThenLoadedWithSameRules() throws Exception {
+        // Start with privileges
+        setupCarrierPrivilegesTrackerWithSimLoadedUids();
+        // CPT initialization process may trigger notification, remove the interfere here
+        reset(mTelephonyRegistryManager);
+
+        // SIM is removed
+        sendSimCardStateChangedIntent(PHONE_ID, SIM_STATE_ABSENT);
+        mTestableLooper.processAllMessages();
+
+
+        // Wait for 20 seconds and the same SIM is inserted
+        moveTimeForward(TimeUnit.SECONDS.toMillis(20));
+        sendSimCardStateChangedIntent(PHONE_ID, SIM_STATE_LOADED);
+        mTestableLooper.processAllMessages();
+        // Wait for another 20 seconds
+        moveTimeForward(TimeUnit.SECONDS.toMillis(20));
+
+        // verify all carrier privileges should remain, no CP change notified
+        verifyCurrentState(Set.of(PACKAGE_1, PACKAGE_2), new int[]{UID_1, UID_2});
+        verifyRegistrantUpdates(null /* expectedUidUpdates */, 0 /* expectedUidUpdates */);
+        verifyCarrierPrivilegesChangedUpdates(List.of());
+    }
+
+    @Test
+    public void testSimStateChangedSimStateAbsentForever() throws Exception {
+        // Start with privileges
+        setupCarrierPrivilegesTrackerWithSimLoadedUids();
+        // CPT initialization process may trigger notification, remove the interfere here
+        reset(mTelephonyRegistryManager);
+
+        // SIM is removed
+        sendSimCardStateChangedIntent(PHONE_ID, SIM_STATE_ABSENT);
+        mTestableLooper.processAllMessages();
+
+        // Wait for 30 seconds
+        moveTimeForward(TimeUnit.SECONDS.toMillis(30));
+        mTestableLooper.processAllMessages();
+
+        // verify the carrier privileges should be emptied
+        verifyCurrentState(Set.of(), new int[0]);
+        verifyRegistrantUpdates(new int[0], 1 /* expectedUidUpdates */);
+        verifyCarrierPrivilegesChangedUpdates(
+                List.of(new Pair<>(Set.of(), Set.of())));
+    }
+
+    @Test
+    public void testSimStateChangedSimStateNotReadyForever() throws Exception {
+        // Start with privileges
+        setupCarrierPrivilegesTrackerWithSimLoadedUids();
+        // CPT initialization process may trigger notification, remove the interfere here
+        reset(mTelephonyRegistryManager);
+
+        // eSIM profile disabled and leave in state SIM_STATE_NOT_READY
+        sendSimCardStateChangedIntent(PHONE_ID, SIM_STATE_NOT_READY);
+        mTestableLooper.processAllMessages();
+
+        // Wait for 30 seconds
+        moveTimeForward(TimeUnit.SECONDS.toMillis(30));
+        mTestableLooper.processAllMessages();
+
+        // verify the carrier privileges should be emptied
+        verifyCurrentState(Set.of(), new int[0]);
+        verifyRegistrantUpdates(new int[0], 1 /* expectedUidUpdates */);
+        verifyCarrierPrivilegesChangedUpdates(
+                List.of(new Pair<>(Set.of(), Set.of())));
+    }
+
+    @Test
+    public void testSimStateChangedSimStateAbsentThenLoadedWithUpdatedRules() throws Exception {
+        // Start with privileges
+        setupCarrierPrivilegesTrackerWithSimLoadedUids();
+        reset(mTelephonyRegistryManager);
+
+        // SIM is removed
+        sendSimCardStateChangedIntent(PHONE_ID, SIM_STATE_ABSENT);
+        mTestableLooper.processAllMessages();
+
+
+        // Wait for 20 seconds and a different SIM is inserted
+        moveTimeForward(TimeUnit.SECONDS.toMillis(20));
+        setupSimLoadedRules(ruleWithHashOnly(getHash(CERT_1)));
+        sendSimCardStateChangedIntent(PHONE_ID, SIM_STATE_LOADED);
+        mTestableLooper.processAllMessages();
+        // Wait for another 20 seconds
+        moveTimeForward(TimeUnit.SECONDS.toMillis(20));
+
+        // Carrier privileges should be updated and CP change should be notified
+        verifyCurrentState(Set.of(PACKAGE_1), new int[] {UID_1});
+        verifyRegistrantUpdates(new int[] {UID_1}, 1 /* expectedUidUpdates */);
+        verifyCarrierPrivilegesChangedUpdates(
+                List.of(new Pair<>(Set.of(PACKAGE_1), Set.of(UID_1))));
+    }
+
+    @Test
+    public void testSimStateChangedSimStateReadyThenLoaded() throws Exception {
+        // Start with privileges (from carrier config)
+        setupCarrierPrivilegesTrackerWithCarrierConfigUids();
+
+        ResolveInfo pkg1ResolveInfo = new ResolveInfoBuilder().setActivity(PACKAGE_1).build();
+        ResolveInfo pkg2ResolveInfo = new ResolveInfoBuilder().setActivity(PACKAGE_2).build();
+        when(mPackageManager.queryBroadcastReceivers(any(), anyInt())).thenReturn(
+                List.of(pkg1ResolveInfo, pkg2ResolveInfo));
+
+        // SIM is READY
+        sendSimCardStateChangedIntent(PHONE_ID, SIM_STATE_READY);
+        mTestableLooper.processAllMessages();
+
+        assertEquals(Collections.emptyList(),
+                mCarrierPrivilegesTracker.getCarrierPackageNamesForIntent(
+                        new Intent(CarrierService.CARRIER_SERVICE_INTERFACE)));
+        assertEquals(CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED,
+                mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForUid(UID_1));
+        assertEquals(Collections.EMPTY_SET,
+                mCarrierPrivilegesTracker.getPackagesWithCarrierPrivileges());
+        assertEquals(CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED,
+                mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForPackage(PACKAGE_1));
+
+        // SIM is LOADED
+        sendSimCardStateChangedIntent(PHONE_ID, SIM_STATE_LOADED);
+        mTestableLooper.processAllMessages();
+
+        assertEquals(List.of(PACKAGE_1, PACKAGE_2),
+                mCarrierPrivilegesTracker.getCarrierPackageNamesForIntent(
+                        new Intent(CarrierService.CARRIER_SERVICE_INTERFACE)));
+        assertEquals(CARRIER_PRIVILEGE_STATUS_HAS_ACCESS,
+                mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForUid(UID_1));
+        assertEquals(PRIVILEGED_PACKAGES,
+                mCarrierPrivilegesTracker.getPackagesWithCarrierPrivileges());
+        assertEquals(CARRIER_PRIVILEGE_STATUS_HAS_ACCESS,
+                mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForPackage(PACKAGE_1));
     }
 
     @Test
@@ -561,7 +710,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(Set.of(PACKAGE_1), new int[] {UID_1});
         verifyRegistrantUpdates(new int[] {UID_1}, 1 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
-                List.of(new Pair<>(Set.of(PACKAGE_1), new int[] {UID_1})));
+                List.of(new Pair<>(Set.of(PACKAGE_1), Set.of(UID_1))));
 
         // Give package 2 privileges again.
         setupSimLoadedRules(
@@ -575,7 +724,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS);
         verifyRegistrantUpdates(PRIVILEGED_UIDS, 2 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
-                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS)));
+                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS_SET)));
     }
 
     @Test
@@ -592,7 +741,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(Set.of(PACKAGE_1), new int[] {UID_1});
         verifyRegistrantUpdates(new int[] {UID_1}, 1 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
-                List.of(new Pair<>(Set.of(PACKAGE_1), new int[] {UID_1})));
+                List.of(new Pair<>(Set.of(PACKAGE_1), Set.of(UID_1))));
     }
 
     @Test
@@ -612,7 +761,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(Set.of(PACKAGE_1), PRIVILEGED_UIDS);
         verifyRegistrantUpdates(PRIVILEGED_UIDS, 1 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
-                List.of(new Pair<>(Set.of(PACKAGE_1), PRIVILEGED_UIDS)));
+                List.of(new Pair<>(Set.of(PACKAGE_1), PRIVILEGED_UIDS_SET)));
     }
 
     @Test
@@ -633,7 +782,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(Set.of(PACKAGE_1), PRIVILEGED_UIDS);
         verifyRegistrantUpdates(PRIVILEGED_UIDS, 1 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
-                List.of(new Pair<>(Set.of(PACKAGE_1), PRIVILEGED_UIDS)));
+                List.of(new Pair<>(Set.of(PACKAGE_1), PRIVILEGED_UIDS_SET)));
     }
 
     @Test
@@ -658,7 +807,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(Set.of(PACKAGE_2), new int[] {UID_2});
         verifyRegistrantUpdates(new int[] {UID_2}, 1 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
-                List.of(new Pair<>(Set.of(PACKAGE_2), new int[] {UID_2})));
+                List.of(new Pair<>(Set.of(PACKAGE_2), Set.of(UID_2))));
     }
 
     @Test
@@ -682,7 +831,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(Set.of(PACKAGE_2), new int[] {UID_2});
         verifyRegistrantUpdates(new int[] {UID_2}, 1 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
-                List.of(new Pair<>(Set.of(PACKAGE_2), new int[] {UID_2})));
+                List.of(new Pair<>(Set.of(PACKAGE_2), Set.of(UID_2))));
     }
 
     @Test
@@ -701,7 +850,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(Set.of(PACKAGE_2), new int[] {UID_2});
         verifyRegistrantUpdates(new int[] {UID_2}, 1 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
-                List.of(new Pair<>(Set.of(PACKAGE_2), new int[] {UID_2})));
+                List.of(new Pair<>(Set.of(PACKAGE_2), Set.of(UID_2))));
     }
 
     @Test
@@ -732,8 +881,8 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyRegistrantUpdates(new int[0], 1 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
                 List.of(
-                        new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS),
-                        new Pair<>(Set.of(), new int[0])));
+                        new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS_SET),
+                        new Pair<>(Set.of(), Set.of())));
 
         // Set test override with null rule to revoke previous test override
         mCarrierPrivilegesTracker.setTestOverrideCarrierPrivilegeRules(null);
@@ -743,7 +892,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS);
         verifyRegistrantUpdates(PRIVILEGED_UIDS, 2 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
-                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS)));
+                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS_SET)));
     }
 
     @Test
@@ -760,8 +909,8 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyRegistrantUpdates(new int[]{UID_3}, 1 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
                 List.of(
-                        new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS),
-                        new Pair<>(Set.of(PACKAGE_3), new int[]{UID_3})));
+                        new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS_SET),
+                        new Pair<>(Set.of(PACKAGE_3), Set.of(UID_3))));
 
 
         // Set test override with null rule to revoke previous test override
@@ -772,7 +921,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS);
         verifyRegistrantUpdates(PRIVILEGED_UIDS, 2 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(
-                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS)));
+                List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS_SET)));
     }
 
     @Test
@@ -820,6 +969,105 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         // Order of the result packages doesn't matter. Comparing the Set instead of the List
         assertEquals(Set.of(PACKAGE_1, PACKAGE_3, PACKAGE_5, PACKAGE_7),
                 new HashSet<>(carrierPackageNames));
+    }
+
+    @Test
+    public void testGetCarrierService_haveCarrierServiceWithCarrierPrivileges() throws Exception {
+        // Only packages with CERT_1 have carrier privileges
+        setupCarrierConfigRules(carrierConfigRuleString(getHash(CERT_1)));
+        // Setup all odd packages privileged, even packages not
+        setupInstalledPackages(
+                new PackageCertInfo(PACKAGE_1, CERT_1, USER_1, UID_1),
+                new PackageCertInfo(PACKAGE_2, CERT_2, USER_1, UID_2),
+                new PackageCertInfo(PACKAGE_3, CERT_1, USER_1, UID_1));
+        // Two declared CarrierService, only PACKAGE_1 has carrier privileges
+        ResolveInfo privilegeService = new ResolveInfoBuilder().setService(PACKAGE_1).build();
+        ResolveInfo noPrivilegeService = new ResolveInfoBuilder().setService(PACKAGE_2).build();
+        // Use doReturn instead of when/thenReturn which has NPE with unknown reason
+        doReturn(List.of(privilegeService, noPrivilegeService)).when(
+                mPackageManager).queryIntentServices(any(), anyInt());
+        when(mPackageManager.getPackageUid(eq(PACKAGE_1), anyInt())).thenReturn(UID_1);
+        when(mPackageManager.getPackageUid(eq(PACKAGE_2), anyInt())).thenReturn(UID_2);
+        when(mPackageManager.getPackageUid(eq(PACKAGE_3), anyInt())).thenReturn(UID_1);
+
+        // Get CS package name for the first time
+        mCarrierPrivilegesTracker = createCarrierPrivilegesTracker();
+        String carrierServicePackageName = mCarrierPrivilegesTracker.getCarrierServicePackageName();
+        int carrierServiceUid = mCarrierPrivilegesTracker.getCarrierServicePackageUid();
+        mTestableLooper.processAllMessages();
+
+        // Package manager should be queried from
+        verify(mPackageManager).queryIntentServices(any(), anyInt());
+        assertEquals(PACKAGE_1, carrierServicePackageName);
+        assertEquals(UID_1, carrierServiceUid);
+
+
+        reset(mPackageManager);
+        // Get CS again
+        carrierServicePackageName = mCarrierPrivilegesTracker.getCarrierServicePackageName();
+        carrierServiceUid = mCarrierPrivilegesTracker.getCarrierServicePackageUid();
+        mTestableLooper.processAllMessages();
+
+        // It should return the same result, but didn't query package manager
+        verify(mPackageManager, never()).queryIntentServices(any(), anyInt());
+        assertEquals(PACKAGE_1, carrierServicePackageName);
+        assertEquals(UID_1, carrierServiceUid);
+
+    }
+
+    @Test
+    public void testGetCarrierService_haveCarrierServiceWithNoCarrierPrivileges() throws Exception {
+        // Only packages with CERT_1 have carrier privileges
+        setupCarrierConfigRules(carrierConfigRuleString(getHash(CERT_1)));
+        // Setup all odd packages privileged, even packages not
+        setupInstalledPackages(
+                new PackageCertInfo(PACKAGE_1, CERT_1, USER_1, UID_1),
+                new PackageCertInfo(PACKAGE_2, CERT_2, USER_1, UID_2),
+                new PackageCertInfo(PACKAGE_3, CERT_1, USER_1, UID_1));
+        // One declared CarrierService which has no carrier privileges
+        ResolveInfo noPrivilegeService = new ResolveInfoBuilder().setService(PACKAGE_2).build();
+        // Use doReturn instead of when/thenReturn which has NPE with unknown reason
+        doReturn(List.of(noPrivilegeService)).when(
+                mPackageManager).queryIntentServices(any(), anyInt());
+        when(mPackageManager.getPackageUid(eq(PACKAGE_1), anyInt())).thenReturn(UID_1);
+        when(mPackageManager.getPackageUid(eq(PACKAGE_2), anyInt())).thenReturn(UID_2);
+        when(mPackageManager.getPackageUid(eq(PACKAGE_3), anyInt())).thenReturn(UID_1);
+
+        mCarrierPrivilegesTracker = createCarrierPrivilegesTracker();
+        String carrierServicePackageName = mCarrierPrivilegesTracker.getCarrierServicePackageName();
+        int carrierServiceUid = mCarrierPrivilegesTracker.getCarrierServicePackageUid();
+        mTestableLooper.processAllMessages();
+
+        verify(mPackageManager).queryIntentServices(any(), anyInt());
+        assertNull(carrierServicePackageName);
+        assertEquals(Process.INVALID_UID, carrierServiceUid);
+    }
+
+    @Test
+    public void testGetCarrierService_haveNoCarrierService() throws Exception {
+        // Only packages with CERT_1 have carrier privileges
+        setupCarrierConfigRules(carrierConfigRuleString(getHash(CERT_1)));
+        // Setup all odd packages privileged, even packages not
+        setupInstalledPackages(
+                new PackageCertInfo(PACKAGE_1, CERT_1, USER_1, UID_1),
+                new PackageCertInfo(PACKAGE_2, CERT_2, USER_1, UID_2),
+                new PackageCertInfo(PACKAGE_3, CERT_1, USER_1, UID_1));
+        // No CarrierService declared at all
+        // Use doReturn instead of when/thenReturn which has NPE with unknown reason
+        doReturn(List.of()).when(
+                mPackageManager).queryIntentServices(any(), anyInt());
+        when(mPackageManager.getPackageUid(eq(PACKAGE_1), anyInt())).thenReturn(UID_1);
+        when(mPackageManager.getPackageUid(eq(PACKAGE_2), anyInt())).thenReturn(UID_2);
+        when(mPackageManager.getPackageUid(eq(PACKAGE_3), anyInt())).thenReturn(UID_1);
+
+        mCarrierPrivilegesTracker = createCarrierPrivilegesTracker();
+        String carrierServicePackageName = mCarrierPrivilegesTracker.getCarrierServicePackageName();
+        int carrierServiceUid = mCarrierPrivilegesTracker.getCarrierServicePackageUid();
+        mTestableLooper.processAllMessages();
+
+        assertNull(carrierServicePackageName);
+        assertEquals(Process.INVALID_UID, carrierServiceUid);
+        verify(mPackageManager).queryIntentServices(any(), anyInt());
     }
 
     private void sendCarrierConfigChangedIntent(int subId, int phoneId) {

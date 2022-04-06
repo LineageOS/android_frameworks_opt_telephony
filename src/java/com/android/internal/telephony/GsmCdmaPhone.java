@@ -317,9 +317,11 @@ public class GsmCdmaPhone extends Phone {
                 .makeCarrierSignalAgent(this);
         mAccessNetworksManager = mTelephonyComponentFactory
                 .inject(AccessNetworksManager.class.getName())
-                .makeAccessNetworksManager(this);
-        mTransportManager = mTelephonyComponentFactory.inject(TransportManager.class.getName())
-                .makeTransportManager(this);
+                .makeAccessNetworksManager(this, getLooper());
+        if (!isUsingNewDataStack()) {
+            mTransportManager = mTelephonyComponentFactory.inject(TransportManager.class.getName())
+                    .makeTransportManager(this);
+        }
         // SST/DSM depends on SSC, so SSC is instanced before SST/DSM
         mSignalStrengthController = mTelephonyComponentFactory.inject(
                 SignalStrengthController.class.getName()).makeSignalStrengthController(this);
@@ -328,8 +330,10 @@ public class GsmCdmaPhone extends Phone {
         mEmergencyNumberTracker = mTelephonyComponentFactory
                 .inject(EmergencyNumberTracker.class.getName()).makeEmergencyNumberTracker(
                         this, this.mCi);
-        mDataEnabledSettings = mTelephonyComponentFactory
-                .inject(DataEnabledSettings.class.getName()).makeDataEnabledSettings(this);
+        if (!isUsingNewDataStack()) {
+            mDataEnabledSettings = mTelephonyComponentFactory
+                    .inject(DataEnabledSettings.class.getName()).makeDataEnabledSettings(this);
+        }
         mDeviceStateMonitor = mTelephonyComponentFactory.inject(DeviceStateMonitor.class.getName())
                 .makeDeviceStateMonitor(this);
 
@@ -338,19 +342,19 @@ public class GsmCdmaPhone extends Phone {
         mDisplayInfoController = mTelephonyComponentFactory.inject(
                 DisplayInfoController.class.getName()).makeDisplayInfoController(this);
 
-        // DcTracker uses ServiceStateTracker and DisplayInfoController so needs to be created
-        // after they are instantiated
-        for (int transport : mTransportManager.getAvailableTransports()) {
-            DcTracker dcTracker = mTelephonyComponentFactory.inject(DcTracker.class.getName())
-                    .makeDcTracker(this, transport);
-            mDcTrackers.put(transport, dcTracker);
-            mTransportManager.registerDataThrottler(dcTracker.getDataThrottler());
-        }
-
         if (isUsingNewDataStack()) {
             mDataNetworkController = mTelephonyComponentFactory.inject(
                     DataNetworkController.class.getName())
                     .makeDataNetworkController(this, getLooper());
+        } else {
+            // DcTracker uses ServiceStateTracker and DisplayInfoController so needs to be created
+            // after they are instantiated
+            for (int transport : mAccessNetworksManager.getAvailableTransports()) {
+                DcTracker dcTracker = mTelephonyComponentFactory.inject(DcTracker.class.getName())
+                        .makeDcTracker(this, transport);
+                mDcTrackers.put(transport, dcTracker);
+                mAccessNetworksManager.registerDataThrottler(dcTracker.getDataThrottler());
+            }
         }
 
         mCarrierResolver = mTelephonyComponentFactory.inject(CarrierResolver.class.getName())
@@ -728,12 +732,6 @@ public class GsmCdmaPhone extends Phone {
         return mPendingMMIs;
     }
 
-    private @NonNull DcTracker getActiveDcTrackerForApn(@NonNull String apnType) {
-        int currentTransport = mTransportManager.getCurrentTransport(
-                ApnSetting.getApnTypesBitmaskFromString(apnType));
-        return getDcTracker(currentTransport);
-    }
-
     @Override
     public boolean isDataSuspended() {
         return mCT.mState != PhoneConstants.State.IDLE && !mSST.isConcurrentVoiceAndDataAllowed();
@@ -759,7 +757,7 @@ public class GsmCdmaPhone extends Phone {
 
             ret = PhoneConstants.DataState.DISCONNECTED;
         } else { /* mSST.gprsState == ServiceState.STATE_IN_SERVICE */
-            int currentTransport = mTransportManager.getCurrentTransport(
+            int currentTransport = mAccessNetworksManager.getCurrentTransport(
                     ApnSetting.getApnTypesBitmaskFromString(apnType));
             if (getDcTracker(currentTransport) != null) {
                 switch (getDcTracker(currentTransport).getState(apnType)) {
@@ -786,6 +784,10 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public DataActivityState getDataActivityState() {
+        if (isUsingNewDataStack()) {
+            // TODO: Support it correctly.
+            return DataActivityState.NONE;
+        }
         DataActivityState ret = DataActivityState.NONE;
 
         if (mSST.getCurrentDataConnectionState() == ServiceState.STATE_IN_SERVICE
@@ -3286,7 +3288,8 @@ public class GsmCdmaPhone extends Phone {
                 boolean enabled = (boolean) ar.result;
                 if (isUsingNewDataStack()) {
                     getDataSettingsManager().setDataEnabled(
-                            TelephonyManager.DATA_ENABLED_REASON_CARRIER, enabled);
+                            TelephonyManager.DATA_ENABLED_REASON_CARRIER, enabled,
+                            mContext.getOpPackageName());
                     return;
                 }
                 mDataEnabledSettings.setDataEnabled(TelephonyManager.DATA_ENABLED_REASON_CARRIER,

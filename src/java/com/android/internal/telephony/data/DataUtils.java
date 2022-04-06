@@ -24,6 +24,7 @@ import android.net.NetworkAgent;
 import android.net.NetworkCapabilities;
 import android.os.SystemClock;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.RadioAccessNetworkType;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.NetCapability;
@@ -43,6 +44,8 @@ import com.android.internal.telephony.data.DataNetworkController.NetworkRequestL
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -87,6 +90,26 @@ public class DataUtils {
             default:
                 return -1;
         }
+    }
+
+    /**
+     * Get Set of network capabilities from string joined by {@code |}, space is ignored.
+     * If input string contains unknown capability or malformatted(e.g. empty string), -1 is
+     * included in the returned set.
+     *
+     * @param capabilitiesString capability strings joined by {@code |}
+     * @return Set of capabilities
+     */
+    public static @NetCapability Set<Integer> getNetworkCapabilitiesFromString(
+            @NonNull String capabilitiesString) {
+        // e.g. "IMS|" is not allowed
+        if (!capabilitiesString.matches("(\\s*[a-zA-Z]+\\s*)(\\|\\s*[a-zA-Z]+\\s*)*")) {
+            return Collections.singleton(-1);
+        }
+        return Arrays.stream(capabilitiesString.split("\\s*\\|\\s*"))
+                .map(String::trim)
+                .map(DataUtils::getNetworkCapabilityFromString)
+                .collect(Collectors.toSet());
     }
 
     /**
@@ -153,7 +176,7 @@ public class DataUtils {
      * @return Network capabilities in string format.
      */
     public static @NonNull String networkCapabilitiesToString(
-            @NetCapability @Nullable List<Integer> netCaps) {
+            @NetCapability @Nullable Collection<Integer> netCaps) {
         if (netCaps == null || netCaps.isEmpty()) return "";
         return "[" + netCaps.stream()
                 .map(DataUtils::networkCapabilityToString)
@@ -283,30 +306,30 @@ public class DataUtils {
             case TelephonyManager.NETWORK_TYPE_GPRS:
             case TelephonyManager.NETWORK_TYPE_EDGE:
             case TelephonyManager.NETWORK_TYPE_GSM:
-                return AccessNetworkConstants.AccessNetworkType.GERAN;
+                return AccessNetworkType.GERAN;
             case TelephonyManager.NETWORK_TYPE_UMTS:
             case TelephonyManager.NETWORK_TYPE_HSDPA:
             case TelephonyManager.NETWORK_TYPE_HSPAP:
             case TelephonyManager.NETWORK_TYPE_HSUPA:
             case TelephonyManager.NETWORK_TYPE_HSPA:
             case TelephonyManager.NETWORK_TYPE_TD_SCDMA:
-                return AccessNetworkConstants.AccessNetworkType.UTRAN;
+                return AccessNetworkType.UTRAN;
             case TelephonyManager.NETWORK_TYPE_CDMA:
             case TelephonyManager.NETWORK_TYPE_EVDO_0:
             case TelephonyManager.NETWORK_TYPE_EVDO_A:
             case TelephonyManager.NETWORK_TYPE_EVDO_B:
             case TelephonyManager.NETWORK_TYPE_1xRTT:
             case TelephonyManager.NETWORK_TYPE_EHRPD:
-                return AccessNetworkConstants.AccessNetworkType.CDMA2000;
+                return AccessNetworkType.CDMA2000;
             case TelephonyManager.NETWORK_TYPE_LTE:
             case TelephonyManager.NETWORK_TYPE_LTE_CA:
-                return AccessNetworkConstants.AccessNetworkType.EUTRAN;
+                return AccessNetworkType.EUTRAN;
             case TelephonyManager.NETWORK_TYPE_IWLAN:
-                return AccessNetworkConstants.AccessNetworkType.IWLAN;
+                return AccessNetworkType.IWLAN;
             case TelephonyManager.NETWORK_TYPE_NR:
-                return AccessNetworkConstants.AccessNetworkType.NGRAN;
+                return AccessNetworkType.NGRAN;
             default:
-                return AccessNetworkConstants.AccessNetworkType.UNKNOWN;
+                return AccessNetworkType.UNKNOWN;
         }
     }
 
@@ -427,6 +450,26 @@ public class DataUtils {
             case DataCallResponse.LINK_STATUS_ACTIVE: return "ACTIVE";
             case DataCallResponse.LINK_STATUS_DORMANT: return "DORMANT";
             default: return "UNKNOWN(" + linkStatus + ")";
+        }
+    }
+
+    /**
+     * Check if access network type is valid.
+     *
+     * @param accessNetworkType The access network type to check.
+     * @return {@code true} if the access network type is valid.
+     */
+    public static boolean isValidAccessNetwork(@RadioAccessNetworkType int accessNetworkType) {
+        switch (accessNetworkType) {
+            case AccessNetworkType.GERAN:
+            case AccessNetworkType.UTRAN:
+            case AccessNetworkType.EUTRAN:
+            case AccessNetworkType.CDMA2000:
+            case AccessNetworkType.IWLAN:
+            case AccessNetworkType.NGRAN:
+                return true;
+            default:
+                return false;
         }
     }
 }

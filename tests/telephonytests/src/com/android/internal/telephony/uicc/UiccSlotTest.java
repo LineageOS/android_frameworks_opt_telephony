@@ -234,6 +234,146 @@ public class UiccSlotTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testUpdateSlotStatusVoltageClassA() {
+        IccSlotStatus iss = new IccSlotStatus();
+        IccSimPortInfo simPortInfo = new IccSimPortInfo();
+        simPortInfo.mPortActive = false;
+        simPortInfo.mLogicalSlotIndex = 0;
+        simPortInfo.mIccId = "fake-iccid";
+        iss.mSimPortInfos = new IccSimPortInfo[] {simPortInfo};
+        iss.cardState = IccCardStatus.CardState.CARDSTATE_PRESENT;
+        iss.atr = "3b9795801F018031A073BE211500";
+
+        // initial state
+        assertTrue(mUiccSlot.isActive());
+        assertNull(mUiccSlot.getUiccCard());
+        assertEquals(IccCardStatus.CardState.CARDSTATE_ABSENT, mUiccSlot.getCardState());
+
+        // update slot to inactive
+        mUiccSlot.update(null, iss, 0 /* slotIndex */);
+
+        // assert on updated values
+        assertFalse(mUiccSlot.isActive());
+        assertNull(mUiccSlot.getUiccCard());
+        assertEquals(IccCardStatus.CardState.CARDSTATE_PRESENT, mUiccSlot.getCardState());
+
+        iss.mSimPortInfos[0].mPortActive = true;
+
+        // update slot to active
+        mUiccSlot.update(new CommandsInterface[] {mSimulatedCommands}, iss, 0 /* slotIndex */);
+
+        // assert on updated values
+        assertTrue(mUiccSlot.isActive());
+        assertEquals(mUiccSlot.getMinimumVoltageClass(), UiccSlot.VOLTAGE_CLASS_A);
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateSlotStatusVoltageClassANoTa() {
+        IccSlotStatus iss = new IccSlotStatus();
+        IccSimPortInfo simPortInfo = new IccSimPortInfo();
+        simPortInfo.mPortActive = false;
+        simPortInfo.mLogicalSlotIndex = 0;
+        simPortInfo.mIccId = "fake-iccid";
+        iss.mSimPortInfos = new IccSimPortInfo[] {simPortInfo};
+        iss.cardState = IccCardStatus.CardState.CARDSTATE_PRESENT;
+        iss.atr = "3b9795800F048031A073BE2115";
+
+        // initial state
+        assertTrue(mUiccSlot.isActive());
+        assertNull(mUiccSlot.getUiccCard());
+        assertEquals(IccCardStatus.CardState.CARDSTATE_ABSENT, mUiccSlot.getCardState());
+
+        // update slot to inactive
+        mUiccSlot.update(null, iss, 0 /* slotIndex */);
+
+        // assert on updated values
+        assertFalse(mUiccSlot.isActive());
+        assertNull(mUiccSlot.getUiccCard());
+        assertEquals(IccCardStatus.CardState.CARDSTATE_PRESENT, mUiccSlot.getCardState());
+
+        iss.mSimPortInfos[0].mPortActive = true;
+
+        // update slot to active
+        mUiccSlot.update(new CommandsInterface[] {mSimulatedCommands}, iss, 0 /* slotIndex */);
+
+        // assert on updated values
+        assertTrue(mUiccSlot.isActive());
+        assertEquals(UiccSlot.VOLTAGE_CLASS_A, mUiccSlot.getMinimumVoltageClass());
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateSlotStatusVoltageClassB() {
+        IccSlotStatus iss = new IccSlotStatus();
+        IccSimPortInfo simPortInfo = new IccSimPortInfo();
+        simPortInfo.mPortActive = false;
+        simPortInfo.mLogicalSlotIndex = 0;
+        simPortInfo.mIccId = "fake-iccid";
+        iss.mSimPortInfos = new IccSimPortInfo[] {simPortInfo};
+        iss.cardState = IccCardStatus.CardState.CARDSTATE_PRESENT;
+        iss.atr = "3b9795801F428031A073BE211500";
+
+        // initial state
+        assertTrue(mUiccSlot.isActive());
+        assertNull(mUiccSlot.getUiccCard());
+        assertEquals(IccCardStatus.CardState.CARDSTATE_ABSENT, mUiccSlot.getCardState());
+
+        // update slot to inactive
+        mUiccSlot.update(null, iss, 0 /* slotIndex */);
+
+        // assert on updated values
+        assertFalse(mUiccSlot.isActive());
+        assertNull(mUiccSlot.getUiccCard());
+        assertEquals(IccCardStatus.CardState.CARDSTATE_PRESENT, mUiccSlot.getCardState());
+
+        iss.mSimPortInfos[0].mPortActive = true;
+
+        // update slot to active
+        mUiccSlot.update(new CommandsInterface[] {mSimulatedCommands}, iss, 0 /* slotIndex */);
+
+        // assert on updated values
+        assertTrue(mUiccSlot.isActive());
+        assertEquals(UiccSlot.VOLTAGE_CLASS_B, mUiccSlot.getMinimumVoltageClass());
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateSlotStatusVoltageClassC() {
+        IccSlotStatus iss = new IccSlotStatus();
+        IccSimPortInfo simPortInfo = new IccSimPortInfo();
+        simPortInfo.mPortActive = false;
+        simPortInfo.mLogicalSlotIndex = 0;
+        simPortInfo.mIccId = "fake-iccid";
+        iss.mSimPortInfos = new IccSimPortInfo[] {simPortInfo};
+        iss.cardState = IccCardStatus.CardState.CARDSTATE_PRESENT;
+        iss.atr = "3b9795801F048031A073BE211500";
+
+        // initial state
+        assertTrue(mUiccSlot.isActive());
+        assertNull(mUiccSlot.getUiccCard());
+        assertEquals(IccCardStatus.CardState.CARDSTATE_ABSENT, mUiccSlot.getCardState());
+
+        // update slot to inactive
+        mUiccSlot.update(null, iss, 0 /* slotIndex */);
+
+        // assert on updated values
+        assertFalse(mUiccSlot.isActive());
+        assertNull(mUiccSlot.getUiccCard());
+        assertEquals(IccCardStatus.CardState.CARDSTATE_PRESENT, mUiccSlot.getCardState());
+
+        iss.mSimPortInfos[0].mPortActive = true;
+
+        // update slot to active
+        mUiccSlot.update(new CommandsInterface[] {mSimulatedCommands}, iss, 0 /* slotIndex */);
+
+        // assert on updated values
+        assertTrue(mUiccSlot.isActive());
+        assertEquals(UiccSlot.VOLTAGE_CLASS_C, mUiccSlot.getMinimumVoltageClass());
+    }
+
+    @Test
+    @SmallTest
     public void testUpdateAbsentState() {
         int phoneId = 0;
         int slotIndex = 0;

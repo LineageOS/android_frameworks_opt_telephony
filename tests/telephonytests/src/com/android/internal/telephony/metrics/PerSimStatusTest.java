@@ -20,6 +20,9 @@ import static android.telephony.SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER;
 import static android.telephony.SubscriptionManager.PHONE_NUMBER_SOURCE_IMS;
 import static android.telephony.SubscriptionManager.PHONE_NUMBER_SOURCE_UICC;
 
+import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_A;
+import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_B;
+import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_UNKNOWN;
 import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS__WFC_MODE__CELLULAR_PREFERRED;
 import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS__WFC_MODE__UNKNOWN;
 import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS__WFC_MODE__WIFI_ONLY;
@@ -36,10 +39,12 @@ import android.telephony.ims.ImsManager;
 import android.telephony.ims.ImsMmTelManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.uicc.UiccSlot;
 
 import org.junit.After;
 import org.junit.Before;
@@ -103,7 +108,12 @@ public class PerSimStatusTest extends TelephonyTest {
                 .when(mPhone)
                 .getAllowedNetworkTypes(
                         TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_ENABLE_2G & ENABLED_2G);
-
+        IccCard iccCard1 = mock(IccCard.class);
+        doReturn(true).when(iccCard1).getIccLockEnabled();
+        doReturn(iccCard1).when(mPhone).getIccCard();
+        UiccSlot uiccSlot1 = mock(UiccSlot.class);
+        doReturn(UiccSlot.VOLTAGE_CLASS_A).when(uiccSlot1).getMinimumVoltageClass();
+        doReturn(uiccSlot1).when(mUiccController).getUiccSlotForPhone(0);
         // phone 1 setup
         doReturn(mContext).when(mSecondPhone).getContext();
         doReturn(1).when(mSecondPhone).getPhoneId();
@@ -136,6 +146,12 @@ public class PerSimStatusTest extends TelephonyTest {
                 .when(mSecondPhone)
                 .getAllowedNetworkTypes(
                         TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_ENABLE_2G & ENABLED_2G);
+        IccCard iccCard2 = mock(IccCard.class);
+        doReturn(false).when(iccCard2).getIccLockEnabled();
+        doReturn(iccCard2).when(mSecondPhone).getIccCard();
+        UiccSlot uiccSlot2 = mock(UiccSlot.class);
+        doReturn(UiccSlot.VOLTAGE_CLASS_B).when(uiccSlot2).getMinimumVoltageClass();
+        doReturn(uiccSlot2).when(mUiccController).getUiccSlotForPhone(1);
 
         PerSimStatus perSimStatus1 = PerSimStatus.getCurrentState(mPhone);
         PerSimStatus perSimStatus2 = PerSimStatus.getCurrentState(mSecondPhone);
@@ -154,6 +170,10 @@ public class PerSimStatusTest extends TelephonyTest {
         assertEquals(false, perSimStatus1.dataRoamingEnabled);
         assertEquals(1L, perSimStatus1.preferredNetworkType);
         assertEquals(true, perSimStatus1.disabled2g);
+        assertEquals(true, perSimStatus1.pin1Enabled);
+        assertEquals(
+                PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_A,
+                perSimStatus1.minimumVoltageClass);
         assertEquals(101, perSimStatus2.carrierId);
         assertEquals(1, perSimStatus2.phoneNumberSourceUicc);
         assertEquals(2, perSimStatus2.phoneNumberSourceCarrier);
@@ -167,6 +187,10 @@ public class PerSimStatusTest extends TelephonyTest {
         assertEquals(false, perSimStatus2.dataRoamingEnabled);
         assertEquals(1L, perSimStatus2.preferredNetworkType);
         assertEquals(false, perSimStatus2.disabled2g);
+        assertEquals(false, perSimStatus2.pin1Enabled);
+        assertEquals(
+                PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_B,
+                perSimStatus2.minimumVoltageClass);
     }
 
     @Test
@@ -203,7 +227,12 @@ public class PerSimStatusTest extends TelephonyTest {
                 .when(mPhone)
                 .getAllowedNetworkTypes(
                         TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_ENABLE_2G & ENABLED_2G);
-
+        IccCard iccCard = mock(IccCard.class);
+        doReturn(true).when(iccCard).getIccLockEnabled();
+        doReturn(iccCard).when(mPhone).getIccCard();
+        UiccSlot uiccSlot1 = mock(UiccSlot.class);
+        doReturn(UiccSlot.VOLTAGE_CLASS_A).when(uiccSlot1).getMinimumVoltageClass();
+        doReturn(uiccSlot1).when(mUiccController).getUiccSlotForPhone(0);
 
         PerSimStatus perSimStatus = PerSimStatus.getCurrentState(mPhone);
 
@@ -219,6 +248,10 @@ public class PerSimStatusTest extends TelephonyTest {
         assertEquals(false, perSimStatus.dataRoamingEnabled);
         assertEquals(1L, perSimStatus.preferredNetworkType);
         assertEquals(true, perSimStatus.disabled2g);
+        assertEquals(true, perSimStatus.pin1Enabled);
+        assertEquals(
+                PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_A,
+                perSimStatus.minimumVoltageClass);
     }
 
     @Test
@@ -247,6 +280,12 @@ public class PerSimStatusTest extends TelephonyTest {
                 .when(mPhone)
                 .getAllowedNetworkTypes(
                         TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_ENABLE_2G & ENABLED_2G);
+        IccCard iccCard = mock(IccCard.class);
+        doReturn(true).when(iccCard).getIccLockEnabled();
+        doReturn(iccCard).when(mPhone).getIccCard();
+        UiccSlot uiccSlot1 = mock(UiccSlot.class);
+        doReturn(UiccSlot.VOLTAGE_CLASS_A).when(uiccSlot1).getMinimumVoltageClass();
+        doReturn(uiccSlot1).when(mUiccController).getUiccSlotForPhone(0);
 
         PerSimStatus perSimStatus = PerSimStatus.getCurrentState(mPhone);
 
@@ -262,5 +301,58 @@ public class PerSimStatusTest extends TelephonyTest {
         assertEquals(false, perSimStatus.dataRoamingEnabled);
         assertEquals(1L, perSimStatus.preferredNetworkType);
         assertEquals(true, perSimStatus.disabled2g);
+        assertEquals(true, perSimStatus.pin1Enabled);
+        assertEquals(
+                PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_A,
+                perSimStatus.minimumVoltageClass);
+    }
+
+    @Test
+    @SmallTest
+    public void onPullAtom_perSimStatus_noUiccSlot() throws Exception {
+        doReturn(0).when(mPhone).getPhoneId();
+        doReturn(1).when(mPhone).getSubId();
+        doReturn(100).when(mPhone).getCarrierId();
+        doReturn("6506953210")
+                .when(mSubscriptionController)
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_UICC);
+        doReturn("").when(mSubscriptionController).getPhoneNumber(1, PHONE_NUMBER_SOURCE_CARRIER);
+        doReturn("+16506953210")
+                .when(mSubscriptionController)
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_IMS);
+        SubscriptionInfo subscriptionInfo = mock(SubscriptionInfo.class);
+        doReturn("us").when(subscriptionInfo).getCountryIso();
+        doReturn(subscriptionInfo).when(mSubscriptionController).getSubscriptionInfo(1);
+        doReturn(null).when(mContext).getSystemService(ImsManager.class);
+        doReturn(1L)
+                .when(mPhone)
+                .getAllowedNetworkTypes(TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER);
+        doReturn(0L)
+                .when(mPhone)
+                .getAllowedNetworkTypes(
+                        TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_ENABLE_2G & ENABLED_2G);
+        IccCard iccCard = mock(IccCard.class);
+        doReturn(true).when(iccCard).getIccLockEnabled();
+        doReturn(iccCard).when(mPhone).getIccCard();
+        doReturn(null).when(mUiccController).getUiccSlotForPhone(0);
+
+        PerSimStatus perSimStatus = PerSimStatus.getCurrentState(mPhone);
+
+        assertEquals(100, perSimStatus.carrierId);
+        assertEquals(1, perSimStatus.phoneNumberSourceUicc);
+        assertEquals(0, perSimStatus.phoneNumberSourceCarrier);
+        assertEquals(1, perSimStatus.phoneNumberSourceIms);
+        assertEquals(false, perSimStatus.advancedCallingSettingEnabled);
+        assertEquals(false, perSimStatus.voWiFiSettingEnabled);
+        assertEquals(PER_SIM_STATUS__WFC_MODE__UNKNOWN, perSimStatus.voWiFiModeSetting);
+        assertEquals(PER_SIM_STATUS__WFC_MODE__UNKNOWN, perSimStatus.voWiFiRoamingModeSetting);
+        assertEquals(false, perSimStatus.vtSettingEnabled);
+        assertEquals(false, perSimStatus.dataRoamingEnabled);
+        assertEquals(1L, perSimStatus.preferredNetworkType);
+        assertEquals(true, perSimStatus.disabled2g);
+        assertEquals(true, perSimStatus.pin1Enabled);
+        assertEquals(
+                PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_UNKNOWN,
+                perSimStatus.minimumVoltageClass);
     }
 }

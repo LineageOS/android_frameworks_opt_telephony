@@ -371,6 +371,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
                 any(ICarrierMessagingCallback.class));
     }
 
+    @Ignore("b/227110770") // Enable the test after b/227110770 is fixed.
     @Test
     @SmallTest
     public void testSendSmsByCarrierApp() throws Exception {
@@ -445,6 +446,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
                 withSentIntents ? sentIntents : null, null, null, null, false, -1, false, -1, 0L);
     }
 
+    @Ignore("b/227110770") // Enable the test after b/227110770 is fixed.
     @Test
     @SmallTest
     public void testSendMultipartSmsByCarrierApp() throws Exception {

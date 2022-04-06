@@ -17,7 +17,6 @@ android_test {
     name: "FrameworksTelephonyTests",
     // For access hidden connectivity methods in tests
     defaults: ["framework-connectivity-test-defaults"],
-
     srcs: ["**/*.java"],
 
     libs: [

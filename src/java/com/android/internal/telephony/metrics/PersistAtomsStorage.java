@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.metrics;
 
+import static android.text.format.DateUtils.DAY_IN_MILLIS;
+
 import android.annotation.Nullable;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -723,19 +725,20 @@ public class PersistAtomsStorage {
     }
 
     /**
-     * Returns and clears the IMS registration statistics if last pulled longer than {@code
-     * minIntervalMillis} ago, otherwise returns {@code null}.
+     * Returns and clears the IMS registration statistics normalized to 24h cycle if last
+     * pulled longer than {@code minIntervalMillis} ago, otherwise returns {@code null}.
      */
     @Nullable
     public synchronized ImsRegistrationStats[] getImsRegistrationStats(long minIntervalMillis) {
-        if (getWallTimeMillis() - mAtoms.imsRegistrationStatsPullTimestampMillis
-                > minIntervalMillis) {
+        long intervalMillis =
+                getWallTimeMillis() - mAtoms.imsRegistrationStatsPullTimestampMillis;
+        if (intervalMillis > minIntervalMillis) {
             mAtoms.imsRegistrationStatsPullTimestampMillis = getWallTimeMillis();
             ImsRegistrationStats[] previousStats = mAtoms.imsRegistrationStats;
             Arrays.stream(previousStats).forEach(stats -> stats.lastUsedMillis = 0L);
             mAtoms.imsRegistrationStats = new ImsRegistrationStats[0];
             saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
-            return previousStats;
+            return normalizeData(previousStats, intervalMillis);
         } else {
             return null;
         }
@@ -1625,6 +1628,41 @@ public class PersistAtomsStorage {
     /** Sanitizes the timestamp of the last pull loaded from persistent storage. */
     private long sanitizeTimestamp(long timestamp) {
         return timestamp <= 0L ? getWallTimeMillis() : timestamp;
+    }
+
+    /**
+     * Returns {@link ImsRegistrationStats} array with durations normalized to 24 hours
+     * depending on the interval.
+     */
+    private ImsRegistrationStats[] normalizeData(ImsRegistrationStats[] stats,
+            long intervalMillis) {
+        for (int i = 0; i < stats.length; i++) {
+            stats[i].registeredMillis =
+                    normalizeDurationTo24H(stats[i].registeredMillis, intervalMillis);
+            stats[i].voiceCapableMillis =
+                    normalizeDurationTo24H(stats[i].voiceCapableMillis, intervalMillis);
+            stats[i].voiceAvailableMillis =
+                    normalizeDurationTo24H(stats[i].voiceAvailableMillis, intervalMillis);
+            stats[i].smsCapableMillis =
+                    normalizeDurationTo24H(stats[i].smsCapableMillis, intervalMillis);
+            stats[i].smsAvailableMillis =
+                    normalizeDurationTo24H(stats[i].smsAvailableMillis, intervalMillis);
+            stats[i].videoCapableMillis =
+                    normalizeDurationTo24H(stats[i].videoCapableMillis, intervalMillis);
+            stats[i].videoAvailableMillis =
+                    normalizeDurationTo24H(stats[i].videoAvailableMillis, intervalMillis);
+            stats[i].utCapableMillis =
+                    normalizeDurationTo24H(stats[i].utCapableMillis, intervalMillis);
+            stats[i].utAvailableMillis =
+                    normalizeDurationTo24H(stats[i].utAvailableMillis, intervalMillis);
+        }
+        return stats;
+    }
+
+    /** Returns a duration normalized to 24 hours. */
+    private long normalizeDurationTo24H(long timeInMillis, long intervalMillis) {
+        long interval = intervalMillis < 1000 ? 1 : intervalMillis / 1000;
+        return ((timeInMillis / 1000) * (DAY_IN_MILLIS / 1000) / interval) * 1000;
     }
 
     /** Returns an empty PersistAtoms with pull timestamp set to current time. */

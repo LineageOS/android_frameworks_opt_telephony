@@ -132,7 +132,6 @@ public class DataRetryManagerTest extends TelephonyTest {
         logd("DataRetryManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
         mDataRetryManagerCallbackMock = Mockito.mock(DataRetryManagerCallback.class);
-        doReturn(true).when(mPhone).isUsingNewDataStack();
         doAnswer(invocation -> {
             ((Runnable) invocation.getArguments()[0]).run();
             return null;
@@ -622,6 +621,84 @@ public class DataRetryManagerTest extends TelephonyTest {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
                 .build(), mPhone);
-        assertThat(mDataRetryManagerUT.isSimilarNetworkRequestRetryScheduled(tnr)).isTrue();
+        assertThat(mDataRetryManagerUT.isSimilarNetworkRequestRetryScheduled(tnr,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN)).isTrue();
+        assertThat(mDataRetryManagerUT.isSimilarNetworkRequestRetryScheduled(tnr,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN)).isFalse();
+    }
+
+    @Test
+    public void testRilCrashedReset() {
+        testDataSetupRetryNetworkSuggestedNeverRetry();
+        Mockito.clearInvocations(mDataRetryManagerCallbackMock);
+
+        // RIL crashed and came back online.
+        mDataRetryManagerUT.obtainMessage(8/*EVENT_RADIO_ON*/,
+                new AsyncResult(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, mDataProfile3, null))
+                .sendToTarget();
+        processAllMessages();
+
+        ArgumentCaptor<List<ThrottleStatus>> throttleStatusCaptor =
+                ArgumentCaptor.forClass(List.class);
+        verify(mDataRetryManagerCallbackMock).onThrottleStatusChanged(
+                throttleStatusCaptor.capture());
+        assertThat(throttleStatusCaptor.getValue()).hasSize(1);
+        ThrottleStatus throttleStatus = throttleStatusCaptor.getValue().get(0);
+        assertThat(throttleStatus.getApnType()).isEqualTo(ApnSetting.TYPE_IMS);
+        assertThat(throttleStatus.getRetryType())
+                .isEqualTo(ThrottleStatus.RETRY_TYPE_NEW_CONNECTION);
+        assertThat(throttleStatus.getThrottleExpiryTimeMillis()).isEqualTo(-1);
+        assertThat(throttleStatus.getTransportType())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+    }
+
+    @Test
+    public void testModemCrashedReset() {
+        testDataSetupRetryNetworkSuggestedNeverRetry();
+        Mockito.clearInvocations(mDataRetryManagerCallbackMock);
+
+        // RIL crashed and came back online.
+        mDataRetryManagerUT.obtainMessage(10 /*EVENT_TAC_CHANGED*/,
+                new AsyncResult(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, mDataProfile3, null))
+                .sendToTarget();
+        processAllMessages();
+
+        ArgumentCaptor<List<ThrottleStatus>> throttleStatusCaptor =
+                ArgumentCaptor.forClass(List.class);
+        verify(mDataRetryManagerCallbackMock).onThrottleStatusChanged(
+                throttleStatusCaptor.capture());
+        assertThat(throttleStatusCaptor.getValue()).hasSize(1);
+        ThrottleStatus throttleStatus = throttleStatusCaptor.getValue().get(0);
+        assertThat(throttleStatus.getApnType()).isEqualTo(ApnSetting.TYPE_IMS);
+        assertThat(throttleStatus.getRetryType())
+                .isEqualTo(ThrottleStatus.RETRY_TYPE_NEW_CONNECTION);
+        assertThat(throttleStatus.getThrottleExpiryTimeMillis()).isEqualTo(-1);
+        assertThat(throttleStatus.getTransportType())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+    }
+
+    @Test
+    public void testTacChangedReset() {
+        testDataSetupRetryNetworkSuggestedNeverRetry();
+        Mockito.clearInvocations(mDataRetryManagerCallbackMock);
+
+        // RIL crashed and came back online.
+        mDataRetryManagerUT.obtainMessage(9/*EVENT_MODEM_RESET*/,
+                new AsyncResult(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, mDataProfile3, null))
+                .sendToTarget();
+        processAllMessages();
+
+        ArgumentCaptor<List<ThrottleStatus>> throttleStatusCaptor =
+                ArgumentCaptor.forClass(List.class);
+        verify(mDataRetryManagerCallbackMock).onThrottleStatusChanged(
+                throttleStatusCaptor.capture());
+        assertThat(throttleStatusCaptor.getValue()).hasSize(1);
+        ThrottleStatus throttleStatus = throttleStatusCaptor.getValue().get(0);
+        assertThat(throttleStatus.getApnType()).isEqualTo(ApnSetting.TYPE_IMS);
+        assertThat(throttleStatus.getRetryType())
+                .isEqualTo(ThrottleStatus.RETRY_TYPE_NEW_CONNECTION);
+        assertThat(throttleStatus.getThrottleExpiryTimeMillis()).isEqualTo(-1);
+        assertThat(throttleStatus.getTransportType())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
     }
 }

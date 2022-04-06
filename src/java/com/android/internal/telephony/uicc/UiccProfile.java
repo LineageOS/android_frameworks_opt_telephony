@@ -28,9 +28,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.content.pm.Signature;
 import android.database.ContentObserver;
 import android.net.Uri;
 import android.os.AsyncResult;
@@ -117,7 +115,6 @@ public class UiccProfile extends IccCard {
     private UiccCarrierPrivilegeRules mTestOverrideCarrierPrivilegeRules;
     private boolean mDisposed = false;
 
-    private RegistrantList mCarrierPrivilegeRegistrants = new RegistrantList();
     private RegistrantList mOperatorBrandOverrideRegistrants = new RegistrantList();
 
     private final int mPhoneId;
@@ -1272,36 +1269,6 @@ public class UiccProfile extends IccCard {
     }
 
     /**
-     * Registers the handler when carrier privilege rules are loaded.
-     *
-     * @param h Handler for notification message.
-     * @param what User-defined message code.
-     * @param obj User object.
-     */
-    public void registerForCarrierPrivilegeRulesLoaded(Handler h, int what, Object obj) {
-        synchronized (mLock) {
-            Registrant r = new Registrant(h, what, obj);
-
-            mCarrierPrivilegeRegistrants.add(r);
-
-            if (areCarrierPrivilegeRulesLoaded()) {
-                r.notifyRegistrant();
-            }
-        }
-    }
-
-    /**
-     * Unregister for notifications when carrier privilege rules are loaded.
-     *
-     * @param h Handler to be removed from the registrant list.
-     */
-    public void unregisterForCarrierPrivilegeRulesLoaded(Handler h) {
-        synchronized (mLock) {
-            mCarrierPrivilegeRegistrants.remove(h);
-        }
-    }
-
-    /**
      * Unregister for notifications when operator brand name is overriden.
      *
      * @param h Handler to be removed from the registrant list.
@@ -1350,7 +1317,6 @@ public class UiccProfile extends IccCard {
         InstallCarrierAppUtils.unregisterPackageInstallReceiver(mContext);
 
         synchronized (mLock) {
-            mCarrierPrivilegeRegistrants.notifyRegistrants();
             boolean isProvisioned = isProvisioned();
             boolean isUnlocked = isUserUnlocked();
             // Only show dialog if the phone is through with Setup Wizard and is unlocked.
@@ -1661,69 +1627,11 @@ public class UiccProfile extends IccCard {
     /**
      * Returns true iff carrier privileges rules are null (dont need to be loaded) or loaded.
      */
+    @VisibleForTesting
     public boolean areCarrierPrivilegeRulesLoaded() {
         UiccCarrierPrivilegeRules carrierPrivilegeRules = getCarrierPrivilegeRules();
         return carrierPrivilegeRules == null
                 || carrierPrivilegeRules.areCarrierPriviligeRulesLoaded();
-    }
-
-    /**
-     * Returns true if there are some carrier privilege rules loaded and specified.
-     */
-    public boolean hasCarrierPrivilegeRules() {
-        UiccCarrierPrivilegeRules carrierPrivilegeRules = getCarrierPrivilegeRules();
-        return carrierPrivilegeRules != null && carrierPrivilegeRules.hasCarrierPrivilegeRules();
-    }
-
-    /**
-     * Exposes {@link UiccCarrierPrivilegeRules#getCarrierPrivilegeStatus}.
-     */
-    public int getCarrierPrivilegeStatus(Signature signature, String packageName) {
-        UiccCarrierPrivilegeRules carrierPrivilegeRules = getCarrierPrivilegeRules();
-        return carrierPrivilegeRules == null
-                ? TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED :
-                carrierPrivilegeRules.getCarrierPrivilegeStatus(signature, packageName);
-    }
-
-    /**
-     * Exposes {@link UiccCarrierPrivilegeRules#getCarrierPrivilegeStatus}.
-     */
-    public int getCarrierPrivilegeStatus(PackageManager packageManager, String packageName) {
-        UiccCarrierPrivilegeRules carrierPrivilegeRules = getCarrierPrivilegeRules();
-        return carrierPrivilegeRules == null
-                ? TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED :
-                carrierPrivilegeRules.getCarrierPrivilegeStatus(packageManager, packageName);
-    }
-
-    /**
-     * Exposes {@link UiccCarrierPrivilegeRules#getCarrierPrivilegeStatus}.
-     */
-    public int getCarrierPrivilegeStatus(PackageInfo packageInfo) {
-        UiccCarrierPrivilegeRules carrierPrivilegeRules = getCarrierPrivilegeRules();
-        return carrierPrivilegeRules == null
-                ? TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED :
-                carrierPrivilegeRules.getCarrierPrivilegeStatus(packageInfo);
-    }
-
-    /**
-     * Exposes {@link UiccCarrierPrivilegeRules#getCarrierPrivilegeStatusForCurrentTransaction}.
-     */
-    public int getCarrierPrivilegeStatusForCurrentTransaction(PackageManager packageManager) {
-        UiccCarrierPrivilegeRules carrierPrivilegeRules = getCarrierPrivilegeRules();
-        return carrierPrivilegeRules == null
-                ? TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED :
-                carrierPrivilegeRules.getCarrierPrivilegeStatusForCurrentTransaction(
-                        packageManager);
-    }
-
-    /**
-     * Exposes {@link UiccCarrierPrivilegeRules#getCarrierPrivilegeStatusForUid}.
-     */
-    public int getCarrierPrivilegeStatusForUid(PackageManager packageManager, int uid) {
-        UiccCarrierPrivilegeRules carrierPrivilegeRules = getCarrierPrivilegeRules();
-        return carrierPrivilegeRules == null
-                ? TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED :
-                carrierPrivilegeRules.getCarrierPrivilegeStatusForUid(packageManager, uid);
     }
 
     /**
@@ -1885,10 +1793,6 @@ public class UiccProfile extends IccCard {
         pw.println("UiccProfile:");
         pw.println(" mCi=" + mCi);
         pw.println(" mCatService=" + mCatService);
-        for (int i = 0; i < mCarrierPrivilegeRegistrants.size(); i++) {
-            pw.println("  mCarrierPrivilegeRegistrants[" + i + "]="
-                    + ((Registrant) mCarrierPrivilegeRegistrants.get(i)).getHandler());
-        }
         for (int i = 0; i < mOperatorBrandOverrideRegistrants.size(); i++) {
             pw.println("  mOperatorBrandOverrideRegistrants[" + i + "]="
                     + ((Registrant) mOperatorBrandOverrideRegistrants.get(i)).getHandler());
@@ -1935,11 +1839,6 @@ public class UiccProfile extends IccCard {
             pw.println(" mTestOverrideCarrierPrivilegeRules: "
                     + mTestOverrideCarrierPrivilegeRules);
             mTestOverrideCarrierPrivilegeRules.dump(fd, pw, args);
-        }
-        pw.println(" mCarrierPrivilegeRegistrants: size=" + mCarrierPrivilegeRegistrants.size());
-        for (int i = 0; i < mCarrierPrivilegeRegistrants.size(); i++) {
-            pw.println("  mCarrierPrivilegeRegistrants[" + i + "]="
-                    + ((Registrant) mCarrierPrivilegeRegistrants.get(i)).getHandler());
         }
         pw.flush();
 

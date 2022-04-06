@@ -55,14 +55,15 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.CarrierPrivilegesTracker;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.euicc.EuiccConnector.OtaStatusChangedCallback;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccPort;
-import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.uicc.UiccSlot;
-import com.android.internal.telephony.util.ArrayUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -554,13 +555,19 @@ public class EuiccController extends IEuiccController.Stub {
             Bundle resolvedBundle, PendingIntent callbackIntent) {
         boolean callerCanWriteEmbeddedSubscriptions = callerCanWriteEmbeddedSubscriptions();
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
+        // Don't try to resolve the port index for apps which are not targeting on T for backward
+        // compatibility. instead always use default port 0.
+        boolean shouldResolvePortIndex = isCompatChangeEnabled(callingPackage,
+                EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS);
 
         long token = Binder.clearCallingIdentity();
         try {
             boolean isConsentNeededToResolvePortIndex = false;
             if (switchAfterDownload && portIndex == TelephonyManager.INVALID_PORT_INDEX) {
                 // If switchAfterDownload is true, resolve the portIndex
-                portIndex = getResolvedPortIndexForSubscriptionSwitch(cardId);
+                portIndex = shouldResolvePortIndex ?
+                        getResolvedPortIndexForSubscriptionSwitch(cardId)
+                        : TelephonyManager.DEFAULT_PORT_INDEX;
                 isConsentNeededToResolvePortIndex = (portIndex
                         == TelephonyManager.INVALID_PORT_INDEX);
             }
@@ -568,7 +575,8 @@ public class EuiccController extends IEuiccController.Stub {
                     + switchAfterDownload + " portIndex: " + portIndex
                     + " forceDeactivateSim: " + forceDeactivateSim + " callingPackage: "
                     + callingPackage
-                    + " isConsentNeededToResolvePortIndex: " + isConsentNeededToResolvePortIndex);
+                    + " isConsentNeededToResolvePortIndex: " + isConsentNeededToResolvePortIndex
+                    + " shouldResolvePortIndex:" + shouldResolvePortIndex);
             if (!isConsentNeededToResolvePortIndex && callerCanWriteEmbeddedSubscriptions) {
                 // With WRITE_EMBEDDED_SUBSCRIPTIONS, we can skip profile-specific permission checks
                 // and move straight to the profile download.
@@ -1022,9 +1030,14 @@ public class EuiccController extends IEuiccController.Stub {
             boolean usePortIndex) {
         boolean callerCanWriteEmbeddedSubscriptions = callerCanWriteEmbeddedSubscriptions();
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
+        // Resolve the portIndex internally if apps targeting T and beyond are calling
+        // switchToSubscription API without portIndex.
+        boolean shouldResolvePortIndex = isCompatChangeEnabled(callingPackage,
+                EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS);
         Log.d(TAG, " subId: " + subscriptionId + " portIndex: " + portIndex
                 + " forceDeactivateSim: " + forceDeactivateSim + " usePortIndex: " + usePortIndex
-                + " callingPackage: " + callingPackage);
+                + " callingPackage: " + callingPackage + " shouldResolvePortIndex: "
+                + shouldResolvePortIndex);
         long token = Binder.clearCallingIdentity();
         try {
             if (callerCanWriteEmbeddedSubscriptions) {
@@ -1095,9 +1108,11 @@ public class EuiccController extends IEuiccController.Stub {
                         return;
                     }
                 } else {
-                    // Resolve the portIndex internally if apps are calling switchToSubscription
-                    // API without portIndex.
-                    portIndex = getResolvedPortIndexForSubscriptionSwitch(cardId);
+                    // Resolve the portIndex internally if apps targeting T and beyond are calling
+                    // switchToSubscription API without portIndex.
+                    portIndex = shouldResolvePortIndex ?
+                            getResolvedPortIndexForSubscriptionSwitch(cardId)
+                            : TelephonyManager.DEFAULT_PORT_INDEX;
                     isConsentNeededToResolvePortIndex = (portIndex
                             == TelephonyManager.INVALID_PORT_INDEX);
                     usePortIndex = true;
@@ -1903,33 +1918,51 @@ public class EuiccController extends IEuiccController.Stub {
         } finally {
             Binder.restoreCallingIdentity(token);
         }
-        if (ArrayUtils.isEmpty(cardInfos)) {
-            return false;
-        }
         for (UiccCardInfo info : cardInfos) {
-            //return false if physical card
-            if (info != null && info.getCardId() == cardId && !info.isEuicc()) {
+            if (info == null || info.getCardId() != cardId) {
+                continue;
+            }
+            // Return false in case of non esim or passed port index is greater than
+            // the available ports.
+            if (!info.isEuicc() || (portIndex == TelephonyManager.INVALID_PORT_INDEX)
+                    || portIndex >= info.getPorts().size()) {
                 return false;
             }
             for (UiccPortInfo portInfo : info.getPorts()) {
-                if (portInfo.isActive()) {
-                    // A port is available if it has no profiles enabled on it or calling app has
-                    // Carrier privilege over the profile installed on the selected port.
-                    if (TextUtils.isEmpty(portInfo.getIccId())) {
-                        return true;
-                    }
-                    UiccPort uiccPort =
-                            UiccController.getInstance().getUiccPortForSlot(
-                                    info.getPhysicalSlotIndex(), portIndex);
-                    if (uiccPort != null) {
-                        UiccProfile uiccProfile = uiccPort.getUiccProfile();
-                        if (uiccProfile != null && uiccProfile.getCarrierPrivilegeStatus(
-                                mContext.getPackageManager(), callingPackage)
-                                == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
-                            return true;
-                        }
-                    }
+                if (portInfo == null || portInfo.getPortIndex() != portIndex) {
+                    continue;
                 }
+                // Return false if port is not active.
+                if (!portInfo.isActive()) {
+                    return false;
+                }
+                // A port is available if it has no profiles enabled on it or calling app has
+                // Carrier privilege over the profile installed on the selected port.
+                if (TextUtils.isEmpty(portInfo.getIccId())) {
+                    return true;
+                }
+                UiccPort uiccPort =
+                        UiccController.getInstance().getUiccPortForSlot(
+                                info.getPhysicalSlotIndex(), portIndex);
+                // Some eSim Vendors return boot profile iccid if no profile is installed.
+                // So in this case if profile is empty, port is available.
+                if (uiccPort != null
+                        && uiccPort.getUiccProfile() != null
+                        && uiccPort.getUiccProfile().isEmptyProfile()) {
+                    return true;
+                }
+                Phone phone = PhoneFactory.getPhone(portInfo.getLogicalSlotIndex());
+                if (phone == null) {
+                    Log.e(TAG, "Invalid logical slot: " + portInfo.getLogicalSlotIndex());
+                    return false;
+                }
+                CarrierPrivilegesTracker cpt = phone.getCarrierPrivilegesTracker();
+                if (cpt == null) {
+                    Log.e(TAG, "No CarrierPrivilegesTracker");
+                    return false;
+                }
+                return (cpt.getCarrierPrivilegeStatusForPackage(callingPackage)
+                        == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
             }
         }
         return false;

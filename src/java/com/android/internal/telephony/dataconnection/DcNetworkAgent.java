@@ -29,6 +29,7 @@ import android.net.QosFilter;
 import android.net.QosSessionAttributes;
 import android.net.SocketKeepalive;
 import android.net.Uri;
+import android.os.Handler;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
@@ -41,6 +42,7 @@ import android.telephony.data.QosBearerSession;
 import android.util.LocalLog;
 import android.util.SparseArray;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RILConstants;
@@ -82,6 +84,8 @@ public class DcNetworkAgent extends NetworkAgent implements NotifyQosSessionInte
 
     private final Phone mPhone;
 
+    private final Handler mHandler;
+
     private int mTransportType;
 
     private NetworkCapabilities mNetworkCapabilities;
@@ -102,7 +106,10 @@ public class DcNetworkAgent extends NetworkAgent implements NotifyQosSessionInte
     private static final long NETWORK_UNWANTED_ANOMALY_WINDOW_MS = TimeUnit.MINUTES.toMillis(5);
     private static final int NETWORK_UNWANTED_ANOMALY_NUM_OCCURRENCES =  12;
 
-    DcNetworkAgent(DataConnection dc, Phone phone, int score, NetworkAgentConfig config,
+    private static final int EVENT_UNWANTED_TIMEOUT = 1;
+
+    @VisibleForTesting
+    public DcNetworkAgent(DataConnection dc, Phone phone, int score, NetworkAgentConfig config,
             NetworkProvider networkProvider, int transportType) {
         super(phone.getContext(), dc.getHandler().getLooper(), "DcNetworkAgent",
                 dc.getNetworkCapabilities(), dc.getLinkProperties(), score, config,
@@ -111,6 +118,18 @@ public class DcNetworkAgent extends NetworkAgent implements NotifyQosSessionInte
         mId = getNetwork().getNetId();
         mTag = "DcNetworkAgent" + "-" + mId;
         mPhone = phone;
+        mHandler = new Handler(dc.getHandler().getLooper()) {
+            @Override
+            public void handleMessage(Message msg) {
+                if (msg.what == EVENT_UNWANTED_TIMEOUT) {
+                    loge("onNetworkUnwanted timed out. Perform silent de-register.");
+                    logd("Unregister from connectivity service. " + sInterfaceNames.get(mId)
+                            + " removed.");
+                    sInterfaceNames.remove(mId);
+                    DcNetworkAgent.this.unregister();
+                }
+            }
+        };
         mNetworkCapabilities = dc.getNetworkCapabilities();
         mTransportType = transportType;
         mDataConnection = dc;
@@ -203,6 +222,7 @@ public class DcNetworkAgent extends NetworkAgent implements NotifyQosSessionInte
 
     @Override
     public synchronized void onNetworkUnwanted() {
+        mHandler.sendEmptyMessageDelayed(EVENT_UNWANTED_TIMEOUT, TimeUnit.SECONDS.toMillis(30));
         trackNetworkUnwanted();
         if (mDataConnection == null) {
             loge("onNetworkUnwanted found called on no-owner DcNetworkAgent!");
@@ -356,6 +376,7 @@ public class DcNetworkAgent extends NetworkAgent implements NotifyQosSessionInte
     public synchronized void unregister(DataConnection dc) {
         if (!isOwned(dc, "unregister")) return;
 
+        mHandler.removeMessages(EVENT_UNWANTED_TIMEOUT);
         logd("Unregister from connectivity service. " + sInterfaceNames.get(mId) + " removed.");
         sInterfaceNames.remove(mId);
         super.unregister();

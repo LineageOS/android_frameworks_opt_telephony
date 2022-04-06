@@ -41,13 +41,13 @@ import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -93,7 +93,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     private static final int VALID_SLOT_INDEX_VALID_1 = 1;
     private static final int VALID_SLOT_INDEX_VALID_2 = 2;
     private static final int INVALID_SLOT_INDEX_VALID = SubscriptionManager.INVALID_SIM_SLOT_INDEX;
-
+    private ParcelFileDescriptor mOtaPracelFileDescriptor = null;
     // Mocked classes
     private SubscriptionController mSubControllerMock;
     private Phone mPhone2; // mPhone as phone 1 is already defined in TelephonyTest.
@@ -150,6 +150,14 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         mEmergencyNumberTrackerMock2 = null;
         mEmergencyNumberListTestSample.clear();
         mEmergencyNumberListTestSample = null;
+        if (mOtaPracelFileDescriptor != null) {
+            try {
+                mOtaPracelFileDescriptor.close();
+                mOtaPracelFileDescriptor = null;
+            } catch (IOException e) {
+                logd("Failed to close emergency number db file folder for testing " + e.toString());
+            }
+        }
         super.tearDown();
     }
 
@@ -194,11 +202,11 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         File file = new File(Environment.getExternalStorageDirectory(), LOCAL_DOWNLOAD_DIRECTORY
                 + "/" + EMERGENCY_NUMBER_DB_OTA_FILE);
         try {
-            final ParcelFileDescriptor otaParcelFileDescriptor = ParcelFileDescriptor.open(
+            mOtaPracelFileDescriptor = ParcelFileDescriptor.open(
                     file, ParcelFileDescriptor.MODE_READ_ONLY);
             emergencyNumberTrackerMock.obtainMessage(
                 EmergencyNumberTracker.EVENT_OVERRIDE_OTA_EMERGENCY_NUMBER_DB_FILE_PATH,
-                otaParcelFileDescriptor).sendToTarget();
+                    mOtaPracelFileDescriptor).sendToTarget();
             logd("Changed emergency number db file folder for testing ");
         } catch (FileNotFoundException e) {
             logd("Failed to open emergency number db file folder for testing " + e.toString());
@@ -410,7 +418,6 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     /**
      * Test OTA Emergency Number Database Update Status.
      */
-    @Ignore("b/221641120") // TODO: Enable the tests after fixing the resource leak.
     @Test
     public void testOtaEmergencyNumberDatabase() {
         // Set up the Hal version as 1.4 to apply emergency number database

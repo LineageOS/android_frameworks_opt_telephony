@@ -212,7 +212,7 @@ message VoiceCallSession {
     optional bool video_enabled = 29;
     optional int32 rat_at_connected = 30;
     optional bool is_multiparty = 31;
-
+    optional int32 call_duration = 32;
     // Internal use only
     optional int64 setup_begin_millis = 10001;
 }

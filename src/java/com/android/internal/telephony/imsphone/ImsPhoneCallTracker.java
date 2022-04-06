@@ -193,9 +193,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     // True if there is a carrier config loaded for a specific subscription (and not the default
     // configuration).
     private boolean mCarrierConfigLoadedForSubscription = false;
-    // Cache a carrier config for a subscription that is still pending a connection to the
-    // ImsService.
-    private Pair<Integer, PersistableBundle> mPendingCarrierConfigForSubId = null;
+    // Cache the latest carrier config received for a subscription. The configuration will be
+    // applied to the ImsService when startListeningForCalls is called.
+    private Pair<Integer, PersistableBundle> mCarrierConfigForSubId = null;
     // The subId of the last ImsService attached to this tracker or empty if there has not been
     // an attached ImsService yet.
     private Optional<Integer> mCurrentlyConnectedSubId = Optional.empty();
@@ -377,16 +377,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     return;
                 }
                 PersistableBundle carrierConfig = getCarrierConfigBundle(subId);
+                mCarrierConfigForSubId = new Pair<>(subId, carrierConfig);
                 if (!mCurrentlyConnectedSubId.isEmpty()
                         && subId == mCurrentlyConnectedSubId.get()) {
                     log("onReceive: Applying carrier config for subId: " + subId);
-                    // Reset pending config state
-                    mPendingCarrierConfigForSubId = null;
                     updateCarrierConfiguration(subId, carrierConfig);
                 } else {
                     // cache the latest config update until ImsService connects for this subId.
-                    // Once it has connected, startListeningForCalls will apply the pending config.
-                    mPendingCarrierConfigForSubId = new Pair<>(subId, carrierConfig);
+                    // Once it has connected, startListeningForCalls will apply the config.
                     log("onReceive: caching carrier config until ImsService connects for subId: "
                             + subId);
                 }
@@ -1107,10 +1105,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     null);
         }
 
-        if (mPendingCarrierConfigForSubId != null && mPendingCarrierConfigForSubId.first == subId) {
+        if (mCarrierConfigForSubId != null && mCarrierConfigForSubId.first == subId) {
             // The carrier configuration was received by CarrierConfigManager before the indication
-            // that the ImsService was connected.
-            updateCarrierConfiguration(subId, mPendingCarrierConfigForSubId.second);
+            // that the ImsService was connected or ImsService has restarted and we need to re-apply
+            // the configuration.
+            updateCarrierConfiguration(subId, mCarrierConfigForSubId.second);
         } else {
             log("startListeningForCalls - waiting for the first carrier config indication for this "
                     + "subscription");
@@ -1194,7 +1193,19 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @VisibleForTesting
     public void hangupAllOrphanedConnections(int disconnectCause) {
         Log.w(LOG_TAG, "hangupAllOngoingConnections called for cause " + disconnectCause);
-
+        // Send a call terminate request to all available connections.
+        // In the ImsPhoneCallTrackerTest, when the hangup() of the connection call,
+        // onCallTerminated() is called immediately and the connection is removed.
+        // As a result, an IndexOutOfBoundsException is thrown.
+        // This is why it counts backwards.
+        int size = getConnections().size();
+        for (int index = size - 1; index > -1; index--) {
+            try {
+                getConnections().get(index).hangup();
+            } catch (CallStateException e) {
+                loge("Failed to disconnet call...");
+            }
+        }
         // Move connections to disconnected and notify the reason why.
         for (ImsPhoneConnection connection : mConnections) {
             connection.update(connection.getImsCall(), ImsPhoneCall.State.DISCONNECTED);
@@ -3720,8 +3731,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             // Check with the DCTracker to see if data is enabled; there may be a case when
             // ImsPhoneCallTracker isn't being informed of the right data enabled state via its
             // registration, so we'll refresh now.
-            boolean isDataEnabled = mPhone.getDefaultPhone().getDataEnabledSettings()
-                    .isDataEnabled();
+            boolean isDataEnabled;
+            if (mPhone.getDefaultPhone().isUsingNewDataStack()) {
+                isDataEnabled = mPhone.getDefaultPhone().getDataSettingsManager().isDataEnabled();
+            } else {
+                isDataEnabled = mPhone.getDefaultPhone().getDataEnabledSettings().isDataEnabled();
+            }
 
             if (DBG) {
                 log("onCallHandover ::  srcAccessTech=" + srcAccessTech + ", targetAccessTech="

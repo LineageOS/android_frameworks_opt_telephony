@@ -64,6 +64,7 @@ public class DataStallRecoveryManager extends Handler {
             value = {
                 RECOVERY_ACTION_GET_DATA_CALL_LIST,
                 RECOVERY_ACTION_CLEANUP,
+                RECOVERY_ACTION_REREGISTER,
                 RECOVERY_ACTION_RADIO_RESTART,
                 RECOVERY_ACTION_RESET_MODEM
             })
@@ -82,16 +83,25 @@ public class DataStallRecoveryManager extends Handler {
      */
     public static final int RECOVERY_ACTION_CLEANUP = 1;
 
-    // TODO: b/214662910: Align the recovery action between DataStallRecoveryManager and Westworld.
+    /**
+     * Add the RECOVERY_ACTION_REREGISTER to align the RecoveryActions between
+     * DataStallRecoveryManager and Westworld. In Android T, This action will not process because
+     * the boolean array for skip recovery action is default true in carrier config setting.
+     *
+     * @deprecated Do not use.
+     */
+    @java.lang.Deprecated
+    public static final int RECOVERY_ACTION_REREGISTER = 2;
+
     /* DataStallRecoveryManager will request ServiceStateTracker to send RIL_REQUEST_RADIO_POWER
      * to restart radio. It will restart the radio and re-attch to the network.
      */
-    public static final int RECOVERY_ACTION_RADIO_RESTART = 2;
+    public static final int RECOVERY_ACTION_RADIO_RESTART = 3;
 
     /* DataStallRecoveryManager will request to reboot modem using NV_RESET_CONFIG. It will recover
      * if there is a problem in modem side.
      */
-    public static final int RECOVERY_ACTION_RESET_MODEM = 3;
+    public static final int RECOVERY_ACTION_RESET_MODEM = 4;
 
     /** Recovered reason taken in case of data stall recovered */
     @IntDef(
@@ -158,6 +168,8 @@ public class DataStallRecoveryManager extends Handler {
     private boolean mRadioStateChangedDuringDataStall;
     /** Whether mobile data change to Enabled during data stall. */
     private boolean mMobileDataChangedToEnabledDuringDataStall;
+    /** Whether attempted all recovery steps. */
+    private boolean mIsAttemptedAllSteps;
 
     /** The array for the timers between recovery actions. */
     private @NonNull long[] mDataStallRecoveryDelayMillisArray;
@@ -334,14 +346,13 @@ public class DataStallRecoveryManager extends Handler {
             mIsValidNetwork = true;
             cancelNetworkCheckTimer();
             resetAction();
+            mIsAttemptedAllSteps = false;
         } else {
-            if (mIsValidNetwork || isRecoveryAlreadyStarted()) {
-                mIsValidNetwork = false;
-                if (isRecoveryNeeded()) {
-                    log("trigger data stall recovery");
-                    mTimeLastRecoveryStartMs = SystemClock.elapsedRealtime();
-                    sendMessage(obtainMessage(EVENT_DO_RECOVERY));
-                }
+            mIsValidNetwork = false;
+            if (isRecoveryNeeded()) {
+                log("trigger data stall recovery");
+                mTimeLastRecoveryStartMs = SystemClock.elapsedRealtime();
+                sendMessage(obtainMessage(EVENT_DO_RECOVERY));
             }
         }
     }
@@ -476,6 +487,7 @@ public class DataStallRecoveryManager extends Handler {
         log("startNetworkCheckTimer(): " + getDataStallRecoveryDelayMillis(action) + "ms");
         if (!mNetworkCheckTimerStarted) {
             mNetworkCheckTimerStarted = true;
+            mTimeLastRecoveryStartMs = SystemClock.elapsedRealtime();
             sendMessageDelayed(
                     obtainMessage(EVENT_DO_RECOVERY), getDataStallRecoveryDelayMillis(action));
         }
@@ -498,6 +510,13 @@ public class DataStallRecoveryManager extends Handler {
      */
     private boolean isRecoveryNeeded() {
         logv("enter: isRecoveryNeeded()");
+
+        // Skip recovery if we have already attempted all steps.
+        if (mIsAttemptedAllSteps && mLastAction == RECOVERY_ACTION_RESET_MODEM) {
+            logl("skip retrying continue recovery action");
+            return false;
+        }
+
         // To avoid back to back recovery, wait for a grace period
         if (getElapsedTimeSinceRecoveryMs() < getDataStallRecoveryDelayMillis(mLastAction)) {
             logl("skip back to back data stall recovery");
@@ -567,29 +586,28 @@ public class DataStallRecoveryManager extends Handler {
      *
      * @param isValid true for validation passed & false for validation failed
      */
+    @RecoveredReason
     private int getRecoveredReason(boolean isValid) {
         if (!isValid) return RECOVERED_REASON_NONE;
 
+        int ret = RECOVERED_REASON_DSRM;
         if (mRadioStateChangedDuringDataStall) {
-            return RECOVERED_REASON_MODEM;
+            if (mLastAction <= RECOVERY_ACTION_CLEANUP) {
+                ret = RECOVERED_REASON_MODEM;
+            }
+            if (mLastAction > RECOVERY_ACTION_CLEANUP) {
+                ret = RECOVERED_REASON_DSRM;
+            }
         } else if (mMobileDataChangedToEnabledDuringDataStall) {
-            return RECOVERED_REASON_USER;
-        } else {
-            return RECOVERED_REASON_DSRM;
+            ret = RECOVERED_REASON_USER;
         }
+        return ret;
     }
 
     /** Perform a series of data stall recovery actions. */
     private void doRecovery() {
         @RecoveryAction final int recoveryAction = getRecoveryAction();
         final int signalStrength = mPhone.getSignalStrength().getLevel();
-        TelephonyMetrics.getInstance()
-                .writeSignalStrengthEvent(mPhone.getPhoneId(), signalStrength);
-        TelephonyMetrics.getInstance().writeDataStallEvent(mPhone.getPhoneId(), recoveryAction);
-        mLastAction = recoveryAction;
-        mLastActionReported = false;
-        broadcastDataStallDetected(recoveryAction);
-        mNetworkCheckTimerStarted = false;
 
         // DSRM used sendMessageDelayed to process the next event EVENT_DO_RECOVERY, so it need
         // to check the condition if DSRM need to process the recovery action.
@@ -598,9 +616,17 @@ public class DataStallRecoveryManager extends Handler {
                 && getRecoveryAction() > RECOVERY_ACTION_CLEANUP) {
             logl("skip data stall recovery as there is an active call");
             cancelNetworkCheckTimer();
-            startNetworkCheckTimer(mLastAction);
+            startNetworkCheckTimer(recoveryAction);
             return;
         }
+
+        TelephonyMetrics.getInstance()
+                .writeSignalStrengthEvent(mPhone.getPhoneId(), signalStrength);
+        TelephonyMetrics.getInstance().writeDataStallEvent(mPhone.getPhoneId(), recoveryAction);
+        mLastAction = recoveryAction;
+        mLastActionReported = false;
+        broadcastDataStallDetected(recoveryAction);
+        mNetworkCheckTimerStarted = false;
 
         switch (recoveryAction) {
             case RECOVERY_ACTION_GET_DATA_CALL_LIST:
@@ -622,6 +648,7 @@ public class DataStallRecoveryManager extends Handler {
                 logl("doRecovery(): modem reset");
                 rebootModem();
                 resetAction();
+                mIsAttemptedAllSteps = true;
                 break;
             default:
                 throw new RuntimeException(
@@ -745,10 +772,13 @@ public class DataStallRecoveryManager extends Handler {
 
         pw.println("mIsValidNetwork=" + mIsValidNetwork);
         pw.println("mDataStalled=" + mDataStalled);
-        pw.println("mDataStallStartMs=" + mDataStallStartMs);
+        pw.println("mLastAction=" + recoveryActionToString(mLastAction));
+        pw.println("mIsAttemptedAllSteps=" + mIsAttemptedAllSteps);
+        pw.println("mDataStallStartMs=" + DataUtils.elapsedTimeToString(mDataStallStartMs));
         pw.println("mRadioPowerState=" + radioPowerStateToString(mRadioPowerState));
         pw.println("mLastActionReported=" + mLastActionReported);
-        pw.println("mTimeLastRecoveryStartMs=" + mTimeLastRecoveryStartMs);
+        pw.println("mTimeLastRecoveryStartMs="
+                        + DataUtils.elapsedTimeToString(mTimeLastRecoveryStartMs));
         pw.println("getRecoveryAction()=" + recoveryActionToString(getRecoveryAction()));
         pw.println("mRadioStateChangedDuringDataStall=" + mRadioStateChangedDuringDataStall);
         pw.println(

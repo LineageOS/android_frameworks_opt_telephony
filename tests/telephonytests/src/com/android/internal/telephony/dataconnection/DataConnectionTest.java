@@ -266,6 +266,7 @@ public class DataConnectionTest extends TelephonyTest {
         mDataServiceManager = mock(DataServiceManager.class);
         logd("+Setup!");
         doReturn("fake.action_detached").when(mPhone).getActionDetached();
+        doReturn(false).when(mPhone).isUsingNewDataStack();
         replaceInstance(ConnectionParams.class, "mApnContext", mCp, mApnContext);
         replaceInstance(ConnectionParams.class, "mRilRat", mCp,
                 ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
@@ -928,7 +929,7 @@ public class DataConnectionTest extends TelephonyTest {
         assertEquals(carrierConfigPkgUid, getNetworkCapabilities().getOwnerUid());
         assertEquals(
                 Collections.singleton(carrierConfigPkgUid),
-                getNetworkCapabilities().getAccessUids());
+                getNetworkCapabilities().getAllowedUids());
     }
 
     @Test

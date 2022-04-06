@@ -65,28 +65,18 @@ public class DataSettingsManager extends Handler {
     private static final int EVENT_SUBSCRIPTIONS_CHANGED = 4;
     /** Event for set data enabled for reason. */
     private static final int EVENT_SET_DATA_ENABLED_FOR_REASON = 5;
-    /** Event for set user data enabled. */
-    private static final int EVENT_SET_USER_DATA_ENABLED = 6;
-    /** Event for set policy data enabled. */
-    private static final int EVENT_SET_POLICY_DATA_ENABLED = 7;
-    /** Event for set carrier data enabled. */
-    private static final int EVENT_SET_CARRIER_DATA_ENABLED = 8;
-    /** Event for set thermal data enabled. */
-    private static final int EVENT_SET_THERMAL_DATA_ENABLED = 9;
     /** Event for set data roaming enabled. */
-    private static final int EVENT_SET_DATA_ROAMING_ENABLED = 10;
+    private static final int EVENT_SET_DATA_ROAMING_ENABLED = 6;
     /** Event for set always allow MMS data. */
-    private static final int EVENT_SET_ALWAYS_ALLOW_MMS_DATA = 11;
+    private static final int EVENT_SET_ALWAYS_ALLOW_MMS_DATA = 7;
     /** Event for set allow data during voice call. */
-    private static final int EVENT_SET_ALLOW_DATA_DURING_VOICE_CALL = 12;
-    /** Event for update data enabled. */
-    private static final int EVENT_UPDATE_DATA_ENABLED = 13;
+    private static final int EVENT_SET_ALLOW_DATA_DURING_VOICE_CALL = 8;
     /** Event for device provisioned changed. */
-    private static final int EVENT_PROVISIONED_CHANGED = 14;
+    private static final int EVENT_PROVISIONED_CHANGED = 9;
     /** Event for provisioning data enabled setting changed. */
-    private static final int EVENT_PROVISIONING_DATA_ENABLED_CHANGED = 15;
-    /** Event for registering all events. */
-    private static final int EVENT_REGISTER_ALL_EVENTS = 16;
+    private static final int EVENT_PROVISIONING_DATA_ENABLED_CHANGED = 10;
+    /** Event for initializing DataSettingsManager. */
+    private static final int EVENT_INITIALIZE = 11;
 
     private final Phone mPhone;
     private final ContentResolver mResolver;
@@ -110,7 +100,13 @@ public class DataSettingsManager extends Handler {
      * Flag indicating whether data is allowed or not for the device.
      * It can be disabled by user, carrier, policy or thermal.
      */
-    private boolean mIsDataEnabled = false;
+    private boolean mIsDataEnabled;
+
+    /**
+     * Used to indicate that the initial value for mIsDataEnabled was set.
+     * Prevent race condition where the initial value might be incorrect.
+     */
+    private boolean mInitialized = false;
 
     /**
      * Data settings manager callback. This should be only used by {@link DataNetworkController}.
@@ -169,12 +165,9 @@ public class DataSettingsManager extends Handler {
         mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_CARRIER, true);
         mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_THERMAL, true);
 
-        mIsDataEnabled = isDataEnabled(ApnSetting.TYPE_ALL);
-        log("mIsDataEnabled=" + mIsDataEnabled);
-
-        // Instead of calling onRegisterAllEvents directly from the constructor, send the event.
+        // Instead of calling onInitialize directly from the constructor, send the event.
         // The reason is that getImsPhone is null when we are still in the constructor here.
-        sendEmptyMessage(EVENT_REGISTER_ALL_EVENTS);
+        sendEmptyMessage(EVENT_INITIALIZE);
     }
 
     @Override
@@ -196,72 +189,25 @@ public class DataSettingsManager extends Handler {
                 break;
             }
             case EVENT_SET_DATA_ENABLED_FOR_REASON: {
+                String callingPackage = (String) msg.obj;
                 boolean enabled = msg.arg2 == 1;
                 switch (msg.arg1) {
                     case TelephonyManager.DATA_ENABLED_REASON_USER:
-                        setUserDataEnabled(enabled);
+                        setUserDataEnabled(enabled, callingPackage);
                         break;
                     case TelephonyManager.DATA_ENABLED_REASON_CARRIER:
-                        setCarrierDataEnabled(enabled);
+                        setCarrierDataEnabled(enabled, callingPackage);
                         break;
                     case TelephonyManager.DATA_ENABLED_REASON_POLICY:
-                        setPolicyDataEnabled(enabled);
+                        setPolicyDataEnabled(enabled, callingPackage);
                         break;
                     case TelephonyManager.DATA_ENABLED_REASON_THERMAL:
-                        setThermalDataEnabled(enabled);
+                        setThermalDataEnabled(enabled, callingPackage);
                         break;
                     default:
                         log("Cannot set data enabled for reason: "
                                 + dataEnabledChangedReasonToString(msg.arg1));
                         break;
-                }
-                break;
-            }
-            case EVENT_SET_USER_DATA_ENABLED: {
-                boolean enabled = (boolean) msg.obj;
-                // Can't disable data for stand alone opportunistic subscription.
-                if (isStandAloneOpportunistic(mSubId, mPhone.getContext()) && !enabled) return;
-                boolean changed = GlobalSettingsHelper.setInt(mPhone.getContext(),
-                        Settings.Global.MOBILE_DATA, mSubId, (enabled ? 1 : 0));
-                log("Set user data enabled to " + enabled + ", changed=" + changed);
-                if (changed) {
-                    logl("UserDataEnabled changed to " + enabled);
-                    mPhone.notifyUserMobileDataStateChanged(enabled);
-                    updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_USER);
-                    // TODO: MultiSimSettingController should register the callback instead of let
-                    //   DataSettingsManager directly feed information to it.
-                    //   Also revisit if sub id is really needed.
-                    MultiSimSettingController.getInstance().notifyUserDataEnabled(mSubId, enabled);
-                }
-                break;
-            }
-            case EVENT_SET_POLICY_DATA_ENABLED: {
-                boolean enabled = (boolean) msg.obj;
-                if (mDataEnabledSettings.get(TelephonyManager.DATA_ENABLED_REASON_POLICY)
-                        != enabled) {
-                    logl("PolicyDataEnabled changed to " + enabled);
-                    mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_POLICY, enabled);
-                    updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_POLICY);
-                }
-                break;
-            }
-            case EVENT_SET_CARRIER_DATA_ENABLED: {
-                boolean enabled = (boolean) msg.obj;
-                if (mDataEnabledSettings.get(TelephonyManager.DATA_ENABLED_REASON_CARRIER)
-                        != enabled) {
-                    logl("CarrierDataEnabled changed to " + enabled);
-                    mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_CARRIER, enabled);
-                    updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_CARRIER);
-                }
-                break;
-            }
-            case EVENT_SET_THERMAL_DATA_ENABLED: {
-                boolean enabled = (boolean) msg.obj;
-                if (mDataEnabledSettings.get(TelephonyManager.DATA_ENABLED_REASON_THERMAL)
-                        != enabled) {
-                    logl("ThermalDataEnabled changed to " + enabled);
-                    mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_THERMAL, enabled);
-                    updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_THERMAL);
                 }
                 break;
             }
@@ -305,15 +251,6 @@ public class DataSettingsManager extends Handler {
                 }
                 break;
             }
-            case EVENT_UPDATE_DATA_ENABLED: {
-                boolean prevDataEnabled = mIsDataEnabled;
-                mIsDataEnabled = isDataEnabled(ApnSetting.TYPE_ALL);
-                log("mIsDataEnabled=" + mIsDataEnabled + ", prevDataEnabled=" + prevDataEnabled);
-                if (prevDataEnabled != mIsDataEnabled) {
-                    notifyDataEnabledChanged(mIsDataEnabled, (int) msg.obj);
-                }
-                break;
-            }
             case EVENT_PROVISIONED_CHANGED: {
                 updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_UNKNOWN);
                 break;
@@ -322,8 +259,8 @@ public class DataSettingsManager extends Handler {
                 updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_UNKNOWN);
                 break;
             }
-            case EVENT_REGISTER_ALL_EVENTS: {
-                onRegisterAllEvents();
+            case EVENT_INITIALIZE: {
+                onInitialize();
                 break;
             }
             default:
@@ -334,7 +271,7 @@ public class DataSettingsManager extends Handler {
     /**
      * Called when needed to register for all events that data network controller is interested.
      */
-    private void onRegisterAllEvents() {
+    private void onInitialize() {
         mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
         mSettingsObserver.observe(Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONED),
                 EVENT_PROVISIONED_CHANGED);
@@ -360,15 +297,19 @@ public class DataSettingsManager extends Handler {
                         }
                     }
                 }, this::post);
+        updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_UNKNOWN);
     }
 
     /**
      * Enable or disable data for a specific {@link TelephonyManager.DataEnabledReason}.
      * @param reason The reason the data enabled change is taking place.
      * @param enabled {@code true} to enable data for the given reason and {@code false} to disable.
+     * @param callingPackage The package that changed the data enabled state.
      */
-    public void setDataEnabled(@TelephonyManager.DataEnabledReason int reason, boolean enabled) {
-        obtainMessage(EVENT_SET_DATA_ENABLED_FOR_REASON, reason, enabled ? 1 : 0).sendToTarget();
+    public void setDataEnabled(@TelephonyManager.DataEnabledReason int reason, boolean enabled,
+            String callingPackage) {
+        obtainMessage(EVENT_SET_DATA_ENABLED_FOR_REASON, reason, enabled ? 1 : 0, callingPackage)
+                .sendToTarget();
     }
 
     /**
@@ -384,7 +325,13 @@ public class DataSettingsManager extends Handler {
     }
 
     private void updateDataEnabledAndNotify(@TelephonyManager.DataEnabledChangedReason int reason) {
-        obtainMessage(EVENT_UPDATE_DATA_ENABLED, reason).sendToTarget();
+        boolean prevDataEnabled = mIsDataEnabled;
+        mIsDataEnabled = isDataEnabled(ApnSetting.TYPE_ALL);
+        log("mIsDataEnabled=" + mIsDataEnabled + ", prevDataEnabled=" + prevDataEnabled);
+        if (!mInitialized || prevDataEnabled != mIsDataEnabled) {
+            if (!mInitialized) mInitialized = true;
+            notifyDataEnabledChanged(mIsDataEnabled, reason);
+        }
     }
 
     /**
@@ -409,11 +356,24 @@ public class DataSettingsManager extends Handler {
     }
 
     /**
-     * Check whether the overall data is enabled for the device.
+     * Check whether the overall data is enabled for the device. Note that this value will only
+     * be accurate if {@link #isDataInitialized} is {@code true}.
      * @return {@code true} if the overall data is enabled and {@code false} otherwise.
      */
     public boolean isDataEnabled() {
         return mIsDataEnabled;
+    }
+
+    /**
+     * Check whether data enabled value has been initialized. If this is {@code false}, then
+     * {@link #isDataEnabled} is not guaranteed to be accurate. Once data is initialized,
+     * {@link DataSettingsManagerCallback#onDataEnabledChanged} will be invoked with reason
+     * {@link TelephonyManager#DATA_ENABLED_REASON_UNKNOWN}.
+     * @return {@code true} if the data enabled value is initialized and {@code false} otherwise.
+     */
+    public boolean isDataInitialized() {
+        // TODO: Create a new DATA_ENABLED_REASON_INITIALIZED for initial value broadcast
+        return mInitialized;
     }
 
     /**
@@ -446,9 +406,24 @@ public class DataSettingsManager extends Handler {
     /**
      * Enable or disable user data.
      * @param enabled {@code true} to enable user data and {@code false} to disable.
+     * @param callingPackage The package that changed the data enabled state.
      */
-    private void setUserDataEnabled(boolean enabled) {
-        obtainMessage(EVENT_SET_USER_DATA_ENABLED, enabled).sendToTarget();
+    private void setUserDataEnabled(boolean enabled, String callingPackage) {
+        // Can't disable data for stand alone opportunistic subscription.
+        if (isStandAloneOpportunistic(mSubId, mPhone.getContext()) && !enabled) return;
+        boolean changed = GlobalSettingsHelper.setInt(mPhone.getContext(),
+                Settings.Global.MOBILE_DATA, mSubId, (enabled ? 1 : 0));
+        log("Set user data enabled to " + enabled + ", changed=" + changed + ", callingPackage="
+                + callingPackage);
+        if (changed) {
+            logl("UserDataEnabled changed to " + enabled);
+            mPhone.notifyUserMobileDataStateChanged(enabled);
+            updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_USER);
+            // TODO: MultiSimSettingController should register the callback instead of let
+            //   DataSettingsManager directly feed information to it.
+            //   Also revisit if sub id is really needed.
+            MultiSimSettingController.getInstance().notifyUserDataEnabled(mSubId, enabled);
+        }
     }
 
     /**
@@ -472,25 +447,40 @@ public class DataSettingsManager extends Handler {
     /**
      * Enable or disable policy data.
      * @param enabled {@code true} to enable policy data and {@code false} to disable.
+     * @param callingPackage The package that changed the data enabled state.
      */
-    private void setPolicyDataEnabled(boolean enabled) {
-        obtainMessage(EVENT_SET_POLICY_DATA_ENABLED, enabled).sendToTarget();
+    private void setPolicyDataEnabled(boolean enabled, String callingPackage) {
+        if (mDataEnabledSettings.get(TelephonyManager.DATA_ENABLED_REASON_POLICY) != enabled) {
+            logl("PolicyDataEnabled changed to " + enabled + ", callingPackage=" + callingPackage);
+            mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_POLICY, enabled);
+            updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_POLICY);
+        }
     }
 
     /**
      * Enable or disable carrier data.
      * @param enabled {@code true} to enable carrier data and {@code false} to disable.
+     * @param callingPackage The package that changed the data enabled state.
      */
-    private void setCarrierDataEnabled(boolean enabled) {
-        obtainMessage(EVENT_SET_CARRIER_DATA_ENABLED, enabled).sendToTarget();
+    private void setCarrierDataEnabled(boolean enabled, String callingPackage) {
+        if (mDataEnabledSettings.get(TelephonyManager.DATA_ENABLED_REASON_CARRIER) != enabled) {
+            logl("CarrierDataEnabled changed to " + enabled + ", callingPackage=" + callingPackage);
+            mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_CARRIER, enabled);
+            updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_CARRIER);
+        }
     }
 
     /**
      * Enable or disable thermal data.
      * @param enabled {@code true} to enable thermal data and {@code false} to disable.
+     * @param callingPackage The package that changed the data enabled state.
      */
-    private void setThermalDataEnabled(boolean enabled) {
-        obtainMessage(EVENT_SET_THERMAL_DATA_ENABLED, enabled).sendToTarget();
+    private void setThermalDataEnabled(boolean enabled, String callingPackage) {
+        if (mDataEnabledSettings.get(TelephonyManager.DATA_ENABLED_REASON_THERMAL) != enabled) {
+            logl("ThermalDataEnabled changed to " + enabled + ", callingPackage=" + callingPackage);
+            mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_THERMAL, enabled);
+            updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_THERMAL);
+        }
     }
 
     /**

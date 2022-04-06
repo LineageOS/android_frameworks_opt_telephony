@@ -313,6 +313,9 @@ import android.telephony.UiccSlotMapping;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
+import android.telephony.data.DataService;
+import android.telephony.data.DataService.DeactivateDataReason;
+import android.telephony.data.DataService.SetupDataReason;
 import android.telephony.data.EpsQos;
 import android.telephony.data.NetworkSliceInfo;
 import android.telephony.data.NetworkSlicingConfig;
@@ -349,6 +352,7 @@ import com.android.telephony.Rlog;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -975,7 +979,10 @@ public class RILUtils {
         dpi.mtuV6 = dp.getMtuV6();
         dpi.persistent = dp.isPersistent();
         dpi.preferred = dp.isPreferred();
-        dpi.alwaysOn = dp.getApnSetting().isAlwaysOn();
+        dpi.alwaysOn = false;
+        if (dp.getApnSetting() != null) {
+            dpi.alwaysOn = dp.getApnSetting().isAlwaysOn();
+        }
         dpi.trafficDescriptor = convertToHalTrafficDescriptorAidl(dp.getTrafficDescriptor());
 
         // profile id is only meaningful when it's persistent on the modem.
@@ -4626,6 +4633,46 @@ public class RILUtils {
     }
 
     /**
+     * Convert setup data reason to string.
+     *
+     * @param reason The reason for setup data call.
+     * @return The reason in string format.
+     */
+    public static String setupDataReasonToString(@SetupDataReason int reason) {
+        switch (reason) {
+            case DataService.REQUEST_REASON_NORMAL:
+                return "NORMAL";
+            case DataService.REQUEST_REASON_HANDOVER:
+                return "HANDOVER";
+            case DataService.REQUEST_REASON_UNKNOWN:
+                return "UNKNOWN";
+            default:
+                return "UNKNOWN(" + reason + ")";
+        }
+    }
+
+    /**
+     * Convert deactivate data reason to string.
+     *
+     * @param reason The reason for deactivate data call.
+     * @return The reason in string format.
+     */
+    public static String deactivateDataReasonToString(@DeactivateDataReason int reason) {
+        switch (reason) {
+            case DataService.REQUEST_REASON_NORMAL:
+                return "NORMAL";
+            case DataService.REQUEST_REASON_HANDOVER:
+                return "HANDOVER";
+            case DataService.REQUEST_REASON_SHUTDOWN:
+                return "SHUTDOWN";
+            case DataService.REQUEST_REASON_UNKNOWN:
+                return "UNKNOWN";
+            default:
+                return "UNKNOWN(" + reason + ")";
+        }
+    }
+
+    /**
      * RIL request to String
      * @param request request
      * @return The converted String request
@@ -5178,14 +5225,29 @@ public class RILUtils {
      * @return A string containing all public non-static local variables of a class
      */
     public static String convertToString(Object o) {
-        if (isPrimitiveOrWrapper(o.getClass()) || o.getClass() == String.class) return o.toString();
+        boolean toStringExists = false;
+        try {
+            toStringExists = o.getClass().getMethod("toString").getDeclaringClass() != Object.class;
+        } catch (NoSuchMethodException e) {
+            loge(e.toString());
+        }
+        if (toStringExists || isPrimitiveOrWrapper(o.getClass()) || o instanceof ArrayList) {
+            return o.toString();
+        }
         if (o.getClass().isArray()) {
             // Special handling for arrays
             StringBuilder sb = new StringBuilder("[");
             boolean added = false;
-            for (Object element : (Object[]) o) {
-                sb.append(convertToString(element)).append(", ");
-                added = true;
+            if (isPrimitiveOrWrapper(o.getClass().getComponentType())) {
+                for (int i = 0; i < Array.getLength(o); i++) {
+                    sb.append(convertToString(Array.get(o, i))).append(", ");
+                    added = true;
+                }
+            } else {
+                for (Object element : (Object[]) o) {
+                    sb.append(convertToString(element)).append(", ");
+                    added = true;
+                }
             }
             if (added) {
                 // Remove extra ,
@@ -5200,8 +5262,10 @@ public class RILUtils {
         int tag = -1;
         try {
             tag = (int) o.getClass().getDeclaredMethod("getTag").invoke(o);
-        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-            loge(e.getMessage());
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            loge(e.toString());
+        } catch (NoSuchMethodException ignored) {
+            // Ignored since only unions have the getTag method
         }
         if (tag != -1) {
             // Special handling for unions
@@ -5211,7 +5275,7 @@ public class RILUtils {
                 method.setAccessible(true);
                 tagName = (String) method.invoke(o, tag);
             } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-                loge(e.getMessage());
+                loge(e.toString());
             }
             if (tagName != null) {
                 sb.append(tagName);
@@ -5224,7 +5288,7 @@ public class RILUtils {
                     val = o.getClass().getDeclaredMethod(getTagMethod).invoke(o);
                 } catch (NoSuchMethodException | IllegalAccessException
                         | InvocationTargetException e) {
-                    loge(e.getMessage());
+                    loge(e.toString());
                 }
                 if (val != null) {
                     sb.append(convertToString(val));
@@ -5240,7 +5304,7 @@ public class RILUtils {
                 try {
                     val = field.get(o);
                 } catch (IllegalAccessException e) {
-                    loge(e.getMessage());
+                    loge(e.toString());
                 }
                 if (val == null) continue;
                 sb.append(convertToString(val)).append(", ");

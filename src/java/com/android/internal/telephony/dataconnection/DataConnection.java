@@ -1967,7 +1967,7 @@ public class DataConnection extends StateMachine {
         if (carrierServicePackageUid != Process.INVALID_UID
                 && ArrayUtils.contains(mAdministratorUids, carrierServicePackageUid)) {
             builder.setOwnerUid(carrierServicePackageUid);
-            builder.setAccessUids(Collections.singleton(carrierServicePackageUid));
+            builder.setAllowedUids(Collections.singleton(carrierServicePackageUid));
         }
         builder.setAdministratorUids(mAdministratorUids);
 

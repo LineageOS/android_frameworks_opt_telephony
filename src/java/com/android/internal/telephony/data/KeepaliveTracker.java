@@ -189,9 +189,7 @@ public class KeepaliveTracker extends Handler {
     private void onStartSocketKeepaliveRequested(int slotIndex, @NonNull Duration interval,
             @NonNull KeepalivePacketData packet) {
         log("onStartSocketKeepaliveRequested: slot=" + slotIndex + ", interval="
-                + interval.getSeconds() + "s, src=" + packet.getSrcAddress() + ":"
-                + packet.getSrcPort() + ", dst=" + packet.getDstAddress() + ":"
-                + packet.getDstPort() + ", packet.length=" + packet.getPacket().length);
+                + interval.getSeconds() + "s, packet=" + packet);
         if (packet instanceof NattKeepalivePacketData) {
             if (mDataNetwork.getTransport() == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                 mPhone.mCi.startNattKeepalive(mDataNetwork.getId(), packet,

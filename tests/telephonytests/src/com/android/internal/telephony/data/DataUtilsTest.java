@@ -18,8 +18,6 @@ package com.android.internal.telephony.data;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import static org.mockito.Mockito.doReturn;
-
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 
@@ -38,7 +36,6 @@ public class DataUtilsTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("DataUtilsTest +Setup!");
         super.setUp(getClass().getSimpleName());
-        doReturn(true).when(mPhone).isUsingNewDataStack();
         logd("DataUtilsTest -Setup!");
     }
 
@@ -94,6 +91,34 @@ public class DataUtilsTest extends TelephonyTest {
                 NetworkCapabilities.NET_CAPABILITY_INTERNET)).isTrue();
         assertThat(requestList.get(1).hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_INTERNET)).isTrue();
+    }
+
+    @Test
+    public void testGetNetworkCapabilitiesFromString() {
+        String normal = " MMS  ";
+        assertThat(DataUtils.getNetworkCapabilitiesFromString(normal)).containsExactly(
+                NetworkCapabilities.NET_CAPABILITY_MMS);
+        String normal2 = "MMS|IMS";
+        assertThat(DataUtils.getNetworkCapabilitiesFromString(normal2)).containsExactly(
+                NetworkCapabilities.NET_CAPABILITY_MMS, NetworkCapabilities.NET_CAPABILITY_IMS);
+        String normal3 = " MMS |IMS ";
+        assertThat(DataUtils.getNetworkCapabilitiesFromString(normal3)).containsExactly(
+                NetworkCapabilities.NET_CAPABILITY_MMS, NetworkCapabilities.NET_CAPABILITY_IMS);
+
+        String containsUnknown = "MMS |IMS | what";
+        assertThat(DataUtils.getNetworkCapabilitiesFromString(containsUnknown)
+                .contains(-1)).isTrue();
+
+        String malFormatted = "";
+        assertThat(DataUtils.getNetworkCapabilitiesFromString(malFormatted).contains(-1)).isTrue();
+        String malFormatted2 = " ";
+        assertThat(DataUtils.getNetworkCapabilitiesFromString(malFormatted2).contains(-1)).isTrue();
+        String malFormatted3 = "MMS |IMS |";
+        assertThat(DataUtils.getNetworkCapabilitiesFromString(malFormatted3).contains(-1)).isTrue();
+        String composedDelim = " | ||";
+        assertThat(DataUtils.getNetworkCapabilitiesFromString(composedDelim).contains(-1)).isTrue();
+        String malFormatted4 = "mms||ims";
+        assertThat(DataUtils.getNetworkCapabilitiesFromString(malFormatted4).contains(-1)).isTrue();
     }
 
 }
