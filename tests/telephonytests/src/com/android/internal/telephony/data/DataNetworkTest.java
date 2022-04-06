@@ -58,7 +58,6 @@ import android.testing.TestableLooper;
 import android.util.Pair;
 import android.util.SparseArray;
 
-import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataNetwork.DataNetworkCallback;
@@ -703,29 +702,6 @@ public class DataNetworkTest extends TelephonyTest {
 
         verify(mDataNetworkCallback).onDisconnected(eq(mDataNetworkUT), eq(
                 DataFailCause.RADIO_NOT_AVAILABLE));
-        assertThat(mDataNetworkUT.isConnected()).isFalse();
-    }
-
-    @Test
-    public void tearTearDownNoTrafficDescriptors() throws Exception {
-        doReturn(RIL.RADIO_HAL_VERSION_1_6).when(mPhone).getHalVersion();
-        testCreateDataNetwork();
-        assertThat(mDataNetworkUT.isConnected()).isTrue();
-        mDataNetworkUT.sendMessage(8/*EVENT_DATA_STATE_CHANGED*/,
-                new AsyncResult(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
-                        new ArrayList<>(Arrays.asList(new DataCallResponse.Builder()
-                                .setCause(DataFailCause.NONE)
-                                .setRetryDurationMillis(DataCallResponse.RETRY_DURATION_UNDEFINED)
-                                .setId(123)
-                                .setLinkStatus(DataCallResponse.LINK_STATUS_ACTIVE)
-                                .setProtocolType(ApnSetting.PROTOCOL_IPV4V6)
-                                .setQosBearerSessions(new ArrayList<>())
-                                .setTrafficDescriptors(new ArrayList<>())
-                                .build())), null));
-        processAllMessages();
-
-        verify(mDataNetworkCallback).onDisconnected(eq(mDataNetworkUT),
-                eq(DataFailCause.NO_TRAFFIC_DESCRIPTORS));
         assertThat(mDataNetworkUT.isConnected()).isFalse();
     }
 }
