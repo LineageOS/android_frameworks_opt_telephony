@@ -110,7 +110,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import java.lang.reflect.Field;
@@ -739,14 +738,11 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn(true).when(mSST).getDesiredPowerState();
         doReturn(true).when(mSST).getPowerStateFromCarrier();
         doAnswer(
-                new Answer<Void>() {
-                    @Override
-                    public Void answer(InvocationOnMock invocation) throws Throwable {
-                        mOnSubscriptionsChangedListener =
-                                (SubscriptionManager.OnSubscriptionsChangedListener)
-                                        invocation.getArguments()[0];
-                        return null;
-                    }
+                (Answer<Void>) invocation -> {
+                    mOnSubscriptionsChangedListener =
+                            (SubscriptionManager.OnSubscriptionsChangedListener)
+                                    invocation.getArguments()[0];
+                    return null;
                 }
         ).when(mSubscriptionManager).addOnSubscriptionsChangedListener(any());
         doReturn(mSubscriptionInfo).when(mSubscriptionManager).getActiveSubscriptionInfo(anyInt());
