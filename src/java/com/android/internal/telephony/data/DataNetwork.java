@@ -620,8 +620,7 @@ public class DataNetwork extends StateMachine {
     private final @NonNull List<QosBearerSession> mQosBearerSessions = new ArrayList<>();
 
     /**
-     * The UIDs of packages that have carrier privilege. These UIDs will not change through the
-     * life cycle of data network.
+     * The UIDs of packages that have carrier privilege.
      */
     private @NonNull int[] mAdministratorUids = new int[0];
 
@@ -1013,6 +1012,7 @@ public class DataNetwork extends StateMachine {
                     AsyncResult asyncResult = (AsyncResult) msg.obj;
                     int[] administratorUids = (int[]) asyncResult.result;
                     mAdministratorUids = Arrays.copyOf(administratorUids, administratorUids.length);
+                    updateNetworkCapabilities();
                     break;
                 }
                 case EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED:
