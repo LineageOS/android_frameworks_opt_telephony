@@ -2523,9 +2523,12 @@ public class DataNetworkController extends Handler {
      * Called when data service binding changed.
      *
      * @param transport The transport of the changed data service.
-     * @param bound {code @true} if data service is bound.
+     * @param bound {@code true} if data service is bound.
      */
     private void onDataServiceBindingChanged(@TransportType int transport, boolean bound) {
+        log("onDataServiceBindingChanged: " + AccessNetworkConstants
+                .transportTypeToString(transport) + " data service is "
+                + (bound ? "bound." : "unbound."));
         if (!bound) {
             if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
                 if (!mDataConfigManager.shouldPersistIwlanDataNetworksWhenDataServiceRestarted()) {
