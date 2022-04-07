@@ -1009,18 +1009,17 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     @Test
-    public void testEmergencyCallChanged() throws Exception {
-        doReturn(PhoneConstants.PHONE_TYPE_CDMA).when(mPhone).getPhoneType();
-        doReturn(true).when(mPhone).isInEcm();
+    public void testEcbmChanged() throws Exception {
+        doReturn(true).when(mPhone).isInCdmaEcm();
         mDataNetworkControllerUT.addNetworkRequest(
                 createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
         processAllMessages();
 
-        // Data should not be allowed when the device is in an emergency call.
+        // Data should not be allowed when the device is in ECBM.
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
 
-        // Emergency call ended
-        doReturn(false).when(mPhone).isInEcm();
+        // Exit ECBM
+        doReturn(false).when(mPhone).isInCdmaEcm();
         mDataNetworkControllerUT.obtainMessage(20/*EVENT_EMERGENCY_CALL_CHANGED*/).sendToTarget();
         processAllMessages();
 
