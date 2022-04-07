@@ -170,6 +170,8 @@ public class DataStallRecoveryManager extends Handler {
     private boolean mMobileDataChangedToEnabledDuringDataStall;
     /** Whether attempted all recovery steps. */
     private boolean mIsAttemptedAllSteps;
+    /** Whether internet network connected. */
+    private boolean mIsInternetNetworkConnected;
 
     /** The array for the timers between recovery actions. */
     private @NonNull long[] mDataStallRecoveryDelayMillisArray;
@@ -254,12 +256,14 @@ public class DataStallRecoveryManager extends Handler {
                     @Override
                     public void onInternetDataNetworkConnected(
                             @NonNull List<DataProfile> dataProfiles) {
-                        // onInternetNetworkConnected();
+                        mIsInternetNetworkConnected = true;
+                        logl("onInternetDataNetworkConnected");
                     }
 
                     @Override
                     public void onInternetDataNetworkDisconnected() {
-                        // onInternetNetworkDisconnected();
+                        mIsInternetNetworkConnected = false;
+                        logl("onInternetDataNetworkDisconnected");
                     }
                 });
         mPhone.mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
@@ -349,7 +353,7 @@ public class DataStallRecoveryManager extends Handler {
             mIsAttemptedAllSteps = false;
         } else {
             mIsValidNetwork = false;
-            if (isRecoveryNeeded()) {
+            if (isRecoveryNeeded(true)) {
                 log("trigger data stall recovery");
                 mTimeLastRecoveryStartMs = SystemClock.elapsedRealtime();
                 sendMessage(obtainMessage(EVENT_DO_RECOVERY));
@@ -505,10 +509,12 @@ public class DataStallRecoveryManager extends Handler {
     /**
      * Check the conditions if we need to do recovery action.
      *
+     * @param isNeedToCheckTimer {@code true} indicating we need the check timer when
+     * we receive the internet validation status changed.
      * @return {@code true} if need to do recovery action, {@code false} no need to do recovery
      *     action.
      */
-    private boolean isRecoveryNeeded() {
+    private boolean isRecoveryNeeded(boolean isNeedToCheckTimer) {
         logv("enter: isRecoveryNeeded()");
 
         // Skip recovery if we have already attempted all steps.
@@ -518,7 +524,8 @@ public class DataStallRecoveryManager extends Handler {
         }
 
         // To avoid back to back recovery, wait for a grace period
-        if (getElapsedTimeSinceRecoveryMs() < getDataStallRecoveryDelayMillis(mLastAction)) {
+        if (getElapsedTimeSinceRecoveryMs() < getDataStallRecoveryDelayMillis(mLastAction)
+                && isNeedToCheckTimer) {
             logl("skip back to back data stall recovery");
             return false;
         }
@@ -533,7 +540,16 @@ public class DataStallRecoveryManager extends Handler {
         // Skip when poor signal strength
         if (mPhone.getSignalStrength().getLevel() <= CellSignalStrength.SIGNAL_STRENGTH_POOR) {
             logl("skip data stall recovery as in poor signal condition");
-            resetAction();
+            return false;
+        }
+
+        if (!mDataNetworkController.isInternetDataAllowed()) {
+            logl("skip data stall recovery as data not allowed.");
+            return false;
+        }
+
+        if (!mIsInternetNetworkConnected) {
+            logl("skip data stall recovery as data not connected");
             return false;
         }
 
@@ -611,10 +627,7 @@ public class DataStallRecoveryManager extends Handler {
 
         // DSRM used sendMessageDelayed to process the next event EVENT_DO_RECOVERY, so it need
         // to check the condition if DSRM need to process the recovery action.
-        // Skip recovery if it can cause a call to drop
-        if (mPhone.getState() != PhoneConstants.State.IDLE
-                && getRecoveryAction() > RECOVERY_ACTION_CLEANUP) {
-            logl("skip data stall recovery as there is an active call");
+        if (!isRecoveryNeeded(false)) {
             cancelNetworkCheckTimer();
             startNetworkCheckTimer(recoveryAction);
             return;
@@ -771,6 +784,7 @@ public class DataStallRecoveryManager extends Handler {
         pw.increaseIndent();
 
         pw.println("mIsValidNetwork=" + mIsValidNetwork);
+        pw.println("mIsInternetNetworkConnected=" + mIsInternetNetworkConnected);
         pw.println("mDataStalled=" + mDataStalled);
         pw.println("mLastAction=" + recoveryActionToString(mLastAction));
         pw.println("mIsAttemptedAllSteps=" + mIsAttemptedAllSteps);
