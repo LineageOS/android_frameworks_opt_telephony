@@ -524,6 +524,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(true).when(mSST).isConcurrentVoiceAndDataAllowed();
         doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
         doReturn("").when(mSubscriptionController).getDataEnabledOverrideRules(anyInt());
+        doReturn(true).when(mSubscriptionController).setDataEnabledOverrideRules(
+                anyInt(), anyString());
 
         for (int transport : new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN}) {
@@ -1096,6 +1098,13 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verifyConnectedNetworkHasDataProfile(mGeneralPurposeDataProfile);
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
+
+        // Remove MMS data enabled override
+        mDataNetworkControllerUT.getDataSettingsManager().setAlwaysAllowMmsData(false);
+        processAllMessages();
+
+        // Make sure MMS is torn down when the override is disabled.
+        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
     }
 
     @Test
