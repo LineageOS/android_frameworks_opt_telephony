@@ -996,7 +996,12 @@ public class DataNetworkControllerTest extends TelephonyTest {
         mDataNetworkControllerUT.obtainMessage(18/*EVENT_VOICE_CALL_ENDED*/).sendToTarget();
         processAllMessages();
 
-        // Verify data is restored.
+        // It should have no internet setup at the beginning.
+        verifyAllDataDisconnected();
+
+        // But after some delays data should be restored.
+        moveTimeForward(500);
+        processAllMessages();
         verifyInternetConnected();
     }
 
