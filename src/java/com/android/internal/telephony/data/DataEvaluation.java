@@ -195,6 +195,8 @@ public class DataEvaluation {
         DATA_SERVICE_STATE_CHANGED,
         /** When data is enabled or disabled (by user, carrier, thermal, etc...) */
         DATA_ENABLED_CHANGED,
+        /** When data enabled overrides are changed (MMS always allowed, data on non-DDS sub). */
+        DATA_ENABLED_OVERRIDE_CHANGED,
         /** When data roaming is enabled or disabled. */
         ROAMING_ENABLED_CHANGED,
         /** When voice call ended (for concurrent voice/data not supported RAT). */

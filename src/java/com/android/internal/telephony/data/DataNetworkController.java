@@ -787,6 +787,20 @@ public class DataNetworkController extends Handler {
                                         DataEvaluationReason.DATA_ENABLED_CHANGED));
                             }
                             @Override
+                            public void onDataEnabledOverrideChanged(boolean enabled,
+                                    @TelephonyManager.MobileDataPolicy int policy) {
+                                // If data enabled override is enabled by the user, evaluate the
+                                // unsatisfied network requests and then attempt to setup data
+                                // networks to satisfy them. If data enabled override is disabled,
+                                // evaluate the existing data networks and see if they need to be
+                                // torn down.
+                                logl("onDataEnabledOverrideChanged: enabled=" + enabled);
+                                sendMessage(obtainMessage(enabled
+                                                ? EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS
+                                                : EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
+                                        DataEvaluationReason.DATA_ENABLED_OVERRIDE_CHANGED));
+                            }
+                            @Override
                             public void onDataRoamingEnabledChanged(boolean enabled) {
                                 // If data roaming is enabled by the user, evaluate the unsatisfied
                                 // network requests and then attempt to setup data networks to
