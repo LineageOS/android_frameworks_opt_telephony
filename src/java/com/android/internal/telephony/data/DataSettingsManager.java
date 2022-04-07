@@ -132,6 +132,16 @@ public class DataSettingsManager extends Handler {
                 @TelephonyManager.DataEnabledChangedReason int reason) {}
 
         /**
+         * Called when data enabled override changed.
+         *
+         * @param enabled {@code true} indicates data enabled override is enabled.
+         * @param policy {@link TelephonyManager.MobileDataPolicy} indicating the policy that was
+         *               enabled or disabled.
+         */
+        public void onDataEnabledOverrideChanged(boolean enabled,
+                @TelephonyManager.MobileDataPolicy int policy) {}
+
+        /**
          * Called when data roaming enabled state changed.
          *
          * @param enabled {@code true} indicates data roaming is enabled.
@@ -235,6 +245,8 @@ public class DataSettingsManager extends Handler {
                 if (SubscriptionController.getInstance()
                         .setDataEnabledOverrideRules(mSubId, mDataEnabledOverride.getRules())) {
                     updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_OVERRIDE);
+                    notifyDataEnabledOverrideChanged(alwaysAllow,
+                            TelephonyManager.MOBILE_DATA_POLICY_MMS_ALWAYS_ALLOWED);
                 }
                 break;
             }
@@ -248,13 +260,12 @@ public class DataSettingsManager extends Handler {
                 if (SubscriptionController.getInstance()
                         .setDataEnabledOverrideRules(mSubId, mDataEnabledOverride.getRules())) {
                     updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_OVERRIDE);
+                    notifyDataEnabledOverrideChanged(allow, TelephonyManager
+                            .MOBILE_DATA_POLICY_DATA_ON_NON_DEFAULT_DURING_VOICE_CALL);
                 }
                 break;
             }
-            case EVENT_PROVISIONED_CHANGED: {
-                updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_UNKNOWN);
-                break;
-            }
+            case EVENT_PROVISIONED_CHANGED:
             case EVENT_PROVISIONING_DATA_ENABLED_CHANGED: {
                 updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_UNKNOWN);
                 break;
@@ -560,6 +571,13 @@ public class DataSettingsManager extends Handler {
         mDataSettingsManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                 () -> callback.onDataEnabledChanged(enabled, reason)));
         mPhone.notifyDataEnabled(enabled, reason);
+    }
+
+    private void notifyDataEnabledOverrideChanged(boolean enabled,
+            @TelephonyManager.MobileDataPolicy int policy) {
+        logl("notifyDataEnabledOverrideChanged: enabled=" + enabled);
+        mDataSettingsManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                () -> callback.onDataEnabledOverrideChanged(enabled, policy)));
     }
 
     /**
