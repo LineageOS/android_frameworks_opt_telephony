@@ -280,6 +280,7 @@ public class TelephonyNetworkRequest {
             // Fallback to the legacy APN type matching.
             List<Integer> apnTypes = Arrays.stream(getCapabilities()).boxed()
                     .map(DataUtils::networkCapabilityToApnType)
+                    .filter(apnType -> apnType != ApnSetting.TYPE_NONE)
                     .collect(Collectors.toList());
             return apnTypes.stream().allMatch(dataProfile.getApnSetting()::canHandleType);
         }
