@@ -620,8 +620,7 @@ public class DataNetwork extends StateMachine {
     private final @NonNull List<QosBearerSession> mQosBearerSessions = new ArrayList<>();
 
     /**
-     * The UIDs of packages that have carrier privilege. These UIDs will not change through the
-     * life cycle of data network.
+     * The UIDs of packages that have carrier privilege.
      */
     private @NonNull int[] mAdministratorUids = new int[0];
 
@@ -1013,6 +1012,7 @@ public class DataNetwork extends StateMachine {
                     AsyncResult asyncResult = (AsyncResult) msg.obj;
                     int[] administratorUids = (int[]) asyncResult.result;
                     mAdministratorUids = Arrays.copyOf(administratorUids, administratorUids.length);
+                    updateNetworkCapabilities();
                     break;
                 }
                 case EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED:
@@ -1677,6 +1677,8 @@ public class DataNetwork extends StateMachine {
                 switch (networkCapability) {
                     case NetworkCapabilities.NET_CAPABILITY_ENTERPRISE:
                         builder.addCapability(networkCapability);
+                        // Always add internet if TD contains enterprise.
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
                         builder.addEnterpriseId(osAppId.getDifferentiator());
                         break;
                     case NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY:
@@ -1790,6 +1792,7 @@ public class DataNetwork extends StateMachine {
             // This is the first time when network capabilities is created. The agent is not created
             // at this time. Just return here. The network capabilities will be used when network
             // agent is created.
+            log("Initial capabilities " + mNetworkCapabilities);
             mNetworkCapabilities = nc;
             return;
         }
@@ -1818,6 +1821,7 @@ public class DataNetwork extends StateMachine {
                 // Now we need to inform connectivity service and data network controller
                 // about the capabilities changed.
                 mNetworkCapabilities = nc;
+                log("Capabilities changed to " + mNetworkCapabilities);
                 mNetworkAgent.sendNetworkCapabilities(mNetworkCapabilities);
             }
 
