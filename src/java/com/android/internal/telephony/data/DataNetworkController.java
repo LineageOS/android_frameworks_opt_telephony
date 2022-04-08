@@ -201,9 +201,16 @@ public class DataNetworkController extends Handler {
     /** The maximum number of previously connected data networks for debugging purposes. */
     private static final int MAX_HISTORICAL_CONNECTED_DATA_NETWORKS = 10;
 
-    /** The delay to re-evaluate preferred transport when handover failed and fallback to source. */
+    /**
+     * The delay in milliseconds to re-evaluate preferred transport when handover failed and
+     * fallback to source.
+     */
     private static final long REEVALUATE_PREFERRED_TRANSPORT_DELAY_MILLIS =
             TimeUnit.SECONDS.toMillis(3);
+
+    /** The delay in milliseconds to re-evaluate unsatisfied network requests after call end. */
+    private static final long REEVALUATE_UNSATISFIED_NETWORK_REQUESTS_AFTER_CALL_END_DELAY_MILLIS =
+            TimeUnit.MILLISECONDS.toMillis(500);
 
     /**
      * The maximum number of occurrences within a time window defined by
@@ -780,6 +787,20 @@ public class DataNetworkController extends Handler {
                                         DataEvaluationReason.DATA_ENABLED_CHANGED));
                             }
                             @Override
+                            public void onDataEnabledOverrideChanged(boolean enabled,
+                                    @TelephonyManager.MobileDataPolicy int policy) {
+                                // If data enabled override is enabled by the user, evaluate the
+                                // unsatisfied network requests and then attempt to setup data
+                                // networks to satisfy them. If data enabled override is disabled,
+                                // evaluate the existing data networks and see if they need to be
+                                // torn down.
+                                logl("onDataEnabledOverrideChanged: enabled=" + enabled);
+                                sendMessage(obtainMessage(enabled
+                                                ? EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS
+                                                : EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
+                                        DataEvaluationReason.DATA_ENABLED_OVERRIDE_CHANGED));
+                            }
+                            @Override
                             public void onDataRoamingEnabledChanged(boolean enabled) {
                                 // If data roaming is enabled by the user, evaluate the unsatisfied
                                 // network requests and then attempt to setup data networks to
@@ -958,8 +979,12 @@ public class DataNetworkController extends Handler {
                 // delay IMS tear down until call ends is turned on.
                 sendMessage(obtainMessage(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
                         DataEvaluationReason.VOICE_CALL_ENDED));
-                sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
-                        DataEvaluationReason.VOICE_CALL_ENDED));
+                // Delay evaluating unsatisfied network requests. In temporary DDS switch case, it
+                // takes some time to switch DDS after call end. We do not want to bring up network
+                // before switch completes.
+                sendMessageDelayed(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
+                        DataEvaluationReason.VOICE_CALL_ENDED),
+                        REEVALUATE_UNSATISFIED_NETWORK_REQUESTS_AFTER_CALL_END_DELAY_MILLIS);
                 break;
             case EVENT_SLICE_CONFIG_CHANGED:
                 sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
@@ -2523,9 +2548,12 @@ public class DataNetworkController extends Handler {
      * Called when data service binding changed.
      *
      * @param transport The transport of the changed data service.
-     * @param bound {code @true} if data service is bound.
+     * @param bound {@code true} if data service is bound.
      */
     private void onDataServiceBindingChanged(@TransportType int transport, boolean bound) {
+        log("onDataServiceBindingChanged: " + AccessNetworkConstants
+                .transportTypeToString(transport) + " data service is "
+                + (bound ? "bound." : "unbound."));
         if (!bound) {
             if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
                 if (!mDataConfigManager.shouldPersistIwlanDataNetworksWhenDataServiceRestarted()) {
