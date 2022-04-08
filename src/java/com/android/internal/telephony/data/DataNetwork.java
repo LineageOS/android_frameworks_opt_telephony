@@ -2248,11 +2248,7 @@ public class DataNetwork extends StateMachine {
 
     private void onTearDown(@TearDownReason int reason) {
         logl("onTearDown: reason=" + tearDownReasonToString(reason));
-        if (mDataConfigManager.isImsDelayTearDownEnabled()
-                && mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
-                && reason == TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED
-                && mPhone.getImsPhone() != null
-                && mPhone.getImsPhone().getCallTracker().getState() != PhoneConstants.State.IDLE) {
+        if (shouldDelayTearDown()) {
             logl("onTearDown: Delay IMS tear down until call ends.");
             return;
         }
@@ -2263,6 +2259,16 @@ public class DataNetwork extends StateMachine {
                 obtainMessage(EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE));
         mDataCallSessionStats.setDeactivateDataCallReason(DataService.REQUEST_REASON_NORMAL);
         mInvokedDataDeactivation = true;
+    }
+
+    /**
+     * @return {@code true} if this tear down should be delayed on this data network.
+     */
+    public boolean shouldDelayTearDown() {
+        return mDataConfigManager.isImsDelayTearDownEnabled()
+                && mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
+                && mPhone.getImsPhone() != null
+                && mPhone.getImsPhone().getCallTracker().getState() != PhoneConstants.State.IDLE;
     }
 
     /**
