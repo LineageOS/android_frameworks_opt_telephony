@@ -273,6 +273,7 @@ public class RadioConfig extends Handler {
 
             if (mMockModem != null) {
                 mMockModem = null;
+                resetProxyAndRequestList("EVENT_AIDL_SERVICE_DEAD", null);
             }
         }
 
