@@ -842,6 +842,22 @@ public class DataNetworkController extends Handler {
                     public void onDataNetworkHandoverRetryStopped(
                             @NonNull DataNetwork dataNetwork) {
                         Objects.requireNonNull(dataNetwork);
+                        int preferredTransport = mAccessNetworksManager
+                                .getPreferredTransportByNetworkCapability(
+                                        dataNetwork.getApnTypeNetworkCapability());
+                        if (dataNetwork.getTransport() == preferredTransport) {
+                            log("onDataNetworkHandoverRetryStopped: " + dataNetwork + " is already "
+                                    + "on the preferred transport "
+                                    + AccessNetworkConstants.transportTypeToString(
+                                            preferredTransport));
+                            return;
+                        }
+                        if (dataNetwork.shouldDelayTearDown()) {
+                            log("onDataNetworkHandoverRetryStopped: Delay IMS tear down until call "
+                                    + "ends. " + dataNetwork);
+                            return;
+                        }
+
                         tearDownGracefully(dataNetwork,
                                 DataNetwork.TEAR_DOWN_REASON_HANDOVER_FAILED);
                     }
@@ -1531,11 +1547,7 @@ public class DataNetworkController extends Handler {
         }
 
         boolean delayImsTearDown = false;
-        if (mDataConfigManager.isImsDelayTearDownEnabled()
-                && dataNetwork.getNetworkCapabilities()
-                .hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
-                && mPhone.getImsPhone() != null
-                && mPhone.getImsPhone().getCallTracker().getState() != PhoneConstants.State.IDLE) {
+        if (dataNetwork.shouldDelayTearDown()) {
             // Some carriers requires delay tearing down IMS network until the call ends even if
             // VoPS bit is lost.
             log("Ignore VoPS bit and delay IMS tear down until call ends.");
