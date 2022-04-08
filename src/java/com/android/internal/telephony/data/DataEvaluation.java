@@ -261,8 +261,8 @@ public class DataEvaluation {
         NO_SUITABLE_DATA_PROFILE(true),
         /** Current data network type not allowed. */
         DATA_NETWORK_TYPE_NOT_ALLOWED(true),
-        /** Device is currently in an emergency call. */
-        EMERGENCY_CALL(true),
+        /** Device is currently in CDMA ECBM. */
+        CDMA_EMERGENCY_CALLBACK_MODE(true),
         /** There is already a retry setup/handover scheduled. */
         RETRY_SCHEDULED(true),
         /** Network has explicitly request to throttle setup attempt. */
