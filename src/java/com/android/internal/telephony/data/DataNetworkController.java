@@ -2603,6 +2603,12 @@ public class DataNetworkController extends Handler {
         logl("Handover failed. " + dataNetwork + ", cause=" + DataFailCause.toString(cause)
                 + ", retryDelayMillis=" + retryDelayMillis + "ms, handoverFailureMode="
                 + DataCallResponse.failureModeToString(handoverFailureMode));
+        if (dataNetwork.getAttachedNetworkRequestList().isEmpty()) {
+            log("onDataNetworkHandoverFailed: No network requests attached to " + dataNetwork
+                    + ". No need to retry since the network will be torn down soon.");
+            return;
+        }
+
         if (handoverFailureMode == DataCallResponse.HANDOVER_FAILURE_MODE_DO_FALLBACK
                 || (handoverFailureMode == DataCallResponse.HANDOVER_FAILURE_MODE_LEGACY
                 && cause == DataFailCause.HANDOFF_PREFERENCE_CHANGED)) {
