@@ -42,6 +42,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.euicc.EuiccCard;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -152,7 +153,8 @@ public class UiccSlot extends Handler {
                     // The EID should be reported with the card status, but in case it's not we want
                     // to catch that here
                     if (TextUtils.isEmpty(ics.eid)) {
-                        loge("update: eid is missing. ics.eid=" + ics.eid);
+                        loge("update: eid is missing. ics.eid="
+                                + Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, ics.eid));
                     }
                     mUiccCard = new EuiccCard(mContext, ci, ics, phoneId, mLock,
                             isMultipleEnabledProfileSupported());
@@ -610,7 +612,7 @@ public class UiccSlot extends Handler {
         pw.println(" mLastRadioState=" + mLastRadioState);
         pw.println(" mIccIds=" + Rlog.pii(TAG, getPrintableIccIds()));
         pw.println(" mPortIdxToPhoneId=" + mPortIdxToPhoneId);
-        pw.println(" mEid=" + mEid);
+        pw.println(" mEid=" + Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, mEid));
         pw.println(" mCardState=" + mCardState);
         if (mUiccCard != null) {
             pw.println(" mUiccCard=" + mUiccCard);

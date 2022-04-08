@@ -151,6 +151,10 @@ public class PhoneSwitcherTest extends TelephonyTest {
         doReturn(Call.State.IDLE).when(mInactiveCall).getState();
         doReturn(Call.State.HOLDING).when(mHoldingCall).getState();
 
+        doReturn(true).when(mInactiveCall).isIdle();
+        doReturn(false).when(mActiveCall).isIdle();
+        doReturn(false).when(mHoldingCall).isIdle();
+
         replaceInstance(Phone.class, "mCi", mPhone, mCommandsInterface0);
         replaceInstance(Phone.class, "mCi", mPhone2, mCommandsInterface1);
     }
