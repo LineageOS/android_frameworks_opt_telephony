@@ -4423,7 +4423,7 @@ public class RILUtils {
      */
     public static android.hardware.radio.V1_6.PhonebookRecordInfo convertToHalPhonebookRecordInfo(
             SimPhonebookRecord record) {
-        if(record != null) {
+        if (record != null) {
             return record.toPhonebookRecordInfo();
         }
         return null;
@@ -4436,10 +4436,10 @@ public class RILUtils {
      */
     public static android.hardware.radio.sim.PhonebookRecordInfo
             convertToHalPhonebookRecordInfoAidl(SimPhonebookRecord record) {
-        if(record != null) {
+        if (record != null) {
             return record.toPhonebookRecordInfoAidl();
         }
-        return null;
+        return new android.hardware.radio.sim.PhonebookRecordInfo();
     }
 
     /**
