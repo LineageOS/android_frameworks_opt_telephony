@@ -543,6 +543,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             if (mMockModem != null) {
                 mRadioVersion = RADIO_HAL_VERSION_UNKNOWN;
                 mMockModem = null;
+                for (int service = MIN_SERVICE_IDX; service <= MAX_SERVICE_IDX; service++) {
+                    resetProxyAndRequestList(service);
+                }
             }
         }
 
