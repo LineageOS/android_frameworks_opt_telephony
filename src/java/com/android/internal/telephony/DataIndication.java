@@ -122,6 +122,7 @@ public class DataIndication extends IRadioDataIndication.Stub {
         mRil.processIndication(RIL.DATA_SERVICE, indicationType);
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_SLICING_CONFIG_CHANGED, slicingConfig);
         NetworkSlicingConfig ret = RILUtils.convertHalSlicingConfig(slicingConfig);
-        mRil.mApnUnthrottledRegistrants.notifyRegistrants(new AsyncResult(null, ret, null));
+        mRil.mSlicingConfigChangedRegistrants.notifyRegistrants(
+                new AsyncResult(null, ret, null));
     }
 }
