@@ -856,6 +856,22 @@ public class DataNetworkController extends Handler {
                     public void onDataNetworkHandoverRetryStopped(
                             @NonNull DataNetwork dataNetwork) {
                         Objects.requireNonNull(dataNetwork);
+                        int preferredTransport = mAccessNetworksManager
+                                .getPreferredTransportByNetworkCapability(
+                                        dataNetwork.getApnTypeNetworkCapability());
+                        if (dataNetwork.getTransport() == preferredTransport) {
+                            log("onDataNetworkHandoverRetryStopped: " + dataNetwork + " is already "
+                                    + "on the preferred transport "
+                                    + AccessNetworkConstants.transportTypeToString(
+                                            preferredTransport));
+                            return;
+                        }
+                        if (dataNetwork.shouldDelayTearDown()) {
+                            log("onDataNetworkHandoverRetryStopped: Delay IMS tear down until call "
+                                    + "ends. " + dataNetwork);
+                            return;
+                        }
+
                         tearDownGracefully(dataNetwork,
                                 DataNetwork.TEAR_DOWN_REASON_HANDOVER_FAILED);
                     }
@@ -1382,9 +1398,9 @@ public class DataNetworkController extends Handler {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_SERVICE_NOT_READY);
         }
 
-        // Check if device is CDMA and is currently in ECBM
-        if (mPhone.isInEcm() && mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
-            evaluation.addDataDisallowedReason(DataDisallowedReason.EMERGENCY_CALL);
+        // Check if device is in CDMA ECBM
+        if (mPhone.isInCdmaEcm()) {
+            evaluation.addDataDisallowedReason(DataDisallowedReason.CDMA_EMERGENCY_CALLBACK_MODE);
         }
 
         // Check if only one data network is allowed.
@@ -1545,11 +1561,7 @@ public class DataNetworkController extends Handler {
         }
 
         boolean delayImsTearDown = false;
-        if (mDataConfigManager.isImsDelayTearDownEnabled()
-                && dataNetwork.getNetworkCapabilities()
-                .hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
-                && mPhone.getImsPhone() != null
-                && mPhone.getImsPhone().getCallTracker().getState() != PhoneConstants.State.IDLE) {
+        if (dataNetwork.shouldDelayTearDown()) {
             // Some carriers requires delay tearing down IMS network until the call ends even if
             // VoPS bit is lost.
             log("Ignore VoPS bit and delay IMS tear down until call ends.");
@@ -1573,9 +1585,9 @@ public class DataNetworkController extends Handler {
             }
         }
 
-        // Check if device is CDMA and is currently in ECBM
-        if (mPhone.isInEcm() && mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
-            evaluation.addDataDisallowedReason(DataDisallowedReason.EMERGENCY_CALL);
+        // Check if device is in CDMA ECBM
+        if (mPhone.isInCdmaEcm()) {
+            evaluation.addDataDisallowedReason(DataDisallowedReason.CDMA_EMERGENCY_CALLBACK_MODE);
         }
 
         // Check if there are other network that has higher priority, and only single data network
@@ -1820,8 +1832,8 @@ public class DataNetworkController extends Handler {
                     return DataNetwork.TEAR_DOWN_REASON_NO_SUITABLE_DATA_PROFILE;
                 case DATA_NETWORK_TYPE_NOT_ALLOWED:
                     return DataNetwork.TEAR_DOWN_REASON_RAT_NOT_ALLOWED;
-                case EMERGENCY_CALL:
-                    return DataNetwork.TEAR_DOWN_REASON_EMERGENCY_CALL;
+                case CDMA_EMERGENCY_CALLBACK_MODE:
+                    return DataNetwork.TEAR_DOWN_REASON_CDMA_EMERGENCY_CALLBACK_MODE;
                 case RETRY_SCHEDULED:
                     return DataNetwork.TEAR_DOWN_REASON_RETRY_SCHEDULED;
                 case DATA_THROTTLED:
