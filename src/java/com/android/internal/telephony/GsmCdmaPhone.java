@@ -2826,8 +2826,8 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public int getTerminalBasedCallWaitingState() {
-        return mCallWaitingController.getTerminalBasedCallWaitingState();
+    public int getTerminalBasedCallWaitingState(boolean forCsOnly) {
+        return mCallWaitingController.getTerminalBasedCallWaitingState(forCsOnly);
     }
 
     @Override

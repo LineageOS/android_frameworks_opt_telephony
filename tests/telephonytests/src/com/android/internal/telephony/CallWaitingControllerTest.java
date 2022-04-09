@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 The Android Open Source Project
+ * Copyright (C) 2022 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.android.internal.telephony;
 
 import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_FIRST_CHANGE;
 import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_FIRST_POWER_UP;
+import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_IMS_ONLY;
 import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_NONE;
 import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_USER_CHANGE;
 import static android.telephony.CarrierConfigManager.ImsSs.KEY_TERMINAL_BASED_CALL_WAITING_DEFAULT_ENABLED_BOOL;
@@ -95,10 +96,12 @@ public class CallWaitingControllerTest extends TelephonyTest {
         PersistableBundle bundle = getConfigBundle(true, CALL_WAITING_SYNC_NONE, true);
         mCWC.updateCarrierConfig(FAKE_SUB_ID, bundle, true);
 
-        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_ACTIVATED);
 
         mCWC.setTerminalBasedCallWaitingSupported(false);
-        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_NOT_SUPPORTED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_NOT_SUPPORTED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_NOT_SUPPORTED);
     }
 
     @Test
@@ -111,21 +114,24 @@ public class CallWaitingControllerTest extends TelephonyTest {
         doReturn(bundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
         mCWC.setTerminalBasedCallWaitingSupported(true);
 
-        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_ACTIVATED);
 
         mCWC.setTerminalBasedCallWaitingSupported(false);
         setPreference(mPhone.getPhoneId(), FAKE_SUB_ID,
                 TERMINAL_BASED_NOT_ACTIVATED, CALL_WAITING_SYNC_NONE);
         mCWC.setTerminalBasedCallWaitingSupported(true);
 
-        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_NOT_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_NOT_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_NOT_ACTIVATED);
 
         mCWC.setTerminalBasedCallWaitingSupported(false);
         bundle = getConfigBundle(false, CALL_WAITING_SYNC_NONE, false);
         doReturn(bundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
         mCWC.setTerminalBasedCallWaitingSupported(true);
 
-        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_NOT_SUPPORTED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_NOT_SUPPORTED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_NOT_SUPPORTED);
     }
 
     @Test
@@ -135,12 +141,14 @@ public class CallWaitingControllerTest extends TelephonyTest {
         PersistableBundle bundle = getConfigBundle(true, CALL_WAITING_SYNC_NONE, true);
         mCWC.updateCarrierConfig(FAKE_SUB_ID, bundle, true);
 
-        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_ACTIVATED);
 
         bundle = getConfigBundle(false, CALL_WAITING_SYNC_NONE, true);
         mCWC.updateCarrierConfig(FAKE_SUB_ID, bundle, false);
 
-        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_NOT_SUPPORTED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_NOT_SUPPORTED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_NOT_SUPPORTED);
     }
 
 
@@ -211,19 +219,23 @@ public class CallWaitingControllerTest extends TelephonyTest {
         mCWC.updateCarrierConfig(FAKE_SUB_ID, bundle, true);
 
         assertTrue(mCWC.setCallWaiting(true, SERVICE_CLASS_VOICE, null));
-        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_ACTIVATED);
         assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_ACTIVATED);
 
         assertTrue(mCWC.setCallWaiting(false, SERVICE_CLASS_VOICE | SERVICE_CLASS_DATA, null));
-        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_NOT_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_NOT_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_NOT_ACTIVATED);
         assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_NOT_ACTIVATED);
 
         assertFalse(mCWC.setCallWaiting(true, SERVICE_CLASS_DATA, null));
-        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_NOT_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_NOT_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_NOT_ACTIVATED);
         assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_NOT_ACTIVATED);
 
         assertFalse(mCWC.setCallWaiting(true, SERVICE_CLASS_NONE, null));
-        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_NOT_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_NOT_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_NOT_ACTIVATED);
         assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_NOT_ACTIVATED);
     }
 
@@ -237,7 +249,8 @@ public class CallWaitingControllerTest extends TelephonyTest {
         PersistableBundle bundle = getConfigBundle(true, CALL_WAITING_SYNC_USER_CHANGE, true);
         mCWC.updateCarrierConfig(FAKE_SUB_ID, bundle, true);
 
-        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_ACTIVATED);
         assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_ACTIVATED);
 
         mHandler = new GetTestHandler();
@@ -252,7 +265,8 @@ public class CallWaitingControllerTest extends TelephonyTest {
         assertEquals(TERMINAL_BASED_NOT_ACTIVATED, mHandler.resp[0]);
         assertEquals(SERVICE_CLASS_NONE, mHandler.resp[1]);
 
-        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_NOT_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_NOT_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_NOT_ACTIVATED);
         assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_NOT_ACTIVATED);
 
         mHandler.reset();
@@ -267,7 +281,8 @@ public class CallWaitingControllerTest extends TelephonyTest {
         assertEquals(TERMINAL_BASED_ACTIVATED, mHandler.resp[0]);
         assertEquals(SERVICE_CLASS_VOICE, mHandler.resp[1]);
 
-        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_ACTIVATED);
         assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_ACTIVATED);
 
         mHandler.reset();
@@ -275,7 +290,8 @@ public class CallWaitingControllerTest extends TelephonyTest {
         assertTrue(mCWC.setCallWaiting(false, SERVICE_CLASS_VOICE, null));
         mTestableLooper.processAllMessages();
 
-        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_NOT_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_NOT_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_NOT_ACTIVATED);
         assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_NOT_ACTIVATED);
     }
 
@@ -324,15 +340,101 @@ public class CallWaitingControllerTest extends TelephonyTest {
         assertTrue(mCWC.setCallWaiting(true, SERVICE_CLASS_VOICE, null));
         mTestableLooper.processAllMessages();
 
-        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_ACTIVATED);
         assertTrue(mSimulatedCommands.mCallWaitActivated);
 
         assertTrue(mCWC.setCallWaiting(false, SERVICE_CLASS_VOICE, null));
         mTestableLooper.processAllMessages();
 
         // Local setting changed, but no change in CS network.
-        assertTrue(mCWC.getTerminalBasedCallWaitingState() == TERMINAL_BASED_NOT_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_NOT_ACTIVATED);
         assertTrue(mSimulatedCommands.mCallWaitActivated);
+    }
+
+    @Test
+    @SmallTest
+    public void testSyncImsOnly() {
+        mCWC.setTerminalBasedCallWaitingSupported(false);
+        setPreference(mPhone.getPhoneId(), FAKE_SUB_ID,
+                TERMINAL_BASED_ACTIVATED, CALL_WAITING_SYNC_IMS_ONLY);
+        mCWC.setTerminalBasedCallWaitingSupported(true);
+        PersistableBundle bundle = getConfigBundle(true, CALL_WAITING_SYNC_IMS_ONLY, true);
+        mCWC.updateCarrierConfig(FAKE_SUB_ID, bundle, true);
+
+        mSimulatedCommands.setCallWaiting(false, SERVICE_CLASS_VOICE, null);
+
+        // IMS is registered
+        mCWC.setImsRegistrationState(true);
+
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_ACTIVATED);
+        assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_ACTIVATED);
+
+        mHandler = new GetTestHandler();
+
+        assertTrue(mCWC.getCallWaiting(mHandler.obtainMessage(GET_DONE)));
+        mTestableLooper.processAllMessages();
+
+        // result carries the service state from IMS service
+        assertNotNull(mHandler.resp);
+        assertEquals(2, mHandler.resp.length);
+        assertEquals(TERMINAL_BASED_ACTIVATED, mHandler.resp[0]);
+        assertEquals(SERVICE_CLASS_VOICE, mHandler.resp[1]);
+
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_ACTIVATED);
+        assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_ACTIVATED);
+
+        mHandler.reset();
+
+        // IMS is not registered
+        mCWC.setImsRegistrationState(false);
+
+        assertTrue(mCWC.getCallWaiting(mHandler.obtainMessage(GET_DONE)));
+        mTestableLooper.processAllMessages();
+
+        // result carries the service state from CS
+        assertNotNull(mHandler.resp);
+        assertEquals(2, mHandler.resp.length);
+        assertEquals(TERMINAL_BASED_NOT_ACTIVATED, mHandler.resp[0]);
+        assertEquals(SERVICE_CLASS_NONE, mHandler.resp[1]);
+
+        // service state not synchronized between CS and IMS
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_NOT_SUPPORTED);
+        assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_ACTIVATED);
+
+        mHandler.reset();
+
+        // IMS is registered
+        mCWC.setImsRegistrationState(true);
+
+        assertTrue(mCWC.setCallWaiting(false, SERVICE_CLASS_VOICE, null));
+        mTestableLooper.processAllMessages();
+
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_NOT_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_NOT_ACTIVATED);
+        assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_NOT_ACTIVATED);
+
+        // IMS is not registered
+        mCWC.setImsRegistrationState(false);
+
+        assertTrue(mCWC.setCallWaiting(true, SERVICE_CLASS_VOICE, null));
+        mTestableLooper.processAllMessages();
+
+        assertTrue(mCWC.getCallWaiting(mHandler.obtainMessage(GET_DONE)));
+        mTestableLooper.processAllMessages();
+
+        // result carries the service state from CS
+        assertNotNull(mHandler.resp);
+        assertEquals(2, mHandler.resp.length);
+        assertEquals(TERMINAL_BASED_ACTIVATED, mHandler.resp[0]);
+        assertEquals(SERVICE_CLASS_VOICE, mHandler.resp[1]);
+
+        // service state not synchronized between CS and IMS
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(false) == TERMINAL_BASED_NOT_ACTIVATED);
+        assertTrue(mCWC.getTerminalBasedCallWaitingState(true) == TERMINAL_BASED_NOT_SUPPORTED);
+        assertTrue(retrieveStatePreference(mPhone.getSubId()) == TERMINAL_BASED_NOT_ACTIVATED);
     }
 
     private PersistableBundle getConfigBundle(boolean provisioned,

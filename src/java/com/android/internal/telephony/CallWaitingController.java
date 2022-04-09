@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_FIRST_CHANGE;
 import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_FIRST_POWER_UP;
+import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_IMS_ONLY;
 import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_NONE;
 import static android.telephony.CarrierConfigManager.ImsSs.CALL_WAITING_SYNC_USER_CHANGE;
 import static android.telephony.CarrierConfigManager.ImsSs.KEY_TERMINAL_BASED_CALL_WAITING_DEFAULT_ENABLED_BOOL;
@@ -167,9 +168,14 @@ public class CallWaitingController extends Handler {
      * {@link #TERMINAL_BASED_NOT_SUPPORTED},
      * {@link #TERMINAL_BASED_NOT_ACTIVATED}, and
      * {@link #TERMINAL_BASED_ACTIVATED}.
+     *
+     * @param forCsOnly indicates the caller expects the result for CS calls only
      */
     @VisibleForTesting
-    public synchronized int getTerminalBasedCallWaitingState() {
+    public synchronized int getTerminalBasedCallWaitingState(boolean forCsOnly) {
+        if (forCsOnly && (!mImsRegistered) && mSyncPreference == CALL_WAITING_SYNC_IMS_ONLY) {
+            return TERMINAL_BASED_NOT_SUPPORTED;
+        }
         if (!mValidSubscription) return TERMINAL_BASED_NOT_SUPPORTED;
         return mCallWaitingState;
     }
@@ -200,10 +206,12 @@ public class CallWaitingController extends Handler {
 
         if (mSyncPreference == CALL_WAITING_SYNC_NONE
                 || mSyncPreference == CALL_WAITING_SYNC_FIRST_CHANGE
-                || mSyncPreference == CALL_WAITING_SYNC_FIRST_POWER_UP) {
+                || mSyncPreference == CALL_WAITING_SYNC_FIRST_POWER_UP
+                || isSyncImsOnly()) {
             sendGetCallWaitingResponse(onComplete);
             return true;
-        } else if (mSyncPreference == CALL_WAITING_SYNC_USER_CHANGE) {
+        } else if (mSyncPreference == CALL_WAITING_SYNC_USER_CHANGE
+                || mSyncPreference == CALL_WAITING_SYNC_IMS_ONLY) {
             Cw cw = new Cw(false, isImsRegistered(), onComplete);
             Message resp = obtainMessage(EVENT_GET_CALL_WAITING_DONE, 0, 0, cw);
             mPhone.mCi.queryCallWaiting(SERVICE_CLASS_NONE, resp);
@@ -246,13 +254,15 @@ public class CallWaitingController extends Handler {
 
         if (mSyncPreference == CALL_WAITING_SYNC_NONE
                 || mSyncPreference == CALL_WAITING_SYNC_FIRST_CHANGE
-                || mSyncPreference == CALL_WAITING_SYNC_FIRST_POWER_UP) {
+                || mSyncPreference == CALL_WAITING_SYNC_FIRST_POWER_UP
+                || isSyncImsOnly()) {
             updateState(
                     enable ? TERMINAL_BASED_ACTIVATED : TERMINAL_BASED_NOT_ACTIVATED);
 
             sendToTarget(onComplete, null, null);
             return true;
-        } else if (mSyncPreference == CALL_WAITING_SYNC_USER_CHANGE) {
+        } else if (mSyncPreference == CALL_WAITING_SYNC_USER_CHANGE
+                || mSyncPreference == CALL_WAITING_SYNC_IMS_ONLY) {
             Cw cw = new Cw(enable, isImsRegistered(), onComplete);
             Message resp = obtainMessage(EVENT_SET_CALL_WAITING_DONE, 0, 0, cw);
             mPhone.mCi.setCallWaiting(enable, serviceClass, resp);
@@ -302,6 +312,13 @@ public class CallWaitingController extends Handler {
 
         if (DBG) Rlog.d(LOG_TAG, "onSetCallWaitingDone");
         Cw cw = (Cw) ar.userObj;
+
+        if (mSyncPreference == CALL_WAITING_SYNC_IMS_ONLY) {
+            // do not synchronize service state between CS and IMS
+            sendToTarget(cw.mOnComplete, ar.result, ar.exception);
+            return;
+        }
+
         if (ar.exception == null) {
             if (mSyncPreference == CALL_WAITING_SYNC_FIRST_CHANGE) {
                 // SYNC_FIRST_CHANGE implies cw.mEnable is true.
@@ -358,6 +375,13 @@ public class CallWaitingController extends Handler {
 
         if (DBG) Rlog.d(LOG_TAG, "onGetCallWaitingDone");
         Cw cw = (Cw) ar.userObj;
+
+        if (mSyncPreference == CALL_WAITING_SYNC_IMS_ONLY) {
+            // do not synchronize service state between CS and IMS
+            sendToTarget(cw.mOnComplete, ar.result, ar.exception);
+            return;
+        }
+
         if (ar.exception == null) {
             int[] resp = (int[]) ar.result;
             //resp[0]: 1 if enabled, 0 otherwise
@@ -635,6 +659,10 @@ public class CallWaitingController extends Handler {
     @VisibleForTesting
     public void notifyRegisteredToNetwork() {
         sendEmptyMessage(EVENT_REGISTERED_TO_NETWORK);
+    }
+
+    private boolean isSyncImsOnly() {
+        return (mSyncPreference == CALL_WAITING_SYNC_IMS_ONLY && mImsRegistered);
     }
 
     /**

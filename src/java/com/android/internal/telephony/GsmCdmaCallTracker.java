@@ -1921,7 +1921,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         GsmCdmaConnection newRinging = mConnections[index];
         if (newRinging == null) return false;
 
-        if ((mPhone.getTerminalBasedCallWaitingState()
+        if ((mPhone.getTerminalBasedCallWaitingState(true)
                         == CallWaitingController.TERMINAL_BASED_NOT_ACTIVATED)
                 && (newRinging.getState() == Call.State.WAITING)) {
             Rlog.d(LOG_TAG, "hangupWaitingCallSilently");

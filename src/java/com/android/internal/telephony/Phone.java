@@ -4986,8 +4986,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     /**
      * Returns the user's last setting for terminal-based call waiting
+     * @param forCsOnly indicates the caller expects the result for CS calls only
      */
-    public int getTerminalBasedCallWaitingState() {
+    public int getTerminalBasedCallWaitingState(boolean forCsOnly) {
         return CallWaitingController.TERMINAL_BASED_NOT_SUPPORTED;
     }
 

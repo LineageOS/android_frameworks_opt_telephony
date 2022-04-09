@@ -5463,9 +5463,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 loge("initializeTerminalBasedCallWaiting : exception " + e);
             }
         }
+        logi("initializeTerminalBasedCallWaiting capable=" + capable);
         mPhone.setTerminalBasedCallWaitingSupported(capable);
 
-        setTerminalBasedCallWaitingStatus(mPhone.getTerminalBasedCallWaitingState());
+        if (capable) {
+            setTerminalBasedCallWaitingStatus(mPhone.getTerminalBasedCallWaitingState(false));
+        }
     }
 
     /**

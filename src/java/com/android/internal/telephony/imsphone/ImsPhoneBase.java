@@ -542,8 +542,8 @@ abstract class ImsPhoneBase extends Phone {
     }
 
     @Override
-    public int getTerminalBasedCallWaitingState() {
-        return getDefaultPhone().getTerminalBasedCallWaitingState();
+    public int getTerminalBasedCallWaitingState(boolean forCsOnly) {
+        return getDefaultPhone().getTerminalBasedCallWaitingState(forCsOnly);
     }
 
     @Override

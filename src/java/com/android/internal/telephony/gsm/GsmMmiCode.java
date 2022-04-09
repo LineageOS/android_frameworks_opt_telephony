@@ -1186,7 +1186,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 if (isActivate() || isDeactivate()) {
                     if (serviceClass == SERVICE_CLASS_NONE
                             || (serviceClass & SERVICE_CLASS_VOICE) == SERVICE_CLASS_VOICE) {
-                        if (mPhone.getTerminalBasedCallWaitingState()
+                        if (mPhone.getTerminalBasedCallWaitingState(true)
                                 != CallWaitingController.TERMINAL_BASED_NOT_SUPPORTED) {
                             mPhone.setCallWaiting(isActivate(), serviceClass,
                                     obtainMessage(EVENT_SET_COMPLETE, this));
@@ -1196,7 +1196,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                     mPhone.mCi.setCallWaiting(isActivate(), serviceClass,
                             obtainMessage(EVENT_SET_COMPLETE, this));
                 } else if (isInterrogate()) {
-                    if (mPhone.getTerminalBasedCallWaitingState()
+                    if (mPhone.getTerminalBasedCallWaitingState(true)
                             != CallWaitingController.TERMINAL_BASED_NOT_SUPPORTED) {
                         mPhone.getCallWaiting(obtainMessage(EVENT_QUERY_COMPLETE, this));
                     } else {
