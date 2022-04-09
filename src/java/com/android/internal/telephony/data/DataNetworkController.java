@@ -2601,8 +2601,7 @@ public class DataNetworkController extends Handler {
             @DataFailureCause int cause, long retryDelayMillis,
             @HandoverFailureMode int handoverFailureMode) {
         logl("Handover failed. " + dataNetwork + ", cause=" + DataFailCause.toString(cause)
-                + "(0x" + Integer.toHexString(cause) + "), retryDelayMillis=" + retryDelayMillis
-                + "ms, handoverFailureMode="
+                + ", retryDelayMillis=" + retryDelayMillis + "ms, handoverFailureMode="
                 + DataCallResponse.failureModeToString(handoverFailureMode));
         if (dataNetwork.getAttachedNetworkRequestList().isEmpty()) {
             log("onDataNetworkHandoverFailed: No network requests attached to " + dataNetwork
