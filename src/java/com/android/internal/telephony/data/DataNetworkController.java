@@ -337,14 +337,17 @@ public class DataNetworkController extends Handler {
     private final @NonNull SparseArray<RegistrationManager.RegistrationCallback>
             mImsFeatureRegistrationCallbacks = new SparseArray<>();
 
+    /** The counter to detect back to back release/request IMS network. */
+    private @NonNull SlidingWindowEventCounter mImsThrottleCounter;
+
+    /** Event counter for unwanted network within time window, is used to trigger anomaly report. */
+    private @NonNull SlidingWindowEventCounter mNetworkUnwantedCounter;
+
     /**
      * {@code true} if {@link #tearDownAllDataNetworks(int)} was invoked and waiting for all
      * networks torn down.
      */
     private boolean mPendingTearDownAllNetworks = false;
-
-    /** The counter to detect back to back release/request IMS network. */
-    private final @NonNull SlidingWindowEventCounter mImsThrottleCounter;
 
     /**
      * The capabilities of the latest released IMS request. To detect back to back release/request
@@ -577,6 +580,12 @@ public class DataNetworkController extends Handler {
          * @param transport The transport of the data service.
          */
         public void onDataServiceBound(@TransportType int transport) {}
+
+        /**
+         * Called when DataNetwork is frequently attempted to be torn down due to Network Unwanted
+         * call from connectivity service
+         */
+        public void onTrackNetworkUnwanted() {}
     }
 
     /**
@@ -767,8 +776,12 @@ public class DataNetworkController extends Handler {
         mDataConfigManager = new DataConfigManager(mPhone, looper);
 
         mImsThrottleCounter = new SlidingWindowEventCounter(
-                mDataConfigManager.getImsRequestReleaseThrottleAnomalyWindowMs(),
-                IMS_REQUEST_RELEASE_THROTTLE_ANOMALY_NUM_OCCURRENCES);
+                mDataConfigManager.getAnomalyImsReleaseRequestThreshold().timeWindow,
+                mDataConfigManager.getAnomalyImsReleaseRequestThreshold().eventNumOccurrence);
+        mNetworkUnwantedCounter = new SlidingWindowEventCounter(
+                mDataConfigManager.getAnomalyNetworkUnwantedThreshold().timeWindow,
+                mDataConfigManager.getAnomalyNetworkUnwantedThreshold().eventNumOccurrence);
+
         mDataSettingsManager = TelephonyComponentFactory.getInstance().inject(
                 DataSettingsManager.class.getName())
                 .makeDataSettingsManager(mPhone, this, looper,
@@ -1126,7 +1139,7 @@ public class DataNetworkController extends Handler {
                     UUID.fromString("ead6f8db-d2f2-4ed3-8da5-1d8560fe7daf"),
                     networkRequest.getNativeNetworkRequest().getRequestorPackageName()
                             + " requested with same capabilities falls under "
-                            + mDataConfigManager.getImsRequestReleaseThrottleAnomalyWindowMs()
+                            + mDataConfigManager.getAnomalyImsReleaseRequestThreshold().timeWindow
                             + " ms window.");
         }
         if (!mAllNetworkRequestList.add(networkRequest)) {
@@ -2077,8 +2090,10 @@ public class DataNetworkController extends Handler {
         log("onDataConfigUpdated: config is "
                 + (mDataConfigManager.isConfigCarrierSpecific() ? "" : "not ")
                 + "carrier specific. mSimState="
-                + SubscriptionInfoUpdater.simStateString(mSimState));
+                + SubscriptionInfoUpdater.simStateString(mSimState)
+                + ". DeviceConfig updated.");
 
+        updateAnomalySlidingWindowCounters();
         updateNetworkRequestsPriority();
         sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
                 DataEvaluationReason.DATA_CONFIG_CHANGED));
@@ -2090,6 +2105,39 @@ public class DataNetworkController extends Handler {
     private void updateNetworkRequestsPriority() {
         for (TelephonyNetworkRequest networkRequest : mAllNetworkRequestList) {
             networkRequest.updatePriority();
+        }
+    }
+
+    /**
+     * Update the threshold of anomaly report counters
+     */
+    private void updateAnomalySlidingWindowCounters() {
+        mImsThrottleCounter = new SlidingWindowEventCounter(
+                mDataConfigManager.getAnomalyImsReleaseRequestThreshold().timeWindow,
+                mDataConfigManager.getAnomalyImsReleaseRequestThreshold().eventNumOccurrence);
+        mNetworkUnwantedCounter = new SlidingWindowEventCounter(
+                mDataConfigManager.getAnomalyNetworkUnwantedThreshold().timeWindow,
+                mDataConfigManager.getAnomalyNetworkUnwantedThreshold().eventNumOccurrence);
+    }
+
+    /**
+     * There have been several bugs where a RECONNECT loop kicks off where a DataConnection
+     * connects to the Network, ConnectivityService indicates that the Network is unwanted,
+     * and then the DataConnection reconnects. By the time we get the bug report it's too late
+     * because there have already been hundreds of RECONNECTS.  This is meant to capture the issue
+     * when it first starts.
+     *
+     * The unwanted counter is configured to only take an anomaly report in extreme cases.
+     * This is to avoid having the anomaly message show up on several devices.
+     *
+     */
+    private void onTrackNetworkUnwanted() {
+        if (mNetworkUnwantedCounter.addOccurrence()) {
+            AnomalyReporter.reportAnomaly(
+                    UUID.fromString("9f3bc55b-bfa6-4e26-afaa-5031426a66d2"),
+                    String.format("Network Unwanted called %d times in %d ms.",
+                            mNetworkUnwantedCounter.getNumOccurrences(),
+                            mNetworkUnwantedCounter.getWindowSizeMillis()));
         }
     }
 
@@ -2228,6 +2276,11 @@ public class DataNetworkController extends Handler {
                     @Override
                     public void onNetworkCapabilitiesChanged(@NonNull DataNetwork dataNetwork) {
                         DataNetworkController.this.onNetworkCapabilitiesChanged(dataNetwork);
+                    }
+
+                    @Override
+                    public void onTrackNetworkUnwanted(@NonNull DataNetwork dataNetwork) {
+                        DataNetworkController.this.onTrackNetworkUnwanted();
                     }
                 }
         ));
@@ -3268,6 +3321,8 @@ public class DataNetworkController extends Handler {
                 .map(TelephonyManager::getNetworkTypeName).collect(Collectors.joining(",")));
         pw.println("Congested override network types=" + mCongestedOverrideNetworkTypes.stream()
                 .map(TelephonyManager::getNetworkTypeName).collect(Collectors.joining(",")));
+        pw.println("mImsThrottleCounter=" + mImsThrottleCounter);
+        pw.println("mNetworkUnwantedCounter=" + mNetworkUnwantedCounter);
         pw.println("Local logs:");
         pw.increaseIndent();
         mLocalLog.dump(fd, pw, args);
