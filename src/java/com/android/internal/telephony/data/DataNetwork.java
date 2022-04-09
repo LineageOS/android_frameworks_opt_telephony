@@ -273,7 +273,7 @@ public class DataNetwork extends StateMachine {
                     TEAR_DOWN_REASON_DATA_CONFIG_NOT_READY,
                     TEAR_DOWN_REASON_PENDING_TEAR_DOWN_ALL,
                     TEAR_DOWN_REASON_NO_SUITABLE_DATA_PROFILE,
-                    TEAR_DOWN_REASON_EMERGENCY_CALL,
+                    TEAR_DOWN_REASON_CDMA_EMERGENCY_CALLBACK_MODE,
                     TEAR_DOWN_REASON_RETRY_SCHEDULED,
                     TEAR_DOWN_REASON_DATA_THROTTLED,
                     TEAR_DOWN_REASON_DATA_PROFILE_INVALID,
@@ -347,8 +347,8 @@ public class DataNetwork extends StateMachine {
     /** Data network tear down due to no suitable data profile. */
     public static final int TEAR_DOWN_REASON_NO_SUITABLE_DATA_PROFILE = 21;
 
-    /** Data network tear down due to emergency call. */
-    public static final int TEAR_DOWN_REASON_EMERGENCY_CALL = 22;
+    /** Data network tear down due to CDMA ECBM. */
+    public static final int TEAR_DOWN_REASON_CDMA_EMERGENCY_CALLBACK_MODE = 22;
 
     /** Data network tear down due to retry scheduled. */
     public static final int TEAR_DOWN_REASON_RETRY_SCHEDULED = 23;
@@ -2248,11 +2248,7 @@ public class DataNetwork extends StateMachine {
 
     private void onTearDown(@TearDownReason int reason) {
         logl("onTearDown: reason=" + tearDownReasonToString(reason));
-        if (mDataConfigManager.isImsDelayTearDownEnabled()
-                && mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
-                && reason == TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED
-                && mPhone.getImsPhone() != null
-                && mPhone.getImsPhone().getCallTracker().getState() != PhoneConstants.State.IDLE) {
+        if (shouldDelayTearDown()) {
             logl("onTearDown: Delay IMS tear down until call ends.");
             return;
         }
@@ -2263,6 +2259,16 @@ public class DataNetwork extends StateMachine {
                 obtainMessage(EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE));
         mDataCallSessionStats.setDeactivateDataCallReason(DataService.REQUEST_REASON_NORMAL);
         mInvokedDataDeactivation = true;
+    }
+
+    /**
+     * @return {@code true} if this tear down should be delayed on this data network.
+     */
+    public boolean shouldDelayTearDown() {
+        return mDataConfigManager.isImsDelayTearDownEnabled()
+                && mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
+                && mPhone.getImsPhone() != null
+                && mPhone.getImsPhone().getCallTracker().getState() != PhoneConstants.State.IDLE;
     }
 
     /**
@@ -2939,8 +2945,8 @@ public class DataNetwork extends StateMachine {
                 return "TEAR_DOWN_REASON_PENDING_TEAR_DOWN_ALL";
             case TEAR_DOWN_REASON_NO_SUITABLE_DATA_PROFILE:
                 return "TEAR_DOWN_REASON_NO_SUITABLE_DATA_PROFILE";
-            case TEAR_DOWN_REASON_EMERGENCY_CALL:
-                return "TEAR_DOWN_REASON_EMERGENCY_CALL";
+            case TEAR_DOWN_REASON_CDMA_EMERGENCY_CALLBACK_MODE:
+                return "TEAR_DOWN_REASON_CDMA_EMERGENCY_CALLBACK_MODE";
             case TEAR_DOWN_REASON_RETRY_SCHEDULED:
                 return "TEAR_DOWN_REASON_RETRY_SCHEDULED";
             case TEAR_DOWN_REASON_DATA_THROTTLED:
