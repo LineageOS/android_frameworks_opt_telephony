@@ -81,7 +81,28 @@ public class SlidingWindowEventCounter {
     }
 
     @VisibleForTesting
-    int getNumOccurrences() {
+    int getQueuedNumOccurrences() {
         return mTimestampQueueMillis.size();
+    }
+
+    /**
+     * @return the time span in ms of the sliding window.
+     */
+    public synchronized long getWindowSizeMillis() {
+        return mWindowSizeMillis;
+    }
+
+    /**
+     * @return the least number of occurrences for {@link #isInWindow} to be true.
+     */
+    public synchronized int getNumOccurrences() {
+        return mNumOccurrences;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("SlidingWindowEventCounter=[windowSizeMillis=" + mWindowSizeMillis
+                + ", numOccurrences=" + mNumOccurrences
+                + ", timestampQueueMillis=" + mTimestampQueueMillis + "]");
     }
 }
