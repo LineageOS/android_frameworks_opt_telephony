@@ -83,7 +83,7 @@ public class RetryManagerTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         mBundle = mContextFixture.getCarrierConfigBundle();
-
+        doReturn(false).when(mPhone).isUsingNewDataStack();
         replaceInstance(SubscriptionController.class, "sInstance", null, mSubscriptionController);
         replaceInstance(UiccController.class, "mInstance", null, mUiccController);
     }

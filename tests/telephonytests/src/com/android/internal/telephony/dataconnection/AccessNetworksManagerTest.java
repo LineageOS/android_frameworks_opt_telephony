@@ -87,8 +87,6 @@ public class AccessNetworksManagerTest extends TelephonyTest {
         mMockedQns = mock(IQualifiedNetworksService.class);
         mMockedIBinder = mock(IBinder.class);
 
-        doReturn(true).when(mPhone).isUsingNewDataStack();
-
         addQnsService();
         mContextFixture.putResource(
                 com.android.internal.R.string.config_qualified_networks_service_package,
