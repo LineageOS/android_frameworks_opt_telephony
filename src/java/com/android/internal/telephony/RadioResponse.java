@@ -740,15 +740,7 @@ public class RadioResponse extends IRadioResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void deactivateDataCallResponse(RadioResponseInfo responseInfo) {
-        RILRequest rr = mRil.processResponse(responseInfo);
-
-        if (rr != null) {
-            int response = responseInfo.error;
-            if (responseInfo.error == RadioError.NONE) {
-                sendMessageResponse(rr.mResult, response);
-            }
-            mRil.processResponseDone(rr, responseInfo, response);
-        }
+        responseVoid(responseInfo);
     }
 
     /**

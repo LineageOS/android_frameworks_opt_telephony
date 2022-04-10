@@ -696,7 +696,7 @@ public class DataNetworkTest extends TelephonyTest {
         testCreateDataNetwork();
         assertThat(mDataNetworkUT.isConnected()).isTrue();
         mDataNetworkUT.sendMessage(19/*EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE*/,
-                6/*RESULT_ERROR_INVALID_RESPONSE*/);
+                4/*RESULT_ERROR_ILLEGAL_STATE*/);
         processAllMessages();
 
         verify(mDataNetworkCallback).onDisconnected(eq(mDataNetworkUT), eq(
