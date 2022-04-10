@@ -27,13 +27,14 @@ import com.android.telephony.Rlog;
 /** This class provides wrapper APIs for binding interfaces to mock service. */
 public class MockModem {
     private static final String TAG = "MockModem";
-    private static final String BIND_IRADIOMODEM = "android.telephony.cts.iradiomodem";
-    private static final String BIND_IRADIOSIM = "android.telephony.cts.iradiosim";
-    private static final String BIND_IRADIOMESSAGING = "android.telephony.cts.iradiomessaging";
-    private static final String BIND_IRADIODATA = "android.telephony.cts.iradiodata";
-    private static final String BIND_IRADIONETWORK = "android.telephony.cts.iradionetwork";
-    private static final String BIND_IRADIOVOICE = "android.telephony.cts.iradiovoice";
-    private static final String BIND_IRADIOCONFIG = "android.telephony.cts.iradioconfig";
+    private static final String BIND_IRADIOMODEM = "android.telephony.mockmodem.iradiomodem";
+    private static final String BIND_IRADIOSIM = "android.telephony.mockmodem.iradiosim";
+    private static final String BIND_IRADIOMESSAGING =
+            "android.telephony.mockmodem.iradiomessaging";
+    private static final String BIND_IRADIODATA = "android.telephony.mockmodem.iradiodata";
+    private static final String BIND_IRADIONETWORK = "android.telephony.mockmodem.iradionetwork";
+    private static final String BIND_IRADIOVOICE = "android.telephony.mockmodem.iradiovoice";
+    private static final String BIND_IRADIOCONFIG = "android.telephony.mockmodem.iradioconfig";
     private static final String PHONE_ID = "phone_id";
 
     private static final byte DEFAULT_PHONE_ID = 0x00;
@@ -71,8 +72,9 @@ public class MockModem {
     MockModem(Context context, String serviceName, int phoneId) {
         mPhoneId = (byte) phoneId;
         mContext = context;
-        mServiceName = serviceName;
-        mPackageName = serviceName.substring(0, serviceName.lastIndexOf('.'));
+        String[] componentInfo = serviceName.split("/", 2);
+        mPackageName = componentInfo[0];
+        mServiceName = componentInfo[1];
     }
 
     private class MockModemConnection implements ServiceConnection {
@@ -135,7 +137,7 @@ public class MockModem {
         boolean status = false;
 
         Intent intent = new Intent();
-        intent.setClassName(mPackageName, mServiceName);
+        intent.setComponent(new ComponentName(mPackageName, mServiceName));
         intent.setAction(actionName);
         intent.putExtra(PHONE_ID, phoneId);
 
