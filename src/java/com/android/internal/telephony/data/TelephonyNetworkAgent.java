@@ -22,29 +22,24 @@ import android.annotation.Nullable;
 import android.net.KeepalivePacketData;
 import android.net.NetworkAgent;
 import android.net.NetworkAgentConfig;
-import android.net.NetworkCapabilities;
 import android.net.NetworkProvider;
 import android.net.NetworkScore;
 import android.net.QosFilter;
 import android.net.QosSessionAttributes;
 import android.net.Uri;
 import android.os.Looper;
-import android.telephony.AnomalyReporter;
 import android.util.ArraySet;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.SlidingWindowEventCounter;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.time.Duration;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
 
 /**
  * TelephonyNetworkAgent class represents a single PDN (Packet Data Network). It is an agent
@@ -55,13 +50,6 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
     private final String mLogTag;
     private final Phone mPhone;
     private final LocalLog mLocalLog = new LocalLog(128);
-
-    /** Event counter for unwanted network within time window, is used to trigger anomaly report. */
-    private static final long NETWORK_UNWANTED_ANOMALY_WINDOW_MS = TimeUnit.MINUTES.toMillis(5);
-    private static final int NETWORK_UNWANTED_ANOMALY_NUM_OCCURRENCES =  12;
-    private static final SlidingWindowEventCounter sNetworkUnwantedCounter =
-            new SlidingWindowEventCounter(NETWORK_UNWANTED_ANOMALY_WINDOW_MS,
-                    NETWORK_UNWANTED_ANOMALY_NUM_OCCURRENCES);
 
     /** The parent data network. */
     private final @NonNull DataNetwork mDataNetwork;
@@ -189,35 +177,8 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
             return;
         }
 
-        NetworkCapabilities capabilities = mDataNetwork.getNetworkCapabilities();
-        if ((mDataNetwork.isConnected() || mDataNetwork.isHandoverInProgress())
-                && (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
-                || capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET))) {
-            trackNetworkUnwanted();
-        }
-
         mDataNetwork.tearDown(DataNetwork.TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED);
     }
-
-    /**
-     * There have been several bugs where a RECONNECT loop kicks off where a DataConnection
-     * connects to the Network, ConnectivityService indicates that the Network is unwanted,
-     * and then the DataConnection reconnects. By the time we get the bug report it's too late
-     * because there have already been hundreds of RECONNECTS.  This is meant to capture the issue
-     * when it first starts.
-     *
-     * The unwanted counter is configured to only take an anomaly report in extreme cases.
-     * This is to avoid having the anomaly message show up on several devices.
-     *
-     */
-    private void trackNetworkUnwanted() {
-        if (sNetworkUnwantedCounter.addOccurrence()) {
-            AnomalyReporter.reportAnomaly(
-                    UUID.fromString("9f3bc55b-bfa6-4e26-afaa-5031426a66d2"),
-                    "Network Unwanted called 12 times in 5 minutes.");
-        }
-    }
-
 
     /**
      * @return The unique id of the agent.
