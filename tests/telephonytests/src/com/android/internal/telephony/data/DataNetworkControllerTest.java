@@ -1606,9 +1606,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
         verify(mMockedWwanDataServiceManager, times(1)).setupDataCall(
                 anyInt(), any(), anyBoolean(), anyBoolean(),
-                eq(DataService.REQUEST_REASON_HANDOVER),
-                any(), anyInt(), any(), any(), eq(true), any());
-
+                eq(DataService.REQUEST_REASON_HANDOVER), any(), anyInt(), any(), any(), eq(true),
+                any());
     }
 
     @Test
@@ -1661,7 +1660,40 @@ public class DataNetworkControllerTest extends TelephonyTest {
         assertThat(dataNetwork.getTransport()).isEqualTo(
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
 
-        verify(mMockedWlanDataServiceManager).setupDataCall(anyInt(),
+        verify(mMockedWlanDataServiceManager).setupDataCall(anyInt(), any(DataProfile.class),
+                anyBoolean(), anyBoolean(), eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(),
+                any(), any(), anyBoolean(), any(Message.class));
+    }
+
+    @Test
+    public void testHandoverDataNetworkRetryReachedMaximumNetworkRequestRemoved() throws Exception {
+        TelephonyNetworkRequest networkRequest = createNetworkRequest(
+                NetworkCapabilities.NET_CAPABILITY_IMS);
+        mDataNetworkControllerUT.addNetworkRequest(networkRequest);
+        processAllMessages();
+
+        setFailedSetupDataResponse(mMockedWlanDataServiceManager,
+                DataFailCause.HANDOVER_FAILED, -1, true);
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+        mDataNetworkControllerUT.removeNetworkRequest(networkRequest);
+        mAccessNetworksManagerCallback.onPreferredTransportChanged(
+                NetworkCapabilities.NET_CAPABILITY_IMS);
+        processAllMessages();
+
+        DataNetwork dataNetwork = getDataNetworks().get(0);
+        // Verify that data network should remain on cellular.
+        assertThat(dataNetwork.getTransport()).isEqualTo(
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+
+        // There shouldn't be any attempt to retry handover on IWLAN.
+        verify(mMockedWlanDataServiceManager, times(1)).setupDataCall(anyInt(),
+                any(DataProfile.class), anyBoolean(), anyBoolean(),
+                eq(DataService.REQUEST_REASON_HANDOVER), any(), anyInt(), any(), any(),
+                anyBoolean(), any(Message.class));
+
+        // There shouldn't be any attempt to bring up a new one on IWLAN as well.
+        verify(mMockedWlanDataServiceManager, never()).setupDataCall(anyInt(),
                 any(DataProfile.class), anyBoolean(), anyBoolean(),
                 eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), any(),
                 anyBoolean(), any(Message.class));
