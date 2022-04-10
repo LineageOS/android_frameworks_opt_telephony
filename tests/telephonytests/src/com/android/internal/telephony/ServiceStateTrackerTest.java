@@ -1719,6 +1719,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testImsRegisteredDelayShutDown() throws Exception {
+        doReturn(false).when(mPhone).isUsingNewDataStack();
         doReturn(true).when(mPhone).isPhoneTypeGsm();
         mContextFixture.putIntResource(
                 com.android.internal.R.integer.config_delay_for_ims_dereg_millis, 1000 /*ms*/);
@@ -1759,6 +1760,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testImsRegisteredDelayShutDownTimeout() throws Exception {
+        doReturn(false).when(mPhone).isUsingNewDataStack();
         doReturn(true).when(mPhone).isPhoneTypeGsm();
         mContextFixture.putIntResource(
                 com.android.internal.R.integer.config_delay_for_ims_dereg_millis, 1000 /*ms*/);
@@ -2203,7 +2205,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     public void testUpdateNrFrequencyRangeFromPhysicalChannelConfigs() {
-        doReturn(true).when(mPhone).isUsingNewDataStack();
         when(mPhone.getDataNetworkController().isInternetNetwork(eq(3))).thenReturn(true);
         sendPhyChanConfigChange(new int[] {1000, 500}, TelephonyManager.NETWORK_TYPE_NR, 1,
                 new int[][]{{0, 1}, {2, 3}});

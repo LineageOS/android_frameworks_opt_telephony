@@ -132,7 +132,6 @@ public class DataRetryManagerTest extends TelephonyTest {
         logd("DataRetryManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
         mDataRetryManagerCallbackMock = Mockito.mock(DataRetryManagerCallback.class);
-        doReturn(true).when(mPhone).isUsingNewDataStack();
         doAnswer(invocation -> {
             ((Runnable) invocation.getArguments()[0]).run();
             return null;
