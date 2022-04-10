@@ -1049,6 +1049,27 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testRatChangesLingeringNotSet() throws Exception {
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        TelephonyNetworkRequest fotaRequest = createNetworkRequest(
+                NetworkCapabilities.NET_CAPABILITY_FOTA);
+        mDataNetworkControllerUT.addNetworkRequest(fotaRequest);
+        processAllMessages();
+
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_FOTA);
+
+        // Now RAT changes from LTE to UMTS, since FOTA APN does not have lingering set, only
+        // network type bitmask should be used. Fota network should be torn down.
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_UMTS,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        processAllMessages();
+
+        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
+        verifyAllDataDisconnected();
+    }
+
+    @Test
     public void testVoiceCallEndedOnVoiceDataNonConcurrentNetwork() throws Exception {
         doReturn(false).when(mSST).isConcurrentVoiceAndDataAllowed();
         doReturn(PhoneConstants.State.OFFHOOK).when(mCT).getState();
