@@ -439,41 +439,4 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         verify(mDataNetworkController, times(1)).removeNetworkRequest(any());
         verify(mDataNetworkController, times(1)).addNetworkRequest(any());
     }
-
-    @Test
-    @SmallTest
-    public void testNetworkRequestReleasedDuringHandover() throws Exception {
-        createMockedTelephonyComponents();
-        doReturn(0).when(mSubscriptionController).getSubIdUsingPhoneId(0);
-        mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
-                TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
-
-        activatePhoneInPhoneSwitcher(0, true);
-        makeDefaultInternetRequest();
-
-        NetworkRequest mmsNetworkRequest = makeSubSpecificMmsRequest(0);
-        processAllMessages();
-
-        Field f = TelephonyNetworkFactory.class.getDeclaredField("mInternalHandler");
-        f.setAccessible(true);
-        Handler h = (Handler) f.get(mTelephonyNetworkFactoryUT);
-
-        HandoverCallback handoverCallback = mock(HandoverCallback.class);
-        //Mockito.reset(mDcTracker);
-        doReturn(mDataConnection).when(mDcTracker).getDataConnectionByApnType(anyString());
-        doReturn(true).when(mDataConnection).isActive();
-
-        HandoverParams hp = new HandoverParams(ApnSetting.TYPE_MMS,
-                AccessNetworkConstants.TRANSPORT_TYPE_WLAN, handoverCallback);
-        AsyncResult ar = new AsyncResult(null, hp, null);
-        h.sendMessage(h.obtainMessage(5 /* EVENT_DATA_HANDOVER_NEEDED */, ar));
-        processAllMessages();
-
-        // Now release the network request while handover is still ongoing.
-        mTelephonyNetworkFactoryUT.releaseNetworkFor(mmsNetworkRequest);
-        processAllMessages();
-
-        // Ensure the release is called one more time after the normal release
-        verify(mDataNetworkController, times(2)).removeNetworkRequest(any());
-    }
 }
