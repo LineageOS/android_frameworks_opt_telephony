@@ -133,6 +133,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
@@ -205,7 +206,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         private void processIncomingCall(IImsCallSession c, Bundle extras) {
             if (DBG) log("processIncomingCall: incoming call intent");
-            mOperationLocalLog.log("onIncomingCall Received");
 
             if (extras == null) extras = new Bundle();
             if (mImsManager == null) return;
@@ -275,6 +275,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     }
                 }
 
+                mOperationLocalLog.log("onIncomingCall: isUnknown=" + isUnknown + ", connId="
+                        + System.identityHashCode(conn));
+
                 addConnection(conn);
 
                 setVideoCallProvider(conn, imsCall);
@@ -284,6 +287,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 mPhone.getVoiceCallSessionStats().onImsCallReceived(conn);
 
                 if (isUnknown) {
+                    // Check for condition where an unknown connection replaces a pending
+                    // MO call.  This will cause problems later in all likelihood.
+                    if (mPendingMO != null
+                            && Objects.equals(mPendingMO.getAddress(), conn.getAddress())) {
+                        mOperationLocalLog.log("onIncomingCall: unknown call " + conn
+                                + " replaces " + mPendingMO);
+                    }
                     mPhone.notifyUnknownConnection(conn);
                 } else {
                     if ((mForegroundCall.getState() != ImsPhoneCall.State.IDLE)
@@ -2258,6 +2268,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         return !isImsAudioCallActiveOrHolding || !VideoProfile.isVideo(videoState);
     }
 
+
     /**
      * Determines if there are issues which would preclude dialing an outgoing call.  Throws a
      * {@link CallStateException} if there is an issue.
@@ -2325,9 +2336,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         if (DBG) {
             log("updatePhoneState pendingMo = " + (mPendingMO == null ? "null"
-                    : mPendingMO.getState()) + ", fg= " + mForegroundCall.getState() + "("
-                    + mForegroundCall.getConnectionsCount() + "), bg= " + mBackgroundCall
-                    .getState() + "(" + mBackgroundCall.getConnectionsCount() + ")");
+                    : mPendingMO.getState() + "(" + mPendingMO.getTelecomCallId() + "/objId:"
+                            + System.identityHashCode(mPendingMO) + ")")
+                    + ", rng= " + mRingingCall.getState() + "("
+                    + mRingingCall.getConnectionSummary()
+                    + "), fg= " + mForegroundCall.getState() + "("
+                    + mForegroundCall.getConnectionSummary()
+                    + "), bg= " + mBackgroundCall.getState()
+                    + "(" + mBackgroundCall.getConnectionSummary() + ")");
             log("updatePhoneState oldState=" + oldState + ", newState=" + mState);
         }
 
@@ -2618,9 +2634,32 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         return null;
     }
 
+    /**
+     * Given a connection, detach it from any {@link ImsPhoneCall} it is associated with, remove it
+     * from the connections lists, and ensure if it was the pending MO connection it gets removed
+     * from there as well.
+     * @param conn The connection to cleanup and remove.
+     */
+    public synchronized void cleanupAndRemoveConnection(ImsPhoneConnection conn) {
+        mOperationLocalLog.log("cleanupAndRemoveConnection: " + conn);
+        // If the connection is attached to a call, detach it.
+        if (conn.getCall() != null) {
+            conn.getCall().detach(conn);
+        }
+        // Remove it from the connection list.
+        removeConnection(conn);
+
+        // Finally, if it was the pending MO, then ensure that connection gets cleaned up as well.
+        if (conn == mPendingMO) {
+            mPendingMO.finalize();
+            mPendingMO = null;
+        }
+    }
+
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    private synchronized void removeConnection(ImsPhoneConnection conn) {
+    public synchronized void removeConnection(ImsPhoneConnection conn) {
         mConnections.remove(conn);
+
         // If not emergency call is remaining, notify emergency call registrants
         if (mIsInEmergencyCall) {
             boolean isEmergencyCallInList = false;
@@ -5319,6 +5358,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @VisibleForTesting
     public ArrayList<ImsPhoneConnection> getConnections() {
         return mConnections;
+    }
+
+    @VisibleForTesting
+    public ImsPhoneConnection getPendingMO() {
+        return mPendingMO;
     }
 
     /**
