@@ -77,6 +77,14 @@ public class SignalStrengthController extends Handler {
     private static final int REPORTING_HYSTERESIS_DB = 2;
     /** Minimum time between unsolicited SignalStrength reports. */
     private static final int REPORTING_HYSTERESIS_MILLIS = 3000;
+    /**
+     * A threshold within which (inclusive) the application requested signal strength
+     * thresholds will be aligned with threholds set in advance (by system or other apps).
+     * Since the alignment applies to both directions, the value is set to halt of
+     * REPORTING_HYSTERESIS_DB to respect it while without introducing additional gaps for
+     * thresholds set by apps.
+     */
+    private static final int ALIGNMENT_HYSTERESIS_DB = 1;
 
     private static final int EVENT_SET_SIGNAL_STRENGTH_UPDATE_REQUEST       = 1;
     private static final int EVENT_CLEAR_SIGNAL_STRENGTH_UPDATE_REQUEST     = 2;
@@ -548,7 +556,7 @@ public class SignalStrengthController extends Handler {
                             isEnabledForSystem && shouldHonorSystemThresholds()
                                     ? signalThresholdInfo.getThresholds()
                                     : new int[]{},
-                            REPORTING_HYSTERESIS_DB);
+                            ALIGNMENT_HYSTERESIS_DB);
             boolean isEnabledForAppRequest =
                     shouldEnableSignalThresholdForAppRequest(
                             ran,
