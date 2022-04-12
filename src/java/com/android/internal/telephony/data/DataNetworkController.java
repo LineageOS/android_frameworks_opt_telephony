@@ -194,6 +194,9 @@ public class DataNetworkController extends Handler {
     /** Event for slice config changed. */
     private static final int EVENT_SLICE_CONFIG_CHANGED = 24;
 
+    /** Event for tracking area code changed. */
+    private static final int EVENT_TAC_CHANGED = 25;
+
     /** The supported IMS features. This is for IMS graceful tear down support. */
     private static final Collection<Integer> SUPPORTED_IMS_FEATURES =
             List.of(ImsFeature.FEATURE_MMTEL, ImsFeature.FEATURE_RCS);
@@ -212,12 +215,9 @@ public class DataNetworkController extends Handler {
     private static final long REEVALUATE_UNSATISFIED_NETWORK_REQUESTS_AFTER_CALL_END_DELAY_MILLIS =
             TimeUnit.MILLISECONDS.toMillis(500);
 
-    /**
-     * The maximum number of occurrences within a time window defined by
-     * {@link DataConfigManager#getImsRequestReleaseThrottleAnomalyWindowMs}
-     * for duplicate release-request for IMS, the violation of which triggers anomaly report.
-     */
-    private static final int IMS_REQUEST_RELEASE_THROTTLE_ANOMALY_NUM_OCCURRENCES = 2;
+    /** The delay in milliseconds to re-evaluate unsatisfied network requests after TAC changes. */
+    private static final long REEVALUATE_UNSATISFIED_NETWORK_REQUESTS_TAC_CHANGED_DELAY_MILLIS =
+            TimeUnit.MILLISECONDS.toMillis(100);
 
     private final Phone mPhone;
     private final String mLogTag;
@@ -961,6 +961,7 @@ public class DataNetworkController extends Handler {
                 EVENT_PS_RESTRICT_ENABLED, null);
         mPhone.getServiceStateTracker().registerForPsRestrictedDisabled(this,
                 EVENT_PS_RESTRICT_DISABLED, null);
+        mPhone.getServiceStateTracker().registerForAreaCodeChanged(this, EVENT_TAC_CHANGED, null);
         mPhone.registerForEmergencyCallToggle(this, EVENT_EMERGENCY_CALL_CHANGED, null);
         mDataServiceManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                 .registerForServiceBindingChanged(this, EVENT_DATA_SERVICE_BINDING_CHANGED);
@@ -1042,6 +1043,13 @@ public class DataNetworkController extends Handler {
                 mPsRestricted = false;
                 sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
                         DataEvaluationReason.DATA_RESTRICTED_CHANGED));
+                break;
+            case EVENT_TAC_CHANGED:
+                // Re-evaluate unsatisfied network requests with some delays to let DataRetryManager
+                // clears the throttling record.
+                sendMessageDelayed(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
+                        DataEvaluationReason.TAC_CHANGED),
+                        REEVALUATE_UNSATISFIED_NETWORK_REQUESTS_TAC_CHANGED_DELAY_MILLIS);
                 break;
             case EVENT_DATA_SERVICE_BINDING_CHANGED:
                 AsyncResult ar = (AsyncResult) msg.obj;
