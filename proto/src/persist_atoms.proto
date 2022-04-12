@@ -284,6 +284,7 @@ message DataCallSession {
     optional int64 duration_minutes = 17;
     optional bool ongoing = 18;
     optional int32 band_at_end = 19;
+    repeated int32 handover_failure_causes = 20;
 }
 
 message CellularServiceState {
