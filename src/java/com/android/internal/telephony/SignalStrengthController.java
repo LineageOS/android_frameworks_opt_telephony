@@ -42,6 +42,7 @@ import android.telephony.SignalStrengthUpdateRequest;
 import android.telephony.SignalThresholdInfo;
 import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
+import android.util.LocalLog;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -128,6 +129,9 @@ public class SignalStrengthController extends Handler {
 
     @NonNull
     private PersistableBundle mCarrierConfig;
+
+    @NonNull
+    private final LocalLog mLocalLog = new LocalLog(64);
 
     private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
         @Override
@@ -566,6 +570,9 @@ public class SignalStrengthController extends Handler {
                             .build());
         }
         mCi.setSignalStrengthReportingCriteria(consolidatedSignalThresholdInfos, null);
+
+        localLog("setSignalStrengthReportingCriteria consolidatedSignalThresholdInfos="
+                        + consolidatedSignalThresholdInfos);
     }
 
     void setSignalStrengthDefaultValues() {
@@ -596,6 +603,11 @@ public class SignalStrengthController extends Handler {
      * @param args Additional arguments to the dump request.
      */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("SignalStrengthController - phoneId: " + mPhone.getPhoneId());
+        pw.println("SignalStrengthController - Log Begin ----");
+        mLocalLog.dump(fd, pw, args);
+        pw.println("SignalStrengthController - Log End ----");
+
         final IndentingPrintWriter ipw = new IndentingPrintWriter(pw, "  ");
         ipw.increaseIndent();
         pw.println("mSignalRequestRecords=" + mSignalRequestRecords);
@@ -617,6 +629,11 @@ public class SignalStrengthController extends Handler {
         SignalRequestRecord record = new SignalRequestRecord(subId, callingUid, request);
         sendMessage(obtainMessage(EVENT_SET_SIGNAL_STRENGTH_UPDATE_REQUEST,
                 new Pair<SignalRequestRecord, Message>(record, onCompleted)));
+
+        localLog("setSignalStrengthUpdateRequest"
+                + " subId=" + subId
+                + " callingUid=" + callingUid
+                + " request=" + request);
     }
 
     /**
@@ -627,6 +644,11 @@ public class SignalStrengthController extends Handler {
         SignalRequestRecord record = new SignalRequestRecord(subId, callingUid, request);
         sendMessage(obtainMessage(EVENT_CLEAR_SIGNAL_STRENGTH_UPDATE_REQUEST,
                 new Pair<SignalRequestRecord, Message>(record, onCompleted)));
+
+        localLog("clearSignalStrengthUpdateRequest"
+                + " subId=" + subId
+                + " callingUid=" + callingUid
+                + " request=" + request);
     }
 
     /**
@@ -703,6 +725,8 @@ public class SignalStrengthController extends Handler {
 
     void onDeviceIdleStateChanged(boolean isDeviceIdle) {
         sendMessage(obtainMessage(EVENT_ON_DEVICE_IDLE_STATE_CHANGED, isDeviceIdle));
+
+        localLog("onDeviceIdleStateChanged isDeviceIdle=" + isDeviceIdle);
     }
 
     /**
@@ -777,6 +801,7 @@ public class SignalStrengthController extends Handler {
 
         @Override
         public void binderDied() {
+            localLog("binderDied record=" + this);
             clearSignalStrengthUpdateRequest(mSubId, mCallingUid, mRequest, null /*onCompleted*/);
         }
 
@@ -1072,5 +1097,11 @@ public class SignalStrengthController extends Handler {
 
     private static void loge(String msg) {
         Rlog.e(TAG, msg);
+    }
+
+    /** Print to both Radio log and LocalLog, used only for critical but non-sensitive msg. */
+    private void localLog(String msg) {
+        Rlog.d(TAG, msg);
+        mLocalLog.log(TAG + ": " + msg);
     }
 }
