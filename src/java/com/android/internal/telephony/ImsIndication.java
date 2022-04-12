@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CONNECTION_SETUP_FAILURE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NOTIFY_ANBR;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_TRIGGER_IMS_DEREGISTRATION;
 
 import android.hardware.radio.ims.IRadioImsIndication;
 import android.os.AsyncResult;
@@ -80,5 +81,23 @@ public class ImsIndication extends IRadioImsIndication.Stub {
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_NOTIFY_ANBR, response);
 
         mRil.mNotifyAnbrRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
+    }
+
+    /**
+     * Fired by radio when a graceful IMS deregistration needs to be performed by telephony
+     * prior to radio performing network detach. Example scenarios are SIM refresh or user
+     * mode preference change which would cause network detach. The radio waits for the
+     * IMS deregistration, which will be notified by telephony via
+     * {@link IRadioIms#updateImsRegistrationInfo()}, or a certain timeout interval to start
+     * the network detach procedure.
+     *
+     * @param indicationType Type of radio indication
+     */
+    public void triggerImsDeregistration(int indicationType) {
+        mRil.processIndication(RIL.IMS_SERVICE, indicationType);
+
+        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_TRIGGER_IMS_DEREGISTRATION);
+
+        mRil.mTriggerImsDeregistrationRegistrants.notifyRegistrants();
     }
 }

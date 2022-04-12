@@ -268,6 +268,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_EVENT_NO
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_PROACTIVE_COMMAND;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_SESSION_END;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SUPP_SVC_NOTIFICATION;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_TRIGGER_IMS_DEREGISTRATION;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UNTHROTTLE_APN;
@@ -5199,6 +5200,8 @@ public class RILUtils {
                 return "UNSOL_CONNECTION_SETUP_FAILURE";
             case RIL_UNSOL_NOTIFY_ANBR:
                 return "UNSOL_NOTIFY_ANBR";
+            case RIL_UNSOL_TRIGGER_IMS_DEREGISTRATION:
+                return "UNSOL_TRIGGER_IMS_DEREGISTRATION";
             default:
                 return "<unknown response>";
         }

@@ -2789,6 +2789,22 @@ public interface CommandsInterface {
     default void unregisterForNotifyAnbr(Handler h) {}
 
     /**
+     * Registers for IMS deregistration trigger from modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForTriggerImsDeregistration(Handler h, int what, Object obj) {}
+
+    /**
+     * Unregisters for IMS deregistration trigger from modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForTriggerImsDeregistration(Handler h) {}
+
+    /**
      * Set the UE's usage setting.
      *
      * @param result Callback message containing the success or failure status.
