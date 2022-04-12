@@ -1157,7 +1157,7 @@ public class DataNetworkController extends Handler {
             loge("onAddNetworkRequest: Duplicate network request. " + networkRequest);
             return;
         }
-        logv("onAddNetworkRequest: added " + networkRequest);
+        log("onAddNetworkRequest: added " + networkRequest);
         onSatisfyNetworkRequest(networkRequest);
     }
 
@@ -1495,12 +1495,15 @@ public class DataNetworkController extends Handler {
         }
 
         networkRequest.setEvaluation(evaluation);
-        log(evaluation.toString() + ", network type="
-                + TelephonyManager.getNetworkTypeName(getDataNetworkType(transport))
-                + ", reg state="
-                + NetworkRegistrationInfo.registrationStateToString(
-                        getDataRegistrationState(transport))
-                + ", " + networkRequest);
+        // EXTERNAL_QUERY generates too many log spam.
+        if (reason != DataEvaluationReason.EXTERNAL_QUERY) {
+            log(evaluation.toString() + ", network type="
+                    + TelephonyManager.getNetworkTypeName(getDataNetworkType(transport))
+                    + ", reg state="
+                    + NetworkRegistrationInfo.registrationStateToString(
+                    getDataRegistrationState(transport))
+                    + ", " + networkRequest);
+        }
         return evaluation;
     }
 
@@ -1921,7 +1924,7 @@ public class DataNetworkController extends Handler {
         if (networkRequest.getAttachedNetwork() != null) {
             networkRequest.getAttachedNetwork().detachNetworkRequest(networkRequest);
         }
-        logv("onRemoveNetworkRequest: Removed " + networkRequest);
+        log("onRemoveNetworkRequest: Removed " + networkRequest);
     }
 
     /**
