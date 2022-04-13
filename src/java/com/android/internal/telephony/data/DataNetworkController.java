@@ -1945,6 +1945,19 @@ public class DataNetworkController extends Handler {
     }
 
     /**
+     * Check if there are existing networks having the same interface name.
+     *
+     * @param interfaceName The interface name to check.
+     * @return {@code true} if the existing network has the same interface name.
+     */
+    public boolean isNetworkInterfaceExisting(@NonNull String interfaceName) {
+        return mDataNetworkList.stream()
+                .filter(dataNetwork -> !dataNetwork.isDisconnecting())
+                .anyMatch(dataNetwork -> interfaceName.equals(
+                        dataNetwork.getLinkProperties().getInterfaceName()));
+    }
+
+    /**
      * Register for IMS feature registration state.
      *
      * @param subId The subscription index.
@@ -2327,8 +2340,7 @@ public class DataNetworkController extends Handler {
             @NonNull NetworkRequestList requestList, @DataFailureCause int cause,
             long retryDelayMillis) {
         logl("onDataNetworkSetupDataFailed: " + dataNetwork + ", cause="
-                + DataFailCause.toString(cause) + "(0x" + Integer.toHexString(cause)
-                + "), retryDelayMillis=" + retryDelayMillis + "ms.");
+                + DataFailCause.toString(cause) + ", retryDelayMillis=" + retryDelayMillis + "ms.");
         mDataNetworkList.remove(dataNetwork);
         trackSetupDataCallFailure(dataNetwork.getTransport());
         if (mAnyDataNetworkExisting && mDataNetworkList.isEmpty()) {
