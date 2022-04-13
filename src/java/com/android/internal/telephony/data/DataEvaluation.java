@@ -224,6 +224,8 @@ public class DataEvaluation {
         SINGLE_DATA_NETWORK_ARBITRATION,
         /** Query from {@link TelephonyManager#isDataConnectivityPossible()}. */
         EXTERNAL_QUERY,
+        /** Tracking area code changed. */
+        TAC_CHANGED,
     }
 
     /** Disallowed reasons. There could be multiple reasons if it is not allowed. */
