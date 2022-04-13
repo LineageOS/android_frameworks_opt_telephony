@@ -22,8 +22,8 @@ import android.text.TextUtils;
 
 import com.android.internal.telephony.util.ArrayUtils;
 
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * Represents a Phonebook entry from the SIM.
@@ -92,6 +92,8 @@ public class SimPhonebookRecord {
         pbRecordInfo.number = convertNullToEmptyString(convertNumberToRecordFormat(mNumber));
         if (mEmails != null) {
             pbRecordInfo.emails = mEmails;
+        } else {
+            pbRecordInfo.emails = new String[0];
         }
         if (mAdditionalNumbers != null) {
             String[] additionalNumbers = new String[mAdditionalNumbers.length];
@@ -99,6 +101,8 @@ public class SimPhonebookRecord {
                 additionalNumbers[i] = convertNumberToRecordFormat(mAdditionalNumbers[i]);
             }
             pbRecordInfo.additionalNumbers = additionalNumbers;
+        } else {
+            pbRecordInfo.additionalNumbers = new String[0];
         }
         return pbRecordInfo;
     }
