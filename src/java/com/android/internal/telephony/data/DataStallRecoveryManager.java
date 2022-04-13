@@ -338,6 +338,20 @@ public class DataStallRecoveryManager extends Handler {
     }
 
     /**
+     * Called when internet validation status passed. We will initialize all parameters.
+     */
+    private void reset() {
+        mIsValidNetwork = true;
+        mIsAttemptedAllSteps = false;
+        mRadioStateChangedDuringDataStall = false;
+        mMobileDataChangedToEnabledDuringDataStall = false;
+        cancelNetworkCheckTimer();
+        mTimeLastRecoveryStartMs = 0;
+        mLastAction = RECOVERY_ACTION_GET_DATA_CALL_LIST;
+        mRecovryAction = RECOVERY_ACTION_GET_DATA_CALL_LIST;
+    }
+
+    /**
      * Called when internet validation status changed.
      *
      * @param validationStatus Validation status.
@@ -347,10 +361,7 @@ public class DataStallRecoveryManager extends Handler {
         final boolean isValid = status == NetworkAgent.VALIDATION_STATUS_VALID;
         setNetworkValidationState(isValid);
         if (isValid) {
-            mIsValidNetwork = true;
-            cancelNetworkCheckTimer();
-            resetAction();
-            mIsAttemptedAllSteps = false;
+            reset();
         } else {
             mIsValidNetwork = false;
             if (isRecoveryNeeded(true)) {
@@ -518,7 +529,7 @@ public class DataStallRecoveryManager extends Handler {
         logv("enter: isRecoveryNeeded()");
 
         // Skip recovery if we have already attempted all steps.
-        if (mIsAttemptedAllSteps && mLastAction == RECOVERY_ACTION_RESET_MODEM) {
+        if (mIsAttemptedAllSteps) {
             logl("skip retrying continue recovery action");
             return false;
         }
