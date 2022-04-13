@@ -5461,6 +5461,13 @@ public class ServiceStateTracker extends Handler {
         final String homeMCC = homeNumeric.substring(0, 3);
         final String networkCountry = MccTable.countryCodeForMcc(networkMCC);
         final String homeCountry = MccTable.countryCodeForMcc(homeMCC);
+
+        if (mLocaleTracker != null && !TextUtils.isEmpty(mLocaleTracker.getCountryOverride())) {
+            log("inSameCountry:  countryOverride var set.  This should only be set for testing "
+                    + "purposes to override the device location.");
+            return mLocaleTracker.getCountryOverride().equals(homeCountry);
+        }
+
         if (networkCountry.isEmpty() || homeCountry.isEmpty()) {
             // Not a valid country
             return false;
