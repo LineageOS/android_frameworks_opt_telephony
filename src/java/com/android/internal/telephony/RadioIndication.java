@@ -1238,9 +1238,8 @@ public class RadioIndication extends IRadioIndication.Stub {
                 }
             }
         } catch (IllegalArgumentException iae) {
-            AnomalyReporter.reportAnomaly(
-                    UUID.fromString("918f0970-9aa9-4bcd-a28e-e49a83fe77d5"),
-                    "Invalid PhysicalChannelConfig reported by HAL");
+            AnomalyReporter.reportAnomaly(UUID.fromString("918f0970-9aa9-4bcd-a28e-e49a83fe77d5"),
+                    "RIL reported invalid PCC (HIDL)");
             mRil.riljLoge("Invalid PhysicalChannelConfig " + iae);
             return;
         }
