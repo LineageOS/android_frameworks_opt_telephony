@@ -1906,6 +1906,26 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testTacChangesClearThrottlingAndRetryHappens() throws Exception {
+        testSetupDataNetworkNetworkSuggestedRetryTimerDataThrottled();
+        processAllFutureMessages();
+
+        setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 1);
+        logd("Sending TAC_CHANGED event");
+        mDataNetworkControllerUT.obtainMessage(25/*EVENT_TAC_CHANGED*/).sendToTarget();
+        mDataNetworkControllerUT.getDataRetryManager().obtainMessage(10/*EVENT_TAC_CHANGED*/)
+                .sendToTarget();
+        processAllFutureMessages();
+
+        // TAC changes should clear the already-scheduled retry and throttling.
+        assertThat(mDataNetworkControllerUT.getDataRetryManager().isAnySetupRetryScheduled(
+                mImsDataProfile, AccessNetworkConstants.TRANSPORT_TYPE_WWAN)).isFalse();
+
+        // But DNC should re-evaluate unsatisfied request and setup IMS again.
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
+    }
+
+    @Test
     public void testNrAdvancedByPco() throws Exception {
         testSetupDataNetwork();
         verify(mMockedDataNetworkControllerCallback, never())
