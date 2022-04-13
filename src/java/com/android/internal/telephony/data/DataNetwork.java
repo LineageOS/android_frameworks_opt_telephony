@@ -1098,13 +1098,10 @@ public class DataNetwork extends StateMachine {
                     deferMessage(msg);
                     break;
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
-                    String message = "Data network stuck in connecting state for "
+                    reportAnomaly("Data network stuck in connecting state for "
                             + TimeUnit.MILLISECONDS.toSeconds(
                             mDataConfigManager.getAnomalyNetworkConnectingTimeoutMs())
-                            + " seconds.";
-                    logl(message);
-                    AnomalyReporter.reportAnomaly(
-                            UUID.fromString("58c56403-7ea7-4e56-a0c7-e467114d09b8"), message);
+                            + " seconds.", "58c56403-7ea7-4e56-a0c7-e467114d09b8");
                     // Setup data failed. Use the retry logic defined in
                     // CarrierConfigManager.KEY_TELEPHONY_DATA_SETUP_RETRY_RULES_STRING_ARRAY.
                     mRetryDelayMillis = DataCallResponse.RETRY_DURATION_UNDEFINED;
@@ -1274,12 +1271,10 @@ public class DataNetwork extends StateMachine {
                     onPcoDataReceived((PcoData) ar.result);
                     break;
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
-                    String message = "Data service did not respond the handover request within "
+                    reportAnomaly("Data service did not respond the handover request within "
                             + TimeUnit.MILLISECONDS.toSeconds(
-                            mDataConfigManager.getNetworkHandoverTimeoutMs()) + " seconds.";
-                    logl(message);
-                    AnomalyReporter.reportAnomaly(
-                            UUID.fromString("1afe68cb-8b41-4964-a737-4f34372429ea"), message);
+                            mDataConfigManager.getNetworkHandoverTimeoutMs()) + " seconds.",
+                            "1afe68cb-8b41-4964-a737-4f34372429ea");
 
                     // Handover failed. Use the retry logic defined in
                     // CarrierConfigManager.KEY_TELEPHONY_DATA_HANDOVER_RETRY_RULES_STRING_ARRAY.
@@ -1374,14 +1369,11 @@ public class DataNetwork extends StateMachine {
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
                     // After frameworks issues deactivate data call request, RIL should report
                     // data disconnected through data call list changed event subsequently.
-                    String message = "RIL did not send data call list changed event after "
+                    reportAnomaly("RIL did not send data call list changed event after "
                             + "deactivate data call request within "
                             + TimeUnit.MILLISECONDS.toSeconds(
                             mDataConfigManager.getAnomalyNetworkDisconnectingTimeoutMs())
-                            + " seconds.";
-                    logl(message);
-                    AnomalyReporter.reportAnomaly(
-                            UUID.fromString("d0e4fa1c-c57b-4ba5-b4b6-8955487012cc"), message);
+                            + " seconds.", "d0e4fa1c-c57b-4ba5-b4b6-8955487012cc");
                     mFailCause = DataFailCause.LOST_CONNECTION;
                     transitionTo(mDisconnectedState);
                     break;
@@ -2170,10 +2162,25 @@ public class DataNetwork extends StateMachine {
                 + ", response=" + response);
         mFailCause = getFailCauseFromDataCallResponse(resultCode, response);
         if (mFailCause == DataFailCause.NONE) {
-            updateDataNetwork(response);
+            if (mDataNetworkController.isNetworkInterfaceExisting(response.getInterfaceName())) {
+                logl("Interface " + response.getInterfaceName() + " already existing. Silently "
+                        + "tear down now.");
+                // If this is a pre-5G data setup, that means APN database has some problems. For
+                // example, different APN settings have the same APN name.
+                if (response.getTrafficDescriptors().isEmpty()) {
+                    reportAnomaly("Duplicate network interface " + response.getInterfaceName()
+                            + " detected.", "62f66e7e-8d71-45de-a57b-dc5c78223fd5");
+                }
 
-            // TODO: Check if the cid already exists. If yes, should notify DNC and let it force
-            //  attach the network requests to that existing data network.
+                // Do not actually invoke onTearDown, otherwise the existing data network will be
+                // torn down.
+                mRetryDelayMillis = DataCallResponse.RETRY_DURATION_UNDEFINED;
+                mFailCause = DataFailCause.NO_RETRY_FAILURE;
+                transitionTo(mDisconnectedState);
+                return;
+            }
+
+            updateDataNetwork(response);
 
             // TODO: Evaluate all network requests and see if each request still can be satisfied.
             //  For requests that can't be satisfied anymore, we need to put them back to the
@@ -3041,6 +3048,17 @@ public class DataNetwork extends StateMachine {
      */
     public @NonNull String name() {
         return mLogTag;
+    }
+
+    /**
+     * Trigger the anomaly report with the specified UUID.
+     *
+     * @param anomalyMsg Description of the event
+     * @param uuid UUID associated with that event
+     */
+    private void reportAnomaly(@NonNull String anomalyMsg, @NonNull String uuid) {
+        logl(anomalyMsg);
+        AnomalyReporter.reportAnomaly(UUID.fromString(uuid), anomalyMsg);
     }
 
     /**
