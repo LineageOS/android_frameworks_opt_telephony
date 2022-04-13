@@ -37,7 +37,6 @@ import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
-import android.provider.DeviceConfig;
 import android.sysprop.TelephonyProperties;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
@@ -620,10 +619,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         // Initialize SMS stats
         mSmsStats = new SmsStats(this);
 
-        mNewDataStackEnabled = Boolean.parseBoolean(DeviceConfig.getProperty(
-                DeviceConfig.NAMESPACE_TELEPHONY, "enable_new_data_stack"))
-                || mContext.getResources().getBoolean(
-                        com.android.internal.R.bool.config_force_enable_telephony_new_data_stack);
+        mNewDataStackEnabled = !mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_force_disable_telephony_new_data_stack);
 
         if (getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             return;
