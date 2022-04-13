@@ -33,6 +33,16 @@ public class ImsIndication extends IRadioImsIndication.Stub {
         mRil = ril;
     }
 
+    @Override
+    public String getInterfaceHash() {
+        return IRadioImsIndication.HASH;
+    }
+
+    @Override
+    public int getInterfaceVersion() {
+        return IRadioImsIndication.VERSION;
+    }
+
     /**
      * Fired by radio when any IMS traffic is not sent to network due to any failure
      * on cellular networks.

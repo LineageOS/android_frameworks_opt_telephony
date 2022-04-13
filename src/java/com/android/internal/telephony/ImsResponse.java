@@ -30,6 +30,16 @@ public class ImsResponse extends IRadioImsResponse.Stub {
         mRil = ril;
     }
 
+    @Override
+    public String getInterfaceHash() {
+        return IRadioImsResponse.HASH;
+    }
+
+    @Override
+    public int getInterfaceVersion() {
+        return IRadioImsResponse.VERSION;
+    }
+
     /**
      * @param info Response info struct containing response type, serial no. and error.
      */
