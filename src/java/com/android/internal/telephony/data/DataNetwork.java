@@ -2851,6 +2851,7 @@ public class DataNetwork extends StateMachine {
             mDataNetworkCallback.invokeFromExecutor(
                     () -> mDataNetworkCallback.onHandoverFailed(DataNetwork.this,
                             mFailCause, retry, handoverFailureMode));
+            mDataCallSessionStats.onHandoverFailure(mFailCause);
         }
 
         // No matter handover succeeded or not, transit back to connected state.
