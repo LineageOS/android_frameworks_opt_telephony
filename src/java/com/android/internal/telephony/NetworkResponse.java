@@ -435,4 +435,14 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
             /* @TelephonyManager.UsageSetting */ int usageSetting) {
         RadioResponse.responseInts(RIL.NETWORK_SERVICE, mRil, responseInfo, usageSetting);
     }
+
+    @Override
+    public String getInterfaceHash() {
+        return IRadioNetworkResponse.HASH;
+    }
+
+    @Override
+    public int getInterfaceVersion() {
+        return IRadioNetworkResponse.VERSION;
+    }
 }

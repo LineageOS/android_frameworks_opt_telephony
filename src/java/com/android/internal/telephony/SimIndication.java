@@ -223,4 +223,14 @@ public class SimIndication extends IRadioSimIndication.Stub {
 
         mRil.mUiccApplicationsEnablementRegistrants.notifyResult(enabled);
     }
+
+    @Override
+    public String getInterfaceHash() {
+        return IRadioSimIndication.HASH;
+    }
+
+    @Override
+    public int getInterfaceVersion() {
+        return IRadioSimIndication.VERSION;
+    }
 }

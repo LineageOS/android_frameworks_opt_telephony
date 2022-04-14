@@ -125,4 +125,14 @@ public class DataIndication extends IRadioDataIndication.Stub {
         mRil.mSlicingConfigChangedRegistrants.notifyRegistrants(
                 new AsyncResult(null, ret, null));
     }
+
+    @Override
+    public String getInterfaceHash() {
+        return IRadioDataIndication.HASH;
+    }
+
+    @Override
+    public int getInterfaceVersion() {
+        return IRadioDataIndication.VERSION;
+    }
 }
