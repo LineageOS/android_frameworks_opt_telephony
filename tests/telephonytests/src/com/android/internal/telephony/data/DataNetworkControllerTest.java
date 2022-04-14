@@ -1447,6 +1447,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 mDataNetworkControllerUT.getUnmeteredOverrideNetworkTypes());
         assertFalse(dataNetwork.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+        assertThat(mDataNetworkControllerUT.isInternetUnmetered()).isFalse();
 
         // Change data network type to NR
         doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_NR,
@@ -1456,6 +1457,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
         assertTrue(dataNetwork.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+        assertThat(mDataNetworkControllerUT.isInternetUnmetered()).isTrue();
 
         // Set all network types metered
         unmeteredNetworkTypes.clear();
@@ -1467,6 +1469,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         assertTrue(mDataNetworkControllerUT.getUnmeteredOverrideNetworkTypes().isEmpty());
         assertFalse(dataNetwork.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+        assertThat(mDataNetworkControllerUT.isInternetUnmetered()).isFalse();
     }
 
     @Test
@@ -1499,6 +1502,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         assertEquals(subscriptionPlans, mDataNetworkControllerUT.getSubscriptionPlans());
         assertFalse(dataNetwork.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+        assertThat(mDataNetworkControllerUT.isInternetUnmetered()).isFalse();
+
 
         // Change data network type to NR
         doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_NR,
@@ -1508,6 +1513,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
         assertTrue(dataNetwork.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+        assertThat(mDataNetworkControllerUT.isInternetUnmetered()).isTrue();
 
         // Set all network types metered
         subscriptionPlans.clear();
@@ -1518,6 +1524,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         assertTrue(mDataNetworkControllerUT.getSubscriptionPlans().isEmpty());
         assertFalse(dataNetwork.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+        assertThat(mDataNetworkControllerUT.isInternetUnmetered()).isFalse();
     }
 
     @Test
