@@ -678,6 +678,10 @@ public class PersistAtomsStorage {
             DataCallSession[] previousDataCallSession = mAtoms.dataCallSession;
             mAtoms.dataCallSession = new DataCallSession[0];
             saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
+            for (DataCallSession dataCallSession : previousDataCallSession) {
+                // sort to de-correlate any potential pattern for UII concern
+                Arrays.sort(dataCallSession.handoverFailureCauses);
+            }
             return previousDataCallSession;
         } else {
             return null;
