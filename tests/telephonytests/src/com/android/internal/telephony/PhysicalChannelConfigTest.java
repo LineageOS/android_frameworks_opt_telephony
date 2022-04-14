@@ -17,6 +17,8 @@ package com.android.internal.telephony;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assert.fail;
+
 import android.os.Parcel;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.PhysicalChannelConfig;
@@ -128,9 +130,10 @@ public class PhysicalChannelConfigTest {
 
     @Test
     public void testFrequencyRangeWithoutBand() {
-        setUpPhysicalChannelConfig(NETWORK_TYPE_UMTS, 0, CHANNEL_NUMBER, CHANNEL_NUMBER, -1);
-        assertThat(mPhysicalChannelConfig.getFrequencyRange())
-                .isEqualTo(ServiceState.FREQUENCY_RANGE_UNKNOWN);
+        try {
+            setUpPhysicalChannelConfig(NETWORK_TYPE_UMTS, 0, CHANNEL_NUMBER, CHANNEL_NUMBER, -1);
+            fail();
+        } catch (IllegalArgumentException expected) { }
     }
 
     @Test
