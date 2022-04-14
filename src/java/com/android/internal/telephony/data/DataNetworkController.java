@@ -194,6 +194,9 @@ public class DataNetworkController extends Handler {
     /** Event for slice config changed. */
     private static final int EVENT_SLICE_CONFIG_CHANGED = 24;
 
+    /** Event for tracking area code changed. */
+    private static final int EVENT_TAC_CHANGED = 25;
+
     /** The supported IMS features. This is for IMS graceful tear down support. */
     private static final Collection<Integer> SUPPORTED_IMS_FEATURES =
             List.of(ImsFeature.FEATURE_MMTEL, ImsFeature.FEATURE_RCS);
@@ -212,12 +215,9 @@ public class DataNetworkController extends Handler {
     private static final long REEVALUATE_UNSATISFIED_NETWORK_REQUESTS_AFTER_CALL_END_DELAY_MILLIS =
             TimeUnit.MILLISECONDS.toMillis(500);
 
-    /**
-     * The maximum number of occurrences within a time window defined by
-     * {@link DataConfigManager#getImsRequestReleaseThrottleAnomalyWindowMs}
-     * for duplicate release-request for IMS, the violation of which triggers anomaly report.
-     */
-    private static final int IMS_REQUEST_RELEASE_THROTTLE_ANOMALY_NUM_OCCURRENCES = 2;
+    /** The delay in milliseconds to re-evaluate unsatisfied network requests after TAC changes. */
+    private static final long REEVALUATE_UNSATISFIED_NETWORK_REQUESTS_TAC_CHANGED_DELAY_MILLIS =
+            TimeUnit.MILLISECONDS.toMillis(100);
 
     private final Phone mPhone;
     private final String mLogTag;
@@ -357,6 +357,9 @@ public class DataNetworkController extends Handler {
      * IMS network.
      */
     private int[] mLastReleasedImsRequestCapabilities;
+
+    /** True after try to release an IMS network; False after try to request an IMS network. */
+    private boolean mLastImsOperationIsRelease;
 
     /** The broadcast receiver. */
     private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
@@ -958,6 +961,7 @@ public class DataNetworkController extends Handler {
                 EVENT_PS_RESTRICT_ENABLED, null);
         mPhone.getServiceStateTracker().registerForPsRestrictedDisabled(this,
                 EVENT_PS_RESTRICT_DISABLED, null);
+        mPhone.getServiceStateTracker().registerForAreaCodeChanged(this, EVENT_TAC_CHANGED, null);
         mPhone.registerForEmergencyCallToggle(this, EVENT_EMERGENCY_CALL_CHANGED, null);
         mDataServiceManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                 .registerForServiceBindingChanged(this, EVENT_DATA_SERVICE_BINDING_CHANGED);
@@ -1039,6 +1043,13 @@ public class DataNetworkController extends Handler {
                 mPsRestricted = false;
                 sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
                         DataEvaluationReason.DATA_RESTRICTED_CHANGED));
+                break;
+            case EVENT_TAC_CHANGED:
+                // Re-evaluate unsatisfied network requests with some delays to let DataRetryManager
+                // clears the throttling record.
+                sendMessageDelayed(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
+                        DataEvaluationReason.TAC_CHANGED),
+                        REEVALUATE_UNSATISFIED_NETWORK_REQUESTS_TAC_CHANGED_DELAY_MILLIS);
                 break;
             case EVENT_DATA_SERVICE_BINDING_CHANGED:
                 AsyncResult ar = (AsyncResult) msg.obj;
@@ -1144,14 +1155,16 @@ public class DataNetworkController extends Handler {
      * @param networkRequest The network request.
      */
     private void onAddNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
-        if (Arrays.equals(mLastReleasedImsRequestCapabilities, networkRequest.getCapabilities())
-                && mImsThrottleCounter.addOccurrence()) {
-            AnomalyReporter.reportAnomaly(
-                    UUID.fromString("ead6f8db-d2f2-4ed3-8da5-1d8560fe7daf"),
-                    networkRequest.getNativeNetworkRequest().getRequestorPackageName()
-                            + " requested with same capabilities falls under "
-                            + mDataConfigManager.getAnomalyImsReleaseRequestThreshold().timeWindow
-                            + " ms window.");
+        if (mLastImsOperationIsRelease) {
+            mLastImsOperationIsRelease = false;
+            if (Arrays.equals(
+                    mLastReleasedImsRequestCapabilities, networkRequest.getCapabilities())
+                    && mImsThrottleCounter.addOccurrence()) {
+                reportAnomaly(networkRequest.getNativeNetworkRequest().getRequestorPackageName()
+                                + " requested with same capabilities "
+                                + mImsThrottleCounter.getFrequencyString(),
+                        "ead6f8db-d2f2-4ed3-8da5-1d8560fe7daf");
+            }
         }
         if (!mAllNetworkRequestList.add(networkRequest)) {
             loge("onAddNetworkRequest: Duplicate network request. " + networkRequest);
@@ -1915,6 +1928,7 @@ public class DataNetworkController extends Handler {
         if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
             mImsThrottleCounter.addOccurrence();
             mLastReleasedImsRequestCapabilities = networkRequest.getCapabilities();
+            mLastImsOperationIsRelease = true;
         }
         if (!mAllNetworkRequestList.remove(networkRequest)) {
             loge("onRemoveNetworkRequest: Network request does not exist. " + networkRequest);
@@ -1936,6 +1950,19 @@ public class DataNetworkController extends Handler {
      */
     public boolean isNetworkRequestExisting(@NonNull TelephonyNetworkRequest networkRequest) {
         return mAllNetworkRequestList.contains(networkRequest);
+    }
+
+    /**
+     * Check if there are existing networks having the same interface name.
+     *
+     * @param interfaceName The interface name to check.
+     * @return {@code true} if the existing network has the same interface name.
+     */
+    public boolean isNetworkInterfaceExisting(@NonNull String interfaceName) {
+        return mDataNetworkList.stream()
+                .filter(dataNetwork -> !dataNetwork.isDisconnecting())
+                .anyMatch(dataNetwork -> interfaceName.equals(
+                        dataNetwork.getLinkProperties().getInterfaceName()));
     }
 
     /**
@@ -2153,11 +2180,9 @@ public class DataNetworkController extends Handler {
      */
     private void onTrackNetworkUnwanted() {
         if (mNetworkUnwantedCounter.addOccurrence()) {
-            AnomalyReporter.reportAnomaly(
-                    UUID.fromString("9f3bc55b-bfa6-4e26-afaa-5031426a66d2"),
-                    String.format("Network Unwanted called %d times in %d ms.",
-                            mNetworkUnwantedCounter.getNumOccurrences(),
-                            mNetworkUnwantedCounter.getWindowSizeMillis()));
+            reportAnomaly("Network Unwanted called "
+                            + mNetworkUnwantedCounter.getFrequencyString(),
+                    "9f3bc55b-bfa6-4e26-afaa-5031426a66d2");
         }
     }
 
@@ -2323,8 +2348,7 @@ public class DataNetworkController extends Handler {
             @NonNull NetworkRequestList requestList, @DataFailureCause int cause,
             long retryDelayMillis) {
         logl("onDataNetworkSetupDataFailed: " + dataNetwork + ", cause="
-                + DataFailCause.toString(cause) + "(0x" + Integer.toHexString(cause)
-                + "), retryDelayMillis=" + retryDelayMillis + "ms.");
+                + DataFailCause.toString(cause) + ", retryDelayMillis=" + retryDelayMillis + "ms.");
         mDataNetworkList.remove(dataNetwork);
         trackSetupDataCallFailure(dataNetwork.getTransport());
         if (mAnyDataNetworkExisting && mDataNetworkList.isEmpty()) {
@@ -2356,21 +2380,32 @@ public class DataNetworkController extends Handler {
         switch (transport) {
             case AccessNetworkConstants.TRANSPORT_TYPE_WWAN:
                 if (mSetupDataCallWwanFailureCounter.addOccurrence()) {
-                    AnomalyReporter.reportAnomaly(
-                            UUID.fromString("e6a98b97-9e34-4977-9a92-01d52a6691f6"),
-                            "RIL fails setup data call request frequently");
+                    reportAnomaly("RIL fails setup data call request "
+                                    + mSetupDataCallWwanFailureCounter.getFrequencyString(),
+                            "e6a98b97-9e34-4977-9a92-01d52a6691f6");
                 }
                 break;
             case AccessNetworkConstants.TRANSPORT_TYPE_WLAN:
                 if (mSetupDataCallWlanFailureCounter.addOccurrence()) {
-                    AnomalyReporter.reportAnomaly(
-                            UUID.fromString("e2248d8b-d55f-42bd-871c-0cfd80c3ddd1"),
-                            "IWLAN data service fails setup data call request frequently");
+                    reportAnomaly("IWLAN data service fails setup data call request "
+                                    + mSetupDataCallWlanFailureCounter.getFrequencyString(),
+                            "e2248d8b-d55f-42bd-871c-0cfd80c3ddd1");
                 }
                 break;
             default:
                 loge("trackSetupDataCallFailure: INVALID transport.");
         }
+    }
+
+    /**
+     * Trigger the anomaly report with the specified UUID.
+     *
+     * @param anomalyMsg Description of the event
+     * @param uuid UUID associated with that event
+     */
+    private void reportAnomaly(@NonNull String anomalyMsg, @NonNull String uuid) {
+        logl(anomalyMsg);
+        AnomalyReporter.reportAnomaly(UUID.fromString(uuid), anomalyMsg);
     }
 
     /**
