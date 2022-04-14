@@ -759,7 +759,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
 
         try {
-            if (mDisabledRadioServices.get(service).contains(mPhoneId)) {
+            if (mMockModem == null && mDisabledRadioServices.get(service).contains(mPhoneId)) {
                 riljLoge("getRadioServiceProxy: " + serviceToString(service) + " for "
                         + HIDL_SERVICE_NAME[mPhoneId] + " is disabled");
             } else {
