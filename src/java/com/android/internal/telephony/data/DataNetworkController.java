@@ -1311,6 +1311,19 @@ public class DataNetworkController extends Handler {
     }
 
     /**
+     * @return {@code true} internet is unmetered.
+     */
+    public boolean isInternetUnmetered() {
+        return mDataNetworkList.stream()
+                .filter(dataNetwork -> !dataNetwork.isConnecting() && !dataNetwork.isDisconnected())
+                .filter(DataNetwork::isInternetSupported)
+                .allMatch(dataNetwork -> dataNetwork.getNetworkCapabilities()
+                        .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+                        || dataNetwork.getNetworkCapabilities()
+                        .hasCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+    }
+
+    /**
      * @return List of the reasons why internet data is not allowed. An empty list if internet
      * is allowed.
      */
