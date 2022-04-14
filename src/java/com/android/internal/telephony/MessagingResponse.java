@@ -273,4 +273,14 @@ public class MessagingResponse extends IRadioMessagingResponse.Stub {
     public void writeSmsToSimResponse(RadioResponseInfo responseInfo, int index) {
         RadioResponse.responseInts(RIL.MESSAGING_SERVICE, mRil, responseInfo, index);
     }
+
+    @Override
+    public String getInterfaceHash() {
+        return IRadioMessagingResponse.HASH;
+    }
+
+    @Override
+    public int getInterfaceVersion() {
+        return IRadioMessagingResponse.VERSION;
+    }
 }

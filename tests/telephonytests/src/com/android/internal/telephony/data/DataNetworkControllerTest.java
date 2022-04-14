@@ -958,6 +958,31 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testDuplicateInterface() throws Exception {
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        processAllMessages();
+
+        // The fota network request would result in duplicate interface.
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_FOTA));
+        processAllFutureMessages();
+
+        // There should be only one network.
+        List<DataNetwork> dataNetworkList = getDataNetworks();
+        assertThat(dataNetworkList).hasSize(1);
+        assertThat(dataNetworkList.get(0).getDataProfile()).isEqualTo(mGeneralPurposeDataProfile);
+        verifyInternetConnected();
+        // Fota should not be connected.
+        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
+
+        // There should be exactly 2 setup data call requests.
+        verify(mMockedWwanDataServiceManager, times(2)).setupDataCall(anyInt(),
+                any(DataProfile.class), anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(),
+                any(), any(), anyBoolean(), any(Message.class));
+    }
+
+    @Test
     public void testMovingFromNoServiceToInService() throws Exception {
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING);
@@ -1878,6 +1903,26 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .isEqualTo(ThrottleStatus.RETRY_TYPE_NEW_CONNECTION);
         assertThat(throttleStatus.getTransportType())
                 .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+    }
+
+    @Test
+    public void testTacChangesClearThrottlingAndRetryHappens() throws Exception {
+        testSetupDataNetworkNetworkSuggestedRetryTimerDataThrottled();
+        processAllFutureMessages();
+
+        setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 1);
+        logd("Sending TAC_CHANGED event");
+        mDataNetworkControllerUT.obtainMessage(25/*EVENT_TAC_CHANGED*/).sendToTarget();
+        mDataNetworkControllerUT.getDataRetryManager().obtainMessage(10/*EVENT_TAC_CHANGED*/)
+                .sendToTarget();
+        processAllFutureMessages();
+
+        // TAC changes should clear the already-scheduled retry and throttling.
+        assertThat(mDataNetworkControllerUT.getDataRetryManager().isAnySetupRetryScheduled(
+                mImsDataProfile, AccessNetworkConstants.TRANSPORT_TYPE_WWAN)).isFalse();
+
+        // But DNC should re-evaluate unsatisfied request and setup IMS again.
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
     }
 
     @Test
