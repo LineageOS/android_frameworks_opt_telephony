@@ -1155,6 +1155,7 @@ public class DataNetworkController extends Handler {
      * @param networkRequest The network request.
      */
     private void onAddNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
+        // To detect IMS back-to-back release-request anomaly event
         if (mLastImsOperationIsRelease) {
             mLastImsOperationIsRelease = false;
             if (Arrays.equals(
@@ -1454,9 +1455,16 @@ public class DataNetworkController extends Handler {
         }
 
         // Check if only one data network is allowed.
-        if (isOnlySingleDataNetworkAllowed(transport) && !mDataNetworkList.isEmpty()) {
-            evaluation.addDataDisallowedReason(
-                    DataDisallowedReason.ONLY_ALLOWED_SINGLE_NETWORK);
+        // Note any IMS network is ignored for the single-connection rule.
+        if (isOnlySingleDataNetworkAllowed(transport)
+                && !networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
+            // if exists non-IMS network
+            if (mDataNetworkList.stream()
+                    .anyMatch(dataNetwork -> !dataNetwork.getNetworkCapabilities()
+                                    .hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS))) {
+                evaluation.addDataDisallowedReason(
+                        DataDisallowedReason.ONLY_ALLOWED_SINGLE_NETWORK);
+            }
         }
 
         if (mDataSettingsManager.isDataInitialized()) {
@@ -1644,8 +1652,10 @@ public class DataNetworkController extends Handler {
         }
 
         // Check if there are other network that has higher priority, and only single data network
-        // is allowed.
-        if (isOnlySingleDataNetworkAllowed(dataNetwork.getTransport())) {
+        // is allowed. Note IMS network is exempt from the single-connection rule.
+        if (isOnlySingleDataNetworkAllowed(dataNetwork.getTransport())
+                && !dataNetwork.getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
             // If there is network request that has higher priority than this data network, then
             // tear down the network, regardless that network request is satisfied or not.
             if (mAllNetworkRequestList.stream()
