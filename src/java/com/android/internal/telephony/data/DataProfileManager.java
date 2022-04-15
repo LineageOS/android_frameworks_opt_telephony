@@ -237,6 +237,7 @@ public class DataProfileManager extends Handler {
             profiles.add(new DataProfile.Builder()
                     .setApnSetting(buildDefaultApnSetting("DEFAULT IMS", "ims",
                             ApnSetting.TYPE_IMS))
+                    .setTrafficDescriptor(new TrafficDescriptor("ims", null))
                     .build());
             log("Added default IMS data profile.");
         }
@@ -250,6 +251,7 @@ public class DataProfileManager extends Handler {
             profiles.add(new DataProfile.Builder()
                     .setApnSetting(buildDefaultApnSetting("DEFAULT EIMS", "sos",
                             ApnSetting.TYPE_EMERGENCY))
+                    .setTrafficDescriptor(new TrafficDescriptor("sos", null))
                     .build());
             log("Added default EIMS data profile.");
         }
