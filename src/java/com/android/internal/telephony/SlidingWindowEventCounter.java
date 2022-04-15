@@ -78,7 +78,7 @@ public class SlidingWindowEventCounter {
     public synchronized boolean isInWindow() {
         return (mTimestampQueueMillis.size() == mNumOccurrences)
                 && mTimestampQueueMillis.peekFirst()
-                + mWindowSizeMillis >= mTimestampQueueMillis.peekLast();
+                + mWindowSizeMillis > mTimestampQueueMillis.peekLast();
     }
 
     @VisibleForTesting
