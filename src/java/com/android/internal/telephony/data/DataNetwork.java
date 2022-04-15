@@ -270,7 +270,7 @@ public class DataNetwork extends StateMachine {
                     TEAR_DOWN_REASON_DATA_PROFILE_NOT_PREFERRED,
                     TEAR_DOWN_REASON_NOT_ALLOWED_BY_POLICY,
                     TEAR_DOWN_REASON_ILLEGAL_STATE,
-                    TEAR_DOWN_ONLY_ALLOWED_SINGLE_NETWORK,
+                    TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK,
             })
     public @interface TearDownReason {}
 
@@ -359,7 +359,7 @@ public class DataNetwork extends StateMachine {
     public static final int TEAR_DOWN_REASON_ILLEGAL_STATE = 28;
 
     /** Data network tear down due to only allowed single network. */
-    public static final int TEAR_DOWN_ONLY_ALLOWED_SINGLE_NETWORK = 29;
+    public static final int TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK = 29;
 
     @IntDef(prefix = {"BANDWIDTH_SOURCE_"},
             value = {
@@ -819,6 +819,12 @@ public class DataNetwork extends StateMachine {
         mDataCallSessionStats = new DataCallSessionStats(mPhone);
         mDataNetworkCallback = callback;
         mDataProfile = dataProfile;
+        if (dataProfile.getTrafficDescriptor() != null) {
+            // The initial traffic descriptor is from the data profile. After that traffic
+            // descriptors will be updated by modem through setup data call response and data call
+            // list changed event.
+            mTrafficDescriptors.add(dataProfile.getTrafficDescriptor());
+        }
         mTransport = transport;
         mDataAllowedReason = dataAllowedReason;
         dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
@@ -1175,10 +1181,24 @@ public class DataNetwork extends StateMachine {
                         log("Ignore tear down request because network is being torn down.");
                         break;
                     }
+
+                    int tearDownReason = msg.arg1;
+                    // If the tear down request is from upper layer, for example, IMS service
+                    // releases network request, we don't need to delay. The purpose of the delay
+                    // is to have IMS service have time to perform IMS de-registration, so if this
+                    // request is from IMS service itself, that means IMS service is already aware
+                    // of the tear down. So there is no need to delay in this case.
+                    if (tearDownReason != TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED
+                            && shouldDelayTearDown()) {
+                        logl("Delay IMS tear down until call ends. reason="
+                                + tearDownReasonToString(tearDownReason));
+                        break;
+                    }
+
                     removeMessages(EVENT_TEAR_DOWN_NETWORK);
                     removeDeferredMessages(EVENT_TEAR_DOWN_NETWORK);
                     transitionTo(mDisconnectingState);
-                    onTearDown(msg.arg1);
+                    onTearDown(tearDownReason);
                     break;
                 case EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED:
                     AsyncResult ar = (AsyncResult) msg.obj;
@@ -2255,12 +2275,8 @@ public class DataNetwork extends StateMachine {
 
     private void onTearDown(@TearDownReason int reason) {
         logl("onTearDown: reason=" + tearDownReasonToString(reason));
-        if (shouldDelayTearDown()) {
-            logl("onTearDown: Delay IMS tear down until call ends.");
-            return;
-        }
 
-        //track frequent networkUnwanted call of IMS and INTERNET
+        // track frequent networkUnwanted call of IMS and INTERNET
         if ((isConnected())
                 && (mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
                 || mNetworkCapabilities.hasCapability(
@@ -2277,7 +2293,8 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
-     * @return {@code true} if this tear down should be delayed on this data network.
+     * @return {@code true} if this tear down should be delayed until call ends on this data
+     * network. For now this is specific to IMS network only.
      */
     public boolean shouldDelayTearDown() {
         return mDataConfigManager.isImsDelayTearDownEnabled()
@@ -2976,8 +2993,8 @@ public class DataNetwork extends StateMachine {
                 return "TEAR_DOWN_REASON_NOT_ALLOWED_BY_POLICY";
             case TEAR_DOWN_REASON_ILLEGAL_STATE:
                 return "TEAR_DOWN_REASON_ILLEGAL_STATE";
-            case TEAR_DOWN_ONLY_ALLOWED_SINGLE_NETWORK:
-                return "TEAR_DOWN_ONLY_ALLOWED_SINGLE_NETWORK";
+            case TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK:
+                return "TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK";
             default:
                 return "UNKNOWN(" + reason + ")";
         }
