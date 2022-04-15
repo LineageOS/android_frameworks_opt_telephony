@@ -1889,7 +1889,7 @@ public class DataNetworkController extends Handler {
                 case VOPS_NOT_SUPPORTED:
                     return DataNetwork.TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED;
                 case ONLY_ALLOWED_SINGLE_NETWORK:
-                    return DataNetwork.TEAR_DOWN_ONLY_ALLOWED_SINGLE_NETWORK;
+                    return DataNetwork.TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK;
             }
         }
         return 0;
