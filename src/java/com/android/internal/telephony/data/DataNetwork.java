@@ -801,6 +801,11 @@ public class DataNetwork extends StateMachine {
             @NonNull DataAllowedReason dataAllowedReason,
             @NonNull DataNetworkCallback callback) {
         super("DataNetwork", looper);
+        // State machine should be initialized at the top of constructor. log() can be only used
+        // after state machine initialized (because getCurrentState() crashes if state machine has
+        // not started.)
+        initializeStateMachine();
+
         mPhone = phone;
         mSubId = phone.getSubId();
         mRil = mPhone.mCi;
@@ -838,6 +843,17 @@ public class DataNetwork extends StateMachine {
             networkRequest.setState(TelephonyNetworkRequest.REQUEST_STATE_SATISFIED);
         }
 
+        // Update the capabilities in the constructor is to make sure the data network has initial
+        // capability immediately after created. Doing this connecting state creates the window that
+        // DataNetworkController might check if existing data network's capability can satisfy the
+        // next network request within this window.
+        updateNetworkCapabilities();
+    }
+
+    /**
+     * Initialize and start the state machine.
+     */
+    private void initializeStateMachine() {
         addState(mDefaultState);
         addState(mConnectingState, mDefaultState);
         addState(mConnectedState, mDefaultState);
@@ -845,13 +861,7 @@ public class DataNetwork extends StateMachine {
         addState(mDisconnectingState, mDefaultState);
         addState(mDisconnectedState, mDefaultState);
         setInitialState(mConnectingState);
-
-        /**
-         * This will trigger {@link DefaultState#enter()}, and then {@link ConnectingState#enter()}.
-         * Check {@link StateMachine} class to see how Android state machine works.
-         */
         start();
-        // Do not add more stuffs here.
     }
 
     /**
@@ -1050,8 +1060,6 @@ public class DataNetwork extends StateMachine {
         public void enter() {
             sendMessageDelayed(EVENT_STUCK_IN_TRANSIENT_STATE,
                     mDataConfigManager.getAnomalyNetworkConnectingTimeoutMs());
-            // Need to calculate the initial capabilities before creating the network agent.
-            updateNetworkCapabilities();
             mNetworkAgent = createNetworkAgent();
             mInitialNetworkAgentId = mNetworkAgent.getId();
             mLogTag = "DN-" + mInitialNetworkAgentId + "-"
@@ -1804,8 +1812,8 @@ public class DataNetwork extends StateMachine {
             // This is the first time when network capabilities is created. The agent is not created
             // at this time. Just return here. The network capabilities will be used when network
             // agent is created.
-            log("Initial capabilities " + mNetworkCapabilities);
             mNetworkCapabilities = nc;
+            logl("Initial capabilities " + mNetworkCapabilities);
             return;
         }
 
