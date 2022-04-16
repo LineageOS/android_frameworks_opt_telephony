@@ -819,6 +819,12 @@ public class DataNetwork extends StateMachine {
         mDataCallSessionStats = new DataCallSessionStats(mPhone);
         mDataNetworkCallback = callback;
         mDataProfile = dataProfile;
+        if (dataProfile.getTrafficDescriptor() != null) {
+            // The initial traffic descriptor is from the data profile. After that traffic
+            // descriptors will be updated by modem through setup data call response and data call
+            // list changed event.
+            mTrafficDescriptors.add(dataProfile.getTrafficDescriptor());
+        }
         mTransport = transport;
         mDataAllowedReason = dataAllowedReason;
         dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
@@ -2278,9 +2284,9 @@ public class DataNetwork extends StateMachine {
             mDataNetworkCallback.onTrackNetworkUnwanted(this);
         }
 
-        // TODO: Need to support DataService.REQUEST_REASON_SHUTDOWN
         mDataServiceManagers.get(mTransport).deactivateDataCall(mCid.get(mTransport),
-                DataService.REQUEST_REASON_NORMAL,
+                reason == TEAR_DOWN_REASON_AIRPLANE_MODE_ON ? DataService.REQUEST_REASON_SHUTDOWN
+                        : DataService.REQUEST_REASON_NORMAL,
                 obtainMessage(EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE));
         mDataCallSessionStats.setDeactivateDataCallReason(DataService.REQUEST_REASON_NORMAL);
         mInvokedDataDeactivation = true;

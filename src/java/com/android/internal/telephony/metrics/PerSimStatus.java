@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.metrics;
 
+import static android.provider.Telephony.Carriers.CONTENT_URI;
 import static android.telephony.PhoneNumberUtils.areSamePhoneNumber;
 import static android.telephony.SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER;
 import static android.telephony.SubscriptionManager.PHONE_NUMBER_SOURCE_IMS;
@@ -31,8 +32,12 @@ import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS__W
 import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS__WFC_MODE__WIFI_PREFERRED;
 
 import android.annotation.Nullable;
+import android.database.Cursor;
+import android.net.Uri;
+import android.provider.Telephony;
 import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
+import android.telephony.data.ApnSetting;
 import android.telephony.ims.ImsManager;
 import android.telephony.ims.ImsMmTelManager;
 import android.text.TextUtils;
@@ -68,6 +73,7 @@ public class PerSimStatus {
     public final boolean disabled2g;
     public final boolean pin1Enabled;
     public final int minimumVoltageClass;
+    public final int userModifiedApnTypes;
 
     /** Returns the current sim status of the given {@link Phone}. */
     @Nullable
@@ -94,7 +100,8 @@ public class PerSimStatus {
                 phone.getAllowedNetworkTypes(TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER),
                 is2gDisabled(phone),
                 iccCard == null ? false : iccCard.getIccLockEnabled(),
-                getMinimumVoltageClass(phone));
+                getMinimumVoltageClass(phone),
+                getUserModifiedApnTypes(phone));
     }
 
     private PerSimStatus(
@@ -111,7 +118,8 @@ public class PerSimStatus {
             long preferredNetworkType,
             boolean disabled2g,
             boolean pin1Enabled,
-            int minimumVoltageClass) {
+            int minimumVoltageClass,
+            int userModifiedApnTypes) {
         this.carrierId = carrierId;
         this.phoneNumberSourceUicc = phoneNumberSourceUicc;
         this.phoneNumberSourceCarrier = phoneNumberSourceCarrier;
@@ -126,6 +134,7 @@ public class PerSimStatus {
         this.disabled2g = disabled2g;
         this.pin1Enabled = pin1Enabled;
         this.minimumVoltageClass = minimumVoltageClass;
+        this.userModifiedApnTypes = userModifiedApnTypes;
     }
 
     @Nullable
@@ -228,6 +237,29 @@ public class PerSimStatus {
                 return PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_C;
             default:
                 return PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_UNKNOWN;
+        }
+    }
+
+    /** Returns the bitmask representing types of APNs modified by user. */
+    private static int getUserModifiedApnTypes(Phone phone) {
+        String[] projections = { Telephony.Carriers.TYPE };
+        String selection = Telephony.Carriers.EDITED_STATUS + "=?";
+        String[] selectionArgs = { Integer.toString(Telephony.Carriers.USER_EDITED) };
+        try (Cursor cursor =
+                phone.getContext()
+                        .getContentResolver()
+                        .query(
+                                Uri.withAppendedPath(
+                                        CONTENT_URI, "subId/" + phone.getSubId()),
+                                projections,
+                                selection,
+                                selectionArgs,
+                                null)) {
+            int bitmask = 0;
+            while (cursor != null && cursor.moveToNext()) {
+                bitmask |= ApnSetting.getApnTypesBitmaskFromString(cursor.getString(0));
+            }
+            return bitmask;
         }
     }
 }

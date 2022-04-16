@@ -69,6 +69,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.stream.Collectors;
 
 /**
  * Data service manager manages handling data requests and responses on data services (e.g.
@@ -115,8 +116,9 @@ public class DataServiceManager extends Handler {
 
     private CellularDataServiceConnection mServiceConnection;
 
-    private final UUID mAnomalyUUID = UUID.fromString("fc1956de-c080-45de-8431-a1faab687110");
     private String mLastBoundPackageName;
+
+    private List<DataCallResponse> mLastDataCallResponseList;
 
     private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
         @Override
@@ -141,7 +143,8 @@ public class DataServiceManager extends Handler {
             String message = "Data service " + mLastBoundPackageName +  " for transport type "
                     + AccessNetworkConstants.transportTypeToString(mTransportType) + " died.";
             loge(message);
-            AnomalyReporter.reportAnomaly(mAnomalyUUID, message);
+            AnomalyReporter.reportAnomaly(UUID.fromString("fc1956de-c080-45de-8431-a1faab687110"),
+                    message);
         }
     }
 
@@ -293,14 +296,39 @@ public class DataServiceManager extends Handler {
 
         @Override
         public void onRequestDataCallListComplete(@DataServiceCallback.ResultCode int resultCode,
-                                              List<DataCallResponse> dataCallList) {
-            if (DBG) log("onRequestDataCallListComplete. resultCode = " + resultCode);
+                List<DataCallResponse> dataCallList) {
+            if (DBG) {
+                log("onRequestDataCallListComplete. resultCode = "
+                        + DataServiceCallback.resultCodeToString(resultCode));
+            }
             Message msg = mMessageMap.remove(asBinder());
+            if (msg != null) {
+                msg.getData().putParcelableList(DATA_CALL_RESPONSE, dataCallList);
+            }
             sendCompleteMessage(msg, resultCode);
+
+            // Handle data stall case on WWAN transport
+            if (mTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
+                if (mLastDataCallResponseList.size() != dataCallList.size()
+                        || !mLastDataCallResponseList.containsAll(dataCallList)) {
+                    String message = "RIL reported mismatched data call response list for WWAN: "
+                            + "mLastDataCallResponseList=" + mLastDataCallResponseList
+                            + ", dataCallList=" + dataCallList;
+                    loge(message);
+                    if (!dataCallList.stream().map(DataCallResponse::getId)
+                            .collect(Collectors.toSet()).equals(mLastDataCallResponseList.stream()
+                                    .map(DataCallResponse::getId).collect(Collectors.toSet()))) {
+                        AnomalyReporter.reportAnomaly(
+                                UUID.fromString("150323b2-360a-446b-a158-3ce6425821f6"), message);
+                    }
+                }
+                onDataCallListChanged(dataCallList);
+            }
         }
 
         @Override
         public void onDataCallListChanged(List<DataCallResponse> dataCallList) {
+            mLastDataCallResponseList = dataCallList;
             mDataCallListChangedRegistrants.notifyRegistrants(
                     new AsyncResult(null, dataCallList, null));
         }

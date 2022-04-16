@@ -251,6 +251,50 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
     }
 
     @Test
+    public void testDoRecoveryWhenMeetDataStallAgain() throws Exception {
+        sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_VALID);
+        mDataStallRecoveryManager.setRecoveryAction(0);
+        doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
+        doReturn(3).when(mSignalStrength).getLevel();
+        doReturn(mSignalStrength).when(mPhone).getSignalStrength();
+        logd("Sending validation failed callback");
+
+        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(0);
+        sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_NOT_VALID);
+        processAllMessages();
+        moveTimeForward(101);
+        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(1);
+
+        sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_NOT_VALID);
+        processAllMessages();
+        moveTimeForward(101);
+        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(3);
+
+        sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_NOT_VALID);
+        processAllMessages();
+        moveTimeForward(101);
+        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(4);
+
+        // Handle multiple VALIDATION_STATUS_NOT_VALID and make sure we don't attempt recovery
+        for (int i = 0; i < 4; i++) {
+            sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_NOT_VALID);
+            logd("Sending validation failed callback");
+            processAllMessages();
+            moveTimeForward(101);
+            assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(0);
+        }
+
+        moveTimeForward(101);
+        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(0);
+
+        mDataStallRecoveryManager.sendMessageDelayed(
+                mDataStallRecoveryManager.obtainMessage(0), 1000);
+        processAllMessages();
+        processAllMessages();
+        assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(0);
+    }
+
+    @Test
     public void testDoNotDoRecoveryWhenDataNoService() throws Exception {
         mDataStallRecoveryManager.setRecoveryAction(1);
         doReturn(mSignalStrength).when(mPhone).getSignalStrength();

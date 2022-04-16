@@ -162,6 +162,12 @@ public class DataNetworkTest extends TelephonyTest {
                             "PRIORITIZE_BANDWIDTH", 1).getBytes()))
             .build();
 
+    private final DataProfile mCbsDataProfile = new DataProfile.Builder()
+            .setTrafficDescriptor(new TrafficDescriptor(null,
+                    new TrafficDescriptor.OsAppId(TrafficDescriptor.OsAppId.ANDROID_OS_ID,
+                            "CBS", 1).getBytes()))
+            .build();
+
     // Mocked classes
     private DataNetworkCallback mDataNetworkCallback;
     private DataCallSessionStats mDataCallSessionStats;
@@ -543,6 +549,80 @@ public class DataNetworkTest extends TelephonyTest {
                 .isTrue();
     }
 
+    @Test
+    public void testCreateDataNetworkOnCbsSlice() throws Exception {
+        DataNetworkController.NetworkRequestList
+                networkRequestList = new DataNetworkController.NetworkRequestList();
+        networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_CBS)
+                .build(), mPhone));
+
+        List<TrafficDescriptor> tds = List.of(
+                new TrafficDescriptor(null, new TrafficDescriptor.OsAppId(
+                        TrafficDescriptor.OsAppId.ANDROID_OS_ID, "CBS", 1)
+                        .getBytes())
+        );
+
+        setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123, tds);
+
+        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
+                mCbsDataProfile, networkRequestList,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, DataAllowedReason.NORMAL,
+                mDataNetworkCallback);
+        replaceInstance(DataNetwork.class, "mDataCallSessionStats",
+                mDataNetworkUT, mDataCallSessionStats);
+        sendServiceStateChangedEvent(ServiceState.STATE_IN_SERVICE,
+                ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN);
+
+        processAllMessages();
+
+        verify(mMockedWwanDataServiceManager).setupDataCall(eq(AccessNetworkType.EUTRAN),
+                eq(mCbsDataProfile), eq(false), eq(false),
+                eq(DataService.REQUEST_REASON_NORMAL), nullable(LinkProperties.class),
+                eq(DataCallResponse.PDU_SESSION_ID_NOT_SET), nullable(NetworkSliceInfo.class),
+                any(TrafficDescriptor.class), eq(false), any(Message.class));
+
+        NetworkCapabilities nc = mDataNetworkUT.getNetworkCapabilities();
+        assertThat(nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_CBS))
+                .isTrue();
+    }
+
+    @Test
+    public void testSlicingDataNetworkHasSlicingCapabilitiesBeforeConnected() throws Exception {
+        DataNetworkController.NetworkRequestList
+                networkRequestList = new DataNetworkController.NetworkRequestList();
+        networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_CBS)
+                .build(), mPhone));
+
+        List<TrafficDescriptor> tds = List.of(
+                new TrafficDescriptor(null, new TrafficDescriptor.OsAppId(
+                        TrafficDescriptor.OsAppId.ANDROID_OS_ID, "CBS", 1)
+                        .getBytes())
+        );
+
+        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
+                mCbsDataProfile, networkRequestList,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, DataAllowedReason.NORMAL,
+                mDataNetworkCallback);
+        replaceInstance(DataNetwork.class, "mDataCallSessionStats",
+                mDataNetworkUT, mDataCallSessionStats);
+        sendServiceStateChangedEvent(ServiceState.STATE_IN_SERVICE,
+                ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN);
+
+        processAllMessages();
+
+        // Didn't call setSuccessfulSetupDataResponse, so data network should stuck in connecting.
+
+        // Verify the network has the right capability at beginning.
+        NetworkCapabilities nc = mDataNetworkUT.getNetworkCapabilities();
+        assertThat(nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_CBS))
+                .isTrue();
+
+        // Verify the network was not detached due to not satisfied.
+        assertThat(networkRequestList).isEqualTo(mDataNetworkUT.getAttachedNetworkRequestList());
+    }
+
     // The purpose of this test is to make sure data could be torn down properly.
     @Test
     public void testTearDown() throws Exception {
@@ -576,6 +656,19 @@ public class DataNetworkTest extends TelephonyTest {
         assertThat(pdcsList.get(3).getTransportType())
                 .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
     }
+
+    @Test
+    public void testAirplaneModeShutdownDeactivateData() throws Exception {
+        testCreateDataNetwork();
+
+        mDataNetworkUT.tearDown(DataNetwork.TEAR_DOWN_REASON_AIRPLANE_MODE_ON);
+        processAllMessages();
+
+        // Make sure REQUEST_REASON_SHUTDOWN is sent when tear down reason is APM.
+        verify(mMockedWwanDataServiceManager).deactivateDataCall(eq(123),
+                eq(DataService.REQUEST_REASON_SHUTDOWN), any(Message.class));
+    }
+
 
     @Test
     public void testCreateDataNetworkOnIwlan() throws Exception {
