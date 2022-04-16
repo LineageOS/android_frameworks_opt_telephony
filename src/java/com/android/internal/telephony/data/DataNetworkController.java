@@ -2456,6 +2456,7 @@ public class DataNetworkController extends Handler {
                 request -> !mAllNetworkRequestList.contains(request));
         if (dataSetupRetryEntry.networkRequestList.isEmpty()) {
             loge("onDataNetworkSetupRetry: Request list is empty. Abort retry.");
+            dataSetupRetryEntry.setState(DataRetryEntry.RETRY_STATE_CANCELLED);
             return;
         }
         TelephonyNetworkRequest telephonyNetworkRequest =
