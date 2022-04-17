@@ -976,4 +976,21 @@ public class DataNetworkTest extends TelephonyTest {
         assertThat(networkAgentConfig.legacySubType).isEqualTo(TelephonyManager.NETWORK_TYPE_LTE);
         assertThat(networkAgentConfig.skip464xlat).isTrue();
     }
+
+    @Test
+    public void testDataNetworkHasCapabilitiesAtBeginning() {
+        DataNetworkController.NetworkRequestList
+                networkRequestList = new DataNetworkController.NetworkRequestList();
+        networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build(), mPhone));
+        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
+                mInternetDataProfile, networkRequestList,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                DataAllowedReason.NORMAL, mDataNetworkCallback);
+        NetworkCapabilities caps = mDataNetworkUT.getNetworkCapabilities();
+        assertThat(caps).isNotNull();
+        assertThat(caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)).isTrue();
+        assertThat(caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_SUPL)).isTrue();
+    }
 }
