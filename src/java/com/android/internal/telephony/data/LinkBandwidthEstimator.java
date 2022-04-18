@@ -18,6 +18,7 @@ package com.android.internal.telephony.data;
 
 import static android.net.NetworkCapabilities.TRANSPORT_CELLULAR;
 
+import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
@@ -35,6 +36,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.preference.PreferenceManager;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.Annotation.DataActivityType;
 import android.telephony.CellIdentity;
 import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
@@ -48,6 +50,7 @@ import android.telephony.SignalStrength;
 import android.telephony.TelephonyCallback;
 import android.telephony.TelephonyManager;
 import android.util.ArrayMap;
+import android.util.ArraySet;
 import android.util.LocalLog;
 import android.util.Pair;
 import android.view.Display;
@@ -65,6 +68,8 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.Executor;
 
 /**
  * Link Bandwidth Estimator based on the byte counts in TrafficStats and the time reported in modem
@@ -189,6 +194,42 @@ public class LinkBandwidthEstimator extends Handler {
     private RegistrantList mBandwidthChangedRegistrants = new RegistrantList();
     private long mLastPlmnOrRatChangeTimeMs;
     private long mLastDrsOrRatChangeTimeMs;
+
+    private int mDataActivity = TelephonyManager.DATA_ACTIVITY_NONE;
+
+    /** Link bandwidth estimator callbacks. */
+    private final @NonNull Set<LinkBandwidthEstimatorCallback> mLinkBandwidthEstimatorCallbacks =
+            new ArraySet<>();
+
+    /**
+     * The link bandwidth estimator callback. Note this is only used for passing information
+     * internally in the data stack, should not be used externally.
+     */
+    public static class LinkBandwidthEstimatorCallback extends DataCallback {
+        /**
+         * Constructor
+         *
+         * @param executor The executor of the callback.
+         */
+        public LinkBandwidthEstimatorCallback(@NonNull @CallbackExecutor Executor executor) {
+            super(executor);
+        }
+
+        /**
+         * Called when data activity changed.
+         *
+         * @param dataActivity The data activity.
+         */
+        public void onDataActivityChanged(@DataActivityType int dataActivity) {}
+
+        /**
+         * Called when bandwidth changed.
+         *
+         * @param uplinkBandwidthKbps Uplink bandwidth estimate in Kbps.
+         * @param downlinkBandwidthKbps Downlink bandwidth estimate in Kbps.
+         */
+        public void onBandwidthChanged(int uplinkBandwidthKbps, int downlinkBandwidthKbps) {}
+    }
 
     private static void initAvgBwPerRatTable() {
         for (String config : AVG_BW_PER_RAT) {
@@ -316,7 +357,10 @@ public class LinkBandwidthEstimator extends Handler {
      * @param h handler to notify
      * @param what what code of message when delivered
      * @param obj placed in Message.obj
+     *
+     * @deprecated Use {@link #registerCallback(LinkBandwidthEstimatorCallback)}.
      */
+    @Deprecated //TODO: Remove once old data stack is removed.
     public void registerForBandwidthChanged(Handler h, int what, Object obj) {
         Registrant r = new Registrant(h, what, obj);
         mBandwidthChangedRegistrants.add(r);
@@ -325,10 +369,32 @@ public class LinkBandwidthEstimator extends Handler {
     /**
      * Unregisters for bandwidth estimation change.
      * @param h handler to notify
+     *
+     * @deprecated Use {@link #unregisterCallback(LinkBandwidthEstimatorCallback)}.
      */
+    @Deprecated //TODO: Remove once old data stack is removed.
     public void unregisterForBandwidthChanged(Handler h) {
         mBandwidthChangedRegistrants.remove(h);
     }
+
+    /**
+     * Register the callback for receiving information from {@link LinkBandwidthEstimator}.
+     *
+     * @param callback The callback.
+     */
+    public void registerCallback(@NonNull LinkBandwidthEstimatorCallback callback) {
+        mLinkBandwidthEstimatorCallbacks.add(callback);
+    }
+
+    /**
+     * Unregister the callback.
+     *
+     * @param callback The previously registered callback.
+     */
+    public void unregisterCallback(@NonNull LinkBandwidthEstimatorCallback callback) {
+        mLinkBandwidthEstimatorCallbacks.remove(callback);
+    }
+
     /**
      * @return True if one the device's screen (e.g. main screen, wifi display, HDMI display etc...)
      * is on.
@@ -455,6 +521,23 @@ public class LinkBandwidthEstimator extends Handler {
             // Filter update will happen after the request
             makeRequestModemActivity();
             return;
+        }
+
+        int dataActivity;
+        if (txBytesDelta > 0 && rxBytesDelta > 0) {
+            dataActivity = TelephonyManager.DATA_ACTIVITY_INOUT;
+        } else if (rxBytesDelta > 0) {
+            dataActivity = TelephonyManager.DATA_ACTIVITY_IN;
+        } else if (txBytesDelta > 0) {
+            dataActivity = TelephonyManager.DATA_ACTIVITY_OUT;
+        } else {
+            dataActivity = TelephonyManager.DATA_ACTIVITY_NONE;
+        }
+
+        if (mDataActivity != dataActivity) {
+            mDataActivity = dataActivity;
+            mLinkBandwidthEstimatorCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                    () -> callback.onDataActivityChanged(dataActivity)));
         }
 
         long timeSinceLastFilterUpdateMs = currTimeMs - mFilterUpdateTimeMs;
@@ -850,6 +933,8 @@ public class LinkBandwidthEstimator extends Handler {
         Pair<Integer, Integer> bandwidthInfo =
                 new Pair<Integer, Integer>(linkBandwidthTxKps, linkBandwidthRxKps);
         mBandwidthChangedRegistrants.notifyRegistrants(new AsyncResult(null, bandwidthInfo, null));
+        mLinkBandwidthEstimatorCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                () -> callback.onBandwidthChanged(linkBandwidthTxKps, linkBandwidthRxKps)));
     }
 
     private void handleSignalStrengthChanged(SignalStrength signalStrength) {
@@ -874,6 +959,13 @@ public class LinkBandwidthEstimator extends Handler {
                 MSG_NR_STATE_CHANGED, null);
         mPhone.getServiceStateTracker().registerForNrFrequencyChanged(this,
                 MSG_NR_FREQUENCY_CHANGED, null);
+    }
+
+    /**
+     * @return The data activity.
+     */
+    public @DataActivityType int getDataActivity() {
+        return mDataActivity;
     }
 
     /**
