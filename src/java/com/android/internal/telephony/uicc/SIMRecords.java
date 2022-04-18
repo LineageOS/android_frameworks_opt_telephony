@@ -108,7 +108,8 @@ public class SIMRecords extends IccRecords {
                 + " efCPHS_MWI=" + mEfCPHS_MWI
                 + " mEfCff=" + mEfCff
                 + " mEfCfis=" + mEfCfis
-                + " getOperatorNumeric=" + getOperatorNumeric();
+                + " getOperatorNumeric=" + getOperatorNumeric()
+                + " mPsiSmsc=" + mPsiSmsc;
     }
 
     // ***** Constants
@@ -184,6 +185,7 @@ public class SIMRecords extends IccRecords {
     private static final int EVENT_GET_FPLMN_DONE = 41 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_GET_FPLMN_SIZE_DONE = 42 + SIM_RECORD_EVENT_BASE;
     private static final int EVENT_SET_FPLMN_DONE = 43 + SIM_RECORD_EVENT_BASE;
+    protected static final int EVENT_GET_PSISMSC_DONE = 47 + SIM_RECORD_EVENT_BASE;
     // ***** Constructor
 
     public SIMRecords(UiccCardApplication app, Context c, CommandsInterface ci) {
@@ -1291,6 +1293,22 @@ public class SIMRecords extends IccRecords {
                     }
                     break;
 
+                case EVENT_GET_PSISMSC_DONE:
+                    isRecordLoadResponse = true;
+                    ar = (AsyncResult) msg.obj;
+                    if (ar.exception != null) {
+                        loge("Failed to read USIM EF_SMSS field error=" + ar.exception);
+                    } else {
+                        data = (byte[]) ar.result;
+                        if (data != null && data.length > 0) {
+                            mPsiSmsc = parseEfPsiSmsc(data);
+                            if (VDBG) {
+                                log("SIMRecords - EF_PSISMSC value = " + mPsiSmsc);
+                            }
+                        }
+                    }
+                    break;
+
                 default:
                     super.handleMessage(msg);   // IccRecords handles generic record load responses
             }
@@ -1678,6 +1696,9 @@ public class SIMRecords extends IccRecords {
 
         loadEfLiAndEfPl();
         mFh.getEFLinearRecordSize(EF_SMS, obtainMessage(EVENT_GET_SMS_RECORD_SIZE_DONE));
+        mRecordsToLoad++;
+
+        mFh.loadEFLinearFixed(EF_PSISMSC, 1, obtainMessage(EVENT_GET_PSISMSC_DONE));
         mRecordsToLoad++;
 
         // XXX should seek instead of examining them all
@@ -2144,6 +2165,7 @@ public class SIMRecords extends IccRecords {
         pw.println(" mHplmnActRecords[]=" + Arrays.toString(mHplmnActRecords));
         pw.println(" mFplmns[]=" + Arrays.toString(mFplmns));
         pw.println(" mEhplmns[]=" + Arrays.toString(mEhplmns));
+        pw.println(" mPsismsc=" + mPsiSmsc);
         pw.flush();
     }
 }
