@@ -198,7 +198,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
                     .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
                     .setCarrierEnabled(true)
                     .setNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_LTE
-                            | TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN))
+                            | TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN
+                            | TelephonyManager.NETWORK_TYPE_BITMASK_1xRTT))
                     .setLingeringNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_LTE
                             | TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN
                             | TelephonyManager.NETWORK_TYPE_BITMASK_UMTS
@@ -1534,6 +1535,60 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testOnSinglePdnArbitrationExemptIms() throws Exception {
+        // On CDMA network, only one data network is allowed.
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_1xRTT,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        // Preferred on cellular
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(anyInt());
+        // Add IMS
+        TelephonyNetworkRequest ims = createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS);
+        mDataNetworkControllerUT.addNetworkRequest(ims);
+        processAllMessages();
+
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
+
+        // Add internet, should be compatible with
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        setSuccessfulSetupDataResponse(mMockedDataServiceManagers
+                .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), 2);
+        processAllMessages();
+
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
+
+        // Add MMS, whose priority > internet, internet should be town down, IMS left untouched
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_MMS));
+        setSuccessfulSetupDataResponse(mMockedDataServiceManagers
+                .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), 3);
+        processAllMessages();
+
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_MMS);
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
+
+        // Temporarily remove IMS
+        mDataNetworkControllerUT.removeNetworkRequest(ims);
+        processAllMessages();
+        List<DataNetwork> dataNetworks = getDataNetworks();
+        dataNetworks.get(0).tearDown(DataNetwork.TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED);
+        processAllMessages();
+
+        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+
+        // Add IMS, should be compatible with the existing internet
+        setSuccessfulSetupDataResponse(mMockedDataServiceManagers
+                .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), 4);
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS));
+        processAllMessages();
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
+    }
+
+    @Test
     public void testLinkStatusChanged() throws Exception {
         testSetupDataNetwork();
         verify(mMockedDataNetworkControllerCallback).onPhysicalLinkStatusChanged(
@@ -2357,6 +2412,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         TelephonyNetworkRequest fotaRequest = createNetworkRequest(
                 NetworkCapabilities.NET_CAPABILITY_FOTA);
         mDataNetworkControllerUT.addNetworkRequest(fotaRequest);
+
         processAllFutureMessages();
         // The existing internet data network should be torn down.
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
