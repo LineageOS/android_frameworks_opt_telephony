@@ -464,6 +464,35 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testSimpleDsdsInSuW() {
+        // at first boot default is not set
+        doReturn(-1).when(mSubControllerMock).getDefaultDataSubId();
+
+        doReturn(true).when(mPhoneMock1).isUserDataEnabled();
+        doReturn(true).when(mPhoneMock2).isUserDataEnabled();
+        // setting DEVICE_PROVISIONED as 0 to indicate SuW is running.
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.DEVICE_PROVISIONED, 0);
+        // After initialization, sub 2 should have mobile data off.
+        mMultiSimSettingControllerUT.notifyAllSubscriptionLoaded();
+        mMultiSimSettingControllerUT.notifyCarrierConfigChanged(0, 1);
+        mMultiSimSettingControllerUT.notifyCarrierConfigChanged(1, 2);
+        processAllMessages();
+        verify(mDataEnabledSettingsMock1).setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false);
+        verify(mDataEnabledSettingsMock2).setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false);
+
+        // as a result of the above calls, update new values to be returned
+        doReturn(false).when(mPhoneMock1).isUserDataEnabled();
+        doReturn(false).when(mPhoneMock2).isUserDataEnabled();
+
+        // No user selection needed, no intent should be sent.
+        verify(mContext, never()).sendBroadcast(any());
+    }
+
+    @Test
+    @SmallTest
     public void testDsdsGrouping() {
         doReturn(2).when(mSubControllerMock).getDefaultDataSubId();
         doReturn(false).when(mPhoneMock1).isUserDataEnabled();
