@@ -75,6 +75,7 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
 import android.telephony.emergency.EmergencyNumber;
@@ -711,6 +712,9 @@ public abstract class TelephonyTest {
         //Misc
         doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS).when(mServiceState).
                 getRilDataRadioTechnology();
+        doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_UMTS,
+                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE))
+                .when(mDisplayInfoController).getTelephonyDisplayInfo();
         doReturn(mPhone).when(mCT).getPhone();
         doReturn(mImsEcbm).when(mImsManager).getEcbmInterface();
         doReturn(mPhone).when(mInboundSmsHandler).getPhone();
@@ -878,10 +882,13 @@ public abstract class TelephonyTest {
         }
         TestableLooper.remove(TelephonyTest.this);
 
-        mSimulatedCommands.dispose();
-        SharedPreferences sharedPreferences = mContext.getSharedPreferences((String) null, 0);
-        sharedPreferences.edit().clear().commit();
-
+        if (mSimulatedCommands != null) {
+            mSimulatedCommands.dispose();
+        }
+        if (mContext != null) {
+            SharedPreferences sharedPreferences = mContext.getSharedPreferences((String) null, 0);
+            sharedPreferences.edit().clear().commit();
+        }
         restoreInstances();
         TelephonyManager.enableServiceHandleCaching();
         SubscriptionController.enableCaching();
