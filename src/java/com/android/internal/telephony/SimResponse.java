@@ -439,4 +439,14 @@ public class SimResponse extends IRadioSimResponse.Stub {
             int updatedRecordIndex) {
         RadioResponse.responseInts(RIL.SIM_SERVICE, mRil, responseInfo, updatedRecordIndex);
     }
+
+    @Override
+    public String getInterfaceHash() {
+        return IRadioSimResponse.HASH;
+    }
+
+    @Override
+    public int getInterfaceVersion() {
+        return IRadioSimResponse.VERSION;
+    }
 }

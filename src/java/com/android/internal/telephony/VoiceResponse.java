@@ -390,4 +390,14 @@ public class VoiceResponse extends IRadioVoiceResponse.Stub {
     public void switchWaitingOrHoldingAndActiveResponse(RadioResponseInfo responseInfo) {
         RadioResponse.responseVoid(RIL.VOICE_SERVICE, mRil, responseInfo);
     }
+
+    @Override
+    public String getInterfaceHash() {
+        return IRadioVoiceResponse.HASH;
+    }
+
+    @Override
+    public int getInterfaceVersion() {
+        return IRadioVoiceResponse.VERSION;
+    }
 }

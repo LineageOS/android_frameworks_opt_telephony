@@ -438,4 +438,14 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
             mRil.mCatCallSetUpRegistrant.notifyRegistrant(new AsyncResult(null, timeout, null));
         }
     }
+
+    @Override
+    public String getInterfaceHash() {
+        return IRadioVoiceIndication.HASH;
+    }
+
+    @Override
+    public int getInterfaceVersion() {
+        return IRadioVoiceIndication.VERSION;
+    }
 }
