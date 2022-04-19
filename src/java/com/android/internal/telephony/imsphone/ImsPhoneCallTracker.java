@@ -5672,7 +5672,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * @param profile the SrvccCall of the connection to be added
      * @param c the ImsPhoneConnection of the connection to be added
      */
-    private static void addConnection(
+    private void addConnection(
             List<SrvccConnection> destList, SrvccCall profile, ImsPhoneConnection c) {
         if (destList == null) return;
         if (profile == null) return;
@@ -5680,10 +5680,32 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         int preciseCallState = profile.getPreciseCallState();
         if (!isAlive(preciseCallState)) return;
 
-        SrvccConnection srvccConnection =
-                new SrvccConnection(profile.getImsCallProfile(), c, preciseCallState);
+        List<ConferenceParticipant> participants = getConferenceParticipants(c);
+        if (participants != null) {
+            for (ConferenceParticipant cp : participants) {
+                if (cp.getState() == android.telecom.Connection.STATE_DISCONNECTED) {
+                    Rlog.i(LOG_TAG, "addConnection participant is disconnected");
+                    continue;
+                }
+                SrvccConnection srvccConnection = new SrvccConnection(cp, preciseCallState);
+                destList.add(srvccConnection);
+            }
+        } else {
+            SrvccConnection srvccConnection =
+                    new SrvccConnection(profile.getImsCallProfile(), c, preciseCallState);
+            destList.add(srvccConnection);
+        }
+    }
 
-        destList.add(srvccConnection);
+    private List<ConferenceParticipant> getConferenceParticipants(ImsPhoneConnection c) {
+        if (!mSrvccTypeSupported.contains(MIDCALL_SRVCC_SUPPORT)) return null;
+
+        ImsCall imsCall = c.getImsCall();
+        if (imsCall == null) return null;
+
+        List<ConferenceParticipant> participants = imsCall.getConferenceParticipants();
+        if (participants == null || participants.isEmpty()) return null;
+        return participants;
     }
 
     private static boolean isAlive(int preciseCallState) {

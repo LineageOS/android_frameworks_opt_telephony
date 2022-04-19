@@ -23,6 +23,7 @@ import static android.net.NetworkStats.TAG_NONE;
 import static android.net.NetworkStats.UID_ALL;
 import static android.telephony.CarrierConfigManager.ImsVoice.ALERTING_SRVCC_SUPPORT;
 import static android.telephony.CarrierConfigManager.ImsVoice.BASIC_SRVCC_SUPPORT;
+import static android.telephony.CarrierConfigManager.ImsVoice.MIDCALL_SRVCC_SUPPORT;
 import static android.telephony.CarrierConfigManager.ImsVoice.PREALERTING_SRVCC_SUPPORT;
 import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_ACTIVE;
 import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_ALERTING;
@@ -71,6 +72,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.NetworkStats;
 import android.net.NetworkStats.Entry;
+import android.net.Uri;
 import android.net.netstats.provider.INetworkStatsProviderCallback;
 import android.os.Bundle;
 import android.os.Message;
@@ -106,6 +108,7 @@ import com.android.ims.ImsCall;
 import com.android.ims.ImsConfig;
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
+import com.android.ims.internal.ConferenceParticipant;
 import com.android.ims.internal.IImsCallSession;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
@@ -2242,6 +2245,77 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         verify(mImsManager, times(1)).notifySrvccCompleted();
     }
 
+    @Test
+    @SmallTest
+    public void testConvertToSrvccConnectionInfoConferenceCall() throws Exception {
+        // setup ImsPhoneCallTracker's mConnections
+        ImsPhoneConnection activeMO = getImsPhoneConnection(Call.State.ACTIVE, "1234", false);
+
+        ArrayList<ImsPhoneConnection> connections = new ArrayList<ImsPhoneConnection>();
+        replaceInstance(ImsPhoneCallTracker.class, "mConnections", mCTUT, connections);
+        connections.add(activeMO);
+
+        List<ConferenceParticipant> participants = new ArrayList<ConferenceParticipant>();
+        participants.add(new ConferenceParticipant(Uri.parse("tel:1234"), "", null,
+                  android.telecom.Connection.STATE_ACTIVE,
+                  android.telecom.Call.Details.DIRECTION_INCOMING));
+        participants.add(new ConferenceParticipant(Uri.parse("tel:5678"), "", null,
+                  android.telecom.Connection.STATE_ACTIVE,
+                  android.telecom.Call.Details.DIRECTION_OUTGOING));
+
+        ImsCallProfile activeProfile = getImsCallProfileForSrvccSync("activeCall",
+                activeMO, false, participants);
+
+        // setup the response of notifySrvccStarted
+        List<SrvccCall> profiles = new ArrayList<>();
+
+        SrvccConnection[] srvccConnections = mCTUT.convertToSrvccConnectionInfo(profiles);
+        assertNull(srvccConnections);
+
+        // active call
+        SrvccCall srvccProfile = new SrvccCall(
+                "activeCall", PRECISE_CALL_STATE_ACTIVE, activeProfile);
+        profiles.add(srvccProfile);
+
+        PersistableBundle bundle = mContextFixture.getCarrierConfigBundle();
+        bundle.putIntArray(
+                CarrierConfigManager.ImsVoice.KEY_SRVCC_TYPE_INT_ARRAY,
+                new int[] {
+                        BASIC_SRVCC_SUPPORT,
+                });
+        mCTUT.updateCarrierConfigCache(bundle);
+
+        srvccConnections = mCTUT.convertToSrvccConnectionInfo(profiles);
+        assertNotNull(srvccConnections);
+        assertTrue(srvccConnections.length == 1);
+        assertTrue(srvccConnections[0].getState() == Call.State.ACTIVE);
+        assertFalse(srvccConnections[0].isMultiParty());
+        assertEquals("1234", srvccConnections[0].getNumber());
+
+        bundle = mContextFixture.getCarrierConfigBundle();
+        bundle.putIntArray(
+                CarrierConfigManager.ImsVoice.KEY_SRVCC_TYPE_INT_ARRAY,
+                new int[] {
+                        BASIC_SRVCC_SUPPORT,
+                        MIDCALL_SRVCC_SUPPORT
+                });
+        mCTUT.updateCarrierConfigCache(bundle);
+
+        srvccConnections = mCTUT.convertToSrvccConnectionInfo(profiles);
+        assertNotNull(srvccConnections);
+        assertTrue(srvccConnections.length == 2);
+
+        assertTrue(srvccConnections[0].getState() == Call.State.ACTIVE);
+        assertTrue(srvccConnections[0].isMultiParty());
+        assertTrue(srvccConnections[0].isIncoming());
+        assertEquals("1234", srvccConnections[0].getNumber());
+
+        assertTrue(srvccConnections[1].getState() == Call.State.ACTIVE);
+        assertTrue(srvccConnections[1].isMultiParty());
+        assertFalse(srvccConnections[1].isIncoming());
+        assertEquals("5678", srvccConnections[1].getNumber());
+    }
+
     private void sendCarrierConfigChanged() {
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         intent.putExtra(CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
@@ -2334,6 +2408,11 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
     private ImsCallProfile getImsCallProfileForSrvccSync(String callId,
             ImsPhoneConnection c, boolean localTone) {
+        return getImsCallProfileForSrvccSync(callId, c, localTone, null);
+    }
+
+    private ImsCallProfile getImsCallProfileForSrvccSync(String callId,
+            ImsPhoneConnection c, boolean localTone, List<ConferenceParticipant> participants) {
         ImsStreamMediaProfile mediaProfile = new ImsStreamMediaProfile(0,
                 localTone ? DIRECTION_INACTIVE : DIRECTION_SEND_RECEIVE, 0, 0, 0);
         ImsCallProfile profile = new ImsCallProfile(0, 0, null, mediaProfile);
@@ -2345,6 +2424,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             ImsCall imsCall = mock(ImsCall.class);
             doReturn(profile).when(imsCall).getCallProfile();
             doReturn(session).when(imsCall).getCallSession();
+            doReturn(participants).when(imsCall).getConferenceParticipants();
 
             doReturn(imsCall).when(c).getImsCall();
         }

@@ -24,10 +24,13 @@ import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_INCOMING;
 import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_INCOMING_SETUP;
 import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_WAITING;
 
+import android.net.Uri;
 import android.telephony.Annotation.PreciseCallStates;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsStreamMediaProfile;
+import android.text.TextUtils;
 
+import com.android.ims.internal.ConferenceParticipant;
 import com.android.internal.telephony.imsphone.ImsPhoneConnection;
 
 /**
@@ -92,6 +95,39 @@ public class SrvccConnection {
         } else {
             initialize(c);
         }
+    }
+
+    public SrvccConnection(ConferenceParticipant cp, @PreciseCallStates int preciseCallState) {
+        mState = toCallState(preciseCallState);
+        mIsMT = cp.getCallDirection() == android.telecom.Call.Details.DIRECTION_INCOMING;
+        mNumber = getParticipantAddress(cp.getHandle());
+        mNumPresentation = cp.getParticipantPresentation();
+        if (mNumPresentation == PhoneConstants.PRESENTATION_RESTRICTED) {
+            mNumber = "";
+        }
+        mName = cp.getDisplayName();
+        if (!TextUtils.isEmpty(mName)) {
+            mNamePresentation = PhoneConstants.PRESENTATION_ALLOWED;
+        } else {
+            mNamePresentation = PhoneConstants.PRESENTATION_UNKNOWN;
+        }
+        mIsMpty = true;
+    }
+
+    private static String getParticipantAddress(Uri address) {
+        if (address == null) {
+            return null;
+        }
+
+        String number = address.getSchemeSpecificPart();
+        if (TextUtils.isEmpty(number)) {
+            return null;
+        }
+
+        String[] numberParts = number.split("[@;:]");
+        if (numberParts.length == 0) return null;
+
+        return numberParts[0];
     }
 
     // MT call in alerting or prealerting state
