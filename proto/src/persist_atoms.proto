@@ -89,10 +89,10 @@ message PersistAtoms {
     optional string build_fingerprint = 21;
 
     /* Summary of received network requests. */
-    repeated NetworkRequests network_requests = 22;
+    repeated NetworkRequests network_requests = 22 [deprecated = true];
 
     /* Timestamp of last network_requests pull. */
-    optional int64 network_requests_pull_timestamp_millis = 23;
+    optional int64 network_requests_pull_timestamp_millis = 23 [deprecated = true];
 
     /* RCS single registrtions feature tag information. */
     repeated ImsRegistrationFeatureTagStats ims_registration_feature_tag_stats = 24;
@@ -171,6 +171,12 @@ message PersistAtoms {
 
     /* Timestamp of last gba_event pull. */
     optional int64 gba_event_pull_timestamp_millis = 49;
+
+    /* Summary of received network requests. */
+    repeated NetworkRequestsV2 network_requests_v2 = 50;
+
+    /* Timestamp of last network_requests_v2 pull. */
+    optional int64 network_requests_v2_pull_timestamp_millis = 51;
 }
 
 // The canonical versions of the following enums live in:
@@ -347,10 +353,24 @@ message ImsRegistrationStats {
     optional int64 last_used_millis = 10001;
 }
 
+// deprecated - please use NetworkRequestsV2 instead
 message NetworkRequests {
     optional int32 carrier_id = 1;
     optional int32 enterprise_request_count = 2;
     optional int32 enterprise_release_count = 3;
+}
+
+message NetworkRequestsV2 {
+    enum NetworkCapability {
+        UNKNOWN = 0;
+        PRIORITIZE_LATENCY = 1;
+        PRIORITIZE_BANDWIDTH = 2;
+        CBS = 3;
+        ENTERPRISE = 4;
+    }
+    optional int32 carrier_id = 1;
+    optional NetworkCapability capability = 2;
+    optional int32 request_count = 3;
 }
 
 message ImsRegistrationFeatureTagStats {
