@@ -20,6 +20,7 @@ import static com.android.internal.telephony.TelephonyStatsLog.CARRIER_ID_TABLE_
 import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_DATA_SERVICE_SWITCH;
 import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_SERVICE_STATE;
 import static com.android.internal.telephony.TelephonyStatsLog.DATA_CALL_SESSION;
+import static com.android.internal.telephony.TelephonyStatsLog.DEVICE_TELEPHONY_PROPERTIES;
 import static com.android.internal.telephony.TelephonyStatsLog.GBA_EVENT;
 import static com.android.internal.telephony.TelephonyStatsLog.IMS_DEDICATED_BEARER_EVENT;
 import static com.android.internal.telephony.TelephonyStatsLog.IMS_DEDICATED_BEARER_LISTENER_EVENT;
@@ -166,6 +167,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             registerAtom(SIP_TRANSPORT_FEATURE_TAG_STATS, POLICY_PULL_DAILY);
             registerAtom(SIP_MESSAGE_RESPONSE, POLICY_PULL_DAILY);
             registerAtom(SIP_TRANSPORT_SESSION, POLICY_PULL_DAILY);
+            registerAtom(DEVICE_TELEPHONY_PROPERTIES, null);
             registerAtom(IMS_DEDICATED_BEARER_LISTENER_EVENT, POLICY_PULL_DAILY);
             registerAtom(IMS_DEDICATED_BEARER_EVENT, POLICY_PULL_DAILY);
             registerAtom(IMS_REGISTRATION_SERVICE_DESC_STATS, POLICY_PULL_DAILY);
@@ -218,6 +220,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 return pullImsRegistrationTermination(data);
             case TELEPHONY_NETWORK_REQUESTS_V2:
                 return pullTelephonyNetworkRequestsV2(data);
+            case DEVICE_TELEPHONY_PROPERTIES:
+                return pullDeviceTelephonyProperties(data);
             case IMS_REGISTRATION_FEATURE_TAG_STATS:
                 return pullImsRegistrationFeatureTagStats(data);
             case RCS_CLIENT_PROVISIONING_STATS:
@@ -470,6 +474,17 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             Rlog.w(TAG, "TELEPHONY_NETWORK_REQUESTS_V2 pull too frequent, skipping");
             return StatsManager.PULL_SKIP;
         }
+    }
+
+    private static int pullDeviceTelephonyProperties(List<StatsEvent> data) {
+        Phone[] phones = getPhonesIfAny();
+        if (phones.length == 0) {
+            return StatsManager.PULL_SKIP;
+        }
+
+        data.add(TelephonyStatsLog.buildStatsEvent(DEVICE_TELEPHONY_PROPERTIES,
+                phones[0].isUsingNewDataStack()));
+        return StatsManager.PULL_SUCCESS;
     }
 
     private int pullImsRegistrationFeatureTagStats(List<StatsEvent> data) {
