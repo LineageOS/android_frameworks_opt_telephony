@@ -461,6 +461,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .setRegistrationState(regState)
                 .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
                 .build());
+        ss.setDataRoamingFromRegistration(regState
+                == NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
         doReturn(ss).when(mSST).getServiceState();
         doReturn(ss).when(mPhone).getServiceState();
 
@@ -1726,6 +1728,55 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 anyInt(), any(), anyBoolean(), anyBoolean(),
                 eq(DataService.REQUEST_REASON_HANDOVER), any(), anyInt(), any(), any(), eq(true),
                 any());
+    }
+
+    @Test
+    public void testHandoverDataNetworkNotAllowedByRoamingPolicy() throws Exception {
+        mCarrierConfig.putStringArray(CarrierConfigManager.KEY_IWLAN_HANDOVER_POLICY_STRING_ARRAY,
+                new String[]{"source=EUTRAN|NGRAN|IWLAN, target=EUTRAN|NGRAN|IWLAN, roaming=true, "
+                        + "type=disallowed, capabilities=IMS"});
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
+        // Force data config manager to reload the carrier config.
+        mDataNetworkControllerUT.getDataConfigManager().obtainMessage(
+                1/*EVENT_CARRIER_CONFIG_CHANGED*/).sendToTarget();
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+
+        processAllMessages();
+
+        // Bring up IMS PDN on IWLAN
+        testSetupImsDataNetwork();
+
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+        mAccessNetworksManagerCallback.onPreferredTransportChanged(
+                NetworkCapabilities.NET_CAPABILITY_IMS);
+
+        // Verify IMS PDN is connected.
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
+
+        // After this, IMS data network should be disconnected, and DNC should attempt to
+        // establish a new one on cellular
+        processAllMessages();
+
+        // Verify all data disconnected.
+        verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(false));
+
+        // Should setup a new one instead of handover.
+        verify(mMockedWwanDataServiceManager).setupDataCall(anyInt(), any(DataProfile.class),
+                anyBoolean(), anyBoolean(), eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(),
+                any(), any(), anyBoolean(), any(Message.class));
+
+
+        // A new data network should be connected on IWLAN
+        List<DataNetwork> dataNetworkList = getDataNetworks();
+        assertThat(dataNetworkList).hasSize(1);
+        assertThat(dataNetworkList.get(0).isConnected()).isTrue();
+        assertThat(dataNetworkList.get(0).getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_IMS)).isTrue();
+        assertThat(dataNetworkList.get(0).getTransport())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
     }
 
     @Test
