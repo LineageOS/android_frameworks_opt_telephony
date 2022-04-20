@@ -37,6 +37,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.telephony.Rlog;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -107,8 +108,8 @@ public class CellularDataService extends DataService {
                                     ar.exception != null
                                             ? DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE
                                             : RESULT_SUCCESS,
-                                    ar.exception != null
-                                            ? null : (List<DataCallResponse>) ar.result
+                                    ar.exception != null ? Collections.EMPTY_LIST
+                                            : (List<DataCallResponse>) ar.result
                                     );
                             break;
                         case DATA_CALL_LIST_CHANGED:

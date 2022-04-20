@@ -39,7 +39,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationServ
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationTermination;
 import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
-import com.android.internal.telephony.nano.PersistAtomsProto.NetworkRequests;
+import com.android.internal.telephony.nano.PersistAtomsProto.NetworkRequestsV2;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PresenceNotifyEvent;
@@ -412,16 +412,19 @@ public class PersistAtomsStorage {
         }
     }
 
-    /** Adds a new {@link NetworkRequests} to the storage. */
-    public synchronized void addNetworkRequests(NetworkRequests networkRequests) {
-        NetworkRequests existingMetrics = find(networkRequests);
+    /** Adds a new {@link NetworkRequestsV2} to the storage. */
+    public synchronized void addNetworkRequestsV2(NetworkRequestsV2 networkRequests) {
+        NetworkRequestsV2 existingMetrics = find(networkRequests);
         if (existingMetrics != null) {
-            existingMetrics.enterpriseRequestCount += networkRequests.enterpriseRequestCount;
-            existingMetrics.enterpriseReleaseCount += networkRequests.enterpriseReleaseCount;
+            existingMetrics.requestCount += networkRequests.requestCount;
         } else {
-            int newLength = mAtoms.networkRequests.length + 1;
-            mAtoms.networkRequests = Arrays.copyOf(mAtoms.networkRequests, newLength);
-            mAtoms.networkRequests[newLength - 1] = networkRequests;
+            NetworkRequestsV2 newMetrics = new NetworkRequestsV2();
+            newMetrics.capability = networkRequests.capability;
+            newMetrics.carrierId = networkRequests.carrierId;
+            newMetrics.requestCount = networkRequests.requestCount;
+            int newLength = mAtoms.networkRequestsV2.length + 1;
+            mAtoms.networkRequestsV2 = Arrays.copyOf(mAtoms.networkRequestsV2, newLength);
+            mAtoms.networkRequestsV2[newLength - 1] = newMetrics;
         }
         saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
     }
@@ -774,11 +777,11 @@ public class PersistAtomsStorage {
      * minIntervalMillis} ago, otherwise returns {@code null}.
      */
     @Nullable
-    public synchronized NetworkRequests[] getNetworkRequests(long minIntervalMillis) {
-        if (getWallTimeMillis() - mAtoms.networkRequestsPullTimestampMillis > minIntervalMillis) {
-            mAtoms.networkRequestsPullTimestampMillis = getWallTimeMillis();
-            NetworkRequests[] previousNetworkRequests = mAtoms.networkRequests;
-            mAtoms.networkRequests = new NetworkRequests[0];
+    public synchronized NetworkRequestsV2[] getNetworkRequestsV2(long minIntervalMillis) {
+        if (getWallTimeMillis() - mAtoms.networkRequestsV2PullTimestampMillis > minIntervalMillis) {
+            mAtoms.networkRequestsV2PullTimestampMillis = getWallTimeMillis();
+            NetworkRequestsV2[] previousNetworkRequests = mAtoms.networkRequestsV2;
+            mAtoms.networkRequestsV2 = new NetworkRequestsV2[0];
             saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
             return previousNetworkRequests;
         } else {
@@ -1091,7 +1094,8 @@ public class PersistAtomsStorage {
                             atoms.imsRegistrationTermination,
                             ImsRegistrationTermination.class,
                             mMaxNumImsRegistrationTerminations);
-            atoms.networkRequests = sanitizeAtoms(atoms.networkRequests, NetworkRequests.class);
+            atoms.networkRequestsV2 =
+                    sanitizeAtoms(atoms.networkRequestsV2, NetworkRequestsV2.class);
             atoms.imsRegistrationFeatureTagStats =
                     sanitizeAtoms(
                             atoms.imsRegistrationFeatureTagStats,
@@ -1177,8 +1181,8 @@ public class PersistAtomsStorage {
                     sanitizeTimestamp(atoms.imsRegistrationStatsPullTimestampMillis);
             atoms.imsRegistrationTerminationPullTimestampMillis =
                     sanitizeTimestamp(atoms.imsRegistrationTerminationPullTimestampMillis);
-            atoms.networkRequestsPullTimestampMillis =
-                    sanitizeTimestamp(atoms.networkRequestsPullTimestampMillis);
+            atoms.networkRequestsV2PullTimestampMillis =
+                    sanitizeTimestamp(atoms.networkRequestsV2PullTimestampMillis);
             atoms.imsRegistrationFeatureTagStatsPullTimestampMillis =
                     sanitizeTimestamp(atoms.imsRegistrationFeatureTagStatsPullTimestampMillis);
             atoms.rcsClientProvisioningStatsPullTimestampMillis =
@@ -1329,12 +1333,12 @@ public class PersistAtomsStorage {
     }
 
     /**
-     * Returns the network requests event that has the same carrier id as the given one,
-     * or {@code null} if it does not exist.
+     * Returns the network requests event that has the same carrier id and capability as the given
+     * one, or {@code null} if it does not exist.
      */
-    private @Nullable NetworkRequests find(NetworkRequests key) {
-        for (NetworkRequests item : mAtoms.networkRequests) {
-            if (item.carrierId == key.carrierId) {
+    private @Nullable NetworkRequestsV2 find(NetworkRequestsV2 key) {
+        for (NetworkRequestsV2 item : mAtoms.networkRequestsV2) {
+            if (item.carrierId == key.carrierId && item.capability == key.capability) {
                 return item;
             }
         }
@@ -1686,6 +1690,7 @@ public class PersistAtomsStorage {
         atoms.imsRegistrationStatsPullTimestampMillis = currentTime;
         atoms.imsRegistrationTerminationPullTimestampMillis = currentTime;
         atoms.networkRequestsPullTimestampMillis = currentTime;
+        atoms.networkRequestsV2PullTimestampMillis = currentTime;
         atoms.imsRegistrationFeatureTagStatsPullTimestampMillis = currentTime;
         atoms.rcsClientProvisioningStatsPullTimestampMillis = currentTime;
         atoms.rcsAcsProvisioningStatsPullTimestampMillis = currentTime;

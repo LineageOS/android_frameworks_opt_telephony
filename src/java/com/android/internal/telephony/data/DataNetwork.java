@@ -89,6 +89,7 @@ import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataRetryManager.DataHandoverRetryEntry;
 import com.android.internal.telephony.data.DataRetryManager.DataRetryEntry;
+import com.android.internal.telephony.data.LinkBandwidthEstimator.LinkBandwidthEstimatorCallback;
 import com.android.internal.telephony.data.TelephonyNetworkAgent.TelephonyNetworkAgentCallback;
 import com.android.internal.telephony.metrics.DataCallSessionStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
@@ -180,9 +181,6 @@ public class DataNetwork extends StateMachine {
 
     /** Event for bandwidth estimation from the modem changed. */
     private static final int EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED = 11;
-
-    /** Event for bandwidth estimation from the bandwidth estimator changed. */
-    private static final int EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED = 12;
 
     /** Event for display info changed. This is for getting 5G NSA or mmwave information. */
     private static final int EVENT_DISPLAY_INFO_CHANGED = 13;
@@ -620,6 +618,11 @@ public class DataNetwork extends StateMachine {
     private int mCarrierServicePackageUid = Process.INVALID_UID;
 
     /**
+     * Link bandwidth estimator callback for receiving latest link bandwidth information.
+     */
+    private @Nullable LinkBandwidthEstimatorCallback mLinkBandwidthEstimatorCallback;
+
+    /**
      * The network bandwidth.
      */
     public static class NetworkBandwidth {
@@ -956,7 +959,6 @@ public class DataNetwork extends StateMachine {
                 mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
                         transport, getHandler(), EVENT_SERVICE_STATE_CHANGED, transport);
             }
-
             mPhone.getCarrierPrivilegesTracker().registerCarrierPrivilegesListener(getHandler(),
                     EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED, null);
 
@@ -969,6 +971,7 @@ public class DataNetwork extends StateMachine {
         @Override
         public void exit() {
             logv("Unregistering all events.");
+            mPhone.getCarrierPrivilegesTracker().unregisterCarrierPrivilegesListener(getHandler());
             for (int transport : mAccessNetworksManager.getAvailableTransports()) {
                 mDataServiceManagers.get(transport)
                         .unregisterForDataCallListChanged(getHandler());
@@ -1029,7 +1032,6 @@ public class DataNetwork extends StateMachine {
                     break;
                 }
                 case EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED:
-                case EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED:
                 case EVENT_TEAR_DOWN_NETWORK:
                 case EVENT_PCO_DATA_RECEIVED:
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
@@ -1216,11 +1218,6 @@ public class DataNetwork extends StateMachine {
                         break;
                     }
                     onBandwidthUpdatedFromModem((List<LinkCapacityEstimate>) ar.result);
-                    break;
-                case EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED:
-                    ar = (AsyncResult) msg.obj;
-                    Pair<Integer, Integer> pair = (Pair<Integer, Integer>) ar.result;
-                    onBandwidthUpdated(pair.first, pair.second);
                     break;
                 case EVENT_DISPLAY_INFO_CHANGED:
                     onDisplayInfoChanged();
@@ -1571,8 +1568,20 @@ public class DataNetwork extends StateMachine {
             mPhone.mCi.registerForLceInfo(
                     getHandler(), EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED, null);
         } else if (bandwidthEstimateSource == BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR) {
-            mPhone.getLinkBandwidthEstimator().registerForBandwidthChanged(
-                    getHandler(), EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED, null);
+            if (mLinkBandwidthEstimatorCallback == null) {
+                mLinkBandwidthEstimatorCallback =
+                        new LinkBandwidthEstimatorCallback(getHandler()::post) {
+                            @Override
+                            public void onBandwidthChanged(int uplinkBandwidthKbps,
+                                    int downlinkBandwidthKbps) {
+                                if (isConnected()) {
+                                    onBandwidthUpdated(uplinkBandwidthKbps, downlinkBandwidthKbps);
+                                }
+                            }
+                        };
+                mPhone.getLinkBandwidthEstimator().registerCallback(
+                        mLinkBandwidthEstimatorCallback);
+            }
         } else {
             loge("Invalid bandwidth source configuration: " + bandwidthEstimateSource);
         }
@@ -1586,7 +1595,11 @@ public class DataNetwork extends StateMachine {
         if (bandwidthEstimateSource == BANDWIDTH_SOURCE_MODEM) {
             mPhone.mCi.unregisterForLceInfo(getHandler());
         } else if (bandwidthEstimateSource == BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR) {
-            mPhone.getLinkBandwidthEstimator().unregisterForBandwidthChanged(getHandler());
+            if (mLinkBandwidthEstimatorCallback != null) {
+                mPhone.getLinkBandwidthEstimator()
+                        .unregisterCallback(mLinkBandwidthEstimatorCallback);
+                mLinkBandwidthEstimatorCallback = null;
+            }
         } else {
             loge("Invalid bandwidth source configuration: " + bandwidthEstimateSource);
         }
@@ -3036,8 +3049,6 @@ public class DataNetwork extends StateMachine {
                 return "EVENT_DETACH_ALL_NETWORK_REQUESTS";
             case EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED:
                 return "EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED";
-            case EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED:
-                return "EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED";
             case EVENT_DISPLAY_INFO_CHANGED:
                 return "EVENT_DISPLAY_INFO_CHANGED";
             case EVENT_START_HANDOVER:
