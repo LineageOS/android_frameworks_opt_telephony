@@ -26,6 +26,7 @@ import android.os.Message;
 import android.os.ResultReceiver;
 import android.os.WorkSource;
 import android.telecom.VideoProfile;
+import android.telephony.Annotation.DataActivityType;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
 import android.telephony.PreciseDataConnectionState;
@@ -312,11 +313,10 @@ public interface PhoneInternalInterface {
     PreciseDataConnectionState getPreciseDataConnectionState(String apnType);
 
     /**
-     * Get the current DataActivityState. No change notification exists at this
-     * interface -- use
-     * {@link android.telephony.TelephonyManager} instead.
+     * Get the current data activity. No change notification exists at this
+     * interface.
      */
-    DataActivityState getDataActivityState();
+    @DataActivityType int getDataActivityState();
 
     /**
      * Returns a list of MMI codes that are pending. (They have initiated
