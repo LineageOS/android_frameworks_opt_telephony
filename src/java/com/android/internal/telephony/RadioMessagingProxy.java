@@ -295,8 +295,10 @@ public class RadioMessagingProxy extends RadioServiceProxy {
             if (gsmPdu != null) {
                 msg.gsmMessage = new android.hardware.radio.messaging.GsmSmsMessage[]{
                         RILUtils.convertToHalGsmSmsMessageAidl(smscPdu, gsmPdu)};
+                msg.cdmaMessage = new android.hardware.radio.messaging.CdmaSmsMessage[0];
             }
             if (cdmaPdu != null) {
+                msg.gsmMessage = new android.hardware.radio.messaging.GsmSmsMessage[0];
                 msg.cdmaMessage = new android.hardware.radio.messaging.CdmaSmsMessage[]{
                         RILUtils.convertToHalCdmaSmsMessageAidl(cdmaPdu)};
             }
