@@ -71,6 +71,7 @@ import android.telephony.NetworkRegistrationInfo.RegistrationState;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionPlan;
+import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
@@ -1427,8 +1428,9 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED));
 
         // Change data network type to NR
-        serviceStateChanged(TelephonyManager.NETWORK_TYPE_NR,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_NR,
+                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE))
+                .when(mDisplayInfoController).getTelephonyDisplayInfo();
         dataNetwork.sendMessage(13/*EVENT_DISPLAY_INFO_CHANGED*/);
         processAllMessages();
         assertFalse(dataNetwork.getNetworkCapabilities().hasCapability(
@@ -1469,8 +1471,9 @@ public class DataNetworkControllerTest extends TelephonyTest {
         assertThat(mDataNetworkControllerUT.isInternetUnmetered()).isFalse();
 
         // Change data network type to NR
-        serviceStateChanged(TelephonyManager.NETWORK_TYPE_NR,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_NR,
+                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE))
+                .when(mDisplayInfoController).getTelephonyDisplayInfo();
         dataNetwork.sendMessage(13/*EVENT_DISPLAY_INFO_CHANGED*/);
         processAllMessages();
         assertTrue(dataNetwork.getNetworkCapabilities().hasCapability(
@@ -1524,8 +1527,9 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
 
         // Change data network type to NR
-        serviceStateChanged(TelephonyManager.NETWORK_TYPE_NR,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_NR,
+                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE))
+                .when(mDisplayInfoController).getTelephonyDisplayInfo();
         dataNetwork.sendMessage(13/*EVENT_DISPLAY_INFO_CHANGED*/);
         processAllMessages();
         assertTrue(dataNetwork.getNetworkCapabilities().hasCapability(

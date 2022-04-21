@@ -60,6 +60,7 @@ import android.telephony.PcoData;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionPlan;
+import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
@@ -548,6 +549,9 @@ public class DataNetwork extends StateMachine {
     /** The TCP buffer sizes config. */
     private @NonNull String mTcpBufferSizes;
 
+    /** The telephony display info. */
+    private @NonNull TelephonyDisplayInfo mTelephonyDisplayInfo;
+
     /** Whether {@link NetworkCapabilities#NET_CAPABILITY_TEMPORARILY_NOT_METERED} is supported. */
     private boolean mTempNotMeteredSupported = false;
 
@@ -840,6 +844,7 @@ public class DataNetwork extends StateMachine {
         mCid.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, INVALID_CID);
         mCid.put(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, INVALID_CID);
         mTcpBufferSizes = mDataConfigManager.getDefaultTcpConfigString();
+        mTelephonyDisplayInfo = mPhone.getDisplayInfoController().getTelephonyDisplayInfo();
 
         for (TelephonyNetworkRequest networkRequest : networkRequestList) {
             networkRequest.setAttachedNetwork(DataNetwork.this);
@@ -1401,6 +1406,9 @@ public class DataNetwork extends StateMachine {
                             + " seconds.", "d0e4fa1c-c57b-4ba5-b4b6-8955487012cc");
                     mFailCause = DataFailCause.LOST_CONNECTION;
                     transitionTo(mDisconnectedState);
+                    break;
+                case EVENT_DISPLAY_INFO_CHANGED:
+                    onDisplayInfoChanged();
                     break;
                 default:
                     return NOT_HANDLED;
@@ -2160,38 +2168,6 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
-     * @return {@code true} if the device is connected to NR cell in 5G NSA mode, and the current
-     * data network is using the NR cell.
-     */
-    private boolean isNrConnected() {
-        return mPhone.getServiceState().getNrState() == NetworkRegistrationInfo.NR_STATE_CONNECTED
-                && mPhone.getServiceStateTracker().getNrContextIds().contains(
-                        mCid.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN));
-    }
-
-    /**
-     * Get the TCP buffer sizes config string.
-     *
-     * @return The TCP buffer sizes config used in {@link LinkProperties#setTcpBufferSizes(String)}.
-     */
-    private @Nullable String getTcpConfig() {
-        ServiceState ss = mPhone.getServiceState();
-        NetworkRegistrationInfo nrs = ss.getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, mTransport);
-        int networkType = TelephonyManager.NETWORK_TYPE_UNKNOWN;
-        if (nrs != null) {
-            networkType = nrs.getAccessNetworkTechnology();
-            if (networkType == TelephonyManager.NETWORK_TYPE_LTE
-                    && nrs.isUsingCarrierAggregation()) {
-                // Although LTE_CA is not a real RAT, but since LTE CA generally has higher speed
-                // we use LTE_CA to get a different TCP config for LTE CA.
-                networkType = TelephonyManager.NETWORK_TYPE_LTE_CA;
-            }
-        }
-        return mDataConfigManager.getTcpConfigString(networkType, ss);
-    }
-
-    /**
      * Called when receiving setup data network response from the data service.
      *
      * @param resultCode The result code.
@@ -2456,8 +2432,8 @@ public class DataNetwork extends StateMachine {
     private void onBandwidthUpdated(int uplinkBandwidthKbps, int downlinkBandwidthKbps) {
         log("onBandwidthUpdated: downlinkBandwidthKbps=" + downlinkBandwidthKbps
                 + ", uplinkBandwidthKbps=" + uplinkBandwidthKbps);
-        NetworkBandwidth bandwidthFromConfig =  mDataConfigManager.getBandwidthForNetworkType(
-                getDataNetworkType(), mPhone.getServiceState());
+        NetworkBandwidth bandwidthFromConfig = mDataConfigManager.getBandwidthForNetworkType(
+                mTelephonyDisplayInfo);
 
         if (downlinkBandwidthKbps == LinkCapacityEstimate.INVALID && bandwidthFromConfig != null) {
             // Fallback to carrier config.
@@ -2477,10 +2453,11 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
-     * Called when display info changed. This can happen when network types changed or override
-     * types (5G NSA, 5G MMWAVE) changes.
+     * Called when {@link TelephonyDisplayInfo} changed. This can happen when network types or
+     * override network types (5G NSA, 5G MMWAVE) change.
      */
     private void onDisplayInfoChanged() {
+        mTelephonyDisplayInfo = mPhone.getDisplayInfoController().getTelephonyDisplayInfo();
         updateBandwidthFromDataConfig();
         updateTcpBufferSizes();
         updateMeteredAndCongested();
@@ -2495,8 +2472,7 @@ public class DataNetwork extends StateMachine {
             return;
         }
         log("updateBandwidthFromDataConfig");
-        mNetworkBandwidth = mDataConfigManager.getBandwidthForNetworkType(
-                getDataNetworkType(), mPhone.getServiceState());
+        mNetworkBandwidth = mDataConfigManager.getBandwidthForNetworkType(mTelephonyDisplayInfo);
         updateNetworkCapabilities();
     }
 
@@ -2505,7 +2481,7 @@ public class DataNetwork extends StateMachine {
      */
     private void updateTcpBufferSizes() {
         log("updateTcpBufferSizes");
-        mTcpBufferSizes = getTcpConfig();
+        mTcpBufferSizes = mDataConfigManager.getTcpConfigString(mTelephonyDisplayInfo);
         LinkProperties linkProperties = new LinkProperties(mLinkProperties);
         linkProperties.setTcpBufferSizes(mTcpBufferSizes);
         if (!linkProperties.equals(mLinkProperties)) {
@@ -2519,7 +2495,17 @@ public class DataNetwork extends StateMachine {
      * Update the metered and congested values from carrier configs and subscription overrides
      */
     private void updateMeteredAndCongested() {
-        int networkType = isNrConnected() ? TelephonyManager.NETWORK_TYPE_NR : getDataNetworkType();
+        int networkType = mTelephonyDisplayInfo.getNetworkType();
+        switch (mTelephonyDisplayInfo.getOverrideNetworkType()) {
+            case TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED:
+            case TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA:
+                networkType = TelephonyManager.NETWORK_TYPE_NR;
+                break;
+            case TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_ADVANCED_PRO:
+            case TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA:
+                networkType = TelephonyManager.NETWORK_TYPE_LTE_CA;
+                break;
+        }
         log("updateMeteredAndCongested: networkType="
                 + TelephonyManager.getNetworkTypeName(networkType));
         boolean changed = false;
@@ -3157,15 +3143,16 @@ public class DataNetwork extends StateMachine {
         pw.println("mDataAllowedReason=" + mDataAllowedReason);
         pw.println("mPduSessionId=" + mPduSessionId);
         pw.println("mDataProfile=" + mDataProfile);
-        pw.println("mNetworkCapabilities" + mNetworkCapabilities);
+        pw.println("mNetworkCapabilities=" + mNetworkCapabilities);
         pw.println("mLinkProperties=" + mLinkProperties);
         pw.println("mNetworkSliceInfo=" + mNetworkSliceInfo);
         pw.println("mNetworkBandwidth=" + mNetworkBandwidth);
         pw.println("mTcpBufferSizes=" + mTcpBufferSizes);
+        pw.println("mTelephonyDisplayInfo=" + mTelephonyDisplayInfo);
         pw.println("mTempNotMeteredSupported=" + mTempNotMeteredSupported);
         pw.println("mTempNotMetered=" + mTempNotMetered);
         pw.println("mCongested=" + mCongested);
-        pw.println("mSuspended" + mSuspended);
+        pw.println("mSuspended=" + mSuspended);
         pw.println("mDataCallResponse=" + mDataCallResponse);
         pw.println("mFailCause=" + DataFailCause.toString(mFailCause));
         pw.println("mAdministratorUids=" + Arrays.toString(mAdministratorUids));
