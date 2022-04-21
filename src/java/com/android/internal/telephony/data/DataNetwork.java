@@ -398,7 +398,11 @@ public class DataNetwork extends StateMachine {
             NetworkCapabilities.NET_CAPABILITY_PARTIAL_CONNECTIVITY,
             NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED,
             NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED,
-            NetworkCapabilities.NET_CAPABILITY_HEAD_UNIT);
+            NetworkCapabilities.NET_CAPABILITY_HEAD_UNIT,
+            // Connectivity service will support NOT_METERED as a mutable and requestable
+            // capability.
+            NetworkCapabilities.NET_CAPABILITY_NOT_METERED
+    );
 
     /** The parent state. Any messages not handled by the child state fallback to this. */
     private final DefaultState mDefaultState = new DefaultState();
