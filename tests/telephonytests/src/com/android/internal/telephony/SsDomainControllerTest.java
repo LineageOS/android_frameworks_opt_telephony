@@ -430,6 +430,29 @@ public class SsDomainControllerTest extends TelephonyTest {
         assertFalse(mSdc.isUtEnabled());
     }
 
+    @Test
+    @SmallTest
+    public void testOemHandlesTerminalBasedCallWaiting() {
+        setUtEnabled();
+
+        // Enable terminal-based call waiting
+        mSdc.updateCarrierConfigForTest(true, true, false, true, true,
+                new int[] {}, UT_OVER_ALL, new int[] { SUPPLEMENTARY_SERVICE_CW });
+        String sc = mServices.get(SS_CW);
+
+        mSdc.setOemHandlesTerminalBasedCallWaiting(false);
+        SsDomainController.SuppServiceRoutingInfo ssCode =
+                ImsPhoneMmiCode.getSuppServiceRoutingInfo("*#" + sc + "#", mSdc);
+        assertNotNull(ssCode);
+        assertFalse(ssCode.useSsOverUt());
+
+        mSdc.setOemHandlesTerminalBasedCallWaiting(true);
+        ssCode = ImsPhoneMmiCode.getSuppServiceRoutingInfo("*#" + sc + "#", mSdc);
+
+        assertNotNull(ssCode);
+        assertTrue(ssCode.useSsOverUt());
+    }
+
     private void setUtEnabled() {
         doReturn(0).when(mImsPhone).getSubId();
         mSdc.updateWifiForUt(false);
@@ -466,10 +489,10 @@ public class SsDomainControllerTest extends TelephonyTest {
     private void updateCarrierConfig(boolean supportsCsfb, boolean requiresImsRegistration,
             boolean availableWhenPsDataOff, boolean availableWhenRoaming, int[] utRats) {
         mSdc.updateCarrierConfigForTest(true, supportsCsfb, requiresImsRegistration,
-                availableWhenPsDataOff, availableWhenRoaming, null, utRats);
+                availableWhenPsDataOff, availableWhenRoaming, null, utRats, null);
     }
 
     private void updateCarrierConfig(int[] services) {
-        mSdc.updateCarrierConfigForTest(true, true, false, true, true, services, UT_OVER_ALL);
+        mSdc.updateCarrierConfigForTest(true, true, false, true, true, services, UT_OVER_ALL, null);
     }
 }

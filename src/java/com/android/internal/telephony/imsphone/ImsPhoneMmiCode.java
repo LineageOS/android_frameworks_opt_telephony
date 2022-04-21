@@ -542,7 +542,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 return controller.getSuppServiceRoutingInfoForCb(scToBarringFacility(sc));
             } else if (sc != null && sc.equals(SC_CFUT)) {
                 // for backward compatibility, not specified by CarrierConfig
-                return SsDomainController.SS_ROUTING_OVER_UT;
+                return controller.getSsRoutingOverUt();
             } else if (sc != null && sc.equals(SC_CLIP)) {
                 return controller.getSuppServiceRoutingInfoForSs(SS_CLIP);
             } else if (sc != null && sc.equals(SC_CLIR)) {
@@ -553,7 +553,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 return controller.getSuppServiceRoutingInfoForSs(SS_COLR);
             } else if (sc != null && sc.equals(SC_CNAP)) {
                 // for backward compatibility, not specified by CarrierConfig
-                return SsDomainController.SS_ROUTING_OVER_UT;
+                return controller.getSsRoutingOverUt();
             } else if (sc != null && sc.equals(SC_BS_MT)) {
                 return controller.getSuppServiceRoutingInfoForCb(
                         SsDomainController.CB_FACILITY_BIL);
@@ -562,12 +562,12 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                         SsDomainController.CB_FACILITY_ACR);
             } else if (sc != null && sc.equals(SC_PWD)) {
                 // for backward compatibility, not specified by CarrierConfig
-                return SsDomainController.SS_ROUTING_OVER_UT;
+                return controller.getSsRoutingOverUt();
             } else if (sc != null && sc.equals(SC_WAIT)) {
                 return controller.getSuppServiceRoutingInfoForSs(SS_CW);
             } else if (isPinPukCommand(sc)) {
                 // for backward compatibility, not specified by CarrierConfig
-                return SsDomainController.SS_ROUTING_OVER_UT;
+                return controller.getSsRoutingOverUt();
             }
         }
         return null;

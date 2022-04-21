@@ -127,10 +127,6 @@ public class SsDomainController {
     public static final String SS_COLP = "COLP";
     public static final String SS_COLR = "COLR";
 
-    // Common instance indicating that Ut is available.
-    public static final SuppServiceRoutingInfo SS_ROUTING_OVER_UT =
-            new SuppServiceRoutingInfo(true, true, true);
-
     // Barring list of incoming numbers
     public static final String CB_FACILITY_BIL = "BIL";
     // Barring of all anonymous incoming number
@@ -174,6 +170,9 @@ public class SsDomainController {
     private Set<Integer> mUtAvailableRats = new HashSet<>();
     private boolean mWiFiAvailable = false;
     private boolean mIsMonitoringConnectivity = false;
+    /** true if Ims service handles the terminal-based call waiting service by itself. */
+    private boolean mOemHandlesTerminalBasedCallWaiting = false;
+    private boolean mSupportsTerminalBasedCallWaiting = false;
 
     public SsDomainController(GsmCdmaPhone phone) {
         mPhone = phone;
@@ -204,19 +203,34 @@ public class SsDomainController {
         int[] utRats = b.getIntArray(
                 CarrierConfigManager.ImsSs.KEY_XCAP_OVER_UT_SUPPORTED_RATS_INT_ARRAY);
 
+        int[] tbServices = b.getIntArray(
+                CarrierConfigManager.ImsSs.KEY_UT_TERMINAL_BASED_SERVICES_INT_ARRAY);
+
         updateSsOverUtConfig(supportsUt, supportsCsfb, requiresImsRegistration,
-                availableWhenPsDataOff, availableWhenRoaming, services, utRats);
+                availableWhenPsDataOff, availableWhenRoaming, services, utRats, tbServices);
     }
 
     private void updateSsOverUtConfig(boolean supportsUt, boolean supportsCsfb,
             boolean requiresImsRegistration, boolean availableWhenPsDataOff,
-            boolean availableWhenRoaming, int[] services, int[] utRats) {
+            boolean availableWhenRoaming, int[] services, int[] utRats, int[] tbServices) {
 
         mUtSupported = supportsUt;
         mCsfbSupported = supportsCsfb;
         mUtRequiresImsRegistration = requiresImsRegistration;
         mUtAvailableWhenPsDataOff = availableWhenPsDataOff;
         mUtAvailableWhenRoaming = availableWhenRoaming;
+
+        mSupportsTerminalBasedCallWaiting = false;
+        if (tbServices != null) {
+            for (int tbService : tbServices) {
+                if (tbService == SUPPLEMENTARY_SERVICE_CW) {
+                    mSupportsTerminalBasedCallWaiting = true;
+                    break;
+                }
+            }
+        }
+        Rlog.i(LOG_TAG, "updateSsOverUtConfig terminal-based cw "
+                + mSupportsTerminalBasedCallWaiting);
 
         mCbOverUtSupported.clear();
         mCfOverUtSupported.clear();
@@ -521,7 +535,22 @@ public class SsDomainController {
      * Only for ImsPhoneMmiCode.
      */
     public SuppServiceRoutingInfo getSuppServiceRoutingInfoForSs(String service) {
+        if (SS_CW.equals(service) && getOemHandlesTerminalBasedCallWaiting()) {
+            // Ims service handles the terminal based call waiting service by itself.
+            // Use legacy implementation. Forward the request to Ims service if Ut is available.
+            Phone imsPhone = mPhone.getImsPhone();
+            boolean isUtEnabled = (imsPhone != null) && imsPhone.isUtEnabled();
+            return new SuppServiceRoutingInfo(true, isUtEnabled, true);
+        }
         return new SuppServiceRoutingInfo(useSsOverUt(service), isUtEnabled(), supportCsfb());
+    }
+
+    /**
+     * Returns SuppServiceRoutingInfo instance for a service will be served by Ut interface.
+     * Only for ImsPhoneMmiCode.
+     */
+    public SuppServiceRoutingInfo getSsRoutingOverUt() {
+        return new SuppServiceRoutingInfo(true, isUtEnabled(), true);
     }
 
     /**
@@ -531,17 +560,37 @@ public class SsDomainController {
     @VisibleForTesting
     public void updateCarrierConfigForTest(boolean supportsUt, boolean supportsCsfb,
             boolean requiresImsRegistration, boolean availableWhenPsDataOff,
-            boolean availableWhenRoaming, int[] services, int[] utRats) {
+            boolean availableWhenRoaming, int[] services, int[] utRats, int[] tbServices) {
         Rlog.i(LOG_TAG, "updateCarrierConfigForTest supportsUt=" + supportsUt
                 +  ", csfb=" + supportsCsfb
                 + ", reg=" + requiresImsRegistration
                 + ", whenPsDataOff=" + availableWhenPsDataOff
                 + ", whenRoaming=" + availableWhenRoaming
                 + ", services=" + Arrays.toString(services)
-                + ", rats=" + Arrays.toString(utRats));
+                + ", rats=" + Arrays.toString(utRats)
+                + ", tbServices=" + Arrays.toString(tbServices));
 
         updateSsOverUtConfig(supportsUt, supportsCsfb, requiresImsRegistration,
-                availableWhenPsDataOff, availableWhenRoaming, services, utRats);
+                availableWhenPsDataOff, availableWhenRoaming, services, utRats, tbServices);
+    }
+
+    /**
+     * @param state true if Ims service handles the terminal-based call waiting service by itself.
+     *              Otherwise, false.
+     */
+    public void setOemHandlesTerminalBasedCallWaiting(boolean state) {
+        Rlog.i(LOG_TAG, "setOemHandlesTerminalBasedCallWaiting " + state);
+        mOemHandlesTerminalBasedCallWaiting = state;
+    }
+
+    /**
+     * Returns whether the carrier supports the terminal-based call waiting service
+     * and Ims service handles it by itself.
+     */
+    public boolean getOemHandlesTerminalBasedCallWaiting() {
+        Rlog.i(LOG_TAG, "getOemHandlesTerminalBasedCallWaiting "
+                + mSupportsTerminalBasedCallWaiting + ", " + mOemHandlesTerminalBasedCallWaiting);
+        return mSupportsTerminalBasedCallWaiting && mOemHandlesTerminalBasedCallWaiting;
     }
 
     /**
@@ -561,6 +610,8 @@ public class SsDomainController {
         pw.println(" mUtAvailableWhenRoaming=" + mUtAvailableWhenRoaming);
         pw.println(" mUtAvailableRats=" + mUtAvailableRats);
         pw.println(" mWiFiAvailable=" + mWiFiAvailable);
+        pw.println(" mOemHandlesTerminalBasedCallWaiting=" + mOemHandlesTerminalBasedCallWaiting);
+        pw.println(" mSupportsTerminalBasedCallWaiting=" + mSupportsTerminalBasedCallWaiting);
         pw.decreaseIndent();
     }
 }
