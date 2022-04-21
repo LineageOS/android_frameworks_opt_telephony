@@ -708,9 +708,6 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn(false).when(mPhone).isUsingNewDataStack();
         doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_LTE).when(mServiceState)
                 .getRilDataRadioTechnology();
-        doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_LTE,
-                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE))
-                .when(mDisplayInfoController).getTelephonyDisplayInfo();
 
         mContextFixture.putStringArrayResource(com.android.internal.R.array
                 .config_mobile_tcp_buffers, new String[]{
