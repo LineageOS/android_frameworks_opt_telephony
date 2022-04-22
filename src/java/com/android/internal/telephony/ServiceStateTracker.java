@@ -1938,7 +1938,7 @@ public class ServiceStateTracker extends Handler {
         if (ar.userObj != mPollingContext) return;
 
         if (ar.exception != null) {
-            CommandException.Error err=null;
+            CommandException.Error err = null;
 
             if (ar.exception instanceof IllegalStateException) {
                 log("handlePollStateResult exception " + ar.exception);
@@ -1948,15 +1948,22 @@ public class ServiceStateTracker extends Handler {
                 err = ((CommandException)(ar.exception)).getCommandError();
             }
 
+            if (mCi.getRadioState() != TelephonyManager.RADIO_POWER_ON) {
+                log("handlePollStateResult: Invalid response due to radio off or unavailable. "
+                        + "Set ServiceState to out of service.");
+                pollStateInternal(false);
+                return;
+            }
+
             if (err == CommandException.Error.RADIO_NOT_AVAILABLE) {
-                // Radio has crashed or turned off
+                loge("handlePollStateResult: RIL returned RADIO_NOT_AVAILABLE when radio is on.");
                 cancelPollState();
                 return;
             }
 
             if (err != CommandException.Error.OP_NOT_ALLOWED_BEFORE_REG_NW) {
-                loge("RIL implementation has returned an error where it must succeed" +
-                        ar.exception);
+                loge("handlePollStateResult: RIL returned an error where it must succeed: "
+                        + ar.exception);
             }
         } else try {
             handlePollStateResultMessage(what, ar);
@@ -3328,10 +3335,9 @@ public class ServiceStateTracker extends Handler {
 
     private void pollStateInternal(boolean modemTriggered) {
         mPollingContext = new int[1];
-        mPollingContext[0] = 0;
         NetworkRegistrationInfo nri;
 
-        log("pollState: modemTriggered=" + modemTriggered);
+        log("pollState: modemTriggered=" + modemTriggered + ", radioState=" + mCi.getRadioState());
 
         switch (mCi.getRadioState()) {
             case TelephonyManager.RADIO_POWER_UNAVAILABLE:
@@ -3365,8 +3371,8 @@ public class ServiceStateTracker extends Handler {
                 mPhone.getSignalStrengthController().setSignalStrengthDefaultValues();
                 mLastNitzData = null;
                 mNitzState.handleNetworkUnavailable();
-                // don't poll when device is shutting down or the poll was not modemTrigged
-                // (they sent us new radio data) and current network is not IWLAN
+                // Don't poll when device is shutting down or the poll was not modemTriggered
+                // (they sent us new radio data) and the current network is not IWLAN
                 if (mDeviceShuttingDown ||
                         (!modemTriggered && ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
                         != mSS.getRilDataRadioTechnology())) {
