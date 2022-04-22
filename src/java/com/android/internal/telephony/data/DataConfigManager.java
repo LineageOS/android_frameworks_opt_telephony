@@ -34,9 +34,9 @@ import android.telephony.Annotation.ApnType;
 import android.telephony.Annotation.NetCapability;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.CarrierConfigManager;
-import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.text.TextUtils;
@@ -529,13 +529,13 @@ public class DataConfigManager extends Handler {
     /**
      * Get whether the network type is unmetered from the carrier configs.
      *
-     * @param networkType The network type to check meteredness for
-     * @param serviceState The service state, used to determine NR state
-     * @return Whether the carrier considers the given network type unmetered
+     * @param displayInfo The {@link TelephonyDisplayInfo} to check meteredness for.
+     * @param serviceState The {@link ServiceState}, used to determine roaming state.
+     * @return Whether the carrier considers the given display info unmetered.
      */
-    public boolean isNetworkTypeUnmetered(@NetworkType int networkType,
+    public boolean isNetworkTypeUnmetered(@NonNull TelephonyDisplayInfo displayInfo,
             @NonNull ServiceState serviceState) {
-        String dataConfigNetworkType = getDataConfigNetworkType(networkType, serviceState);
+        String dataConfigNetworkType = getDataConfigNetworkType(displayInfo);
         return serviceState.getDataRoaming()
                 ? mRoamingUnmeteredNetworkTypes.contains(dataConfigNetworkType)
                 : mUnmeteredNetworkTypes.contains(dataConfigNetworkType);
@@ -592,14 +592,13 @@ public class DataConfigManager extends Handler {
     /**
      * Get the bandwidth estimate from the carrier config.
      *
-     * @param networkType The network type to get the bandwidth for
-     * @param serviceState The service state, used to determine NR state
+     * @param displayInfo The {@link TelephonyDisplayInfo} to get the bandwidth for.
      * @return The pre-configured bandwidth estimate from carrier config.
      */
     public @NonNull DataNetwork.NetworkBandwidth getBandwidthForNetworkType(
-            @NetworkType int networkType, @NonNull ServiceState serviceState) {
+            @NonNull TelephonyDisplayInfo displayInfo) {
         DataNetwork.NetworkBandwidth bandwidth = mBandwidthMap.get(
-                getDataConfigNetworkType(networkType, serviceState));
+                getDataConfigNetworkType(displayInfo));
         if (bandwidth != null) {
             return bandwidth;
         }
@@ -661,15 +660,12 @@ public class DataConfigManager extends Handler {
      * The config string will have the following form, with values in bytes:
      * "read_min,read_default,read_max,write_min,write_default,write_max"
      *
-     * @param networkType The network type. Note that {@link TelephonyManager#NETWORK_TYPE_LTE_CA}
-     *                    can be used for LTE CA even though it's not a radio access technology.
-     * @param serviceState The service state, used to determine NR state.
-     * @return The TCP configuration string for the given network type or the default value from
-     *         config_tcp_buffers if unavailable.
+     * @param displayInfo The {@link TelephonyDisplayInfo} to get the TCP config string for.
+     * @return The TCP configuration string for the given display info or the default value from
+     *         {@code config_tcp_buffers} if unavailable.
      */
-    public @NonNull String getTcpConfigString(@NetworkType int networkType,
-            @NonNull ServiceState serviceState) {
-        String config = mTcpBufferSizeMap.get(getDataConfigNetworkType(networkType, serviceState));
+    public @NonNull String getTcpConfigString(@NonNull TelephonyDisplayInfo displayInfo) {
+        String config = mTcpBufferSizeMap.get(getDataConfigNetworkType(displayInfo));
         if (TextUtils.isEmpty(config)) {
             config = getDefaultTcpConfigString();
         }
@@ -730,25 +726,31 @@ public class DataConfigManager extends Handler {
     }
 
     /**
-     * Get the data config network type based on the given network type and service state
+     * Get the {@link DataConfigNetworkType} based on the given {@link TelephonyDisplayInfo}.
      *
-     * @param networkType The network type
-     * @param serviceState The service state, used to determine NR state
-     * @return The equivalent data config network type
+     * @param displayInfo The {@link TelephonyDisplayInfo} used to determine the type.
+     * @return The equivalent {@link DataConfigNetworkType}.
      */
     public static @NonNull @DataConfigNetworkType String getDataConfigNetworkType(
-            @NetworkType int networkType, @NonNull ServiceState serviceState) {
+            @NonNull TelephonyDisplayInfo displayInfo) {
         // TODO: Make method private once DataConnection is removed
-        if ((networkType == TelephonyManager.NETWORK_TYPE_LTE
-                || networkType == TelephonyManager.NETWORK_TYPE_LTE_CA)
-                && (serviceState.getNrState() == NetworkRegistrationInfo.NR_STATE_CONNECTED)) {
-            return serviceState.getNrFrequencyRange() == ServiceState.FREQUENCY_RANGE_MMWAVE
-                    ? DATA_CONFIG_NETWORK_TYPE_NR_NSA_MMWAVE : DATA_CONFIG_NETWORK_TYPE_NR_NSA;
-        } else if (networkType == TelephonyManager.NETWORK_TYPE_NR
-                && serviceState.getNrFrequencyRange() == ServiceState.FREQUENCY_RANGE_MMWAVE) {
-            return DATA_CONFIG_NETWORK_TYPE_NR_SA_MMWAVE;
+        int networkType = displayInfo.getNetworkType();
+        switch (displayInfo.getOverrideNetworkType()) {
+            case TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED:
+                if (networkType == TelephonyManager.NETWORK_TYPE_NR) {
+                    return DATA_CONFIG_NETWORK_TYPE_NR_SA_MMWAVE;
+                } else {
+                    return DATA_CONFIG_NETWORK_TYPE_NR_NSA_MMWAVE;
+                }
+            case TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA:
+                return DATA_CONFIG_NETWORK_TYPE_NR_NSA;
+            case TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_ADVANCED_PRO:
+            case TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA:
+                return DATA_CONFIG_NETWORK_TYPE_LTE_CA;
+            case TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE:
+            default:
+                return networkTypeToDataConfigNetworkType(networkType);
         }
-        return networkTypeToDataConfigNetworkType(networkType);
     }
 
     /** Update handover rules from carrier config. */
