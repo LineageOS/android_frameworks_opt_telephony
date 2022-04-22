@@ -484,6 +484,31 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testImsMTCall() {
+        ImsPhoneConnection connection = setupRingingConnection();
+        assertEquals(android.telecom.Connection.VERIFICATION_STATUS_PASSED,
+                connection.getNumberVerificationStatus());
+    }
+
+    @Test
+    @SmallTest
+    public void testImsMTCallMissed() {
+        ImsPhoneConnection connection = setupRingingConnection();
+        mImsCallListener.onCallTerminated(connection.getImsCall(),
+                new ImsReasonInfo(ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, 0));
+        assertEquals(DisconnectCause.INCOMING_MISSED, connection.getDisconnectCause());
+    }
+
+    @Test
+    @SmallTest
+    public void testImsMTCallRejected() {
+        ImsPhoneConnection connection = setupRingingConnection();
+        connection.onHangupLocal();
+        mImsCallListener.onCallTerminated(connection.getImsCall(),
+                new ImsReasonInfo(ImsReasonInfo.CODE_SIP_REQUEST_TIMEOUT, 0));
+        assertEquals(DisconnectCause.INCOMING_REJECTED, connection.getDisconnectCause());
+    }
+
+    private ImsPhoneConnection setupRingingConnection() {
         mImsCallProfile.setCallerNumberVerificationStatus(
                 ImsCallProfile.VERIFICATION_STATUS_PASSED);
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
@@ -500,6 +525,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         connection.addListener(mImsPhoneConnectionListener);
         assertEquals(android.telecom.Connection.VERIFICATION_STATUS_PASSED,
                 connection.getNumberVerificationStatus());
+        return connection;
     }
 
     @Test
