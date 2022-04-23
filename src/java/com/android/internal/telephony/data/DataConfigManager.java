@@ -220,19 +220,19 @@ public class DataConfigManager extends Handler {
 
     /**
      * Timeout in ms before creating an anomaly report for a DataNetwork stuck in
-     * {@link DataNetwork#ConnectingState}.
+     * {@link DataNetwork.ConnectingState}.
      */
     private int mNetworkConnectingTimeout;
 
     /**
      * Timeout in ms before creating an anomaly report for a DataNetwork stuck in
-     * {@link DataNetwork#DisconnectingState}.
+     * {@link DataNetwork.DisconnectingState}.
      */
     private int mNetworkDisconnectingTimeout;
 
     /**
      * Timeout in ms before creating an anomaly report for a DataNetwork stuck in
-     * {@link DataNetwork#HandoverState}.
+     * {@link DataNetwork.HandoverState}.
      */
     private int mNetworkHandoverTimeout;
 
@@ -776,7 +776,7 @@ public class DataConfigManager extends Handler {
 
     /**
      * @return Timeout in ms before creating an anomaly report for a DataNetwork stuck in
-     * {@link DataNetwork#ConnectingState}.
+     * {@link DataNetwork.ConnectingState}.
      */
     public int getAnomalyNetworkConnectingTimeoutMs() {
         return mNetworkConnectingTimeout;
@@ -784,7 +784,7 @@ public class DataConfigManager extends Handler {
 
     /**
      * @return Timeout in ms before creating an anomaly report for a DataNetwork stuck in
-     * {@link DataNetwork#DisconnectingState}.
+     * {@link DataNetwork.DisconnectingState}.
      */
     public int getAnomalyNetworkDisconnectingTimeoutMs() {
         return mNetworkDisconnectingTimeout;
@@ -792,7 +792,7 @@ public class DataConfigManager extends Handler {
 
     /**
      * @return Timeout in ms before creating an anomaly report for a DataNetwork stuck in
-     * {@link DataNetwork#HandoverState}.
+     * {@link DataNetwork.HandoverState}.
      */
     public int getNetworkHandoverTimeoutMs() {
         return mNetworkHandoverTimeout;
@@ -1116,10 +1116,22 @@ public class DataConfigManager extends Handler {
     }
 
     /**
-     * Registration point for subscription info ready
+     * @return {@code true} if enhanced IWLAN handover check is enabled. If enabled, telephony
+     * frameworks will not perform handover if the target transport is out of service, or VoPS not
+     * supported. The network will be torn down on the source transport, and will be
+     * re-established on the target transport when condition is allowed for bringing up a new
+     * network.
+     */
+    public boolean isEnhancedIwlanHandoverCheckEnabled() {
+        return mResources.getBoolean(
+                com.android.internal.R.bool.config_enhanced_iwlan_handover_check);
+    }
+
+    /**
+     * Registration point for subscription info ready.
      *
-     * @param h handler to notify
-     * @param what what code of message when delivered
+     * @param h handler to notify.
+     * @param what what code of message when delivered.
      */
     public void registerForConfigUpdate(Handler h, int what) {
         mConfigUpdateRegistrants.addUnique(h, what, null);
@@ -1213,6 +1225,7 @@ public class DataConfigManager extends Handler {
         pw.println("Bandwidth estimation source=" + mResources.getString(
                 com.android.internal.R.string.config_bandwidthEstimateSource));
         pw.println("isDelayTearDownImsEnabled=" + isImsDelayTearDownEnabled());
+        pw.println("isEnhancedIwlanHandoverCheckEnabled=" + isEnhancedIwlanHandoverCheckEnabled());
         pw.decreaseIndent();
     }
 }
