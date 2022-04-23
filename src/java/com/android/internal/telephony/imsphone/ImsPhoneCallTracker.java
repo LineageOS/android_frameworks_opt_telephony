@@ -3260,12 +3260,16 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
                 } else if (conn.isIncoming() && conn.getConnectTime() == 0
                         && cause != DisconnectCause.ANSWERED_ELSEWHERE) {
-                    // Missed
-                    if (cause == DisconnectCause.NORMAL
-                            || cause == DisconnectCause.INCOMING_AUTO_REJECTED) {
-                        cause = DisconnectCause.INCOMING_MISSED;
-                    } else {
+
+                    if (conn.getDisconnectCause() == DisconnectCause.LOCAL) {
+                        // If the user initiated a disconnect of this connection, then we will treat
+                        // this is a rejected call.
+                        // Note; the record the fact that this is a local disconnect in
+                        // ImsPhoneConnection#onHangupLocal
                         cause = DisconnectCause.INCOMING_REJECTED;
+                    } else {
+                        // Otherwise in all other cases consider it missed.
+                        cause = DisconnectCause.INCOMING_MISSED;
                     }
                     if (DBG) log("Incoming connection of 0 connect time detected - translated " +
                             "cause = " + cause);
