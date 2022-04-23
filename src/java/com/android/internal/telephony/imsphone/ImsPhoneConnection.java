@@ -542,8 +542,7 @@ public class ImsPhoneConnection extends Connection implements
     /**
      * Called when this Connection is being hung up locally (eg, user pressed "end")
      */
-    void
-    onHangupLocal() {
+    public void onHangupLocal() {
         mCause = DisconnectCause.LOCAL;
     }
 

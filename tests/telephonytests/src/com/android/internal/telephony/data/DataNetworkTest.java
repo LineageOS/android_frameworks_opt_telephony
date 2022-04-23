@@ -1143,7 +1143,7 @@ public class DataNetworkTest extends TelephonyTest {
         assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED)).isFalse();
 
-        doReturn(Set.of(TelephonyManager.NETWORK_TYPE_LTE)).when(mDataNetworkController)
+        doReturn(Set.of(TelephonyManager.NETWORK_TYPE_UMTS)).when(mDataNetworkController)
                 .getUnmeteredOverrideNetworkTypes();
         mDataNetworkUT.sendMessage(1/*EVENT_DATA_CONFIG_UPDATED*/);
 
