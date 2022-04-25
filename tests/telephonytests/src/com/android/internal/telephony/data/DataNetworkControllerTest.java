@@ -100,6 +100,7 @@ import android.util.SparseArray;
 import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksManagerCallback;
 import com.android.internal.telephony.data.DataEvaluation.DataDisallowedReason;
@@ -627,6 +628,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
             setSuccessfulSetupDataResponse(mMockedDataServiceManagers.get(transport), 1);
             doAnswer(invocation -> {
                 int cid = (int) invocation.getArguments()[0];
+                Message msg = (Message) invocation.getArguments()[2];
+                msg.sendToTarget();
                 mDataCallResponses.get(transport).remove(cid);
                 mDataCallListChangedRegistrants.get(transport).notifyRegistrants(
                         new AsyncResult(transport, new ArrayList<>(mDataCallResponses.get(
@@ -999,7 +1002,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verifyAllDataDisconnected();
         verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(false));
         verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkDisconnected();
-
     }
 
     @Test
@@ -2787,5 +2789,27 @@ public class DataNetworkControllerTest extends TelephonyTest {
         // The IMS network should only have IMS, but no MMTEL.
         verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL);
+    }
+
+    @Test
+    public void testDeactivateDataOnOldHal() throws Exception {
+        doAnswer(invocation -> {
+            // Only send the deactivation data response, no data call list changed event.
+            Message msg = (Message) invocation.getArguments()[2];
+            msg.sendToTarget();
+            return null;
+        }).when(mMockedWwanDataServiceManager).deactivateDataCall(
+                anyInt(), anyInt(), any(Message.class));
+        // Simulate old devices
+        doReturn(RIL.RADIO_HAL_VERSION_1_6).when(mPhone).getHalVersion();
+
+        testSetupDataNetwork();
+
+        mDataNetworkControllerUT.obtainMessage(9/*EVENT_SIM_STATE_CHANGED*/,
+                TelephonyManager.SIM_STATE_ABSENT, 0).sendToTarget();
+        processAllMessages();
+        verifyAllDataDisconnected();
+        verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(false));
+        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkDisconnected();
     }
 }
