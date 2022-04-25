@@ -50,6 +50,7 @@ import android.testing.TestableLooper;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
@@ -577,6 +578,7 @@ public class SignalStrengthControllerTest extends TelephonyTest {
                 mSsc.getSignalStrength().getLevel());
     }
 
+    @Ignore("b/230342465. Upgrade this test case to HAL 2.0")
     @Test
     public void test5gNrSignalStrengthReportingCriteria_ConfiguredThresholds() {
         SignalStrength ss = new SignalStrength(
