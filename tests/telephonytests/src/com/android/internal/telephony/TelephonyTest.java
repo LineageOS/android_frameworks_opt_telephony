@@ -706,9 +706,9 @@ public abstract class TelephonyTest {
                 anyInt(), anyBoolean());
 
         //Misc
-        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS).when(mServiceState).
-                getRilDataRadioTechnology();
-        doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_UMTS,
+        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_LTE).when(mServiceState)
+                .getRilDataRadioTechnology();
+        doReturn(new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_LTE,
                 TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE))
                 .when(mDisplayInfoController).getTelephonyDisplayInfo();
         doReturn(mPhone).when(mCT).getPhone();
