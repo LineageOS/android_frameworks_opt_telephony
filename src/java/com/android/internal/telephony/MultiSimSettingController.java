@@ -29,6 +29,7 @@ import static android.telephony.TelephonyManager.EXTRA_SIM_COMBINATION_WARNING_T
 import static android.telephony.TelephonyManager.EXTRA_SIM_COMBINATION_WARNING_TYPE_NONE;
 import static android.telephony.TelephonyManager.EXTRA_SUBSCRIPTION_ID;
 
+import android.annotation.CallbackExecutor;
 import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.app.PendingIntent;
@@ -52,6 +53,7 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
 import com.android.internal.telephony.util.ArrayUtils;
 
 import java.lang.annotation.Retention;
@@ -59,6 +61,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 /**
@@ -150,6 +153,9 @@ public class MultiSimSettingController extends Handler {
     // device.
     private final boolean mIsAskEverytimeSupportedForSms;
 
+    // The number of existing DataSettingsControllerCallback
+    private int mCallbacksCount;
+
     private static final String SETTING_USER_PREF_DATA_SUB = "user_preferred_data_sub";
 
     private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
@@ -164,6 +170,37 @@ public class MultiSimSettingController extends Handler {
             }
         }
     };
+
+    private static class DataSettingsControllerCallback extends DataSettingsManagerCallback {
+        private final Phone mPhone;
+
+        DataSettingsControllerCallback(@NonNull Phone phone,
+                @NonNull @CallbackExecutor Executor executor) {
+            super(executor);
+            mPhone = phone;
+        }
+
+        @Override
+        public void onDataEnabledChanged(boolean enabled,
+                @TelephonyManager.DataEnabledChangedReason int reason, String callingPackage) {
+            int subId = mPhone.getSubId();
+            // notifyUserDataEnabled if the change is called from external and reason is
+            // DATA_ENABLED_REASON_USER
+            if (SubscriptionManager.isValidSubscriptionId(subId)
+                    && reason == TelephonyManager.DATA_ENABLED_REASON_USER
+                    && !getInstance().mContext.getOpPackageName().equals(callingPackage)) {
+                getInstance().notifyUserDataEnabled(mPhone.getSubId(), enabled);
+            }
+        }
+
+        @Override
+        public void onDataRoamingEnabledChanged(boolean enabled) {
+            int subId = mPhone.getSubId();
+            if (SubscriptionManager.isValidSubscriptionId(subId)) {
+                getInstance().notifyRoamingDataEnabled(mPhone.getSubId(), enabled);
+            }
+        }
+    }
 
     /**
      * Return the singleton or create one if not existed.
@@ -353,6 +390,7 @@ public class MultiSimSettingController extends Handler {
             }
             reEvaluateAll();
         }
+        registerDataSettingsControllerCallbackAsNeeded();
     }
 
     /**
@@ -416,7 +454,11 @@ public class MultiSimSettingController extends Handler {
         reEvaluateAll();
     }
 
-    private boolean isCarrierConfigLoadedForAllSub() {
+    /**
+     * Check whether carrier config loaded for all subs
+     */
+    @VisibleForTesting
+    public boolean isCarrierConfigLoadedForAllSub() {
         int[] activeSubIds = mSubController.getActiveSubIdList(false);
         for (int activeSubId : activeSubIds) {
             boolean isLoaded = false;
@@ -444,6 +486,7 @@ public class MultiSimSettingController extends Handler {
         for (Phone phone : PhoneFactory.getPhones()) {
             phone.mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
         }
+        registerDataSettingsControllerCallbackAsNeeded();
     }
 
     /**
@@ -1007,6 +1050,19 @@ public class MultiSimSettingController extends Handler {
             }
         }
         return true;
+    }
+
+    private void registerDataSettingsControllerCallbackAsNeeded() {
+        // Only register callbacks for new phone instance as PhoneFactory does not remove
+        // existing phone instance.
+        Phone[] phones = PhoneFactory.getPhones();
+        for (int i = mCallbacksCount; i < phones.length; i++) {
+            if (phones[i].isUsingNewDataStack()) {
+                phones[i].getDataSettingsManager().registerCallback(
+                        new DataSettingsControllerCallback(phones[i], this::post));
+            }
+        }
+        mCallbacksCount = phones.length;
     }
 
     private void log(String msg) {
