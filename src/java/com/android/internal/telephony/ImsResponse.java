@@ -90,13 +90,6 @@ public class ImsResponse extends IRadioImsResponse.Stub {
     /**
      * @param info Response info struct containing response type, serial no. and error.
      */
-    public void setAnbrEnabledResponse(RadioResponseInfo info) {
-        RadioResponse.responseVoid(RIL.IMS_SERVICE, mRil, info);
-    }
-
-    /**
-     * @param info Response info struct containing response type, serial no. and error.
-     */
     public void sendAnbrQueryResponse(RadioResponseInfo info) {
         RadioResponse.responseVoid(RIL.IMS_SERVICE, mRil, info);
     }

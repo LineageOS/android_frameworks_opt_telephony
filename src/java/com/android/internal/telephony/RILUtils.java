@@ -147,7 +147,6 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEPARATE_C
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SETUP_DATA_CALL;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_ALLOWED_CARRIERS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_ALLOWED_NETWORK_TYPES_BITMAP;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_ANBR_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_BAND_MODE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_CALL_FORWARD;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_CALL_WAITING;
@@ -5060,8 +5059,6 @@ public class RILUtils {
                 return "START_IMS_TRAFFIC";
             case RIL_REQUEST_STOP_IMS_TRAFFIC:
                 return "STOP_IMS_TRAFFIC";
-            case RIL_REQUEST_SET_ANBR_ENABLED:
-                return "SET_ANBR_ENABLED";
             case RIL_REQUEST_SEND_ANBR_QUERY:
                 return "SEND_ANBR_QUERY";
             default:

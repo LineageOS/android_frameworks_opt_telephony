@@ -2874,20 +2874,11 @@ public interface CommandsInterface {
     default void stopImsTraffic(String token, Message result) {}
 
     /**
-     * Enable or disable the ANBR feature
-     *
-     * @param qosSessionId QoS session ID is used to identify media stream such as audio or video
-     * @param isEnabled True if Anbr feature is enabled, false otherwise
-     */
-    default void setAnbrEnabled(int qosSessionId, boolean isEnabled, Message result) {}
-
-    /**
      * Triggers radio to send ANBRQ message to the network.
      *
-     * @param qosSessionId QoS session ID is used to identify media stream such as audio or video.
-     * @param imsdirection Direction of this packet stream (e.g. uplink or downlink).
+     * @param mediaType Media type is used to identify media stream such as audio or video.
+     * @param direction Direction of this packet stream (e.g. uplink or downlink).
      * @param bitsPerSecond The bit rate requested by the opponent UE.
      */
-    default void sendAnbrQuery(int qosSessionId, int imsdirection, int bitsPerSecond,
-            Message result) {}
+    default void sendAnbrQuery(int mediaType, int direction, int bitsPerSecond, Message result) {}
 }
