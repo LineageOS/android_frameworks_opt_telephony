@@ -71,6 +71,7 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo.RegistrationState;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionPlan;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
@@ -98,6 +99,7 @@ import android.util.ArraySet;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.ISub;
+import com.android.internal.telephony.MultiSimSettingController;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RIL;
@@ -151,6 +153,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
     private ImsStateCallback mRcsStateCallback;
     private RegistrationCallback mMmtelRegCallback;
     private RegistrationCallback mRcsRegCallback;
+    private SubscriptionInfo mMockSubInfo;
 
     private int mNetworkRequestId = 0;
 
@@ -595,6 +598,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         mMockedImsResolver = Mockito.mock(ImsResolver.class);
         mMockedDataNetworkControllerCallback = Mockito.mock(DataNetworkControllerCallback.class);
         mMockedDataRetryManagerCallback = Mockito.mock(DataRetryManagerCallback.class);
+        mMockSubInfo = Mockito.mock(SubscriptionInfo.class);
         when(mTelephonyComponentFactory.makeDataSettingsManager(any(Phone.class),
                 any(DataNetworkController.class), any(Looper.class),
                 any(DataSettingsManager.DataSettingsManagerCallback.class))).thenCallRealMethod();
@@ -621,6 +625,13 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn("").when(mSubscriptionController).getDataEnabledOverrideRules(anyInt());
         doReturn(true).when(mSubscriptionController).setDataEnabledOverrideRules(
                 anyInt(), anyString());
+
+        List<SubscriptionInfo> infoList = new ArrayList<>();
+        infoList.add(mMockSubInfo);
+        doReturn(infoList).when(mSubscriptionController).getSubscriptionsInGroup(
+                any(), any(), any());
+        doReturn(true).when(mSubscriptionController).isActiveSubId(anyInt());
+        doReturn(0).when(mSubscriptionController).getPhoneId(anyInt());
 
         for (int transport : new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN}) {
@@ -1240,6 +1251,49 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Verify data is torn down.
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+    }
+
+    @Test
+    public void testNotifyWhenSetDataEnabled() throws Exception {
+        // Set a valid sub id, DEFAULT_SUBSCRIPTION_ID
+        int subId = Integer.MAX_VALUE;
+        Field field = DataSettingsManager.class.getDeclaredField("mSubId");
+        field.setAccessible(true);
+        field.setInt(mDataNetworkControllerUT.getDataSettingsManager(), subId);
+        boolean isDataEnabled = mDataNetworkControllerUT.getDataSettingsManager().isDataEnabled();
+        doReturn(mDataNetworkControllerUT.getDataSettingsManager())
+                .when(mPhone).getDataSettingsManager();
+        MultiSimSettingController instance = MultiSimSettingController.getInstance();
+        MultiSimSettingController controller = Mockito.spy(
+                new MultiSimSettingController(mContext, mSubscriptionController));
+        doReturn(true).when(controller).isCarrierConfigLoadedForAllSub();
+        replaceInstance(MultiSimSettingController.class, "sInstance", null, controller);
+
+        controller.notifyAllSubscriptionLoaded();
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, !isDataEnabled,
+                mContext.getOpPackageName());
+        processAllMessages();
+
+        // Verify not to notify MultiSimSettingController
+        verify(controller, never()).notifyUserDataEnabled(anyInt(), anyBoolean());
+
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, isDataEnabled,
+                mContext.getOpPackageName());
+        processAllMessages();
+
+        // Verify not to notify MultiSimSettingController
+        verify(controller, never()).notifyUserDataEnabled(anyInt(), anyBoolean());
+
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, !isDataEnabled, "com.android.settings");
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, isDataEnabled, "com.android.settings");
+        processAllMessages();
+
+        // Verify to notify MultiSimSettingController exactly 2 times
+        verify(controller, times(2)).notifyUserDataEnabled(anyInt(), anyBoolean());
     }
 
     @Test
