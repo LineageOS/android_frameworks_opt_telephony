@@ -2700,6 +2700,11 @@ public class DataNetworkController extends Handler {
         // manager.
         sendMessage(obtainMessage(EVENT_EVALUATE_PREFERRED_TRANSPORT,
                 dataNetwork.getApnTypeNetworkCapability(), 0));
+
+        // There might be network we didn't tear down in the last evaluation due to handover in
+        // progress. We should evaluate again.
+        sendMessage(obtainMessage(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
+                DataEvaluationReason.DATA_HANDOVER));
     }
 
     /**
@@ -2720,6 +2725,11 @@ public class DataNetworkController extends Handler {
         logl("Handover failed. " + dataNetwork + ", cause=" + DataFailCause.toString(cause)
                 + ", retryDelayMillis=" + retryDelayMillis + "ms, handoverFailureMode="
                 + DataCallResponse.failureModeToString(handoverFailureMode));
+        // There might be network we didn't tear down in the last evaluation due to handover in
+        // progress. We should evaluate again.
+        sendMessage(obtainMessage(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
+                DataEvaluationReason.DATA_HANDOVER));
+
         if (dataNetwork.getAttachedNetworkRequestList().isEmpty()) {
             log("onDataNetworkHandoverFailed: No network requests attached to " + dataNetwork
                     + ". No need to retry since the network will be torn down soon.");
