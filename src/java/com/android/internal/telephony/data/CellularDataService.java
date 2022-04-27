@@ -108,8 +108,8 @@ public class CellularDataService extends DataService {
                                     ar.exception != null
                                             ? DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE
                                             : RESULT_SUCCESS,
-                                    ar.exception != null ? Collections.EMPTY_LIST
-                                            : (List<DataCallResponse>) ar.result
+                                    ar.result != null ? (List<DataCallResponse>) ar.result
+                                            : Collections.EMPTY_LIST
                                     );
                             break;
                         case DATA_CALL_LIST_CHANGED:
