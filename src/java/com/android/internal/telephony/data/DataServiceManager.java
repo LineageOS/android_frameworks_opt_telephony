@@ -62,6 +62,7 @@ import com.android.internal.telephony.PhoneConfigurationManager;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -145,6 +146,17 @@ public class DataServiceManager extends Handler {
             loge(message);
             AnomalyReporter.reportAnomaly(UUID.fromString("fc1956de-c080-45de-8431-a1faab687110"),
                     message);
+
+            // Cancel all pending requests
+            for (Message m : mMessageMap.values()) {
+                sendCompleteMessage(m, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
+            }
+            mMessageMap.clear();
+
+            // Tear down all connections
+            mLastDataCallResponseList = Collections.EMPTY_LIST;
+            mDataCallListChangedRegistrants.notifyRegistrants(
+                    new AsyncResult(null, Collections.EMPTY_LIST, null));
         }
     }
 

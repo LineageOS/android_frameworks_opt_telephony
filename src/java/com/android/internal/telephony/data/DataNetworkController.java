@@ -2440,7 +2440,7 @@ public class DataNetworkController extends Handler {
 
     /**
      * Track the frequency of setup data failure on each
-     * {@link AccessNetworkConstants#TransportType} data service.
+     * {@link AccessNetworkConstants.TransportType} data service.
      *
      * @param transport The transport of the data service.
      */
@@ -2614,7 +2614,7 @@ public class DataNetworkController extends Handler {
         }
 
         if (!mDataSettingsManager.isRecoveryOnBadNetworkEnabled()) {
-            log("Ignore data network validation status changed becaused"
+            log("Ignore data network validation status changed because "
                     + "data stall recovery is disabled.");
             return;
         }
@@ -2786,19 +2786,7 @@ public class DataNetworkController extends Handler {
         log("onDataServiceBindingChanged: " + AccessNetworkConstants
                 .transportTypeToString(transport) + " data service is "
                 + (bound ? "bound." : "unbound."));
-        if (!bound) {
-            if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
-                if (!mDataConfigManager.shouldPersistIwlanDataNetworksWhenDataServiceRestarted()) {
-                    for (DataNetwork dataNetwork : mDataNetworkList) {
-                        if (dataNetwork.getTransport()
-                                == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
-                            dataNetwork.tearDown(
-                                    DataNetwork.TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY);
-                        }
-                    }
-                }
-            }
-        } else {
+        if (bound) {
             mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                     () -> callback.onDataServiceBound(transport)));
         }

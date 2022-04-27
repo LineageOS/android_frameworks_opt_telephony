@@ -1117,6 +1117,7 @@ public class DataNetwork extends StateMachine {
 
             notifyPreciseDataConnectionState();
             if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+                // Defer setupData until we get the PDU session ID response
                 allocatePduSessionId();
                 return;
             }
@@ -1154,6 +1155,7 @@ public class DataNetwork extends StateMachine {
                 case EVENT_PCO_DATA_RECEIVED:
                 case EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET:
                     // Defer the request until connected or disconnected.
+                    log("Defer message " + eventToString(msg.what));
                     deferMessage(msg);
                     break;
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
@@ -1322,6 +1324,7 @@ public class DataNetwork extends StateMachine {
                     // signal. So we only defer the related data call list changed event, and drop
                     // the unrelated.
                     if (shouldDeferDataStateChangedEvent(msg)) {
+                        log("Defer message " + eventToString(msg.what));
                         deferMessage(msg);
                     }
                     break;
@@ -1332,6 +1335,7 @@ public class DataNetwork extends StateMachine {
                 case EVENT_VOICE_CALL_ENDED:
                 case EVENT_VOICE_CALL_STARTED:
                     // Defer the request until handover succeeds or fails.
+                    log("Defer message " + eventToString(msg.what));
                     deferMessage(msg);
                     break;
                 case EVENT_HANDOVER_RESPONSE:
