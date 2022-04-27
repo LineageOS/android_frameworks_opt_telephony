@@ -745,7 +745,7 @@ public abstract class TelephonyTest {
         doReturn(true).when(mDataSettingsManager).isDataEnabled();
         doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
                 anyInt(), anyInt());
-        doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion();
+        doReturn(RIL.RADIO_HAL_VERSION_2_0).when(mPhone).getHalVersion();
         doReturn(2).when(mSignalStrength).getLevel();
 
         // WiFi
