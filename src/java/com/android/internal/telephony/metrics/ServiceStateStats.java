@@ -238,10 +238,22 @@ public class ServiceStateStats {
         if (imsPhone != null) {
             @NetworkType int imsVoiceRat = imsPhone.getImsStats().getImsVoiceRadioTech();
             if (imsVoiceRat != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
-                return imsVoiceRat;
+                // If IMS is over WWAN but WWAN PS is not in-service, then IMS RAT is invalid
+                boolean isImsVoiceRatValid =
+                        (imsVoiceRat == TelephonyManager.NETWORK_TYPE_IWLAN
+                                || getDataRat(state) != TelephonyManager.NETWORK_TYPE_UNKNOWN);
+                return isImsVoiceRatValid ? imsVoiceRat : TelephonyManager.NETWORK_TYPE_UNKNOWN;
             }
         }
-        return state.getVoiceNetworkType();
+
+        // If WWAN CS is not in-service, we should return NETWORK_TYPE_UNKNOWN
+        final NetworkRegistrationInfo wwanRegInfo =
+                state.getNetworkRegistrationInfo(
+                        NetworkRegistrationInfo.DOMAIN_CS,
+                        AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        return wwanRegInfo != null && wwanRegInfo.isInService()
+                ? wwanRegInfo.getAccessNetworkTechnology()
+                : TelephonyManager.NETWORK_TYPE_UNKNOWN;
     }
 
     /**
@@ -263,7 +275,7 @@ public class ServiceStateStats {
                 state.getNetworkRegistrationInfo(
                         NetworkRegistrationInfo.DOMAIN_PS,
                         AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        return wwanRegInfo != null
+        return wwanRegInfo != null && wwanRegInfo.isInService()
                 ? wwanRegInfo.getAccessNetworkTechnology()
                 : TelephonyManager.NETWORK_TYPE_UNKNOWN;
     }
