@@ -123,6 +123,7 @@ public class ImsStatsTest extends TelephonyTest {
         // WWAN PS RAT is LTE
         doReturn(new NetworkRegistrationInfo.Builder()
                 .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
                 .build())
                 .when(mServiceState).getNetworkRegistrationInfo(DOMAIN_PS, TRANSPORT_TYPE_WWAN);
 
