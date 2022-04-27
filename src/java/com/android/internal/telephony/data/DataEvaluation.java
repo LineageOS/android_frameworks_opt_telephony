@@ -224,7 +224,7 @@ public class DataEvaluation {
         RETRY_AFTER_DISCONNECTED,
         /** Data setup retry. */
         DATA_RETRY,
-        /** Handover between IWLAN and cellular. */
+        /** For handover evaluation, or for network tearing down after handover succeeds/fails. */
         DATA_HANDOVER,
         /** Preferred transport changed. */
         PREFERRED_TRANSPORT_CHANGED,
