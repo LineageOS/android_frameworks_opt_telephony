@@ -762,8 +762,10 @@ public class DataProfileManager extends Handler {
         apnBuilder.setAuthType(apn2.getAuthType() == -1
                 ? apn1.getAuthType() : apn2.getAuthType());
         apnBuilder.setApnTypeBitmask(apn1.getApnTypeBitmask() | apn2.getApnTypeBitmask());
-        apnBuilder.setMtuV4(apn2.getMtuV4() == -1 ? apn1.getMtuV4() : apn2.getMtuV4());
-        apnBuilder.setMtuV6(apn2.getMtuV6() == -1 ? apn1.getMtuV6() : apn2.getMtuV6());
+        apnBuilder.setMtuV4(apn2.getMtuV4() <= ApnSetting.UNSET_MTU
+                ? apn1.getMtuV4() : apn2.getMtuV4());
+        apnBuilder.setMtuV6(apn2.getMtuV6() <= ApnSetting.UNSET_MTU
+                ? apn1.getMtuV6() : apn2.getMtuV6());
 
         // The following fields in apn1 and apn2 should be the same, otherwise ApnSetting.similar()
         // should fail earlier.
