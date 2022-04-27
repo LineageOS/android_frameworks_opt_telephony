@@ -679,6 +679,8 @@ public class DataRetryManagerTest extends TelephonyTest {
 
     @Test
     public void testTacChangedReset() {
+        doReturn(true).when(mDataConfigManager).shouldResetDataThrottlingWhenTacChanges();
+
         testDataSetupRetryNetworkSuggestedNeverRetry();
         Mockito.clearInvocations(mDataRetryManagerCallbackMock);
 
