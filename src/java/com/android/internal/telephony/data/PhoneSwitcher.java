@@ -1431,8 +1431,17 @@ public class PhoneSwitcher extends Handler {
             return false;
         }
 
-        int phoneIdToHandle = phoneIdForRequest(networkRequest);
+        NetworkRequest netRequest = networkRequest.getNativeNetworkRequest();
+        int subId = getSubIdFromNetworkSpecifier(netRequest.getNetworkSpecifier());
 
+        //if this phone is an emergency networkRequest
+        //and subId is not specified that is invalid or default
+        if (isAnyVoiceCallActiveOnDevice() && isEmergencyNetworkRequest(networkRequest)
+                && (subId == DEFAULT_SUBSCRIPTION_ID || subId == INVALID_SUBSCRIPTION_ID)) {
+            return phoneId == mPhoneIdInVoiceCall;
+        }
+
+        int phoneIdToHandle = phoneIdForRequest(networkRequest);
         return phoneId == phoneIdToHandle;
     }
 
