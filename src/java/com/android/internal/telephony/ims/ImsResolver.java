@@ -47,6 +47,7 @@ import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsFeatureConfiguration;
 import android.text.TextUtils;
 import android.util.ArrayMap;
+import android.util.ArraySet;
 import android.util.LocalLog;
 import android.util.Log;
 import android.util.SparseArray;
@@ -714,13 +715,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
      * trigger ImsFeature status updates.
      */
     public void enableIms(int slotId) {
-        SparseArray<ImsServiceController> controllers = getImsServiceControllers(slotId);
-        if (controllers != null) {
-            for (int i = 0; i < controllers.size(); i++) {
-                int key = controllers.keyAt(i);
-                controllers.get(key).enableIms(slotId, getSubId(slotId));
-            }
-        }
+        getImsServiceControllers(slotId).forEach(
+                (controller) -> controller.enableIms(slotId, getSubId(slotId)));
     }
 
     /**
@@ -728,13 +724,8 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
      * trigger ImsFeature capability status to become false.
      */
     public void disableIms(int slotId) {
-        SparseArray<ImsServiceController> controllers = getImsServiceControllers(slotId);
-        if (controllers != null) {
-            for (int i = 0; i < controllers.size(); i++) {
-                int key = controllers.keyAt(i);
-                controllers.get(key).disableIms(slotId, getSubId(slotId));
-            }
-        }
+        getImsServiceControllers(slotId).forEach(
+                (controller) -> controller.disableIms(slotId, getSubId(slotId)));
     }
 
     /**
@@ -753,17 +744,31 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         return  (fc != null) ? fc.imsConfig : null;
     }
 
-    private  SparseArray<ImsServiceController> getImsServiceControllers(int slotId) {
+    /**
+     * @return A Set containing all the bound ImsServiceControllers for the slotId specified.
+     */
+    private Set<ImsServiceController> getImsServiceControllers(int slotId) {
         if (slotId < 0 || slotId >= mNumSlots) {
-            return null;
+            return Collections.emptySet();
         }
+        SparseArray<ImsServiceController> featureToControllerMap;
         synchronized (mBoundServicesLock) {
-            SparseArray<ImsServiceController> services = mBoundImsServicesByFeature.get(slotId);
-            if (services == null) {
-                return null;
-            }
-            return services;
+            featureToControllerMap =  mBoundImsServicesByFeature.get(slotId);
         }
+        if (featureToControllerMap == null) {
+            Log.w(TAG, "getImsServiceControllers: couldn't find any active "
+                    + "ImsServiceControllers");
+            return Collections.emptySet();
+        }
+        // Create a temporary set to dedupe when multiple features map to the same
+        // ImsServiceController
+        Set<ImsServiceController> controllers = new ArraySet<>(2);
+        for (int i = 0; i < featureToControllerMap.size(); i++) {
+            int key = featureToControllerMap.keyAt(i);
+            ImsServiceController c = featureToControllerMap.get(key);
+            if (c != null) controllers.add(c);
+        }
+        return controllers;
     }
 
     /**
