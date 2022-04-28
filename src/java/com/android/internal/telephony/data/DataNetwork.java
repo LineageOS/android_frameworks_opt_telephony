@@ -1994,8 +1994,8 @@ public class DataNetwork extends StateMachine {
 
         // LinkProperties.setMtu should be deprecated. The mtu for each route has been already
         // provided in addRoute() above. For backwards compatibility, we still need to provide
-        // a value for the legacy MTU. Use the lower value of v4 and v6 value here.
-        linkProperties.setMtu(Math.min(mtuV4, mtuV6));
+        // a value for the legacy MTU. Use the higher value of v4 and v6 value here.
+        linkProperties.setMtu(Math.max(mtuV4, mtuV6));
 
         if (mDataProfile.getApnSetting() != null
                 && !TextUtils.isEmpty(mDataProfile.getApnSetting().getProxyAddressAsString())) {
