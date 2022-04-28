@@ -190,9 +190,8 @@ public class DataNetworkTest extends TelephonyTest {
                             InetAddresses.parseNumericAddress("fd00:976a:c305:1d::8"),
                             InetAddresses.parseNumericAddress("fd00:976a:c202:1d::7"),
                             InetAddresses.parseNumericAddress("fd00:976a:c305:1d::5")))
-                    .setMtu(1500)
-                    .setMtuV4(1500)
-                    .setMtuV6(1500)
+                    .setMtuV4(1234)
+                    .setMtuV6(5678)
                     .setPduSessionId(1)
                     .setQosBearerSessions(new ArrayList<>())
                     .setTrafficDescriptors(tds)
@@ -304,6 +303,16 @@ public class DataNetworkTest extends TelephonyTest {
         assertThat(lp.getAddresses()).containsExactly(
                 InetAddresses.parseNumericAddress(IPV4_ADDRESS),
                 InetAddresses.parseNumericAddress(IPV6_ADDRESS));
+
+        assertThat(lp.getRoutes()).hasSize(2);
+        assertThat(lp.getRoutes().get(0).getGateway()).isEqualTo(
+                InetAddresses.parseNumericAddress("10.0.2.15"));
+        assertThat(lp.getRoutes().get(0).getMtu()).isEqualTo(1234);
+        assertThat(lp.getRoutes().get(1).getGateway()).isEqualTo(
+                InetAddresses.parseNumericAddress("fe80::2"));
+        assertThat(lp.getRoutes().get(1).getMtu()).isEqualTo(5678);
+        // The higher value of v4 and v6 should be used.
+        assertThat(lp.getMtu()).isEqualTo(5678);
 
         ArgumentCaptor<PreciseDataConnectionState> pdcsCaptor =
                 ArgumentCaptor.forClass(PreciseDataConnectionState.class);
