@@ -954,7 +954,10 @@ public class DataRetryManager extends Handler {
         mRil.registerForOn(this, EVENT_RADIO_ON, null);
         mRil.registerForModemReset(this, EVENT_MODEM_RESET, null);
 
-        mPhone.getServiceStateTracker().registerForAreaCodeChanged(this, EVENT_TAC_CHANGED, null);
+        if (mDataConfigManager.shouldResetDataThrottlingWhenTacChanges()) {
+            mPhone.getServiceStateTracker().registerForAreaCodeChanged(this, EVENT_TAC_CHANGED,
+                    null);
+        }
     }
 
     @Override
