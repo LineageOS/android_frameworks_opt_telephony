@@ -310,7 +310,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mCall3Proto.isEmergency = false;
         mCall3Proto.isRoaming = false;
 
-        // CS MO call while camped on LTE
+        // CS MO emergency call while camped on LTE
         mCall4Proto = new VoiceCallSession();
         mCall4Proto.bearerAtStart = VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS;
         mCall4Proto.bearerAtEnd = VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS;
@@ -335,7 +335,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mCall4Proto.srvccFailureCount = 0L;
         mCall4Proto.srvccCancellationCount = 0L;
         mCall4Proto.rttEnabled = false;
-        mCall4Proto.isEmergency = false;
+        mCall4Proto.isEmergency = true;
         mCall4Proto.isRoaming = true;
 
         mCarrier1LteUsageProto = new VoiceCallRatUsage();
@@ -1128,6 +1128,24 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         VoiceCallSession[] calls = mPersistAtomsStorage.getVoiceCallSessions(0L);
         assertHasCall(calls, mCall1Proto, /* expectedCount= */ 49);
         assertHasCall(calls, mCall2Proto, /* expectedCount= */ 1);
+    }
+
+    @Test
+    @SmallTest
+    public void addVoiceCallSession_tooManyCalls_withEmergencyCalls() throws Exception {
+        createEmptyTestFile();
+        // We initially have storage full of emergency calls except one.
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        addRepeatedCalls(mPersistAtomsStorage, mCall4Proto, 49);
+        mPersistAtomsStorage.addVoiceCallSession(mCall1Proto);
+
+        mPersistAtomsStorage.addVoiceCallSession(mCall4Proto);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // after adding one more emergency call, the previous non-emergency call should be evicted
+        verifyCurrentStateSavedToFileOnce();
+        VoiceCallSession[] calls = mPersistAtomsStorage.getVoiceCallSessions(0L);
+        assertHasCall(calls, mCall4Proto, /* expectedCount= */ 50);
     }
 
     @Test
