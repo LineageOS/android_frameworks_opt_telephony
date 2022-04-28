@@ -62,6 +62,7 @@ import com.android.internal.telephony.PhoneConfigurationManager;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -118,7 +119,7 @@ public class DataServiceManager extends Handler {
 
     private String mLastBoundPackageName;
 
-    private List<DataCallResponse> mLastDataCallResponseList;
+    private List<DataCallResponse> mLastDataCallResponseList = Collections.EMPTY_LIST;
 
     private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
         @Override
@@ -328,7 +329,8 @@ public class DataServiceManager extends Handler {
 
         @Override
         public void onDataCallListChanged(List<DataCallResponse> dataCallList) {
-            mLastDataCallResponseList = dataCallList;
+            mLastDataCallResponseList =
+                    dataCallList != null ? dataCallList : Collections.EMPTY_LIST;
             mDataCallListChangedRegistrants.notifyRegistrants(
                     new AsyncResult(null, dataCallList, null));
         }

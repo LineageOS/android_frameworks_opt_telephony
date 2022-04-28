@@ -148,10 +148,23 @@ public class DataEvaluation {
      * Check if only one disallowed reason prevent data connection.
      *
      * @param reason The given reason to check
-     * @return True if the given reason is the only one that prevents data connection
+     * @return {@code true} if the given reason is the only one that prevents data connection
      */
     public boolean containsOnly(DataDisallowedReason reason) {
         return mDataDisallowedReasons.size() == 1 && contains(reason);
+    }
+
+    /**
+     * Check if the any of the disallowed reasons match one of the provided reason.
+     *
+     * @param reasons The given reasons to check.
+     * @return {@code true} if any of the given reasons matches one of the disallowed reasons.
+     */
+    public boolean containsAny(DataDisallowedReason... reasons) {
+        for (DataDisallowedReason reason : reasons) {
+            if (mDataDisallowedReasons.contains(reason)) return true;
+        }
+        return false;
     }
 
     /**
@@ -211,7 +224,7 @@ public class DataEvaluation {
         RETRY_AFTER_DISCONNECTED,
         /** Data setup retry. */
         DATA_RETRY,
-        /** Handover between IWLAN and cellular. */
+        /** For handover evaluation, or for network tearing down after handover succeeds/fails. */
         DATA_HANDOVER,
         /** Preferred transport changed. */
         PREFERRED_TRANSPORT_CHANGED,

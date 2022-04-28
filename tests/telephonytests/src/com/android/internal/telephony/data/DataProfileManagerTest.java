@@ -141,7 +141,7 @@ public class DataProfileManagerTest extends TelephonyTest {
                         0,                      // max_conns
                         0,                      // wait_time
                         0,                      // max_conns_time
-                        -1,                     // mtu
+                        0,                      // mtu
                         1280,                   // mtu_v4
                         1280,                   // mtu_v6
                         "",                     // mvno_type
@@ -280,9 +280,9 @@ public class DataProfileManagerTest extends TelephonyTest {
                         0,                      // max_conns
                         0,                      // wait_time
                         0,                      // max_conns_time
-                        -1,                     // mtu
-                        -1,                     // mtu_v4
-                        -1,                     // mtu_v6
+                        0,                      // mtu
+                        0,                      // mtu_v4
+                        0,                      // mtu_v6
                         "",                     // mvno_type
                         "",                     // mnvo_match_data
                         TelephonyManager.NETWORK_TYPE_BITMASK_LTE
@@ -755,6 +755,58 @@ public class DataProfileManagerTest extends TelephonyTest {
         assertThat(dataProfile.getApnSetting().getProtocol()).isEqualTo(ApnSetting.PROTOCOL_IPV4V6);
         assertThat(dataProfile.getApnSetting().getRoamingProtocol())
                 .isEqualTo(ApnSetting.PROTOCOL_IPV4V6);
+    }
+
+    @Test
+    public void testDedupeDataProfiles3() throws Exception {
+        DataProfile dataProfile1 = new DataProfile.Builder()
+                .setApnSetting(new ApnSetting.Builder()
+                        .setEntryName("BTT Lastgenphone")
+                        .setId(1)
+                        .setOperatorNumeric("123456")
+                        .setApnName("lastgenphone")
+                        .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_MMS
+                                | ApnSetting.TYPE_SUPL | ApnSetting.TYPE_FOTA)
+                        .setMmsc(Uri.parse("http://mmsc.mobile.btt.net"))
+                        .setMmsProxyAddress("proxy.mobile.btt.net")
+                        .setMmsProxyPort(80)
+                        .setMtuV4(1410)
+                        .setProtocol(ApnSetting.PROTOCOL_IPV4V6)
+                        .setRoamingProtocol(ApnSetting.PROTOCOL_IPV4V6)
+                        .setCarrierEnabled(true)
+                        .build())
+                .build();
+
+        DataProfile dataProfile2 = new DataProfile.Builder()
+                .setApnSetting(new ApnSetting.Builder()
+                        .setEntryName("BTT XCAP")
+                        .setId(5)
+                        .setOperatorNumeric("123456")
+                        .setApnName("lastgenphone")
+                        .setApnTypeBitmask(ApnSetting.TYPE_XCAP)
+                        .setProtocol(ApnSetting.PROTOCOL_IPV4V6)
+                        .setRoamingProtocol(ApnSetting.PROTOCOL_IPV4V6)
+                        .setCarrierEnabled(true)
+                        .build())
+                .build();
+
+        List<DataProfile> dataProfiles = new ArrayList<>(Arrays.asList(dataProfile2, dataProfile1));
+
+        logd("dp1.apnSetting, dp2.apnSetting similar="
+                + dataProfile1.getApnSetting().similar(dataProfile2.getApnSetting()));
+
+        dedupeDataProfiles(dataProfiles);
+        // After deduping, there should be only one.
+        assertThat(dataProfiles).hasSize(1);
+
+        DataProfile dataProfile = dataProfiles.get(0);
+        assertThat(dataProfile.getApnSetting()).isNotNull();
+
+
+        logd("After merged: " + dataProfile);
+        assertThat(dataProfile.getApnSetting().getApnTypeBitmask()).isEqualTo(
+                ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_MMS | ApnSetting.TYPE_SUPL
+                        | ApnSetting.TYPE_FOTA | ApnSetting.TYPE_XCAP);
     }
 
     @Test

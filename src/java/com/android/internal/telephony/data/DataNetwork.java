@@ -85,6 +85,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataRetryManager.DataHandoverRetryEntry;
@@ -542,7 +543,13 @@ public class DataNetwork extends StateMachine {
     private @Nullable KeepaliveTracker mKeepaliveTracker;
 
     /** The data profile used to establish this data network. */
-    private final @NonNull DataProfile mDataProfile;
+    private @NonNull DataProfile mDataProfile;
+
+    /**
+     * The data profile used for data handover. Some carriers might use different data profile
+     * between IWLAN and cellular. Only set before handover started.
+     */
+    private @Nullable DataProfile mHandoverDataProfile;
 
     /** The network capabilities of this data network. */
     private @NonNull NetworkCapabilities mNetworkCapabilities;
@@ -1745,7 +1752,7 @@ public class DataNetwork extends StateMachine {
                     NetworkRegistrationInfo nri = getNetworkRegistrationInfo();
                     if (nri != null) {
                         DataSpecificRegistrationInfo dsri = nri.getDataSpecificInfo();
-                        // Check if VoPS is supported by the network.
+                        // Check if the network is non-VoPS.
                         if (dsri != null && dsri.getVopsSupportInfo() != null
                                 && !dsri.getVopsSupportInfo().isVopsSupported()) {
                             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL);
@@ -2290,6 +2297,11 @@ public class DataNetwork extends StateMachine {
         if (resultCode == DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE) {
             log("Remove network since deactivate request returned an error.");
             mFailCause = DataFailCause.RADIO_NOT_AVAILABLE;
+            transitionTo(mDisconnectedState);
+        } else if (mPhone.getHalVersion().less(RIL.RADIO_HAL_VERSION_2_0)) {
+            log("Remove network on deactivate data response on old HAL "
+                    + mPhone.getHalVersion());
+            mFailCause = DataFailCause.LOST_CONNECTION;
             transitionTo(mDisconnectedState);
         }
     }
@@ -2872,17 +2884,35 @@ public class DataNetwork extends StateMachine {
         // state in framework, we should set this flag to true as well so the modem will not reject
         // the data call setup (because the modem actually thinks the device is roaming).
         boolean allowRoaming = mPhone.getDataRoamingEnabled()
-                || (isModemRoaming && (!mPhone.getServiceState().getDataRoaming()
-                /*|| isUnmeteredUseOnly()*/));
+                || (isModemRoaming && (!mPhone.getServiceState().getDataRoaming()));
+
+        mHandoverDataProfile = mDataProfile;
+        int targetNetworkType = getDataNetworkType(targetTransport);
+        if (targetNetworkType != TelephonyManager.NETWORK_TYPE_UNKNOWN
+                && !mAttachedNetworkRequestList.isEmpty()) {
+            TelephonyNetworkRequest networkRequest = mAttachedNetworkRequestList.get(0);
+            DataProfile dataProfile = mDataNetworkController.getDataProfileManager()
+                    .getDataProfileForNetworkRequest(networkRequest, targetNetworkType);
+            // Some carriers have different profiles between cellular and IWLAN. We need to
+            // dynamically switch profile, but only when those profiles have same APN name.
+            if (dataProfile != null && dataProfile.getApnSetting() != null
+                    && mDataProfile.getApnSetting() != null
+                    && TextUtils.equals(dataProfile.getApnSetting().getApnName(),
+                    mDataProfile.getApnSetting().getApnName())
+                    && !dataProfile.equals(mDataProfile)) {
+                mHandoverDataProfile = dataProfile;
+                log("Used different data profile for handover. " + mDataProfile);
+            }
+        }
 
         logl("Start handover from " + AccessNetworkConstants.transportTypeToString(mTransport)
                 + " to " + AccessNetworkConstants.transportTypeToString(targetTransport));
         // Send the handover request to the target transport data service.
         mDataServiceManagers.get(targetTransport).setupDataCall(
                 DataUtils.networkTypeToAccessNetworkType(getDataNetworkType(targetTransport)),
-                mDataProfile, isModemRoaming, allowRoaming,
+                mHandoverDataProfile, isModemRoaming, allowRoaming,
                 DataService.REQUEST_REASON_HANDOVER, mLinkProperties, mPduSessionId,
-                mNetworkSliceInfo, mDataProfile.getTrafficDescriptor(), true,
+                mNetworkSliceInfo, mHandoverDataProfile.getTrafficDescriptor(), true,
                 obtainMessage(EVENT_HANDOVER_RESPONSE, retryEntry));
         transitionTo(mHandoverState);
     }
@@ -2911,6 +2941,9 @@ public class DataNetwork extends StateMachine {
             // Update the logging tag
             mLogTag = "DN-" + mInitialNetworkAgentId + "-"
                     + ((mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) ? "C" : "I");
+            // Switch the data profile. This is no-op in most of the case since almost all carriers
+            // use same data profile between IWLAN and cellular.
+            mDataProfile = mHandoverDataProfile;
             updateDataNetwork(response);
             if (mTransport != AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                 // Handover from WWAN to WLAN

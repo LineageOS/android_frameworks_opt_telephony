@@ -16,15 +16,25 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.NonNull;
 import android.os.Handler;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.telephony.AnomalyReporter;
 import android.telephony.TelephonyDisplayInfo;
+import android.telephony.TelephonyManager;
+import android.util.IndentingPrintWriter;
+import android.util.LocalLog;
+import android.util.Pair;
 
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.Set;
+import java.util.UUID;
+
+import javax.sip.InvalidArgumentException;
 
 /**
  * The DisplayInfoController updates and broadcasts all changes to {@link TelephonyDisplayInfo}.
@@ -34,6 +44,26 @@ import java.io.PrintWriter;
  */
 public class DisplayInfoController extends Handler {
     private static final String TAG = "DisplayInfoController";
+
+    private final String mLogTag;
+    private final LocalLog mLocalLog = new LocalLog(128);
+
+    private static final Set<Pair<Integer, Integer>> VALID_DISPLAY_INFO_SET = Set.of(
+            // LTE
+            Pair.create(TelephonyManager.NETWORK_TYPE_LTE,
+                    TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA),
+            Pair.create(TelephonyManager.NETWORK_TYPE_LTE,
+                    TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_ADVANCED_PRO),
+            Pair.create(TelephonyManager.NETWORK_TYPE_LTE,
+                    TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA),
+            Pair.create(TelephonyManager.NETWORK_TYPE_LTE,
+                    TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED),
+
+            // NR
+            Pair.create(TelephonyManager.NETWORK_TYPE_NR,
+                    TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED)
+            );
+
     private final Phone mPhone;
     private final NetworkTypeController mNetworkTypeController;
     private final RegistrantList mTelephonyDisplayInfoChangedRegistrants = new RegistrantList();
@@ -41,6 +71,7 @@ public class DisplayInfoController extends Handler {
 
     public DisplayInfoController(Phone phone) {
         mPhone = phone;
+        mLogTag = "DIC-" + mPhone.getPhoneId();
         mNetworkTypeController = new NetworkTypeController(phone, this);
         mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
     }
@@ -61,8 +92,9 @@ public class DisplayInfoController extends Handler {
                 mPhone.getServiceState().getDataNetworkType(),
                 mNetworkTypeController.getOverrideNetworkType());
         if (!newDisplayInfo.equals(mTelephonyDisplayInfo)) {
-            Rlog.d(TAG, "TelephonyDisplayInfo[" + mPhone.getPhoneId() + "] changed from "
-                    + mTelephonyDisplayInfo + " to " + newDisplayInfo);
+            logl("TelephonyDisplayInfo changed from " + mTelephonyDisplayInfo + " to "
+                    + newDisplayInfo);
+            validateDisplayInfo(newDisplayInfo);
             mTelephonyDisplayInfo = newDisplayInfo;
             mTelephonyDisplayInfoChangedRegistrants.notifyRegistrants();
             mPhone.notifyDisplayInfoChanged(mTelephonyDisplayInfo);
@@ -75,6 +107,38 @@ public class DisplayInfoController extends Handler {
      */
     public boolean is5GHysteresisActive() {
         return mNetworkTypeController.is5GHysteresisActive();
+    }
+
+    /**
+     * Validate the display info and trigger anomaly report if needed.
+     *
+     * @param displayInfo The display info to validate.
+     */
+    private void validateDisplayInfo(@NonNull TelephonyDisplayInfo displayInfo) {
+        try {
+            if (displayInfo.getNetworkType() == TelephonyManager.NETWORK_TYPE_LTE_CA) {
+                throw new InvalidArgumentException("LTE_CA is not a valid network type.");
+            }
+            if (displayInfo.getNetworkType() < TelephonyManager.NETWORK_TYPE_UNKNOWN
+                    && displayInfo.getNetworkType() > TelephonyManager.NETWORK_TYPE_NR) {
+                throw new InvalidArgumentException("Invalid network type "
+                        + displayInfo.getNetworkType());
+            }
+            if (displayInfo.getOverrideNetworkType()
+                    != TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE
+                    && !VALID_DISPLAY_INFO_SET.contains(Pair.create(displayInfo.getNetworkType(),
+                    displayInfo.getOverrideNetworkType()))) {
+                throw new InvalidArgumentException("Invalid network type override "
+                        + TelephonyDisplayInfo.overrideNetworkTypeToString(
+                                displayInfo.getOverrideNetworkType())
+                        + " for " + TelephonyManager.getNetworkTypeName(
+                                displayInfo.getNetworkType()));
+            }
+        } catch (InvalidArgumentException e) {
+            logel(e.getMessage());
+            AnomalyReporter.reportAnomaly(UUID.fromString("3aa92a2c-94ed-46a0-a744-d6b1dfec2a54"),
+                    e.getMessage());
+        }
     }
 
     /**
@@ -97,13 +161,52 @@ public class DisplayInfoController extends Handler {
     }
 
     /**
+     * Log debug messages.
+     * @param s debug messages
+     */
+    private void log(@NonNull String s) {
+        Rlog.d(mLogTag, s);
+    }
+
+    /**
+     * Log error messages.
+     * @param s error messages
+     */
+    private void loge(@NonNull String s) {
+        Rlog.e(mLogTag, s);
+    }
+
+    /**
+     * Log debug messages and also log into the local log.
+     * @param s debug messages
+     */
+    private void logl(@NonNull String s) {
+        log(s);
+        mLocalLog.log(s);
+    }
+
+    /**
+     * Log error messages and also log into the local log.
+     * @param s debug messages
+     */
+    private void logel(@NonNull String s) {
+        loge(s);
+        mLocalLog.log(s);
+    }
+
+    /**
      * Dump the current state.
      */
-    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+    public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
+        IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         pw.println("DisplayInfoController:");
         pw.println(" mPhone=" + mPhone.getPhoneName());
         pw.println(" mTelephonyDisplayInfo=" + mTelephonyDisplayInfo.toString());
         pw.flush();
+        pw.println("Local logs:");
+        pw.increaseIndent();
+        mLocalLog.dump(fd, pw, args);
+        pw.decreaseIndent();
         pw.println(" ***************************************");
         mNetworkTypeController.dump(fd, pw, args);
         pw.flush();
