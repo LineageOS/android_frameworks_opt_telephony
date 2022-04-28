@@ -2440,7 +2440,7 @@ public class DataNetworkController extends Handler {
 
     /**
      * Track the frequency of setup data failure on each
-     * {@link AccessNetworkConstants#TransportType} data service.
+     * {@link AccessNetworkConstants.TransportType} data service.
      *
      * @param transport The transport of the data service.
      */
@@ -2506,16 +2506,17 @@ public class DataNetworkController extends Handler {
      */
     private void onDataNetworkSetupRetry(@NonNull DataSetupRetryEntry dataSetupRetryEntry) {
         // The request might be already removed before retry happens. Remove them from the list
-        // if that's the case.
-        dataSetupRetryEntry.networkRequestList.removeIf(
-                request -> !mAllNetworkRequestList.contains(request));
-        if (dataSetupRetryEntry.networkRequestList.isEmpty()) {
+        // if that's the case. Copy the list first. We don't want to remove the requests from
+        // the retry entry. They can be later used to determine what kind of retry it is.
+        NetworkRequestList requestList = new NetworkRequestList(
+                dataSetupRetryEntry.networkRequestList);
+        requestList.removeIf(request -> !mAllNetworkRequestList.contains(request));
+        if (requestList.isEmpty()) {
             loge("onDataNetworkSetupRetry: Request list is empty. Abort retry.");
             dataSetupRetryEntry.setState(DataRetryEntry.RETRY_STATE_CANCELLED);
             return;
         }
-        TelephonyNetworkRequest telephonyNetworkRequest =
-                dataSetupRetryEntry.networkRequestList.get(0);
+        TelephonyNetworkRequest telephonyNetworkRequest = requestList.get(0);
 
         int networkCapability = telephonyNetworkRequest.getApnTypeNetworkCapability();
         int preferredTransport = mAccessNetworksManager.getPreferredTransportByNetworkCapability(
