@@ -1946,7 +1946,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
     public void testHandoverDataNetworkWhileSwitchTo3G() throws Exception {
         testSetupImsDataNetwork();
 
-        DataNetwork dataNetwork = getDataNetworks().get(0);
         // Before handover the data profile is the cellular IMS data profile
         verifyConnectedNetworkHasDataProfile(mImsCellularDataProfile);
 
@@ -1963,7 +1962,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         // Move the time a little bit, handover still not responded.
         moveTimeForward(500);
         processAllMessages();
-        dataNetwork = getDataNetworks().get(0);
+        DataNetwork dataNetwork = getDataNetworks().get(0);
         // Verify the network is still on cellular, waiting for handover, although already on 3G.
         assertThat(dataNetwork.getTransport()).isEqualTo(
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
