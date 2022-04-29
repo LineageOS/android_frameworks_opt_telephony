@@ -20,7 +20,6 @@ import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.assertTrue;
-import static junit.framework.Assert.fail;
 import static junit.framework.TestCase.assertFalse;
 
 import static org.mockito.ArgumentMatchers.argThat;
@@ -44,6 +43,7 @@ import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Looper;
 import android.os.PersistableBundle;
 import android.os.RemoteException;
 import android.os.UserManager;
@@ -112,7 +112,6 @@ public class ImsResolverTest extends ImsTestBase {
     private BroadcastReceiver mTestBootCompleteReceiver;
     private ImsServiceFeatureQueryManager.Listener mDynamicQueryListener;
     private PersistableBundle[] mCarrierConfigs;
-    private TestableLooper mLooper;
 
     @Before
     @Override
@@ -134,7 +133,6 @@ public class ImsResolverTest extends ImsTestBase {
     public void tearDown() throws Exception {
         mTestImsResolver.destroy();
         mTestImsResolver = null;
-        mLooper = null;
         mTestPackageBroadcastReceiver = null;
         mTestCarrierConfigReceiver = null;
         mTestBootCompleteReceiver = null;
@@ -220,15 +218,11 @@ public class ImsResolverTest extends ImsTestBase {
 
         // device package name should be returned for both features.
         final Boolean[] isConfigured = new Boolean[1];
-        // Calling this method will block us until the looper processes the command, so use
-        // runWithLooper to allow the message to be processed.
-        mLooper.runWithLooper(() ->
-                isConfigured[0] = mTestImsResolver.isImsServiceConfiguredForFeature(0,
-                        ImsFeature.FEATURE_MMTEL));
+        isConfigured[0] = mTestImsResolver.isImsServiceConfiguredForFeature(0,
+                ImsFeature.FEATURE_MMTEL);
         assertTrue(isConfigured[0]);
-        mLooper.runWithLooper(() ->
-                isConfigured[0] = mTestImsResolver.isImsServiceConfiguredForFeature(0,
-                        ImsFeature.FEATURE_RCS));
+        isConfigured[0] = mTestImsResolver.isImsServiceConfiguredForFeature(0,
+                ImsFeature.FEATURE_RCS);
         assertTrue(isConfigured[0]);
     }
 
@@ -253,15 +247,11 @@ public class ImsResolverTest extends ImsTestBase {
 
         // device package name should be returned for both features.
         final String[] packageName = new String[1];
-        // Calling this method will block us until the looper processes the command, so use
-        // runWithLooper to allow the message to be processed.
-        mLooper.runWithLooper(() ->
-                packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
-                        ImsFeature.FEATURE_MMTEL));
+        packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
+                ImsFeature.FEATURE_MMTEL);
         assertEquals(TEST_DEVICE_DEFAULT_NAME.getPackageName(), packageName[0]);
-        mLooper.runWithLooper(() ->
-                packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
-                        ImsFeature.FEATURE_RCS));
+        packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
+                ImsFeature.FEATURE_RCS);
         assertEquals(TEST_DEVICE_DEFAULT_NAME.getPackageName(), packageName[0]);
     }
 
@@ -281,15 +271,11 @@ public class ImsResolverTest extends ImsTestBase {
 
         // device package name should be returned for both features.
         final String[] packageName = new String[1];
-        // Calling this method will block us until the looper processes the command, so use
-        // runWithLooper to allow the message to be processed.
-        mLooper.runWithLooper(() ->
-                packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
-                        ImsFeature.FEATURE_MMTEL));
+        packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
+                ImsFeature.FEATURE_MMTEL);
         assertNull(packageName[0]);
-        mLooper.runWithLooper(() ->
-                packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
-                        ImsFeature.FEATURE_RCS));
+        packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
+                ImsFeature.FEATURE_RCS);
         assertNull(packageName[0]);
     }
 
@@ -314,15 +300,11 @@ public class ImsResolverTest extends ImsTestBase {
 
         // device package name should be returned for both features.
         final String[] packageName = new String[1];
-        // Calling this method will block us until the looper processes the command, so use
-        // runWithLooper to allow the message to be processed.
-        mLooper.runWithLooper(() ->
-                packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
-                        ImsFeature.FEATURE_MMTEL));
+        packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
+                ImsFeature.FEATURE_MMTEL);
         assertNull(packageName[0]);
-        mLooper.runWithLooper(() ->
-                packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
-                        ImsFeature.FEATURE_RCS));
+        packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
+                ImsFeature.FEATURE_RCS);
         assertNull(packageName[0]);
     }
 
@@ -358,15 +340,11 @@ public class ImsResolverTest extends ImsTestBase {
 
         // carrier package name should be returned for both features.
         final String[] packageName = new String[1];
-        // Calling this method will block us until the looper processes the command, so use
-        // runWithLooper to allow the message to be processed.
-        mLooper.runWithLooper(() ->
-                packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
-                        ImsFeature.FEATURE_MMTEL));
+        packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
+                ImsFeature.FEATURE_MMTEL);
         assertEquals(TEST_CARRIER_DEFAULT_NAME.getPackageName(), packageName[0]);
-        mLooper.runWithLooper(() ->
-                packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
-                        ImsFeature.FEATURE_RCS));
+        packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
+                ImsFeature.FEATURE_RCS);
         assertEquals(TEST_CARRIER_DEFAULT_NAME.getPackageName(), packageName[0]);
     }
 
@@ -396,15 +374,11 @@ public class ImsResolverTest extends ImsTestBase {
         startBindCarrierConfigAlreadySet();
 
         final String[] packageName = new String[1];
-        // Calling this method will block us until the looper processes the command, so use
-        // runWithLooper to allow the message to be processed.
-        mLooper.runWithLooper(() ->
-                packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
-                        ImsFeature.FEATURE_MMTEL));
+        packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
+                ImsFeature.FEATURE_MMTEL);
         assertEquals(TEST_DEVICE_DEFAULT_NAME.getPackageName(), packageName[0]);
-        mLooper.runWithLooper(() ->
-                packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
-                        ImsFeature.FEATURE_RCS));
+        packageName[0] = mTestImsResolver.getConfiguredImsServicePackageName(0,
+                ImsFeature.FEATURE_RCS);
         assertEquals(TEST_DEVICE_DEFAULT_NAME.getPackageName(), packageName[0]);
     }
 
@@ -1946,13 +1920,7 @@ public class ImsResolverTest extends ImsTestBase {
         }
 
         mTestImsResolver = new ImsResolver(mMockContext, deviceMmTelPkgName, deviceRcsPkgName,
-                numSlots, mMockRepo);
-        try {
-            mLooper = new TestableLooper(mTestImsResolver.getHandler().getLooper());
-            monitorTestableLooper(mLooper);
-        } catch (Exception e) {
-            fail("Unable to create looper from handler.");
-        }
+                numSlots, mMockRepo, Looper.myLooper());
 
         mTestImsResolver.setSubscriptionManagerProxy(mTestSubscriptionManagerProxy);
         mTestImsResolver.setTelephonyManagerProxy(mTestTelephonyManagerProxy);
