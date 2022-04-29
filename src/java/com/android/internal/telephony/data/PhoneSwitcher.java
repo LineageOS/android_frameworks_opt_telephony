@@ -513,7 +513,8 @@ public class PhoneSwitcher extends Handler {
                             v -> new DataSettingsManagerCallback(this::post) {
                                 @Override
                                 public void onDataEnabledChanged(boolean enabled,
-                                        @TelephonyManager.DataEnabledChangedReason int reason) {
+                                        @TelephonyManager.DataEnabledChangedReason int reason,
+                                        @NonNull String callingPackage) {
                                     evaluateIfDataSwitchIsNeeded("EVENT_DATA_ENABLED_CHANGED");
                                 }});
                     phone.getDataSettingsManager().registerCallback(
@@ -885,7 +886,8 @@ public class PhoneSwitcher extends Handler {
                         v -> new DataSettingsManagerCallback(this::post) {
                             @Override
                             public void onDataEnabledChanged(boolean enabled,
-                                    @TelephonyManager.DataEnabledChangedReason int reason) {
+                                    @TelephonyManager.DataEnabledChangedReason int reason,
+                                    @NonNull String callingPackage) {
                                 evaluateIfDataSwitchIsNeeded("EVENT_DATA_ENABLED_CHANGED");
                             }
                         });

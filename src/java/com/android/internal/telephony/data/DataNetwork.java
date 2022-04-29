@@ -85,6 +85,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataRetryManager.DataHandoverRetryEntry;
@@ -542,7 +543,13 @@ public class DataNetwork extends StateMachine {
     private @Nullable KeepaliveTracker mKeepaliveTracker;
 
     /** The data profile used to establish this data network. */
-    private final @NonNull DataProfile mDataProfile;
+    private @NonNull DataProfile mDataProfile;
+
+    /**
+     * The data profile used for data handover. Some carriers might use different data profile
+     * between IWLAN and cellular. Only set before handover started.
+     */
+    private @Nullable DataProfile mHandoverDataProfile;
 
     /** The network capabilities of this data network. */
     private @NonNull NetworkCapabilities mNetworkCapabilities;
@@ -1117,6 +1124,7 @@ public class DataNetwork extends StateMachine {
 
             notifyPreciseDataConnectionState();
             if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+                // Defer setupData until we get the PDU session ID response
                 allocatePduSessionId();
                 return;
             }
@@ -1154,6 +1162,7 @@ public class DataNetwork extends StateMachine {
                 case EVENT_PCO_DATA_RECEIVED:
                 case EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET:
                     // Defer the request until connected or disconnected.
+                    log("Defer message " + eventToString(msg.what));
                     deferMessage(msg);
                     break;
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
@@ -1322,6 +1331,7 @@ public class DataNetwork extends StateMachine {
                     // signal. So we only defer the related data call list changed event, and drop
                     // the unrelated.
                     if (shouldDeferDataStateChangedEvent(msg)) {
+                        log("Defer message " + eventToString(msg.what));
                         deferMessage(msg);
                     }
                     break;
@@ -1332,6 +1342,7 @@ public class DataNetwork extends StateMachine {
                 case EVENT_VOICE_CALL_ENDED:
                 case EVENT_VOICE_CALL_STARTED:
                     // Defer the request until handover succeeds or fails.
+                    log("Defer message " + eventToString(msg.what));
                     deferMessage(msg);
                     break;
                 case EVENT_HANDOVER_RESPONSE:
@@ -1588,7 +1599,7 @@ public class DataNetwork extends StateMachine {
         for (TelephonyNetworkRequest networkRequest : requestList) {
             if (!mDataNetworkController.isNetworkRequestExisting(networkRequest)) {
                 failedList.add(networkRequest);
-                log("Attached failed. Network request was already removed.");
+                log("Attached failed. Network request was already removed. " + networkRequest);
             } else if (!networkRequest.canBeSatisfiedBy(getNetworkCapabilities())) {
                 failedList.add(networkRequest);
                 log("Attached failed. Cannot satisfy the network request "
@@ -2167,8 +2178,8 @@ public class DataNetwork extends StateMachine {
 
         // LinkProperties.setMtu should be deprecated. The mtu for each route has been already
         // provided in addRoute() above. For backwards compatibility, we still need to provide
-        // a value for the legacy MTU. Use the lower value of v4 and v6 value here.
-        linkProperties.setMtu(Math.min(mtuV4, mtuV6));
+        // a value for the legacy MTU. Use the higher value of v4 and v6 value here.
+        linkProperties.setMtu(Math.max(mtuV4, mtuV6));
 
         if (mDataProfile.getApnSetting() != null
                 && !TextUtils.isEmpty(mDataProfile.getApnSetting().getProxyAddressAsString())) {
@@ -2290,6 +2301,11 @@ public class DataNetwork extends StateMachine {
         if (resultCode == DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE) {
             log("Remove network since deactivate request returned an error.");
             mFailCause = DataFailCause.RADIO_NOT_AVAILABLE;
+            transitionTo(mDisconnectedState);
+        } else if (mPhone.getHalVersion().less(RIL.RADIO_HAL_VERSION_2_0)) {
+            log("Remove network on deactivate data response on old HAL "
+                    + mPhone.getHalVersion());
+            mFailCause = DataFailCause.LOST_CONNECTION;
             transitionTo(mDisconnectedState);
         }
     }
@@ -2686,26 +2702,51 @@ public class DataNetwork extends StateMachine {
 
     /**
      * Get the APN type network capability. If there are more than one capabilities that are
-     * APN-types, then return the highest priority one.
+     * APN types, then return the highest priority one which also has associated network request.
+     * For example, if the network supports both MMS and internet, but only internet request
+     * attached at this time, then the capability would be internet. Later on if MMS network request
+     * attached to this network, then the APN type capability would be MMS.
      *
      * @return The APN type network capability from this network.
+     *
+     * @see #getPriority()
      */
     public @NetCapability int getApnTypeNetworkCapability() {
-        return Arrays.stream(getNetworkCapabilities().getCapabilities()).boxed()
-                .filter(cap -> DataUtils.networkCapabilityToApnType(cap) != ApnSetting.TYPE_NONE)
-                .max(Comparator.comparingInt(mDataConfigManager::getNetworkCapabilityPriority))
-                .orElse(-1);
+        if (!mAttachedNetworkRequestList.isEmpty()) {
+            // The highest priority network request is always at the top of list.
+            return mAttachedNetworkRequestList.get(0).getApnTypeNetworkCapability();
+        } else {
+            return Arrays.stream(getNetworkCapabilities().getCapabilities()).boxed()
+                    .filter(cap -> DataUtils.networkCapabilityToApnType(cap)
+                            != ApnSetting.TYPE_NONE)
+                    .max(Comparator.comparingInt(mDataConfigManager::getNetworkCapabilityPriority))
+                    .orElse(-1);
+        }
     }
 
     /**
-     * @return The priority of the network. The priority is derived from the highest priority
-     * capability of the network.
+     * Get the priority of the network. The priority is derived from the highest priority capability
+     * which also has such associated network request. For example, if the network supports both
+     * MMS and internet, but only has internet request attached, then this network has internet's
+     * priority. Later on when the MMS request attached to this network, the network's priority will
+     * be updated to MMS's priority.
+     *
+     * @return The priority of the network.
+     *
+     * @see #getApnTypeNetworkCapability()
      */
     public int getPriority() {
-        return Arrays.stream(getNetworkCapabilities().getCapabilities()).boxed()
-                .map(mDataConfigManager::getNetworkCapabilityPriority)
-                .max(Integer::compare)
-                .orElse(-1);
+        if (!mAttachedNetworkRequestList.isEmpty()) {
+            // The highest priority network request is always at the top of list.
+            return mAttachedNetworkRequestList.get(0).getPriority();
+        } else {
+            // If all network requests are already detached, then just pick the highest priority
+            // capability's priority.
+            return Arrays.stream(getNetworkCapabilities().getCapabilities()).boxed()
+                    .map(mDataConfigManager::getNetworkCapabilityPriority)
+                    .max(Integer::compare)
+                    .orElse(0);
+        }
     }
 
     /**
@@ -2872,17 +2913,35 @@ public class DataNetwork extends StateMachine {
         // state in framework, we should set this flag to true as well so the modem will not reject
         // the data call setup (because the modem actually thinks the device is roaming).
         boolean allowRoaming = mPhone.getDataRoamingEnabled()
-                || (isModemRoaming && (!mPhone.getServiceState().getDataRoaming()
-                /*|| isUnmeteredUseOnly()*/));
+                || (isModemRoaming && (!mPhone.getServiceState().getDataRoaming()));
+
+        mHandoverDataProfile = mDataProfile;
+        int targetNetworkType = getDataNetworkType(targetTransport);
+        if (targetNetworkType != TelephonyManager.NETWORK_TYPE_UNKNOWN
+                && !mAttachedNetworkRequestList.isEmpty()) {
+            TelephonyNetworkRequest networkRequest = mAttachedNetworkRequestList.get(0);
+            DataProfile dataProfile = mDataNetworkController.getDataProfileManager()
+                    .getDataProfileForNetworkRequest(networkRequest, targetNetworkType);
+            // Some carriers have different profiles between cellular and IWLAN. We need to
+            // dynamically switch profile, but only when those profiles have same APN name.
+            if (dataProfile != null && dataProfile.getApnSetting() != null
+                    && mDataProfile.getApnSetting() != null
+                    && TextUtils.equals(dataProfile.getApnSetting().getApnName(),
+                    mDataProfile.getApnSetting().getApnName())
+                    && !dataProfile.equals(mDataProfile)) {
+                mHandoverDataProfile = dataProfile;
+                log("Used different data profile for handover. " + mDataProfile);
+            }
+        }
 
         logl("Start handover from " + AccessNetworkConstants.transportTypeToString(mTransport)
                 + " to " + AccessNetworkConstants.transportTypeToString(targetTransport));
         // Send the handover request to the target transport data service.
         mDataServiceManagers.get(targetTransport).setupDataCall(
                 DataUtils.networkTypeToAccessNetworkType(getDataNetworkType(targetTransport)),
-                mDataProfile, isModemRoaming, allowRoaming,
+                mHandoverDataProfile, isModemRoaming, allowRoaming,
                 DataService.REQUEST_REASON_HANDOVER, mLinkProperties, mPduSessionId,
-                mNetworkSliceInfo, mDataProfile.getTrafficDescriptor(), true,
+                mNetworkSliceInfo, mHandoverDataProfile.getTrafficDescriptor(), true,
                 obtainMessage(EVENT_HANDOVER_RESPONSE, retryEntry));
         transitionTo(mHandoverState);
     }
@@ -2911,6 +2970,9 @@ public class DataNetwork extends StateMachine {
             // Update the logging tag
             mLogTag = "DN-" + mInitialNetworkAgentId + "-"
                     + ((mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) ? "C" : "I");
+            // Switch the data profile. This is no-op in most of the case since almost all carriers
+            // use same data profile between IWLAN and cellular.
+            mDataProfile = mHandoverDataProfile;
             updateDataNetwork(response);
             if (mTransport != AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                 // Handover from WWAN to WLAN

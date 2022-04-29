@@ -801,7 +801,8 @@ public class DataNetworkController extends Handler {
                         new DataSettingsManagerCallback(this::post) {
                             @Override
                             public void onDataEnabledChanged(boolean enabled,
-                                    @TelephonyManager.DataEnabledChangedReason int reason) {
+                                    @TelephonyManager.DataEnabledChangedReason int reason,
+                                    @NonNull String callingPackage) {
                                 // If mobile data is enabled by the user, evaluate the unsatisfied
                                 // network requests and then attempt to setup data networks to
                                 // satisfy them. If mobile data is disabled, evaluate the existing
@@ -2440,7 +2441,7 @@ public class DataNetworkController extends Handler {
 
     /**
      * Track the frequency of setup data failure on each
-     * {@link AccessNetworkConstants#TransportType} data service.
+     * {@link AccessNetworkConstants.TransportType} data service.
      *
      * @param transport The transport of the data service.
      */
@@ -2506,16 +2507,17 @@ public class DataNetworkController extends Handler {
      */
     private void onDataNetworkSetupRetry(@NonNull DataSetupRetryEntry dataSetupRetryEntry) {
         // The request might be already removed before retry happens. Remove them from the list
-        // if that's the case.
-        dataSetupRetryEntry.networkRequestList.removeIf(
-                request -> !mAllNetworkRequestList.contains(request));
-        if (dataSetupRetryEntry.networkRequestList.isEmpty()) {
+        // if that's the case. Copy the list first. We don't want to remove the requests from
+        // the retry entry. They can be later used to determine what kind of retry it is.
+        NetworkRequestList requestList = new NetworkRequestList(
+                dataSetupRetryEntry.networkRequestList);
+        requestList.removeIf(request -> !mAllNetworkRequestList.contains(request));
+        if (requestList.isEmpty()) {
             loge("onDataNetworkSetupRetry: Request list is empty. Abort retry.");
             dataSetupRetryEntry.setState(DataRetryEntry.RETRY_STATE_CANCELLED);
             return;
         }
-        TelephonyNetworkRequest telephonyNetworkRequest =
-                dataSetupRetryEntry.networkRequestList.get(0);
+        TelephonyNetworkRequest telephonyNetworkRequest = requestList.get(0);
 
         int networkCapability = telephonyNetworkRequest.getApnTypeNetworkCapability();
         int preferredTransport = mAccessNetworksManager.getPreferredTransportByNetworkCapability(
@@ -2614,7 +2616,7 @@ public class DataNetworkController extends Handler {
         }
 
         if (!mDataSettingsManager.isRecoveryOnBadNetworkEnabled()) {
-            log("Ignore data network validation status changed becaused"
+            log("Ignore data network validation status changed because "
                     + "data stall recovery is disabled.");
             return;
         }
@@ -2700,6 +2702,11 @@ public class DataNetworkController extends Handler {
         // manager.
         sendMessage(obtainMessage(EVENT_EVALUATE_PREFERRED_TRANSPORT,
                 dataNetwork.getApnTypeNetworkCapability(), 0));
+
+        // There might be network we didn't tear down in the last evaluation due to handover in
+        // progress. We should evaluate again.
+        sendMessage(obtainMessage(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
+                DataEvaluationReason.DATA_HANDOVER));
     }
 
     /**
@@ -2720,6 +2727,11 @@ public class DataNetworkController extends Handler {
         logl("Handover failed. " + dataNetwork + ", cause=" + DataFailCause.toString(cause)
                 + ", retryDelayMillis=" + retryDelayMillis + "ms, handoverFailureMode="
                 + DataCallResponse.failureModeToString(handoverFailureMode));
+        // There might be network we didn't tear down in the last evaluation due to handover in
+        // progress. We should evaluate again.
+        sendMessage(obtainMessage(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
+                DataEvaluationReason.DATA_HANDOVER));
+
         if (dataNetwork.getAttachedNetworkRequestList().isEmpty()) {
             log("onDataNetworkHandoverFailed: No network requests attached to " + dataNetwork
                     + ". No need to retry since the network will be torn down soon.");
@@ -2786,19 +2798,7 @@ public class DataNetworkController extends Handler {
         log("onDataServiceBindingChanged: " + AccessNetworkConstants
                 .transportTypeToString(transport) + " data service is "
                 + (bound ? "bound." : "unbound."));
-        if (!bound) {
-            if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
-                if (!mDataConfigManager.shouldPersistIwlanDataNetworksWhenDataServiceRestarted()) {
-                    for (DataNetwork dataNetwork : mDataNetworkList) {
-                        if (dataNetwork.getTransport()
-                                == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
-                            dataNetwork.tearDown(
-                                    DataNetwork.TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY);
-                        }
-                    }
-                }
-            }
-        } else {
+        if (bound) {
             mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                     () -> callback.onDataServiceBound(transport)));
         }
