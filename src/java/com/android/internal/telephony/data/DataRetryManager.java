@@ -1278,7 +1278,7 @@ public class DataRetryManager extends Handler {
                         logl(msg);
                         loge("mDataRetryEntries=" + mDataRetryEntries);
                         AnomalyReporter.reportAnomaly(UUID.fromString(
-                                "afeab78c-c0b0-49fc-a51f-f766814d7aa5"), msg);
+                                "afeab78c-c0b0-49fc-a51f-f766814d7aa6"), msg);
                         continue;
                     }
                     if (entry.networkRequestList.get(0).getApnTypeNetworkCapability()
@@ -1483,7 +1483,7 @@ public class DataRetryManager extends Handler {
                         logl(msg);
                         loge("mDataRetryEntries=" + mDataRetryEntries);
                         AnomalyReporter.reportAnomaly(UUID.fromString(
-                                "afeab78c-c0b0-49fc-a51f-f766814d7aa5"), msg);
+                                "781af571-f55d-476d-b510-7a5381f633dc"), msg);
                         continue;
                     }
                     if (entry.networkRequestList.get(0).getApnTypeNetworkCapability()
