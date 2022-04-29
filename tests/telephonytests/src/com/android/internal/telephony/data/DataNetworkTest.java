@@ -73,6 +73,7 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataNetwork.DataNetworkCallback;
+import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.LinkBandwidthEstimator.LinkBandwidthEstimatorCallback;
 import com.android.internal.telephony.metrics.DataCallSessionStats;
 
@@ -314,6 +315,8 @@ public class DataNetworkTest extends TelephonyTest {
         doReturn(true).when(mDataConfigManager).isTempNotMeteredSupportedByCarrier();
         doReturn(true).when(mDataConfigManager).isImsDelayTearDownEnabled();
         doReturn(FAKE_IMSI).when(mPhone).getSubscriberId();
+        doReturn(true).when(mDataNetworkController)
+                .isNetworkRequestExisting(any(TelephonyNetworkRequest.class));
 
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
@@ -348,8 +351,7 @@ public class DataNetworkTest extends TelephonyTest {
     // expected, and make sure it is always sorted.
     @Test
     public void testCreateDataNetwork() throws Exception {
-        DataNetworkController.NetworkRequestList
-                networkRequestList = new DataNetworkController.NetworkRequestList();
+        NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build(), mPhone));
@@ -433,8 +435,7 @@ public class DataNetworkTest extends TelephonyTest {
 
     @Test
     public void testCreateImsDataNetwork() throws Exception {
-        DataNetworkController.NetworkRequestList
-                networkRequestList = new DataNetworkController.NetworkRequestList();
+        NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
                 .build(), mPhone));
@@ -511,8 +512,7 @@ public class DataNetworkTest extends TelephonyTest {
 
     @Test
     public void testCreateDataNetworkOnEnterpriseSlice() throws Exception {
-        DataNetworkController.NetworkRequestList
-                networkRequestList = new DataNetworkController.NetworkRequestList();
+        NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)
                 .build(), mPhone));
@@ -547,8 +547,7 @@ public class DataNetworkTest extends TelephonyTest {
 
     @Test
     public void testCreateDataNetworkOnUrllcSlice() throws Exception {
-        DataNetworkController.NetworkRequestList
-                networkRequestList = new DataNetworkController.NetworkRequestList();
+        NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY)
                 .build(), mPhone));
@@ -581,8 +580,7 @@ public class DataNetworkTest extends TelephonyTest {
 
     @Test
     public void testCreateDataNetworkOnEmbbSlice() throws Exception {
-        DataNetworkController.NetworkRequestList
-                networkRequestList = new DataNetworkController.NetworkRequestList();
+        NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH)
                 .build(), mPhone));
@@ -615,8 +613,7 @@ public class DataNetworkTest extends TelephonyTest {
 
     @Test
     public void testCreateDataNetworkOnCbsSlice() throws Exception {
-        DataNetworkController.NetworkRequestList
-                networkRequestList = new DataNetworkController.NetworkRequestList();
+        NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_CBS)
                 .build(), mPhone));
@@ -650,8 +647,7 @@ public class DataNetworkTest extends TelephonyTest {
 
     @Test
     public void testSlicingDataNetworkHasSlicingCapabilitiesBeforeConnected() throws Exception {
-        DataNetworkController.NetworkRequestList
-                networkRequestList = new DataNetworkController.NetworkRequestList();
+        NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_CBS)
                 .build(), mPhone));
@@ -736,8 +732,7 @@ public class DataNetworkTest extends TelephonyTest {
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
                 .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
 
-        DataNetworkController.NetworkRequestList
-                networkRequestList = new DataNetworkController.NetworkRequestList();
+        NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
                 .build(), mPhone));
@@ -916,8 +911,7 @@ public class DataNetworkTest extends TelephonyTest {
     }
 
     private void setupDataNetwork() throws Exception {
-        DataNetworkController.NetworkRequestList
-                networkRequestList = new DataNetworkController.NetworkRequestList();
+        NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build(), mPhone));
@@ -1094,8 +1088,7 @@ public class DataNetworkTest extends TelephonyTest {
 
     @Test
     public void testDataNetworkHasCapabilitiesAtBeginning() {
-        DataNetworkController.NetworkRequestList
-                networkRequestList = new DataNetworkController.NetworkRequestList();
+        NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build(), mPhone));
@@ -1292,5 +1285,50 @@ public class DataNetworkTest extends TelephonyTest {
         // Not suspended
         assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)).isTrue();
+    }
+
+    @Test
+    public void testGetApnTypeCapability() throws Exception {
+        testCreateDataNetwork();
+        assertThat(mDataNetworkUT.getApnTypeNetworkCapability())
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+
+        TelephonyNetworkRequest networkRequest = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder().addCapability(
+                        NetworkCapabilities.NET_CAPABILITY_SUPL).build(), mPhone);
+        mDataNetworkUT.attachNetworkRequests(new NetworkRequestList(networkRequest));
+        processAllMessages();
+
+        assertThat(mDataNetworkUT.getApnTypeNetworkCapability())
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_SUPL);
+
+        mDataNetworkUT.detachNetworkRequest(networkRequest);
+        processAllMessages();
+
+        assertThat(mDataNetworkUT.getApnTypeNetworkCapability())
+                .isEqualTo(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+    }
+
+    @Test
+    public void testGetPriority() throws Exception {
+        testCreateDataNetwork();
+
+        // Internet priority is 20
+        assertThat(mDataNetworkUT.getPriority()).isEqualTo(20);
+
+        TelephonyNetworkRequest networkRequest = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder().addCapability(
+                        NetworkCapabilities.NET_CAPABILITY_SUPL).build(), mPhone);
+        mDataNetworkUT.attachNetworkRequests(new NetworkRequestList(networkRequest));
+        processAllMessages();
+
+        // SUPL priority is 80
+        assertThat(mDataNetworkUT.getPriority()).isEqualTo(80);
+
+        mDataNetworkUT.detachNetworkRequest(networkRequest);
+        processAllMessages();
+
+        // Internet priority is 20
+        assertThat(mDataNetworkUT.getPriority()).isEqualTo(20);
     }
 }
