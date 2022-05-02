@@ -78,15 +78,15 @@ public class PerSimStatus {
     /** Returns the current sim status of the given {@link Phone}. */
     @Nullable
     public static PerSimStatus getCurrentState(Phone phone) {
-        int[] numberState = getNumberState(phone);
-        if (numberState == null) return null;
+        int[] numberIds = getNumberIds(phone);
+        if (numberIds == null) return null;
         ImsMmTelManager imsMmTelManager = getImsMmTelManager(phone);
         IccCard iccCard = phone.getIccCard();
         return new PerSimStatus(
                 phone.getCarrierId(),
-                numberState[0],
-                numberState[1],
-                numberState[2],
+                numberIds[0],
+                numberIds[1],
+                numberIds[2],
                 imsMmTelManager == null ? false : imsMmTelManager.isAdvancedCallingSettingEnabled(),
                 imsMmTelManager == null ? false : imsMmTelManager.isVoWiFiSettingEnabled(),
                 imsMmTelManager == null
@@ -151,15 +151,19 @@ public class PerSimStatus {
     }
 
     /**
-     * Returns an array containing the various phone numbers available on the device.
+     * Returns an array of integer ids representing phone numbers. If number is empty then id will
+     * be 0. Two same numbers will have same id, and different numbers will have different ids. For
+     * example, [1, 0, 1] means that uicc and ims numbers are the same while carrier number is empty
+     * and [1, 2, 3] means all numbers are different.
+     *
      * <ul>
-     *     <li>Index 0: phone number associated with {@code PHONE_NUMBER_SOURCE_UICC}.</li>
-     *     <li>Index 1: phone number associated with {@code PHONE_NUMBER_SOURCE_CARRIER}.</li>
-     *     <li>Index 2: phone number associated with {@code PHONE_NUMBER_SOURCE_IMS}.</li>
+     *   <li>Index 0: id associated with {@code PHONE_NUMBER_SOURCE_UICC}.</li>
+     *   <li>Index 1: id associated with {@code PHONE_NUMBER_SOURCE_CARRIER}.</li>
+     *   <li>Index 2: id associated with {@code PHONE_NUMBER_SOURCE_IMS}.</li>
      * </ul>
      */
     @Nullable
-    private static int[] getNumberState(Phone phone) {
+    private static int[] getNumberIds(Phone phone) {
         SubscriptionController subscriptionController = SubscriptionController.getInstance();
         if (subscriptionController == null) {
             return null;
@@ -169,33 +173,37 @@ public class PerSimStatus {
                 Optional.ofNullable(subscriptionController.getSubscriptionInfo(subId))
                         .map(SubscriptionInfo::getCountryIso)
                         .orElse("");
-        // number[] - hone numbers from each sources:
-        String[] number =
+        // numbersFromAllSources[] - phone numbers from each sources:
+        String[] numbersFromAllSources =
                 new String[] {
-                    subscriptionController.getPhoneNumber(subId, PHONE_NUMBER_SOURCE_UICC), // 0
-                    subscriptionController.getPhoneNumber(subId, PHONE_NUMBER_SOURCE_CARRIER), // 1
-                    subscriptionController.getPhoneNumber(subId, PHONE_NUMBER_SOURCE_IMS), // 2
+                    subscriptionController.getPhoneNumber(
+                            subId, PHONE_NUMBER_SOURCE_UICC, null, null), // 0
+                    subscriptionController.getPhoneNumber(
+                            subId, PHONE_NUMBER_SOURCE_CARRIER, null, null), // 1
+                    subscriptionController.getPhoneNumber(
+                            subId, PHONE_NUMBER_SOURCE_IMS, null, null), // 2
                 };
-        int[] numberState = new int[number.length]; // default value 0
-        for (int i = 0, stateForNextUniqueNumber = 1; i < numberState.length; i++) {
-            if (TextUtils.isEmpty(number[i])) {
-                // keep state 0 if number not available
+        int[] numberIds = new int[numbersFromAllSources.length]; // default value 0
+        for (int i = 0, idForNextUniqueNumber = 1; i < numberIds.length; i++) {
+            if (TextUtils.isEmpty(numbersFromAllSources[i])) {
+                // keep id 0 if number not available
                 continue;
             }
             // the number is available:
-            // try to find the same number from other sources and reuse the state
+            // try to find the same number from other sources and reuse the id
             for (int j = 0; j < i; j++) {
-                if (!TextUtils.isEmpty(number[j])
-                        && areSamePhoneNumber(number[i], number[j], countryIso)) {
-                    numberState[i] = numberState[j];
+                if (!TextUtils.isEmpty(numbersFromAllSources[j])
+                        && areSamePhoneNumber(
+                                numbersFromAllSources[i], numbersFromAllSources[j], countryIso)) {
+                    numberIds[i] = numberIds[j];
                 }
             }
-            // didn't find same number (otherwise should not be state 0), assign a new state
-            if (numberState[i] == 0) {
-                numberState[i] = stateForNextUniqueNumber++;
+            // didn't find same number (otherwise should not be id 0), assign a new id
+            if (numberIds[i] == 0) {
+                numberIds[i] = idForNextUniqueNumber++;
             }
         }
-        return numberState;
+        return numberIds;
     }
 
     /**
@@ -242,15 +250,14 @@ public class PerSimStatus {
 
     /** Returns the bitmask representing types of APNs modified by user. */
     private static int getUserModifiedApnTypes(Phone phone) {
-        String[] projections = { Telephony.Carriers.TYPE };
+        String[] projections = {Telephony.Carriers.TYPE};
         String selection = Telephony.Carriers.EDITED_STATUS + "=?";
-        String[] selectionArgs = { Integer.toString(Telephony.Carriers.USER_EDITED) };
+        String[] selectionArgs = {Integer.toString(Telephony.Carriers.USER_EDITED)};
         try (Cursor cursor =
                 phone.getContext()
                         .getContentResolver()
                         .query(
-                                Uri.withAppendedPath(
-                                        CONTENT_URI, "subId/" + phone.getSubId()),
+                                Uri.withAppendedPath(CONTENT_URI, "subId/" + phone.getSubId()),
                                 projections,
                                 selection,
                                 selectionArgs,
