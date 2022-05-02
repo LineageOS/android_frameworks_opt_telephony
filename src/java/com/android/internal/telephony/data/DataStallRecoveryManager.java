@@ -231,7 +231,8 @@ public class DataStallRecoveryManager extends Handler {
                             @Override
                             public void onDataEnabledChanged(
                                     boolean enabled,
-                                    @TelephonyManager.DataEnabledChangedReason int reason) {
+                                    @TelephonyManager.DataEnabledChangedReason int reason,
+                                    @NonNull String callingPackage) {
                                 onMobileDataEnabledChanged(enabled);
                             }
                         });
