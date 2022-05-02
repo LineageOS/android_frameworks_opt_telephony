@@ -470,8 +470,10 @@ public class NetworkTypeController extends StateMachine {
         }
         // Icon display keys in order of priority
         List<String> keys = new ArrayList<>();
-        if (isNrSa && isNrAdvanced()) {
-            keys.add(STATE_CONNECTED_NR_ADVANCED);
+        if (isNrSa) {
+            if (isNrAdvanced()) {
+                keys.add(STATE_CONNECTED_NR_ADVANCED);
+            }
         } else {
             switch (mPhone.getServiceState().getNrState()) {
                 case NetworkRegistrationInfo.NR_STATE_CONNECTED:
