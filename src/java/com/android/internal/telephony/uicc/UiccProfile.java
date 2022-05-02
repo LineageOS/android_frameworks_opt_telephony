@@ -257,8 +257,13 @@ public class UiccProfile extends IccCard {
                         logWithLocalLog("handleMessage: Error in SIM access with exception "
                                 + ar.exception);
                     }
-                    AsyncResult.forMessage((Message) ar.userObj, ar.result, ar.exception);
-                    ((Message) ar.userObj).sendToTarget();
+                    if (ar.userObj != null) {
+                        AsyncResult.forMessage((Message) ar.userObj, ar.result, ar.exception);
+                        ((Message) ar.userObj).sendToTarget();
+                    } else {
+                        loge("handleMessage: ar.userObj is null in event:" + eventName
+                                + ", failed to post status back to caller");
+                    }
                     break;
                 }
 
