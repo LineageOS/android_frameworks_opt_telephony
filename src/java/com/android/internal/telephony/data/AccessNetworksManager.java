@@ -314,9 +314,10 @@ public class AccessNetworksManager extends Handler {
                                     .stream()
                                     .filter(x -> x.getSlotIndex() == mPhone.getPhoneId())
                                     .collect(Collectors.toList());
-
-                    mIQualifiedNetworksService.reportThrottleStatusChanged(mPhone.getPhoneId(),
-                            throttleStatusesBySlot);
+                    if (mIQualifiedNetworksService != null) {
+                        mIQualifiedNetworksService.reportThrottleStatusChanged(mPhone.getPhoneId(),
+                                throttleStatusesBySlot);
+                    }
                 } catch (Exception ex) {
                     loge("onThrottleStatusChanged", ex);
                 }
@@ -453,8 +454,10 @@ public class AccessNetworksManager extends Handler {
                         public void onThrottleStatusChanged(List<ThrottleStatus> throttleStatuses) {
                             try {
                                 logl("onThrottleStatusChanged: " + throttleStatuses);
-                                mIQualifiedNetworksService.reportThrottleStatusChanged(
-                                        mPhone.getPhoneId(), throttleStatuses);
+                                if (mIQualifiedNetworksService != null) {
+                                    mIQualifiedNetworksService.reportThrottleStatusChanged(
+                                            mPhone.getPhoneId(), throttleStatuses);
+                                }
                             } catch (Exception ex) {
                                 loge("onThrottleStatusChanged: ", ex);
                             }
