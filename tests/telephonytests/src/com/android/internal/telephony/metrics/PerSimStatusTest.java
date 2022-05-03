@@ -82,11 +82,13 @@ public class PerSimStatusTest extends TelephonyTest {
         doReturn(100).when(mPhone).getCarrierId();
         doReturn("6506953210")
                 .when(mSubscriptionController)
-                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_UICC);
-        doReturn("").when(mSubscriptionController).getPhoneNumber(1, PHONE_NUMBER_SOURCE_CARRIER);
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_UICC, null, null);
+        doReturn("")
+                .when(mSubscriptionController)
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_CARRIER, null, null);
         doReturn("+16506953210")
                 .when(mSubscriptionController)
-                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_IMS);
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_IMS, null, null);
         SubscriptionInfo subscriptionInfo1 = mock(SubscriptionInfo.class);
         doReturn("us").when(subscriptionInfo1).getCountryIso();
         doReturn(subscriptionInfo1).when(mSubscriptionController).getSubscriptionInfo(1);
@@ -119,13 +121,15 @@ public class PerSimStatusTest extends TelephonyTest {
         doReturn(1).when(mSecondPhone).getPhoneId();
         doReturn(2).when(mSecondPhone).getSubId();
         doReturn(101).when(mSecondPhone).getCarrierId();
-        doReturn("0123").when(mSubscriptionController).getPhoneNumber(2, PHONE_NUMBER_SOURCE_UICC);
+        doReturn("0123")
+                .when(mSubscriptionController)
+                .getPhoneNumber(2, PHONE_NUMBER_SOURCE_UICC, null, null);
         doReturn("16506950123")
                 .when(mSubscriptionController)
-                .getPhoneNumber(2, PHONE_NUMBER_SOURCE_CARRIER);
+                .getPhoneNumber(2, PHONE_NUMBER_SOURCE_CARRIER, null, null);
         doReturn("+16506950123")
                 .when(mSubscriptionController)
-                .getPhoneNumber(2, PHONE_NUMBER_SOURCE_IMS);
+                .getPhoneNumber(2, PHONE_NUMBER_SOURCE_IMS, null, null);
         SubscriptionInfo subscriptionInfo2 = mock(SubscriptionInfo.class);
         doReturn("us").when(subscriptionInfo2).getCountryIso();
         doReturn(subscriptionInfo2).when(mSubscriptionController).getSubscriptionInfo(2);
@@ -211,11 +215,13 @@ public class PerSimStatusTest extends TelephonyTest {
         doReturn(100).when(mPhone).getCarrierId();
         doReturn("6506953210")
                 .when(mSubscriptionController)
-                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_UICC);
-        doReturn("").when(mSubscriptionController).getPhoneNumber(1, PHONE_NUMBER_SOURCE_CARRIER);
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_UICC, null, null);
+        doReturn("")
+                .when(mSubscriptionController)
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_CARRIER, null, null);
         doReturn("+16506953210")
                 .when(mSubscriptionController)
-                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_IMS);
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_IMS, null, null);
         SubscriptionInfo subscriptionInfo = mock(SubscriptionInfo.class);
         doReturn("us").when(subscriptionInfo).getCountryIso();
         doReturn(subscriptionInfo).when(mSubscriptionController).getSubscriptionInfo(1);
@@ -262,11 +268,13 @@ public class PerSimStatusTest extends TelephonyTest {
         doReturn(100).when(mPhone).getCarrierId();
         doReturn("6506953210")
                 .when(mSubscriptionController)
-                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_UICC);
-        doReturn("").when(mSubscriptionController).getPhoneNumber(1, PHONE_NUMBER_SOURCE_CARRIER);
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_UICC, null, null);
+        doReturn("")
+                .when(mSubscriptionController)
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_CARRIER, null, null);
         doReturn("+16506953210")
                 .when(mSubscriptionController)
-                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_IMS);
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_IMS, null, null);
         SubscriptionInfo subscriptionInfo = mock(SubscriptionInfo.class);
         doReturn("us").when(subscriptionInfo).getCountryIso();
         doReturn(subscriptionInfo).when(mSubscriptionController).getSubscriptionInfo(1);
@@ -315,11 +323,13 @@ public class PerSimStatusTest extends TelephonyTest {
         doReturn(100).when(mPhone).getCarrierId();
         doReturn("6506953210")
                 .when(mSubscriptionController)
-                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_UICC);
-        doReturn("").when(mSubscriptionController).getPhoneNumber(1, PHONE_NUMBER_SOURCE_CARRIER);
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_UICC, null, null);
+        doReturn("")
+                .when(mSubscriptionController)
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_CARRIER, null, null);
         doReturn("+16506953210")
                 .when(mSubscriptionController)
-                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_IMS);
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_IMS, null, null);
         SubscriptionInfo subscriptionInfo = mock(SubscriptionInfo.class);
         doReturn("us").when(subscriptionInfo).getCountryIso();
         doReturn(subscriptionInfo).when(mSubscriptionController).getSubscriptionInfo(1);
