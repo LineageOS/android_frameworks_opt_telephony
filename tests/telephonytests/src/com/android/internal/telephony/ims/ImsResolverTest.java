@@ -584,6 +584,51 @@ public class ImsResolverTest extends ImsTestBase {
     }
 
     /**
+     * Ensure enabling and disabling IMS only happens one time per controller.
+     */
+    @Test
+    @SmallTest
+    public void testEnableDisableImsDedupe() {
+        setupResolver(1 /*numSlots*/, TEST_DEVICE_DEFAULT_NAME.getPackageName(),
+                TEST_DEVICE2_DEFAULT_NAME.getPackageName());
+        List<ResolveInfo> info = new ArrayList<>();
+        Set<String> featuresController1 = new HashSet<>();
+        featuresController1.add(ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE);
+        featuresController1.add(ImsResolver.METADATA_MMTEL_FEATURE);
+        Set<String> featuresController2 = new HashSet<>();
+        featuresController2.add(ImsResolver.METADATA_RCS_FEATURE);
+        info.add(getResolveInfo(TEST_DEVICE_DEFAULT_NAME, featuresController1, true));
+        info.add(getResolveInfo(TEST_DEVICE2_DEFAULT_NAME, featuresController2, true));
+        setupPackageQuery(info);
+        ImsServiceController deviceController1 = mock(ImsServiceController.class);
+        ImsServiceController deviceController2 = mock(ImsServiceController.class);
+        setImsServiceControllerFactory(deviceController1, deviceController2, null, null);
+        // Bind using default features
+        startBindNoCarrierConfig(1);
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> featureSet1 =
+                convertToHashSet(featuresController1, 0);
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> featureSet2 =
+                convertToHashSet(featuresController2, 0);
+        verify(deviceController1).bind(eq(featureSet1), any(SparseIntArray.class));
+        verify(deviceController2).bind(eq(featureSet2), any(SparseIntArray.class));
+        // simulate ImsServiceController binding and setup
+        mTestImsResolver.imsServiceFeatureCreated(0, ImsFeature.FEATURE_EMERGENCY_MMTEL,
+                deviceController1);
+        mTestImsResolver.imsServiceFeatureCreated(0, ImsFeature.FEATURE_MMTEL, deviceController1);
+        mTestImsResolver.imsServiceFeatureCreated(0, ImsFeature.FEATURE_RCS, deviceController2);
+
+        mTestImsResolver.enableIms(0 /*slotId*/);
+        // Verify enableIms is only called once per controller.
+        verify(deviceController1).enableIms(eq(0), eq(0));
+        verify(deviceController2).enableIms(eq(0), eq(0));
+
+        mTestImsResolver.disableIms(0 /*slotId*/);
+        // Verify disableIms is only called once per controller.
+        verify(deviceController1).disableIms(eq(0), eq(0));
+        verify(deviceController2).disableIms(eq(0), eq(0));
+    }
+
+    /**
      * Creates a carrier ImsService that does not report FEATURE_EMERGENCY_MMTEL and then update the
      * ImsService to define it. Ensure that the controller sets this capability once enabled.
      */
@@ -1007,9 +1052,12 @@ public class ImsResolverTest extends ImsTestBase {
         startBindNoCarrierConfig(1);
         processAllMessages();
 
+        // If MMTEL_FEATURE is not set, EMERGENCY_MMTEL_FEATURE should not be in feature set.
+        features.clear();
+        features.add(ImsResolver.METADATA_RCS_FEATURE);
+        HashSet<ImsFeatureConfiguration.FeatureSlotPair> featureSet = convertToHashSet(features, 0);
         // There is no carrier override set, so make sure that the ImsServiceController binds
         // to all SIMs.
-        HashSet<ImsFeatureConfiguration.FeatureSlotPair> featureSet = convertToHashSet(features, 0);
         verify(controller).bind(eq(featureSet), any(SparseIntArray.class));
         verify(controller, never()).unbind();
         verify(mMockQueryManager, never()).startQuery(any(), any());
@@ -2185,8 +2233,6 @@ public class ImsResolverTest extends ImsTestBase {
     private HashSet<ImsFeatureConfiguration.FeatureSlotPair> convertToHashSet(
             Set<String> features, int slotId) {
         return features.stream()
-                // We do not count this as a valid feature set member.
-                .filter(f -> !ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE.equals(f))
                 .map(f -> new ImsFeatureConfiguration.FeatureSlotPair(slotId,
                         metadataStringToFeature(f)))
                 .collect(Collectors.toCollection(HashSet::new));
@@ -2199,6 +2245,8 @@ public class ImsResolverTest extends ImsTestBase {
 
     private int metadataStringToFeature(String f) {
         switch (f) {
+            case ImsResolver.METADATA_EMERGENCY_MMTEL_FEATURE:
+                return ImsFeature.FEATURE_EMERGENCY_MMTEL;
             case ImsResolver.METADATA_MMTEL_FEATURE:
                 return ImsFeature.FEATURE_MMTEL;
             case ImsResolver.METADATA_RCS_FEATURE:

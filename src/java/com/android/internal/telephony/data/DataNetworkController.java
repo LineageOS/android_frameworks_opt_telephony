@@ -801,7 +801,8 @@ public class DataNetworkController extends Handler {
                         new DataSettingsManagerCallback(this::post) {
                             @Override
                             public void onDataEnabledChanged(boolean enabled,
-                                    @TelephonyManager.DataEnabledChangedReason int reason) {
+                                    @TelephonyManager.DataEnabledChangedReason int reason,
+                                    @NonNull String callingPackage) {
                                 // If mobile data is enabled by the user, evaluate the unsatisfied
                                 // network requests and then attempt to setup data networks to
                                 // satisfy them. If mobile data is disabled, evaluate the existing
@@ -2615,7 +2616,7 @@ public class DataNetworkController extends Handler {
         }
 
         if (!mDataSettingsManager.isRecoveryOnBadNetworkEnabled()) {
-            log("Ignore data network validation status changed becaused"
+            log("Ignore data network validation status changed because "
                     + "data stall recovery is disabled.");
             return;
         }
@@ -2797,19 +2798,7 @@ public class DataNetworkController extends Handler {
         log("onDataServiceBindingChanged: " + AccessNetworkConstants
                 .transportTypeToString(transport) + " data service is "
                 + (bound ? "bound." : "unbound."));
-        if (!bound) {
-            if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
-                if (!mDataConfigManager.shouldPersistIwlanDataNetworksWhenDataServiceRestarted()) {
-                    for (DataNetwork dataNetwork : mDataNetworkList) {
-                        if (dataNetwork.getTransport()
-                                == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
-                            dataNetwork.tearDown(
-                                    DataNetwork.TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY);
-                        }
-                    }
-                }
-            }
-        } else {
+        if (bound) {
             mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                     () -> callback.onDataServiceBound(transport)));
         }
