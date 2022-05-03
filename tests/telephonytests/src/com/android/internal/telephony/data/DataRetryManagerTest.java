@@ -22,6 +22,7 @@ import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
@@ -36,6 +37,7 @@ import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.ThrottleStatus;
+import android.telephony.data.TrafficDescriptor;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 import android.util.SparseArray;
@@ -54,6 +56,7 @@ import org.mockito.Mockito;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -122,6 +125,9 @@ public class DataRetryManagerTest extends TelephonyTest {
             .setPreferred(false)
             .build();
 
+    private final List<DataProfile> mAllDataProfileList = List.of(mDataProfile1, mDataProfile2,
+            mDataProfile3);
+
     // Mocked classes
     private DataRetryManagerCallback mDataRetryManagerCallbackMock;
 
@@ -143,6 +149,28 @@ public class DataRetryManagerTest extends TelephonyTest {
                 mMockedWlanDataServiceManager);
         mDataRetryManagerUT = new DataRetryManager(mPhone, mDataNetworkController,
                 mockedDataServiceManagers, Looper.myLooper(), mDataRetryManagerCallbackMock);
+
+        doAnswer(invocation -> {
+            String apnName = (String) invocation.getArguments()[0];
+            TrafficDescriptor td = (TrafficDescriptor) invocation.getArguments()[1];
+
+            if (apnName == null && td == null) return null;
+
+            List<DataProfile> dataProfiles = mAllDataProfileList;
+            if (apnName != null) {
+                dataProfiles = dataProfiles.stream()
+                        .filter(dp -> dp.getApnSetting() != null
+                                && apnName.equals(dp.getApnSetting().getApnName()))
+                        .collect(Collectors.toList());
+            }
+            if (td != null) {
+                dataProfiles = dataProfiles.stream()
+                        .filter(dp -> dp.getTrafficDescriptor() != null
+                                && td.equals(dp.getTrafficDescriptor()))
+                        .collect(Collectors.toList());
+            }
+            return dataProfiles.isEmpty() ? null : dataProfiles.get(0);
+        }).when(mDataProfileManager).getDataProfile(anyString(), any());
 
         logd("DataRetryManagerTest -Setup!");
     }
