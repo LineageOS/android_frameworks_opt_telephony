@@ -1386,15 +1386,30 @@ public class DataRetryManager extends Handler {
      */
     private void onDataProfileUnthrottled(@Nullable DataProfile dataProfile, @Nullable String apn,
             int transport, boolean remove) {
+        log("onDataProfileUnthrottled: data profile=" + dataProfile + ", apn=" + apn
+                + ", transport=" + AccessNetworkConstants.transportTypeToString(transport)
+                + ", remove=" + remove);
+
         long now = SystemClock.elapsedRealtime();
         List<DataThrottlingEntry> dataUnthrottlingEntries = new ArrayList<>();
         if (dataProfile != null) {
             // For AIDL-based HAL. There should be only one entry containing this data profile.
-            dataUnthrottlingEntries = mDataThrottlingEntries.stream()
-                    .filter(entry -> entry.expirationTimeMillis > now
-                            && entry.dataProfile.equals(dataProfile)
-                            && entry.transport == transport)
-                    .collect(Collectors.toList());
+            // Note that the data profile reconstructed from DataProfileInfo.aidl will not be
+            // equal to the data profiles kept in data profile manager (due to some fields missing
+            // in DataProfileInfo.aidl), so we need to get the equivalent data profile from data
+            // profile manager.
+            final DataProfile dp = mDataProfileManager.getDataProfile(
+                    dataProfile.getApnSetting() != null
+                            ? dataProfile.getApnSetting().getApnName() : null,
+                    dataProfile.getTrafficDescriptor());
+            log("onDataProfileUnthrottled: getDataProfile=" + dp);
+            if (dp != null) {
+                dataUnthrottlingEntries = mDataThrottlingEntries.stream()
+                        .filter(entry -> entry.expirationTimeMillis > now
+                                && entry.dataProfile.equals(dp)
+                                && entry.transport == transport)
+                        .collect(Collectors.toList());
+            }
         } else if (apn != null) {
             // For HIDL 1.6 or below
             dataUnthrottlingEntries = mDataThrottlingEntries.stream()
