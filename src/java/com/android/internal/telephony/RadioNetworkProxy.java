@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import static com.android.internal.telephony.RILConstants.REQUEST_NOT_SUPPORTED;
 
+import android.annotation.NonNull;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.RemoteException;
@@ -587,30 +588,39 @@ public class RadioNetworkProxy extends RadioServiceProxy {
     /**
      * Call IRadioNetwork#setSignalStrengthReportingCriteria
      * @param serial Serial number of request
-     * @param signalThresholdInfo Signal threshold info including the threshold values,
-     *                            hysteresisDb, and hysteresisMs.
-     * @param ran Radio access network for which to apply these thresholds
+     * @param signalThresholdInfos a list of {@link SignalThresholdInfo} to set with.
      * @throws RemoteException
      */
     public void setSignalStrengthReportingCriteria(int serial,
-            SignalThresholdInfo signalThresholdInfo, int ran) throws RemoteException {
+            @NonNull List<SignalThresholdInfo> signalThresholdInfos) throws RemoteException {
         if (isEmpty() || mHalVersion.less(RIL.RADIO_HAL_VERSION_1_2)) return;
         if (isAidl()) {
-            mNetworkProxy.setSignalStrengthReportingCriteria(serial,
-                    new android.hardware.radio.network.SignalThresholdInfo[] {
-                            RILUtils.convertToHalSignalThresholdInfoAidl(signalThresholdInfo)});
+            android.hardware.radio.network.SignalThresholdInfo[] halSignalThresholdsInfos =
+            new android.hardware.radio.network.SignalThresholdInfo[signalThresholdInfos.size()];
+            for (int i = 0; i < signalThresholdInfos.size(); i++) {
+                halSignalThresholdsInfos[i] = RILUtils.convertToHalSignalThresholdInfoAidl(
+                        signalThresholdInfos.get(i));
+            }
+            mNetworkProxy.setSignalStrengthReportingCriteria(serial, halSignalThresholdsInfos);
         } else if (mHalVersion.greaterOrEqual(RIL.RADIO_HAL_VERSION_1_5)) {
-            ((android.hardware.radio.V1_5.IRadio) mRadioProxy)
-                    .setSignalStrengthReportingCriteria_1_5(serial,
-                    RILUtils.convertToHalSignalThresholdInfo(signalThresholdInfo),
-                    RILUtils.convertToHalAccessNetwork(ran));
+            for (SignalThresholdInfo signalThresholdInfo : signalThresholdInfos) {
+                ((android.hardware.radio.V1_5.IRadio) mRadioProxy)
+                        .setSignalStrengthReportingCriteria_1_5(serial,
+                                RILUtils.convertToHalSignalThresholdInfo(signalThresholdInfo),
+                                RILUtils.convertToHalAccessNetwork(
+                                        signalThresholdInfo.getRadioAccessNetworkType()));
+            }
         } else {
-            ((android.hardware.radio.V1_2.IRadio) mRadioProxy)
-                    .setSignalStrengthReportingCriteria(serial,
-                    signalThresholdInfo.getHysteresisMs(),
-                    signalThresholdInfo.getHysteresisDb(),
-                    RILUtils.primitiveArrayToArrayList(signalThresholdInfo.getThresholds()),
-                    RILUtils.convertToHalAccessNetwork(ran));
+            for (SignalThresholdInfo signalThresholdInfo : signalThresholdInfos) {
+                ((android.hardware.radio.V1_2.IRadio) mRadioProxy)
+                        .setSignalStrengthReportingCriteria(serial,
+                                signalThresholdInfo.getHysteresisMs(),
+                                signalThresholdInfo.getHysteresisDb(),
+                                RILUtils.primitiveArrayToArrayList(
+                                        signalThresholdInfo.getThresholds()),
+                                RILUtils.convertToHalAccessNetwork(
+                                        signalThresholdInfo.getRadioAccessNetworkType()));
+            }
         }
     }
 
