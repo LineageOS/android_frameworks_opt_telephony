@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.net.KeepalivePacketData;
 import android.net.LinkProperties;
@@ -2393,30 +2394,20 @@ public interface CommandsInterface {
     void setUnsolResponseFilter(int filter, Message result);
 
     /**
-     * Sets the signal strength reporting criteria.
+     * Sets or clears the signal strength reporting criteria for multiple RANs in one request.
      *
-     * The resulting reporting rules are the AND of all the supplied criteria. For each RAN
-     * The hysteresisDb and thresholds apply to only the following measured quantities:
-     * -GERAN    - RSSI
-     * -CDMA2000 - RSSI
-     * -UTRAN    - RSCP
-     * -EUTRAN   - RSRP/RSRQ/RSSNR
-     * -NGRAN    - SSRSRP/SSRSRQ/SSSINR
+     * The reporting criteria are set individually for each combination of RAN and measurement type.
+     * For each RAN type, if no reporting criteria are set, then the reporting of SignalStrength for
+     * that RAN is implementation-defined. If any criteria are supplied for a RAN type, then
+     * SignalStrength is only reported as specified by those criteria. For any RAN types not defined
+     * by this HAL, reporting is implementation-defined.
      *
-     * Note: Reporting criteria must be individually set for each RAN. For any unset reporting
-     * criteria, the value is implementation-defined.
-     *
-     * Response callback is
-     * IRadioResponse.setSignalStrengthReportingCriteriaResponse_1_5()
-     *
-     * @param signalThresholdInfo Signal threshold info including the threshold values,
-     *                            hysteresisDb, and hysteresisMs. See @1.5::SignalThresholdInfo
-     *                            for details.
-     * @param ran The type of network for which to apply these thresholds.
+     * @param signalThresholdInfos Collection of SignalThresholdInfo specifying the reporting
+     *        criteria. See SignalThresholdInfo for details.
      * @param result callback message contains the information of SUCCESS/FAILURE
      */
-    void setSignalStrengthReportingCriteria(SignalThresholdInfo signalThresholdInfo, int ran,
-            Message result);
+    void setSignalStrengthReportingCriteria(@NonNull List<SignalThresholdInfo> signalThresholdInfos,
+            @Nullable Message result);
 
     /**
      * Send the link capacity reporting criteria to the modem
