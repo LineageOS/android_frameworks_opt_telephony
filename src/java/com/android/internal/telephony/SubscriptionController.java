@@ -3029,9 +3029,19 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public String getSubscriptionProperty(int subId, String propKey, String callingPackage,
             String callingFeatureId) {
-        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext, subId, callingPackage,
-                callingFeatureId, "getSubscriptionProperty")) {
-            return null;
+        switch (propKey) {
+            case SubscriptionManager.GROUP_UUID:
+                if (mContext.checkCallingOrSelfPermission(
+                        Manifest.permission.READ_PRIVILEGED_PHONE_STATE) != PERMISSION_GRANTED) {
+                    EventLog.writeEvent(0x534e4554, "213457638", Binder.getCallingUid());
+                    return null;
+                }
+                break;
+            default:
+                if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext, subId,
+                        callingPackage, callingFeatureId, "getSubscriptionProperty")) {
+                    return null;
+                }
         }
 
         final long identity = Binder.clearCallingIdentity();
