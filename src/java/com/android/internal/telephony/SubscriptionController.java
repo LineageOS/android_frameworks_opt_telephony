@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+
 import android.Manifest;
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
@@ -2075,9 +2077,19 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public String getSubscriptionProperty(int subId, String propKey, String callingPackage) {
-        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(
-                mContext, subId, callingPackage, "getSubscriptionProperty")) {
-            return null;
+        switch (propKey) {
+            case "group_uuid":
+                if (mContext.checkCallingOrSelfPermission(
+                        Manifest.permission.READ_PRIVILEGED_PHONE_STATE) != PERMISSION_GRANTED) {
+                    EventLog.writeEvent(0x534e4554, "213457638", Binder.getCallingUid());
+                    return null;
+                }
+                break;
+            default:
+                if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext, subId,
+                        callingPackage, "getSubscriptionProperty")) {
+                    return null;
+                }
         }
         String resultValue = null;
         ContentResolver resolver = mContext.getContentResolver();
