@@ -235,7 +235,7 @@ public class AccessNetworksManager extends Handler {
             // TODO: try to rebind the service.
             String message = "Qualified network service " + mLastBoundPackageName + " died.";
             loge(message);
-            AnomalyReporter.reportAnomaly(mAnomalyUUID, message);
+            AnomalyReporter.reportAnomaly(mAnomalyUUID, message, mPhone.getCarrierId());
         }
     }
 
