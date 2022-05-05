@@ -261,6 +261,7 @@ message OutgoingSms {
     optional int32 carrier_id = 11;
     optional int64 message_id = 12;
     optional int32 retry_id = 13;
+    optional int64 interval_millis = 14;
 }
 
 message CarrierIdMismatch {

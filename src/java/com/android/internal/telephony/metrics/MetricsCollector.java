@@ -803,7 +803,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 sms.isEsim,
                 sms.carrierId,
                 sms.messageId,
-                sms.retryId);
+                sms.retryId,
+                sms.intervalMillis);
     }
 
     private static StatsEvent buildStatsEvent(DataCallSession dataCallSession) {
