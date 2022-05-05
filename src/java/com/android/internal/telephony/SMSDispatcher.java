@@ -420,7 +420,7 @@ public abstract class SMSDispatcher extends Handler {
                 logWithLocalLog("handleMessage: No response from " + mCarrierPackageName
                         + " for " + mCarrierMessagingTimeout + " ms");
                 AnomalyReporter.reportAnomaly(sAnomalyNoResponseFromCarrierMessagingService,
-                        "No response from " + mCarrierPackageName);
+                        "No response from " + mCarrierPackageName, mPhone.getCarrierId());
                 onSendComplete(CarrierMessagingService.SEND_STATUS_RETRY_ON_CARRIER_NETWORK);
             } else {
                 logWithLocalLog("handleMessage: received unexpected message " + msg.what);
@@ -570,7 +570,7 @@ public abstract class SMSDispatcher extends Handler {
             if (mCallbackCalled) {
                 logWithLocalLog("onSendSmsComplete: unexpected call");
                 AnomalyReporter.reportAnomaly(sAnomalyUnexpectedCallback,
-                        "Unexpected onSendSmsComplete");
+                        "Unexpected onSendSmsComplete", mPhone.getCarrierId());
                 return;
             }
             mCallbackCalled = true;
@@ -736,7 +736,7 @@ public abstract class SMSDispatcher extends Handler {
             if (mCallbackCalled) {
                 logWithLocalLog("onSendMultipartSmsComplete: unexpected call");
                 AnomalyReporter.reportAnomaly(sAnomalyUnexpectedCallback,
-                        "Unexpected onSendMultipartSmsComplete");
+                        "Unexpected onSendMultipartSmsComplete", mPhone.getCarrierId());
                 return;
             }
             mCallbackCalled = true;
@@ -2063,6 +2063,7 @@ public abstract class SMSDispatcher extends Handler {
 
         private Boolean mIsFromDefaultSmsApplication;
 
+        private int mCarrierId;
         // SMS anomaly uuid -- unexpected error from RIL
         private final UUID mAnomalyUnexpectedErrorFromRilUUID =
                 UUID.fromString("43043600-ea7a-44d2-9ae6-a58567ac7886");
@@ -2072,7 +2073,7 @@ public abstract class SMSDispatcher extends Handler {
                 AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri,
                 SmsHeader smsHeader, boolean expectMore, String fullMessageText, int subId,
                 boolean isText, boolean persistMessage, int userId, int priority,
-                int validityPeriod, boolean isForVvm, long messageId) {
+                int validityPeriod, boolean isForVvm, long messageId, int carrierId) {
             mData = data;
             mSentIntent = sentIntent;
             mDeliveryIntent = deliveryIntent;
@@ -2097,6 +2098,7 @@ public abstract class SMSDispatcher extends Handler {
             mValidityPeriod = validityPeriod;
             mIsForVvm = isForVvm;
             mMessageId = messageId;
+            mCarrierId = carrierId;
         }
 
         public HashMap<String, Object> getData() {
@@ -2294,7 +2296,8 @@ public abstract class SMSDispatcher extends Handler {
                 default:
                     String message = "SMS failed";
                     Rlog.d(TAG, message + " with error " + error + ", errorCode " + errorCode);
-                    AnomalyReporter.reportAnomaly(generateUUID(error, errorCode), message);
+                    AnomalyReporter.reportAnomaly(
+                            generateUUID(error, errorCode), message, mCarrierId);
             }
         }
 
@@ -2367,7 +2370,7 @@ public abstract class SMSDispatcher extends Handler {
         return new SmsTracker(data, sentIntent, deliveryIntent, appInfo, destAddr, format,
                 unsentPartCount, anyPartFailed, messageUri, smsHeader, expectMore,
                 fullMessageText, getSubId(), isText, persistMessage, userId, priority,
-                validityPeriod, isForVvm, messageId);
+                validityPeriod, isForVvm, messageId, mPhone.getCarrierId());
     }
 
     protected SmsTracker getSmsTracker(String callingPackage, HashMap<String, Object> data,
