@@ -92,6 +92,7 @@ public class ServiceStateStats {
             newState.simSlotIndex = mPhone.getPhoneId();
             newState.isMultiSim = SimSlotState.isMultiSim();
             newState.carrierId = mPhone.getCarrierId();
+            newState.isEmergencyOnly = isEmergencyOnly(serviceState);
 
             TimestampedServiceState prevState =
                     mLastState.getAndSet(new TimestampedServiceState(newState, now));
@@ -212,6 +213,7 @@ public class ServiceStateStats {
         copy.isMultiSim = state.isMultiSim;
         copy.carrierId = state.carrierId;
         copy.totalTimeMillis = state.totalTimeMillis;
+        copy.isEmergencyOnly = state.isEmergencyOnly;
         return copy;
     }
 
@@ -278,6 +280,14 @@ public class ServiceStateStats {
         return wwanRegInfo != null && wwanRegInfo.isInService()
                 ? wwanRegInfo.getAccessNetworkTechnology()
                 : TelephonyManager.NETWORK_TYPE_UNKNOWN;
+    }
+
+    private static boolean isEmergencyOnly(ServiceState state) {
+        NetworkRegistrationInfo regInfo =
+                state.getNetworkRegistrationInfo(
+                        NetworkRegistrationInfo.DOMAIN_CS,
+                        AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        return regInfo != null && !regInfo.isInService() && regInfo.isEmergencyEnabled();
     }
 
     private static boolean isEndc(ServiceState state) {

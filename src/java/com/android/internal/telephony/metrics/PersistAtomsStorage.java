@@ -1258,7 +1258,8 @@ public class PersistAtomsStorage {
                     && state.isEndc == key.isEndc
                     && state.simSlotIndex == key.simSlotIndex
                     && state.isMultiSim == key.isMultiSim
-                    && state.carrierId == key.carrierId) {
+                    && state.carrierId == key.carrierId
+                    && state.isEmergencyOnly == key.isEmergencyOnly) {
                 return state;
             }
         }
