@@ -129,6 +129,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
+import java.util.stream.Collectors;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -699,14 +700,16 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 linkBandwidthEstimatorCallbackCaptor.capture());
         mLinkBandwidthEstimatorCallback = linkBandwidthEstimatorCallbackCaptor.getValue();
 
+        List<DataProfile> profiles = List.of(mGeneralPurposeDataProfile,
+                mImsCellularDataProfile,
+                mImsIwlanDataProfile, mEmergencyDataProfile, mFotaDataProfile,
+                mTetheringDataProfile);
+
         doAnswer(invocation -> {
             TelephonyNetworkRequest networkRequest =
                     (TelephonyNetworkRequest) invocation.getArguments()[0];
             int networkType = (int) invocation.getArguments()[1];
-            List<DataProfile> profiles = List.of(mGeneralPurposeDataProfile,
-                    mImsCellularDataProfile,
-                    mImsIwlanDataProfile, mEmergencyDataProfile, mFotaDataProfile,
-                    mTetheringDataProfile);
+
             for (DataProfile dataProfile : profiles) {
                 if (dataProfile.canSatisfy(networkRequest.getCapabilities())
                         && (dataProfile.getApnSetting().getNetworkTypeBitmask() == 0
@@ -724,7 +727,27 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
                 .getPreferredTransportByNetworkCapability(anyInt());
         doReturn(true).when(mDataProfileManager).isDataProfilePreferred(any(DataProfile.class));
-        doReturn(true).when(mDataProfileManager).isDataProfileValid(any(DataProfile.class));
+        doAnswer(invocation -> {
+            String apnName = (String) invocation.getArguments()[0];
+            TrafficDescriptor td = (TrafficDescriptor) invocation.getArguments()[1];
+
+            List<DataProfile> dps = profiles;
+
+            if (td != null) {
+                dps = dps.stream()
+                        .filter(dp -> td.equals(dp.getTrafficDescriptor()))
+                        .collect(Collectors.toList());
+            }
+
+            if (apnName != null) {
+                dps = dps.stream()
+                        .filter(dp -> dp.getApnSetting() != null)
+                        .filter(dp -> apnName.equals(dp.getApnSetting().getApnName()))
+                        .collect(Collectors.toList());
+            }
+
+            return dps.isEmpty() ? null : dps.get(0);
+        }).when(mDataProfileManager).getDataProfile(anyString(), any());
 
         doAnswer(invocation -> {
             ((Runnable) invocation.getArguments()[0]).run();

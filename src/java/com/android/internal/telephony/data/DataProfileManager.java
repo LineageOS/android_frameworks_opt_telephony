@@ -422,9 +422,11 @@ public class DataProfileManager extends Handler {
             preferredDataProfile = null;
         }
 
+        for (DataProfile dataProfile : mAllDataProfiles) {
+            dataProfile.setPreferred(dataProfile.equals(preferredDataProfile));
+        }
+
         if (!Objects.equals(mPreferredDataProfile, preferredDataProfile)) {
-            // Replaced the data profile with preferred bit set.
-            if (preferredDataProfile != null) preferredDataProfile.setPreferred(true);
             mPreferredDataProfile = preferredDataProfile;
 
             logl("Changed preferred data profile to " + mPreferredDataProfile);
@@ -630,23 +632,6 @@ public class DataProfileManager extends Handler {
     }
 
     /**
-     * Check if the data profile is valid. Profiles can change dynamically when users add/remove/
-     * switch APNs in APN editors, when SIM refreshes, or when SIM swapped. This is used to check
-     * if the data profile which is used for current data network is still valid. If the profile
-     * is not valid anymore, the data network should be torn down.
-     *
-     * @param dataProfile The data profile to check.
-     * @return {@code true} if the data profile is still valid for current environment.
-     */
-    public boolean isDataProfileValid(@NonNull DataProfile dataProfile) {
-        return mAllDataProfiles.contains(dataProfile)
-                && (dataProfile.getApnSetting() == null
-                || dataProfile.getApnSetting().getApnSetId() == mPreferredDataProfileSetId
-                || dataProfile.getApnSetting().getApnSetId()
-                == Telephony.Carriers.MATCH_ALL_APN_SET_ID);
-    }
-
-    /**
      * Check if the data profile is the preferred data profile.
      *
      * @param dataProfile The data profile to check.
@@ -791,6 +776,42 @@ public class DataProfileManager extends Handler {
                 .setApnSetting(apnBuilder.build())
                 .setTrafficDescriptor(dp1.getTrafficDescriptor())
                 .build();
+    }
+
+    /**
+     * Get data profile by APN name and/or traffic descriptor.
+     *
+     * @param apnName APN name.
+     * @param trafficDescriptor Traffic descriptor.
+     *
+     * @return Data profile by APN name and/or traffic descriptor. Either one of APN name or
+     * traffic descriptor should be provided. {@code null} if data profile is not found.
+     */
+    public @Nullable DataProfile getDataProfile(@Nullable String apnName,
+            @Nullable TrafficDescriptor trafficDescriptor) {
+        if (apnName == null && trafficDescriptor == null) return null;
+
+        List<DataProfile> dataProfiles = mAllDataProfiles;
+
+        // Check if any existing data profile has the same traffic descriptor.
+        if (trafficDescriptor != null) {
+            dataProfiles = mAllDataProfiles.stream()
+                    .filter(dp -> trafficDescriptor.equals(dp.getTrafficDescriptor()))
+                    .collect(Collectors.toList());
+        }
+
+        // Check if any existing data profile has the same APN name.
+        if (apnName != null) {
+            dataProfiles = dataProfiles.stream()
+                    .filter(dp -> dp.getApnSetting() != null
+                            && (dp.getApnSetting().getApnSetId()
+                            == Telephony.Carriers.MATCH_ALL_APN_SET_ID
+                            || dp.getApnSetting().getApnSetId() == mPreferredDataProfileSetId))
+                    .filter(dp -> apnName.equals(dp.getApnSetting().getApnName()))
+                    .collect(Collectors.toList());
+        }
+
+        return dataProfiles.isEmpty() ? null : dataProfiles.get(0);
     }
 
     /**
