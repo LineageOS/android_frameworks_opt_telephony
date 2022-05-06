@@ -17,7 +17,6 @@
 package com.android.internal.telephony.imsphone;
 
 import android.content.Context;
-import android.net.LinkProperties;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -506,13 +505,6 @@ abstract class ImsPhoneBase extends Phone {
     public boolean needsOtaServiceProvisioning() {
         // FIXME: what's this for Volte?
         return false;
-    }
-
-    //@Override
-    @Override
-    public LinkProperties getLinkProperties(String apnType) {
-        // FIXME: what's this for Volte?
-        return null;
     }
 
     @Override

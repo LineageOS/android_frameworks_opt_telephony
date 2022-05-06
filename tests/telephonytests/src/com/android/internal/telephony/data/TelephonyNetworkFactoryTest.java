@@ -394,7 +394,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         h.sendMessage(h.obtainMessage(5, ar));
         processAllMessages();
 
-        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mTransportManager)
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
                 .getCurrentTransport(anyInt());
 
         hp = new HandoverParams(ApnSetting.TYPE_MMS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
