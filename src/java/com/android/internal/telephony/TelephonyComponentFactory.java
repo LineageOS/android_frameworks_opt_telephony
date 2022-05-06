@@ -412,10 +412,11 @@ public class TelephonyComponentFactory {
      * Make access networks manager
      *
      * @param phone The phone instance
+     * @param looper Looper for the handler.
      * @return The access networks manager
      */
-    public AccessNetworksManager makeAccessNetworksManager(Phone phone) {
-        return new AccessNetworksManager(phone);
+    public AccessNetworksManager makeAccessNetworksManager(Phone phone, Looper looper) {
+        return new AccessNetworksManager(phone, looper);
     }
 
     public CdmaSubscriptionSourceManager
