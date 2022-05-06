@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.dataconnection;
+package com.android.internal.telephony.data;
 
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertFalse;
@@ -184,8 +184,8 @@ public class DataFailCauseTest extends TelephonyTest {
         for (int i = 0; i < 2; i++) {
             for (DcFailCauseData data : mFailCauseDataList) {
                 if (DataFailCause.getFailCause(data.mCause) == (
-                        DataFailCause.SERVICE_OPTION_NOT_SUBSCRIBED) ||
-                        DataFailCause.getFailCause(data.mCause) == (
+                        DataFailCause.SERVICE_OPTION_NOT_SUBSCRIBED)
+                        || DataFailCause.getFailCause(data.mCause) == (
                                 DataFailCause.TETHERED_CALL_ACTIVE)) {
                     assertTrue("cause = " + data.mCause,
                             DataFailCause.isPermanentFailure(mContext,
