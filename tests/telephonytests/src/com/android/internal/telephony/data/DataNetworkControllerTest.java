@@ -87,6 +87,7 @@ import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksManagerCallback;
 import com.android.internal.telephony.data.DataNetworkController.HandoverRule;
 import com.android.internal.telephony.data.DataRetryManager.DataRetryManagerCallback;
 
@@ -126,6 +127,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
     private final SparseArray<RegistrantList> mDataCallListChangedRegistrants = new SparseArray<>();
     private DataNetworkController mDataNetworkControllerUT;
     private PersistableBundle mCarrierConfig;
+
+    private AccessNetworksManagerCallback mAccessNetworksManagerCallback;
 
     private final DataProfile mGeneralPurposeDataProfile = new DataProfile.Builder()
             .setApnSetting(new ApnSetting.Builder()
@@ -501,6 +504,11 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 mDataNetworkControllerUT, mDataProfileManager);
         replaceInstance(DataNetworkController.class, "mAccessNetworksManager",
                 mDataNetworkControllerUT, mAccessNetworksManager);
+
+        ArgumentCaptor<AccessNetworksManagerCallback> callbackCaptor =
+                ArgumentCaptor.forClass(AccessNetworksManagerCallback.class);
+        verify(mAccessNetworksManager).registerCallback(callbackCaptor.capture());
+        mAccessNetworksManagerCallback = callbackCaptor.getValue();
 
         doAnswer(invocation -> {
             TelephonyNetworkRequest networkRequest =
@@ -1028,7 +1036,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .getPreferredTransportByNetworkCapability(
                         eq(NetworkCapabilities.NET_CAPABILITY_INTERNET));
         // Data remain disabled, but trigger the preference evaluation.
-        mDataNetworkControllerUT.obtainMessage(21 /*EVENT_PREFERRED_TRANSPORT_CHANGED*/,
+        mDataNetworkControllerUT.obtainMessage(21 /*EVENT_EVALUATE_PREFERRED_TRANSPORT*/,
                 NetworkCapabilities.NET_CAPABILITY_INTERNET, 0).sendToTarget();
         mDataNetworkControllerUT.obtainMessage(5 /*EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS*/,
                 DataEvaluation.DataEvaluationReason.PREFERRED_TRANSPORT_CHANGED).sendToTarget();
@@ -1317,14 +1325,62 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
                 .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
-        mDataNetworkControllerUT.obtainMessage(21/*EVENT_EVALUATE_PREFERRED_TRANSPORT*/,
-                NetworkCapabilities.NET_CAPABILITY_IMS, 0).sendToTarget();
+        mAccessNetworksManagerCallback.onPreferredTransportChanged(
+                NetworkCapabilities.NET_CAPABILITY_IMS);
         processAllMessages();
 
         DataNetwork dataNetwork = getDataNetworks().get(0);
         // Verify that IWLAN handover succeeded.
         assertThat(dataNetwork.getTransport()).isEqualTo(
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+    }
+
+    @Test
+    public void testHandoverDataNetworkBackToBackPreferenceChanged() throws Exception {
+        testSetupImsDataNetwork();
+
+        Mockito.reset(mMockedWlanDataServiceManager);
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+        mAccessNetworksManagerCallback.onPreferredTransportChanged(
+                NetworkCapabilities.NET_CAPABILITY_IMS);
+
+        processAllMessages();
+
+        // Capture the message for setup data call response. We want to delay it.
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mMockedWlanDataServiceManager).setupDataCall(anyInt(), any(DataProfile.class),
+                anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(), any(), any(), anyBoolean(),
+                messageCaptor.capture());
+
+        // Before setup data call response, change the preference back to cellular.
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+        mAccessNetworksManagerCallback.onPreferredTransportChanged(
+                NetworkCapabilities.NET_CAPABILITY_IMS);
+        processAllMessages();
+
+        // Before setup data call response, change the preference back to IWLAN.
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+        mAccessNetworksManagerCallback.onPreferredTransportChanged(
+                NetworkCapabilities.NET_CAPABILITY_IMS);
+        processAllMessages();
+
+        // Finally handover is completed.
+        Message msg = messageCaptor.getValue();
+        DataCallResponse response = new DataCallResponse.Builder()
+                .setCause(DataFailCause.NONE)
+                .build();
+        msg.getData().putParcelable("data_call_response", response);
+        msg.arg1 = DataServiceCallback.RESULT_SUCCESS;
+        msg.sendToTarget();
+        processAllMessages();
+
+        // Make sure handover request is only sent once.
+        verify(mMockedWlanDataServiceManager, times(1)).setupDataCall(anyInt(),
+                any(DataProfile.class), anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(),
+                any(), any(), anyBoolean(), messageCaptor.capture());
     }
 
     @Test
@@ -1341,8 +1397,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
                 .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
-        mDataNetworkControllerUT.obtainMessage(21/*EVENT_PREFERRED_TRANSPORT_CHANGED*/,
-                NetworkCapabilities.NET_CAPABILITY_IMS, 0).sendToTarget();
+        mAccessNetworksManagerCallback.onPreferredTransportChanged(
+                NetworkCapabilities.NET_CAPABILITY_IMS);
         // After this, IMS data network should be disconnected, and DNC should attempt to
         // establish a new one on IWLAN
         processAllMessages();
