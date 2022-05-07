@@ -3684,14 +3684,15 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Report on whether data connectivity is allowed for given APN type.
+     * Report on whether data connectivity is allowed for internet.
      *
-     * @param apnType APN type
-     *
-     * @return True if data is allowed to be established.
+     * @return {@code true} if internet data is allowed to be established.
      */
-    public boolean isDataAllowed(@ApnType int apnType) {
-        return isDataAllowed(apnType, null);
+    public boolean isDataAllowed() {
+        if (isUsingNewDataStack()) {
+            return getDataNetworkController().isInternetDataAllowed();
+        }
+        return isDataAllowed(ApnSetting.TYPE_DEFAULT, null);
     }
 
     /**

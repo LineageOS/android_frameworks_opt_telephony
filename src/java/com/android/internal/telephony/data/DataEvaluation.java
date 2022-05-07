@@ -19,6 +19,7 @@ package com.android.internal.telephony.data;
 import android.annotation.CurrentTimeMillisLong;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.telephony.TelephonyManager;
 import android.telephony.data.DataProfile;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -219,6 +220,8 @@ public class DataEvaluation {
          * same time.
          */
         SINGLE_DATA_NETWORK_ARBITRATION,
+        /** Query from {@link TelephonyManager#isDataConnectivityPossible()}. */
+        EXTERNAL_QUERY,
     }
 
     /** Disallowed reasons. There could be multiple reasons if it is not allowed. */
