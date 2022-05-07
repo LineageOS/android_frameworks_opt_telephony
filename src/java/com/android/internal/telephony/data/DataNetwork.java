@@ -1587,6 +1587,7 @@ public class DataNetwork extends StateMachine {
         // Extract network capabilities from the traffic descriptor.
         for (TrafficDescriptor trafficDescriptor : mTrafficDescriptors) {
             try {
+                if (trafficDescriptor.getOsAppId() == null) continue;
                 OsAppId osAppId = new OsAppId(trafficDescriptor.getOsAppId());
                 if (!osAppId.getOsId().equals(OsAppId.ANDROID_OS_ID)) {
                     loge("Received non-Android OS id " + osAppId.getOsId());
@@ -1597,10 +1598,7 @@ public class DataNetwork extends StateMachine {
                 switch (networkCapability) {
                     case NetworkCapabilities.NET_CAPABILITY_ENTERPRISE:
                         builder.addCapability(networkCapability);
-                        // Enterprise is the only capability supporting differentiator.
-                        if (networkCapability == NetworkCapabilities.NET_CAPABILITY_ENTERPRISE) {
-                            builder.addEnterpriseId(osAppId.getDifferentiator());
-                        }
+                        builder.addEnterpriseId(osAppId.getDifferentiator());
                         break;
                     case NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY:
                     case NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_BANDWIDTH:
