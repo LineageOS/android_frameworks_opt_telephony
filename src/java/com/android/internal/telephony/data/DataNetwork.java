@@ -1224,6 +1224,7 @@ public class DataNetwork extends StateMachine {
                         deferMessage(msg);
                     }
                     break;
+                case EVENT_DISPLAY_INFO_CHANGED:
                 case EVENT_TEAR_DOWN_NETWORK:
                     // Defer the request until handover succeeds or fails.
                     deferMessage(msg);
@@ -2429,6 +2430,13 @@ public class DataNetwork extends StateMachine {
      * @return The data network type.
      */
     private @NetworkType int getDataNetworkType(@TransportType int transport) {
+        // WLAN transport can't have network type other than IWLAN. Ideally service state tracker
+        // should report the correct RAT, but sometimes race condition could happen that service
+        // state is reset to out of service and RAT not updated to IWLAN yet.
+        if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+            return TelephonyManager.NETWORK_TYPE_IWLAN;
+        }
+
         ServiceState ss = mPhone.getServiceState();
         NetworkRegistrationInfo nrs = ss.getNetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, transport);
@@ -2947,7 +2955,7 @@ public class DataNetwork extends StateMachine {
      */
     private void logl(@NonNull String s) {
         log(s);
-        mLocalLog.log(s);
+        mLocalLog.log((getCurrentState() != null ? (getCurrentState().getName() + ": ") : "") + s);
     }
 
     /**
