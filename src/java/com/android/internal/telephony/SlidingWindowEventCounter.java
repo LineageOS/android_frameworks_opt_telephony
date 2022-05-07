@@ -32,10 +32,10 @@ public class SlidingWindowEventCounter {
     private final int mNumOccurrences;
     private final LongArrayQueue mTimestampQueueMillis;
 
-    public SlidingWindowEventCounter(@IntRange(from = 1) final long windowSizeMillis,
+    public SlidingWindowEventCounter(@IntRange(from = 0) final long windowSizeMillis,
             @IntRange(from = 2) final int numOccurrences) {
-        if (windowSizeMillis <= 0) {
-            throw new IllegalArgumentException("windowSizeMillis must be greater than 0");
+        if (windowSizeMillis < 0) {
+            throw new IllegalArgumentException("windowSizeMillis must be greater or equal to 0");
         }
         if (numOccurrences <= 1) {
             throw new IllegalArgumentException("numOccurrences must be greater than 1");
