@@ -1019,6 +1019,11 @@ public class DataNetworkControllerTest extends TelephonyTest {
     @Test
     public void testRoamingDataChanged() throws Exception {
         doReturn(true).when(mServiceState).getDataRoaming();
+
+        // Roaming data disabled
+        mDataNetworkControllerUT.getDataSettingsManager().setDataRoamingEnabled(false);
+        processAllMessages();
+
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
         mDataNetworkControllerUT.addNetworkRequest(
@@ -1098,6 +1103,9 @@ public class DataNetworkControllerTest extends TelephonyTest {
     public void testMmsAlwaysAllowedRoamingDisabled() throws Exception {
         // Data roaming disabled
         doReturn(true).when(mServiceState).getDataRoaming();
+        mDataNetworkControllerUT.getDataSettingsManager().setDataRoamingEnabled(false);
+        processAllMessages();
+
         // Device is roaming
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
@@ -1148,6 +1156,9 @@ public class DataNetworkControllerTest extends TelephonyTest {
     public void testUnmeteredRequestDataRoamingDisabled() throws Exception {
         // Data roaming disabled
         doReturn(true).when(mServiceState).getDataRoaming();
+        mDataNetworkControllerUT.getDataSettingsManager().setDataRoamingEnabled(false);
+        processAllMessages();
+
         // MMS is unmetered
         mCarrierConfig.putStringArray(
                 CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS,
