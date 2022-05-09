@@ -890,9 +890,8 @@ public class DataNetworkController extends Handler {
             }
         });
 
-        mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
-                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, this, EVENT_SERVICE_STATE_CHANGED,
-                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        mPhone.getServiceStateTracker().registerForServiceStateChanged(this,
+                EVENT_SERVICE_STATE_CHANGED);
         mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
         mPhone.getServiceStateTracker().registerForPsRestrictedEnabled(this,
                 EVENT_PS_RESTRICT_ENABLED, null);
@@ -1960,7 +1959,7 @@ public class DataNetworkController extends Handler {
     }
 
     /**
-     * Unregister IMS faeture state callbacks.
+     * Unregister IMS feature state callbacks.
      *
      * @param subId Subscription index.
      */
@@ -3044,7 +3043,7 @@ public class DataNetworkController extends Handler {
                     ? "registered" : "not registered")
             );
             mPendingImsDeregDataNetworks.put(dataNetwork,
-                    dataNetwork.tearDownWithCondition(reason, deregDelay));
+                    dataNetwork.tearDownWhenConditionMet(reason, deregDelay));
         } else {
             // Graceful tear down is not turned on. Tear down the network immediately.
             log("tearDownGracefully: Safe to tear down " + dataNetwork);

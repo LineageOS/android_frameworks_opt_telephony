@@ -68,6 +68,7 @@ import android.telephony.DataSpecificRegistrationInfo;
 import android.telephony.LteVopsSupportInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo.RegistrationState;
+import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionPlan;
 import android.telephony.TelephonyDisplayInfo;
@@ -78,6 +79,15 @@ import android.telephony.data.DataCallResponse.LinkStatus;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataServiceCallback;
 import android.telephony.data.ThrottleStatus;
+import android.telephony.ims.ImsManager;
+import android.telephony.ims.ImsMmTelManager;
+import android.telephony.ims.ImsRcsManager;
+import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsRegistrationAttributes;
+import android.telephony.ims.ImsStateCallback;
+import android.telephony.ims.RegistrationManager.RegistrationCallback;
+import android.telephony.ims.feature.ImsFeature;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 import android.util.ArraySet;
@@ -90,6 +100,7 @@ import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksManagerCallback;
 import com.android.internal.telephony.data.DataNetworkController.HandoverRule;
 import com.android.internal.telephony.data.DataRetryManager.DataRetryManagerCallback;
+import com.android.internal.telephony.ims.ImsResolver;
 
 import org.junit.After;
 import org.junit.Before;
@@ -115,11 +126,23 @@ public class DataNetworkControllerTest extends TelephonyTest {
     private static final String IPV4_ADDRESS = "10.0.2.15";
     private static final String IPV6_ADDRESS = "2607:fb90:a620:651d:eabe:f8da:c107:44be";
 
+    private static final String FAKE_MMTEL_PACKAGE = "fake.mmtel.package";
+    private static final String FAKE_RCS_PACKAGE = "fake.rcs.package";
+
     // Mocked classes
     private PhoneSwitcher mMockedPhoneSwitcher;
-    protected ISub mIsub;
+    protected ISub mMockedIsub;
     private DataNetworkControllerCallback mMockedDataNetworkControllerCallback;
     private DataRetryManagerCallback mMockedDataRetryManagerCallback;
+    private ImsResolver mMockedImsResolver;
+
+    private ImsManager mMockedImsManager;
+    private ImsMmTelManager mMockedImsMmTelManager;
+    private ImsRcsManager mMockedImsRcsManager;
+    private ImsStateCallback mMmtelStateCallback;
+    private ImsStateCallback mRcsStateCallback;
+    private RegistrationCallback mMmtelRegCallback;
+    private RegistrationCallback mRcsRegCallback;
 
     private int mNetworkRequestId = 0;
 
@@ -334,6 +357,36 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
     }
 
+    private void setImsRegistered(boolean registered) {
+        if (registered) {
+            final ArraySet<String> features = new ArraySet<>();
+            features.add("feature1");
+            features.add("feature2");
+            ImsRegistrationAttributes attr = new ImsRegistrationAttributes.Builder(
+                    ImsRegistrationImplBase.REGISTRATION_TECH_LTE).setFeatureTags(features).build();
+
+            mMmtelRegCallback.onRegistered(attr);
+        } else {
+            ImsReasonInfo info = new ImsReasonInfo(ImsReasonInfo.CODE_LOCAL_ILLEGAL_STATE, -1, "");
+            mMmtelRegCallback.onUnregistered(info);
+        }
+    }
+
+    private void setRcsRegistered(boolean registered) {
+        if (registered) {
+            final ArraySet<String> features = new ArraySet<>();
+            features.add("feature1");
+            features.add("feature2");
+            ImsRegistrationAttributes attr = new ImsRegistrationAttributes.Builder(
+                    ImsRegistrationImplBase.REGISTRATION_TECH_LTE).setFeatureTags(features).build();
+
+            mRcsRegCallback.onRegistered(attr);
+        } else {
+            ImsReasonInfo info = new ImsReasonInfo(ImsReasonInfo.CODE_LOCAL_ILLEGAL_STATE, -1, "");
+            mRcsRegCallback.onUnregistered(info);
+        }
+    }
+
     private void serviceStateChanged(@NetworkType int networkType,
             @RegistrationState int regState) {
         serviceStateChanged(networkType, regState, null);
@@ -420,12 +473,15 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 true);
 
         mCarrierConfig.putIntArray(CarrierConfigManager.KEY_ONLY_SINGLE_DC_ALLOWED_INT_ARRAY,
-                new int[] {TelephonyManager.NETWORK_TYPE_CDMA, TelephonyManager.NETWORK_TYPE_1xRTT,
+                new int[]{TelephonyManager.NETWORK_TYPE_CDMA, TelephonyManager.NETWORK_TYPE_1xRTT,
                         TelephonyManager.NETWORK_TYPE_EVDO_0, TelephonyManager.NETWORK_TYPE_EVDO_A,
                         TelephonyManager.NETWORK_TYPE_EVDO_B});
 
         mContextFixture.putResource(com.android.internal.R.string.config_bandwidthEstimateSource,
                 "bandwidth_estimator");
+
+        mContextFixture.putIntResource(com.android.internal.R.integer
+                        .config_delay_for_ims_dereg_millis, 3000);
     }
 
     @Before
@@ -433,12 +489,18 @@ public class DataNetworkControllerTest extends TelephonyTest {
         logd("DataNetworkControllerTest +Setup!");
         super.setUp(getClass().getSimpleName());
         mMockedPhoneSwitcher = Mockito.mock(PhoneSwitcher.class);
-        mIsub = Mockito.mock(ISub.class);
+        mMockedIsub = Mockito.mock(ISub.class);
+        mMockedImsManager = mContext.getSystemService(ImsManager.class);
+        mMockedImsMmTelManager = Mockito.mock(ImsMmTelManager.class);
+        mMockedImsRcsManager = Mockito.mock(ImsRcsManager.class);
+        mMockedImsResolver = Mockito.mock(ImsResolver.class);
         mMockedDataNetworkControllerCallback = Mockito.mock(DataNetworkControllerCallback.class);
         mMockedDataRetryManagerCallback = Mockito.mock(DataRetryManagerCallback.class);
         when(mTelephonyComponentFactory.makeDataSettingsManager(any(Phone.class),
                 any(DataNetworkController.class), any(Looper.class),
                 any(DataSettingsManager.DataSettingsManagerCallback.class))).thenCallRealMethod();
+        doReturn(mMockedImsMmTelManager).when(mMockedImsManager).getImsMmTelManager(anyInt());
+        doReturn(mMockedImsRcsManager).when(mMockedImsManager).getImsRcsManager(anyInt());
 
         initializeConfig();
         mMockedDataServiceManagers.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
@@ -447,8 +509,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 mMockedWlanDataServiceManager);
 
         replaceInstance(PhoneSwitcher.class, "sPhoneSwitcher", null, mMockedPhoneSwitcher);
-        doReturn(1).when(mIsub).getDefaultDataSubId();
-        doReturn(mIsub).when(mIBinder).queryLocalInterface(anyString());
+        doReturn(1).when(mMockedIsub).getDefaultDataSubId();
+        doReturn(mMockedIsub).when(mIBinder).queryLocalInterface(anyString());
         doReturn(mPhone).when(mPhone).getImsPhone();
         mServiceManagerMockedServices.put("isub", mIBinder);
         doReturn(new SubscriptionPlan[]{}).when(mNetworkPolicyManager)
@@ -482,6 +544,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
                     Handler.class), anyInt());
         }
 
+        doReturn(-1).when(mPhone).getSubId();
+
         // Note that creating a "real" data network controller will also result in creating
         // real DataRetryManager, DataConfigManager, etc...Normally in unit test we should isolate
         // other modules and make them mocked, but only focusing on testing the unit we would like
@@ -490,6 +554,10 @@ public class DataNetworkControllerTest extends TelephonyTest {
         // as well, except some modules below we replaced with mocks.
         mDataNetworkControllerUT = new DataNetworkController(mPhone, Looper.myLooper());
         doReturn(mDataNetworkControllerUT).when(mPhone).getDataNetworkController();
+
+        doReturn(1).when(mPhone).getSubId();
+        mDataNetworkControllerUT.obtainMessage(15/*EVENT_SUBSCRIPTION_CHANGED*/).sendToTarget();
+
         processAllMessages();
         // Clear the callbacks created by the real sub-modules created by DataNetworkController.
         clearCallbacks();
@@ -504,6 +572,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 mDataNetworkControllerUT, mDataProfileManager);
         replaceInstance(DataNetworkController.class, "mAccessNetworksManager",
                 mDataNetworkControllerUT, mAccessNetworksManager);
+        replaceInstance(ImsResolver.class, "sInstance", null, mMockedImsResolver);
 
         ArgumentCaptor<AccessNetworksManagerCallback> callbackCaptor =
                 ArgumentCaptor.forClass(AccessNetworksManagerCallback.class);
@@ -556,10 +625,40 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 new AsyncResult(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, true, null))
                 .sendToTarget();
 
+        ArgumentCaptor<ImsStateCallback> imsCallbackCaptor =
+                ArgumentCaptor.forClass(ImsStateCallback.class);
+        verify(mMockedImsMmTelManager).registerImsStateCallback(any(Executor.class),
+                imsCallbackCaptor.capture());
+        mMmtelStateCallback = imsCallbackCaptor.getValue();
+
+        verify(mMockedImsRcsManager).registerImsStateCallback(any(Executor.class),
+                imsCallbackCaptor.capture());
+        mRcsStateCallback = imsCallbackCaptor.getValue();
+
         carrierConfigChanged();
 
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+
+        // IMS registration
+        doReturn(FAKE_MMTEL_PACKAGE).when(mMockedImsResolver).getConfiguredImsServicePackageName(
+                anyInt(), eq(ImsFeature.FEATURE_MMTEL));
+        doReturn(FAKE_RCS_PACKAGE).when(mMockedImsResolver).getConfiguredImsServicePackageName(
+                anyInt(), eq(ImsFeature.FEATURE_RCS));
+
+        mMmtelStateCallback.onAvailable();
+        mRcsStateCallback.onAvailable();
+
+        ArgumentCaptor<RegistrationCallback> regCallbackCaptor =
+                ArgumentCaptor.forClass(RegistrationCallback.class);
+
+        verify(mMockedImsMmTelManager).registerImsRegistrationCallback(any(Executor.class),
+                regCallbackCaptor.capture());
+        mMmtelRegCallback = regCallbackCaptor.getValue();
+
+        verify(mMockedImsRcsManager).registerImsRegistrationCallback(any(Executor.class),
+                regCallbackCaptor.capture());
+        mRcsRegCallback = regCallbackCaptor.getValue();
 
         processAllMessages();
 
@@ -740,7 +839,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
         verifyConnectedNetworkHasDataProfile(mImsDataProfile);
         List<DataNetwork> dataNetworkList = getDataNetworks();
-        DataNetwork dataNetwork = dataNetworkList.get(0);
         assertThat(dataNetworkList.get(0).getLinkProperties().getAddresses()).containsExactly(
                 InetAddresses.parseNumericAddress(IPV4_ADDRESS),
                 InetAddresses.parseNumericAddress(IPV6_ADDRESS));
@@ -1921,5 +2019,50 @@ public class DataNetworkControllerTest extends TelephonyTest {
         // fota is gone.
         verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_DUN);
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
+    }
+
+    @Test
+    public void testImsGracefulTearDown() throws Exception {
+        setImsRegistered(true);
+        setRcsRegistered(true);
+
+        NetworkCapabilities netCaps = new NetworkCapabilities();
+        netCaps.addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+        netCaps.setRequestorPackageName(FAKE_MMTEL_PACKAGE);
+
+        NetworkRequest nativeNetworkRequest = new NetworkRequest(netCaps,
+                ConnectivityManager.TYPE_MOBILE, ++mNetworkRequestId, NetworkRequest.Type.REQUEST);
+        TelephonyNetworkRequest networkRequest = new TelephonyNetworkRequest(
+                nativeNetworkRequest, mPhone);
+
+        mDataNetworkControllerUT.addNetworkRequest(networkRequest);
+
+        processAllMessages();
+        Mockito.clearInvocations(mPhone);
+
+        // SIM removal
+        mDataNetworkControllerUT.obtainMessage(9/*EVENT_SIM_STATE_CHANGED*/,
+                TelephonyManager.SIM_STATE_ABSENT, 0).sendToTarget();
+        processAllMessages();
+
+        // Make sure data network enters disconnecting state
+        ArgumentCaptor<PreciseDataConnectionState> pdcsCaptor =
+                ArgumentCaptor.forClass(PreciseDataConnectionState.class);
+        verify(mPhone).notifyDataConnection(pdcsCaptor.capture());
+        PreciseDataConnectionState pdcs = pdcsCaptor.getValue();
+        assertThat(pdcs.getState()).isEqualTo(TelephonyManager.DATA_DISCONNECTING);
+
+        // IMS de-registered. Now data network is safe to be torn down.
+        Mockito.clearInvocations(mPhone);
+        setImsRegistered(false);
+        setRcsRegistered(false);
+        processAllMessages();
+
+        // All data should be disconnected.
+        verifyAllDataDisconnected();
+        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+        verify(mPhone).notifyDataConnection(pdcsCaptor.capture());
+        pdcs = pdcsCaptor.getValue();
+        assertThat(pdcs.getState()).isEqualTo(TelephonyManager.DATA_DISCONNECTED);
     }
 }
