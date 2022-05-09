@@ -405,7 +405,7 @@ public class CarrierServicesSmsFilter {
                             .map(callback -> callback.mPackageName)
                             .collect(Collectors.joining(", "));
                     AnomalyReporter.reportAnomaly(sAnomalyNoResponseFromCarrierMessagingService,
-                            "No response from " + packages);
+                            "No response from " + packages, mPhone.getCarrierId());
                     handleFilterCallbacksTimeout();
                     break;
             }
