@@ -37,6 +37,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
+import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.os.UserHandle;
@@ -962,9 +963,13 @@ public class DataServiceManager extends Handler {
      */
     public void registerForServiceBindingChanged(Handler h, int what) {
         if (h != null) {
-            mServiceBindingChangedRegistrants.addUnique(h, what, mTransportType);
+            mServiceBindingChangedRegistrants.remove(h);
+            Registrant r = new Registrant(h, what, mTransportType);
+            mServiceBindingChangedRegistrants.add(r);
+            if (mBound) {
+                r.notifyResult(true);
+            }
         }
-
     }
 
     /**
