@@ -166,7 +166,7 @@ public class DcNetworkAgent extends NetworkAgent implements NotifyQosSessionInte
                 // Using fixed UUID to avoid duplicate bugreport notification
                 AnomalyReporter.reportAnomaly(
                         UUID.fromString("02f3d3f6-4613-4415-b6cb-8d92c8a938a6"),
-                        message);
+                        message, mPhone.getCarrierId());
                 return;
             }
         }
@@ -252,7 +252,7 @@ public class DcNetworkAgent extends NetworkAgent implements NotifyQosSessionInte
         if (sNetworkUnwantedCounter.addOccurrence()) {
             AnomalyReporter.reportAnomaly(
                     UUID.fromString("3f578b5c-64e9-11eb-ae93-0242ac130002"),
-                    "Network Unwanted called 12 times in 5 minutes.");
+                    "Network Unwanted called 12 times in 5 minutes.", mPhone.getCarrierId());
         }
     }
 
