@@ -2076,4 +2076,22 @@ public class DataNetworkControllerTest extends TelephonyTest {
         pdcs = pdcsCaptor.getValue();
         assertThat(pdcs.getState()).isEqualTo(TelephonyManager.DATA_DISCONNECTED);
     }
+
+    @Test
+    public void testNetworkRequestRemovedBeforeRetry() {
+        setFailedSetupDataResponse(mMockedWwanDataServiceManager, DataFailCause.CONGESTION,
+                DataCallResponse.RETRY_DURATION_UNDEFINED);
+        TelephonyNetworkRequest networkRequest = createNetworkRequest(
+                NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        mDataNetworkControllerUT.addNetworkRequest(networkRequest);
+        logd("Removing network request.");
+        mDataNetworkControllerUT.removeNetworkRequest(networkRequest);
+        processAllMessages();
+
+        // There should be only one invocation, which is the original setup data request. There
+        // shouldn't be more than 1 (i.e. should not retry).
+        verify(mMockedWwanDataServiceManager, times(1)).setupDataCall(anyInt(),
+                any(DataProfile.class), anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(),
+                any(), any(), anyBoolean(), any(Message.class));
+    }
 }
