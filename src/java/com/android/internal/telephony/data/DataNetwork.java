@@ -90,6 +90,7 @@ import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataRetryManager.DataHandoverRetryEntry;
 import com.android.internal.telephony.data.DataRetryManager.DataRetryEntry;
+import com.android.internal.telephony.data.LinkBandwidthEstimator.LinkBandwidthEstimatorCallback;
 import com.android.internal.telephony.data.TelephonyNetworkAgent.TelephonyNetworkAgentCallback;
 import com.android.internal.telephony.metrics.DataCallSessionStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
@@ -182,9 +183,6 @@ public class DataNetwork extends StateMachine {
     /** Event for bandwidth estimation from the modem changed. */
     private static final int EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED = 11;
 
-    /** Event for bandwidth estimation from the bandwidth estimator changed. */
-    private static final int EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED = 12;
-
     /** Event for display info changed. This is for getting 5G NSA or mmwave information. */
     private static final int EVENT_DISPLAY_INFO_CHANGED = 13;
 
@@ -271,7 +269,7 @@ public class DataNetwork extends StateMachine {
                     TEAR_DOWN_REASON_DATA_PROFILE_NOT_PREFERRED,
                     TEAR_DOWN_REASON_NOT_ALLOWED_BY_POLICY,
                     TEAR_DOWN_REASON_ILLEGAL_STATE,
-                    TEAR_DOWN_ONLY_ALLOWED_SINGLE_NETWORK,
+                    TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK,
             })
     public @interface TearDownReason {}
 
@@ -360,7 +358,7 @@ public class DataNetwork extends StateMachine {
     public static final int TEAR_DOWN_REASON_ILLEGAL_STATE = 28;
 
     /** Data network tear down due to only allowed single network. */
-    public static final int TEAR_DOWN_ONLY_ALLOWED_SINGLE_NETWORK = 29;
+    public static final int TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK = 29;
 
     @IntDef(prefix = {"BANDWIDTH_SOURCE_"},
             value = {
@@ -624,6 +622,11 @@ public class DataNetwork extends StateMachine {
     private int mCarrierServicePackageUid = Process.INVALID_UID;
 
     /**
+     * Link bandwidth estimator callback for receiving latest link bandwidth information.
+     */
+    private @Nullable LinkBandwidthEstimatorCallback mLinkBandwidthEstimatorCallback;
+
+    /**
      * The network bandwidth.
      */
     public static class NetworkBandwidth {
@@ -805,6 +808,11 @@ public class DataNetwork extends StateMachine {
             @NonNull DataAllowedReason dataAllowedReason,
             @NonNull DataNetworkCallback callback) {
         super("DataNetwork", looper);
+        // State machine should be initialized at the top of constructor. log() can be only used
+        // after state machine initialized (because getCurrentState() crashes if state machine has
+        // not started.)
+        initializeStateMachine();
+
         mPhone = phone;
         mSubId = phone.getSubId();
         mRil = mPhone.mCi;
@@ -823,6 +831,12 @@ public class DataNetwork extends StateMachine {
         mDataCallSessionStats = new DataCallSessionStats(mPhone);
         mDataNetworkCallback = callback;
         mDataProfile = dataProfile;
+        if (dataProfile.getTrafficDescriptor() != null) {
+            // The initial traffic descriptor is from the data profile. After that traffic
+            // descriptors will be updated by modem through setup data call response and data call
+            // list changed event.
+            mTrafficDescriptors.add(dataProfile.getTrafficDescriptor());
+        }
         mTransport = transport;
         mDataAllowedReason = dataAllowedReason;
         dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
@@ -837,6 +851,17 @@ public class DataNetwork extends StateMachine {
             networkRequest.setState(TelephonyNetworkRequest.REQUEST_STATE_SATISFIED);
         }
 
+        // Update the capabilities in the constructor is to make sure the data network has initial
+        // capability immediately after created. Doing this connecting state creates the window that
+        // DataNetworkController might check if existing data network's capability can satisfy the
+        // next network request within this window.
+        updateNetworkCapabilities();
+    }
+
+    /**
+     * Initialize and start the state machine.
+     */
+    private void initializeStateMachine() {
         addState(mDefaultState);
         addState(mConnectingState, mDefaultState);
         addState(mConnectedState, mDefaultState);
@@ -844,13 +869,7 @@ public class DataNetwork extends StateMachine {
         addState(mDisconnectingState, mDefaultState);
         addState(mDisconnectedState, mDefaultState);
         setInitialState(mConnectingState);
-
-        /**
-         * This will trigger {@link DefaultState#enter()}, and then {@link ConnectingState#enter()}.
-         * Check {@link StateMachine} class to see how Android state machine works.
-         */
         start();
-        // Do not add more stuffs here.
     }
 
     /**
@@ -945,7 +964,6 @@ public class DataNetwork extends StateMachine {
                 mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(
                         transport, getHandler(), EVENT_SERVICE_STATE_CHANGED, transport);
             }
-
             mPhone.getCarrierPrivilegesTracker().registerCarrierPrivilegesListener(getHandler(),
                     EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED, null);
 
@@ -958,6 +976,7 @@ public class DataNetwork extends StateMachine {
         @Override
         public void exit() {
             logv("Unregistering all events.");
+            mPhone.getCarrierPrivilegesTracker().unregisterCarrierPrivilegesListener(getHandler());
             for (int transport : mAccessNetworksManager.getAvailableTransports()) {
                 mDataServiceManagers.get(transport)
                         .unregisterForDataCallListChanged(getHandler());
@@ -1018,7 +1037,6 @@ public class DataNetwork extends StateMachine {
                     break;
                 }
                 case EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED:
-                case EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED:
                 case EVENT_TEAR_DOWN_NETWORK:
                 case EVENT_PCO_DATA_RECEIVED:
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
@@ -1049,8 +1067,6 @@ public class DataNetwork extends StateMachine {
         public void enter() {
             sendMessageDelayed(EVENT_STUCK_IN_TRANSIENT_STATE,
                     mDataConfigManager.getAnomalyNetworkConnectingTimeoutMs());
-            // Need to calculate the initial capabilities before creating the network agent.
-            updateNetworkCapabilities();
             mNetworkAgent = createNetworkAgent();
             mInitialNetworkAgentId = mNetworkAgent.getId();
             mLogTag = "DN-" + mInitialNetworkAgentId + "-"
@@ -1103,13 +1119,10 @@ public class DataNetwork extends StateMachine {
                     deferMessage(msg);
                     break;
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
-                    String message = "Data network stuck in connecting state for "
+                    reportAnomaly("Data network stuck in connecting state for "
                             + TimeUnit.MILLISECONDS.toSeconds(
                             mDataConfigManager.getAnomalyNetworkConnectingTimeoutMs())
-                            + " seconds.";
-                    logl(message);
-                    AnomalyReporter.reportAnomaly(
-                            UUID.fromString("58c56403-7ea7-4e56-a0c7-e467114d09b8"), message);
+                            + " seconds.", "58c56403-7ea7-4e56-a0c7-e467114d09b8");
                     // Setup data failed. Use the retry logic defined in
                     // CarrierConfigManager.KEY_TELEPHONY_DATA_SETUP_RETRY_RULES_STRING_ARRAY.
                     mRetryDelayMillis = DataCallResponse.RETRY_DURATION_UNDEFINED;
@@ -1183,10 +1196,24 @@ public class DataNetwork extends StateMachine {
                         log("Ignore tear down request because network is being torn down.");
                         break;
                     }
+
+                    int tearDownReason = msg.arg1;
+                    // If the tear down request is from upper layer, for example, IMS service
+                    // releases network request, we don't need to delay. The purpose of the delay
+                    // is to have IMS service have time to perform IMS de-registration, so if this
+                    // request is from IMS service itself, that means IMS service is already aware
+                    // of the tear down. So there is no need to delay in this case.
+                    if (tearDownReason != TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED
+                            && shouldDelayTearDown()) {
+                        logl("Delay IMS tear down until call ends. reason="
+                                + tearDownReasonToString(tearDownReason));
+                        break;
+                    }
+
                     removeMessages(EVENT_TEAR_DOWN_NETWORK);
                     removeDeferredMessages(EVENT_TEAR_DOWN_NETWORK);
                     transitionTo(mDisconnectingState);
-                    onTearDown(msg.arg1);
+                    onTearDown(tearDownReason);
                     break;
                 case EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED:
                     AsyncResult ar = (AsyncResult) msg.obj;
@@ -1196,11 +1223,6 @@ public class DataNetwork extends StateMachine {
                         break;
                     }
                     onBandwidthUpdatedFromModem((List<LinkCapacityEstimate>) ar.result);
-                    break;
-                case EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED:
-                    ar = (AsyncResult) msg.obj;
-                    Pair<Integer, Integer> pair = (Pair<Integer, Integer>) ar.result;
-                    onBandwidthUpdated(pair.first, pair.second);
                     break;
                 case EVENT_DISPLAY_INFO_CHANGED:
                     onDisplayInfoChanged();
@@ -1279,12 +1301,10 @@ public class DataNetwork extends StateMachine {
                     onPcoDataReceived((PcoData) ar.result);
                     break;
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
-                    String message = "Data service did not respond the handover request within "
+                    reportAnomaly("Data service did not respond the handover request within "
                             + TimeUnit.MILLISECONDS.toSeconds(
-                            mDataConfigManager.getNetworkHandoverTimeoutMs()) + " seconds.";
-                    logl(message);
-                    AnomalyReporter.reportAnomaly(
-                            UUID.fromString("1afe68cb-8b41-4964-a737-4f34372429ea"), message);
+                            mDataConfigManager.getNetworkHandoverTimeoutMs()) + " seconds.",
+                            "1afe68cb-8b41-4964-a737-4f34372429ea");
 
                     // Handover failed. Use the retry logic defined in
                     // CarrierConfigManager.KEY_TELEPHONY_DATA_HANDOVER_RETRY_RULES_STRING_ARRAY.
@@ -1379,14 +1399,11 @@ public class DataNetwork extends StateMachine {
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
                     // After frameworks issues deactivate data call request, RIL should report
                     // data disconnected through data call list changed event subsequently.
-                    String message = "RIL did not send data call list changed event after "
+                    reportAnomaly("RIL did not send data call list changed event after "
                             + "deactivate data call request within "
                             + TimeUnit.MILLISECONDS.toSeconds(
                             mDataConfigManager.getAnomalyNetworkDisconnectingTimeoutMs())
-                            + " seconds.";
-                    logl(message);
-                    AnomalyReporter.reportAnomaly(
-                            UUID.fromString("d0e4fa1c-c57b-4ba5-b4b6-8955487012cc"), message);
+                            + " seconds.", "d0e4fa1c-c57b-4ba5-b4b6-8955487012cc");
                     mFailCause = DataFailCause.LOST_CONNECTION;
                     transitionTo(mDisconnectedState);
                     break;
@@ -1559,8 +1576,20 @@ public class DataNetwork extends StateMachine {
             mPhone.mCi.registerForLceInfo(
                     getHandler(), EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED, null);
         } else if (bandwidthEstimateSource == BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR) {
-            mPhone.getLinkBandwidthEstimator().registerForBandwidthChanged(
-                    getHandler(), EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED, null);
+            if (mLinkBandwidthEstimatorCallback == null) {
+                mLinkBandwidthEstimatorCallback =
+                        new LinkBandwidthEstimatorCallback(getHandler()::post) {
+                            @Override
+                            public void onBandwidthChanged(int uplinkBandwidthKbps,
+                                    int downlinkBandwidthKbps) {
+                                if (isConnected()) {
+                                    onBandwidthUpdated(uplinkBandwidthKbps, downlinkBandwidthKbps);
+                                }
+                            }
+                        };
+                mPhone.getLinkBandwidthEstimator().registerCallback(
+                        mLinkBandwidthEstimatorCallback);
+            }
         } else {
             loge("Invalid bandwidth source configuration: " + bandwidthEstimateSource);
         }
@@ -1574,7 +1603,11 @@ public class DataNetwork extends StateMachine {
         if (bandwidthEstimateSource == BANDWIDTH_SOURCE_MODEM) {
             mPhone.mCi.unregisterForLceInfo(getHandler());
         } else if (bandwidthEstimateSource == BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR) {
-            mPhone.getLinkBandwidthEstimator().unregisterForBandwidthChanged(getHandler());
+            if (mLinkBandwidthEstimatorCallback != null) {
+                mPhone.getLinkBandwidthEstimator()
+                        .unregisterCallback(mLinkBandwidthEstimatorCallback);
+                mLinkBandwidthEstimatorCallback = null;
+            }
         } else {
             loge("Invalid bandwidth source configuration: " + bandwidthEstimateSource);
         }
@@ -1800,8 +1833,8 @@ public class DataNetwork extends StateMachine {
             // This is the first time when network capabilities is created. The agent is not created
             // at this time. Just return here. The network capabilities will be used when network
             // agent is created.
-            log("Initial capabilities " + mNetworkCapabilities);
             mNetworkCapabilities = nc;
+            logl("Initial capabilities " + mNetworkCapabilities);
             return;
         }
 
@@ -2146,10 +2179,25 @@ public class DataNetwork extends StateMachine {
                 + ", response=" + response);
         mFailCause = getFailCauseFromDataCallResponse(resultCode, response);
         if (mFailCause == DataFailCause.NONE) {
-            updateDataNetwork(response);
+            if (mDataNetworkController.isNetworkInterfaceExisting(response.getInterfaceName())) {
+                logl("Interface " + response.getInterfaceName() + " already existing. Silently "
+                        + "tear down now.");
+                // If this is a pre-5G data setup, that means APN database has some problems. For
+                // example, different APN settings have the same APN name.
+                if (response.getTrafficDescriptors().isEmpty()) {
+                    reportAnomaly("Duplicate network interface " + response.getInterfaceName()
+                            + " detected.", "62f66e7e-8d71-45de-a57b-dc5c78223fd5");
+                }
 
-            // TODO: Check if the cid already exists. If yes, should notify DNC and let it force
-            //  attach the network requests to that existing data network.
+                // Do not actually invoke onTearDown, otherwise the existing data network will be
+                // torn down.
+                mRetryDelayMillis = DataCallResponse.RETRY_DURATION_UNDEFINED;
+                mFailCause = DataFailCause.NO_RETRY_FAILURE;
+                transitionTo(mDisconnectedState);
+                return;
+            }
+
+            updateDataNetwork(response);
 
             // TODO: Evaluate all network requests and see if each request still can be satisfied.
             //  For requests that can't be satisfied anymore, we need to put them back to the
@@ -2224,12 +2272,8 @@ public class DataNetwork extends StateMachine {
 
     private void onTearDown(@TearDownReason int reason) {
         logl("onTearDown: reason=" + tearDownReasonToString(reason));
-        if (shouldDelayTearDown()) {
-            logl("onTearDown: Delay IMS tear down until call ends.");
-            return;
-        }
 
-        //track frequent networkUnwanted call of IMS and INTERNET
+        // track frequent networkUnwanted call of IMS and INTERNET
         if ((isConnected())
                 && (mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
                 || mNetworkCapabilities.hasCapability(
@@ -2237,16 +2281,17 @@ public class DataNetwork extends StateMachine {
             mDataNetworkCallback.onTrackNetworkUnwanted(this);
         }
 
-        // TODO: Need to support DataService.REQUEST_REASON_SHUTDOWN
         mDataServiceManagers.get(mTransport).deactivateDataCall(mCid.get(mTransport),
-                DataService.REQUEST_REASON_NORMAL,
+                reason == TEAR_DOWN_REASON_AIRPLANE_MODE_ON ? DataService.REQUEST_REASON_SHUTDOWN
+                        : DataService.REQUEST_REASON_NORMAL,
                 obtainMessage(EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE));
         mDataCallSessionStats.setDeactivateDataCallReason(DataService.REQUEST_REASON_NORMAL);
         mInvokedDataDeactivation = true;
     }
 
     /**
-     * @return {@code true} if this tear down should be delayed on this data network.
+     * @return {@code true} if this tear down should be delayed until call ends on this data
+     * network. For now this is specific to IMS network only.
      */
     public boolean shouldDelayTearDown() {
         return mDataConfigManager.isImsDelayTearDownEnabled()
@@ -2954,8 +2999,8 @@ public class DataNetwork extends StateMachine {
                 return "TEAR_DOWN_REASON_NOT_ALLOWED_BY_POLICY";
             case TEAR_DOWN_REASON_ILLEGAL_STATE:
                 return "TEAR_DOWN_REASON_ILLEGAL_STATE";
-            case TEAR_DOWN_ONLY_ALLOWED_SINGLE_NETWORK:
-                return "TEAR_DOWN_ONLY_ALLOWED_SINGLE_NETWORK";
+            case TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK:
+                return "TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK";
             default:
                 return "UNKNOWN(" + reason + ")";
         }
@@ -2989,8 +3034,6 @@ public class DataNetwork extends StateMachine {
                 return "EVENT_DETACH_ALL_NETWORK_REQUESTS";
             case EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED:
                 return "EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED";
-            case EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED:
-                return "EVENT_BANDWIDTH_ESTIMATE_FROM_BANDWIDTH_ESTIMATOR_CHANGED";
             case EVENT_DISPLAY_INFO_CHANGED:
                 return "EVENT_DISPLAY_INFO_CHANGED";
             case EVENT_START_HANDOVER:
@@ -3026,6 +3069,17 @@ public class DataNetwork extends StateMachine {
      */
     public @NonNull String name() {
         return mLogTag;
+    }
+
+    /**
+     * Trigger the anomaly report with the specified UUID.
+     *
+     * @param anomalyMsg Description of the event
+     * @param uuid UUID associated with that event
+     */
+    private void reportAnomaly(@NonNull String anomalyMsg, @NonNull String uuid) {
+        logl(anomalyMsg);
+        AnomalyReporter.reportAnomaly(UUID.fromString(uuid), anomalyMsg);
     }
 
     /**

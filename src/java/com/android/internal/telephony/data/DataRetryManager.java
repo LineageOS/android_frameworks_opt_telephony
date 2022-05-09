@@ -31,6 +31,7 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.NetCapability;
+import android.telephony.AnomalyReporter;
 import android.telephony.DataFailCause;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
@@ -59,6 +60,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -1280,15 +1282,24 @@ public class DataRetryManager extends Handler {
             if (mDataRetryEntries.get(i) instanceof DataSetupRetryEntry) {
                 DataSetupRetryEntry entry = (DataSetupRetryEntry) mDataRetryEntries.get(i);
                 // count towards the last succeeded data setup.
-                if (entry.setupRetryType == DataSetupRetryEntry.RETRY_TYPE_NETWORK_REQUESTS
-                        && entry.networkRequestList.get(0)
-                        .getApnTypeNetworkCapability() == networkCapability
-                        && entry.appliedDataRetryRule.equals(dataRetryRule)) {
-                    if (entry.getState() == DataRetryEntry.RETRY_STATE_SUCCEEDED
-                            || entry.getState() == DataRetryEntry.RETRY_STATE_CANCELLED) {
-                        break;
+                if (entry.setupRetryType == DataSetupRetryEntry.RETRY_TYPE_NETWORK_REQUESTS) {
+                    if (entry.networkRequestList.isEmpty()) {
+                        String msg = "Invalid data retry entry detected";
+                        logl(msg);
+                        loge("mDataRetryEntries=" + mDataRetryEntries);
+                        AnomalyReporter.reportAnomaly(UUID.fromString(
+                                "afeab78c-c0b0-49fc-a51f-f766814d7aa5"), msg);
+                        continue;
                     }
-                    count++;
+                    if (entry.networkRequestList.get(0).getApnTypeNetworkCapability()
+                            == networkCapability
+                            && entry.appliedDataRetryRule.equals(dataRetryRule)) {
+                        if (entry.getState() == DataRetryEntry.RETRY_STATE_SUCCEEDED
+                                || entry.getState() == DataRetryEntry.RETRY_STATE_CANCELLED) {
+                            break;
+                        }
+                        count++;
+                    }
                 }
             }
         }
@@ -1472,11 +1483,21 @@ public class DataRetryManager extends Handler {
             if (mDataRetryEntries.get(i) instanceof DataSetupRetryEntry) {
                 DataSetupRetryEntry entry = (DataSetupRetryEntry) mDataRetryEntries.get(i);
                 if (entry.getState() == DataRetryEntry.RETRY_STATE_NOT_RETRIED
-                        && entry.setupRetryType == DataSetupRetryEntry.RETRY_TYPE_NETWORK_REQUESTS
-                        && entry.networkRequestList.get(0).getApnTypeNetworkCapability()
-                        == networkRequest.getApnTypeNetworkCapability()
-                        && entry.transport == transport) {
-                    return true;
+                        && entry.setupRetryType
+                        == DataSetupRetryEntry.RETRY_TYPE_NETWORK_REQUESTS) {
+                    if (entry.networkRequestList.isEmpty()) {
+                        String msg = "Invalid data retry entry detected";
+                        logl(msg);
+                        loge("mDataRetryEntries=" + mDataRetryEntries);
+                        AnomalyReporter.reportAnomaly(UUID.fromString(
+                                "afeab78c-c0b0-49fc-a51f-f766814d7aa5"), msg);
+                        continue;
+                    }
+                    if (entry.networkRequestList.get(0).getApnTypeNetworkCapability()
+                            == networkRequest.getApnTypeNetworkCapability()
+                            && entry.transport == transport) {
+                        return true;
+                    }
                 }
             }
         }

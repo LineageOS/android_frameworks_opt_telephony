@@ -64,6 +64,7 @@ import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.Annotation.DataActivityType;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.BarringInfo;
 import android.telephony.CarrierConfigManager;
@@ -761,34 +762,33 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public DataActivityState getDataActivityState() {
+    public @DataActivityType int getDataActivityState() {
         if (isUsingNewDataStack()) {
-            // TODO: Support it correctly.
-            return DataActivityState.NONE;
+            return getDataNetworkController().getDataActivity();
         }
-        DataActivityState ret = DataActivityState.NONE;
+        int ret = TelephonyManager.DATA_ACTIVITY_NONE;
 
         if (mSST.getCurrentDataConnectionState() == ServiceState.STATE_IN_SERVICE
                 && getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN) != null) {
             switch (getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).getActivity()) {
                 case DATAIN:
-                    ret = DataActivityState.DATAIN;
+                    ret = TelephonyManager.DATA_ACTIVITY_IN;
                 break;
 
                 case DATAOUT:
-                    ret = DataActivityState.DATAOUT;
+                    ret = TelephonyManager.DATA_ACTIVITY_OUT;
                 break;
 
                 case DATAINANDOUT:
-                    ret = DataActivityState.DATAINANDOUT;
+                    ret = TelephonyManager.DATA_ACTIVITY_INOUT;
                 break;
 
                 case DORMANT:
-                    ret = DataActivityState.DORMANT;
+                    ret = TelephonyManager.DATA_ACTIVITY_DORMANT;
                 break;
 
                 default:
-                    ret = DataActivityState.NONE;
+                    ret = TelephonyManager.DATA_ACTIVITY_NONE;
                 break;
             }
         }

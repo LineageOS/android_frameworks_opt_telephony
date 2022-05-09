@@ -777,4 +777,16 @@ public class DataProfileManagerTest extends TelephonyTest {
                 Telephony.Carriers.MATCH_ALL_APN_SET_ID);
         assertThat(mDataProfileManagerUT.isDataProfileValid(dataProfile)).isTrue();
     }
+
+    @Test
+    public void testDefaultEmergencyDataProfileValid() {
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)
+                .build(), mPhone);
+        DataProfile dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
+                tnr, TelephonyManager.NETWORK_TYPE_LTE);
+
+        assertThat(dataProfile.getApn()).isEqualTo("sos");
+        assertThat(dataProfile.getTrafficDescriptor().getDataNetworkName()).isEqualTo("sos");
+    }
 }

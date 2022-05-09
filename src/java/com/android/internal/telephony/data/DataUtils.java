@@ -27,6 +27,7 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.RadioAccessNetworkType;
 import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.Annotation.DataActivityType;
 import android.telephony.Annotation.NetCapability;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.Annotation.ValidationStatus;
@@ -470,6 +471,23 @@ public class DataUtils {
                 return true;
             default:
                 return false;
+        }
+    }
+
+    /**
+     * Convert data activity to string.
+     *
+     * @param dataActivity The data activity.
+     * @return The data activity in string format.
+     */
+    public static @NonNull String dataActivityToString(@DataActivityType int dataActivity) {
+        switch (dataActivity) {
+            case TelephonyManager.DATA_ACTIVITY_NONE: return "NONE";
+            case TelephonyManager.DATA_ACTIVITY_IN: return "IN";
+            case TelephonyManager.DATA_ACTIVITY_OUT: return "OUT";
+            case TelephonyManager.DATA_ACTIVITY_INOUT: return "INOUT";
+            case TelephonyManager.DATA_ACTIVITY_DORMANT: return "DORMANT";
+            default: return "UNKNOWN(" + dataActivity + ")";
         }
     }
 }

@@ -32,8 +32,6 @@ import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import com.android.internal.telephony.PhoneInternalInterface.DataActivityState;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -87,13 +85,13 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
     @Test @SmallTest
     public void testNotifyDataActivity() throws Exception {
         //mock data activity state
-        doReturn(DataActivityState.NONE).when(mPhone).getDataActivityState();
+        doReturn(TelephonyManager.DATA_ACTIVITY_NONE).when(mPhone).getDataActivityState();
         mDefaultPhoneNotifierUT.notifyDataActivity(mPhone);
         verify(mTelephonyRegistryManager).notifyDataActivityChanged(eq(0),
                 eq(TelephonyManager.DATA_ACTIVITY_NONE));
 
         doReturn(1).when(mPhone).getSubId();
-        doReturn(DataActivityState.DATAIN).when(mPhone).getDataActivityState();
+        doReturn(TelephonyManager.DATA_ACTIVITY_IN).when(mPhone).getDataActivityState();
         mDefaultPhoneNotifierUT.notifyDataActivity(mPhone);
         verify(mTelephonyRegistryManager).notifyDataActivityChanged(eq(1),
                 eq(TelephonyManager.DATA_ACTIVITY_IN));

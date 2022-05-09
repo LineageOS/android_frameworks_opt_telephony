@@ -39,6 +39,7 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.RadioAccessNetworkType;
 import android.telephony.AccessNetworkConstants.TransportType;
+import android.telephony.Annotation.DataActivityType;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.NetCapability;
 import android.telephony.Annotation.NetworkType;
@@ -96,6 +97,7 @@ import com.android.internal.telephony.data.DataRetryManager.DataRetryManagerCall
 import com.android.internal.telephony.data.DataRetryManager.DataSetupRetryEntry;
 import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
 import com.android.internal.telephony.data.DataStallRecoveryManager.DataStallRecoveryManagerCallback;
+import com.android.internal.telephony.data.LinkBandwidthEstimator.LinkBandwidthEstimatorCallback;
 import com.android.internal.telephony.ims.ImsResolver;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
@@ -194,6 +196,9 @@ public class DataNetworkController extends Handler {
     /** Event for slice config changed. */
     private static final int EVENT_SLICE_CONFIG_CHANGED = 24;
 
+    /** Event for tracking area code changed. */
+    private static final int EVENT_TAC_CHANGED = 25;
+
     /** The supported IMS features. This is for IMS graceful tear down support. */
     private static final Collection<Integer> SUPPORTED_IMS_FEATURES =
             List.of(ImsFeature.FEATURE_MMTEL, ImsFeature.FEATURE_RCS);
@@ -212,12 +217,9 @@ public class DataNetworkController extends Handler {
     private static final long REEVALUATE_UNSATISFIED_NETWORK_REQUESTS_AFTER_CALL_END_DELAY_MILLIS =
             TimeUnit.MILLISECONDS.toMillis(500);
 
-    /**
-     * The maximum number of occurrences within a time window defined by
-     * {@link DataConfigManager#getImsRequestReleaseThrottleAnomalyWindowMs}
-     * for duplicate release-request for IMS, the violation of which triggers anomaly report.
-     */
-    private static final int IMS_REQUEST_RELEASE_THROTTLE_ANOMALY_NUM_OCCURRENCES = 2;
+    /** The delay in milliseconds to re-evaluate unsatisfied network requests after TAC changes. */
+    private static final long REEVALUATE_UNSATISFIED_NETWORK_REQUESTS_TAC_CHANGED_DELAY_MILLIS =
+            TimeUnit.MILLISECONDS.toMillis(100);
 
     private final Phone mPhone;
     private final String mLogTag;
@@ -310,6 +312,9 @@ public class DataNetworkController extends Handler {
 
     /** SIM state. */
     private @SimState int mSimState = TelephonyManager.SIM_STATE_UNKNOWN;
+
+    /** Data activity. */
+    private @DataActivityType int mDataActivity = TelephonyManager.DATA_ACTIVITY_NONE;
 
     /**
      * IMS state callbacks. Key is the IMS feature, value is the callback.
@@ -586,12 +591,6 @@ public class DataNetworkController extends Handler {
          * @param transport The transport of the data service.
          */
         public void onDataServiceBound(@TransportType int transport) {}
-
-        /**
-         * Called when DataNetwork is frequently attempted to be torn down due to Network Unwanted
-         * call from connectivity service
-         */
-        public void onTrackNetworkUnwanted() {}
     }
 
     /**
@@ -961,6 +960,7 @@ public class DataNetworkController extends Handler {
                 EVENT_PS_RESTRICT_ENABLED, null);
         mPhone.getServiceStateTracker().registerForPsRestrictedDisabled(this,
                 EVENT_PS_RESTRICT_DISABLED, null);
+        mPhone.getServiceStateTracker().registerForAreaCodeChanged(this, EVENT_TAC_CHANGED, null);
         mPhone.registerForEmergencyCallToggle(this, EVENT_EMERGENCY_CALL_CHANGED, null);
         mDataServiceManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                 .registerForServiceBindingChanged(this, EVENT_DATA_SERVICE_BINDING_CHANGED);
@@ -992,6 +992,15 @@ public class DataNetworkController extends Handler {
                     this, EVENT_VOICE_CALL_ENDED, null);
         }
         mPhone.mCi.registerForSlicingConfigChanged(this, EVENT_SLICE_CONFIG_CHANGED, null);
+
+        mPhone.getLinkBandwidthEstimator().registerCallback(
+                new LinkBandwidthEstimatorCallback(this::post) {
+                    @Override
+                    public void onDataActivityChanged(@DataActivityType int dataActivity) {
+                        DataNetworkController.this.updateDataActivity();
+                    }
+                }
+        );
     }
 
     @Override
@@ -1042,6 +1051,13 @@ public class DataNetworkController extends Handler {
                 mPsRestricted = false;
                 sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
                         DataEvaluationReason.DATA_RESTRICTED_CHANGED));
+                break;
+            case EVENT_TAC_CHANGED:
+                // Re-evaluate unsatisfied network requests with some delays to let DataRetryManager
+                // clears the throttling record.
+                sendMessageDelayed(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
+                        DataEvaluationReason.TAC_CHANGED),
+                        REEVALUATE_UNSATISFIED_NETWORK_REQUESTS_TAC_CHANGED_DELAY_MILLIS);
                 break;
             case EVENT_DATA_SERVICE_BINDING_CHANGED:
                 AsyncResult ar = (AsyncResult) msg.obj;
@@ -1147,6 +1163,7 @@ public class DataNetworkController extends Handler {
      * @param networkRequest The network request.
      */
     private void onAddNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
+        // To detect IMS back-to-back release-request anomaly event
         if (mLastImsOperationIsRelease) {
             mLastImsOperationIsRelease = false;
             if (Arrays.equals(
@@ -1311,6 +1328,19 @@ public class DataNetworkController extends Handler {
     }
 
     /**
+     * @return {@code true} internet is unmetered.
+     */
+    public boolean isInternetUnmetered() {
+        return mDataNetworkList.stream()
+                .filter(dataNetwork -> !dataNetwork.isConnecting() && !dataNetwork.isDisconnected())
+                .filter(DataNetwork::isInternetSupported)
+                .allMatch(dataNetwork -> dataNetwork.getNetworkCapabilities()
+                        .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+                        || dataNetwork.getNetworkCapabilities()
+                        .hasCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+    }
+
+    /**
      * @return List of the reasons why internet data is not allowed. An empty list if internet
      * is allowed.
      */
@@ -1433,9 +1463,16 @@ public class DataNetworkController extends Handler {
         }
 
         // Check if only one data network is allowed.
-        if (isOnlySingleDataNetworkAllowed(transport) && !mDataNetworkList.isEmpty()) {
-            evaluation.addDataDisallowedReason(
-                    DataDisallowedReason.ONLY_ALLOWED_SINGLE_NETWORK);
+        // Note any IMS network is ignored for the single-connection rule.
+        if (isOnlySingleDataNetworkAllowed(transport)
+                && !networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
+            // if exists non-IMS network
+            if (mDataNetworkList.stream()
+                    .anyMatch(dataNetwork -> !dataNetwork.getNetworkCapabilities()
+                                    .hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS))) {
+                evaluation.addDataDisallowedReason(
+                        DataDisallowedReason.ONLY_ALLOWED_SINGLE_NETWORK);
+            }
         }
 
         if (mDataSettingsManager.isDataInitialized()) {
@@ -1623,8 +1660,10 @@ public class DataNetworkController extends Handler {
         }
 
         // Check if there are other network that has higher priority, and only single data network
-        // is allowed.
-        if (isOnlySingleDataNetworkAllowed(dataNetwork.getTransport())) {
+        // is allowed. Note IMS network is exempt from the single-connection rule.
+        if (isOnlySingleDataNetworkAllowed(dataNetwork.getTransport())
+                && !dataNetwork.getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
             // If there is network request that has higher priority than this data network, then
             // tear down the network, regardless that network request is satisfied or not.
             if (mAllNetworkRequestList.stream()
@@ -1881,7 +1920,7 @@ public class DataNetworkController extends Handler {
                 case VOPS_NOT_SUPPORTED:
                     return DataNetwork.TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED;
                 case ONLY_ALLOWED_SINGLE_NETWORK:
-                    return DataNetwork.TEAR_DOWN_ONLY_ALLOWED_SINGLE_NETWORK;
+                    return DataNetwork.TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK;
             }
         }
         return 0;
@@ -1902,6 +1941,37 @@ public class DataNetworkController extends Handler {
             }
         }
         return false;
+    }
+
+    /**
+     * @return {@code true} if data is dormant.
+     */
+    private boolean isDataDormant() {
+        return mDataNetworkList.stream().anyMatch(
+                dataNetwork -> dataNetwork.getLinkStatus()
+                        == DataCallResponse.LINK_STATUS_DORMANT)
+                && mDataNetworkList.stream().noneMatch(
+                        dataNetwork -> dataNetwork.getLinkStatus()
+                                == DataCallResponse.LINK_STATUS_ACTIVE);
+    }
+
+    /**
+     * Update data activity.
+     */
+    private void updateDataActivity() {
+        int dataActivity = TelephonyManager.DATA_ACTIVITY_NONE;
+        if (isDataDormant()) {
+            dataActivity = TelephonyManager.DATA_ACTIVITY_DORMANT;
+        } else if (mPhone.getLinkBandwidthEstimator() != null) {
+            dataActivity = mPhone.getLinkBandwidthEstimator().getDataActivity();
+        }
+
+        if (mDataActivity != dataActivity) {
+            logv("updateDataActivity: dataActivity="
+                    + DataUtils.dataActivityToString(dataActivity));
+            mDataActivity = dataActivity;
+            mPhone.notifyDataActivity();
+        }
     }
 
     /**
@@ -1942,6 +2012,19 @@ public class DataNetworkController extends Handler {
      */
     public boolean isNetworkRequestExisting(@NonNull TelephonyNetworkRequest networkRequest) {
         return mAllNetworkRequestList.contains(networkRequest);
+    }
+
+    /**
+     * Check if there are existing networks having the same interface name.
+     *
+     * @param interfaceName The interface name to check.
+     * @return {@code true} if the existing network has the same interface name.
+     */
+    public boolean isNetworkInterfaceExisting(@NonNull String interfaceName) {
+        return mDataNetworkList.stream()
+                .filter(dataNetwork -> !dataNetwork.isDisconnecting())
+                .anyMatch(dataNetwork -> interfaceName.equals(
+                        dataNetwork.getLinkProperties().getInterfaceName()));
     }
 
     /**
@@ -2327,8 +2410,7 @@ public class DataNetworkController extends Handler {
             @NonNull NetworkRequestList requestList, @DataFailureCause int cause,
             long retryDelayMillis) {
         logl("onDataNetworkSetupDataFailed: " + dataNetwork + ", cause="
-                + DataFailCause.toString(cause) + "(0x" + Integer.toHexString(cause)
-                + "), retryDelayMillis=" + retryDelayMillis + "ms.");
+                + DataFailCause.toString(cause) + ", retryDelayMillis=" + retryDelayMillis + "ms.");
         mDataNetworkList.remove(dataNetwork);
         trackSetupDataCallFailure(dataNetwork.getTransport());
         if (mAnyDataNetworkExisting && mDataNetworkList.isEmpty()) {
@@ -2423,6 +2505,7 @@ public class DataNetworkController extends Handler {
                 request -> !mAllNetworkRequestList.contains(request));
         if (dataSetupRetryEntry.networkRequestList.isEmpty()) {
             loge("onDataNetworkSetupRetry: Request list is empty. Abort retry.");
+            dataSetupRetryEntry.setState(DataRetryEntry.RETRY_STATE_CANCELLED);
             return;
         }
         TelephonyNetworkRequest telephonyNetworkRequest =
@@ -2822,6 +2905,8 @@ public class DataNetworkController extends Handler {
             mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                     () -> callback.onPhysicalLinkStatusChanged(mInternetLinkStatus)));
         }
+
+        updateDataActivity();
     }
 
     /**
@@ -3138,6 +3223,13 @@ public class DataNetworkController extends Handler {
             return nri.getRegistrationState();
         }
         return NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN;
+    }
+
+    /**
+     * @return The data activity. Note this is only updated when screen is on.
+     */
+    public @DataActivityType int getDataActivity() {
+        return mDataActivity;
     }
 
     /**
