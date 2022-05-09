@@ -1,0 +1,2 @@
+# Bug component: 847766
+include platform/frameworks/base:/services/core/java/com/android/server/timezonedetector/OWNERS
