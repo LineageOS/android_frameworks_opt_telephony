@@ -339,9 +339,12 @@ public class DataNetworkController extends Handler {
 
     /** The counter to detect back to back release/request IMS network. */
     private @NonNull SlidingWindowEventCounter mImsThrottleCounter;
-
     /** Event counter for unwanted network within time window, is used to trigger anomaly report. */
     private @NonNull SlidingWindowEventCounter mNetworkUnwantedCounter;
+    /** Event counter for WLAN setup data failure within time window to trigger anomaly report. */
+    private @NonNull SlidingWindowEventCounter mSetupDataCallWlanFailureCounter;
+    /** Event counter for WWAN setup data failure within time window to trigger anomaly report. */
+    private @NonNull SlidingWindowEventCounter mSetupDataCallWwanFailureCounter;
 
     /**
      * {@code true} if {@link #tearDownAllDataNetworks(int)} was invoked and waiting for all
@@ -775,12 +778,20 @@ public class DataNetworkController extends Handler {
         }
         mDataConfigManager = new DataConfigManager(mPhone, looper);
 
+        // ========== Anomaly counters ==========
         mImsThrottleCounter = new SlidingWindowEventCounter(
                 mDataConfigManager.getAnomalyImsReleaseRequestThreshold().timeWindow,
                 mDataConfigManager.getAnomalyImsReleaseRequestThreshold().eventNumOccurrence);
         mNetworkUnwantedCounter = new SlidingWindowEventCounter(
                 mDataConfigManager.getAnomalyNetworkUnwantedThreshold().timeWindow,
                 mDataConfigManager.getAnomalyNetworkUnwantedThreshold().eventNumOccurrence);
+        mSetupDataCallWlanFailureCounter = new SlidingWindowEventCounter(
+                mDataConfigManager.getAnomalySetupDataCallThreshold().timeWindow,
+                mDataConfigManager.getAnomalySetupDataCallThreshold().eventNumOccurrence);
+        mSetupDataCallWwanFailureCounter = new SlidingWindowEventCounter(
+                mDataConfigManager.getAnomalySetupDataCallThreshold().timeWindow,
+                mDataConfigManager.getAnomalySetupDataCallThreshold().eventNumOccurrence);
+        // ========================================
 
         mDataSettingsManager = TelephonyComponentFactory.getInstance().inject(
                 DataSettingsManager.class.getName())
@@ -2118,6 +2129,12 @@ public class DataNetworkController extends Handler {
         mNetworkUnwantedCounter = new SlidingWindowEventCounter(
                 mDataConfigManager.getAnomalyNetworkUnwantedThreshold().timeWindow,
                 mDataConfigManager.getAnomalyNetworkUnwantedThreshold().eventNumOccurrence);
+        mSetupDataCallWwanFailureCounter = new SlidingWindowEventCounter(
+                mDataConfigManager.getAnomalySetupDataCallThreshold().timeWindow,
+                mDataConfigManager.getAnomalySetupDataCallThreshold().eventNumOccurrence);
+        mSetupDataCallWlanFailureCounter = new SlidingWindowEventCounter(
+                mDataConfigManager.getAnomalySetupDataCallThreshold().timeWindow,
+                mDataConfigManager.getAnomalySetupDataCallThreshold().eventNumOccurrence);
     }
 
     /**
@@ -2306,6 +2323,7 @@ public class DataNetworkController extends Handler {
                 + DataFailCause.toString(cause) + "(0x" + Integer.toHexString(cause)
                 + "), retryDelayMillis=" + retryDelayMillis + "ms.");
         mDataNetworkList.remove(dataNetwork);
+        trackSetupDataCallFailure(dataNetwork.getTransport());
         if (mAnyDataNetworkExisting && mDataNetworkList.isEmpty()) {
             mPendingTearDownAllNetworks = false;
             mAnyDataNetworkExisting = false;
@@ -2323,6 +2341,33 @@ public class DataNetworkController extends Handler {
         // Data retry manager will determine if retry is needed. If needed, retry will be scheduled.
         mDataRetryManager.evaluateDataSetupRetry(dataNetwork.getDataProfile(),
                 dataNetwork.getTransport(), requestList, cause, retryDelayMillis);
+    }
+
+    /**
+     * Track the frequency of setup data failure on each
+     * {@link AccessNetworkConstants#TransportType} data service.
+     *
+     * @param transport The transport of the data service.
+     */
+    private void trackSetupDataCallFailure(@TransportType int transport) {
+        switch (transport) {
+            case AccessNetworkConstants.TRANSPORT_TYPE_WWAN:
+                if (mSetupDataCallWwanFailureCounter.addOccurrence()) {
+                    AnomalyReporter.reportAnomaly(
+                            UUID.fromString("e6a98b97-9e34-4977-9a92-01d52a6691f6"),
+                            "RIL fails setup data call request frequently");
+                }
+                break;
+            case AccessNetworkConstants.TRANSPORT_TYPE_WLAN:
+                if (mSetupDataCallWlanFailureCounter.addOccurrence()) {
+                    AnomalyReporter.reportAnomaly(
+                            UUID.fromString("e2248d8b-d55f-42bd-871c-0cfd80c3ddd1"),
+                            "IWLAN data service fails setup data call request frequently");
+                }
+                break;
+            default:
+                loge("trackSetupDataCallFailure: INVALID transport.");
+        }
     }
 
     /**
