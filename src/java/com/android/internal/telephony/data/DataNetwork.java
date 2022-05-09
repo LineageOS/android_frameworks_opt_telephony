@@ -232,7 +232,7 @@ public class DataNetwork extends StateMachine {
 
     /** The maximum time the data network can stay in {@link DisconnectingState}. */
     private static final long MAXIMUM_DISCONNECTING_DURATION_MILLIS =
-            TimeUnit.SECONDS.toMillis(15);
+            TimeUnit.SECONDS.toMillis(60);
 
     /** The maximum time the data network can stay in {@link HandoverState}. */
     private static final long MAXIMUM_HANDOVER_DURATION_MILLIS =
@@ -1344,7 +1344,7 @@ public class DataNetwork extends StateMachine {
                                     MAXIMUM_DISCONNECTING_DURATION_MILLIS) + " seconds.";
                     logl(message);
                     AnomalyReporter.reportAnomaly(
-                            UUID.fromString("d0e4fa1c-c57b-4ba5-b4b6-8955487012cb"), message);
+                            UUID.fromString("d0e4fa1c-c57b-4ba5-b4b6-8955487012cc"), message);
                     mFailCause = DataFailCause.LOST_CONNECTION;
                     transitionTo(mDisconnectedState);
                     break;
