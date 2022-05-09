@@ -2072,7 +2072,14 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         doReturn(rat).when(mock).getVoiceNetworkType();
         doReturn(rat).when(mock).getDataNetworkType();
         NetworkRegistrationInfo regInfo =
-                new NetworkRegistrationInfo.Builder().setAccessNetworkTechnology(rat).build();
+                new NetworkRegistrationInfo.Builder()
+                        .setAccessNetworkTechnology(rat)
+                        .setRegistrationState(
+                                rat == TelephonyManager.NETWORK_TYPE_UNKNOWN
+                                        ? NetworkRegistrationInfo
+                                                .REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING
+                                        : NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                        .build();
         doReturn(regInfo).when(mock)
                 .getNetworkRegistrationInfo(
                         anyInt(), eq(AccessNetworkConstants.TRANSPORT_TYPE_WWAN));
@@ -2082,7 +2089,14 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         doReturn(rat).when(mock).getVoiceNetworkType();
         doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mock).getDataNetworkType();
         NetworkRegistrationInfo wwanRegInfo =
-                new NetworkRegistrationInfo.Builder().setAccessNetworkTechnology(rat).build();
+                new NetworkRegistrationInfo.Builder()
+                        .setAccessNetworkTechnology(rat)
+                        .setRegistrationState(
+                                rat == TelephonyManager.NETWORK_TYPE_UNKNOWN
+                                        ? NetworkRegistrationInfo
+                                                .REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING
+                                        : NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                        .build();
         doReturn(wwanRegInfo).when(mock)
                 .getNetworkRegistrationInfo(
                         anyInt(), eq(AccessNetworkConstants.TRANSPORT_TYPE_WWAN));
