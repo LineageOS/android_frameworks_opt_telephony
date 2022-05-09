@@ -42,6 +42,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
 import android.os.SystemClock;
+import android.provider.Telephony;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.TransportType;
@@ -80,6 +81,7 @@ import android.util.Pair;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 
+import com.android.internal.telephony.CarrierSignalAgent;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
@@ -232,7 +234,7 @@ public class DataNetwork extends StateMachine {
 
     /** The maximum time the data network can stay in {@link DisconnectingState}. */
     private static final long MAXIMUM_DISCONNECTING_DURATION_MILLIS =
-            TimeUnit.SECONDS.toMillis(15);
+            TimeUnit.SECONDS.toMillis(60);
 
     /** The maximum time the data network can stay in {@link HandoverState}. */
     private static final long MAXIMUM_HANDOVER_DURATION_MILLIS =
@@ -855,6 +857,28 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
+     * @return {@code true} if 464xlat should be skipped.
+     */
+    private boolean shouldSkip464Xlat() {
+        if (mDataProfile.getApnSetting() != null) {
+            switch (mDataProfile.getApnSetting().getSkip464Xlat()) {
+                case Telephony.Carriers.SKIP_464XLAT_ENABLE:
+                    return true;
+                case Telephony.Carriers.SKIP_464XLAT_DISABLE:
+                    return false;
+                case Telephony.Carriers.SKIP_464XLAT_DEFAULT:
+                default:
+                    break;
+            }
+        }
+
+        // As default, return true if ims and no internet
+        final NetworkCapabilities nc = getNetworkCapabilities();
+        return nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
+                && !nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+    }
+
+    /**
      * Create the telephony network agent.
      *
      * @return The telephony network agent.
@@ -868,6 +892,24 @@ public class DataNetwork extends StateMachine {
         configBuilder.setLegacySubTypeName(TelephonyManager.getNetworkTypeName(networkType));
         if (mDataProfile.getApnSetting() != null) {
             configBuilder.setLegacyExtraInfo(mDataProfile.getApnSetting().getApnName());
+        }
+
+        final CarrierSignalAgent carrierSignalAgent = mPhone.getCarrierSignalAgent();
+        if (carrierSignalAgent.hasRegisteredReceivers(TelephonyManager
+                .ACTION_CARRIER_SIGNAL_REDIRECTED)) {
+            // carrierSignal Receivers will place the carrier-specific provisioning notification
+            configBuilder.setProvisioningNotificationEnabled(false);
+        }
+
+        // Fill the IMSI
+        final String subscriberId = mPhone.getSubscriberId();
+        if (!TextUtils.isEmpty(subscriberId)) {
+            configBuilder.setSubscriberId(subscriberId);
+        }
+
+        // set skip464xlat if it is not default otherwise
+        if (shouldSkip464Xlat()) {
+            configBuilder.setNat64DetectionEnabled(false);
         }
 
         final NetworkFactory factory = PhoneFactory.getNetworkFactory(
@@ -1344,7 +1386,7 @@ public class DataNetwork extends StateMachine {
                                     MAXIMUM_DISCONNECTING_DURATION_MILLIS) + " seconds.";
                     logl(message);
                     AnomalyReporter.reportAnomaly(
-                            UUID.fromString("d0e4fa1c-c57b-4ba5-b4b6-8955487012cb"), message);
+                            UUID.fromString("d0e4fa1c-c57b-4ba5-b4b6-8955487012cc"), message);
                     mFailCause = DataFailCause.LOST_CONNECTION;
                     transitionTo(mDisconnectedState);
                     break;

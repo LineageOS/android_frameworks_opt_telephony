@@ -31,9 +31,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import android.annotation.NonNull;
+import android.net.ConnectivityManager;
 import android.net.InetAddresses;
 import android.net.LinkAddress;
 import android.net.LinkProperties;
+import android.net.NetworkAgentConfig;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.vcn.VcnManager.VcnNetworkPolicyChangeListener;
@@ -74,6 +77,7 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -87,6 +91,8 @@ public class DataNetworkTest extends TelephonyTest {
 
     private static final int ADMIN_UID1 = 1234;
     private static final int ADMIN_UID2 = 5678;
+
+    private static final String FAKE_IMSI = "123456789";
 
     private DataNetwork mDataNetworkUT;
 
@@ -227,6 +233,16 @@ public class DataNetworkTest extends TelephonyTest {
                 new AsyncResult(null, new Pair<>(dataRegState, rat), null)).sendToTarget();
     }
 
+    private @NonNull NetworkAgentConfig getNetworkAgentConfig() throws Exception {
+        Field field = DataNetwork.class.getDeclaredField("mNetworkAgent");
+        field.setAccessible(true);
+        TelephonyNetworkAgent networkAgent = (TelephonyNetworkAgent) field.get(mDataNetworkUT);
+
+        field = TelephonyNetworkAgent.class.getDeclaredField("mNetworkAgentConfig");
+        field.setAccessible(true);
+        return (NetworkAgentConfig) field.get(networkAgent);
+    }
+
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
@@ -245,6 +261,7 @@ public class DataNetworkTest extends TelephonyTest {
                 .getPreferredTransportByNetworkCapability(anyInt());
         doReturn(DataNetwork.BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR)
                 .when(mDataConfigManager).getBandwidthEstimateSource();
+        doReturn(FAKE_IMSI).when(mPhone).getSubscriberId();
     }
 
     @After
@@ -353,6 +370,71 @@ public class DataNetworkTest extends TelephonyTest {
                 argThat(caps -> caps.hasCapability(
                         NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)),
                 any());
+
+        verify(mDataNetworkCallback).onConnected(eq(mDataNetworkUT));
+    }
+
+    @Test
+    public void testCreateImsDataNetwork() throws Exception {
+        DataNetworkController.NetworkRequestList
+                networkRequestList = new DataNetworkController.NetworkRequestList();
+        networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
+                .build(), mPhone));
+
+        setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
+
+        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
+                mImsDataProfile, networkRequestList,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                DataAllowedReason.NORMAL, mDataNetworkCallback);
+        replaceInstance(DataNetwork.class, "mDataCallSessionStats",
+                mDataNetworkUT, mDataCallSessionStats);
+        sendServiceStateChangedEvent(ServiceState.STATE_IN_SERVICE,
+                ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN);
+
+        processAllMessages();
+        verify(mSimulatedCommandsVerifier, never()).allocatePduSessionId(any(Message.class));
+        verify(mMockedWwanDataServiceManager).setupDataCall(eq(AccessNetworkType.EUTRAN),
+                eq(mImsDataProfile), eq(false), eq(false),
+                eq(DataService.REQUEST_REASON_NORMAL), nullable(LinkProperties.class),
+                eq(DataCallResponse.PDU_SESSION_ID_NOT_SET), nullable(NetworkSliceInfo.class),
+                any(TrafficDescriptor.class), eq(true), any(Message.class));
+        assertThat(mDataNetworkUT.getId()).isEqualTo(123);
+        assertThat(networkRequestList.get(0).getState())
+                .isEqualTo(TelephonyNetworkRequest.REQUEST_STATE_SATISFIED);
+        LinkProperties lp = mDataNetworkUT.getLinkProperties();
+        assertThat(lp.getAddresses()).containsExactly(
+                InetAddresses.parseNumericAddress(IPV4_ADDRESS),
+                InetAddresses.parseNumericAddress(IPV6_ADDRESS));
+
+        ArgumentCaptor<PreciseDataConnectionState> pdcsCaptor =
+                ArgumentCaptor.forClass(PreciseDataConnectionState.class);
+        verify(mPhone, times(2)).notifyDataConnection(pdcsCaptor.capture());
+        List<PreciseDataConnectionState> pdcsList = pdcsCaptor.getAllValues();
+
+        assertThat(pdcsList.get(0).getApnSetting()).isEqualTo(mImsApnSetting);
+        assertThat(pdcsList.get(0).getState()).isEqualTo(TelephonyManager.DATA_CONNECTING);
+        assertThat(pdcsList.get(0).getId()).isEqualTo(-1);
+        assertThat(pdcsList.get(0).getNetworkType()).isEqualTo(TelephonyManager.NETWORK_TYPE_LTE);
+        assertThat(pdcsList.get(0).getTransportType())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        assertThat(pdcsList.get(0).getLinkProperties()).isEqualTo(new LinkProperties());
+
+        assertThat(pdcsList.get(1).getApnSetting()).isEqualTo(mImsApnSetting);
+        assertThat(pdcsList.get(1).getState()).isEqualTo(TelephonyManager.DATA_CONNECTED);
+        assertThat(pdcsList.get(1).getId()).isEqualTo(123);
+        assertThat(pdcsList.get(1).getNetworkType()).isEqualTo(TelephonyManager.NETWORK_TYPE_LTE);
+        assertThat(pdcsList.get(1).getTransportType())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        assertThat(pdcsList.get(1).getLinkProperties().getAddresses().get(0))
+                .isEqualTo(InetAddresses.parseNumericAddress(IPV4_ADDRESS));
+        assertThat(pdcsList.get(1).getLinkProperties().getAddresses().get(1))
+                .isEqualTo(InetAddresses.parseNumericAddress(IPV6_ADDRESS));
+        assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_IMS)).isTrue();
+        assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)).isFalse();
 
         verify(mDataNetworkCallback).onConnected(eq(mDataNetworkUT));
     }
@@ -795,5 +877,19 @@ public class DataNetworkTest extends TelephonyTest {
         verify(mDataNetworkCallback).onDisconnected(eq(mDataNetworkUT), eq(
                 DataFailCause.RADIO_NOT_AVAILABLE));
         assertThat(mDataNetworkUT.isConnected()).isFalse();
+    }
+
+    @Test
+    public void testNetworkAgentConfig() throws Exception {
+        testCreateImsDataNetwork();
+        NetworkAgentConfig networkAgentConfig = getNetworkAgentConfig();
+
+        assertThat(networkAgentConfig.getSubscriberId()).isEqualTo(FAKE_IMSI);
+        assertThat(networkAgentConfig.getLegacyExtraInfo()).isEqualTo(
+                mImsApnSetting.getApnName());
+        assertThat(networkAgentConfig.getLegacyType()).isEqualTo(ConnectivityManager.TYPE_MOBILE);
+        assertThat(networkAgentConfig.getLegacyTypeName()).isEqualTo("MOBILE");
+        assertThat(networkAgentConfig.legacySubType).isEqualTo(TelephonyManager.NETWORK_TYPE_LTE);
+        assertThat(networkAgentConfig.skip464xlat).isTrue();
     }
 }
