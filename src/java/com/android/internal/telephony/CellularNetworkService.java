@@ -426,7 +426,8 @@ public class CellularNetworkService extends NetworkService {
             final int reasonForDenial = regResult.reasonForDenial;
 
             int networkType = ServiceState.rilRadioTechnologyToNetworkType(regResult.rat);
-            networkType = getNetworkTypeForCellIdentity(networkType, cellIdentity);
+            networkType =
+                    getNetworkTypeForCellIdentity(networkType, cellIdentity, mPhone.getCarrierId());
 
             // Conditional parameters for specific RANs
             boolean cssSupported = false;
@@ -578,7 +579,8 @@ public class CellularNetworkService extends NetworkService {
             final int reasonForDenial = regResult.reasonForDenial;
 
             int networkType = ServiceState.rilRadioTechnologyToNetworkType(regResult.rat);
-            networkType = getNetworkTypeForCellIdentity(networkType, cellIdentity);
+            networkType =
+                    getNetworkTypeForCellIdentity(networkType, cellIdentity, mPhone.getCarrierId());
 
             // Conditional parameters for specific RANs
             boolean cssSupported = false;
@@ -682,13 +684,14 @@ public class CellularNetworkService extends NetworkService {
 
     /** Cross-check the network type against the CellIdentity type */
     @VisibleForTesting
-    public static int getNetworkTypeForCellIdentity(int networkType, CellIdentity ci) {
+    public static int getNetworkTypeForCellIdentity(
+            int networkType, CellIdentity ci, int carrierId) {
         if (ci == null) {
             if (networkType != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
                 // Network type is non-null but CellIdentity is null
                 AnomalyReporter.reportAnomaly(
                         UUID.fromString("e67ea4ef-7251-4a69-a063-22c47fc58743"),
-                            "RIL Unexpected NetworkType");
+                            "RIL Unexpected NetworkType", carrierId);
                 if (android.os.Build.isDebuggable()) {
                     logw("Updating incorrect network type from "
                             + TelephonyManager.getNetworkTypeName(networkType) + " to UNKNOWN");
@@ -712,7 +715,7 @@ public class CellularNetworkService extends NetworkService {
         if (networkType == TelephonyManager.NETWORK_TYPE_IWLAN) {
             AnomalyReporter.reportAnomaly(
                     UUID.fromString("07dfa183-b2e7-42b7-98a1-dd5ae2abdd4f"),
-                            "RIL Reported IWLAN");
+                            "RIL Reported IWLAN", carrierId);
             if (!android.os.Build.isDebuggable()) return networkType;
 
             if (sNetworkTypes.containsKey(ci.getClass())) {
@@ -728,7 +731,7 @@ public class CellularNetworkService extends NetworkService {
         if (!sNetworkTypes.containsKey(ci.getClass())) {
             AnomalyReporter.reportAnomaly(
                     UUID.fromString("469858cf-46e5-416e-bc11-5e7970917857"),
-                        "RIL Unknown CellIdentity");
+                        "RIL Unknown CellIdentity", carrierId);
             return networkType;
         }
 
@@ -737,7 +740,7 @@ public class CellularNetworkService extends NetworkService {
         if (!typesForCi.contains(networkType)) {
             AnomalyReporter.reportAnomaly(
                     UUID.fromString("2fb634fa-cab3-44d2-bbe8-c7689b0f3e31"),
-                        "RIL Mismatched NetworkType");
+                        "RIL Mismatched NetworkType", carrierId);
             // Since this is a plain-and-simple mismatch between two conflicting pieces of
             // data, and theres no way to know which one to trust, pick the one that's harder
             // to coerce / fake / set incorrectly and make them roughly match.

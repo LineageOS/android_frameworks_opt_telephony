@@ -149,7 +149,7 @@ public class DataServiceManager extends Handler {
             String message = "Data service " + mLastBoundPackageName +  " for transport type "
                     + AccessNetworkConstants.transportTypeToString(mTransportType) + " died.";
             loge(message);
-            AnomalyReporter.reportAnomaly(mAnomalyUUID, message);
+            AnomalyReporter.reportAnomaly(mAnomalyUUID, message, mPhone.getCarrierId());
         }
     }
 
@@ -415,7 +415,7 @@ public class DataServiceManager extends Handler {
         // Using fixed UUID to avoid duplicate bugreport notification
         AnomalyReporter.reportAnomaly(
                 UUID.fromString("f5d5cbe6-9bd6-4009-b764-42b1b649b1de"),
-                message);
+                message, mPhone.getCarrierId());
     }
 
     private void unbindDataService() {
