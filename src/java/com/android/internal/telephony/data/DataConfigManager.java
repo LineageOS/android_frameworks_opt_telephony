@@ -714,6 +714,15 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * @return {@code true} if adopt predefined IWLAN handover policy. If {@code false}, handover is
+     * allowed by default.
+     */
+    public boolean isIwlanHandoverPolicyEnabled() {
+        return mResources.getBoolean(com.android.internal.R.bool
+                .config_enable_iwlan_handover_policy);
+    }
+
+    /**
      * @return {@code true} if tearing down IMS data network should be delayed until the voice call
      * ends.
      */
@@ -969,6 +978,7 @@ public class DataConfigManager extends Handler {
         pw.increaseIndent();
         mDataSetupRetryRules.forEach(pw::println);
         pw.decreaseIndent();
+        pw.println("isIwlanHandoverPolicyEnabled=" + isIwlanHandoverPolicyEnabled());
         pw.println("Data handover retry rules:");
         pw.increaseIndent();
         mDataHandoverRetryRules.forEach(pw::println);

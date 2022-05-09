@@ -211,6 +211,12 @@ public class DataNetwork extends StateMachine {
      */
     private static final int EVENT_STUCK_IN_TRANSIENT_STATE = 20;
 
+    /**
+     * Event for waiting for tearing down condition met. This will cause data network entering
+     * disconnecting state.
+     */
+    private static final int EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET = 21;
+
     /** The default MTU for IPv4 network. */
     private static final int DEFAULT_MTU_V4 = 1280;
 
@@ -266,7 +272,7 @@ public class DataNetwork extends StateMachine {
                     TEAR_DOWN_REASON_DATA_CONFIG_NOT_READY,
                     TEAR_DOWN_REASON_PENDING_TEAR_DOWN_ALL,
                     TEAR_DOWN_REASON_NO_SUITABLE_DATA_PROFILE,
-                    TEAR_DOWN_REASON_EMERGENCY_CALL,
+                    TEAR_DOWN_REASON_CDMA_EMERGENCY_CALLBACK_MODE,
                     TEAR_DOWN_REASON_RETRY_SCHEDULED,
                     TEAR_DOWN_REASON_DATA_THROTTLED,
                     TEAR_DOWN_REASON_DATA_PROFILE_INVALID,
@@ -340,8 +346,8 @@ public class DataNetwork extends StateMachine {
     /** Data network tear down due to no suitable data profile. */
     public static final int TEAR_DOWN_REASON_NO_SUITABLE_DATA_PROFILE = 21;
 
-    /** Data network tear down due to emergency call. */
-    public static final int TEAR_DOWN_REASON_EMERGENCY_CALL = 22;
+    /** Data network tear down due to CDMA ECBM. */
+    public static final int TEAR_DOWN_REASON_CDMA_EMERGENCY_CALLBACK_MODE = 22;
 
     /** Data network tear down due to retry scheduled. */
     public static final int TEAR_DOWN_REASON_RETRY_SCHEDULED = 23;
@@ -616,8 +622,7 @@ public class DataNetwork extends StateMachine {
     private final @NonNull List<QosBearerSession> mQosBearerSessions = new ArrayList<>();
 
     /**
-     * The UIDs of packages that have carrier privilege. These UIDs will not change through the
-     * life cycle of data network.
+     * The UIDs of packages that have carrier privilege.
      */
     private @NonNull int[] mAdministratorUids = new int[0];
 
@@ -941,25 +946,7 @@ public class DataNetwork extends StateMachine {
                     break;
                 }
                 case EVENT_ATTACH_NETWORK_REQUEST: {
-                    NetworkRequestList requestList = (NetworkRequestList) msg.obj;
-                    NetworkRequestList failedList = new NetworkRequestList();
-                    for (TelephonyNetworkRequest networkRequest : requestList) {
-                        if (networkRequest.canBeSatisfiedBy(getNetworkCapabilities())) {
-                            mAttachedNetworkRequestList.add(networkRequest);
-                            networkRequest.setAttachedNetwork(DataNetwork.this);
-                            networkRequest.setState(
-                                    TelephonyNetworkRequest.REQUEST_STATE_SATISFIED);
-                            log("Successfully attached network request " + networkRequest);
-                        } else {
-                            failedList.add(networkRequest);
-                            log("Attached failed. Cannot satisfy the network request "
-                                    + networkRequest);
-                        }
-                        if (failedList.size() > 0) {
-                            mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
-                                    .onAttachFailed(DataNetwork.this, failedList));
-                        }
-                    }
+                    onAttachNetworkRequests((NetworkRequestList) msg.obj);
                     break;
                 }
                 case EVENT_DETACH_NETWORK_REQUEST: {
@@ -974,6 +961,7 @@ public class DataNetwork extends StateMachine {
                         networkRequest.setState(TelephonyNetworkRequest.REQUEST_STATE_UNSATISFIED);
                         networkRequest.setAttachedNetwork(null);
                     }
+                    log("All network requests detached.");
                     mAttachedNetworkRequestList.clear();
                     break;
                 }
@@ -987,6 +975,7 @@ public class DataNetwork extends StateMachine {
                     AsyncResult asyncResult = (AsyncResult) msg.obj;
                     int[] administratorUids = (int[]) asyncResult.result;
                     mAdministratorUids = Arrays.copyOf(administratorUids, administratorUids.length);
+                    updateNetworkCapabilities();
                     break;
                 }
                 case EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED:
@@ -995,7 +984,9 @@ public class DataNetwork extends StateMachine {
                 case EVENT_PCO_DATA_RECEIVED:
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
                 case EVENT_DISPLAY_INFO_CHANGED:
+                case EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET:
                     // Ignore the events when not in the correct state.
+                    log("Ignored " + eventToString(msg.what));
                     break;
                 case EVENT_START_HANDOVER:
                     log("Ignore the handover to " + AccessNetworkConstants
@@ -1068,6 +1059,7 @@ public class DataNetwork extends StateMachine {
                 case EVENT_START_HANDOVER:
                 case EVENT_TEAR_DOWN_NETWORK:
                 case EVENT_PCO_DATA_RECEIVED:
+                case EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET:
                     // Defer the request until connected or disconnected.
                     deferMessage(msg);
                     break;
@@ -1187,6 +1179,10 @@ public class DataNetwork extends StateMachine {
                     int resultCode = msg.arg1;
                     onDeactivateResponse(resultCode);
                     break;
+                case EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET:
+                    transitionTo(mDisconnectingState);
+                    sendMessageDelayed(EVENT_TEAR_DOWN_NETWORK, msg.arg1, msg.arg2);
+                    break;
                 default:
                     return NOT_HANDLED;
             }
@@ -1224,6 +1220,7 @@ public class DataNetwork extends StateMachine {
                         deferMessage(msg);
                     }
                     break;
+                case EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET:
                 case EVENT_DISPLAY_INFO_CHANGED:
                 case EVENT_TEAR_DOWN_NETWORK:
                     // Defer the request until handover succeeds or fails.
@@ -1325,6 +1322,15 @@ public class DataNetwork extends StateMachine {
         public boolean processMessage(Message msg) {
             logv("event=" + eventToString(msg.what));
             switch (msg.what) {
+                case EVENT_TEAR_DOWN_NETWORK:
+                    if (mInvokedDataDeactivation) {
+                        log("Ignore tear down request because network is being torn down.");
+                        break;
+                    }
+                    removeMessages(EVENT_TEAR_DOWN_NETWORK);
+                    removeDeferredMessages(EVENT_TEAR_DOWN_NETWORK);
+                    onTearDown(msg.arg1);
+                    break;
                 case EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE:
                     int resultCode = msg.arg1;
                     onDeactivateResponse(resultCode);
@@ -1361,6 +1367,24 @@ public class DataNetwork extends StateMachine {
         @Override
         public void enter() {
             logl("Data network disconnected. mEverConnected=" + mEverConnected);
+            // Preserve the list for onSetupDataFailed callback, because we need to pass that list
+            // back to DataNetworkController, but after EVENT_DETACH_ALL_NETWORK_REQUESTS gets
+            // processed, the network request list would become empty.
+            NetworkRequestList requestList = new NetworkRequestList(mAttachedNetworkRequestList);
+
+            // The detach all network requests must be the last message to handle.
+            sendMessage(EVENT_DETACH_ALL_NETWORK_REQUESTS);
+            // Gracefully handle all the un-processed events then quit the state machine.
+            // quit() throws a QUIT event to the end of message queue. All the events before quit()
+            // will be processed. Events after quit() will not be processed.
+            quit();
+
+            //************************************************************//
+            // DO NOT POST ANY EVENTS AFTER HERE.                         //
+            // THE STATE MACHINE WONT PROCESS EVENTS AFTER QUIT.          //
+            // ONLY CLEANUP SHOULD BE PERFORMED AFTER THIS.               //
+            //************************************************************//
+
             if (mEverConnected) {
                 mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
                         .onDisconnected(DataNetwork.this, mFailCause));
@@ -1370,15 +1394,8 @@ public class DataNetwork extends StateMachine {
             } else {
                 mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
                         .onSetupDataFailed(DataNetwork.this,
-                                new NetworkRequestList(mAttachedNetworkRequestList),
-                                mFailCause, mRetryDelayMillis));
+                                requestList, mFailCause, mRetryDelayMillis));
             }
-            // The detach all network requests must be the last message to handle.
-            sendMessage(EVENT_DETACH_ALL_NETWORK_REQUESTS);
-            // Gracefully handle all the un-processed events then quit the state machine.
-            // quit() throws a QUIT event to the end of message queue. All the events before quit()
-            // will be processed. Events after quit() will not be processed.
-            quit();
             notifyPreciseDataConnectionState();
             mNetworkAgent.unregister();
             mDataCallSessionStats.onDataCallDisconnected(mFailCause);
@@ -1429,14 +1446,14 @@ public class DataNetwork extends StateMachine {
      * Attempt to attach the network request list to this data network. Whether the network can
      * satisfy the request or not will be checked when EVENT_ATTACH_NETWORK_REQUEST is processed.
      * If the request can't be attached, {@link DataNetworkCallback#onAttachFailed(
-     * DataNetwork, NetworkRequestList)} will be called, and retry should be scheduled.
+     * DataNetwork, NetworkRequestList)}.
      *
      * @param requestList Network request list to attach.
      * @return {@code false} if the network is already disconnected. {@code true} means the request
      * has been scheduled to attach to the network. If attach succeeds, the network request's state
      * will be set to {@link TelephonyNetworkRequest#REQUEST_STATE_SATISFIED}. If failed, the
      * callback {@link DataNetworkCallback#onAttachFailed(DataNetwork, NetworkRequestList)} will
-     * be called, and retry should be scheduled.
+     * be called.
      */
     public boolean attachNetworkRequests(@NonNull NetworkRequestList requestList) {
         // If the network is already ended, we still attach the network request to the data network,
@@ -1450,6 +1467,35 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
+     * Called when attaching network request list to this data network.
+     *
+     * @param requestList Network request list to attach.
+     */
+    public void onAttachNetworkRequests(@NonNull NetworkRequestList requestList) {
+        NetworkRequestList failedList = new NetworkRequestList();
+        for (TelephonyNetworkRequest networkRequest : requestList) {
+            if (!mDataNetworkController.isNetworkRequestExisting(networkRequest)) {
+                failedList.add(networkRequest);
+                log("Attached failed. Network request was already removed.");
+            } else if (!networkRequest.canBeSatisfiedBy(getNetworkCapabilities())) {
+                failedList.add(networkRequest);
+                log("Attached failed. Cannot satisfy the network request "
+                        + networkRequest);
+            } else {
+                mAttachedNetworkRequestList.add(networkRequest);
+                networkRequest.setAttachedNetwork(DataNetwork.this);
+                networkRequest.setState(
+                        TelephonyNetworkRequest.REQUEST_STATE_SATISFIED);
+                log("Successfully attached network request " + networkRequest);
+            }
+        }
+        if (failedList.size() > 0) {
+            mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                    .onAttachFailed(DataNetwork.this, failedList));
+        }
+    }
+
+    /**
      * Detach the network request from this data network. Note that this will not tear down the
      * network.
      *
@@ -1457,7 +1503,6 @@ public class DataNetwork extends StateMachine {
      */
     public void detachNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
         if (getCurrentState() == null || isDisconnected()) {
-            mAttachedNetworkRequestList.remove(networkRequest);
             return;
         }
         sendMessage(obtainMessage(EVENT_DETACH_NETWORK_REQUEST, networkRequest));
@@ -1598,6 +1643,8 @@ public class DataNetwork extends StateMachine {
                 switch (networkCapability) {
                     case NetworkCapabilities.NET_CAPABILITY_ENTERPRISE:
                         builder.addCapability(networkCapability);
+                        // Always add internet if TD contains enterprise.
+                        builder.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
                         builder.addEnterpriseId(osAppId.getDifferentiator());
                         break;
                     case NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY:
@@ -1625,7 +1672,9 @@ public class DataNetwork extends StateMachine {
         // Always start with NOT_VCN_MANAGED, then remove if VcnManager indicates this is part of a
         // VCN.
         builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
-        if (isVcnManaged(builder.build())) {
+        final VcnNetworkPolicyResult vcnPolicy = getVcnPolicy(builder.build());
+        if (vcnPolicy != null && !vcnPolicy.getNetworkCapabilities()
+                .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)) {
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
         }
 
@@ -1672,23 +1721,31 @@ public class DataNetwork extends StateMachine {
             if (mDataAllowedReason == DataAllowedReason.RESTRICTED_REQUEST) {
                 builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
             } else if (mDataAllowedReason == DataAllowedReason.UNMETERED_USAGE
-                    || mDataAllowedReason == DataAllowedReason.MMS_REQUEST) {
+                    || mDataAllowedReason == DataAllowedReason.MMS_REQUEST
+                    || mDataAllowedReason == DataAllowedReason.EMERGENCY_SUPL) {
                 // If data is allowed due to unmetered usage, or MMS always-allowed, we need to
                 // remove unrelated-but-metered capabilities.
                 for (int capability : meteredCapabilities) {
                     // 1. If it's unmetered usage, remove all metered capabilities.
-                    // 2. if it's MMS always-allowed, then remove all metered capabilities but MMS.
-                    if (capability != NetworkCapabilities.NET_CAPABILITY_MMS
-                            || mDataAllowedReason != DataAllowedReason.MMS_REQUEST) {
-                        builder.removeCapability(capability);
+                    // 2. If it's MMS always-allowed, then remove all metered capabilities but MMS.
+                    // 3/ If it's for emergency SUPL, then remove all metered capabilities but SUPL.
+                    if ((capability == NetworkCapabilities.NET_CAPABILITY_MMS
+                            && mDataAllowedReason == DataAllowedReason.MMS_REQUEST)
+                            || (capability == NetworkCapabilities.NET_CAPABILITY_SUPL
+                            && mDataAllowedReason == DataAllowedReason.EMERGENCY_SUPL)) {
+                        // Not removing the capability for special uses.
+                        continue;
                     }
+                    builder.removeCapability(capability);
                 }
             }
         }
 
         // If one of the capabilities are for special use, for example, IMS, CBS, then this
         // network should be restricted, regardless data is enabled or not.
-        if (NetworkCapabilitiesUtils.inferRestrictedCapability(builder.build())) {
+        if (NetworkCapabilitiesUtils.inferRestrictedCapability(builder.build())
+                || (vcnPolicy != null && !vcnPolicy.getNetworkCapabilities()
+                        .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED))) {
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
         }
 
@@ -1701,6 +1758,7 @@ public class DataNetwork extends StateMachine {
             // This is the first time when network capabilities is created. The agent is not created
             // at this time. Just return here. The network capabilities will be used when network
             // agent is created.
+            log("Initial capabilities " + mNetworkCapabilities);
             mNetworkCapabilities = nc;
             return;
         }
@@ -1729,6 +1787,7 @@ public class DataNetwork extends StateMachine {
                 // Now we need to inform connectivity service and data network controller
                 // about the capabilities changed.
                 mNetworkCapabilities = nc;
+                log("Capabilities changed to " + mNetworkCapabilities);
                 mNetworkAgent.sendNetworkCapabilities(mNetworkCapabilities);
             }
 
@@ -2162,15 +2221,15 @@ public class DataNetwork extends StateMachine {
      * will be performed. {@code null} if the data network is already disconnected or being
      * disconnected.
      */
-    public @Nullable Runnable tearDownWithCondition(@TearDownReason int reason,
+    public @Nullable Runnable tearDownWhenConditionMet(@TearDownReason int reason,
             long timeoutMillis) {
         if (getCurrentState() == null || isDisconnected() || isDisconnecting()) {
-            loge("tearDownGracefully: Not in the right state. State=" + getCurrentState());
+            loge("tearDownWhenConditionMet: Not in the right state. State=" + getCurrentState());
             return null;
         }
-        logl("tearDownWithCondition: reason=" + tearDownReasonToString(reason) + ", timeout="
+        logl("tearDownWhenConditionMet: reason=" + tearDownReasonToString(reason) + ", timeout="
                 + timeoutMillis + "ms.");
-        sendMessageDelayed(EVENT_TEAR_DOWN_NETWORK, reason, timeoutMillis);
+        sendMessage(EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET, reason, (int) timeoutMillis);
         return () -> this.tearDown(reason);
     }
 
@@ -2764,18 +2823,14 @@ public class DataNetwork extends StateMachine {
      * Check if the this data network is VCN-managed.
      *
      * @param networkCapabilities The network capabilities of this data network.
-     * @return {@code true} if this data network is VCN-managed.
+     * @return The VCN's policy for this DataNetwork.
      */
-    private boolean isVcnManaged(NetworkCapabilities networkCapabilities) {
-        if (mVcnManager == null) return false;
-        VcnNetworkPolicyResult policyResult =
-                mVcnManager.applyVcnNetworkPolicy(networkCapabilities, getLinkProperties());
+    private VcnNetworkPolicyResult getVcnPolicy(NetworkCapabilities networkCapabilities) {
+        if (mVcnManager == null) {
+            return null;
+        }
 
-        // if the Network does have capability NOT_VCN_MANAGED, return false to indicate it's not
-        // VCN-managed
-        return !policyResult
-                .getNetworkCapabilities()
-                .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+        return mVcnManager.applyVcnNetworkPolicy(networkCapabilities, getLinkProperties());
     }
 
     /**
@@ -2828,8 +2883,8 @@ public class DataNetwork extends StateMachine {
                 return "TEAR_DOWN_REASON_PENDING_TEAR_DOWN_ALL";
             case TEAR_DOWN_REASON_NO_SUITABLE_DATA_PROFILE:
                 return "TEAR_DOWN_REASON_NO_SUITABLE_DATA_PROFILE";
-            case TEAR_DOWN_REASON_EMERGENCY_CALL:
-                return "TEAR_DOWN_REASON_EMERGENCY_CALL";
+            case TEAR_DOWN_REASON_CDMA_EMERGENCY_CALLBACK_MODE:
+                return "TEAR_DOWN_REASON_CDMA_EMERGENCY_CALLBACK_MODE";
             case TEAR_DOWN_REASON_RETRY_SCHEDULED:
                 return "TEAR_DOWN_REASON_RETRY_SCHEDULED";
             case TEAR_DOWN_REASON_DATA_THROTTLED:
@@ -2895,6 +2950,8 @@ public class DataNetwork extends StateMachine {
                 return "EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE";
             case EVENT_STUCK_IN_TRANSIENT_STATE:
                 return "EVENT_STUCK_IN_TRANSIENT_STATE";
+            case EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET:
+                return "EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET";
             default:
                 return "Unknown(" + event + ")";
         }

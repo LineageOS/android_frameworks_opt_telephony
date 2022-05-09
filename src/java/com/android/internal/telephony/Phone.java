@@ -2935,6 +2935,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return false;
     }
 
+    public boolean isInCdmaEcm() {
+        return getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA && isInEcm()
+                && (mImsPhone == null || !mImsPhone.isInImsEcm());
+    }
+
     public void setIsInEcm(boolean isInEcm) {
         if (!getUnitTestMode()) {
             TelephonyProperties.in_ecm_mode(isInEcm);
