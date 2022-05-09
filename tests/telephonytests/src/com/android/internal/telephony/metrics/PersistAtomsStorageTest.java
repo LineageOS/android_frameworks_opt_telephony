@@ -144,6 +144,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     private CellularServiceState mServiceState2Proto;
     private CellularServiceState mServiceState3Proto;
     private CellularServiceState mServiceState4Proto;
+    private CellularServiceState mServiceState5Proto;
 
     private CellularDataServiceSwitch[] mServiceSwitches;
     private CellularServiceState[] mServiceStates;
@@ -408,6 +409,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mServiceState1Proto.isMultiSim = true;
         mServiceState1Proto.carrierId = CARRIER1_ID;
         mServiceState1Proto.totalTimeMillis = 5000L;
+        mServiceState1Proto.isEmergencyOnly = false;
 
         // LTE with ENDC on slot 0
         mServiceState2Proto = new CellularServiceState();
@@ -420,6 +422,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mServiceState2Proto.isMultiSim = true;
         mServiceState2Proto.carrierId = CARRIER1_ID;
         mServiceState2Proto.totalTimeMillis = 15000L;
+        mServiceState2Proto.isEmergencyOnly = false;
 
         // LTE with WFC and roaming on slot 1
         mServiceState3Proto = new CellularServiceState();
@@ -432,6 +435,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mServiceState3Proto.isMultiSim = true;
         mServiceState3Proto.carrierId = CARRIER2_ID;
         mServiceState3Proto.totalTimeMillis = 10000L;
+        mServiceState3Proto.isEmergencyOnly = false;
 
         // UMTS with roaming on slot 1
         mServiceState4Proto = new CellularServiceState();
@@ -444,6 +448,20 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mServiceState4Proto.isMultiSim = true;
         mServiceState4Proto.carrierId = CARRIER2_ID;
         mServiceState4Proto.totalTimeMillis = 10000L;
+        mServiceState4Proto.isEmergencyOnly = false;
+
+        // Limited service on slot 0
+        mServiceState5Proto = new CellularServiceState();
+        mServiceState5Proto.voiceRat = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        mServiceState5Proto.dataRat = TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        mServiceState5Proto.voiceRoamingType = ServiceState.ROAMING_TYPE_NOT_ROAMING;
+        mServiceState5Proto.dataRoamingType = ServiceState.ROAMING_TYPE_NOT_ROAMING;
+        mServiceState5Proto.isEndc = false;
+        mServiceState5Proto.simSlotIndex = 0;
+        mServiceState5Proto.isMultiSim = true;
+        mServiceState5Proto.carrierId = CARRIER1_ID;
+        mServiceState5Proto.totalTimeMillis = 15000L;
+        mServiceState5Proto.isEmergencyOnly = true;
 
         mServiceSwitches =
                 new CellularDataServiceSwitch[] {mServiceSwitch1Proto, mServiceSwitch2Proto};
@@ -452,7 +470,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                     mServiceState1Proto,
                     mServiceState2Proto,
                     mServiceState3Proto,
-                    mServiceState4Proto
+                    mServiceState4Proto,
+                    mServiceState5Proto
                 };
 
         // IMS over LTE on slot 0, registered for 5 seconds
@@ -931,6 +950,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mServiceState2Proto = null;
         mServiceState3Proto = null;
         mServiceState4Proto = null;
+        mServiceState5Proto = null;
         mServiceSwitches = null;
         mServiceStates = null;
         mImsRegistrationStatsLte0 = null;
@@ -1368,7 +1388,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                     newServiceState1Proto,
                     mServiceState2Proto,
                     mServiceState3Proto,
-                    mServiceState4Proto
+                    mServiceState4Proto,
+                    mServiceState5Proto
                 },
                 serviceStates);
         CellularDataServiceSwitch[] serviceSwitches =
@@ -1493,7 +1514,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                     mServiceState1Proto,
                     mServiceState2Proto,
                     mServiceState3Proto,
-                    mServiceState4Proto
+                    mServiceState4Proto,
+                    mServiceState5Proto
                 },
                 serviceStates1);
         assertProtoArrayEquals(new CellularServiceState[0], serviceStates2);

@@ -718,7 +718,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 state.simSlotIndex,
                 state.isMultiSim,
                 state.carrierId,
-                roundAndConvertMillisToSeconds(state.totalTimeMillis));
+                roundAndConvertMillisToSeconds(state.totalTimeMillis),
+                state.isEmergencyOnly);
     }
 
     private static StatsEvent buildStatsEvent(VoiceCallRatUsage usage) {
