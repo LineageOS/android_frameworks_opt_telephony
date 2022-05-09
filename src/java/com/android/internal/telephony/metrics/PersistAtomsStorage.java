@@ -25,6 +25,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyManager.NetworkTypeBitMask;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.nano.PersistAtomsProto.CarrierIdMismatch;
@@ -50,6 +51,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.SipMessageResponse;
 import com.android.internal.telephony.nano.PersistAtomsProto.SipTransportFeatureTagStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.SipTransportSession;
 import com.android.internal.telephony.nano.PersistAtomsProto.UceEventStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.UnmeteredNetworks;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallRatUsage;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
 import com.android.internal.util.ArrayUtils;
@@ -349,9 +351,12 @@ public class PersistAtomsStorage {
                     mMaxNumCarrierIdMismatches - 1);
             mAtoms.carrierIdMismatch[mMaxNumCarrierIdMismatches - 1] = carrierIdMismatch;
         } else {
-            int newLength = mAtoms.carrierIdMismatch.length + 1;
-            mAtoms.carrierIdMismatch = Arrays.copyOf(mAtoms.carrierIdMismatch, newLength);
-            mAtoms.carrierIdMismatch[newLength - 1] = carrierIdMismatch;
+            mAtoms.carrierIdMismatch =
+                    ArrayUtils.appendElement(
+                            CarrierIdMismatch.class,
+                            mAtoms.carrierIdMismatch,
+                            carrierIdMismatch,
+                            true);
         }
         saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
         return true;
@@ -422,9 +427,9 @@ public class PersistAtomsStorage {
             newMetrics.capability = networkRequests.capability;
             newMetrics.carrierId = networkRequests.carrierId;
             newMetrics.requestCount = networkRequests.requestCount;
-            int newLength = mAtoms.networkRequestsV2.length + 1;
-            mAtoms.networkRequestsV2 = Arrays.copyOf(mAtoms.networkRequestsV2, newLength);
-            mAtoms.networkRequestsV2[newLength - 1] = newMetrics;
+            mAtoms.networkRequestsV2 =
+                    ArrayUtils.appendElement(
+                            NetworkRequestsV2.class, mAtoms.networkRequestsV2, newMetrics, true);
         }
         saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
     }
@@ -599,6 +604,41 @@ public class PersistAtomsStorage {
                 insertAtRandomPlace(mAtoms.gbaEvent, stats, mMaxNumGbaEventStats);
         }
         saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
+    }
+
+    /**
+     *  Sets the unmetered networks bitmask for a given phone id. If the carrier id
+     *  doesn't match the existing UnmeteredNetworks' carrier id, the bitmask is
+     *  first reset to 0.
+     */
+    public synchronized void addUnmeteredNetworks(
+            int phoneId, int carrierId, @NetworkTypeBitMask long bitmask) {
+        UnmeteredNetworks stats = findUnmeteredNetworks(phoneId);
+        boolean needToSave = true;
+        if (stats == null) {
+            stats = new UnmeteredNetworks();
+            stats.phoneId = phoneId;
+            stats.carrierId = carrierId;
+            stats.unmeteredNetworksBitmask = bitmask;
+            mAtoms.unmeteredNetworks =
+                    ArrayUtils.appendElement(
+                            UnmeteredNetworks.class, mAtoms.unmeteredNetworks, stats, true);
+        } else {
+            // Reset the bitmask to 0 if carrier id doesn't match.
+            if (stats.carrierId != carrierId) {
+                stats.carrierId = carrierId;
+                stats.unmeteredNetworksBitmask = 0;
+            }
+            if ((stats.unmeteredNetworksBitmask | bitmask) != stats.unmeteredNetworksBitmask) {
+                stats.unmeteredNetworksBitmask |= bitmask;
+            } else {
+                needToSave = false;
+            }
+        }
+        // Only save if something changes.
+        if (needToSave) {
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
+        }
     }
 
     /**
@@ -1034,6 +1074,30 @@ public class PersistAtomsStorage {
         }
     }
 
+    /**
+     *  Returns the unmetered networks bitmask for a given phone id. Returns 0 if there is
+     *  no existing UnmeteredNetworks for the given phone id or the carrier id doesn't match.
+     *  Existing UnmeteredNetworks is discarded after.
+     */
+    public synchronized @NetworkTypeBitMask long getUnmeteredNetworks(int phoneId, int carrierId) {
+        UnmeteredNetworks existingStats = findUnmeteredNetworks(phoneId);
+        if (existingStats == null) {
+            return 0L;
+        }
+        @NetworkTypeBitMask
+        long bitmask =
+                existingStats.carrierId != carrierId ? 0L : existingStats.unmeteredNetworksBitmask;
+        mAtoms.unmeteredNetworks =
+                sanitizeAtoms(
+                        ArrayUtils.removeElement(
+                                UnmeteredNetworks.class,
+                                mAtoms.unmeteredNetworks,
+                                existingStats),
+                        UnmeteredNetworks.class);
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
+        return bitmask;
+    }
+
     /** Saves a pending {@link PersistAtoms} to a file in private storage immediately. */
     public void flushAtoms() {
         if (mHandler.hasCallbacks(mSaveRunnable)) {
@@ -1161,6 +1225,11 @@ public class PersistAtomsStorage {
                             atoms.gbaEvent,
                             GbaEvent.class,
                             mMaxNumGbaEventStats);
+            atoms.unmeteredNetworks =
+                    sanitizeAtoms(
+                            atoms.unmeteredNetworks,
+                            UnmeteredNetworks.class
+                    );
 
             // out of caution, sanitize also the timestamps
             atoms.voiceCallRatUsagePullTimestampMillis =
@@ -1554,13 +1623,23 @@ public class PersistAtomsStorage {
      * the given one, or {@code null} if it does not exist.
      */
     private @Nullable SipTransportFeatureTagStats find(SipTransportFeatureTagStats key) {
-        for (SipTransportFeatureTagStats stat: mAtoms.sipTransportFeatureTagStats) {
+        for (SipTransportFeatureTagStats stat : mAtoms.sipTransportFeatureTagStats) {
             if (stat.carrierId == key.carrierId
                     && stat.slotId == key.slotId
                     && stat.featureTagName == key.featureTagName
                     && stat.sipTransportDeregisteredReason == key.sipTransportDeregisteredReason
                     && stat.sipTransportDeniedReason == key.sipTransportDeniedReason) {
                 return stat;
+            }
+        }
+        return null;
+    }
+
+    /** Returns the UnmeteredNetworks given a phone id. */
+    private @Nullable UnmeteredNetworks findUnmeteredNetworks(int phoneId) {
+        for (UnmeteredNetworks unmeteredNetworks : mAtoms.unmeteredNetworks) {
+            if (unmeteredNetworks.phoneId == phoneId) {
+                return unmeteredNetworks;
             }
         }
         return null;

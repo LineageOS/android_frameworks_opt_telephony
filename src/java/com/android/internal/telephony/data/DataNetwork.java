@@ -2718,6 +2718,10 @@ public class DataNetwork extends StateMachine {
         if (changed) {
             updateNetworkCapabilities();
         }
+        if (mTempNotMetered && isInternetSupported()) {
+            // NR NSA and NR have the same network type: NR
+            mDataCallSessionStats.onUnmeteredUpdate(networkType);
+        }
     }
 
     /**
