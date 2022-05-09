@@ -473,23 +473,41 @@ public class CellularNetworkServiceTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testNetworkTypeForCellIdentity() {
-        assertEquals(TelephonyManager.NETWORK_TYPE_GSM,
-                    CellularNetworkService.getNetworkTypeForCellIdentity(
-                            TelephonyManager.NETWORK_TYPE_HSDPA, new CellIdentityGsm()));
-        assertEquals(TelephonyManager.NETWORK_TYPE_LTE,
-                    CellularNetworkService.getNetworkTypeForCellIdentity(
-                            TelephonyManager.NETWORK_TYPE_NR, new CellIdentityLte()));
-        assertEquals(TelephonyManager.NETWORK_TYPE_LTE,
-                    CellularNetworkService.getNetworkTypeForCellIdentity(
-                        TelephonyManager.NETWORK_TYPE_IWLAN, new CellIdentityLte()));
-        assertEquals(TelephonyManager.NETWORK_TYPE_LTE,
+        assertEquals(
+                TelephonyManager.NETWORK_TYPE_GSM,
                 CellularNetworkService.getNetworkTypeForCellIdentity(
-                        TelephonyManager.NETWORK_TYPE_LTE_CA, new CellIdentityLte()));
-        assertEquals(TelephonyManager.NETWORK_TYPE_EDGE,
-                    CellularNetworkService.getNetworkTypeForCellIdentity(
-                    TelephonyManager.NETWORK_TYPE_EDGE, new CellIdentityGsm()));
-        assertEquals(TelephonyManager.NETWORK_TYPE_UMTS,
-                    CellularNetworkService.getNetworkTypeForCellIdentity(
-                    TelephonyManager.NETWORK_TYPE_UNKNOWN, new CellIdentityWcdma()));
+                        TelephonyManager.NETWORK_TYPE_HSDPA,
+                        new CellIdentityGsm(),
+                        mPhone.getCarrierId()));
+        assertEquals(
+                TelephonyManager.NETWORK_TYPE_LTE,
+                CellularNetworkService.getNetworkTypeForCellIdentity(
+                        TelephonyManager.NETWORK_TYPE_NR,
+                        new CellIdentityLte(),
+                        mPhone.getCarrierId()));
+        assertEquals(
+                TelephonyManager.NETWORK_TYPE_LTE,
+                CellularNetworkService.getNetworkTypeForCellIdentity(
+                        TelephonyManager.NETWORK_TYPE_IWLAN,
+                        new CellIdentityLte(),
+                        mPhone.getCarrierId()));
+        assertEquals(
+                TelephonyManager.NETWORK_TYPE_LTE,
+                CellularNetworkService.getNetworkTypeForCellIdentity(
+                        TelephonyManager.NETWORK_TYPE_LTE_CA,
+                        new CellIdentityLte(),
+                        mPhone.getCarrierId()));
+        assertEquals(
+                TelephonyManager.NETWORK_TYPE_EDGE,
+                CellularNetworkService.getNetworkTypeForCellIdentity(
+                        TelephonyManager.NETWORK_TYPE_EDGE,
+                        new CellIdentityGsm(),
+                        mPhone.getCarrierId()));
+        assertEquals(
+                TelephonyManager.NETWORK_TYPE_UMTS,
+                CellularNetworkService.getNetworkTypeForCellIdentity(
+                        TelephonyManager.NETWORK_TYPE_UNKNOWN,
+                        new CellIdentityWcdma(),
+                        mPhone.getCarrierId()));
     }
 }
