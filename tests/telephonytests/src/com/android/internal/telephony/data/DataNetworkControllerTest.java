@@ -98,6 +98,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksManagerCallback;
+import com.android.internal.telephony.data.DataEvaluation.DataDisallowedReason;
 import com.android.internal.telephony.data.DataNetworkController.HandoverRule;
 import com.android.internal.telephony.data.DataRetryManager.DataRetryManagerCallback;
 import com.android.internal.telephony.ims.ImsResolver;
@@ -2093,5 +2094,19 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verify(mMockedWwanDataServiceManager, times(1)).setupDataCall(anyInt(),
                 any(DataProfile.class), anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(),
                 any(), any(), anyBoolean(), any(Message.class));
+    }
+
+    @Test
+    public void testGetInternetDataDisallowedReasons() {
+        List<DataDisallowedReason> reasons = mDataNetworkControllerUT
+                .getInternetDataDisallowedReasons();
+        assertThat(reasons).isEmpty();
+
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_UNKNOWN,
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING);
+
+        reasons = mDataNetworkControllerUT.getInternetDataDisallowedReasons();
+        assertThat(reasons).containsExactly(DataDisallowedReason.NOT_IN_SERVICE,
+                DataDisallowedReason.NO_SUITABLE_DATA_PROFILE);
     }
 }
