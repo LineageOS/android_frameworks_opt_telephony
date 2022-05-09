@@ -337,20 +337,29 @@ public class DataNetworkController extends Handler {
     private final @NonNull SparseArray<RegistrationManager.RegistrationCallback>
             mImsFeatureRegistrationCallbacks = new SparseArray<>();
 
+    /** The counter to detect back to back release/request IMS network. */
+    private @NonNull SlidingWindowEventCounter mImsThrottleCounter;
+    /** Event counter for unwanted network within time window, is used to trigger anomaly report. */
+    private @NonNull SlidingWindowEventCounter mNetworkUnwantedCounter;
+    /** Event counter for WLAN setup data failure within time window to trigger anomaly report. */
+    private @NonNull SlidingWindowEventCounter mSetupDataCallWlanFailureCounter;
+    /** Event counter for WWAN setup data failure within time window to trigger anomaly report. */
+    private @NonNull SlidingWindowEventCounter mSetupDataCallWwanFailureCounter;
+
     /**
      * {@code true} if {@link #tearDownAllDataNetworks(int)} was invoked and waiting for all
      * networks torn down.
      */
     private boolean mPendingTearDownAllNetworks = false;
 
-    /** The counter to detect back to back release/request IMS network. */
-    private final @NonNull SlidingWindowEventCounter mImsThrottleCounter;
-
     /**
      * The capabilities of the latest released IMS request. To detect back to back release/request
      * IMS network.
      */
     private int[] mLastReleasedImsRequestCapabilities;
+
+    /** True after try to release an IMS network; False after try to request an IMS network. */
+    private boolean mLastImsOperationIsRelease;
 
     /** The broadcast receiver. */
     private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
@@ -577,6 +586,12 @@ public class DataNetworkController extends Handler {
          * @param transport The transport of the data service.
          */
         public void onDataServiceBound(@TransportType int transport) {}
+
+        /**
+         * Called when DataNetwork is frequently attempted to be torn down due to Network Unwanted
+         * call from connectivity service
+         */
+        public void onTrackNetworkUnwanted() {}
     }
 
     /**
@@ -766,9 +781,21 @@ public class DataNetworkController extends Handler {
         }
         mDataConfigManager = new DataConfigManager(mPhone, looper);
 
+        // ========== Anomaly counters ==========
         mImsThrottleCounter = new SlidingWindowEventCounter(
-                mDataConfigManager.getImsRequestReleaseThrottleAnomalyWindowMs(),
-                IMS_REQUEST_RELEASE_THROTTLE_ANOMALY_NUM_OCCURRENCES);
+                mDataConfigManager.getAnomalyImsReleaseRequestThreshold().timeWindow,
+                mDataConfigManager.getAnomalyImsReleaseRequestThreshold().eventNumOccurrence);
+        mNetworkUnwantedCounter = new SlidingWindowEventCounter(
+                mDataConfigManager.getAnomalyNetworkUnwantedThreshold().timeWindow,
+                mDataConfigManager.getAnomalyNetworkUnwantedThreshold().eventNumOccurrence);
+        mSetupDataCallWlanFailureCounter = new SlidingWindowEventCounter(
+                mDataConfigManager.getAnomalySetupDataCallThreshold().timeWindow,
+                mDataConfigManager.getAnomalySetupDataCallThreshold().eventNumOccurrence);
+        mSetupDataCallWwanFailureCounter = new SlidingWindowEventCounter(
+                mDataConfigManager.getAnomalySetupDataCallThreshold().timeWindow,
+                mDataConfigManager.getAnomalySetupDataCallThreshold().eventNumOccurrence);
+        // ========================================
+
         mDataSettingsManager = TelephonyComponentFactory.getInstance().inject(
                 DataSettingsManager.class.getName())
                 .makeDataSettingsManager(mPhone, this, looper,
@@ -856,6 +883,22 @@ public class DataNetworkController extends Handler {
                     public void onDataNetworkHandoverRetryStopped(
                             @NonNull DataNetwork dataNetwork) {
                         Objects.requireNonNull(dataNetwork);
+                        int preferredTransport = mAccessNetworksManager
+                                .getPreferredTransportByNetworkCapability(
+                                        dataNetwork.getApnTypeNetworkCapability());
+                        if (dataNetwork.getTransport() == preferredTransport) {
+                            log("onDataNetworkHandoverRetryStopped: " + dataNetwork + " is already "
+                                    + "on the preferred transport "
+                                    + AccessNetworkConstants.transportTypeToString(
+                                            preferredTransport));
+                            return;
+                        }
+                        if (dataNetwork.shouldDelayTearDown()) {
+                            log("onDataNetworkHandoverRetryStopped: Delay IMS tear down until call "
+                                    + "ends. " + dataNetwork);
+                            return;
+                        }
+
                         tearDownGracefully(dataNetwork,
                                 DataNetwork.TEAR_DOWN_REASON_HANDOVER_FAILED);
                     }
@@ -1104,20 +1147,22 @@ public class DataNetworkController extends Handler {
      * @param networkRequest The network request.
      */
     private void onAddNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
-        if (Arrays.equals(mLastReleasedImsRequestCapabilities, networkRequest.getCapabilities())
-                && mImsThrottleCounter.addOccurrence()) {
-            AnomalyReporter.reportAnomaly(
-                    UUID.fromString("ead6f8db-d2f2-4ed3-8da5-1d8560fe7daf"),
-                    networkRequest.getNativeNetworkRequest().getRequestorPackageName()
-                            + " requested with same capabilities falls under "
-                            + mDataConfigManager.getImsRequestReleaseThrottleAnomalyWindowMs()
-                            + " ms window.");
+        if (mLastImsOperationIsRelease) {
+            mLastImsOperationIsRelease = false;
+            if (Arrays.equals(
+                    mLastReleasedImsRequestCapabilities, networkRequest.getCapabilities())
+                    && mImsThrottleCounter.addOccurrence()) {
+                reportAnomaly(networkRequest.getNativeNetworkRequest().getRequestorPackageName()
+                                + " requested with same capabilities "
+                                + mImsThrottleCounter.getFrequencyString(),
+                        "ead6f8db-d2f2-4ed3-8da5-1d8560fe7daf");
+            }
         }
         if (!mAllNetworkRequestList.add(networkRequest)) {
             loge("onAddNetworkRequest: Duplicate network request. " + networkRequest);
             return;
         }
-        logv("onAddNetworkRequest: added " + networkRequest);
+        log("onAddNetworkRequest: added " + networkRequest);
         onSatisfyNetworkRequest(networkRequest);
     }
 
@@ -1455,12 +1500,15 @@ public class DataNetworkController extends Handler {
         }
 
         networkRequest.setEvaluation(evaluation);
-        log(evaluation.toString() + ", network type="
-                + TelephonyManager.getNetworkTypeName(getDataNetworkType(transport))
-                + ", reg state="
-                + NetworkRegistrationInfo.registrationStateToString(
-                        getDataRegistrationState(transport))
-                + ", " + networkRequest);
+        // EXTERNAL_QUERY generates too many log spam.
+        if (reason != DataEvaluationReason.EXTERNAL_QUERY) {
+            log(evaluation.toString() + ", network type="
+                    + TelephonyManager.getNetworkTypeName(getDataNetworkType(transport))
+                    + ", reg state="
+                    + NetworkRegistrationInfo.registrationStateToString(
+                    getDataRegistrationState(transport))
+                    + ", " + networkRequest);
+        }
         return evaluation;
     }
 
@@ -1545,11 +1593,7 @@ public class DataNetworkController extends Handler {
         }
 
         boolean delayImsTearDown = false;
-        if (mDataConfigManager.isImsDelayTearDownEnabled()
-                && dataNetwork.getNetworkCapabilities()
-                .hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
-                && mPhone.getImsPhone() != null
-                && mPhone.getImsPhone().getCallTracker().getState() != PhoneConstants.State.IDLE) {
+        if (dataNetwork.shouldDelayTearDown()) {
             // Some carriers requires delay tearing down IMS network until the call ends even if
             // VoPS bit is lost.
             log("Ignore VoPS bit and delay IMS tear down until call ends.");
@@ -1876,6 +1920,7 @@ public class DataNetworkController extends Handler {
         if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
             mImsThrottleCounter.addOccurrence();
             mLastReleasedImsRequestCapabilities = networkRequest.getCapabilities();
+            mLastImsOperationIsRelease = true;
         }
         if (!mAllNetworkRequestList.remove(networkRequest)) {
             loge("onRemoveNetworkRequest: Network request does not exist. " + networkRequest);
@@ -1885,7 +1930,7 @@ public class DataNetworkController extends Handler {
         if (networkRequest.getAttachedNetwork() != null) {
             networkRequest.getAttachedNetwork().detachNetworkRequest(networkRequest);
         }
-        logv("onRemoveNetworkRequest: Removed " + networkRequest);
+        log("onRemoveNetworkRequest: Removed " + networkRequest);
     }
 
     /**
@@ -2065,8 +2110,10 @@ public class DataNetworkController extends Handler {
         log("onDataConfigUpdated: config is "
                 + (mDataConfigManager.isConfigCarrierSpecific() ? "" : "not ")
                 + "carrier specific. mSimState="
-                + SubscriptionInfoUpdater.simStateString(mSimState));
+                + SubscriptionInfoUpdater.simStateString(mSimState)
+                + ". DeviceConfig updated.");
 
+        updateAnomalySlidingWindowCounters();
         updateNetworkRequestsPriority();
         sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
                 DataEvaluationReason.DATA_CONFIG_CHANGED));
@@ -2078,6 +2125,43 @@ public class DataNetworkController extends Handler {
     private void updateNetworkRequestsPriority() {
         for (TelephonyNetworkRequest networkRequest : mAllNetworkRequestList) {
             networkRequest.updatePriority();
+        }
+    }
+
+    /**
+     * Update the threshold of anomaly report counters
+     */
+    private void updateAnomalySlidingWindowCounters() {
+        mImsThrottleCounter = new SlidingWindowEventCounter(
+                mDataConfigManager.getAnomalyImsReleaseRequestThreshold().timeWindow,
+                mDataConfigManager.getAnomalyImsReleaseRequestThreshold().eventNumOccurrence);
+        mNetworkUnwantedCounter = new SlidingWindowEventCounter(
+                mDataConfigManager.getAnomalyNetworkUnwantedThreshold().timeWindow,
+                mDataConfigManager.getAnomalyNetworkUnwantedThreshold().eventNumOccurrence);
+        mSetupDataCallWwanFailureCounter = new SlidingWindowEventCounter(
+                mDataConfigManager.getAnomalySetupDataCallThreshold().timeWindow,
+                mDataConfigManager.getAnomalySetupDataCallThreshold().eventNumOccurrence);
+        mSetupDataCallWlanFailureCounter = new SlidingWindowEventCounter(
+                mDataConfigManager.getAnomalySetupDataCallThreshold().timeWindow,
+                mDataConfigManager.getAnomalySetupDataCallThreshold().eventNumOccurrence);
+    }
+
+    /**
+     * There have been several bugs where a RECONNECT loop kicks off where a DataConnection
+     * connects to the Network, ConnectivityService indicates that the Network is unwanted,
+     * and then the DataConnection reconnects. By the time we get the bug report it's too late
+     * because there have already been hundreds of RECONNECTS.  This is meant to capture the issue
+     * when it first starts.
+     *
+     * The unwanted counter is configured to only take an anomaly report in extreme cases.
+     * This is to avoid having the anomaly message show up on several devices.
+     *
+     */
+    private void onTrackNetworkUnwanted() {
+        if (mNetworkUnwantedCounter.addOccurrence()) {
+            reportAnomaly("Network Unwanted called "
+                            + mNetworkUnwantedCounter.getFrequencyString(),
+                    "9f3bc55b-bfa6-4e26-afaa-5031426a66d2");
         }
     }
 
@@ -2217,6 +2301,11 @@ public class DataNetworkController extends Handler {
                     public void onNetworkCapabilitiesChanged(@NonNull DataNetwork dataNetwork) {
                         DataNetworkController.this.onNetworkCapabilitiesChanged(dataNetwork);
                     }
+
+                    @Override
+                    public void onTrackNetworkUnwanted(@NonNull DataNetwork dataNetwork) {
+                        DataNetworkController.this.onTrackNetworkUnwanted();
+                    }
                 }
         ));
         if (!mAnyDataNetworkExisting) {
@@ -2241,6 +2330,7 @@ public class DataNetworkController extends Handler {
                 + DataFailCause.toString(cause) + "(0x" + Integer.toHexString(cause)
                 + "), retryDelayMillis=" + retryDelayMillis + "ms.");
         mDataNetworkList.remove(dataNetwork);
+        trackSetupDataCallFailure(dataNetwork.getTransport());
         if (mAnyDataNetworkExisting && mDataNetworkList.isEmpty()) {
             mPendingTearDownAllNetworks = false;
             mAnyDataNetworkExisting = false;
@@ -2258,6 +2348,44 @@ public class DataNetworkController extends Handler {
         // Data retry manager will determine if retry is needed. If needed, retry will be scheduled.
         mDataRetryManager.evaluateDataSetupRetry(dataNetwork.getDataProfile(),
                 dataNetwork.getTransport(), requestList, cause, retryDelayMillis);
+    }
+
+    /**
+     * Track the frequency of setup data failure on each
+     * {@link AccessNetworkConstants#TransportType} data service.
+     *
+     * @param transport The transport of the data service.
+     */
+    private void trackSetupDataCallFailure(@TransportType int transport) {
+        switch (transport) {
+            case AccessNetworkConstants.TRANSPORT_TYPE_WWAN:
+                if (mSetupDataCallWwanFailureCounter.addOccurrence()) {
+                    reportAnomaly("RIL fails setup data call request "
+                                    + mSetupDataCallWwanFailureCounter.getFrequencyString(),
+                            "e6a98b97-9e34-4977-9a92-01d52a6691f6");
+                }
+                break;
+            case AccessNetworkConstants.TRANSPORT_TYPE_WLAN:
+                if (mSetupDataCallWlanFailureCounter.addOccurrence()) {
+                    reportAnomaly("IWLAN data service fails setup data call request "
+                                    + mSetupDataCallWlanFailureCounter.getFrequencyString(),
+                            "e2248d8b-d55f-42bd-871c-0cfd80c3ddd1");
+                }
+                break;
+            default:
+                loge("trackSetupDataCallFailure: INVALID transport.");
+        }
+    }
+
+    /**
+     * Trigger the anomaly report with the specified UUID.
+     *
+     * @param anomalyMsg Description of the event
+     * @param uuid UUID associated with that event
+     */
+    private void reportAnomaly(@NonNull String anomalyMsg, @NonNull String uuid) {
+        logl(anomalyMsg);
+        AnomalyReporter.reportAnomaly(UUID.fromString(uuid), anomalyMsg);
     }
 
     /**
@@ -2491,9 +2619,14 @@ public class DataNetworkController extends Handler {
             @DataFailureCause int cause, long retryDelayMillis,
             @HandoverFailureMode int handoverFailureMode) {
         logl("Handover failed. " + dataNetwork + ", cause=" + DataFailCause.toString(cause)
-                + "(0x" + Integer.toHexString(cause) + "), retryDelayMillis=" + retryDelayMillis
-                + "ms, handoverFailureMode="
+                + ", retryDelayMillis=" + retryDelayMillis + "ms, handoverFailureMode="
                 + DataCallResponse.failureModeToString(handoverFailureMode));
+        if (dataNetwork.getAttachedNetworkRequestList().isEmpty()) {
+            log("onDataNetworkHandoverFailed: No network requests attached to " + dataNetwork
+                    + ". No need to retry since the network will be torn down soon.");
+            return;
+        }
+
         if (handoverFailureMode == DataCallResponse.HANDOVER_FAILURE_MODE_DO_FALLBACK
                 || (handoverFailureMode == DataCallResponse.HANDOVER_FAILURE_MODE_LEGACY
                 && cause == DataFailCause.HANDOFF_PREFERENCE_CHANGED)) {
@@ -3256,6 +3389,8 @@ public class DataNetworkController extends Handler {
                 .map(TelephonyManager::getNetworkTypeName).collect(Collectors.joining(",")));
         pw.println("Congested override network types=" + mCongestedOverrideNetworkTypes.stream()
                 .map(TelephonyManager::getNetworkTypeName).collect(Collectors.joining(",")));
+        pw.println("mImsThrottleCounter=" + mImsThrottleCounter);
+        pw.println("mNetworkUnwantedCounter=" + mNetworkUnwantedCounter);
         pw.println("Local logs:");
         pw.increaseIndent();
         mLocalLog.dump(fd, pw, args);

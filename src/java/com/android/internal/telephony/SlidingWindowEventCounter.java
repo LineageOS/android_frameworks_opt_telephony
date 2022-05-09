@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.annotation.IntRange;
+import android.annotation.NonNull;
 import android.os.SystemClock;
 import android.util.LongArrayQueue;
 
@@ -81,7 +82,37 @@ public class SlidingWindowEventCounter {
     }
 
     @VisibleForTesting
-    int getNumOccurrences() {
+    int getQueuedNumOccurrences() {
         return mTimestampQueueMillis.size();
+    }
+
+    /**
+     * @return the time span in ms of the sliding window.
+     */
+    public synchronized long getWindowSizeMillis() {
+        return mWindowSizeMillis;
+    }
+
+    /**
+     * @return the least number of occurrences for {@link #isInWindow} to be true.
+     */
+    public synchronized int getNumOccurrences() {
+        return mNumOccurrences;
+    }
+
+    /**
+     * Get the event frequency description.
+     *
+     * @return A string describing the anomaly event
+     */
+    public @NonNull String getFrequencyString() {
+        return String.format("%d times within %d ms.", mNumOccurrences, mWindowSizeMillis);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("SlidingWindowEventCounter=[windowSizeMillis=" + mWindowSizeMillis
+                + ", numOccurrences=" + mNumOccurrences
+                + ", timestampQueueMillis=" + mTimestampQueueMillis + "]");
     }
 }
