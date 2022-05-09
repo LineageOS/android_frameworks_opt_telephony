@@ -947,25 +947,7 @@ public class DataNetwork extends StateMachine {
                     break;
                 }
                 case EVENT_ATTACH_NETWORK_REQUEST: {
-                    NetworkRequestList requestList = (NetworkRequestList) msg.obj;
-                    NetworkRequestList failedList = new NetworkRequestList();
-                    for (TelephonyNetworkRequest networkRequest : requestList) {
-                        if (networkRequest.canBeSatisfiedBy(getNetworkCapabilities())) {
-                            mAttachedNetworkRequestList.add(networkRequest);
-                            networkRequest.setAttachedNetwork(DataNetwork.this);
-                            networkRequest.setState(
-                                    TelephonyNetworkRequest.REQUEST_STATE_SATISFIED);
-                            log("Successfully attached network request " + networkRequest);
-                        } else {
-                            failedList.add(networkRequest);
-                            log("Attached failed. Cannot satisfy the network request "
-                                    + networkRequest);
-                        }
-                        if (failedList.size() > 0) {
-                            mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
-                                    .onAttachFailed(DataNetwork.this, failedList));
-                        }
-                    }
+                    onAttachNetworkRequests((NetworkRequestList) msg.obj);
                     break;
                 }
                 case EVENT_DETACH_NETWORK_REQUEST: {
@@ -1452,14 +1434,14 @@ public class DataNetwork extends StateMachine {
      * Attempt to attach the network request list to this data network. Whether the network can
      * satisfy the request or not will be checked when EVENT_ATTACH_NETWORK_REQUEST is processed.
      * If the request can't be attached, {@link DataNetworkCallback#onAttachFailed(
-     * DataNetwork, NetworkRequestList)} will be called, and retry should be scheduled.
+     * DataNetwork, NetworkRequestList)}.
      *
      * @param requestList Network request list to attach.
      * @return {@code false} if the network is already disconnected. {@code true} means the request
      * has been scheduled to attach to the network. If attach succeeds, the network request's state
      * will be set to {@link TelephonyNetworkRequest#REQUEST_STATE_SATISFIED}. If failed, the
      * callback {@link DataNetworkCallback#onAttachFailed(DataNetwork, NetworkRequestList)} will
-     * be called, and retry should be scheduled.
+     * be called.
      */
     public boolean attachNetworkRequests(@NonNull NetworkRequestList requestList) {
         // If the network is already ended, we still attach the network request to the data network,
@@ -1470,6 +1452,35 @@ public class DataNetwork extends StateMachine {
         }
         sendMessage(obtainMessage(EVENT_ATTACH_NETWORK_REQUEST, requestList));
         return true;
+    }
+
+    /**
+     * Called when attaching network request list to this data network.
+     *
+     * @param requestList Network request list to attach.
+     */
+    public void onAttachNetworkRequests(@NonNull NetworkRequestList requestList) {
+        NetworkRequestList failedList = new NetworkRequestList();
+        for (TelephonyNetworkRequest networkRequest : requestList) {
+            if (!mDataNetworkController.isNetworkRequestExisting(networkRequest)) {
+                failedList.add(networkRequest);
+                log("Attached failed. Network request was already removed.");
+            } else if (!networkRequest.canBeSatisfiedBy(getNetworkCapabilities())) {
+                failedList.add(networkRequest);
+                log("Attached failed. Cannot satisfy the network request "
+                        + networkRequest);
+            } else {
+                mAttachedNetworkRequestList.add(networkRequest);
+                networkRequest.setAttachedNetwork(DataNetwork.this);
+                networkRequest.setState(
+                        TelephonyNetworkRequest.REQUEST_STATE_SATISFIED);
+                log("Successfully attached network request " + networkRequest);
+            }
+        }
+        if (failedList.size() > 0) {
+            mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                    .onAttachFailed(DataNetwork.this, failedList));
+        }
     }
 
     /**
