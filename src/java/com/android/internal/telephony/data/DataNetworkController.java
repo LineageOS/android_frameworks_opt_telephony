@@ -358,6 +358,9 @@ public class DataNetworkController extends Handler {
      */
     private int[] mLastReleasedImsRequestCapabilities;
 
+    /** True after try to release an IMS network; False after try to request an IMS network. */
+    private boolean mLastImsOperationIsRelease;
+
     /** The broadcast receiver. */
     private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
@@ -1144,14 +1147,16 @@ public class DataNetworkController extends Handler {
      * @param networkRequest The network request.
      */
     private void onAddNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
-        if (Arrays.equals(mLastReleasedImsRequestCapabilities, networkRequest.getCapabilities())
-                && mImsThrottleCounter.addOccurrence()) {
-            AnomalyReporter.reportAnomaly(
-                    UUID.fromString("ead6f8db-d2f2-4ed3-8da5-1d8560fe7daf"),
-                    networkRequest.getNativeNetworkRequest().getRequestorPackageName()
-                            + " requested with same capabilities falls under "
-                            + mDataConfigManager.getAnomalyImsReleaseRequestThreshold().timeWindow
-                            + " ms window.");
+        if (mLastImsOperationIsRelease) {
+            mLastImsOperationIsRelease = false;
+            if (Arrays.equals(
+                    mLastReleasedImsRequestCapabilities, networkRequest.getCapabilities())
+                    && mImsThrottleCounter.addOccurrence()) {
+                reportAnomaly(networkRequest.getNativeNetworkRequest().getRequestorPackageName()
+                                + " requested with same capabilities "
+                                + mImsThrottleCounter.getFrequencyString(),
+                        "ead6f8db-d2f2-4ed3-8da5-1d8560fe7daf");
+            }
         }
         if (!mAllNetworkRequestList.add(networkRequest)) {
             loge("onAddNetworkRequest: Duplicate network request. " + networkRequest);
@@ -1915,6 +1920,7 @@ public class DataNetworkController extends Handler {
         if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
             mImsThrottleCounter.addOccurrence();
             mLastReleasedImsRequestCapabilities = networkRequest.getCapabilities();
+            mLastImsOperationIsRelease = true;
         }
         if (!mAllNetworkRequestList.remove(networkRequest)) {
             loge("onRemoveNetworkRequest: Network request does not exist. " + networkRequest);
@@ -2153,11 +2159,9 @@ public class DataNetworkController extends Handler {
      */
     private void onTrackNetworkUnwanted() {
         if (mNetworkUnwantedCounter.addOccurrence()) {
-            AnomalyReporter.reportAnomaly(
-                    UUID.fromString("9f3bc55b-bfa6-4e26-afaa-5031426a66d2"),
-                    String.format("Network Unwanted called %d times in %d ms.",
-                            mNetworkUnwantedCounter.getNumOccurrences(),
-                            mNetworkUnwantedCounter.getWindowSizeMillis()));
+            reportAnomaly("Network Unwanted called "
+                            + mNetworkUnwantedCounter.getFrequencyString(),
+                    "9f3bc55b-bfa6-4e26-afaa-5031426a66d2");
         }
     }
 
@@ -2356,21 +2360,32 @@ public class DataNetworkController extends Handler {
         switch (transport) {
             case AccessNetworkConstants.TRANSPORT_TYPE_WWAN:
                 if (mSetupDataCallWwanFailureCounter.addOccurrence()) {
-                    AnomalyReporter.reportAnomaly(
-                            UUID.fromString("e6a98b97-9e34-4977-9a92-01d52a6691f6"),
-                            "RIL fails setup data call request frequently");
+                    reportAnomaly("RIL fails setup data call request "
+                                    + mSetupDataCallWwanFailureCounter.getFrequencyString(),
+                            "e6a98b97-9e34-4977-9a92-01d52a6691f6");
                 }
                 break;
             case AccessNetworkConstants.TRANSPORT_TYPE_WLAN:
                 if (mSetupDataCallWlanFailureCounter.addOccurrence()) {
-                    AnomalyReporter.reportAnomaly(
-                            UUID.fromString("e2248d8b-d55f-42bd-871c-0cfd80c3ddd1"),
-                            "IWLAN data service fails setup data call request frequently");
+                    reportAnomaly("IWLAN data service fails setup data call request "
+                                    + mSetupDataCallWlanFailureCounter.getFrequencyString(),
+                            "e2248d8b-d55f-42bd-871c-0cfd80c3ddd1");
                 }
                 break;
             default:
                 loge("trackSetupDataCallFailure: INVALID transport.");
         }
+    }
+
+    /**
+     * Trigger the anomaly report with the specified UUID.
+     *
+     * @param anomalyMsg Description of the event
+     * @param uuid UUID associated with that event
+     */
+    private void reportAnomaly(@NonNull String anomalyMsg, @NonNull String uuid) {
+        logl(anomalyMsg);
+        AnomalyReporter.reportAnomaly(UUID.fromString(uuid), anomalyMsg);
     }
 
     /**

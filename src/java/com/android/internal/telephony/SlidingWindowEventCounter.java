@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.annotation.IntRange;
+import android.annotation.NonNull;
 import android.os.SystemClock;
 import android.util.LongArrayQueue;
 
@@ -97,6 +98,15 @@ public class SlidingWindowEventCounter {
      */
     public synchronized int getNumOccurrences() {
         return mNumOccurrences;
+    }
+
+    /**
+     * Get the event frequency description.
+     *
+     * @return A string describing the anomaly event
+     */
+    public @NonNull String getFrequencyString() {
+        return String.format("%d times within %d ms.", mNumOccurrences, mWindowSizeMillis);
     }
 
     @Override
