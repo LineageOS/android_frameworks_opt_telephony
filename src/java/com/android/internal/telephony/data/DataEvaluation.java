@@ -330,6 +330,10 @@ public class DataEvaluation {
          */
         RESTRICTED_REQUEST,
         /**
+         * SUPL is allowed while emergency call is ongoing.
+         */
+        EMERGENCY_SUPL,
+        /**
          * Data is allowed because the network request is for emergency. This should be always at
          * the bottom (i.e. highest priority)
          */

@@ -2116,4 +2116,23 @@ public class DataNetworkControllerTest extends TelephonyTest {
         assertThat(reasons).containsExactly(DataDisallowedReason.NOT_IN_SERVICE,
                 DataDisallowedReason.NO_SUITABLE_DATA_PROFILE);
     }
+
+    @Test
+    public void testEmergencySuplDataDisabled() throws Exception {
+        // Data disabled
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false);
+        processAllMessages();
+        doReturn(true).when(mPhone).isInEmergencyCall();
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_SUPL));
+        processAllMessages();
+
+        // Make sure SUPL is the only capability advertised, but not internet or MMS.
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_SUPL);
+        verifyConnectedNetworkHasDataProfile(mGeneralPurposeDataProfile);
+        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+    }
+
 }

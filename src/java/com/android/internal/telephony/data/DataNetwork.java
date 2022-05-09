@@ -1706,16 +1706,22 @@ public class DataNetwork extends StateMachine {
             if (mDataAllowedReason == DataAllowedReason.RESTRICTED_REQUEST) {
                 builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
             } else if (mDataAllowedReason == DataAllowedReason.UNMETERED_USAGE
-                    || mDataAllowedReason == DataAllowedReason.MMS_REQUEST) {
+                    || mDataAllowedReason == DataAllowedReason.MMS_REQUEST
+                    || mDataAllowedReason == DataAllowedReason.EMERGENCY_SUPL) {
                 // If data is allowed due to unmetered usage, or MMS always-allowed, we need to
                 // remove unrelated-but-metered capabilities.
                 for (int capability : meteredCapabilities) {
                     // 1. If it's unmetered usage, remove all metered capabilities.
-                    // 2. if it's MMS always-allowed, then remove all metered capabilities but MMS.
-                    if (capability != NetworkCapabilities.NET_CAPABILITY_MMS
-                            || mDataAllowedReason != DataAllowedReason.MMS_REQUEST) {
-                        builder.removeCapability(capability);
+                    // 2. If it's MMS always-allowed, then remove all metered capabilities but MMS.
+                    // 3/ If it's for emergency SUPL, then remove all metered capabilities but SUPL.
+                    if ((capability == NetworkCapabilities.NET_CAPABILITY_MMS
+                            && mDataAllowedReason == DataAllowedReason.MMS_REQUEST)
+                            || (capability == NetworkCapabilities.NET_CAPABILITY_SUPL
+                            && mDataAllowedReason == DataAllowedReason.EMERGENCY_SUPL)) {
+                        // Not removing the capability for special uses.
+                        continue;
                     }
+                    builder.removeCapability(capability);
                 }
             }
         }

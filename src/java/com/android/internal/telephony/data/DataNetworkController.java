@@ -1390,18 +1390,21 @@ public class DataNetworkController extends Handler {
                 evaluation.addDataAllowedReason(DataAllowedReason.MMS_REQUEST);
             }
         } else if (!evaluation.containsHardDisallowedReasons()) {
-            // Check if request is unmetered (WiFi or unmetered APN)
-            if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+            if ((mPhone.isInEmergencyCall() || mPhone.isInEcm())
+                    && networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_SUPL)) {
+                // Check if it's SUPL during emergency call.
+                evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_SUPL);
+            } else if (!networkRequest.hasCapability(
+                    NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
+                // Check if request is restricted.
+                evaluation.addDataAllowedReason(DataAllowedReason.RESTRICTED_REQUEST);
+            } else if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+                // Check if request is unmetered (WiFi or unmetered APN).
                 evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
             } else if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                 if (!networkRequest.isMeteredRequest()) {
                     evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
                 }
-            }
-
-            // Check if request is restricted
-            if (!networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
-                evaluation.addDataAllowedReason(DataAllowedReason.RESTRICTED_REQUEST);
             }
         }
 
@@ -1631,9 +1634,17 @@ public class DataNetworkController extends Handler {
             // If there are reasons we should tear down the network, check if those are hard reasons
             // or soft reasons. In some scenarios, we can make exceptions if they are soft
             // disallowed reasons.
-
-            // Check if request is unmetered (WiFi or unmetered APN)
-            if (dataNetwork.getTransport() == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+            if ((mPhone.isInEmergencyCall() || mPhone.isInEcm())
+                    && dataNetwork.getNetworkCapabilities().hasCapability(
+                            NetworkCapabilities.NET_CAPABILITY_SUPL)) {
+                // Check if it's SUPL during emergency call.
+                evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_SUPL);
+            } else if (!dataNetwork.getNetworkCapabilities().hasCapability(
+                    NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
+                // Check if request is restricted
+                evaluation.addDataAllowedReason(DataAllowedReason.RESTRICTED_REQUEST);
+            } else if (dataNetwork.getTransport() == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+                // Check if request is unmetered (WiFi or unmetered APN)
                 evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
             } else {
                 boolean unmeteredNetwork = !mDataConfigManager.isAnyMeteredCapability(
@@ -1642,12 +1653,6 @@ public class DataNetworkController extends Handler {
                 if (unmeteredNetwork) {
                     evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
                 }
-            }
-
-            // Check if request is restricted
-            if (!dataNetwork.getNetworkCapabilities().hasCapability(
-                    NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
-                evaluation.addDataAllowedReason(DataAllowedReason.RESTRICTED_REQUEST);
             }
         }
 
