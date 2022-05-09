@@ -303,6 +303,7 @@ message CellularServiceState {
     optional bool is_multi_sim = 7;
     optional int32 carrier_id = 8;
     optional int64 total_time_millis = 9; // Duration needs to be rounded when pulled
+    optional bool is_emergency_only = 10;
 
     // Internal use only
     optional int64 last_used_millis = 10001;
