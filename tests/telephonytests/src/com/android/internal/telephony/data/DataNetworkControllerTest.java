@@ -104,6 +104,7 @@ import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksM
 import com.android.internal.telephony.data.DataEvaluation.DataDisallowedReason;
 import com.android.internal.telephony.data.DataNetworkController.HandoverRule;
 import com.android.internal.telephony.data.DataRetryManager.DataRetryManagerCallback;
+import com.android.internal.telephony.data.LinkBandwidthEstimator.LinkBandwidthEstimatorCallback;
 import com.android.internal.telephony.ims.ImsResolver;
 
 import org.junit.After;
@@ -157,6 +158,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
     private PersistableBundle mCarrierConfig;
 
     private AccessNetworksManagerCallback mAccessNetworksManagerCallback;
+    private LinkBandwidthEstimatorCallback mLinkBandwidthEstimatorCallback;
 
     private final DataProfile mGeneralPurposeDataProfile = new DataProfile.Builder()
             .setApnSetting(new ApnSetting.Builder()
@@ -632,6 +634,12 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 ArgumentCaptor.forClass(AccessNetworksManagerCallback.class);
         verify(mAccessNetworksManager).registerCallback(callbackCaptor.capture());
         mAccessNetworksManagerCallback = callbackCaptor.getValue();
+
+        ArgumentCaptor<LinkBandwidthEstimatorCallback> linkBandwidthEstimatorCallbackCaptor =
+                ArgumentCaptor.forClass(LinkBandwidthEstimatorCallback.class);
+        verify(mLinkBandwidthEstimator).registerCallback(
+                linkBandwidthEstimatorCallbackCaptor.capture());
+        mLinkBandwidthEstimatorCallback = linkBandwidthEstimatorCallbackCaptor.getValue();
 
         doAnswer(invocation -> {
             TelephonyNetworkRequest networkRequest =
@@ -1598,6 +1606,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
         verify(mMockedDataNetworkControllerCallback).onPhysicalLinkStatusChanged(
                 eq(DataCallResponse.LINK_STATUS_DORMANT));
+        assertThat(mDataNetworkControllerUT.getDataActivity()).isEqualTo(
+                TelephonyManager.DATA_ACTIVITY_DORMANT);
     }
 
     @Test
@@ -2471,5 +2481,35 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verifyConnectedNetworkHasDataProfile(mGeneralPurposeDataProfile);
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+    }
+
+    @Test
+    public void testDataActivity() {
+        doReturn(TelephonyManager.DATA_ACTIVITY_IN).when(mLinkBandwidthEstimator).getDataActivity();
+        mLinkBandwidthEstimatorCallback.onDataActivityChanged(TelephonyManager.DATA_ACTIVITY_IN);
+        processAllMessages();
+        assertThat(mDataNetworkControllerUT.getDataActivity()).isEqualTo(
+                TelephonyManager.DATA_ACTIVITY_IN);
+
+        doReturn(TelephonyManager.DATA_ACTIVITY_OUT).when(mLinkBandwidthEstimator)
+                .getDataActivity();
+        mLinkBandwidthEstimatorCallback.onDataActivityChanged(TelephonyManager.DATA_ACTIVITY_OUT);
+        processAllMessages();
+        assertThat(mDataNetworkControllerUT.getDataActivity()).isEqualTo(
+                TelephonyManager.DATA_ACTIVITY_OUT);
+
+        doReturn(TelephonyManager.DATA_ACTIVITY_INOUT).when(mLinkBandwidthEstimator)
+                .getDataActivity();
+        mLinkBandwidthEstimatorCallback.onDataActivityChanged(TelephonyManager.DATA_ACTIVITY_INOUT);
+        processAllMessages();
+        assertThat(mDataNetworkControllerUT.getDataActivity()).isEqualTo(
+                TelephonyManager.DATA_ACTIVITY_INOUT);
+
+        doReturn(TelephonyManager.DATA_ACTIVITY_NONE).when(mLinkBandwidthEstimator)
+                .getDataActivity();
+        mLinkBandwidthEstimatorCallback.onDataActivityChanged(TelephonyManager.DATA_ACTIVITY_NONE);
+        processAllMessages();
+        assertThat(mDataNetworkControllerUT.getDataActivity()).isEqualTo(
+                TelephonyManager.DATA_ACTIVITY_NONE);
     }
 }
