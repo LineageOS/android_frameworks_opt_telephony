@@ -2467,7 +2467,7 @@ public class DataNetworkController extends Handler {
      */
     private void reportAnomaly(@NonNull String anomalyMsg, @NonNull String uuid) {
         logl(anomalyMsg);
-        AnomalyReporter.reportAnomaly(UUID.fromString(uuid), anomalyMsg);
+        AnomalyReporter.reportAnomaly(UUID.fromString(uuid), anomalyMsg, mPhone.getCarrierId());
     }
 
     /**

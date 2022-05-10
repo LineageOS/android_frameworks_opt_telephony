@@ -1287,8 +1287,10 @@ public class DataRetryManager extends Handler {
                         String msg = "Invalid data retry entry detected";
                         logl(msg);
                         loge("mDataRetryEntries=" + mDataRetryEntries);
-                        AnomalyReporter.reportAnomaly(UUID.fromString(
-                                "afeab78c-c0b0-49fc-a51f-f766814d7aa5"), msg);
+                        AnomalyReporter.reportAnomaly(
+                                UUID.fromString("afeab78c-c0b0-49fc-a51f-f766814d7aa6"),
+                                msg,
+                                mPhone.getCarrierId());
                         continue;
                     }
                     if (entry.networkRequestList.get(0).getApnTypeNetworkCapability()
@@ -1489,8 +1491,10 @@ public class DataRetryManager extends Handler {
                         String msg = "Invalid data retry entry detected";
                         logl(msg);
                         loge("mDataRetryEntries=" + mDataRetryEntries);
-                        AnomalyReporter.reportAnomaly(UUID.fromString(
-                                "afeab78c-c0b0-49fc-a51f-f766814d7aa5"), msg);
+                        AnomalyReporter.reportAnomaly(
+                                UUID.fromString("afeab78c-c0b0-49fc-a51f-f766814d7aa5"),
+                                msg,
+                                mPhone.getCarrierId());
                         continue;
                     }
                     if (entry.networkRequestList.get(0).getApnTypeNetworkCapability()
