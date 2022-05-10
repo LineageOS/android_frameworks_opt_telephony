@@ -46,6 +46,7 @@ import android.telephony.Annotation.NetworkType;
 import android.telephony.Annotation.ValidationStatus;
 import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
+import android.telephony.CellSignalStrength;
 import android.telephony.DataFailCause;
 import android.telephony.DataSpecificRegistrationInfo;
 import android.telephony.NetworkRegistrationInfo;
@@ -2452,6 +2453,11 @@ public class DataNetworkController extends Handler {
     private void trackSetupDataCallFailure(@TransportType int transport) {
         switch (transport) {
             case AccessNetworkConstants.TRANSPORT_TYPE_WWAN:
+                // Skip when poor signal strength
+                if (mPhone.getSignalStrength().getLevel()
+                        <= CellSignalStrength.SIGNAL_STRENGTH_POOR) {
+                    return;
+                }
                 if (mSetupDataCallWwanFailureCounter.addOccurrence()) {
                     reportAnomaly("RIL fails setup data call request "
                                     + mSetupDataCallWwanFailureCounter.getFrequencyString(),
@@ -2478,7 +2484,7 @@ public class DataNetworkController extends Handler {
      */
     private void reportAnomaly(@NonNull String anomalyMsg, @NonNull String uuid) {
         logl(anomalyMsg);
-        AnomalyReporter.reportAnomaly(UUID.fromString(uuid), anomalyMsg);
+        AnomalyReporter.reportAnomaly(UUID.fromString(uuid), anomalyMsg, mPhone.getCarrierId());
     }
 
     /**
