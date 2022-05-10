@@ -47,6 +47,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.Process;
+import android.os.SystemClock;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony;
@@ -902,7 +903,8 @@ public abstract class SMSDispatcher extends Handler {
                     false /* fallbackToCs */,
                     SmsManager.RESULT_ERROR_NONE,
                     tracker.mMessageId,
-                    tracker.isFromDefaultSmsApplication(mContext));
+                    tracker.isFromDefaultSmsApplication(mContext),
+                    tracker.getInterval());
         } else {
             if (DBG) {
                 Rlog.d(TAG, "SMS send failed "
@@ -937,7 +939,8 @@ public abstract class SMSDispatcher extends Handler {
                         false /* fallbackToCs */,
                         getNotInServiceError(ss),
                         tracker.mMessageId,
-                        tracker.isFromDefaultSmsApplication(mContext));
+                        tracker.isFromDefaultSmsApplication(mContext),
+                        tracker.getInterval());
             } else if (error == SmsManager.RESULT_RIL_SMS_SEND_FAIL_RETRY
                     && tracker.mRetryCount < MAX_SEND_RETRIES) {
                 // Retry after a delay if needed.
@@ -959,7 +962,8 @@ public abstract class SMSDispatcher extends Handler {
                         SmsManager.RESULT_RIL_SMS_SEND_FAIL_RETRY,
                         errorCode,
                         tracker.mMessageId,
-                        tracker.isFromDefaultSmsApplication(mContext));
+                        tracker.isFromDefaultSmsApplication(mContext),
+                        tracker.getInterval());
             } else {
                 int errorCode = (smsResponse != null) ? smsResponse.mErrorCode : NO_ERROR_CODE;
                 tracker.onFailed(mContext, error, errorCode);
@@ -970,7 +974,8 @@ public abstract class SMSDispatcher extends Handler {
                         error,
                         errorCode,
                         tracker.mMessageId,
-                        tracker.isFromDefaultSmsApplication(mContext));
+                        tracker.isFromDefaultSmsApplication(mContext),
+                        tracker.getInterval());
             }
         }
     }
@@ -2007,7 +2012,8 @@ public abstract class SMSDispatcher extends Handler {
                     false /* fallbackToCs */,
                     error,
                     trackers[0].mMessageId,
-                    trackers[0].isFromDefaultSmsApplication(mContext));
+                    trackers[0].isFromDefaultSmsApplication(mContext),
+                    trackers[0].getInterval());
         }
     }
 
@@ -2047,7 +2053,7 @@ public abstract class SMSDispatcher extends Handler {
         public final SmsHeader mSmsHeader;
 
         @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-        private long mTimestamp = System.currentTimeMillis();
+        private long mTimestamp = SystemClock.elapsedRealtime();
         @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
         public Uri mMessageUri; // Uri of persisted message if we wrote one
 
@@ -2171,6 +2177,15 @@ public abstract class SMSDispatcher extends Handler {
             } finally {
                 Binder.restoreCallingIdentity(identity);
             }
+        }
+
+        /**
+         * Returns the interval in milliseconds between sending the message out and current time.
+         * Called after receiving success/failure response to calculate the time
+         * to complete the SMS send to the network.
+         */
+        protected long getInterval() {
+            return SystemClock.elapsedRealtime() - mTimestamp;
         }
 
         /**
