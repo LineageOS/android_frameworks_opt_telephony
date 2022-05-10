@@ -636,6 +636,8 @@ public class RILUtils {
             byte[] pdu) {
         android.hardware.radio.messaging.CdmaSmsMessage msg =
                 new android.hardware.radio.messaging.CdmaSmsMessage();
+        msg.address = new android.hardware.radio.messaging.CdmaSmsAddress();
+        msg.subAddress = new android.hardware.radio.messaging.CdmaSmsSubaddress();
         int addrNbrOfDigits;
         int subaddrNbrOfDigits;
         int bearerDataLength;
