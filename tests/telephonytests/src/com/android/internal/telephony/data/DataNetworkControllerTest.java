@@ -2106,6 +2106,37 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testDelayImsTearDownCsRequestsToTearDown() throws Exception {
+        mCarrierConfig.putBoolean(CarrierConfigManager.KEY_DELAY_IMS_TEAR_DOWN_UNTIL_CALL_END_BOOL,
+                true);
+        TelephonyNetworkRequest networkRequest = createNetworkRequest(
+                NetworkCapabilities.NET_CAPABILITY_IMS);
+        mDataNetworkControllerUT.addNetworkRequest(networkRequest);
+        processAllMessages();
+
+        // Call is ongoing
+        doReturn(PhoneConstants.State.OFFHOOK).when(mCT).getState();
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
+        verifyConnectedNetworkHasDataProfile(mImsDataProfile);
+        List<DataNetwork> dataNetworks = getDataNetworks();
+        assertThat(dataNetworks).hasSize(1);
+        dataNetworks.get(0).tearDown(DataNetwork.TEAR_DOWN_REASON_RAT_NOT_ALLOWED);
+        processAllMessages();
+
+        // Make sure IMS network is still connected.
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
+        verifyConnectedNetworkHasDataProfile(mImsDataProfile);
+
+        // Now connectivity service requests to tear down the data network.
+        mDataNetworkControllerUT.removeNetworkRequest(networkRequest);
+        dataNetworks.get(0).tearDown(DataNetwork.TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED);
+        processAllMessages();
+
+        // All data (including IMS) should be torn down.
+        verifyAllDataDisconnected();
+    }
+
+    @Test
     public void testVoPStoNonVoPSDelayImsTearDown() throws Exception {
         mCarrierConfig.putBoolean(CarrierConfigManager.KEY_DELAY_IMS_TEAR_DOWN_UNTIL_CALL_END_BOOL,
                 true);
