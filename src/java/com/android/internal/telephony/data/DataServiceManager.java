@@ -145,7 +145,7 @@ public class DataServiceManager extends Handler {
                     + AccessNetworkConstants.transportTypeToString(mTransportType) + " died.";
             loge(message);
             AnomalyReporter.reportAnomaly(UUID.fromString("fc1956de-c080-45de-8431-a1faab687110"),
-                    message);
+                    message, mPhone.getCarrierId());
         }
     }
 
@@ -320,7 +320,9 @@ public class DataServiceManager extends Handler {
                             .collect(Collectors.toSet()).equals(mLastDataCallResponseList.stream()
                                     .map(DataCallResponse::getId).collect(Collectors.toSet()))) {
                         AnomalyReporter.reportAnomaly(
-                                UUID.fromString("150323b2-360a-446b-a158-3ce6425821f6"), message);
+                                UUID.fromString("150323b2-360a-446b-a158-3ce6425821f6"),
+                                message,
+                                mPhone.getCarrierId());
                     }
                 }
                 onDataCallListChanged(dataCallList);
@@ -439,7 +441,7 @@ public class DataServiceManager extends Handler {
         // Using fixed UUID to avoid duplicate bugreport notification
         AnomalyReporter.reportAnomaly(
                 UUID.fromString("f5d5cbe6-9bd6-4009-b764-42b1b649b1de"),
-                message);
+                message, mPhone.getCarrierId());
     }
 
     private void unbindDataService() {
