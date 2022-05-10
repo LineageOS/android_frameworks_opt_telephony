@@ -1053,7 +1053,9 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         }
         String cardIdString = UiccController.getInstance().convertToCardString(cardId);
         for (int slotIndex = 0; slotIndex < slotInfos.length; slotIndex++) {
-            if (IccUtils.compareIgnoreTrailingFs(cardIdString, slotInfos[slotIndex].getCardId())) {
+            String retrievedCardId = slotInfos[slotIndex] != null
+                    ? slotInfos[slotIndex].getCardId() : null;
+            if (IccUtils.compareIgnoreTrailingFs(cardIdString, retrievedCardId)) {
                 return slotIndex;
             }
         }
