@@ -343,6 +343,11 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
     private void setFailedSetupDataResponse(DataServiceManager dsm, @DataFailureCause int cause,
             long retryMillis, boolean forHandover) {
+        setFailedSetupDataResponse(dsm, cause, retryMillis, forHandover, 0);
+    }
+
+    private void setFailedSetupDataResponse(DataServiceManager dsm, @DataFailureCause int cause,
+            long retryMillis, boolean forHandover, long delay) {
         doAnswer(invocation -> {
             final Message msg = (Message) invocation.getArguments()[10];
 
@@ -354,7 +359,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                     .build();
             msg.getData().putParcelable("data_call_response", response);
             msg.arg1 = DataServiceCallback.RESULT_SUCCESS;
-            msg.sendToTarget();
+            msg.getTarget().sendMessageDelayed(msg, delay);
             return null;
         }).when(dsm).setupDataCall(anyInt(), any(DataProfile.class), anyBoolean(),
                 anyBoolean(), forHandover ? eq(DataService.REQUEST_REASON_HANDOVER)
@@ -2829,5 +2834,42 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verifyAllDataDisconnected();
         verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(false));
         verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkDisconnected();
+    }
+
+    @Test
+    public void testHandoverWhileSetupDataCallInProgress() throws Exception {
+        // Long delay setup failure
+        setFailedSetupDataResponse(mMockedWwanDataServiceManager, DataFailCause.CONGESTION,
+                DataCallResponse.RETRY_DURATION_UNDEFINED, false, 10000);
+
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS,
+                        NetworkCapabilities.NET_CAPABILITY_MMTEL));
+        processAllMessages();
+
+        // Change the preference to IWLAN while setup data is still ongoing.
+        updateTransport(NetworkCapabilities.NET_CAPABILITY_IMS,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+
+        // Data should not be connected.
+        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+
+        // There shouldn't be any attempt to bring up IMS on IWLAN even though the preference
+        // has already changed, because the previous setup is still ongoing.
+        verify(mMockedWlanDataServiceManager, never()).setupDataCall(eq(AccessNetworkType.IWLAN),
+                any(DataProfile.class), anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(),
+                any(), any(), anyBoolean(), any(Message.class));
+
+        processAllFutureMessages();
+
+        // Should setup a new one instead of handover.
+        verify(mMockedWlanDataServiceManager).setupDataCall(eq(AccessNetworkType.IWLAN),
+                any(DataProfile.class), anyBoolean(), anyBoolean(),
+                eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), any(), anyBoolean(),
+                any(Message.class));
+
+        // IMS should be connected.
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS,
+                NetworkCapabilities.NET_CAPABILITY_MMTEL);
     }
 }
