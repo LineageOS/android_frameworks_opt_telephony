@@ -3309,6 +3309,7 @@ public class SubscriptionController extends ISub.Stub {
             case SubscriptionManager.GROUP_UUID:
                 if (mContext.checkCallingOrSelfPermission(
                         Manifest.permission.READ_PRIVILEGED_PHONE_STATE) != PERMISSION_GRANTED) {
+                    EventLog.writeEvent(0x534e4554, "213457638", Binder.getCallingUid());
                     return null;
                 }
                 break;
