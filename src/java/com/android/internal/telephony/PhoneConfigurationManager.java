@@ -52,7 +52,6 @@ public class PhoneConfigurationManager {
     public static final String DSDS = "dsds";
     public static final String TSTS = "tsts";
     public static final String SSSS = "";
-    public static final String CTS_MOCK_MODEM_SERVICE = "android.telephony.cts.MockModemService";
     private static final String LOG_TAG = "PhoneCfgMgr";
     private static final int EVENT_SWITCH_DSDS_CONFIG_DONE = 100;
     private static final int EVENT_GET_MODEM_STATUS = 101;
@@ -460,12 +459,6 @@ public class PhoneConfigurationManager {
         // Check for ALLOW_MOCK_MODEM_PROPERTY on user builds
         if (isAllowed || DEBUG) {
             if (serviceName != null) {
-                // Only CTS mock modem service is allowed to swith.
-                if (!serviceName.equals(CTS_MOCK_MODEM_SERVICE)) {
-                    loge(serviceName + " is not allowed to switch");
-                    return false;
-                }
-
                 statusRadioConfig = mRadioConfig.setModemService(serviceName);
 
                 //TODO: consider multi-sim case (b/210073692)
