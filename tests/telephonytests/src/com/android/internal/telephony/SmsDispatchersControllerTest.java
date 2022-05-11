@@ -35,6 +35,7 @@ import static org.mockito.Mockito.when;
 import android.app.ActivityManager;
 import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
+import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsManager;
 import android.test.FlakyTest;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -42,11 +43,14 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 import android.util.Singleton;
 
+import com.android.internal.telephony.uicc.IccUtils;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 import java.util.HashMap;
 
@@ -177,6 +181,24 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
         );
         processAllMessages();
         assertEquals(true, mInjectionCallbackTriggered);
+    }
+
+    @Test @SmallTest
+    public void testSendImsGmsTestWithSmsc() {
+        IccSmsInterfaceManager iccSmsInterfaceManager = Mockito.mock(IccSmsInterfaceManager.class);
+        when(mPhone.getIccSmsInterfaceManager()).thenReturn(iccSmsInterfaceManager);
+        when(iccSmsInterfaceManager.getSmscAddressFromIccEf("com.android.messaging"))
+                .thenReturn("222");
+        switchImsSmsFormat(PhoneConstants.PHONE_TYPE_GSM);
+
+        mSmsDispatchersController.sendText("111", null /*scAddr*/, TAG,
+                null, null, null, "com.android.messaging",
+                false, -1, false, -1, false, 0L);
+        byte[] smscbyte = PhoneNumberUtils.networkPortionToCalledPartyBCDWithLength(
+                "222");
+        String smsc = IccUtils.bytesToHexString(smscbyte);
+        verify(mSimulatedCommandsVerifier).sendImsGsmSms(eq(smsc), anyString(),
+                anyInt(), anyInt(), any(Message.class));
     }
 
     private void switchImsSmsFormat(int phoneType) {
