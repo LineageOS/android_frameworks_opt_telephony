@@ -947,7 +947,7 @@ public class DataRetryManager extends Handler {
         dataNetworkController.registerDataNetworkControllerCallback(
                 new DataNetworkControllerCallback(this::post) {
                     @Override
-                    public void onDataServiceBound() {
+                    public void onDataServiceBound(@TransportType int transport) {
                         onReset(RESET_REASON_DATA_SERVICE_BOUND);
                     }
                 });
