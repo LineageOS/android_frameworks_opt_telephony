@@ -438,7 +438,9 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
             }
 
             if (authType != UiccCardApplication.AUTH_CONTEXT_EAP_SIM
-                    && authType != UiccCardApplication.AUTH_CONTEXT_EAP_AKA) {
+                    && authType != UiccCardApplication.AUTH_CONTEXT_EAP_AKA
+                    && authType != UiccCardApplication.AUTH_CONTEXT_GBA_BOOTSTRAP
+                    && authType != UiccCardApplication.AUTHTYPE_GBA_NAF_KEY_EXTERNAL) {
                 loge("getIccSimChallengeResponse() unsupported authType: " + authType);
                 return null;
             }
