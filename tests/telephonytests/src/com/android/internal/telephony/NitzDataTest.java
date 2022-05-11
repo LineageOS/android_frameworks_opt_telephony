@@ -29,8 +29,17 @@ import java.util.concurrent.TimeUnit;
 public class NitzDataTest {
 
     @Test
-    public void testParse_dateOutsideAllowedRange() {
-        assertNull(NitzData.parse("38/06/20,00:00:00+0"));
+    public void testParse_invalidYear() {
+        assertNull(NitzData.parse("00/06/20,00:00:00+0,0"));
+    }
+
+    @Test
+    public void testParse_beyond2038() {
+        NitzData nitz = NitzData.parse("40/06/20,01:02:03+4,1");
+        assertEquals(createUnixEpochTime(2040, 6, 20, 1, 2, 3), nitz.getCurrentTimeInMillis());
+        assertEquals(TimeUnit.MINUTES.toMillis(4 * 15), nitz.getLocalOffsetMillis());
+        assertEquals(TimeUnit.MINUTES.toMillis(60), nitz.getDstAdjustmentMillis().longValue());
+        assertNull(nitz.getEmulatorHostTimeZone());
     }
 
     @Test
@@ -38,7 +47,7 @@ public class NitzDataTest {
         // "yy/mm/dd,hh:mm:ss(+/-)tz[,dt[,tzid]]"
 
         // No tz field.
-        assertNull(NitzData.parse("38/06/20,00:00:00"));
+        assertNull(NitzData.parse("22/06/20,00:00:00"));
     }
 
     @Test

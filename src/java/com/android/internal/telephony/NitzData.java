@@ -21,6 +21,7 @@ import static com.android.internal.annotations.VisibleForTesting.Visibility.PACK
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.telephony.Rlog;
 
+import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Objects;
@@ -38,9 +39,6 @@ public final class NitzData {
     private static final String LOG_TAG = ServiceStateTracker.LOG_TAG;
     private static final int MS_PER_QUARTER_HOUR = 15 * 60 * 1000;
     private static final int MS_PER_HOUR = 60 * 60 * 1000;
-
-    /* Time stamp after 19 January 2038 is not supported under 32 bit */
-    private static final int MAX_NITZ_YEAR = 2037;
 
     private static final Pattern NITZ_SPLIT_PATTERN = Pattern.compile("[/:,+-]");
 
@@ -77,13 +75,26 @@ public final class NitzData {
         try {
             String[] nitzSubs = NITZ_SPLIT_PATTERN.split(nitz);
 
-            int year = 2000 + Integer.parseInt(nitzSubs[0]);
-            if (year > MAX_NITZ_YEAR) {
-                if (ServiceStateTracker.DBG) {
-                    Rlog.e(LOG_TAG, "NITZ year: " + year + " exceeds limit, skip NITZ time update");
-                }
-                return null;
+            int year = Integer.parseInt(nitzSubs[0]);
+            if (year < 1 || year > 99) {
+                // 0 > year > 99 imply an invalid string.
+                //
+                // At the time of this comment (year 2023), a zero year is considered invalid and
+                // assumed to be the result of invalid data being converted to zero in the code that
+                // turns the binary NITZ into a string. For the next few decades at least, Android
+                // devices should not need to interpret zero. Hopefully, NITZ will be replaced by
+                // the time that's not true, or folks dealing the Y2K1 issue can handle it.
+                //
+                // DateTimeException is also thrown by LocalDateTime below if the values are out of
+                // range and will be handled in the catch block.
+                throw new DateTimeException("Invalid NITZ year == 0");
             }
+
+            // Values < {current year} could be considered invalid but are used in test code, so no
+            // window is applied to adjust low values < {current year} with "+ 2100" (and would also
+            // need to consider zero as valid). Code that processes the NitzData is in a better
+            // position to log and discard obviously invalid NITZ signals from past years.
+            year += 2000;
 
             int month = Integer.parseInt(nitzSubs[1]);
             int date = Integer.parseInt(nitzSubs[2]);
@@ -91,8 +102,10 @@ public final class NitzData {
             int minute = Integer.parseInt(nitzSubs[4]);
             int second = Integer.parseInt(nitzSubs[5]);
 
-            /* NITZ time (hour:min:sec) will be in UTC but it supplies the timezone
-             * offset as well (which we won't worry about until later) */
+            // NITZ time (hour:min:sec) will be in UTC but it supplies the timezone
+            // offset as well (which we won't worry about until later).
+            // The LocalDateTime.of() will throw DateTimeException for values outside the allowed
+            // range for the Gregorian calendar.
             long epochMillis = LocalDateTime.of(year, month, date, hour, minute, second)
                     .toInstant(ZoneOffset.UTC)
                     .toEpochMilli();

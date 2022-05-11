@@ -1814,12 +1814,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @SmallTest
     public void testSetTimeFromNITZStr_withoutAge() throws Exception {
         {
-            // Mock sending incorrect nitz str from RIL
-            mSimulatedCommands.triggerNITZupdate("38/06/20,00:00:00+0");
-            waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-            verify(mNitzStateMachine, times(0)).handleNitzReceived(any());
-        }
-        {
             // Mock sending correct nitz str from RIL with a zero ageMs
             String nitzStr = "15/06/20,00:00:00+0";
             NitzData expectedNitzData = NitzData.parse(nitzStr);
@@ -1843,13 +1837,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testSetTimeFromNITZStr_withAge() throws Exception {
-        {
-            // Mock sending incorrect nitz str from RIL with a non-zero ageMs
-            long ageMs = 60 * 1000;
-            mSimulatedCommands.triggerNITZupdate("38/06/20,00:00:00+0", ageMs);
-            waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-            verify(mNitzStateMachine, times(0)).handleNitzReceived(any());
-        }
         {
             // Mock sending correct nitz str from RIL with a non-zero ageMs
             String nitzStr = "21/08/15,00:00:00+0";
