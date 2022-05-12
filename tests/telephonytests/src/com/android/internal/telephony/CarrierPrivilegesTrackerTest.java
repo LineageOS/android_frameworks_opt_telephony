@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES;
 import static android.os.UserHandle.SYSTEM;
 import static android.telephony.CarrierConfigManager.EXTRA_SLOT_INDEX;
 import static android.telephony.CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX;
@@ -200,7 +199,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
             pkg.signatures = new Signature[] {new Signature(pkgCertInfo.cert)};
 
             when(mPackageManager.getPackageInfo(
-                    eq(pkgCertInfo.pkgName), eq(GET_SIGNING_CERTIFICATES)))
+                    eq(pkgCertInfo.pkgName), eq(PM_FLAGS)))
                     .thenReturn(pkg);
             when(mPackageManager.getPackageUidAsUser(
                     eq(pkgCertInfo.pkgName), eq(pkgCertInfo.userInfo.id)))
@@ -814,7 +813,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         // Update PACKAGE_1 to have no signatures
         PackageInfo pkg = new PackageInfo();
         pkg.packageName = PACKAGE_1;
-        when(mPackageManager.getPackageInfo(eq(PACKAGE_1), eq(GET_SIGNING_CERTIFICATES)))
+        when(mPackageManager.getPackageInfo(eq(PACKAGE_1), eq(PM_FLAGS)))
                 .thenReturn(pkg);
 
         sendPackageChangedIntent(Intent.ACTION_PACKAGE_ADDED, PACKAGE_1);
