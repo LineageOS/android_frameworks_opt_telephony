@@ -20,7 +20,9 @@ import android.annotation.NonNull;
 import android.os.Handler;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.AnomalyReporter;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.util.IndentingPrintWriter;
@@ -88,8 +90,11 @@ public class DisplayInfoController extends Handler {
      * NetworkTypeController.
      */
     public void updateTelephonyDisplayInfo() {
-        TelephonyDisplayInfo newDisplayInfo = new TelephonyDisplayInfo(
-                mPhone.getServiceState().getDataNetworkType(),
+        NetworkRegistrationInfo nri =  mPhone.getServiceState().getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        int dataNetworkType = nri == null ? TelephonyManager.NETWORK_TYPE_UNKNOWN
+                : nri.getAccessNetworkTechnology();
+        TelephonyDisplayInfo newDisplayInfo = new TelephonyDisplayInfo(dataNetworkType,
                 mNetworkTypeController.getOverrideNetworkType());
         if (!newDisplayInfo.equals(mTelephonyDisplayInfo)) {
             logl("TelephonyDisplayInfo changed from " + mTelephonyDisplayInfo + " to "
