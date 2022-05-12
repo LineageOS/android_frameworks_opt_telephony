@@ -2225,6 +2225,7 @@ public class DataNetwork extends StateMachine {
         logl("onSetupResponse: resultCode=" + DataServiceCallback.resultCodeToString(resultCode)
                 + ", response=" + response);
         mFailCause = getFailCauseFromDataCallResponse(resultCode, response);
+        validateDataCallResponse(response);
         if (mFailCause == DataFailCause.NONE) {
             if (mDataNetworkController.isNetworkInterfaceExisting(response.getInterfaceName())) {
                 logl("Interface " + response.getInterfaceName() + " already existing. Silently "
@@ -2288,6 +2289,38 @@ public class DataNetwork extends StateMachine {
                 apnTypeBitmask,
                 protocol,
                 mFailCause);
+    }
+
+    /**
+     * If the {@link DataCallResponse} contains invalid info, triggers an anomaly report.
+     *
+     * @param response The response to be validated
+     */
+    private void validateDataCallResponse(@Nullable DataCallResponse response) {
+        if (response == null) return;
+        int failCause = response.getCause();
+        if (failCause == DataFailCause.NONE) {
+            if (TextUtils.isEmpty(response.getInterfaceName())
+                    || response.getAddresses().isEmpty()
+                    // if out of range
+                    || response.getLinkStatus() < DataCallResponse.LINK_STATUS_UNKNOWN
+                    || response.getLinkStatus() > DataCallResponse.LINK_STATUS_ACTIVE
+                    || response.getProtocolType() < ApnSetting.PROTOCOL_UNKNOWN
+                    || response.getProtocolType() > ApnSetting.PROTOCOL_UNSTRUCTURED
+                    || response.getHandoverFailureMode()
+                    < DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN
+                    || response.getHandoverFailureMode()
+                    > DataCallResponse.HANDOVER_FAILURE_MODE_NO_FALLBACK_RETRY_SETUP_NORMAL) {
+                loge("Invalid DataCallResponse:" + response);
+                reportAnomaly("Invalid DataCallResponse detected",
+                        "9f775beb-c638-44d2-833a-8c3875fee2d1");
+            }
+        } else if (!DataFailCause.isFailCauseExisting(failCause)) { // Setup data failed.
+            loge("Invalid DataFailCause in " + response);
+            reportAnomaly("Invalid DataFailCause: (0x" + Integer.toHexString(failCause)
+                            + ")",
+                    "6b264f28-9f58-4cbd-9e0e-d7624ba30879");
+        }
     }
 
     /**
@@ -2412,6 +2445,7 @@ public class DataNetwork extends StateMachine {
         if (response != null) {
             if (!response.equals(mDataCallResponse)) {
                 log("onDataStateChanged: " + response);
+                validateDataCallResponse(response);
                 mDataCallResponse = response;
                 if (response.getLinkStatus() != DataCallResponse.LINK_STATUS_INACTIVE) {
                     updateDataNetwork(response);
@@ -2959,6 +2993,7 @@ public class DataNetwork extends StateMachine {
         logl("onHandoverResponse: resultCode=" + DataServiceCallback.resultCodeToString(resultCode)
                 + ", response=" + response);
         mFailCause = getFailCauseFromDataCallResponse(resultCode, response);
+        validateDataCallResponse(response);
         if (mFailCause == DataFailCause.NONE) {
             // Handover succeeded.
 
