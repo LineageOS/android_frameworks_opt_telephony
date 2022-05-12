@@ -199,6 +199,36 @@ public class DataProfileManager extends Handler {
     }
 
     /**
+     * Check if there are any Enterprise APN configured by DPC and return a data profile
+     * with the same.
+     * @return data profile with enterprise ApnSetting if available, else null
+     */
+    @Nullable private DataProfile getEnterpriseDataProfile() {
+        Cursor cursor = mPhone.getContext().getContentResolver().query(
+                Telephony.Carriers.DPC_URI, null, null, null, null);
+        if (cursor == null) {
+            loge("Cannot access APN database through telephony provider.");
+            return null;
+        }
+
+        DataProfile dataProfile = null;
+        while (cursor.moveToNext()) {
+            ApnSetting apn = ApnSetting.makeApnSetting(cursor);
+            if (apn != null) {
+                dataProfile = new DataProfile.Builder()
+                        .setApnSetting(apn)
+                        .setTrafficDescriptor(new TrafficDescriptor(apn.getApnName(), null))
+                        .setPreferred(false)
+                        .build();
+                if (dataProfile.canSatisfy(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)) {
+                    break;
+                }
+            }
+        }
+        cursor.close();
+        return dataProfile;
+    }
+    /**
      * Update all data profiles, including preferred data profile, and initial attach data profile.
      * Also send those profiles down to the modem if needed.
      */
@@ -226,6 +256,20 @@ public class DataProfileManager extends Handler {
                 }
             }
             cursor.close();
+        }
+
+        // Check if any of the profile already supports ENTERPRISE, if not, check if DPC has
+        // configured one and retrieve the same.
+        DataProfile dataProfile = profiles.stream()
+                .filter(dp -> dp.canSatisfy(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE))
+                .findFirst()
+                .orElse(null);
+        if (dataProfile == null) {
+            dataProfile = getEnterpriseDataProfile();
+            if (dataProfile != null) {
+                profiles.add(dataProfile);
+                log("Added enterprise profile " + dataProfile);
+            }
         }
 
         // Check if any of the profile already supports IMS, if not, add the default one.
@@ -565,8 +609,7 @@ public class DataProfileManager extends Handler {
         profileBuilder.setTrafficDescriptor(trafficDescriptor);
 
         DataProfile dataProfile = profileBuilder.build();
-        log("Added a new data profile " + dataProfile + " for " + networkRequest);
-        mAllDataProfiles.add(dataProfile);
+        log("Created data profile " + dataProfile + " for " + networkRequest);
         return dataProfile;
     }
 
