@@ -67,6 +67,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IInterface;
 import android.os.PersistableBundle;
+import android.os.PowerManager;
 import android.os.PowerWhitelistManager;
 import android.os.SystemConfigManager;
 import android.os.UserHandle;
@@ -346,6 +347,8 @@ public class ContextFixture implements TestFixture<Context> {
                 return Context.TELEPHONY_REGISTRY_SERVICE;
             } else if (serviceClass == NetworkPolicyManager.class) {
                 return Context.NETWORK_POLICY_SERVICE;
+            } else if (serviceClass == PowerManager.class) {
+                return Context.POWER_SERVICE;
             }
             return super.getSystemServiceName(serviceClass);
         }
