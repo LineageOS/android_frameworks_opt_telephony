@@ -892,7 +892,7 @@ public class DataNetworkController extends Handler {
                                             preferredTransport));
                             return;
                         }
-                        if (dataNetwork.shouldDelayTearDown()) {
+                        if (dataNetwork.shouldDelayImsTearDown()) {
                             log("onDataNetworkHandoverRetryStopped: Delay IMS tear down until call "
                                     + "ends. " + dataNetwork);
                             return;
@@ -1629,31 +1629,6 @@ public class DataNetworkController extends Handler {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_RESTRICTED_BY_NETWORK);
         }
 
-        boolean delayImsTearDown = false;
-        if (dataNetwork.shouldDelayTearDown()) {
-            // Some carriers requires delay tearing down IMS network until the call ends even if
-            // VoPS bit is lost.
-            log("Ignore VoPS bit and delay IMS tear down until call ends.");
-            delayImsTearDown = true;
-        }
-
-        // Check VoPS support (except for the case that we want to delay IMS tear down until the
-        // voice call ends.
-        if (!delayImsTearDown
-                && dataNetwork.getTransport() == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
-                && dataNetwork.getNetworkCapabilities().hasCapability(
-                        NetworkCapabilities.NET_CAPABILITY_MMTEL)) {
-            NetworkRegistrationInfo nri = mServiceState.getNetworkRegistrationInfo(
-                    NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-            if (nri != null) {
-                DataSpecificRegistrationInfo dsri = nri.getDataSpecificInfo();
-                if (dsri != null && dsri.getVopsSupportInfo() != null
-                        && !dsri.getVopsSupportInfo().isVopsSupported()) {
-                    evaluation.addDataDisallowedReason(DataDisallowedReason.VOPS_NOT_SUPPORTED);
-                }
-            }
-        }
-
         // Check if device is in CDMA ECBM
         if (mPhone.isInCdmaEcm()) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.CDMA_EMERGENCY_CALLBACK_MODE);
@@ -1831,8 +1806,13 @@ public class DataNetworkController extends Handler {
 
             // Matching the rules by the configured order. Bail out if find first matching rule.
             for (HandoverRule rule : handoverRules) {
-                // Check if the rule is only for roaming and we are not roaming.
-                if (rule.isOnlyForRoaming && !mServiceState.getDataRoaming()) continue;
+                // Check if the rule is only for roaming and we are not roaming. Use the real
+                // roaming state reported by modem instead of using the overridden roaming state.
+                if (rule.isOnlyForRoaming && !mServiceState.getDataRoamingFromRegistration()) {
+                    // If the rule is for roaming only, and the device is not roaming, then bypass
+                    // this rule.
+                    continue;
+                }
 
                 if (rule.sourceAccessNetworks.contains(sourceAccessNetwork)
                         && rule.targetAccessNetworks.contains(targetAccessNetwork)) {
@@ -2607,8 +2587,18 @@ public class DataNetworkController extends Handler {
             return;
         }
 
-        // TODO: Add DataConfigManager.isRecoveryOnBadNetworkEnabled()
+        if (!mDataSettingsManager.isRecoveryOnBadNetworkEnabled()) {
+            log("Ignore data network validation status changed becaused"
+                    + "data stall recovery is disabled.");
+            return;
+        }
+
         if (dataNetwork.isInternetSupported()) {
+            if (status == NetworkAgent.VALIDATION_STATUS_NOT_VALID
+                    && (dataNetwork.getCurrentState() == null || dataNetwork.isDisconnected())) {
+                log("Ignoring invalid validation status for disconnected DataNetwork");
+                return;
+            }
             mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                     () -> callback.onInternetDataNetworkValidationStatusChanged(status)));
         }

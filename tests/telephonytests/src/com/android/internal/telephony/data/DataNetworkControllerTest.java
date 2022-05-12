@@ -462,6 +462,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .setRegistrationState(regState)
                 .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
                 .build());
+        ss.setDataRoamingFromRegistration(regState
+                == NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
         doReturn(ss).when(mSST).getServiceState();
         doReturn(ss).when(mPhone).getServiceState();
 
@@ -1723,6 +1725,55 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testHandoverDataNetworkNotAllowedByRoamingPolicy() throws Exception {
+        mCarrierConfig.putStringArray(CarrierConfigManager.KEY_IWLAN_HANDOVER_POLICY_STRING_ARRAY,
+                new String[]{"source=EUTRAN|NGRAN|IWLAN, target=EUTRAN|NGRAN|IWLAN, roaming=true, "
+                        + "type=disallowed, capabilities=IMS"});
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
+        // Force data config manager to reload the carrier config.
+        mDataNetworkControllerUT.getDataConfigManager().obtainMessage(
+                1/*EVENT_CARRIER_CONFIG_CHANGED*/).sendToTarget();
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+
+        processAllMessages();
+
+        // Bring up IMS PDN on IWLAN
+        testSetupImsDataNetwork();
+
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+        mAccessNetworksManagerCallback.onPreferredTransportChanged(
+                NetworkCapabilities.NET_CAPABILITY_IMS);
+
+        // Verify IMS PDN is connected.
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
+
+        // After this, IMS data network should be disconnected, and DNC should attempt to
+        // establish a new one on cellular
+        processAllMessages();
+
+        // Verify all data disconnected.
+        verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(false));
+
+        // Should setup a new one instead of handover.
+        verify(mMockedWwanDataServiceManager).setupDataCall(anyInt(), any(DataProfile.class),
+                anyBoolean(), anyBoolean(), eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(),
+                any(), any(), anyBoolean(), any(Message.class));
+
+
+        // A new data network should be connected on IWLAN
+        List<DataNetwork> dataNetworkList = getDataNetworks();
+        assertThat(dataNetworkList).hasSize(1);
+        assertThat(dataNetworkList.get(0).isConnected()).isTrue();
+        assertThat(dataNetworkList.get(0).getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_IMS)).isTrue();
+        assertThat(dataNetworkList.get(0).getTransport())
+                .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+    }
+
+    @Test
     public void testHandoverDataNetworkRetry() throws Exception {
         testSetupImsDataNetwork();
 
@@ -2128,31 +2179,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     @Test
-    public void testVoPStoNonVoPSImsTearDown() throws Exception {
-        // VoPS supported
-        DataSpecificRegistrationInfo dsri = new DataSpecificRegistrationInfo(8, false, true, true,
-                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_SUPPORTED,
-                        LteVopsSupportInfo.LTE_STATUS_SUPPORTED));
-        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
-
-        mDataNetworkControllerUT.addNetworkRequest(
-                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS,
-                        NetworkCapabilities.NET_CAPABILITY_MMTEL));
-        processAllMessages();
-        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
-
-        // VOPS not supported
-        dsri = new DataSpecificRegistrationInfo(8, false, true, true,
-                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED,
-                        LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED));
-        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
-
-        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
-    }
-
-    @Test
     public void testNonVoPStoVoPSImsSetup() throws Exception {
         // VOPS not supported
         DataSpecificRegistrationInfo dsri = new DataSpecificRegistrationInfo(8, false, true, true,
@@ -2206,44 +2232,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // All data (including IMS) should be torn down.
         verifyAllDataDisconnected();
-    }
-
-    @Test
-    public void testVoPStoNonVoPSDelayImsTearDown() throws Exception {
-        mCarrierConfig.putBoolean(CarrierConfigManager.KEY_DELAY_IMS_TEAR_DOWN_UNTIL_CALL_END_BOOL,
-                true);
-        carrierConfigChanged();
-
-        // VoPS supported
-        DataSpecificRegistrationInfo dsri = new DataSpecificRegistrationInfo(8, false, true, true,
-                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_SUPPORTED,
-                        LteVopsSupportInfo.LTE_STATUS_SUPPORTED));
-        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
-
-        mDataNetworkControllerUT.addNetworkRequest(
-                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS,
-                        NetworkCapabilities.NET_CAPABILITY_MMTEL));
-        processAllMessages();
-        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
-
-        doReturn(PhoneConstants.State.OFFHOOK).when(mCT).getState();
-
-        dsri = new DataSpecificRegistrationInfo(8, false, true, true,
-                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED,
-                        LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED));
-        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
-
-        // Make sure IMS is still connected.
-        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
-
-        // Call ends
-        doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
-        mDataNetworkControllerUT.obtainMessage(18/*EVENT_VOICE_CALL_ENDED*/).sendToTarget();
-        processAllMessages();
-
-        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
     }
 
     @Test
