@@ -1873,6 +1873,8 @@ public class DataNetwork extends StateMachine {
             removeUnsatisfiedNetworkRequests();
             mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
                     .onNetworkCapabilitiesChanged(DataNetwork.this));
+        } else {
+            log("updateNetworkCapabilities: Capabilities not changed.");
         }
     }
 
