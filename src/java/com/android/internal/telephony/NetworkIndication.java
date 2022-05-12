@@ -258,13 +258,13 @@ public class NetworkIndication extends IRadioNetworkIndication.Stub {
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_NITZ_TIME_RECEIVED, nitzTime);
 
-        // Ignore the NITZ if ageMs is not a valid time, e.g. negative or greater than
-        // receivedTimeMs.
-        if ((ageMs < 0) || (ageMs >= receivedTimeMs)) {
+        // Ignore the NITZ if receivedTimeMs or ageMs is not a valid time.
+        // e.g. receivedTimeMs is non-positive, ageMs is negative or greater than receivedTimeMs.
+        if ((receivedTimeMs <= 0) || (ageMs < 0) || (ageMs >= receivedTimeMs)) {
             AnomalyReporter.reportAnomaly(UUID.fromString("fc7c56d4-485d-475a-aaff-394203c6cdfc"),
-                    "NITZ indication with invalid age");
+                    "NITZ indication with invalid parameter");
 
-            mRil.riljLoge("age time is invalid, ignoring nitzTimeReceived indication. "
+            mRil.riljLoge("NITZ parameter is invalid, ignoring nitzTimeReceived indication. "
                 + "receivedTimeMs = " + receivedTimeMs + ", ageMs = " + ageMs);
             return;
         }
