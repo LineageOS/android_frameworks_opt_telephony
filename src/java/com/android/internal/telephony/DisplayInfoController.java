@@ -102,14 +102,6 @@ public class DisplayInfoController extends Handler {
     }
 
     /**
-     * @return True if either the primary or secondary 5G hysteresis timer is active,
-     * and false if neither are.
-     */
-    public boolean is5GHysteresisActive() {
-        return mNetworkTypeController.is5GHysteresisActive();
-    }
-
-    /**
      * Validate the display info and trigger anomaly report if needed.
      *
      * @param displayInfo The display info to validate.
@@ -136,7 +128,7 @@ public class DisplayInfoController extends Handler {
             }
         } catch (InvalidArgumentException e) {
             logel(e.getMessage());
-            AnomalyReporter.reportAnomaly(UUID.fromString("3aa92a2c-94ed-46a0-a744-d6b1dfec2a54"),
+            AnomalyReporter.reportAnomaly(UUID.fromString("3aa92a2c-94ed-46a0-a744-d6b1dfec2a55"),
                     e.getMessage());
         }
     }
