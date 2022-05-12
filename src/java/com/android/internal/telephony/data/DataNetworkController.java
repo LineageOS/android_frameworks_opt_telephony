@@ -892,7 +892,7 @@ public class DataNetworkController extends Handler {
                                             preferredTransport));
                             return;
                         }
-                        if (dataNetwork.shouldDelayTearDown()) {
+                        if (dataNetwork.shouldDelayImsTearDown()) {
                             log("onDataNetworkHandoverRetryStopped: Delay IMS tear down until call "
                                     + "ends. " + dataNetwork);
                             return;
@@ -1627,31 +1627,6 @@ public class DataNetworkController extends Handler {
         // Check if data is restricted by the network.
         if (mPsRestricted) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_RESTRICTED_BY_NETWORK);
-        }
-
-        boolean delayImsTearDown = false;
-        if (dataNetwork.shouldDelayTearDown()) {
-            // Some carriers requires delay tearing down IMS network until the call ends even if
-            // VoPS bit is lost.
-            log("Ignore VoPS bit and delay IMS tear down until call ends.");
-            delayImsTearDown = true;
-        }
-
-        // Check VoPS support (except for the case that we want to delay IMS tear down until the
-        // voice call ends.
-        if (!delayImsTearDown
-                && dataNetwork.getTransport() == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
-                && dataNetwork.getNetworkCapabilities().hasCapability(
-                        NetworkCapabilities.NET_CAPABILITY_MMTEL)) {
-            NetworkRegistrationInfo nri = mServiceState.getNetworkRegistrationInfo(
-                    NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-            if (nri != null) {
-                DataSpecificRegistrationInfo dsri = nri.getDataSpecificInfo();
-                if (dsri != null && dsri.getVopsSupportInfo() != null
-                        && !dsri.getVopsSupportInfo().isVopsSupported()) {
-                    evaluation.addDataDisallowedReason(DataDisallowedReason.VOPS_NOT_SUPPORTED);
-                }
-            }
         }
 
         // Check if device is in CDMA ECBM

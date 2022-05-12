@@ -29,7 +29,6 @@ import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.DataFailCause;
 import android.telephony.ServiceState;
-import android.telephony.ServiceState.RilRadioTechnology;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting.ProtocolType;
 import android.telephony.data.DataCallResponse;
@@ -184,8 +183,7 @@ public class DataCallSessionStats {
      * <p>NOTE: in {@link ServiceStateTracker}, change of channel number will trigger data
      * registration state change.
      */
-    public synchronized void onDrsOrRatChanged(@RilRadioTechnology int radioTechnology) {
-        @NetworkType int currentRat = ServiceState.rilRadioTechnologyToNetworkType(radioTechnology);
+    public synchronized void onDrsOrRatChanged(@NetworkType int currentRat) {
         if (mDataCallSession != null && currentRat != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
             if (mDataCallSession.ratAtEnd != currentRat) {
                 mDataCallSession.ratSwitchCount++;

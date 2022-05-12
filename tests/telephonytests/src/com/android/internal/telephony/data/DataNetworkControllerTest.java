@@ -2179,31 +2179,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     @Test
-    public void testVoPStoNonVoPSImsTearDown() throws Exception {
-        // VoPS supported
-        DataSpecificRegistrationInfo dsri = new DataSpecificRegistrationInfo(8, false, true, true,
-                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_SUPPORTED,
-                        LteVopsSupportInfo.LTE_STATUS_SUPPORTED));
-        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
-
-        mDataNetworkControllerUT.addNetworkRequest(
-                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS,
-                        NetworkCapabilities.NET_CAPABILITY_MMTEL));
-        processAllMessages();
-        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
-
-        // VOPS not supported
-        dsri = new DataSpecificRegistrationInfo(8, false, true, true,
-                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED,
-                        LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED));
-        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
-
-        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
-    }
-
-    @Test
     public void testNonVoPStoVoPSImsSetup() throws Exception {
         // VOPS not supported
         DataSpecificRegistrationInfo dsri = new DataSpecificRegistrationInfo(8, false, true, true,
@@ -2257,44 +2232,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // All data (including IMS) should be torn down.
         verifyAllDataDisconnected();
-    }
-
-    @Test
-    public void testVoPStoNonVoPSDelayImsTearDown() throws Exception {
-        mCarrierConfig.putBoolean(CarrierConfigManager.KEY_DELAY_IMS_TEAR_DOWN_UNTIL_CALL_END_BOOL,
-                true);
-        carrierConfigChanged();
-
-        // VoPS supported
-        DataSpecificRegistrationInfo dsri = new DataSpecificRegistrationInfo(8, false, true, true,
-                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_SUPPORTED,
-                        LteVopsSupportInfo.LTE_STATUS_SUPPORTED));
-        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
-
-        mDataNetworkControllerUT.addNetworkRequest(
-                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS,
-                        NetworkCapabilities.NET_CAPABILITY_MMTEL));
-        processAllMessages();
-        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
-
-        doReturn(PhoneConstants.State.OFFHOOK).when(mCT).getState();
-
-        dsri = new DataSpecificRegistrationInfo(8, false, true, true,
-                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED,
-                        LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED));
-        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
-
-        // Make sure IMS is still connected.
-        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
-
-        // Call ends
-        doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
-        mDataNetworkControllerUT.obtainMessage(18/*EVENT_VOICE_CALL_ENDED*/).sendToTarget();
-        processAllMessages();
-
-        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
     }
 
     @Test
