@@ -282,6 +282,18 @@ public class TelephonyNetworkRequest {
                     .map(DataUtils::networkCapabilityToApnType)
                     .filter(apnType -> apnType != ApnSetting.TYPE_NONE)
                     .collect(Collectors.toList());
+            // In case of enterprise network request, the network request will have internet,
+            // but APN type will not have default type as the enterprise apn should not be used
+            // as default network. Ignore default type of the network request if it
+            // has enterprise type as well. This will make sure the network request with
+            // internet and enterprise will be satisfied with data profile with enterprise at the
+            // same time default network request will not get satisfied with enterprise data
+            // profile.
+            // TODO b/232264746
+            if (apnTypes.contains(ApnSetting.TYPE_ENTERPRISE)) {
+                apnTypes.remove((Integer) ApnSetting.TYPE_DEFAULT);
+            }
+
             return apnTypes.stream().allMatch(dataProfile.getApnSetting()::canHandleType);
         }
         return false;
