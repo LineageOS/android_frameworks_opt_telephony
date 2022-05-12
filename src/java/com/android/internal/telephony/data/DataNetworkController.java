@@ -1831,8 +1831,13 @@ public class DataNetworkController extends Handler {
 
             // Matching the rules by the configured order. Bail out if find first matching rule.
             for (HandoverRule rule : handoverRules) {
-                // Check if the rule is only for roaming and we are not roaming.
-                if (rule.isOnlyForRoaming && !mServiceState.getDataRoaming()) continue;
+                // Check if the rule is only for roaming and we are not roaming. Use the real
+                // roaming state reported by modem instead of using the overridden roaming state.
+                if (rule.isOnlyForRoaming && !mServiceState.getDataRoamingFromRegistration()) {
+                    // If the rule is for roaming only, and the device is not roaming, then bypass
+                    // this rule.
+                    continue;
+                }
 
                 if (rule.sourceAccessNetworks.contains(sourceAccessNetwork)
                         && rule.targetAccessNetworks.contains(targetAccessNetwork)) {
