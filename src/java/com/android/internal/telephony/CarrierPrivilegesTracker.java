@@ -113,6 +113,17 @@ public class CarrierPrivilegesTracker extends Handler {
     private static final long CLEAR_UICC_RULES_DELAY_MILLIS = TimeUnit.SECONDS.toMillis(30);
 
     /**
+     * PackageManager flags used to query installed packages.
+     * Include DISABLED_UNTIL_USED components. This facilitates cases where a carrier app
+     * is disabled by default, and some other component wants to enable it when it has
+     * gained carrier privileges (as an indication that a matching SIM has been inserted).
+     */
+    private static final int INSTALLED_PACKAGES_QUERY_FLAGS =
+            PackageManager.GET_SIGNING_CERTIFICATES
+                    | PackageManager.MATCH_DISABLED_UNTIL_USED_COMPONENTS
+                    | PackageManager.MATCH_HIDDEN_UNTIL_INSTALLED_COMPONENTS;
+
+    /**
      * Action to register a Registrant with this Tracker.
      * obj: Registrant that will be notified of Carrier Privileged UID changes.
      */
@@ -552,7 +563,7 @@ public class CarrierPrivilegesTracker extends Handler {
 
         PackageInfo pkg;
         try {
-            pkg = mPackageManager.getPackageInfo(pkgName, PackageManager.GET_SIGNING_CERTIFICATES);
+            pkg = mPackageManager.getPackageInfo(pkgName, INSTALLED_PACKAGES_QUERY_FLAGS);
         } catch (NameNotFoundException e) {
             Rlog.e(TAG, "Error getting installed package: " + pkgName, e);
             return;
@@ -624,16 +635,9 @@ public class CarrierPrivilegesTracker extends Handler {
     }
 
     private void refreshInstalledPackageCache() {
-        // Include DISABLED_UNTIL_USED components. This facilitates cases where a carrier app
-        // is disabled by default, and some other component wants to enable it when it has
-        // gained carrier privileges (as an indication that a matching SIM has been inserted).
-        int flags =
-                PackageManager.GET_SIGNING_CERTIFICATES
-                        | PackageManager.MATCH_DISABLED_UNTIL_USED_COMPONENTS
-                        | PackageManager.MATCH_HIDDEN_UNTIL_INSTALLED_COMPONENTS;
         List<PackageInfo> installedPackages =
                 mPackageManager.getInstalledPackagesAsUser(
-                        flags, UserHandle.SYSTEM.getIdentifier());
+                        INSTALLED_PACKAGES_QUERY_FLAGS, UserHandle.SYSTEM.getIdentifier());
         for (PackageInfo pkg : installedPackages) {
             updateCertsForPackage(pkg);
             // This may be unnecessary before initialization, but invalidate the cache all the time
