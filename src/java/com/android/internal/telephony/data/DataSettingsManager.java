@@ -564,6 +564,15 @@ public class DataSettingsManager extends Handler {
         return mDataEnabledOverride.isDataAllowedInVoiceCall();
     }
 
+    /**
+     * Check whether data stall recovery on bad network is enabled.
+     * @return {@code true} if data stall recovery is enabled and {@code false} otherwise.
+     */
+    public boolean isRecoveryOnBadNetworkEnabled() {
+        return Settings.Global.getInt(mResolver,
+                Settings.Global.DATA_STALL_RECOVERY_ON_BAD_NETWORK, 1) == 1;
+    }
+
     private void notifyDataEnabledChanged(boolean enabled,
             @TelephonyManager.DataEnabledChangedReason int reason) {
         logl("notifyDataEnabledChanged: enabled=" + enabled + ", reason="
@@ -669,6 +678,8 @@ public class DataSettingsManager extends Handler {
         pw.println("device_provisioned=" + Settings.Global.getInt(
                 mResolver, Settings.Global.DEVICE_PROVISIONED, 0));
         pw.println("isProvisioningDataEnabled=" + isProvisioningDataEnabled());
+        pw.println("data_stall_recovery_on_bad_network=" + Settings.Global.getInt(
+                mResolver, Settings.Global.DATA_STALL_RECOVERY_ON_BAD_NETWORK, 1));
         pw.println("mDataEnabledSettings=" + mDataEnabledSettings.entrySet().stream()
                 .map(entry ->
                         dataEnabledChangedReasonToString(entry.getKey()) + "=" + entry.getValue())

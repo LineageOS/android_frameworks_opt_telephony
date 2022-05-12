@@ -2612,8 +2612,18 @@ public class DataNetworkController extends Handler {
             return;
         }
 
-        // TODO: Add DataConfigManager.isRecoveryOnBadNetworkEnabled()
+        if (!mDataSettingsManager.isRecoveryOnBadNetworkEnabled()) {
+            log("Ignore data network validation status changed becaused"
+                    + "data stall recovery is disabled.");
+            return;
+        }
+
         if (dataNetwork.isInternetSupported()) {
+            if (status == NetworkAgent.VALIDATION_STATUS_NOT_VALID
+                    && (dataNetwork.getCurrentState() == null || dataNetwork.isDisconnected())) {
+                log("Ignoring invalid validation status for disconnected DataNetwork");
+                return;
+            }
             mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                     () -> callback.onInternetDataNetworkValidationStatusChanged(status)));
         }
