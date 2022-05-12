@@ -1698,8 +1698,12 @@ public class DataNetworkController extends Handler {
         }
 
         // Check if the data profile is still valid, sometimes the users can remove it from the APN
-        // editor.
-        if (!mDataProfileManager.isDataProfileValid(dataProfile)) {
+        // editor. We use very loose check here because APN id can change after APN reset to
+        // default
+        if (mDataProfileManager.getDataProfile(
+                dataProfile.getApnSetting() != null
+                        ? dataProfile.getApnSetting().getApnName() : null,
+                dataProfile.getTrafficDescriptor()) == null) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_PROFILE_INVALID);
         }
 
