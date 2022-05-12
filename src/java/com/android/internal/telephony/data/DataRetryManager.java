@@ -1485,7 +1485,7 @@ public class DataRetryManager extends Handler {
                         logl(msg);
                         loge("mDataRetryEntries=" + mDataRetryEntries);
                         AnomalyReporter.reportAnomaly(
-                                UUID.fromString("afeab78c-c0b0-49fc-a51f-f766814d7aa5"),
+                                UUID.fromString("781af571-f55d-476d-b510-7a5381f633dc"),
                                 msg,
                                 mPhone.getCarrierId());
                         continue;
