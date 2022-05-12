@@ -85,6 +85,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataRetryManager.DataHandoverRetryEntry;
@@ -2296,6 +2297,11 @@ public class DataNetwork extends StateMachine {
         if (resultCode == DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE) {
             log("Remove network since deactivate request returned an error.");
             mFailCause = DataFailCause.RADIO_NOT_AVAILABLE;
+            transitionTo(mDisconnectedState);
+        } else if (mPhone.getHalVersion().less(RIL.RADIO_HAL_VERSION_2_0)) {
+            log("Remove network on deactivate data response on old HAL "
+                    + mPhone.getHalVersion());
+            mFailCause = DataFailCause.LOST_CONNECTION;
             transitionTo(mDisconnectedState);
         }
     }
