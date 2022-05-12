@@ -1000,7 +1000,7 @@ public class DataRetryManager extends Handler {
                 } else if (ar.result instanceof DataProfile) {
                     dataProfile = (DataProfile) ar.result;
                 }
-                onDataProfileUnthrottled(dataProfile, apn, transport);
+                onDataProfileUnthrottled(dataProfile, apn, transport, true);
                 break;
             case EVENT_CANCEL_PENDING_HANDOVER_RETRY:
                 onCancelPendingHandoverRetry((DataNetwork) msg.obj);
@@ -1217,24 +1217,11 @@ public class DataRetryManager extends Handler {
                 .filter(entry -> entry.getState() == DataRetryEntry.RETRY_STATE_NOT_RETRIED)
                 .forEach(entry -> entry.setState(DataRetryEntry.RETRY_STATE_CANCELLED));
 
-        final List<ThrottleStatus> throttleStatusList = new ArrayList<>();
         for (DataThrottlingEntry dataThrottlingEntry : mDataThrottlingEntries) {
             DataProfile dataProfile = dataThrottlingEntry.dataProfile;
             String apn = dataProfile.getApnSetting() != null
                     ? dataProfile.getApnSetting().getApnName() : null;
-            onDataProfileUnthrottled(dataProfile, apn, dataThrottlingEntry.transport);
-            if (dataProfile.getApnSetting() != null) {
-                throttleStatusList.addAll(dataProfile.getApnSetting().getApnTypes()
-                        .stream()
-                        .map(apnType -> new ThrottleStatus.Builder()
-                                .setApnType(apnType)
-                                .setSlotIndex(mPhone.getPhoneId())
-                                .setNoThrottle()
-                                .setRetryType(dataThrottlingEntry.retryType)
-                                .setTransportType(dataThrottlingEntry.transport)
-                                .build())
-                        .collect(Collectors.toList()));
-            }
+            onDataProfileUnthrottled(dataProfile, apn, dataThrottlingEntry.transport, false);
         }
 
         mDataThrottlingEntries.clear();
@@ -1392,9 +1379,10 @@ public class DataRetryManager extends Handler {
      * @param apn The apn to be unthrottled. Note this should be only used for HIDL 1.6 or below.
      * When this is set, {@code dataProfile} must be {@code null}.
      * @param transport The transport that this unthrottling request is on.
+     * @param remove Whether to remove unthrottled entries from the list of entries.
      */
     private void onDataProfileUnthrottled(@Nullable DataProfile dataProfile, @Nullable String apn,
-            int transport) {
+            int transport, boolean remove) {
         long now = SystemClock.elapsedRealtime();
         List<DataThrottlingEntry> dataUnthrottlingEntries = new ArrayList<>();
         if (dataProfile != null) {
@@ -1468,7 +1456,9 @@ public class DataRetryManager extends Handler {
                         .build());
             }
         }
-        mDataThrottlingEntries.removeAll(dataUnthrottlingEntries);
+        if (remove) {
+            mDataThrottlingEntries.removeAll(dataUnthrottlingEntries);
+        }
     }
 
     /**
