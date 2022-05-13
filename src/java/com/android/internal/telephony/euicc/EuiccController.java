@@ -1210,11 +1210,14 @@ public class EuiccController extends IEuiccController.Stub {
         } else {
             // DSDS Mode
             for (int portIndex : slot.getPortList()) {
-                if (slot.isPortActive(portIndex)
-                        && mSubscriptionManager.getActiveSubscriptionInfoForSimSlotIndex(
-                        slot.getPhoneIdFromPortIndex(portIndex)) == null) {
-                    // If the port is active and empty, return the portIndex.
-                    return portIndex;
+                if (slot.isPortActive(portIndex)) {
+                    SubscriptionInfo subscriptionInfo =
+                              mSubscriptionManager.getActiveSubscriptionInfoForSimSlotIndex(
+                                    slot.getPhoneIdFromPortIndex(portIndex));
+                    if (subscriptionInfo == null || subscriptionInfo.isOpportunistic()) {
+                            // If the port is active and empty/opportunistic, return the portIndex.
+                        return portIndex;
+                    }
                 }
             }
             // Check whether the pSim is active and empty
