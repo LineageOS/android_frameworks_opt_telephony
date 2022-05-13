@@ -2242,21 +2242,17 @@ public class DataNetworkController extends Handler {
     }
 
     /**
-     * There have been several bugs where a RECONNECT loop kicks off where a DataConnection
-     * connects to the Network, ConnectivityService indicates that the Network is unwanted,
-     * and then the DataConnection reconnects. By the time we get the bug report it's too late
-     * because there have already been hundreds of RECONNECTS.  This is meant to capture the issue
-     * when it first starts.
-     *
-     * The unwanted counter is configured to only take an anomaly report in extreme cases.
-     * This is to avoid having the anomaly message show up on several devices.
-     *
+     * There have been several bugs where a RECONNECT loop kicks off where a data network
+     * is brought up, but connectivity service indicates that the network is unwanted so telephony
+     * tears down the network. But later telephony bring up the data network again and becomes an
+     * infinite loop. By the time we get the bug report it's too late because there have already
+     * been hundreds of bring up/tear down. This is meant to capture the issue when it first starts.
      */
     private void onTrackNetworkUnwanted() {
         if (mNetworkUnwantedCounter.addOccurrence()) {
             reportAnomaly("Network Unwanted called "
                             + mNetworkUnwantedCounter.getFrequencyString(),
-                    "9f3bc55b-bfa6-4e26-afaa-5031426a66d2");
+                    "9f3bc55b-bfa6-4e26-afaa-5031426a66d3");
         }
     }
 
