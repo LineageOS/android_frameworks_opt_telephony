@@ -86,6 +86,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RIL;
+import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
 import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataRetryManager.DataHandoverRetryEntry;
@@ -652,6 +653,11 @@ public class DataNetwork extends StateMachine {
     private @Nullable LinkBandwidthEstimatorCallback mLinkBandwidthEstimatorCallback;
 
     /**
+     * Data config callback for carrier config update.
+     */
+    private @Nullable DataConfigManagerCallback mDataConfigManagerCallback;
+
+    /**
      * The network bandwidth.
      */
     public static class NetworkBandwidth {
@@ -980,7 +986,13 @@ public class DataNetwork extends StateMachine {
         @Override
         public void enter() {
             logv("Registering all events.");
-            mDataConfigManager.registerForConfigUpdate(getHandler(), EVENT_DATA_CONFIG_UPDATED);
+            mDataConfigManagerCallback = new DataConfigManagerCallback(getHandler()::post) {
+                @Override
+                public void onCarrierConfigChanged() {
+                    sendMessage(EVENT_DATA_CONFIG_UPDATED);
+                }
+            };
+            mDataConfigManager.registerCallback(mDataConfigManagerCallback);
             mPhone.getDisplayInfoController().registerForTelephonyDisplayInfoChanged(
                     getHandler(), EVENT_DISPLAY_INFO_CHANGED, null);
             mPhone.getServiceStateTracker().registerForServiceStateChanged(getHandler(),
@@ -1032,14 +1044,14 @@ public class DataNetwork extends StateMachine {
             mPhone.getServiceStateTracker().unregisterForServiceStateChanged(getHandler());
             mPhone.getDisplayInfoController().unregisterForTelephonyDisplayInfoChanged(
                     getHandler());
-            mDataConfigManager.unregisterForConfigUpdate(getHandler());
+            mDataConfigManager.unregisterCallback(mDataConfigManagerCallback);
         }
 
         @Override
         public boolean processMessage(Message msg) {
             switch (msg.what) {
                 case EVENT_DATA_CONFIG_UPDATED:
-                    onDataConfigUpdated();
+                    onCarrierConfigUpdated();
                     break;
                 case EVENT_SERVICE_STATE_CHANGED: {
                     mDataCallSessionStats.onDrsOrRatChanged(getDataNetworkType());
@@ -1168,10 +1180,14 @@ public class DataNetwork extends StateMachine {
                     deferMessage(msg);
                     break;
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
-                    reportAnomaly("Data network stuck in connecting state for "
-                            + TimeUnit.MILLISECONDS.toSeconds(
-                            mDataConfigManager.getAnomalyNetworkConnectingTimeoutMs())
-                            + " seconds.", "58c56403-7ea7-4e56-a0c7-e467114d09b8");
+                    // enable detection only for valid timeout range
+                    if (mDataConfigManager.getAnomalyNetworkConnectingTimeoutMs()
+                            < DataConfigManager.MAX_NETWORK_TRANSIT_STATE_TIMEOUT_MS) {
+                        reportAnomaly("Data network stuck in connecting state for "
+                                + TimeUnit.MILLISECONDS.toSeconds(
+                                mDataConfigManager.getAnomalyNetworkConnectingTimeoutMs())
+                                + " seconds.", "58c56403-7ea7-4e56-a0c7-e467114d09b8");
+                    }
                     // Setup data failed. Use the retry logic defined in
                     // CarrierConfigManager.KEY_TELEPHONY_DATA_SETUP_RETRY_RULES_STRING_ARRAY.
                     mRetryDelayMillis = DataCallResponse.RETRY_DURATION_UNDEFINED;
@@ -1359,10 +1375,14 @@ public class DataNetwork extends StateMachine {
                     onPcoDataReceived((PcoData) ar.result);
                     break;
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
-                    reportAnomaly("Data service did not respond the handover request within "
-                            + TimeUnit.MILLISECONDS.toSeconds(
-                            mDataConfigManager.getNetworkHandoverTimeoutMs()) + " seconds.",
-                            "1afe68cb-8b41-4964-a737-4f34372429ea");
+                    // enable detection only for valid timeout range
+                    if (mDataConfigManager.getNetworkHandoverTimeoutMs()
+                            < DataConfigManager.MAX_NETWORK_TRANSIT_STATE_TIMEOUT_MS) {
+                        reportAnomaly("Data service did not respond the handover request within "
+                                        + TimeUnit.MILLISECONDS.toSeconds(
+                                mDataConfigManager.getNetworkHandoverTimeoutMs()) + " seconds.",
+                                "1afe68cb-8b41-4964-a737-4f34372429ea");
+                    }
 
                     // Handover failed. Use the retry logic defined in
                     // CarrierConfigManager.KEY_TELEPHONY_DATA_HANDOVER_RETRY_RULES_STRING_ARRAY.
@@ -1457,11 +1477,16 @@ public class DataNetwork extends StateMachine {
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
                     // After frameworks issues deactivate data call request, RIL should report
                     // data disconnected through data call list changed event subsequently.
-                    reportAnomaly("RIL did not send data call list changed event after "
-                            + "deactivate data call request within "
-                            + TimeUnit.MILLISECONDS.toSeconds(
-                            mDataConfigManager.getAnomalyNetworkDisconnectingTimeoutMs())
-                            + " seconds.", "d0e4fa1c-c57b-4ba5-b4b6-8955487012cc");
+
+                    // enable detection only for valid timeout range
+                    if (mDataConfigManager.getAnomalyNetworkDisconnectingTimeoutMs()
+                            < DataConfigManager.MAX_NETWORK_TRANSIT_STATE_TIMEOUT_MS) {
+                        reportAnomaly("RIL did not send data call list changed event after "
+                                + "deactivate data call request within "
+                                + TimeUnit.MILLISECONDS.toSeconds(
+                                mDataConfigManager.getAnomalyNetworkDisconnectingTimeoutMs())
+                                + " seconds.", "d0e4fa1c-c57b-4ba5-b4b6-8955487012cc");
+                    }
                     mFailCause = DataFailCause.LOST_CONNECTION;
                     transitionTo(mDisconnectedState);
                     break;
@@ -2533,10 +2558,10 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
-     * Called when data config updated.
+     * Called when carrier config updated.
      */
-    private void onDataConfigUpdated() {
-        log("onDataConfigUpdated");
+    private void onCarrierConfigUpdated() {
+        log("onCarrierConfigUpdated");
 
         updateBandwidthFromDataConfig();
         updateTcpBufferSizes();
