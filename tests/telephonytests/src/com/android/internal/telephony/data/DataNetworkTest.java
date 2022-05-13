@@ -95,7 +95,9 @@ import java.util.concurrent.Executor;
 @TestableLooper.RunWithLooper
 public class DataNetworkTest extends TelephonyTest {
     private static final String IPV4_ADDRESS = "10.0.2.15";
+    private static final String IPV4_ADDRESS1 = "10.0.2.16";
     private static final String IPV6_ADDRESS = "2607:fb90:a620:651d:eabe:f8da:c107:44be";
+    private static final String IPV6_ADDRESS1 = "2607:fb90:a620:651d:eabe:f8da:c107:44bf";
 
     private static final int ADMIN_UID1 = 1234;
     private static final int ADMIN_UID2 = 5678;
@@ -1339,5 +1341,283 @@ public class DataNetworkTest extends TelephonyTest {
 
         // Internet priority is 20
         assertThat(mDataNetworkUT.getPriority()).isEqualTo(20);
+    }
+
+    @Test
+    public void testIpChangedV4() throws Exception {
+        testCreateDataNetwork();
+
+        DataCallResponse response = new DataCallResponse.Builder()
+                .setCause(0)
+                .setRetryDurationMillis(-1L)
+                .setId(123)
+                .setLinkStatus(2)
+                .setProtocolType(ApnSetting.PROTOCOL_IPV4V6)
+                .setInterfaceName("ifname")
+                .setAddresses(Arrays.asList(
+                        new LinkAddress(InetAddresses.parseNumericAddress(IPV4_ADDRESS1), 32),
+                        new LinkAddress(IPV6_ADDRESS + "/64")))
+                .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.3"),
+                        InetAddresses.parseNumericAddress("fd00:976a::9")))
+                .setGatewayAddresses(Arrays.asList(
+                        InetAddresses.parseNumericAddress("10.0.2.15"),
+                        InetAddresses.parseNumericAddress("fe80::2")))
+                .setPcscfAddresses(Arrays.asList(
+                        InetAddresses.parseNumericAddress("fd00:976a:c305:1d::8"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c202:1d::7"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c305:1d::5")))
+                .setMtuV4(1234)
+                .setMtuV6(5678)
+                .setPduSessionId(1)
+                .setQosBearerSessions(new ArrayList<>())
+                .setTrafficDescriptors(Collections.emptyList())
+                .build();
+
+        // IP changes
+        mDataNetworkUT.obtainMessage(8/*EVENT_DATA_STATE_CHANGED*/,
+                new AsyncResult(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                        List.of(response), null)).sendToTarget();
+        processAllMessages();
+
+        ArgumentCaptor<LinkProperties> linkPropertiesCaptor =
+                ArgumentCaptor.forClass(LinkProperties.class);
+
+        // Agent re-created, so register should be called twice.
+        verify(mConnectivityManager, times(2)).registerNetworkAgent(any(), any(NetworkInfo.class),
+                linkPropertiesCaptor.capture(), any(NetworkCapabilities.class), any(), any(),
+                anyInt());
+        // The new agent should have the new IP address.
+        assertThat(linkPropertiesCaptor.getValue().getAllAddresses()).containsExactly(
+                InetAddresses.parseNumericAddress(IPV4_ADDRESS1),
+                InetAddresses.parseNumericAddress(IPV6_ADDRESS));
+
+        assertThat(linkPropertiesCaptor.getValue()).isEqualTo(mDataNetworkUT.getLinkProperties());
+    }
+
+    @Test
+    public void testIpChangedV6() throws Exception {
+        testCreateDataNetwork();
+
+        DataCallResponse response = new DataCallResponse.Builder()
+                .setCause(0)
+                .setRetryDurationMillis(-1L)
+                .setId(123)
+                .setLinkStatus(2)
+                .setProtocolType(ApnSetting.PROTOCOL_IPV4V6)
+                .setInterfaceName("ifname")
+                .setAddresses(Arrays.asList(new LinkAddress(IPV6_ADDRESS1 + "/64")))
+                .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.3"),
+                        InetAddresses.parseNumericAddress("fd00:976a::9")))
+                .setGatewayAddresses(Arrays.asList(
+                        InetAddresses.parseNumericAddress("10.0.2.15"),
+                        InetAddresses.parseNumericAddress("fe80::2")))
+                .setPcscfAddresses(Arrays.asList(
+                        InetAddresses.parseNumericAddress("fd00:976a:c305:1d::8"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c202:1d::7"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c305:1d::5")))
+                .setMtuV4(1234)
+                .setMtuV6(5678)
+                .setPduSessionId(1)
+                .setQosBearerSessions(new ArrayList<>())
+                .setTrafficDescriptors(Collections.emptyList())
+                .build();
+
+        // IP changes
+        mDataNetworkUT.obtainMessage(8/*EVENT_DATA_STATE_CHANGED*/,
+                new AsyncResult(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                        List.of(response), null)).sendToTarget();
+        processAllMessages();
+
+        ArgumentCaptor<LinkProperties> linkPropertiesCaptor =
+                ArgumentCaptor.forClass(LinkProperties.class);
+
+        // Agent re-created, so register should be called twice.
+        verify(mConnectivityManager, times(2)).registerNetworkAgent(any(), any(NetworkInfo.class),
+                linkPropertiesCaptor.capture(), any(NetworkCapabilities.class), any(), any(),
+                anyInt());
+        // The new agent should have the new IP address.
+        assertThat(linkPropertiesCaptor.getValue().getAllAddresses()).containsExactly(
+                InetAddresses.parseNumericAddress(IPV6_ADDRESS1));
+
+        assertThat(linkPropertiesCaptor.getValue()).isEqualTo(mDataNetworkUT.getLinkProperties());
+    }
+
+    @Test
+    public void testIpChangedFromV4ToV6() throws Exception {
+        doAnswer(invocation -> {
+            final Message msg = (Message) invocation.getArguments()[10];
+
+            DataCallResponse response = new DataCallResponse.Builder()
+                    .setCause(0)
+                    .setRetryDurationMillis(-1L)
+                    .setId(123)
+                    .setLinkStatus(2)
+                    .setProtocolType(ApnSetting.PROTOCOL_IPV4V6)
+                    .setInterfaceName("ifname")
+                    .setAddresses(Arrays.asList(
+                            new LinkAddress(InetAddresses.parseNumericAddress(IPV4_ADDRESS), 32)))
+                    .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.3"),
+                            InetAddresses.parseNumericAddress("fd00:976a::9")))
+                    .setGatewayAddresses(Arrays.asList(
+                            InetAddresses.parseNumericAddress("10.0.2.15"),
+                            InetAddresses.parseNumericAddress("fe80::2")))
+                    .setPcscfAddresses(Arrays.asList(
+                            InetAddresses.parseNumericAddress("fd00:976a:c305:1d::8"),
+                            InetAddresses.parseNumericAddress("fd00:976a:c202:1d::7"),
+                            InetAddresses.parseNumericAddress("fd00:976a:c305:1d::5")))
+                    .setMtuV4(1234)
+                    .setMtuV6(5678)
+                    .setPduSessionId(1)
+                    .setQosBearerSessions(new ArrayList<>())
+                    .setTrafficDescriptors(Collections.emptyList())
+                    .build();
+            msg.getData().putParcelable("data_call_response", response);
+            msg.arg1 = DataServiceCallback.RESULT_SUCCESS;
+            msg.sendToTarget();
+            return null;
+        }).when(mMockedWwanDataServiceManager).setupDataCall(anyInt(), any(DataProfile.class),
+                anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(), any(), any(), anyBoolean(),
+                any(Message.class));
+
+        NetworkRequestList networkRequestList = new NetworkRequestList();
+        networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build(), mPhone));
+
+        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
+                mInternetDataProfile, networkRequestList,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                DataAllowedReason.NORMAL, mDataNetworkCallback);
+        replaceInstance(DataNetwork.class, "mDataCallSessionStats",
+                mDataNetworkUT, mDataCallSessionStats);
+        processAllMessages();
+
+        DataCallResponse response = new DataCallResponse.Builder()
+                .setCause(0)
+                .setRetryDurationMillis(-1L)
+                .setId(123)
+                .setLinkStatus(2)
+                .setProtocolType(ApnSetting.PROTOCOL_IPV4V6)
+                .setInterfaceName("ifname")
+                .setAddresses(Arrays.asList(new LinkAddress(IPV6_ADDRESS + "/64")))
+                .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.3"),
+                        InetAddresses.parseNumericAddress("fd00:976a::9")))
+                .setGatewayAddresses(Arrays.asList(
+                        InetAddresses.parseNumericAddress("10.0.2.15"),
+                        InetAddresses.parseNumericAddress("fe80::2")))
+                .setPcscfAddresses(Arrays.asList(
+                        InetAddresses.parseNumericAddress("fd00:976a:c305:1d::8"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c202:1d::7"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c305:1d::5")))
+                .setMtuV4(1234)
+                .setMtuV6(5678)
+                .setPduSessionId(1)
+                .setQosBearerSessions(new ArrayList<>())
+                .setTrafficDescriptors(Collections.emptyList())
+                .build();
+
+        // IP changes
+        mDataNetworkUT.obtainMessage(8/*EVENT_DATA_STATE_CHANGED*/,
+                new AsyncResult(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                        List.of(response), null)).sendToTarget();
+        processAllMessages();
+
+        // Agent should not be re-created, so register should be called ony once.
+        verify(mConnectivityManager, times(1)).registerNetworkAgent(any(), any(NetworkInfo.class),
+                any(LinkProperties.class), any(NetworkCapabilities.class), any(), any(),
+                anyInt());
+
+        // The network should have IPv6 address now
+        assertThat(mDataNetworkUT.getLinkProperties().getAllAddresses()).containsExactly(
+                InetAddresses.parseNumericAddress(IPV6_ADDRESS));
+    }
+
+    @Test
+    public void testIpChangedV4Removed() throws Exception {
+        testCreateDataNetwork();
+
+        DataCallResponse response = new DataCallResponse.Builder()
+                .setCause(0)
+                .setRetryDurationMillis(-1L)
+                .setId(123)
+                .setLinkStatus(2)
+                .setProtocolType(ApnSetting.PROTOCOL_IPV4V6)
+                .setInterfaceName("ifname")
+                .setAddresses(Arrays.asList(new LinkAddress(IPV6_ADDRESS + "/64")))
+                .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.3"),
+                        InetAddresses.parseNumericAddress("fd00:976a::9")))
+                .setGatewayAddresses(Arrays.asList(
+                        InetAddresses.parseNumericAddress("10.0.2.15"),
+                        InetAddresses.parseNumericAddress("fe80::2")))
+                .setPcscfAddresses(Arrays.asList(
+                        InetAddresses.parseNumericAddress("fd00:976a:c305:1d::8"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c202:1d::7"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c305:1d::5")))
+                .setMtuV4(1234)
+                .setMtuV6(5678)
+                .setPduSessionId(1)
+                .setQosBearerSessions(new ArrayList<>())
+                .setTrafficDescriptors(Collections.emptyList())
+                .build();
+
+        // IP changes
+        mDataNetworkUT.obtainMessage(8/*EVENT_DATA_STATE_CHANGED*/,
+                new AsyncResult(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                        List.of(response), null)).sendToTarget();
+        processAllMessages();
+
+        // Agent should not be re-created, so register should be called ony once.
+        verify(mConnectivityManager, times(1)).registerNetworkAgent(any(), any(NetworkInfo.class),
+                any(LinkProperties.class), any(NetworkCapabilities.class), any(), any(),
+                anyInt());
+
+        // The network should have IPv6 address now
+        assertThat(mDataNetworkUT.getLinkProperties().getAllAddresses()).containsExactly(
+                InetAddresses.parseNumericAddress(IPV6_ADDRESS));
+    }
+
+    @Test
+    public void testIpChangedV6Removed() throws Exception {
+        testCreateDataNetwork();
+
+        DataCallResponse response = new DataCallResponse.Builder()
+                .setCause(0)
+                .setRetryDurationMillis(-1L)
+                .setId(123)
+                .setLinkStatus(2)
+                .setProtocolType(ApnSetting.PROTOCOL_IPV4V6)
+                .setInterfaceName("ifname")
+                .setAddresses(Arrays.asList(new LinkAddress(
+                        InetAddresses.parseNumericAddress(IPV4_ADDRESS), 32)))
+                .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.3"),
+                        InetAddresses.parseNumericAddress("fd00:976a::9")))
+                .setGatewayAddresses(Arrays.asList(
+                        InetAddresses.parseNumericAddress("10.0.2.15"),
+                        InetAddresses.parseNumericAddress("fe80::2")))
+                .setPcscfAddresses(Arrays.asList(
+                        InetAddresses.parseNumericAddress("fd00:976a:c305:1d::8"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c202:1d::7"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c305:1d::5")))
+                .setMtuV4(1234)
+                .setMtuV6(5678)
+                .setPduSessionId(1)
+                .setQosBearerSessions(new ArrayList<>())
+                .setTrafficDescriptors(Collections.emptyList())
+                .build();
+
+        // IP changes
+        mDataNetworkUT.obtainMessage(8/*EVENT_DATA_STATE_CHANGED*/,
+                new AsyncResult(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                        List.of(response), null)).sendToTarget();
+        processAllMessages();
+
+        // Agent should not be re-created, so register should be called ony once.
+        verify(mConnectivityManager, times(1)).registerNetworkAgent(any(), any(NetworkInfo.class),
+                any(LinkProperties.class), any(NetworkCapabilities.class), any(), any(),
+                anyInt());
+
+        // The network should have IPv6 address now
+        assertThat(mDataNetworkUT.getLinkProperties().getAllAddresses()).containsExactly(
+                InetAddresses.parseNumericAddress(IPV4_ADDRESS));
     }
 }
