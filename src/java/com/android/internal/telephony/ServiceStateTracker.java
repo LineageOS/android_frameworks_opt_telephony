@@ -898,7 +898,7 @@ public class ServiceStateTracker extends Handler {
         if (nrs != null) {
             int rat = ServiceState.networkTypeToRilRadioTechnology(
                     nrs.getAccessNetworkTechnology());
-            int drs = regCodeToServiceState(nrs.getRegistrationState());
+            int drs = regCodeToServiceState(nrs.getInitialRegistrationState());
             return new Pair<>(drs, rat);
         }
         return null;
@@ -2195,14 +2195,14 @@ public class ServiceStateTracker extends Handler {
         if (wlanPsRegState != null
                 && wlanPsRegState.getAccessNetworkTechnology()
                 == TelephonyManager.NETWORK_TYPE_IWLAN
-                && wlanPsRegState.getRegistrationState()
+                && wlanPsRegState.getInitialRegistrationState()
                 == NetworkRegistrationInfo.REGISTRATION_STATE_HOME
                 && isIwlanPreferred) {
             serviceState.setDataRegState(ServiceState.STATE_IN_SERVICE);
         } else if (wwanPsRegState != null) {
             // If the device is not camped on IWLAN, then we use cellular PS registration state
             // to compute reg state and rat.
-            int regState = wwanPsRegState.getRegistrationState();
+            int regState = wwanPsRegState.getInitialRegistrationState();
             serviceState.setDataRegState(regCodeToServiceState(regState));
         }
         if (DBG) {
@@ -2218,7 +2218,7 @@ public class ServiceStateTracker extends Handler {
                 VoiceSpecificRegistrationInfo voiceSpecificStates =
                         networkRegState.getVoiceSpecificInfo();
 
-                int registrationState = networkRegState.getRegistrationState();
+                int registrationState = networkRegState.getInitialRegistrationState();
                 int cssIndicator = voiceSpecificStates.cssSupported ? 1 : 0;
                 int newVoiceRat = ServiceState.networkTypeToRilRadioTechnology(
                         networkRegState.getAccessNetworkTechnology());
@@ -2300,7 +2300,7 @@ public class ServiceStateTracker extends Handler {
                 mNewSS.addNetworkRegistrationInfo(networkRegState);
                 DataSpecificRegistrationInfo dataSpecificStates =
                         networkRegState.getDataSpecificInfo();
-                int registrationState = networkRegState.getRegistrationState();
+                int registrationState = networkRegState.getInitialRegistrationState();
                 int serviceState = regCodeToServiceState(registrationState);
                 int newDataRat = ServiceState.networkTypeToRilRadioTechnology(
                         networkRegState.getAccessNetworkTechnology());
@@ -3539,9 +3539,9 @@ public class ServiceStateTracker extends Handler {
                 anyDataRatChanged = true;
             }
 
-            int oldRegState = oldNrs != null ? oldNrs.getRegistrationState()
+            int oldRegState = oldNrs != null ? oldNrs.getInitialRegistrationState()
                     : NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN;
-            int newRegState = newNrs != null ? newNrs.getRegistrationState()
+            int newRegState = newNrs != null ? newNrs.getInitialRegistrationState()
                     : NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN;
             hasDataRegStateChanged.put(transport, oldRegState != newRegState);
             if (oldRegState != newRegState) {
@@ -4253,7 +4253,7 @@ public class ServiceStateTracker extends Handler {
     }
 
     /**
-     * Do not set roaming state in case of oprators considered non-roaming.
+     * Do not set roaming state in case of operators considered non-roaming.
      *
      * Can use mcc or mcc+mnc as item of
      * {@link CarrierConfigManager#KEY_NON_ROAMING_OPERATOR_STRING_ARRAY}.
@@ -5672,7 +5672,7 @@ public class ServiceStateTracker extends Handler {
                 NetworkRegistrationInfo wlanNri = new NetworkRegistrationInfo.Builder()
                         .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
                         .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
-                        .setRegistrationState(wwanNri.getRegistrationState())
+                        .setRegistrationState(wwanNri.getInitialRegistrationState())
                         .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_IWLAN)
                         .setRejectCause(wwanNri.getRejectCause())
                         .setEmergencyOnly(wwanNri.isEmergencyEnabled())
