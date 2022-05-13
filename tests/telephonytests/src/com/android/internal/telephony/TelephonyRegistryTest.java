@@ -259,6 +259,9 @@ public class TelephonyRegistryTest extends TelephonyTest {
         addTelephonyRegistryService();
         mTelephonyCallback = new TelephonyCallbackWrapper();
         mTelephonyCallback.init(mSimpleExecutor);
+        mContextFixture.putStringArrayResource(
+                com.android.internal.R.array.config_serviceStateLocationAllowedPackages,
+                new String[0]);
         processAllMessages();
         assertEquals(mTelephonyRegistry.asBinder(),
                 ServiceManager.getService("telephony.registry"));
