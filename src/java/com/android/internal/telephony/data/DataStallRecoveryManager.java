@@ -85,7 +85,7 @@ public class DataStallRecoveryManager extends Handler {
 
     /**
      * Add the RECOVERY_ACTION_REREGISTER to align the RecoveryActions between
-     * DataStallRecoveryManager and Westworld. In Android T, This action will not process because
+     * DataStallRecoveryManager and atoms.proto. In Android T, This action will not process because
      * the boolean array for skip recovery action is default true in carrier config setting.
      *
      * @deprecated Do not use.
