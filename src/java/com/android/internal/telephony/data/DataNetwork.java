@@ -98,6 +98,8 @@ import com.android.internal.util.ArrayUtils;
 import com.android.internal.util.IState;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
+import com.android.net.module.util.LinkPropertiesUtils;
+import com.android.net.module.util.NetUtils;
 import com.android.net.module.util.NetworkCapabilitiesUtils;
 import com.android.telephony.Rlog;
 
@@ -1691,6 +1693,41 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
+     * Check if the new link properties are compatible with the old link properties. For example,
+     * if IP changes, that's considered incompatible.
+     *
+     * @param oldLinkProperties Old link properties.
+     * @param newLinkProperties New Link properties.
+     *
+     * @return {@code true} if the new link properties is compatible with the old link properties.
+     */
+    private boolean isLinkPropertiesCompatible(@NonNull LinkProperties oldLinkProperties,
+            @NonNull LinkProperties newLinkProperties) {
+        if (Objects.equals(oldLinkProperties, newLinkProperties)) return true;
+
+        if (!LinkPropertiesUtils.isIdenticalAddresses(oldLinkProperties, newLinkProperties)) {
+            // If the same address type was removed and added we need to cleanup.
+            LinkPropertiesUtils.CompareOrUpdateResult<Integer, LinkAddress> result =
+                    new LinkPropertiesUtils.CompareOrUpdateResult<>(
+                            oldLinkProperties.getLinkAddresses(),
+                            newLinkProperties.getLinkAddresses(),
+                            linkAddress -> Objects.hash(linkAddress.getAddress(),
+                                    linkAddress.getPrefixLength(), linkAddress.getScope()));
+            log("isLinkPropertiesCompatible: old=" + oldLinkProperties
+                    + " new=" + newLinkProperties + " result=" + result);
+            for (LinkAddress added : result.added) {
+                for (LinkAddress removed : result.removed) {
+                    if (NetUtils.addressTypeMatches(removed.getAddress(), added.getAddress())) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Check if there are immutable capabilities changed. The connectivity service is not able
      * to handle immutable capabilities changed, but in very rare scenarios, immutable capabilities
      * need to be changed dynamically, such as in setup data call response, modem responded with the
@@ -2209,9 +2246,28 @@ public class DataNetwork extends StateMachine {
         }
 
         if (!linkProperties.equals(mLinkProperties)) {
-            mLinkProperties = linkProperties;
-            log("sendLinkProperties " + mLinkProperties);
-            mNetworkAgent.sendLinkProperties(mLinkProperties);
+            // If the new link properties is not compatible (e.g. IP changes, interface changes),
+            // then we should de-register the network agent and re-create a new one.
+            if ((isConnected() || isHandoverInProgress())
+                    && !isLinkPropertiesCompatible(linkProperties, mLinkProperties)) {
+                logl("updateDataNetwork: Incompatible link properties detected. Re-create the "
+                        + "network agent. Changed from " + mLinkProperties + " to "
+                        + linkProperties);
+
+                mLinkProperties = linkProperties;
+
+                // Abandon the network agent because we are going to create a new one.
+                mNetworkAgent.abandon();
+                // Update the link properties first so the new network agent would be created with
+                // the new link properties.
+                mLinkProperties = linkProperties;
+                mNetworkAgent = createNetworkAgent();
+                mNetworkAgent.markConnected();
+            } else {
+                mLinkProperties = linkProperties;
+                log("sendLinkProperties " + mLinkProperties);
+                mNetworkAgent.sendLinkProperties(mLinkProperties);
+            }
         }
 
         updateNetworkCapabilities();
@@ -2361,8 +2417,9 @@ public class DataNetwork extends StateMachine {
     private void onTearDown(@TearDownReason int reason) {
         logl("onTearDown: reason=" + tearDownReasonToString(reason));
 
-        // track frequent networkUnwanted call of IMS and INTERNET
-        if ((isConnected())
+        // track frequent NetworkAgent.onNetworkUnwanted() call of IMS and INTERNET
+        if (reason == TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED
+                && isConnected()
                 && (mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
                 || mNetworkCapabilities.hasCapability(
                         NetworkCapabilities.NET_CAPABILITY_INTERNET))) {
