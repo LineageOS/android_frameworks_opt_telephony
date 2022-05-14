@@ -22,6 +22,7 @@ import android.os.Parcel;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CellIdentityLte;
 import android.telephony.NetworkRegistrationInfo;
+import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 
 import androidx.test.filters.SmallTest;
@@ -67,5 +68,23 @@ public class NetworkRegistrationInfoTest {
     public void testBuilder() {
         assertEquals("12345", new NetworkRegistrationInfo.Builder()
                 .setRegisteredPlmn("12345").build().getRegisteredPlmn());
+    }
+
+    @Test
+    @SmallTest
+    public void testSetRoamingType() {
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
+                .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                .setAvailableServices(Arrays.asList(NetworkRegistrationInfo.SERVICE_TYPE_DATA))
+                .setCellIdentity(new CellIdentityLte())
+                .setRegisteredPlmn("12345")
+                .build();
+        nri.setRoamingType(ServiceState.ROAMING_TYPE_NOT_ROAMING);
+        assertEquals(NetworkRegistrationInfo.REGISTRATION_STATE_HOME, nri.getRegistrationState());
+        assertEquals(NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING,
+                nri.getInitialRegistrationState());
     }
 }
