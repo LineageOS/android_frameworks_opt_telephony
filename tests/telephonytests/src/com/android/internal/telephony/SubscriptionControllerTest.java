@@ -962,6 +962,37 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testGetSubscriptionProperty() throws Exception {
+        testInsertSim();
+        ContentValues values = new ContentValues();
+        values.put(SubscriptionManager.GROUP_UUID, 1);
+        mFakeTelephonyProvider.update(SubscriptionManager.CONTENT_URI, values,
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + 1, null);
+
+        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
+
+        // should succeed with read phone state permission
+        String prop = mSubscriptionControllerUT.getSubscriptionProperty(1,
+                SubscriptionManager.CB_EXTREME_THREAT_ALERT, mContext.getOpPackageName(),
+                mContext.getAttributionTag());
+
+        assertNotEquals(null, prop);
+
+        // group UUID requires privileged phone state permission
+        prop = mSubscriptionControllerUT.getSubscriptionProperty(1, SubscriptionManager.GROUP_UUID,
+                    mContext.getOpPackageName(), mContext.getAttributionTag());
+        assertEquals(null, prop);
+
+        // group UUID should succeed once privileged phone state permission is granted
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        prop = mSubscriptionControllerUT.getSubscriptionProperty(1, SubscriptionManager.GROUP_UUID,
+                mContext.getOpPackageName(), mContext.getAttributionTag());
+        assertNotEquals(null, prop);
+    }
+
+    @Test
+    @SmallTest
     public void testCreateSubscriptionGroupWithCarrierPrivilegePermission() throws Exception {
         testInsertSim();
         // Adding a second profile and mark as embedded.
