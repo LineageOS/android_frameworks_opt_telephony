@@ -364,11 +364,13 @@ public class DataStallRecoveryManager extends Handler {
         if (isValid) {
             reset();
         } else {
-            mIsValidNetwork = false;
-            if (isRecoveryNeeded(true)) {
-                log("trigger data stall recovery");
-                mTimeLastRecoveryStartMs = SystemClock.elapsedRealtime();
-                sendMessage(obtainMessage(EVENT_DO_RECOVERY));
+            if (mIsValidNetwork || isRecoveryAlreadyStarted()) {
+                mIsValidNetwork = false;
+                if (isRecoveryNeeded(true)) {
+                    log("trigger data stall recovery");
+                    mTimeLastRecoveryStartMs = SystemClock.elapsedRealtime();
+                    sendMessage(obtainMessage(EVENT_DO_RECOVERY));
+                }
             }
         }
     }
