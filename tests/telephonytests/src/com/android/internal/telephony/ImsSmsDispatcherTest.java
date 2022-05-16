@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -224,5 +225,75 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
         mImsSmsDispatcher.getSmsListener().onSendSmsResult(token, 0,
                 ImsSmsImplBase.SEND_STATUS_ERROR, 0, 41);
         verify(mSmsTracker).onFailed(any(Context.class), anyInt(), eq(41));
+    }
+
+    @Test
+    public void testSendSmswithMessageRef() throws Exception {
+        int token = mImsSmsDispatcher.mNextToken.get();
+        int messageRef = mImsSmsDispatcher.nextMessageRef() + 1;
+
+        when(mImsManager.getSmsFormat()).thenReturn(SmsMessage.FORMAT_3GPP);
+        when(mPhone.getPhoneType()).thenReturn(PhoneConstants.PHONE_TYPE_GSM);
+        doReturn(mSmsUsageMonitor).when(mSmsDispatchersController).getUsageMonitor();
+
+        mImsSmsDispatcher.sendText("+15555551212", null, "MessageRef test",
+                null, null, null, null, false,
+                -1, false, -1, false, 0);
+        verify(mImsManager).sendSms(eq(token + 1), eq(messageRef), eq(SmsMessage.FORMAT_3GPP),
+                nullable(String.class), eq(false), (byte[]) any());
+    }
+
+    @Test
+    public void testFallbackGsmRetrywithMessageRef() throws Exception {
+        int token = mImsSmsDispatcher.mNextToken.get();
+        int messageRef = mImsSmsDispatcher.nextMessageRef() + 1;
+
+        when(mImsManager.getSmsFormat()).thenReturn(SmsMessage.FORMAT_3GPP);
+        when(mPhone.getPhoneType()).thenReturn(PhoneConstants.PHONE_TYPE_GSM);
+        doReturn(mSmsUsageMonitor).when(mSmsDispatchersController).getUsageMonitor();
+
+        mImsSmsDispatcher.sendText("+15555551212", null, "MessageRef test",
+                null, null, null, null, false,
+                -1, false, -1, false, 0);
+        verify(mImsManager).sendSms(eq(token + 1), eq(messageRef), eq(SmsMessage.FORMAT_3GPP),
+                nullable(String.class), eq(false), (byte[]) any());
+
+        mImsSmsDispatcher.getSmsListener().onSendSmsResult(token + 1, messageRef,
+                ImsSmsImplBase.SEND_STATUS_ERROR_FALLBACK, 0, SmsResponse.NO_ERROR_CODE);
+        processAllMessages();
+
+        ArgumentCaptor<SMSDispatcher.SmsTracker> captor =
+                ArgumentCaptor.forClass(SMSDispatcher.SmsTracker.class);
+        verify(mSmsDispatchersController).sendRetrySms(captor.capture());
+        assertTrue(messageRef + 1 == captor.getValue().mMessageRef);
+    }
+
+    @Test
+    public void testErrorImsRetrywithMessageRef() throws Exception {
+        int token = mImsSmsDispatcher.mNextToken.get();
+        int messageRef = mImsSmsDispatcher.nextMessageRef() + 1;
+        when(mImsManager.getSmsFormat()).thenReturn(SmsMessage.FORMAT_3GPP);
+        when(mPhone.getPhoneType()).thenReturn(PhoneConstants.PHONE_TYPE_GSM);
+        doReturn(mSmsUsageMonitor).when(mSmsDispatchersController).getUsageMonitor();
+
+        mImsSmsDispatcher.sendText("+15555551212", null, "MessageRef test",
+                null, null, null, null, false,
+                -1, false, -1, false, 0);
+        verify(mImsManager).sendSms(eq(token + 1), eq(messageRef), eq(SmsMessage.FORMAT_3GPP),
+                nullable(String.class), eq(false), (byte[]) any());
+
+        // Retry over IMS
+        mImsSmsDispatcher.getSmsListener().onSendSmsResult(token + 1, messageRef,
+                ImsSmsImplBase.SEND_STATUS_ERROR_RETRY, 0, SmsResponse.NO_ERROR_CODE);
+        waitForMs(SMSDispatcher.SEND_RETRY_DELAY + 200);
+        processAllMessages();
+
+        // Make sure tpmr value is same and retry bit set
+        ArgumentCaptor<byte[]> byteCaptor = ArgumentCaptor.forClass(byte[].class);
+        verify(mImsManager).sendSms(eq(token + 2), eq(messageRef), eq(SmsMessage.FORMAT_3GPP),
+                nullable(String.class), eq(true), byteCaptor.capture());
+        byte[] pdu = byteCaptor.getValue();
+        assertEquals(pdu[1], messageRef);
+        assertEquals(0x04, (pdu[0] & 0x04));
     }
 }
