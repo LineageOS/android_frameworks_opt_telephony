@@ -415,6 +415,21 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     }
 
     @Override
+    protected SmsMessageBase.SubmitPduBase getSubmitPdu(String scAddr, String destAddr,
+            String message, boolean statusReportRequested, SmsHeader smsHeader, int priority,
+            int validityPeriod, int messageRef) {
+        return SMSDispatcherUtil.getSubmitPdu(isCdmaMo(), scAddr, destAddr, message,
+                statusReportRequested, smsHeader, priority, validityPeriod, messageRef);
+    }
+
+    @Override
+    protected SmsMessageBase.SubmitPduBase getSubmitPdu(String scAddr, String destAddr,
+            int destPort, byte[] message, boolean statusReportRequested, int messageRef) {
+        return SMSDispatcherUtil.getSubmitPdu(isCdmaMo(), scAddr, destAddr, destPort, message,
+                statusReportRequested, messageRef);
+    }
+
+    @Override
     protected TextEncodingDetails calculateLength(CharSequence messageBody, boolean use7bitOnly) {
         return SMSDispatcherUtil.calculateLength(isCdmaMo(), messageBody, use7bitOnly);
     }
