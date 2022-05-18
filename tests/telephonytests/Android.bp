@@ -32,6 +32,7 @@ android_test {
         "androidx.test.rules",
         "frameworks-base-testutils",
         "guava",
+        "libphonenumber-nogeocoder",
         "mockito-target-minus-junit4",
         "net-tests-utils",
         "platform-test-annotations",
