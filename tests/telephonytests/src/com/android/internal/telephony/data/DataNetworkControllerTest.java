@@ -803,6 +803,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         mRcsRegCallback = regCallbackCaptor.getValue();
 
         processAllMessages();
+        Mockito.clearInvocations(mMockedDataNetworkControllerCallback);
 
         logd("DataNetworkControllerTest -Setup!");
     }
