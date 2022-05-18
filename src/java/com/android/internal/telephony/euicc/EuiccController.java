@@ -36,6 +36,7 @@ import android.service.euicc.EuiccService;
 import android.service.euicc.GetDefaultDownloadableSubscriptionListResult;
 import android.service.euicc.GetDownloadableSubscriptionMetadataResult;
 import android.service.euicc.GetEuiccProfileInfoListResult;
+import android.telephony.AnomalyReporter;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyFrameworkInitializer;
@@ -70,6 +71,7 @@ import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Stack;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -1310,6 +1312,11 @@ public class EuiccController extends IEuiccController.Stub {
         }
         String cardIdString = UiccController.getInstance().convertToCardString(cardId);
         for (int slotIndex = 0; slotIndex < slotInfos.length; slotIndex++) {
+            if (slotInfos[slotIndex] == null) {
+                AnomalyReporter.reportAnomaly(
+                        UUID.fromString("e9517acf-e1a1-455f-9231-1b5515a0d0eb"),
+                        "EuiccController: Found UiccSlotInfo Null object.");
+            }
             String retrievedCardId = slotInfos[slotIndex] != null
                     ? slotInfos[slotIndex].getCardId() : null;
             if (IccUtils.compareIgnoreTrailingFs(cardIdString, retrievedCardId)) {
