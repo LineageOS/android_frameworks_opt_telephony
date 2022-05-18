@@ -474,8 +474,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     protected LinkBandwidthEstimator mLinkBandwidthEstimator;
 
-    // TODO: Temp code. Use cl/399526916 for future canary process. After rolling out to 100%
-    //  dogfooders, the code below should be completely removed.
+    /** The flag indicating using the new data stack or not. */
+    // This flag and the old data stack code will be deleted in Android 14.
     private final boolean mNewDataStackEnabled;
 
     public IccRecords getIccRecords() {
@@ -4967,10 +4967,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * @return {@code true} if using the new telephony data stack. See go/atdr for the design.
+     * @return {@code true} if using the new telephony data stack.
      */
-    // TODO: Temp code. Use cl/421423121 for future canary process. After rolling out to 100%
-    //  dogfooders, the code below should be completely removed before T AOSP release.
+    // This flag and the old data stack code will be deleted in Android 14.
     public boolean isUsingNewDataStack() {
         return mNewDataStackEnabled;
     }
