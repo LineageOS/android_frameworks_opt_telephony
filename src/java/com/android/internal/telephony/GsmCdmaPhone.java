@@ -4678,9 +4678,12 @@ public class GsmCdmaPhone extends Phone {
             return;
         }
 
-        UiccPort port = mUiccController.getUiccPort(mPhoneId);
-        String iccId = (port == null) ? null : port.getIccId();
+        // Due to timing issue, sometimes UiccPort is coming null, so don't use UiccPort object
+        // to retrieve the iccId here. Instead, depend on the UiccSlot API.
+        String iccId = slot.getIccId(slot.getPortIndexFromPhoneId(mPhoneId));
         if (iccId == null) {
+            loge("reapplyUiccAppsEnablementIfNeeded iccId is null, phoneId: " + mPhoneId
+                    + " portIndex: " + slot.getPortIndexFromPhoneId(mPhoneId));
             return;
         }
 
