@@ -1656,6 +1656,31 @@ public class DataNetworkController extends Handler {
             }
         }
 
+        // If the data network is IMS that supports voice call, and has MMTEL request (client
+        // specified VoPS is required.)
+        if (dataNetwork.getAttachedNetworkRequestList().get(
+                new int[]{NetworkCapabilities.NET_CAPABILITY_MMTEL}) != null) {
+            // When reaching here, it means the network supports MMTEL, and also has MMTEL request
+            // attached to it.
+            if (!dataNetwork.shouldDelayImsTearDown()) {
+                if (dataNetwork.getTransport() == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
+                    NetworkRegistrationInfo nri = mServiceState.getNetworkRegistrationInfo(
+                            NetworkRegistrationInfo.DOMAIN_PS,
+                            AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+                    if (nri != null) {
+                        DataSpecificRegistrationInfo dsri = nri.getDataSpecificInfo();
+                        if (dsri != null && dsri.getVopsSupportInfo() != null
+                                && !dsri.getVopsSupportInfo().isVopsSupported()) {
+                            evaluation.addDataDisallowedReason(
+                                    DataDisallowedReason.VOPS_NOT_SUPPORTED);
+                        }
+                    }
+                }
+            } else {
+                log("Ignored VoPS check due to delay IMS tear down until call ends.");
+            }
+        }
+
         // Check if data is disabled
         boolean dataDisabled = false;
         if (!mDataSettingsManager.isDataEnabled()) {

@@ -1213,45 +1213,10 @@ public class DataNetworkTest extends TelephonyTest {
         logd("Trigger non VoPS");
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
-        assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_MMTEL)).isFalse();
-    }
-
-    @Test
-    public void testMovingToNonVopsVoiceCallOngoing() throws Exception {
-        DataSpecificRegistrationInfo dsri = new DataSpecificRegistrationInfo(8, false, true, true,
-                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_SUPPORTED,
-                        LteVopsSupportInfo.LTE_STATUS_SUPPORTED));
-        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
-        testCreateImsDataNetwork();
-
+        // MMTEL should not be removed.
         assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_MMTEL)).isTrue();
-
-        // Voice call ongoing.
-        doReturn(PhoneConstants.State.OFFHOOK).when(mImsCT).getState();
-
-        dsri = new DataSpecificRegistrationInfo(8, false, true, true,
-                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED,
-                        LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED));
-        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
-                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, dsri);
-
-        // Should not lose MMTEL since voice call is ongoing
-        assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_MMTEL)).isTrue();
-
-        // Voice call ended.
-        doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
-        mDataNetworkUT.sendMessage(23/*EVENT_VOICE_CALL_ENDED*/);
-        processAllMessages();
-
-        // MMTEL should be removed.
-        assertThat(mDataNetworkUT.getNetworkCapabilities().hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_MMTEL)).isFalse();
     }
-
 
     @Test
     public void testCssIndicatorChanged() throws Exception {
