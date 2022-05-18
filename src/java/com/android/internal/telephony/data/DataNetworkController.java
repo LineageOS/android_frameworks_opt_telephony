@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony.data;
 
-
 import android.annotation.CallbackExecutor;
 import android.annotation.IntDef;
 import android.annotation.NonNull;
@@ -1082,7 +1081,13 @@ public class DataNetworkController extends Handler {
                 onTearDownAllDataNetworks(msg.arg1);
                 break;
             case EVENT_REGISTER_DATA_NETWORK_CONTROLLER_CALLBACK:
-                mDataNetworkControllerCallbacks.add((DataNetworkControllerCallback) msg.obj);
+                DataNetworkControllerCallback callback = (DataNetworkControllerCallback) msg.obj;
+                mDataNetworkControllerCallbacks.add(callback);
+                // Notify upon registering if no data networks currently exist.
+                if (mDataNetworkList.isEmpty()) {
+                    callback.invokeFromExecutor(
+                            () -> callback.onAnyDataNetworkExistingChanged(false));
+                }
                 break;
             case EVENT_UNREGISTER_DATA_NETWORK_CONTROLLER_CALLBACK:
                 mDataNetworkControllerCallbacks.remove((DataNetworkControllerCallback) msg.obj);
@@ -1337,7 +1342,7 @@ public class DataNetworkController extends Handler {
     }
 
     /**
-     * @return {@code true} internet is unmetered.
+     * @return {@code true} if internet is unmetered.
      */
     public boolean isInternetUnmetered() {
         return mDataNetworkList.stream()
@@ -1347,6 +1352,17 @@ public class DataNetworkController extends Handler {
                         .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
                         || dataNetwork.getNetworkCapabilities()
                         .hasCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+    }
+
+    /**
+     * @return {@code true} if all data networks are disconnected.
+     */
+    public boolean areAllDataDisconnected() {
+        if (!mDataNetworkList.isEmpty()) {
+            log("areAllDataDisconnected false due to: " + mDataNetworkList.stream()
+                    .map(DataNetwork::name).collect(Collectors.joining(", ")));
+        }
+        return mDataNetworkList.isEmpty();
     }
 
     /**
