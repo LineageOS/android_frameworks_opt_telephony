@@ -38,6 +38,7 @@ import android.util.LocalLog;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
 import com.android.internal.telephony.metrics.DataStallRecoveryStats;
@@ -123,9 +124,6 @@ public class DataStallRecoveryManager extends Handler {
     private static final int RECOVERED_REASON_MODEM = 2;
     /** The data stall recovered by user (Mobile Data Power off/on). */
     private static final int RECOVERED_REASON_USER = 3;
-
-    /** Event for data config updated. */
-    private static final int EVENT_DATA_CONFIG_UPDATED = 1;
 
     /** Event for triggering recovery action. */
     private static final int EVENT_DO_RECOVERY = 2;
@@ -245,7 +243,12 @@ public class DataStallRecoveryManager extends Handler {
 
     /** Register for all events that data stall monitor is interested. */
     private void registerAllEvents() {
-        mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
+        mDataConfigManager.registerCallback(new DataConfigManagerCallback(this::post) {
+            @Override
+            public void onCarrierConfigChanged() {
+                DataStallRecoveryManager.this.onCarrierConfigUpdated();
+            }
+        });
         mDataNetworkController.registerDataNetworkControllerCallback(
                 new DataNetworkControllerCallback(this::post) {
                     @Override
@@ -274,9 +277,6 @@ public class DataStallRecoveryManager extends Handler {
     public void handleMessage(Message msg) {
         logv("handleMessage = " + msg);
         switch (msg.what) {
-            case EVENT_DATA_CONFIG_UPDATED:
-                onDataConfigUpdated();
-                break;
             case EVENT_DO_RECOVERY:
                 doRecovery();
                 break;
@@ -319,8 +319,8 @@ public class DataStallRecoveryManager extends Handler {
         return mSkipRecoveryActionArray[recoveryAction];
     }
 
-    /** Called when data config was updated. */
-    private void onDataConfigUpdated() {
+    /** Called when carrier config was updated. */
+    private void onCarrierConfigUpdated() {
         updateDataStallRecoveryConfigs();
     }
 
@@ -355,7 +355,7 @@ public class DataStallRecoveryManager extends Handler {
     /**
      * Called when internet validation status changed.
      *
-     * @param validationStatus Validation status.
+     * @param status Validation status.
      */
     private void onInternetValidationStatusChanged(@ValidationStatus int status) {
         logl("onInternetValidationStatusChanged: " + DataUtils.validationStatusToString(status));
