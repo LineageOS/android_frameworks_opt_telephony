@@ -106,7 +106,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     // Mocked classes
     private Handler mTestHandler;
     private UiccSlot mUiccSlot;
-    private UiccPort mUiccPort;
     private CommandsInterface mMockCi;
 
     //mPhoneUnderTest
@@ -1253,8 +1252,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         // Have IccId defined. But expected value and current value are the same. So no RIL command
         // should be sent.
         String iccId = "Fake iccId";
-        doReturn(mUiccPort).when(mUiccController).getUiccPort(anyInt());
-        doReturn(iccId).when(mUiccPort).getIccId();
+        doReturn(iccId).when(mUiccSlot).getIccId(anyInt());
         Message.obtain(mPhoneUT, EVENT_ICC_CHANGED, null).sendToTarget();
         processAllMessages();
         verify(mSubscriptionController).getSubInfoForIccId(iccId);
@@ -1268,9 +1266,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         // Set SIM to be present, with a fake iccId, and notify enablement being false.
         doReturn(mUiccSlot).when(mUiccController).getUiccSlotForPhone(anyInt());
         doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mUiccSlot).getCardState();
-        doReturn(mUiccPort).when(mUiccController).getUiccPort(anyInt());
         String iccId = "Fake iccId";
-        doReturn(iccId).when(mUiccPort).getIccId();
+        doReturn(iccId).when(mUiccSlot).getIccId(anyInt());
         Message.obtain(mPhoneUT, EVENT_UICC_APPS_ENABLEMENT_STATUS_CHANGED,
                 new AsyncResult(null, false, null)).sendToTarget();
         processAllMessages();
@@ -1321,9 +1318,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         // Set SIM to be present, with a fake iccId, and notify enablement being false.
         doReturn(mUiccSlot).when(mUiccController).getUiccSlotForPhone(anyInt());
         doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mUiccSlot).getCardState();
-        doReturn(mUiccPort).when(mUiccController).getUiccPort(anyInt());
         String iccId = "Fake iccId";
-        doReturn(iccId).when(mUiccPort).getIccId();
+        doReturn(iccId).when(mUiccSlot).getIccId(anyInt());
         Message.obtain(mPhoneUT, EVENT_UICC_APPS_ENABLEMENT_STATUS_CHANGED,
                 new AsyncResult(null, false, null)).sendToTarget();
         processAllMessages();
