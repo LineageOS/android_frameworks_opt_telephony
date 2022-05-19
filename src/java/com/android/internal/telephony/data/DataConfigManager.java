@@ -205,6 +205,10 @@ public class DataConfigManager extends Handler {
             "anomaly_setup_data_call_failure";
     /** DeviceConfig key of anomaly report threshold for frequent network-unwanted call. */
     private static final String KEY_ANOMALY_NETWORK_UNWANTED = "anomaly_network_unwanted";
+    /** DeviceConfig key of anomaly report threshold for frequent change of preferred network. */
+    private static final String KEY_ANOMALY_QNS_CHANGE_NETWORK = "anomaly_qns_change_network";
+    /** DeviceConfig key of anomaly report threshold for invalid QNS params. */
+    private static final String KEY_ANOMALY_QNS_PARAM = "anomaly_qns_param";
     /** DeviceConfig key of anomaly report threshold for DataNetwork stuck in connecting state. */
     private static final String KEY_ANOMALY_NETWORK_CONNECTING_TIMEOUT =
             "anomaly_network_connecting_timeout";
@@ -226,6 +230,17 @@ public class DataConfigManager extends Handler {
      * at {@link TelephonyNetworkAgent#onNetworkUnwanted}
      */
     private EventFrequency mNetworkUnwantedAnomalyReportThreshold;
+
+    /**
+     * Anomaly report thresholds for frequent APN type change at {@link AccessNetworksManager}
+     */
+    private EventFrequency mQnsFrequentApnTypeChangeAnomalyReportThreshold;
+
+    /**
+     * {@code true} if enabled anomaly detection for param when QNS wants to change preferred
+     * network at {@link AccessNetworksManager}.
+     */
+    private boolean mIsInvalidQnsParamAnomalyReportEnabled;
 
     /**
      * Timeout in ms before creating an anomaly report for a DataNetwork stuck in
@@ -392,17 +407,15 @@ public class DataConfigManager extends Handler {
                 DeviceConfig.getProperties(DeviceConfig.NAMESPACE_TELEPHONY);
 
         mImsReleaseRequestAnomalyReportThreshold = parseSlidingWindowCounterThreshold(
-                properties.getString(KEY_ANOMALY_IMS_RELEASE_REQUEST, null),
-                0,
-                2);
+                properties.getString(KEY_ANOMALY_IMS_RELEASE_REQUEST, null), 0, 2);
         mNetworkUnwantedAnomalyReportThreshold = parseSlidingWindowCounterThreshold(
-                properties.getString(KEY_ANOMALY_NETWORK_UNWANTED, null),
-                0,
-                12);
+                properties.getString(KEY_ANOMALY_NETWORK_UNWANTED, null), 0, 12);
         mSetupDataCallAnomalyReportThreshold = parseSlidingWindowCounterThreshold(
-                properties.getString(KEY_ANOMALY_SETUP_DATA_CALL_FAILURE, null),
-                0,
-                12);
+                properties.getString(KEY_ANOMALY_SETUP_DATA_CALL_FAILURE, null), 0, 12);
+        mQnsFrequentApnTypeChangeAnomalyReportThreshold = parseSlidingWindowCounterThreshold(
+                properties.getString(KEY_ANOMALY_QNS_CHANGE_NETWORK, null), 0, 5);
+        mIsInvalidQnsParamAnomalyReportEnabled = properties.getBoolean(
+                KEY_ANOMALY_QNS_PARAM, false);
         mNetworkConnectingTimeout = properties.getInt(
                 KEY_ANOMALY_NETWORK_CONNECTING_TIMEOUT, MAX_NETWORK_TRANSIT_STATE_TIMEOUT_MS);
         mNetworkDisconnectingTimeout = properties.getInt(
@@ -818,6 +831,23 @@ public class DataConfigManager extends Handler {
      */
     public @NonNull EventFrequency getAnomalyImsReleaseRequestThreshold() {
         return mImsReleaseRequestAnomalyReportThreshold;
+    }
+
+    /**
+     * Anomaly report thresholds for frequent QNS change of preferred network
+     * at {@link AccessNetworksManager}
+     * @return EventFrequency to trigger the anomaly report
+     */
+    public @NonNull EventFrequency getAnomalyQnsChangeThreshold() {
+        return mQnsFrequentApnTypeChangeAnomalyReportThreshold;
+    }
+
+    /**
+     * @return {@code true} if enabled anomaly report for invalid param when QNS wants to change
+     * preferred network at {@link AccessNetworksManager}.
+     */
+    public boolean isInvalidQnsParamAnomalyReportEnabled() {
+        return mIsInvalidQnsParamAnomalyReportEnabled;
     }
 
     /**
