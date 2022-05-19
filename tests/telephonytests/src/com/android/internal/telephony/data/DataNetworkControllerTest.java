@@ -2901,4 +2901,22 @@ public class DataNetworkControllerTest extends TelephonyTest {
         assertThat(dataNetworkList.get(0).getAttachedNetworkRequestList()).isEmpty();
         assertThat(dataNetworkList.get(0).isConnected()).isTrue();
     }
+
+    @Test
+    public void testTempDdsSwitchTearDown() throws Exception {
+        TelephonyNetworkRequest request = createNetworkRequest(
+                NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        mDataNetworkControllerUT.addNetworkRequest(request);
+        processAllMessages();
+
+        // Now DDS temporarily switched to phone 1
+        doReturn(1).when(mMockedPhoneSwitcher).getPreferredDataPhoneId();
+
+        // Simulate telephony network factory remove request due to switch.
+        mDataNetworkControllerUT.removeNetworkRequest(request);
+        processAllMessages();
+
+        // Data should be torn down on this non-preferred sub.
+        verifyAllDataDisconnected();
+    }
 }
