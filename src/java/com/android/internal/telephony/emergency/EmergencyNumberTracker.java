@@ -272,7 +272,8 @@ public class EmergencyNumberTracker extends Handler {
             int slotId = SubscriptionController.getInstance().getSlotIndex(phone.getSubId());
             // If slot id is invalid, it means that there is no sim card.
             if (slotId != SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
-                // If there is at least one sim active, sim is not absent; it returns false.
+                // If there is at least one sim active, sim is not absent; it returns false
+                logd("found sim in slotId: " + slotId + " subid: " + phone.getSubId());
                 return false;
             }
         }
@@ -737,18 +738,25 @@ public class EmergencyNumberTracker extends Handler {
                 }
                 if (exactMatch) {
                     if (num.getNumber().equals(number)) {
+                        logd("Found in mEmergencyNumberList [exact match] ");
                         return true;
                     }
                 } else {
                     if (number.startsWith(num.getNumber())) {
+                        logd("Found in mEmergencyNumberList [not exact match] ");
                         return true;
                     }
                 }
             }
             return false;
         } else {
-            return isEmergencyNumberFromEccList(number, exactMatch)
-                    || isEmergencyNumberFromDatabase(number) || isEmergencyNumberForTest(number);
+            boolean inEccList = isEmergencyNumberFromEccList(number, exactMatch);
+            boolean inEmergencyNumberDb = isEmergencyNumberFromDatabase(number);
+            boolean inEmergencyNumberTestList = isEmergencyNumberForTest(number);
+            logd("Search results - inRilEccList:" + inEccList
+                    + " inEmergencyNumberDb:" + inEmergencyNumberDb + " inEmergencyNumberTestList: "
+                    + inEmergencyNumberTestList);
+            return inEccList || inEmergencyNumberDb || inEmergencyNumberTestList;
         }
     }
 
@@ -970,53 +978,56 @@ public class EmergencyNumberTracker extends Handler {
         String emergencyNumbers = "";
         int slotId = SubscriptionController.getInstance().getSlotIndex(mPhone.getSubId());
 
-        // retrieve the list of emergency numbers
-        // check read-write ecclist property first
-        String ecclist = (slotId <= 0) ? "ril.ecclist" : ("ril.ecclist" + slotId);
-
-        emergencyNumbers = SystemProperties.get(ecclist, "");
-
+        String ecclist = null;
         String countryIso = getLastKnownEmergencyCountryIso();
-        logd("slotId:" + slotId + " country:" + countryIso + " emergencyNumbers: "
-                +  emergencyNumbers);
 
-        if (TextUtils.isEmpty(emergencyNumbers)) {
-            // then read-only ecclist property since old RIL only uses this
-            emergencyNumbers = SystemProperties.get("ro.ril.ecclist");
-        }
+        if (!mPhone.getHalVersion().greaterOrEqual(new HalVersion(1, 4))) {
+            //only use ril ecc list for older devices with HAL < 1.4
+            // check read-write ecclist property first
+            ecclist = (slotId <= 0) ? "ril.ecclist" : ("ril.ecclist" + slotId);
+            emergencyNumbers = SystemProperties.get(ecclist, "");
 
-        if (!TextUtils.isEmpty(emergencyNumbers)) {
-            // searches through the comma-separated list for a match,
-            // return true if one is found.
-            for (String emergencyNum : emergencyNumbers.split(",")) {
-                // According to com.android.i18n.phonenumbers.ShortNumberInfo, in
-                // these countries, if extra digits are added to an emergency number,
-                // it no longer connects to the emergency service.
-                if (useExactMatch || countryIso.equals("br") || countryIso.equals("cl")
+            logd("slotId:" + slotId + " country:" + countryIso + " emergencyNumbers: "
+                + emergencyNumbers);
+
+            if (TextUtils.isEmpty(emergencyNumbers)) {
+                // then read-only ecclist property since old RIL only uses this
+                emergencyNumbers = SystemProperties.get("ro.ril.ecclist");
+            }
+
+            if (!TextUtils.isEmpty(emergencyNumbers)) {
+                // searches through the comma-separated list for a match,
+                // return true if one is found.
+                for (String emergencyNum : emergencyNumbers.split(",")) {
+                    // According to com.android.i18n.phonenumbers.ShortNumberInfo, in
+                    // these countries, if extra digits are added to an emergency number,
+                    // it no longer connects to the emergency service.
+                    if (useExactMatch || countryIso.equals("br") || countryIso.equals("cl")
                         || countryIso.equals("ni")) {
-                    if (number.equals(emergencyNum)) {
-                        return true;
-                    } else {
-                        for (String prefix : mEmergencyNumberPrefix) {
-                            if (number.equals(prefix + emergencyNum)) {
-                                return true;
+                        if (number.equals(emergencyNum)) {
+                            return true;
+                        } else {
+                            for (String prefix : mEmergencyNumberPrefix) {
+                                if (number.equals(prefix + emergencyNum)) {
+                                    return true;
+                                }
                             }
                         }
-                    }
-                } else {
-                    if (number.startsWith(emergencyNum)) {
-                        return true;
                     } else {
-                        for (String prefix : mEmergencyNumberPrefix) {
-                            if (number.startsWith(prefix + emergencyNum)) {
-                                return true;
+                        if (number.startsWith(emergencyNum)) {
+                            return true;
+                        } else {
+                            for (String prefix : mEmergencyNumberPrefix) {
+                                if (number.startsWith(prefix + emergencyNum)) {
+                                    return true;
+                                }
                             }
                         }
                     }
                 }
+                // no matches found against the list!
+                return false;
             }
-            // no matches found against the list!
-            return false;
         }
 
         logd("System property doesn't provide any emergency numbers."
@@ -1050,32 +1061,34 @@ public class EmergencyNumberTracker extends Handler {
             }
         }
 
-        // No ecclist system property, so use our own list.
-        if (countryIso != null) {
-            ShortNumberInfo info = ShortNumberInfo.getInstance();
-            if (useExactMatch) {
-                if (info.isEmergencyNumber(number, countryIso.toUpperCase())) {
-                    return true;
-                } else {
-                    for (String prefix : mEmergencyNumberPrefix) {
-                        if (info.isEmergencyNumber(prefix + number, countryIso.toUpperCase())) {
-                            return true;
+        if(isSimAbsent()) {
+            // No ecclist system property, so use our own list.
+            if (countryIso != null) {
+                ShortNumberInfo info = ShortNumberInfo.getInstance();
+                if (useExactMatch) {
+                    if (info.isEmergencyNumber(number, countryIso.toUpperCase())) {
+                        return true;
+                    } else {
+                        for (String prefix : mEmergencyNumberPrefix) {
+                            if (info.isEmergencyNumber(prefix + number, countryIso.toUpperCase())) {
+                                return true;
+                            }
                         }
                     }
-                }
-                return false;
-            } else {
-                if (info.connectsToEmergencyNumber(number, countryIso.toUpperCase())) {
-                    return true;
+                    return false;
                 } else {
-                    for (String prefix : mEmergencyNumberPrefix) {
-                        if (info.connectsToEmergencyNumber(prefix + number,
-                                countryIso.toUpperCase())) {
-                            return true;
+                    if (info.connectsToEmergencyNumber(number, countryIso.toUpperCase())) {
+                        return true;
+                    } else {
+                        for (String prefix : mEmergencyNumberPrefix) {
+                            if (info.connectsToEmergencyNumber(prefix + number,
+                                    countryIso.toUpperCase())) {
+                                return true;
+                            }
                         }
                     }
+                    return false;
                 }
-                return false;
             }
         }
 
