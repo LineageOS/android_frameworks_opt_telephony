@@ -27,6 +27,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.provider.Settings;
 import android.provider.Telephony;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 import android.util.Log;
@@ -93,7 +94,11 @@ public class CarrierActionAgent extends Handler {
                     // ignore rebroadcast since carrier apps are direct boot aware.
                     return;
                 }
-                sendMessage(obtainMessage(EVENT_SIM_STATE_CHANGED, iccState));
+                final int phoneId = intent.getIntExtra(PhoneConstants.PHONE_KEY,
+                        SubscriptionManager.INVALID_PHONE_INDEX);
+                if (mPhone.getPhoneId() == phoneId) {
+                    sendMessage(obtainMessage(EVENT_SIM_STATE_CHANGED, iccState));
+                }
             }
         }
     };
