@@ -1998,15 +1998,23 @@ public class DataNetworkController extends Handler {
         sendMessage(obtainMessage(EVENT_REMOVE_NETWORK_REQUEST, networkRequest));
     }
 
-    private void onRemoveNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
+    private void onRemoveNetworkRequest(@NonNull TelephonyNetworkRequest request) {
+        // The request generated from telephony network factory does not contain the information
+        // the original request has, for example, attached data network. We need to find the
+        // original one.
+        TelephonyNetworkRequest networkRequest = mAllNetworkRequestList.stream()
+                .filter(r -> r.equals(request))
+                .findFirst()
+                .orElse(null);
+        if (networkRequest == null || !mAllNetworkRequestList.remove(networkRequest)) {
+            loge("onRemoveNetworkRequest: Network request does not exist. " + networkRequest);
+            return;
+        }
+
         if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
             mImsThrottleCounter.addOccurrence();
             mLastReleasedImsRequestCapabilities = networkRequest.getCapabilities();
             mLastImsOperationIsRelease = true;
-        }
-        if (!mAllNetworkRequestList.remove(networkRequest)) {
-            loge("onRemoveNetworkRequest: Network request does not exist. " + networkRequest);
-            return;
         }
 
         if (networkRequest.getAttachedNetwork() != null) {

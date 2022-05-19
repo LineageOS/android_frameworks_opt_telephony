@@ -2944,4 +2944,30 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS,
                 NetworkCapabilities.NET_CAPABILITY_MMTEL);
     }
+
+    @Test
+    public void testRemoveNetworkRequest() throws Exception {
+        NetworkCapabilities netCaps = new NetworkCapabilities();
+        netCaps.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+
+        NetworkRequest nativeNetworkRequest = new NetworkRequest(netCaps,
+                ConnectivityManager.TYPE_MOBILE, 0, NetworkRequest.Type.REQUEST);
+
+        mDataNetworkControllerUT.addNetworkRequest(new TelephonyNetworkRequest(
+                nativeNetworkRequest, mPhone));
+        processAllMessages();
+
+        // Intentionally create a new telephony request with the original native network request.
+        TelephonyNetworkRequest request = new TelephonyNetworkRequest(nativeNetworkRequest, mPhone);
+
+        mDataNetworkControllerUT.removeNetworkRequest(request);
+        processAllFutureMessages();
+
+        List<DataNetwork> dataNetworkList = getDataNetworks();
+        // The data network should not be torn down after network request removal.
+        assertThat(dataNetworkList).hasSize(1);
+        // But should be detached from the data network.
+        assertThat(dataNetworkList.get(0).getAttachedNetworkRequestList()).isEmpty();
+        assertThat(dataNetworkList.get(0).isConnected()).isTrue();
+    }
 }
