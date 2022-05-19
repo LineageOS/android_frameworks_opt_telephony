@@ -1982,6 +1982,7 @@ public class EuiccController extends IEuiccController.Stub {
 
     @Override
     public boolean hasCarrierPrivilegesForPackageOnAnyPhone(String callingPackage) {
+        mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
         final long token = Binder.clearCallingIdentity();
         try {
             // checkCarrierPrivilegesForPackageAnyPhone API requires READ_PHONE_STATE permission,
@@ -1995,6 +1996,7 @@ public class EuiccController extends IEuiccController.Stub {
 
     @Override
     public boolean isCompatChangeEnabled(String callingPackage, long changeId) {
+        mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
         // Platform compat framework kills the callingPackage app to ensure that the change
         // takes affect immediately. So the corresponding compat checking is moved to controller.
         boolean changeEnabled = CompatChanges.isChangeEnabled(changeId, callingPackage,
