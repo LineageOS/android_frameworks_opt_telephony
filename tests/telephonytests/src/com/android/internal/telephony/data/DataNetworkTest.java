@@ -71,6 +71,7 @@ import android.util.SparseArray;
 
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
 import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataNetwork.DataNetworkCallback;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
@@ -948,7 +949,7 @@ public class DataNetworkTest extends TelephonyTest {
         testTearDown();
 
         // Verify register all events.
-        verify(mDataConfigManager).registerForConfigUpdate(any(Handler.class), anyInt());
+        verify(mDataConfigManager).registerCallback(any(DataConfigManagerCallback.class));
         verify(mDisplayInfoController).registerForTelephonyDisplayInfoChanged(
                 any(Handler.class), anyInt(), eq(null));
         verify(mMockedWwanDataServiceManager).registerForDataCallListChanged(
@@ -973,7 +974,7 @@ public class DataNetworkTest extends TelephonyTest {
         verify(mImsCT).registerForVoiceCallEnded(any(Handler.class), anyInt(), eq(null));
 
         // Verify unregister all events.
-        verify(mDataConfigManager).unregisterForConfigUpdate(any(Handler.class));
+        verify(mDataConfigManager).unregisterCallback(any(DataConfigManagerCallback.class));
         verify(mDisplayInfoController).unregisterForTelephonyDisplayInfoChanged(any(Handler.class));
         verify(mMockedWwanDataServiceManager).unregisterForDataCallListChanged(any(Handler.class));
         verify(mMockedWlanDataServiceManager).unregisterForDataCallListChanged(any(Handler.class));
