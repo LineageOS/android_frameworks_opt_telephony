@@ -1226,6 +1226,9 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         IState state = getCurrentState();
         Log.wtf(TAG, "Unhandled message " + msg.what + " in state "
                 + (state == null ? "null" : state.getName()));
+        AnomalyReporter.reportAnomaly(
+                UUID.fromString("0db20514-5fa1-4e62-a7b7-2acf5f92c957"),
+                "EuiccConnector: Found unhandledMessage " + String.valueOf(msg.what));
     }
 
     @Override
