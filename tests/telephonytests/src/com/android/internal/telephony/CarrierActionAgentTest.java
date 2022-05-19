@@ -92,6 +92,7 @@ public class CarrierActionAgentTest extends TelephonyTest {
         final Intent intent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
         intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
                 IccCardConstants.INTENT_VALUE_ICC_LOADED);
+        intent.putExtra(PhoneConstants.PHONE_KEY, mPhone.getPhoneId());
         mContext.sendBroadcast(intent);
         processAllMessages();
 
@@ -134,6 +135,7 @@ public class CarrierActionAgentTest extends TelephonyTest {
         final Intent intent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
         intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
                 IccCardConstants.INTENT_VALUE_ICC_LOADED);
+        intent.putExtra(PhoneConstants.PHONE_KEY, mPhone.getPhoneId());
         mContext.sendBroadcast(intent);
         processAllMessages();
 
