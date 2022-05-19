@@ -537,6 +537,14 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * @return {@code true} if tethering profile should not be used when the device is roaming.
+     */
+    public boolean isTetheringProfileDisabledForRoaming() {
+        return mCarrierConfig.getBoolean(
+                CarrierConfigManager.KEY_DISABLE_DUN_APN_WHILE_ROAMING_WITH_PRESET_APN_BOOL);
+    }
+
+    /**
      * Check if the network capability metered.
      *
      * @param networkCapability The network capability.
@@ -1226,6 +1234,8 @@ public class DataConfigManager extends Handler {
                 com.android.internal.R.string.config_bandwidthEstimateSource));
         pw.println("isDelayTearDownImsEnabled=" + isImsDelayTearDownEnabled());
         pw.println("isEnhancedIwlanHandoverCheckEnabled=" + isEnhancedIwlanHandoverCheckEnabled());
+        pw.println("isTetheringProfileDisabledForRoaming="
+                + isTetheringProfileDisabledForRoaming());
         pw.decreaseIndent();
     }
 }
