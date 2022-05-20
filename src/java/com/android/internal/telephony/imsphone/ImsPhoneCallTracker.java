@@ -220,6 +220,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 isUssd |= extras.getBoolean(ImsManager.EXTRA_USSD, false);
                 if (isUssd) {
                     if (DBG) log("processIncomingCall: USSD");
+                    mOperationLocalLog.log("processIncomingCall: USSD");
                     mUssdSession = mImsManager.takeCall(c, mImsUssdListener);
                     if (mUssdSession != null) {
                         mUssdSession.accept(ImsCallProfile.CALL_TYPE_VOICE);
@@ -271,6 +272,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                             if (cause == DisconnectCause.INCOMING_AUTO_REJECTED) {
                                 conn.setDisconnectCause(cause);
                                 if (DBG) log("onIncomingCall : incoming call auto rejected");
+                                mOperationLocalLog.log("processIncomingCall: auto rejected");
                             }
                         } catch (NumberFormatException e) {
                             Rlog.e(LOG_TAG, "Exception in parsing Integer Data: " + e);
@@ -310,9 +312,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
                 updatePhoneState();
                 mPhone.notifyPreciseCallStateChanged();
-            } catch (ImsException e) {
+            } catch (ImsException | RemoteException e) {
                 loge("processIncomingCall: exception " + e);
-            } catch (RemoteException e) {
+                mOperationLocalLog.log("onIncomingCall: exception processing: "  + e);
             }
         }
 
@@ -1451,7 +1453,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         int videoState = dialArgs.videoState;
 
         if (DBG) log("dial clirMode=" + clirMode);
-        mOperationLocalLog.log("dial requested.");
         String origNumber = dialString;
         if (isEmergencyNumber) {
             clirMode = CommandsInterface.CLIR_SUPPRESSION;
@@ -1483,6 +1484,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             mLastDialArgs = dialArgs;
             mPendingMO = new ImsPhoneConnection(mPhone, dialString, this, mForegroundCall,
                     isEmergencyNumber, isWpsCall);
+            mOperationLocalLog.log("dial requested. connId=" + System.identityHashCode(mPendingMO));
             if (isEmergencyNumber && dialArgs != null && dialArgs.intentExtras != null) {
                 Rlog.i(LOG_TAG, "dial ims emergency dialer: " + dialArgs.intentExtras.getBoolean(
                         TelecomManager.EXTRA_IS_USER_INTENT_EMERGENCY_CALL));
@@ -2525,34 +2527,33 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
 
         ImsCall imsCall = call.getImsCall();
+        ImsPhoneConnection conn = findConnection(imsCall);
         boolean rejectCall = false;
 
+        String logResult = "(undefined)";
         if (call == mRingingCall) {
-            if (Phone.DEBUG_PHONE) log("(ringing) hangup incoming");
+            logResult = "(ringing) hangup incoming";
             rejectCall = true;
         } else if (call == mForegroundCall) {
             if (call.isDialingOrAlerting()) {
-                if (Phone.DEBUG_PHONE) {
-                    log("(foregnd) hangup dialing or alerting...");
-                }
+                logResult = "(foregnd) hangup dialing or alerting...";
             } else {
-                if (Phone.DEBUG_PHONE) {
-                    log("(foregnd) hangup foreground");
-                }
+                logResult = "(foregnd) hangup foreground";
                 //held call will be resumed by onCallTerminated
             }
         } else if (call == mBackgroundCall) {
-            if (Phone.DEBUG_PHONE) {
-                log("(backgnd) hangup waiting or background");
-            }
+            logResult = "(backgnd) hangup waiting or background";
         } else if (call == mHandoverCall) {
-            if (Phone.DEBUG_PHONE) {
-                log("(handover) hangup handover (SRVCC) call");
-            }
+            logResult = "(handover) hangup handover (SRVCC) call";
         } else {
+            mOperationLocalLog.log("hangup: ImsPhoneCall " + System.identityHashCode(conn)
+                    + " does not belong to ImsPhoneCallTracker " + this);
             throw new CallStateException ("ImsPhoneCall " + call +
                     "does not belong to ImsPhoneCallTracker " + this);
         }
+        if (Phone.DEBUG_PHONE) log(logResult);
+        mOperationLocalLog.log("hangup: " + logResult + ", connId="
+                + System.identityHashCode(conn));
 
         call.onHangupLocal();
 
@@ -2581,6 +2582,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 removeMessages(EVENT_DIAL_PENDINGMO);
             }
         } catch (ImsException e) {
+            mOperationLocalLog.log("hangup: ImsException=" + e);
             throw new CallStateException(e.getMessage());
         }
 
@@ -2753,6 +2755,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             maybeSetVideoCallProvider(conn, imsCall);
             return;
         }
+
+        // Do not log operations that do not change the state
+        mOperationLocalLog.log("processCallStateChange: state=" + state + " cause=" + cause
+                + " connId=" + System.identityHashCode(conn));
 
         changed = conn.update(imsCall, state);
         if (state == ImsPhoneCall.State.DISCONNECTED) {
