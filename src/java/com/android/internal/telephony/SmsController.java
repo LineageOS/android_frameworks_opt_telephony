@@ -902,7 +902,7 @@ public class SmsController extends ISmsImplBase {
      */
     private boolean isNumberBlockedByFDN(int subId, String destAddr, String callingPackage) {
         int phoneId = SubscriptionManager.getPhoneId(subId);
-        if (!FdnUtils.isFdnEnabled(subId)) {
+        if (!FdnUtils.isFdnEnabled(phoneId)) {
             return false;
         }
 
