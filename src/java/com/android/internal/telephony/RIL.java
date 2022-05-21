@@ -186,7 +186,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     int mLastRadioPowerResult = RadioError.NONE;
 
-    boolean mHidlSetResponseFunctionsCalled = false;
+    boolean mIsRadioProxyInitialized = false;
 
     // When we are testing emergency calls using ril.test.emergencynumber, this will trigger test
     // ECbM when the call is ended.
@@ -354,7 +354,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             + ", service = " + serviceToString(service) + ", service cookie = "
                             + mServiceCookies.get(service));
                     if ((long) msg.obj == mServiceCookies.get(service).get()) {
-                        mHidlSetResponseFunctionsCalled = false;
+                        mIsRadioProxyInitialized = false;
                         resetProxyAndRequestList(service);
                     }
                     break;
@@ -366,7 +366,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             + ", service = " + serviceToString(aidlService) + ", cookie = "
                             + mServiceCookies.get(aidlService));
                     if (obj.get() == mServiceCookies.get(aidlService).get()) {
-                        mHidlSetResponseFunctionsCalled = false;
+                        mIsRadioProxyInitialized = false;
                         resetProxyAndRequestList(aidlService);
                     }
                     break;
@@ -526,7 +526,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             if (serviceBound) {
-                mHidlSetResponseFunctionsCalled = false;
+                mIsRadioProxyInitialized = false;
                 for (int service = MIN_SERVICE_IDX; service <= MAX_SERVICE_IDX; service++) {
                     resetProxyAndRequestList(service);
                 }
@@ -668,10 +668,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 }
 
                 if (mRadioProxy != null) {
-                    mRadioProxy.linkToDeath(mRadioProxyDeathRecipient,
-                            mServiceCookies.get(RADIO_SERVICE).incrementAndGet());
-                    if (!mHidlSetResponseFunctionsCalled) {
-                        mHidlSetResponseFunctionsCalled = true;
+                    if (!mIsRadioProxyInitialized) {
+                        mIsRadioProxyInitialized = true;
+                        mRadioProxy.linkToDeath(mRadioProxyDeathRecipient,
+                                mServiceCookies.get(RADIO_SERVICE).incrementAndGet());
                         mRadioProxy.setResponseFunctions(mRadioResponse, mRadioIndication);
                     }
                 } else {
@@ -964,10 +964,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
                             throw new AssertionError("serviceProxy shouldn't be HIDL with HAL 2.0");
                         }
-                        serviceProxy.getHidl().linkToDeath(mRadioProxyDeathRecipient,
-                                mServiceCookies.get(service).incrementAndGet());
-                        if (!mHidlSetResponseFunctionsCalled) {
-                            mHidlSetResponseFunctionsCalled = true;
+                        if (!mIsRadioProxyInitialized) {
+                            mIsRadioProxyInitialized = true;
+                            serviceProxy.getHidl().linkToDeath(mRadioProxyDeathRecipient,
+                                    mServiceCookies.get(service).incrementAndGet());
                             serviceProxy.getHidl().setResponseFunctions(
                                     mRadioResponse, mRadioIndication);
                         }
@@ -998,7 +998,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public synchronized void onSlotActiveStatusChange(boolean active) {
-        mHidlSetResponseFunctionsCalled = false;
+        mIsRadioProxyInitialized = false;
         for (int service = MIN_SERVICE_IDX; service <= MAX_SERVICE_IDX; service++) {
             if (active) {
                 // Try to connect to RIL services and set response functions.
@@ -1184,7 +1184,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private void handleRadioProxyExceptionForRR(int service, String caller, Exception e) {
         riljLoge(caller + ": " + e);
         e.printStackTrace();
-        mHidlSetResponseFunctionsCalled = false;
+        mIsRadioProxyInitialized = false;
         resetProxyAndRequestList(service);
     }
 

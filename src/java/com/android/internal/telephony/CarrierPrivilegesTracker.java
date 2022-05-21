@@ -106,11 +106,14 @@ public class CarrierPrivilegesTracker extends Handler {
     private static final String SHA_1 = "SHA-1";
     private static final String SHA_256 = "SHA-256";
 
+    // TODO(b/232273884): Turn feature on when find solution to handle the inter-carriers switching
     /**
      * Time delay to clear UICC rules after UICC is gone.
      * This introduces the grace period to retain carrier privileges when SIM is removed.
+     *
+     * This feature is off by default due to the security concern during inter-carriers switching.
      */
-    private static final long CLEAR_UICC_RULES_DELAY_MILLIS = TimeUnit.SECONDS.toMillis(30);
+    private static final long CLEAR_UICC_RULES_DELAY_MILLIS = TimeUnit.SECONDS.toMillis(0);
 
     /**
      * PackageManager flags used to query installed packages.
