@@ -87,7 +87,6 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
                         mMockedWwanDataServiceManager,
                         mTestableLooper.getLooper(),
                         mDataStallRecoveryManagerCallback);
-        sendOnInternetDataNetworkCallback(true);
         logd("DataStallRecoveryManagerTest -Setup!");
     }
 
@@ -128,6 +127,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
 
     @Test
     public void testRecoveryStepPDPReset() throws Exception {
+        sendOnInternetDataNetworkCallback(true);
         mDataStallRecoveryManager.setRecoveryAction(1);
         doReturn(mSignalStrength).when(mPhone).getSignalStrength();
         doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
@@ -141,6 +141,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
 
     @Test
     public void testRecoveryStepRestartRadio() throws Exception {
+        sendOnInternetDataNetworkCallback(true);
         mDataStallRecoveryManager.setRecoveryAction(3);
         doReturn(mSignalStrength).when(mPhone).getSignalStrength();
         doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
@@ -154,6 +155,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
 
     @Test
     public void testRecoveryStepModemReset() throws Exception {
+        sendOnInternetDataNetworkCallback(true);
         mDataStallRecoveryManager.setRecoveryAction(4);
         doReturn(mSignalStrength).when(mPhone).getSignalStrength();
         doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
@@ -168,6 +170,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
 
     @Test
     public void testDoNotDoRecoveryActionWhenPoorSignal() throws Exception {
+        sendOnInternetDataNetworkCallback(true);
         mDataStallRecoveryManager.setRecoveryAction(3);
         doReturn(1).when(mSignalStrength).getLevel();
         doReturn(mSignalStrength).when(mPhone).getSignalStrength();
@@ -183,6 +186,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
 
     @Test
     public void testDoNotDoRecoveryActionWhenDialCall() throws Exception {
+        sendOnInternetDataNetworkCallback(true);
         mDataStallRecoveryManager.setRecoveryAction(3);
         doReturn(3).when(mSignalStrength).getLevel();
         doReturn(mSignalStrength).when(mPhone).getSignalStrength();
@@ -198,6 +202,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
 
     @Test
     public void testDoNotDoRecoveryBySendMessageDelayedWhenDialCall() throws Exception {
+        sendOnInternetDataNetworkCallback(true);
         sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_VALID);
         mDataStallRecoveryManager.setRecoveryAction(0);
         doReturn(PhoneConstants.State.OFFHOOK).when(mPhone).getState();
@@ -217,6 +222,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
 
     @Test
     public void testDoNotContinueRecoveryActionAfterModemReset() throws Exception {
+        sendOnInternetDataNetworkCallback(true);
         sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_VALID);
         mDataStallRecoveryManager.setRecoveryAction(0);
         doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
@@ -252,6 +258,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
 
     @Test
     public void testDoRecoveryWhenMeetDataStallAgain() throws Exception {
+        sendOnInternetDataNetworkCallback(true);
         sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_VALID);
         mDataStallRecoveryManager.setRecoveryAction(0);
         doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
@@ -296,6 +303,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
 
     @Test
     public void testDoNotDoRecoveryWhenDataNoService() throws Exception {
+        sendOnInternetDataNetworkCallback(true);
         mDataStallRecoveryManager.setRecoveryAction(1);
         doReturn(mSignalStrength).when(mPhone).getSignalStrength();
         doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
@@ -310,6 +318,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
 
     @Test
     public void testDoNotDoRecoveryWhenDataNetworkNotConnected() throws Exception {
+        sendOnInternetDataNetworkCallback(true);
         mDataStallRecoveryManager.setRecoveryAction(1);
         doReturn(mSignalStrength).when(mPhone).getSignalStrength();
         doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
@@ -320,5 +329,25 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
         processAllFutureMessages();
 
         assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(1);
+    }
+
+    @Test
+    public void testDoNotDoRecoveryIfNoValidationPassedYet() throws Exception {
+        sendOnInternetDataNetworkCallback(false);
+        doReturn(mSignalStrength).when(mPhone).getSignalStrength();
+        doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
+
+        logd("Sending validation failed callback");
+        sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_NOT_VALID);
+        processAllFutureMessages();
+
+        // Handle multiple VALIDATION_STATUS_NOT_VALID and make sure we don't attempt recovery
+        for (int i = 0; i < 4; i++) {
+            sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_NOT_VALID);
+            logd("Sending validation failed callback");
+            processAllMessages();
+            moveTimeForward(101);
+            assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(0);
+        }
     }
 }
