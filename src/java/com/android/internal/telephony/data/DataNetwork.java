@@ -2379,7 +2379,8 @@ public class DataNetwork extends StateMachine {
      * @param response The response to be validated
      */
     private void validateDataCallResponse(@Nullable DataCallResponse response) {
-        if (response == null) return;
+        if (response == null
+                || response.getLinkStatus() == DataCallResponse.LINK_STATUS_INACTIVE) return;
         int failCause = response.getCause();
         if (failCause == DataFailCause.NONE) {
             if (TextUtils.isEmpty(response.getInterfaceName())
@@ -2395,7 +2396,7 @@ public class DataNetwork extends StateMachine {
                     > DataCallResponse.HANDOVER_FAILURE_MODE_NO_FALLBACK_RETRY_SETUP_NORMAL) {
                 loge("Invalid DataCallResponse:" + response);
                 reportAnomaly("Invalid DataCallResponse detected",
-                        "9f775beb-c638-44d2-833a-8c3875fee2d1");
+                        "1f273e9d-b09c-46eb-ad1c-421d01f61164");
             }
         } else if (!DataFailCause.isFailCauseExisting(failCause)) { // Setup data failed.
             loge("Invalid DataFailCause in " + response);
