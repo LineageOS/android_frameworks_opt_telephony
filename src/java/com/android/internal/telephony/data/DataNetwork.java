@@ -59,6 +59,7 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PcoData;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionPlan;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
@@ -86,6 +87,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RIL;
+import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
 import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataRetryManager.DataHandoverRetryEntry;
@@ -280,6 +282,7 @@ public class DataNetwork extends StateMachine {
                     TEAR_DOWN_REASON_NOT_ALLOWED_BY_POLICY,
                     TEAR_DOWN_REASON_ILLEGAL_STATE,
                     TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK,
+                    TEAR_DOWN_REASON_PREFERRED_DATA_SWITCHED,
             })
     public @interface TearDownReason {}
 
@@ -368,6 +371,9 @@ public class DataNetwork extends StateMachine {
 
     /** Data network tear down due to only allowed single network. */
     public static final int TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK = 29;
+
+    /** Data network tear down due to preferred data switched to another phone. */
+    public static final int TEAR_DOWN_REASON_PREFERRED_DATA_SWITCHED = 30;
 
     @IntDef(prefix = {"BANDWIDTH_SOURCE_"},
             value = {
@@ -466,6 +472,9 @@ public class DataNetwork extends StateMachine {
      * change afterwards.
      */
     private final int mSubId;
+
+    /** The network score of this network. */
+    private int mNetworkScore;
 
     /**
      * Indicates that
@@ -648,6 +657,11 @@ public class DataNetwork extends StateMachine {
      * Link bandwidth estimator callback for receiving latest link bandwidth information.
      */
     private @Nullable LinkBandwidthEstimatorCallback mLinkBandwidthEstimatorCallback;
+
+    /**
+     * Data config callback for carrier config update.
+     */
+    private @Nullable DataConfigManagerCallback mDataConfigManagerCallback;
 
     /**
      * The network bandwidth.
@@ -955,8 +969,10 @@ public class DataNetwork extends StateMachine {
                 mPhone.getPhoneId());
         final NetworkProvider provider = (null == factory) ? null : factory.getProvider();
 
+        mNetworkScore = getNetworkScore();
         return new TelephonyNetworkAgent(mPhone, getHandler().getLooper(), this,
-                getNetworkScore(), configBuilder.build(), provider,
+                new NetworkScore.Builder().setLegacyInt(mNetworkScore).build(),
+                configBuilder.build(), provider,
                 new TelephonyNetworkAgentCallback(getHandler()::post) {
                     @Override
                     public void onValidationStatus(@ValidationStatus int status,
@@ -978,7 +994,13 @@ public class DataNetwork extends StateMachine {
         @Override
         public void enter() {
             logv("Registering all events.");
-            mDataConfigManager.registerForConfigUpdate(getHandler(), EVENT_DATA_CONFIG_UPDATED);
+            mDataConfigManagerCallback = new DataConfigManagerCallback(getHandler()::post) {
+                @Override
+                public void onCarrierConfigChanged() {
+                    sendMessage(EVENT_DATA_CONFIG_UPDATED);
+                }
+            };
+            mDataConfigManager.registerCallback(mDataConfigManagerCallback);
             mPhone.getDisplayInfoController().registerForTelephonyDisplayInfoChanged(
                     getHandler(), EVENT_DISPLAY_INFO_CHANGED, null);
             mPhone.getServiceStateTracker().registerForServiceStateChanged(getHandler(),
@@ -1030,14 +1052,14 @@ public class DataNetwork extends StateMachine {
             mPhone.getServiceStateTracker().unregisterForServiceStateChanged(getHandler());
             mPhone.getDisplayInfoController().unregisterForTelephonyDisplayInfoChanged(
                     getHandler());
-            mDataConfigManager.unregisterForConfigUpdate(getHandler());
+            mDataConfigManager.unregisterCallback(mDataConfigManagerCallback);
         }
 
         @Override
         public boolean processMessage(Message msg) {
             switch (msg.what) {
                 case EVENT_DATA_CONFIG_UPDATED:
-                    onDataConfigUpdated();
+                    onCarrierConfigUpdated();
                     break;
                 case EVENT_SERVICE_STATE_CHANGED: {
                     mDataCallSessionStats.onDrsOrRatChanged(getDataNetworkType());
@@ -1047,13 +1069,12 @@ public class DataNetwork extends StateMachine {
                 }
                 case EVENT_ATTACH_NETWORK_REQUEST: {
                     onAttachNetworkRequests((NetworkRequestList) msg.obj);
+                    updateNetworkScore();
                     break;
                 }
                 case EVENT_DETACH_NETWORK_REQUEST: {
-                    TelephonyNetworkRequest networkRequest = (TelephonyNetworkRequest) msg.obj;
-                    mAttachedNetworkRequestList.remove(networkRequest);
-                    networkRequest.setState(TelephonyNetworkRequest.REQUEST_STATE_UNSATISFIED);
-                    networkRequest.setAttachedNetwork(null);
+                    onDetachNetworkRequest((TelephonyNetworkRequest) msg.obj);
+                    updateNetworkScore();
                     break;
                 }
                 case EVENT_DETACH_ALL_NETWORK_REQUESTS: {
@@ -1166,10 +1187,14 @@ public class DataNetwork extends StateMachine {
                     deferMessage(msg);
                     break;
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
-                    reportAnomaly("Data network stuck in connecting state for "
-                            + TimeUnit.MILLISECONDS.toSeconds(
-                            mDataConfigManager.getAnomalyNetworkConnectingTimeoutMs())
-                            + " seconds.", "58c56403-7ea7-4e56-a0c7-e467114d09b8");
+                    // enable detection only for valid timeout range
+                    if (mDataConfigManager.getAnomalyNetworkConnectingTimeoutMs()
+                            < DataConfigManager.MAX_NETWORK_TRANSIT_STATE_TIMEOUT_MS) {
+                        reportAnomaly("Data network stuck in connecting state for "
+                                + TimeUnit.MILLISECONDS.toSeconds(
+                                mDataConfigManager.getAnomalyNetworkConnectingTimeoutMs())
+                                + " seconds.", "58c56403-7ea7-4e56-a0c7-e467114d09b8");
+                    }
                     // Setup data failed. Use the retry logic defined in
                     // CarrierConfigManager.KEY_TELEPHONY_DATA_SETUP_RETRY_RULES_STRING_ARRAY.
                     mRetryDelayMillis = DataCallResponse.RETRY_DURATION_UNDEFINED;
@@ -1357,10 +1382,14 @@ public class DataNetwork extends StateMachine {
                     onPcoDataReceived((PcoData) ar.result);
                     break;
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
-                    reportAnomaly("Data service did not respond the handover request within "
-                            + TimeUnit.MILLISECONDS.toSeconds(
-                            mDataConfigManager.getNetworkHandoverTimeoutMs()) + " seconds.",
-                            "1afe68cb-8b41-4964-a737-4f34372429ea");
+                    // enable detection only for valid timeout range
+                    if (mDataConfigManager.getNetworkHandoverTimeoutMs()
+                            < DataConfigManager.MAX_NETWORK_TRANSIT_STATE_TIMEOUT_MS) {
+                        reportAnomaly("Data service did not respond the handover request within "
+                                        + TimeUnit.MILLISECONDS.toSeconds(
+                                mDataConfigManager.getNetworkHandoverTimeoutMs()) + " seconds.",
+                                "1afe68cb-8b41-4964-a737-4f34372429ea");
+                    }
 
                     // Handover failed. Use the retry logic defined in
                     // CarrierConfigManager.KEY_TELEPHONY_DATA_HANDOVER_RETRY_RULES_STRING_ARRAY.
@@ -1455,11 +1484,16 @@ public class DataNetwork extends StateMachine {
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
                     // After frameworks issues deactivate data call request, RIL should report
                     // data disconnected through data call list changed event subsequently.
-                    reportAnomaly("RIL did not send data call list changed event after "
-                            + "deactivate data call request within "
-                            + TimeUnit.MILLISECONDS.toSeconds(
-                            mDataConfigManager.getAnomalyNetworkDisconnectingTimeoutMs())
-                            + " seconds.", "d0e4fa1c-c57b-4ba5-b4b6-8955487012cc");
+
+                    // enable detection only for valid timeout range
+                    if (mDataConfigManager.getAnomalyNetworkDisconnectingTimeoutMs()
+                            < DataConfigManager.MAX_NETWORK_TRANSIT_STATE_TIMEOUT_MS) {
+                        reportAnomaly("RIL did not send data call list changed event after "
+                                + "deactivate data call request within "
+                                + TimeUnit.MILLISECONDS.toSeconds(
+                                mDataConfigManager.getAnomalyNetworkDisconnectingTimeoutMs())
+                                + " seconds.", "d0e4fa1c-c57b-4ba5-b4b6-8955487012cc");
+                    }
                     mFailCause = DataFailCause.LOST_CONNECTION;
                     transitionTo(mDisconnectedState);
                     break;
@@ -1615,6 +1649,31 @@ public class DataNetwork extends StateMachine {
         if (failedList.size() > 0) {
             mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
                     .onAttachFailed(DataNetwork.this, failedList));
+        }
+    }
+
+    /**
+     * Called when detaching the network request from this data network.
+     *
+     * @param networkRequest Network request to detach.
+     */
+    private void onDetachNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
+        mAttachedNetworkRequestList.remove(networkRequest);
+        networkRequest.setState(TelephonyNetworkRequest.REQUEST_STATE_UNSATISFIED);
+        networkRequest.setAttachedNetwork(null);
+
+        if (mAttachedNetworkRequestList.isEmpty()) {
+            log("All network requests are detached.");
+
+            // If there is no network request attached, and we are not preferred data phone, then
+            // this detach is likely due to temp DDS switch. We should tear down the network when
+            // all requests are detached so the other network on preferred data sub can be
+            // established properly.
+            int preferredDataPhoneId = PhoneSwitcher.getInstance().getPreferredDataPhoneId();
+            if (preferredDataPhoneId != SubscriptionManager.INVALID_PHONE_INDEX
+                    && preferredDataPhoneId != mPhone.getPhoneId()) {
+                tearDown(TEAR_DOWN_REASON_PREFERRED_DATA_SWITCHED);
+            }
         }
     }
 
@@ -2354,7 +2413,8 @@ public class DataNetwork extends StateMachine {
      * @param response The response to be validated
      */
     private void validateDataCallResponse(@Nullable DataCallResponse response) {
-        if (response == null) return;
+        if (response == null
+                || response.getLinkStatus() == DataCallResponse.LINK_STATUS_INACTIVE) return;
         int failCause = response.getCause();
         if (failCause == DataFailCause.NONE) {
             if (TextUtils.isEmpty(response.getInterfaceName())
@@ -2370,7 +2430,7 @@ public class DataNetwork extends StateMachine {
                     > DataCallResponse.HANDOVER_FAILURE_MODE_NO_FALLBACK_RETRY_SETUP_NORMAL) {
                 loge("Invalid DataCallResponse:" + response);
                 reportAnomaly("Invalid DataCallResponse detected",
-                        "9f775beb-c638-44d2-833a-8c3875fee2d1");
+                        "1f273e9d-b09c-46eb-ad1c-421d01f61164");
             }
         } else if (!DataFailCause.isFailCauseExisting(failCause)) { // Setup data failed.
             loge("Invalid DataFailCause in " + response);
@@ -2531,10 +2591,10 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
-     * Called when data config updated.
+     * Called when carrier config updated.
      */
-    private void onDataConfigUpdated() {
-        log("onDataConfigUpdated");
+    private void onCarrierConfigUpdated() {
+        log("onCarrierConfigUpdated");
 
         updateBandwidthFromDataConfig();
         updateTcpBufferSizes();
@@ -2758,16 +2818,27 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
+     * Update the network score and report to connectivity service if necessary.
+     */
+    private void updateNetworkScore() {
+        int networkScore = getNetworkScore();
+        if (networkScore != mNetworkScore) {
+            logl("Updating score from " + mNetworkScore + " to " + networkScore);
+            mNetworkScore = networkScore;
+            mNetworkAgent.sendNetworkScore(mNetworkScore);
+        }
+    }
+
+    /**
      * @return The network score. The higher score of the network has higher chance to be
      * selected by the connectivity service as active network.
      */
-    private @NonNull NetworkScore getNetworkScore() {
+    private int getNetworkScore() {
         // If it's serving a network request that asks NET_CAPABILITY_INTERNET and doesn't have
         // specify a sub id, this data network is considered to be default internet data
         // connection. In this case we assign a slightly higher score of 50. The intention is
         // it will not be replaced by other data networks accidentally in DSDS use case.
         int score = OTHER_NETWORK_SCORE;
-        // TODO: Should update the score when attached list changed.
         for (TelephonyNetworkRequest networkRequest : mAttachedNetworkRequestList) {
             if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                     && networkRequest.getNetworkSpecifier() == null) {
@@ -2775,7 +2846,7 @@ public class DataNetwork extends StateMachine {
             }
         }
 
-        return new NetworkScore.Builder().setLegacyInt(score).build();
+        return score;
     }
 
     /**
@@ -3205,6 +3276,8 @@ public class DataNetwork extends StateMachine {
                 return "TEAR_DOWN_REASON_ILLEGAL_STATE";
             case TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK:
                 return "TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK";
+            case TEAR_DOWN_REASON_PREFERRED_DATA_SWITCHED:
+                return "TEAR_DOWN_REASON_PREFERRED_DATA_SWITCHED";
             default:
                 return "UNKNOWN(" + reason + ")";
         }
@@ -3349,6 +3422,7 @@ public class DataNetwork extends StateMachine {
         pw.println("mTransport=" + AccessNetworkConstants.transportTypeToString(mTransport));
         pw.println("WWAN cid=" + mCid.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN));
         pw.println("WLAN cid=" + mCid.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN));
+        pw.println("mNetworkScore=" + mNetworkScore);
         pw.println("mDataAllowedReason=" + mDataAllowedReason);
         pw.println("mPduSessionId=" + mPduSessionId);
         pw.println("mDataProfile=" + mDataProfile);

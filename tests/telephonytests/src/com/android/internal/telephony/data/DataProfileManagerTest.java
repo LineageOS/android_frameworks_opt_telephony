@@ -36,7 +36,9 @@ import android.net.Uri;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.provider.Telephony;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.NetworkRegistrationInfo;
+import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
@@ -47,6 +49,7 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.data.DataProfileManager.DataProfileManagerCallback;
 
@@ -83,6 +86,8 @@ public class DataProfileManagerTest extends TelephonyTest {
     private int mPreferredApnId = 0;
 
     private DataNetworkControllerCallback mDataNetworkControllerCallback;
+
+    private DataConfigManagerCallback mDataConfigManagerCallback;
 
     private boolean mSimInserted = true;
 
@@ -420,7 +425,11 @@ public class DataProfileManagerTest extends TelephonyTest {
         verify(mDataNetworkController).registerDataNetworkControllerCallback(
                         dataNetworkControllerCallbackCaptor.capture());
         mDataNetworkControllerCallback = dataNetworkControllerCallbackCaptor.getValue();
-        mDataProfileManagerUT.obtainMessage(1 /*EVENT_DATA_CONFIG_UPDATED*/).sendToTarget();
+        ArgumentCaptor<DataConfigManagerCallback> dataConfigManagerCallbackCaptor =
+                ArgumentCaptor.forClass(DataConfigManagerCallback.class);
+        verify(mDataConfigManager).registerCallback(dataConfigManagerCallbackCaptor.capture());
+        mDataConfigManagerCallback = dataConfigManagerCallbackCaptor.getValue();
+        mDataConfigManagerCallback.onCarrierConfigChanged();
         processAllMessages();
 
         logd("DataProfileManagerTest -Setup!");
@@ -430,6 +439,7 @@ public class DataProfileManagerTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mDataProfileManagerUT = null;
         mDataNetworkControllerCallback = null;
+        mDataConfigManagerCallback = null;
         super.tearDown();
     }
 
@@ -851,5 +861,37 @@ public class DataProfileManagerTest extends TelephonyTest {
         // There should be no preferred APN after APN reset
         assertThat(mDataProfileManagerUT.isAnyPreferredDataProfileExisting()).isFalse();
         assertThat(mDataProfileManagerUT.isDataProfilePreferred(dataProfile)).isFalse();
+    }
+
+    @Test
+    public void testTetheringApnExisting() {
+        assertThat(mDataProfileManagerUT.isTetheringDataProfileExisting(
+                TelephonyManager.NETWORK_TYPE_NR)).isTrue();
+        assertThat(mDataProfileManagerUT.isTetheringDataProfileExisting(
+                TelephonyManager.NETWORK_TYPE_LTE)).isFalse();
+    }
+
+    @Test
+    public void testTetheringApnDisabledForRoaming() {
+        doReturn(true).when(mDataConfigManager).isTetheringProfileDisabledForRoaming();
+
+        assertThat(mDataProfileManagerUT.isTetheringDataProfileExisting(
+                TelephonyManager.NETWORK_TYPE_NR)).isTrue();
+
+        ServiceState ss = new ServiceState();
+
+        ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
+                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_NR)
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING)
+                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .build());
+
+        ss.setDataRoamingFromRegistration(true);
+        doReturn(ss).when(mSST).getServiceState();
+        doReturn(ss).when(mPhone).getServiceState();
+
+        assertThat(mDataProfileManagerUT.isTetheringDataProfileExisting(
+                TelephonyManager.NETWORK_TYPE_NR)).isFalse();
     }
 }

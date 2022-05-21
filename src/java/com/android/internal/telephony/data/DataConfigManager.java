@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.data;
 
+import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.StringDef;
 import android.content.BroadcastReceiver;
@@ -29,7 +30,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
-import android.os.RegistrantList;
 import android.provider.DeviceConfig;
 import android.telephony.Annotation.ApnType;
 import android.telephony.Annotation.NetCapability;
@@ -41,6 +41,7 @@ import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.text.TextUtils;
+import android.util.ArraySet;
 import android.util.IndentingPrintWriter;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -62,6 +63,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 /**
@@ -70,6 +72,9 @@ import java.util.stream.Collectors;
  * {@link CarrierConfigManager}. All the data config will be loaded once and stored here.
  */
 public class DataConfigManager extends Handler {
+    /** The max timeout in ms for data network stuck in a transit state. */
+    public static final int MAX_NETWORK_TRANSIT_STATE_TIMEOUT_MS = 3600000;
+
     /** Event for carrier config changed. */
     private static final int EVENT_CARRIER_CONFIG_CHANGED = 1;
 
@@ -189,6 +194,10 @@ public class DataConfigManager extends Handler {
     @Retention(RetentionPolicy.SOURCE)
     private @interface DataConfigNetworkType {}
 
+    /** Data config update callbacks. */
+    private final @NonNull Set<DataConfigManagerCallback> mDataConfigManagerCallbacks =
+            new ArraySet<>();
+
     /** DeviceConfig key of anomaly report threshold for back to back ims release-request. */
     private static final String KEY_ANOMALY_IMS_RELEASE_REQUEST = "anomaly_ims_release_request";
     /** DeviceConfig key of anomaly report threshold for frequent setup data failure. */
@@ -238,9 +247,6 @@ public class DataConfigManager extends Handler {
 
     private @NonNull final Phone mPhone;
     private @NonNull final String mLogTag;
-
-    /** The registrants list for config update event. */
-    private @NonNull final RegistrantList mConfigUpdateRegistrants = new RegistrantList();
 
     private @NonNull final CarrierConfigManager mCarrierConfigManager;
     private @NonNull PersistableBundle mCarrierConfig = null;
@@ -318,8 +324,46 @@ public class DataConfigManager extends Handler {
 
         // Must be called to set mCarrierConfig and mResources to non-null values
         updateCarrierConfig();
+        // Must be called to set anomaly report threshold to non-null values
         updateDeviceConfig();
-        mConfigUpdateRegistrants.notifyRegistrants();
+    }
+
+    /**
+     * The data config callback.
+     */
+    public static class DataConfigManagerCallback extends DataCallback {
+        /**
+         * Constructor
+         *
+         * @param executor The executor of the callback.
+         */
+        public DataConfigManagerCallback(@NonNull @CallbackExecutor Executor executor) {
+            super(executor);
+        }
+
+        /** Callback on carrier config update.*/
+        public void onCarrierConfigChanged() {}
+
+        /** Callback on device config update.*/
+        public void onDeviceConfigChanged() {}
+    }
+
+    /**
+     * Register the callback for receiving information from {@link DataConfigManager}.
+     *
+     * @param callback The callback.
+     */
+    public void registerCallback(@NonNull DataConfigManagerCallback callback) {
+        mDataConfigManagerCallbacks.add(callback);
+    }
+
+    /**
+     * Unregister the callback.
+     *
+     * @param callback The previously registered callback.
+     */
+    public void unregisterCallback(@NonNull DataConfigManagerCallback callback) {
+        mDataConfigManagerCallbacks.remove(callback);
     }
 
     @Override
@@ -328,12 +372,14 @@ public class DataConfigManager extends Handler {
             case EVENT_CARRIER_CONFIG_CHANGED:
                 log("EVENT_CARRIER_CONFIG_CHANGED");
                 updateCarrierConfig();
-                mConfigUpdateRegistrants.notifyRegistrants();
+                mDataConfigManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                        callback::onCarrierConfigChanged));
                 break;
             case EVENT_DEVICE_CONFIG_CHANGED:
                 log("EVENT_DEVICE_CONFIG_CHANGED");
                 updateDeviceConfig();
-                mConfigUpdateRegistrants.notifyRegistrants();
+                mDataConfigManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                        callback::onDeviceConfigChanged));
                 break;
             default:
                 loge("Unexpected message " + msg.what);
@@ -347,22 +393,22 @@ public class DataConfigManager extends Handler {
 
         mImsReleaseRequestAnomalyReportThreshold = parseSlidingWindowCounterThreshold(
                 properties.getString(KEY_ANOMALY_IMS_RELEASE_REQUEST, null),
-                300000,
-                12);
+                0,
+                2);
         mNetworkUnwantedAnomalyReportThreshold = parseSlidingWindowCounterThreshold(
                 properties.getString(KEY_ANOMALY_NETWORK_UNWANTED, null),
-                300000,
+                0,
                 12);
         mSetupDataCallAnomalyReportThreshold = parseSlidingWindowCounterThreshold(
                 properties.getString(KEY_ANOMALY_SETUP_DATA_CALL_FAILURE, null),
                 0,
-                2);
+                12);
         mNetworkConnectingTimeout = properties.getInt(
-                KEY_ANOMALY_NETWORK_CONNECTING_TIMEOUT, 86400000);
+                KEY_ANOMALY_NETWORK_CONNECTING_TIMEOUT, MAX_NETWORK_TRANSIT_STATE_TIMEOUT_MS);
         mNetworkDisconnectingTimeout = properties.getInt(
-                KEY_ANOMALY_NETWORK_DISCONNECTING_TIMEOUT, 86400000);
+                KEY_ANOMALY_NETWORK_DISCONNECTING_TIMEOUT, MAX_NETWORK_TRANSIT_STATE_TIMEOUT_MS);
         mNetworkHandoverTimeout = properties.getInt(
-                KEY_ANOMALY_NETWORK_HANDOVER_TIMEOUT, 86400000);
+                KEY_ANOMALY_NETWORK_HANDOVER_TIMEOUT, MAX_NETWORK_TRANSIT_STATE_TIMEOUT_MS);
     }
 
     /**
@@ -534,6 +580,14 @@ public class DataConfigManager extends Handler {
                 .map(DataUtils::apnTypeToNetworkCapability)
                 .filter(cap -> cap >= 0)
                 .collect(Collectors.toUnmodifiableSet());
+    }
+
+    /**
+     * @return {@code true} if tethering profile should not be used when the device is roaming.
+     */
+    public boolean isTetheringProfileDisabledForRoaming() {
+        return mCarrierConfig.getBoolean(
+                CarrierConfigManager.KEY_DISABLE_DUN_APN_WHILE_ROAMING_WITH_PRESET_APN_BOOL);
     }
 
     /**
@@ -1128,24 +1182,6 @@ public class DataConfigManager extends Handler {
     }
 
     /**
-     * Registration point for subscription info ready.
-     *
-     * @param h handler to notify.
-     * @param what what code of message when delivered.
-     */
-    public void registerForConfigUpdate(Handler h, int what) {
-        mConfigUpdateRegistrants.addUnique(h, what, null);
-    }
-
-    /**
-     *
-     * @param h The original handler passed in {@link #registerForConfigUpdate(Handler, int)}.
-     */
-    public void unregisterForConfigUpdate(Handler h) {
-        mConfigUpdateRegistrants.remove(h);
-    }
-
-    /**
      * Log debug messages.
      * @param s debug messages
      */
@@ -1226,6 +1262,8 @@ public class DataConfigManager extends Handler {
                 com.android.internal.R.string.config_bandwidthEstimateSource));
         pw.println("isDelayTearDownImsEnabled=" + isImsDelayTearDownEnabled());
         pw.println("isEnhancedIwlanHandoverCheckEnabled=" + isEnhancedIwlanHandoverCheckEnabled());
+        pw.println("isTetheringProfileDisabledForRoaming="
+                + isTetheringProfileDisabledForRoaming());
         pw.decreaseIndent();
     }
 }

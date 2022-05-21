@@ -1428,6 +1428,9 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 CarrierConfigManager.KEY_CARRIER_METERED_ROAMING_APN_TYPES_STRINGS,
                 new String[]{"default", "dun", "supl"});
         carrierConfigChanged();
+        // Manually set data roaming to false in case ro.com.android.dataroaming is true.
+        // TODO(b/232575718): Figure out a way to mock ro.com.android.dataroaming for tests.
+        mDataNetworkControllerUT.getDataSettingsManager().setDataRoamingEnabled(false);
         // Device is roaming
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
@@ -2884,5 +2887,49 @@ public class DataNetworkControllerTest extends TelephonyTest {
         // IMS should be connected.
         verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS,
                 NetworkCapabilities.NET_CAPABILITY_MMTEL);
+    }
+
+    @Test
+    public void testRemoveNetworkRequest() throws Exception {
+        NetworkCapabilities netCaps = new NetworkCapabilities();
+        netCaps.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+
+        NetworkRequest nativeNetworkRequest = new NetworkRequest(netCaps,
+                ConnectivityManager.TYPE_MOBILE, 0, NetworkRequest.Type.REQUEST);
+
+        mDataNetworkControllerUT.addNetworkRequest(new TelephonyNetworkRequest(
+                nativeNetworkRequest, mPhone));
+        processAllMessages();
+
+        // Intentionally create a new telephony request with the original native network request.
+        TelephonyNetworkRequest request = new TelephonyNetworkRequest(nativeNetworkRequest, mPhone);
+
+        mDataNetworkControllerUT.removeNetworkRequest(request);
+        processAllFutureMessages();
+
+        List<DataNetwork> dataNetworkList = getDataNetworks();
+        // The data network should not be torn down after network request removal.
+        assertThat(dataNetworkList).hasSize(1);
+        // But should be detached from the data network.
+        assertThat(dataNetworkList.get(0).getAttachedNetworkRequestList()).isEmpty();
+        assertThat(dataNetworkList.get(0).isConnected()).isTrue();
+    }
+
+    @Test
+    public void testTempDdsSwitchTearDown() throws Exception {
+        TelephonyNetworkRequest request = createNetworkRequest(
+                NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        mDataNetworkControllerUT.addNetworkRequest(request);
+        processAllMessages();
+
+        // Now DDS temporarily switched to phone 1
+        doReturn(1).when(mMockedPhoneSwitcher).getPreferredDataPhoneId();
+
+        // Simulate telephony network factory remove request due to switch.
+        mDataNetworkControllerUT.removeNetworkRequest(request);
+        processAllMessages();
+
+        // Data should be torn down on this non-preferred sub.
+        verifyAllDataDisconnected();
     }
 }

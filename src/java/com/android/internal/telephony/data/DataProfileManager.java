@@ -44,6 +44,7 @@ import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.telephony.Rlog;
 
@@ -63,9 +64,6 @@ import java.util.stream.Collectors;
  */
 public class DataProfileManager extends Handler {
     private static final boolean VDBG = true;
-
-    /** Event for data config updated. */
-    private static final int EVENT_DATA_CONFIG_UPDATED = 1;
 
     /** Event for APN database changed. */
     private static final int EVENT_APN_DATABASE_CHANGED = 2;
@@ -156,7 +154,12 @@ public class DataProfileManager extends Handler {
                             @NonNull List<DataProfile> dataProfiles) {
                         DataProfileManager.this.onInternetDataNetworkConnected(dataProfiles);
                     }});
-        mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
+        mDataConfigManager.registerCallback(new DataConfigManagerCallback(this::post) {
+            @Override
+            public void onCarrierConfigChanged() {
+                DataProfileManager.this.onCarrierConfigUpdated();
+            }
+        });
         mPhone.getContext().getContentResolver().registerContentObserver(
                 Telephony.Carriers.CONTENT_URI, true, new ContentObserver(this) {
                     @Override
@@ -171,9 +174,6 @@ public class DataProfileManager extends Handler {
     @Override
     public void handleMessage(Message msg) {
         switch (msg.what) {
-            case EVENT_DATA_CONFIG_UPDATED:
-                onDataConfigUpdated();
-                break;
             case EVENT_SIM_REFRESH:
                 log("Update data profiles due to SIM refresh.");
                 updateDataProfiles();
@@ -189,10 +189,10 @@ public class DataProfileManager extends Handler {
     }
 
     /**
-     * Called when data config was updated.
+     * Called when carrier config was updated.
      */
-    private void onDataConfigUpdated() {
-        log("Update data profiles due to config updated.");
+    private void onCarrierConfigUpdated() {
+        log("Update data profiles due to carrier config updated.");
         updateDataProfiles();
 
         //TODO: more works needed to be done here.
@@ -273,7 +273,7 @@ public class DataProfileManager extends Handler {
         }
 
         // Check if any of the profile already supports IMS, if not, add the default one.
-        DataProfile dataProfile = profiles.stream()
+        dataProfile = profiles.stream()
                 .filter(dp -> dp.canSatisfy(NetworkCapabilities.NET_CAPABILITY_IMS))
                 .findFirst()
                 .orElse(null);
@@ -688,14 +688,21 @@ public class DataProfileManager extends Handler {
      * Check if there is tethering data profile for certain network type.
      *
      * @param networkType The network type
-     * @return {@code true} if tethering data profile is found.
+     * @return {@code true} if tethering data profile is found. {@code false} if no specific profile
+     * should used for tethering. In this case, tethering service will use internet network for
+     * tethering.
      */
     public boolean isTetheringDataProfileExisting(@NetworkType int networkType) {
+        if (mDataConfigManager.isTetheringProfileDisabledForRoaming()
+                && mPhone.getServiceState().getDataRoaming()) {
+            // Use internet network for tethering.
+            return false;
+        }
         TelephonyNetworkRequest networkRequest = new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_DUN)
                         .build(), mPhone);
-        return null != getDataProfileForNetworkRequest(networkRequest, networkType);
+        return getDataProfileForNetworkRequest(networkRequest, networkType) != null;
     }
 
      /**
@@ -934,6 +941,8 @@ public class DataProfileManager extends Handler {
         pw.println("Preferred data profile from config=" + getPreferredDataProfileFromConfig());
         pw.println("Preferred data profile set id=" + mPreferredDataProfileSetId);
         pw.println("Initial attach data profile=" + mInitialAttachDataProfile);
+        pw.println("isTetheringDataProfileExisting=" + isTetheringDataProfileExisting(
+                TelephonyManager.NETWORK_TYPE_LTE));
 
         pw.println("Local logs:");
         pw.increaseIndent();
