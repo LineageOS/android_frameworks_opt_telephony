@@ -181,6 +181,7 @@ public class DataNetworkTest extends TelephonyTest {
     // Mocked classes
     private DataNetworkCallback mDataNetworkCallback;
     private DataCallSessionStats mDataCallSessionStats;
+    private PhoneSwitcher mMockedPhoneSwitcher;
 
     private final NetworkRegistrationInfo mIwlanNetworkRegistrationInfo =
             new NetworkRegistrationInfo.Builder()
@@ -300,6 +301,8 @@ public class DataNetworkTest extends TelephonyTest {
 
         mDataNetworkCallback = Mockito.mock(DataNetworkCallback.class);
         mDataCallSessionStats = Mockito.mock(DataCallSessionStats.class);
+        mMockedPhoneSwitcher = Mockito.mock(PhoneSwitcher.class);
+        replaceInstance(PhoneSwitcher.class, "sPhoneSwitcher", null, mMockedPhoneSwitcher);
         doAnswer(invocation -> {
             ((Runnable) invocation.getArguments()[0]).run();
             return null;
