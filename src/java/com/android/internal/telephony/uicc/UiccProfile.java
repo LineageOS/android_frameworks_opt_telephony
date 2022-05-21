@@ -53,6 +53,7 @@ import android.util.ArraySet;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CarrierAppUtils;
+import com.android.internal.telephony.CarrierPrivilegesTracker;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccCardConstants;
@@ -238,6 +239,13 @@ public class UiccProfile extends IccCard {
 
                 case EVENT_CARRIER_PRIVILEGES_LOADED:
                     if (VDBG) log("handleMessage: EVENT_CARRIER_PRIVILEGES_LOADED");
+                    Phone phone = PhoneFactory.getPhone(mPhoneId);
+                    if (phone != null) {
+                        CarrierPrivilegesTracker cpt = phone.getCarrierPrivilegesTracker();
+                        if (cpt != null) {
+                            cpt.onUiccAccessRulesLoaded();
+                        }
+                    }
                     onCarrierPrivilegesLoadedMessage();
                     updateExternalState();
                     break;
