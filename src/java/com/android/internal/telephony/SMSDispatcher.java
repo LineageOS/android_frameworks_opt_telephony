@@ -1319,6 +1319,14 @@ public abstract class SMSDispatcher extends Handler {
     protected abstract SmsMessageBase.SubmitPduBase getSubmitPdu(String scAddr, String destAddr,
             int destPort, byte[] message, boolean statusReportRequested);
 
+    protected abstract SmsMessageBase.SubmitPduBase getSubmitPdu(String scAddr, String destAddr,
+            String message, boolean statusReportRequested, SmsHeader smsHeader,
+            int priority, int validityPeriod, int messageRef);
+
+
+    protected abstract SmsMessageBase.SubmitPduBase getSubmitPdu(String scAddr, String destAddr,
+            int destPort, byte[] message, boolean statusReportRequested, int messageRef);
+
     /**
      * Calculate the number of septets needed to encode the message. This function should only be
      * called for individual segments of multipart message.
