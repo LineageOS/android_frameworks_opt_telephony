@@ -3376,8 +3376,12 @@ public class DataNetworkController extends Handler {
                     + (mRegisteredImsFeatures.contains(ImsFeature.FEATURE_RCS)
                     ? "registered" : "not registered")
             );
-            mPendingImsDeregDataNetworks.put(dataNetwork,
-                    dataNetwork.tearDownWhenConditionMet(reason, deregDelay));
+            Runnable runnable = dataNetwork.tearDownWhenConditionMet(reason, deregDelay);
+            if (runnable != null) {
+                mPendingImsDeregDataNetworks.put(dataNetwork, runnable);
+            } else {
+                log(dataNetwork + " is being torn down already.");
+            }
         } else {
             // Graceful tear down is not turned on. Tear down the network immediately.
             log("tearDownGracefully: Safe to tear down " + dataNetwork);
