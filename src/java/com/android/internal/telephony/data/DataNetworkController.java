@@ -86,6 +86,7 @@ import com.android.internal.telephony.SlidingWindowEventCounter;
 import com.android.internal.telephony.SubscriptionInfoUpdater;
 import com.android.internal.telephony.TelephonyComponentFactory;
 import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksManagerCallback;
+import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
 import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataEvaluation.DataDisallowedReason;
 import com.android.internal.telephony.data.DataEvaluation.DataEvaluationReason;
@@ -133,9 +134,6 @@ import java.util.stream.Collectors;
  */
 public class DataNetworkController extends Handler {
     private static final boolean VDBG = false;
-
-    /** Event for data config updated. */
-    private static final int EVENT_DATA_CONFIG_UPDATED = 1;
 
     /** Event for adding a network request. */
     private static final int EVENT_ADD_NETWORK_REQUEST = 2;
@@ -957,7 +955,16 @@ public class DataNetworkController extends Handler {
 
         mPhone.getServiceStateTracker().registerForServiceStateChanged(this,
                 EVENT_SERVICE_STATE_CHANGED);
-        mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
+        mDataConfigManager.registerCallback(new DataConfigManagerCallback(this::post) {
+            @Override
+            public void onCarrierConfigChanged() {
+                DataNetworkController.this.onCarrierConfigUpdated();
+            }
+            @Override
+            public void onDeviceConfigChanged() {
+                DataNetworkController.this.onDeviceConfigUpdated();
+            }
+        });
         mPhone.getServiceStateTracker().registerForPsRestrictedEnabled(this,
                 EVENT_PS_RESTRICT_ENABLED, null);
         mPhone.getServiceStateTracker().registerForPsRestrictedDisabled(this,
@@ -1008,9 +1015,6 @@ public class DataNetworkController extends Handler {
     @Override
     public void handleMessage(@NonNull Message msg) {
         switch (msg.what) {
-            case EVENT_DATA_CONFIG_UPDATED:
-                onDataConfigUpdated();
-                break;
             case EVENT_REGISTER_ALL_EVENTS:
                 onRegisterAllEvents();
                 break;
@@ -2198,19 +2202,24 @@ public class DataNetworkController extends Handler {
     }
 
     /**
-     * Called when data config was updated.
+     * Called when carrier config was updated.
      */
-    private void onDataConfigUpdated() {
-        log("onDataConfigUpdated: config is "
+    private void onCarrierConfigUpdated() {
+        log("onCarrierConfigUpdated: config is "
                 + (mDataConfigManager.isConfigCarrierSpecific() ? "" : "not ")
                 + "carrier specific. mSimState="
-                + SubscriptionInfoUpdater.simStateString(mSimState)
-                + ". DeviceConfig updated.");
-
-        updateAnomalySlidingWindowCounters();
+                + SubscriptionInfoUpdater.simStateString(mSimState));
         updateNetworkRequestsPriority();
         sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
                 DataEvaluationReason.DATA_CONFIG_CHANGED));
+    }
+
+    /**
+     * Called when device config was updated.
+     */
+    private void onDeviceConfigUpdated() {
+        log("onDeviceConfigUpdated: DeviceConfig updated.");
+        updateAnomalySlidingWindowCounters();
     }
 
     /**

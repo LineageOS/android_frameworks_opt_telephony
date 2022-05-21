@@ -49,6 +49,7 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.data.DataProfileManager.DataProfileManagerCallback;
 
@@ -85,6 +86,8 @@ public class DataProfileManagerTest extends TelephonyTest {
     private int mPreferredApnId = 0;
 
     private DataNetworkControllerCallback mDataNetworkControllerCallback;
+
+    private DataConfigManagerCallback mDataConfigManagerCallback;
 
     private boolean mSimInserted = true;
 
@@ -422,7 +425,11 @@ public class DataProfileManagerTest extends TelephonyTest {
         verify(mDataNetworkController).registerDataNetworkControllerCallback(
                         dataNetworkControllerCallbackCaptor.capture());
         mDataNetworkControllerCallback = dataNetworkControllerCallbackCaptor.getValue();
-        mDataProfileManagerUT.obtainMessage(1 /*EVENT_DATA_CONFIG_UPDATED*/).sendToTarget();
+        ArgumentCaptor<DataConfigManagerCallback> dataConfigManagerCallbackCaptor =
+                ArgumentCaptor.forClass(DataConfigManagerCallback.class);
+        verify(mDataConfigManager).registerCallback(dataConfigManagerCallbackCaptor.capture());
+        mDataConfigManagerCallback = dataConfigManagerCallbackCaptor.getValue();
+        mDataConfigManagerCallback.onCarrierConfigChanged();
         processAllMessages();
 
         logd("DataProfileManagerTest -Setup!");
@@ -432,6 +439,7 @@ public class DataProfileManagerTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mDataProfileManagerUT = null;
         mDataNetworkControllerCallback = null;
+        mDataConfigManagerCallback = null;
         super.tearDown();
     }
 
