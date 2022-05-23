@@ -31,6 +31,8 @@ import static android.telephony.TelephonyManager.SIM_STATE_NOT_READY;
 import static android.telephony.TelephonyManager.SIM_STATE_READY;
 import static android.telephony.TelephonyManager.SIM_STATE_UNKNOWN;
 
+import static com.android.internal.telephony.SubscriptionInfoUpdater.simStateString;
+
 import android.annotation.ElapsedRealtimeLong;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -437,6 +439,7 @@ public class CarrierPrivilegesTracker extends Handler {
             }
             case ACTION_UICC_ACCESS_RULES_LOADED: {
                 handleUiccAccessRulesLoaded();
+                break;
             }
             default: {
                 Rlog.e(TAG, "Received unknown msg type: " + msg.what);
@@ -519,9 +522,9 @@ public class CarrierPrivilegesTracker extends Handler {
                         SystemClock.uptimeMillis() + CLEAR_UICC_RULES_DELAY_MILLIS;
                 sendMessageAtTime(obtainMessage(ACTION_CLEAR_UICC_RULES),
                         mClearUiccRulesUptimeMillis);
-                mLocalLog.log("SIM is gone, simState=" + simState + ". Delay "
-                        + TimeUnit.MILLISECONDS.toSeconds(CLEAR_UICC_RULES_DELAY_MILLIS)
-                        + " seconds to clear UICC rules.");
+                mLocalLog.log("SIM is gone, simState=" + simStateString(simState)
+                        + ". Delay " + TimeUnit.MILLISECONDS.toSeconds(
+                        CLEAR_UICC_RULES_DELAY_MILLIS) + " seconds to clear UICC rules.");
             } else {
                 mLocalLog.log(
                         "Ignore SIM gone event while UiccRules is empty or waiting to be emptied.");
