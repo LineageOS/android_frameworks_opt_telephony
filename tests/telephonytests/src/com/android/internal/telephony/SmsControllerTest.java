@@ -31,9 +31,14 @@ import org.mockito.Mockito;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 
 import java.util.ArrayList;
 
@@ -164,5 +169,27 @@ public class SmsControllerTest extends TelephonyTest {
 
         // Clean up
         fdnCheckCleanup();
+    }
+
+    @Test
+    public void sendVisualVoicemailSmsForSubscriber_phoneIsNotInEcm() {
+        assertFalse(mPhone.isInEcm());
+
+        mSmsControllerUT.sendVisualVoicemailSmsForSubscriber(mCallingPackage,null ,
+                1, null, 0, null, null);
+        verify(mIccSmsInterfaceManager).sendTextWithSelfPermissions(any(),
+                any(), any(), any(), any(), any(), any(), eq(false), eq(true));
+    }
+
+    @Test
+    public void sendVisualVoicemailSmsForSubscriber_phoneIsInEcm() {
+        doReturn(true).when(mPhone).isInEcm();
+
+        mSmsControllerUT.sendVisualVoicemailSmsForSubscriber(mCallingPackage,null ,
+                1, null, 0, null, null);
+        verify(mIccSmsInterfaceManager, never()).sendTextWithSelfPermissions(any(),
+                any(), any(), any(), any(), any(), any(), eq(false), eq(true));
+
+        doReturn(false).when(mPhone).isInEcm();
     }
 }
