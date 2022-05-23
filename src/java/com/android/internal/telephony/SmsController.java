@@ -753,6 +753,13 @@ public class SmsController extends ISmsImplBase {
     public void sendVisualVoicemailSmsForSubscriber(String callingPackage,
             String callingAttributionTag, int subId, String number, int port, String text,
             PendingIntent sentIntent) {
+        // Do not send non-emergency SMS in ECBM as it forces device to exit ECBM.
+        if(getPhone(subId).isInEcm()) {
+            Rlog.d(LOG_TAG, "sendVisualVoicemailSmsForSubscriber: Do not send non-emergency "
+                + "SMS in ECBM as it forces device to exit ECBM.");
+            return;
+        }
+
         if (port == 0) {
             sendTextForSubscriberWithSelfPermissionsInternal(subId, callingPackage,
                     callingAttributionTag, number, null, text, sentIntent, null, false,
