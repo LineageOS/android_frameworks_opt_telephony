@@ -1725,9 +1725,7 @@ public class DataNetworkController extends Handler {
             // If there are reasons we should tear down the network, check if those are hard reasons
             // or soft reasons. In some scenarios, we can make exceptions if they are soft
             // disallowed reasons.
-            if ((mPhone.isInEmergencyCall() || mPhone.isInEcm())
-                    && dataNetwork.getNetworkCapabilities().hasCapability(
-                            NetworkCapabilities.NET_CAPABILITY_SUPL)) {
+            if ((mPhone.isInEmergencyCall() || mPhone.isInEcm()) && dataNetwork.isEmergencySupl()) {
                 // Check if it's SUPL during emergency call.
                 evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_SUPL);
             } else if (!dataNetwork.getNetworkCapabilities().hasCapability(

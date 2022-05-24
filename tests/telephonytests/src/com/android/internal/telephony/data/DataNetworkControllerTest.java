@@ -2637,6 +2637,25 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testEmergencyCallDataDisabled() throws Exception {
+        doReturn(true).when(mPhone).isInEmergencyCall();
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        processAllMessages();
+
+        verifyInternetConnected();
+
+        // Data disabled
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false, mContext.getOpPackageName());
+        processAllMessages();
+
+        // Make sure internet is not connected. (Previously it has a bug due to incorrect logic
+        // to determine it's for emergency SUPL).
+        verifyAllDataDisconnected();
+    }
+
+    @Test
     public void testDataActivity() {
         doReturn(TelephonyManager.DATA_ACTIVITY_IN).when(mLinkBandwidthEstimator).getDataActivity();
         mLinkBandwidthEstimatorCallback.onDataActivityChanged(TelephonyManager.DATA_ACTIVITY_IN);
