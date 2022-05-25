@@ -2986,8 +2986,6 @@ public class DataNetwork extends StateMachine {
                 && mNetworkCapabilities.hasCapability(
                         NetworkCapabilities.NET_CAPABILITY_TRUSTED)
                 && mNetworkCapabilities.hasCapability(
-                        NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
-                && mNetworkCapabilities.hasCapability(
                         NetworkCapabilities.NET_CAPABILITY_NOT_VPN);
     }
 

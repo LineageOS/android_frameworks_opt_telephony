@@ -2246,15 +2246,13 @@ public class DataNetworkControllerTest extends TelephonyTest {
         mDataNetworkControllerUT.addNetworkRequest(tnr);
         processAllMessages();
 
-        // VCN managed network won't trigger onInternetDataNetworkConnected.
-        // DataNetwork.isInternetSupported() is false for VCN managed network.
-        verify(mMockedDataNetworkControllerCallback, never())
+        verify(mMockedDataNetworkControllerCallback)
                 .onInternetDataNetworkConnected(any());
         List<DataNetwork> dataNetworks = getDataNetworks();
         assertThat(dataNetworks).hasSize(1);
         assertThat(dataNetworks.get(0).getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)).isFalse();
-        assertThat(dataNetworks.get(0).isInternetSupported()).isFalse();
+        assertThat(dataNetworks.get(0).isInternetSupported()).isTrue();
         assertThat(dataNetworks.get(0).getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_INTERNET)).isTrue();
     }
