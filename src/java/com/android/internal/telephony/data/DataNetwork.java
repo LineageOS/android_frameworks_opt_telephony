@@ -2980,6 +2980,14 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
+     * @return {@code true} if this network was setup for SUPL during emergency call. {@code false}
+     * otherwise.
+     */
+    public boolean isEmergencySupl() {
+        return mDataAllowedReason == DataAllowedReason.EMERGENCY_SUPL;
+    }
+
+    /**
      * Get precise data connection state
      *
      * @return The {@link PreciseDataConnectionState}
