@@ -70,6 +70,9 @@ import java.util.stream.Collectors;
  * {@link CarrierConfigManager}. All the data config will be loaded once and stored here.
  */
 public class DataConfigManager extends Handler {
+    /** The default timeout in ms for data network stuck in a transit state. */
+    private static final int DEFAULT_NETWORK_TRANSIT_STATE_TIMEOUT_MS = 300000;
+
     /** Event for carrier config changed. */
     private static final int EVENT_CARRIER_CONFIG_CHANGED = 1;
 
@@ -347,22 +350,23 @@ public class DataConfigManager extends Handler {
 
         mImsReleaseRequestAnomalyReportThreshold = parseSlidingWindowCounterThreshold(
                 properties.getString(KEY_ANOMALY_IMS_RELEASE_REQUEST, null),
-                300000,
+                0,
                 12);
         mNetworkUnwantedAnomalyReportThreshold = parseSlidingWindowCounterThreshold(
                 properties.getString(KEY_ANOMALY_NETWORK_UNWANTED, null),
-                300000,
+                0,
                 12);
         mSetupDataCallAnomalyReportThreshold = parseSlidingWindowCounterThreshold(
                 properties.getString(KEY_ANOMALY_SETUP_DATA_CALL_FAILURE, null),
                 0,
                 2);
         mNetworkConnectingTimeout = properties.getInt(
-                KEY_ANOMALY_NETWORK_CONNECTING_TIMEOUT, 86400000);
+                KEY_ANOMALY_NETWORK_CONNECTING_TIMEOUT, DEFAULT_NETWORK_TRANSIT_STATE_TIMEOUT_MS);
         mNetworkDisconnectingTimeout = properties.getInt(
-                KEY_ANOMALY_NETWORK_DISCONNECTING_TIMEOUT, 86400000);
+                KEY_ANOMALY_NETWORK_DISCONNECTING_TIMEOUT,
+                DEFAULT_NETWORK_TRANSIT_STATE_TIMEOUT_MS);
         mNetworkHandoverTimeout = properties.getInt(
-                KEY_ANOMALY_NETWORK_HANDOVER_TIMEOUT, 86400000);
+                KEY_ANOMALY_NETWORK_HANDOVER_TIMEOUT, DEFAULT_NETWORK_TRANSIT_STATE_TIMEOUT_MS);
     }
 
     /**
