@@ -22,6 +22,7 @@ import android.net.NetworkCapabilities;
 import android.os.Parcel;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
+import android.telephony.data.TrafficDescriptor;
 
 import org.junit.Test;
 
@@ -98,6 +99,26 @@ public class DataProfileTest {
             .setWaitTime(456)
             .setMaxConnsTime(789)
             .build();
+
+    // Disabled APN
+    private ApnSetting mApn5 = new ApnSetting.Builder()
+            .setId(2163)
+            .setOperatorNumeric("12345")
+            .setEntryName("fake_apn")
+            .setApnName("fake_apn")
+            .setUser("user")
+            .setPassword("passwd")
+            .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL)
+            .setProtocol(ApnSetting.PROTOCOL_IPV6)
+            .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
+            .setCarrierEnabled(false)
+            .setNetworkTypeBitmask(0)
+            .setProfileId(1234)
+            .setMaxConns(321)
+            .setWaitTime(456)
+            .setMaxConnsTime(789)
+            .build();
+
 
     @Test
     public void testCreateFromApnSetting() throws Exception {
@@ -195,5 +216,27 @@ public class DataProfileTest {
         assertThat(fromParcel).isEqualTo(dp);
 
         parcel.recycle();
+    }
+
+    @Test
+    public void testIsEnabled() {
+        TrafficDescriptor td = new TrafficDescriptor(null, new TrafficDescriptor.OsAppId(
+                TrafficDescriptor.OsAppId.ANDROID_OS_ID, "ENTERPRISE", 1).getBytes());
+
+        DataProfile dp = new DataProfile.Builder()
+                .setApnSetting(mApn5)
+                .setPreferred(false)
+                .build();
+        assertThat(dp.isEnabled()).isFalse();
+
+        dp = new DataProfile.Builder()
+                .setApnSetting(mApn1)
+                .build();
+        assertThat(dp.isEnabled()).isTrue();
+
+        dp = new DataProfile.Builder()
+                .setTrafficDescriptor(td)
+                .build();
+        assertThat(dp.isEnabled()).isTrue();
     }
 }
