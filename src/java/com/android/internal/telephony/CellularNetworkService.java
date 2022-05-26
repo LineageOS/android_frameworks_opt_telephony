@@ -500,6 +500,14 @@ public class CellularNetworkService extends NetworkService {
             final String rplmn = regResult.registeredPlmn;
             final int reasonForDenial = regResult.reasonForDenial;
 
+            if (regState == NetworkRegistrationInfo.REGISTRATION_STATE_DENIED
+                    && reasonForDenial
+                    == android.hardware.radio.network.RegistrationFailCause.NONE) {
+                AnomalyReporter.reportAnomaly(
+                        UUID.fromString("62ed270f-e139-418a-a427-8bcc1bca8f20"),
+                            "RIL Missing Reg Fail Reason", mPhone.getCarrierId());
+            }
+
             int networkType = ServiceState.rilRadioTechnologyToNetworkType(regResult.rat);
             if (networkType == TelephonyManager.NETWORK_TYPE_LTE_CA) {
                 networkType = TelephonyManager.NETWORK_TYPE_LTE;
@@ -581,6 +589,14 @@ public class CellularNetworkService extends NetworkService {
             int networkType = ServiceState.rilRadioTechnologyToNetworkType(regResult.rat);
             networkType =
                     getNetworkTypeForCellIdentity(networkType, cellIdentity, mPhone.getCarrierId());
+
+            if (regState == NetworkRegistrationInfo.REGISTRATION_STATE_DENIED
+                    && reasonForDenial
+                    == android.hardware.radio.network.RegistrationFailCause.NONE) {
+                AnomalyReporter.reportAnomaly(
+                        UUID.fromString("62ed270f-e139-418a-a427-8bcc1bca8f20"),
+                            "RIL Missing Reg Fail Reason", mPhone.getCarrierId());
+            }
 
             // Conditional parameters for specific RANs
             boolean cssSupported = false;
