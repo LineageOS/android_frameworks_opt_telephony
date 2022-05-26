@@ -50,7 +50,6 @@ import android.testing.TestableLooper;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
@@ -578,7 +577,6 @@ public class SignalStrengthControllerTest extends TelephonyTest {
                 mSsc.getSignalStrength().getLevel());
     }
 
-    @Ignore("b/230342465. Upgrade this test case to HAL 2.0")
     @Test
     public void test5gNrSignalStrengthReportingCriteria_ConfiguredThresholds() {
         SignalStrength ss = new SignalStrength(
@@ -591,7 +589,7 @@ public class SignalStrengthControllerTest extends TelephonyTest {
                         -139, /** csiRsrp NONE */
                         -20, /** csiRsrq NONE */
                         -23, /** CsiSinr NONE */
-                        -44, /** SsRsrp SIGNAL_STRENGTH_GREAT */
+                        -64, /** SsRsrp SIGNAL_STRENGTH_GREAT */
                         -20, /** SsRsrq NONE */
                         -23) /** SsSinr NONE */
         );
@@ -606,10 +604,10 @@ public class SignalStrengthControllerTest extends TelephonyTest {
         assertEquals(CellSignalStrength.SIGNAL_STRENGTH_GREAT, mSsc.getSignalStrength().getLevel());
 
         int[] nrSsRsrpThresholds = {
-                -45, // SIGNAL_STRENGTH_POOR
-                -40, // SIGNAL_STRENGTH_MODERATE
-                -37, // SIGNAL_STRENGTH_GOOD
-                -34,  // SIGNAL_STRENGTH_GREAT
+                -110, /* SIGNAL_STRENGTH_POOR */
+                -60, /* SIGNAL_STRENGTH_MODERATE */
+                -55, /* SIGNAL_STRENGTH_GOOD */
+                -45,  /* SIGNAL_STRENGTH_GREAT */
         };
         mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSRSRP_THRESHOLDS_INT_ARRAY,
                 nrSsRsrpThresholds);
