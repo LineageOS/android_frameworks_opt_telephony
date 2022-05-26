@@ -19,6 +19,7 @@ package com.android.internal.telephony.metrics;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_BITMASK_GPRS;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_BITMASK_GSM;
 import static android.text.format.DateUtils.DAY_IN_MILLIS;
+import static android.text.format.DateUtils.HOUR_IN_MILLIS;
 
 import static com.android.internal.telephony.TelephonyStatsLog.GBA_EVENT__FAILED_REASON__FEATURE_NOT_READY;
 import static com.android.internal.telephony.TelephonyStatsLog.GBA_EVENT__FAILED_REASON__UNKNOWN;
@@ -2105,13 +2106,16 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     @Test
     @SmallTest
     public void addRcsAcsProvisioningStats_updateExistingEntries() throws Exception {
+        final int maxCount = 5;
+        final long duration = START_TIME_MILLIS;
         createEmptyTestFile();
 
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
 
         // store 5 same atoms (1Proto), but only 1 atoms stored with count 5, total time 2000L * 5
         // store 5 same atoms (2Proto), but only 1 atoms stored with count 5, total time 2000L * 5
-        for (int i = 0; i < 5; i++) {
+
+        for (int i = 0; i < maxCount; i++) {
             mPersistAtomsStorage
                     .addRcsAcsProvisioningStats(copyOf(mRcsAcsProvisioningStats1Proto));
             mPersistAtomsStorage.incTimeMillis(100L);
@@ -2122,6 +2126,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         // add one more atoms (2Proto), count 6, total time 2000L * 6
         mPersistAtomsStorage
                 .addRcsAcsProvisioningStats(copyOf(mRcsAcsProvisioningStats2Proto));
+        mPersistAtomsStorage.incTimeMillis(100L);
 
         verifyCurrentStateSavedToFileOnce();
 
@@ -2129,9 +2134,11 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                 mPersistAtomsStorage.getRcsAcsProvisioningStats(0L);
 
         // atom (1Proto) : count = 5, time = 2000L * 5
-        assertHasStatsAndCountDuration(result, mRcsAcsProvisioningStats1Proto, 5, 2000L * 5);
+        assertHasStatsAndCountDuration(
+                result, mRcsAcsProvisioningStats1Proto, 5, duration * maxCount);
         // atom (2Proto) : count = 6, time = 2000L * 6
-        assertHasStatsAndCountDuration(result, mRcsAcsProvisioningStats2Proto, 6, 2000L * 6);
+        assertHasStatsAndCountDuration(
+                result, mRcsAcsProvisioningStats2Proto, 6, duration * (maxCount + 1));
     }
 
     @Test
@@ -2154,27 +2161,27 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         createTestFile(START_TIME_MILLIS);
 
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
-        mPersistAtomsStorage.incTimeMillis(100L);
+        mPersistAtomsStorage.incTimeMillis(DAY_IN_MILLIS);
         RcsAcsProvisioningStats[] statses1 =
-                mPersistAtomsStorage.getRcsAcsProvisioningStats(50L);
-        mPersistAtomsStorage.incTimeMillis(100L);
+                mPersistAtomsStorage.getRcsAcsProvisioningStats(DAY_IN_MILLIS - HOUR_IN_MILLIS);
+        mPersistAtomsStorage.incTimeMillis(DAY_IN_MILLIS);
         RcsAcsProvisioningStats[] statses2 =
-                mPersistAtomsStorage.getRcsAcsProvisioningStats(50L);
+                mPersistAtomsStorage.getRcsAcsProvisioningStats(DAY_IN_MILLIS - HOUR_IN_MILLIS);
 
         // first results of get should have two atoms, second should be empty
         // pull timestamp should be updated and saved
         assertProtoArrayEqualsIgnoringOrder(mRcsAcsProvisioningStatses, statses1);
         assertProtoArrayEquals(new RcsAcsProvisioningStats[0], statses2);
         assertEquals(
-                START_TIME_MILLIS + 200L,
+                START_TIME_MILLIS + 2 * DAY_IN_MILLIS,
                 mPersistAtomsStorage.getAtomsProto()
                         .rcsAcsProvisioningStatsPullTimestampMillis);
         InOrder inOrder = inOrder(mTestFileOutputStream);
         assertEquals(
-                START_TIME_MILLIS + 100L,
+                START_TIME_MILLIS + DAY_IN_MILLIS,
                 getAtomsWritten(inOrder).rcsAcsProvisioningStatsPullTimestampMillis);
         assertEquals(
-                START_TIME_MILLIS + 200L,
+                START_TIME_MILLIS + 2 * DAY_IN_MILLIS,
                 getAtomsWritten(inOrder).rcsAcsProvisioningStatsPullTimestampMillis);
         inOrder.verifyNoMoreInteractions();
     }
@@ -2315,6 +2322,121 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                     mImsRegistrationStatsWifi0
                 },
                 serviceStates);
+    }
+
+    @Test
+    public void getRcsAcsProvisioningStats_24h_normalization() throws Exception {
+        // in case pulling interval is greater than a day
+        final long stateTimer = HOUR_IN_MILLIS;
+        final long weightFactor = 2;
+        createTestFile(START_TIME_MILLIS);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        RcsAcsProvisioningStats mSubjectStats = copyOf(mRcsAcsProvisioningStats1Proto);
+
+        mSubjectStats.stateTimerMillis = stateTimer;
+        mPersistAtomsStorage.addRcsAcsProvisioningStats(mSubjectStats);
+        mPersistAtomsStorage.incTimeMillis(DAY_IN_MILLIS * weightFactor);
+
+        RcsAcsProvisioningStats[] savedStats =
+                mPersistAtomsStorage.getRcsAcsProvisioningStats(0L);
+
+        assertEquals(
+                (START_TIME_MILLIS + stateTimer) / weightFactor, savedStats[0].stateTimerMillis);
+
+        // in case pulling interval is smaller than a day
+        long incTimeMillis = DAY_IN_MILLIS * 23 / 24 + 1;
+        mSubjectStats = copyOf(mRcsAcsProvisioningStats1Proto);
+        mSubjectStats.stateTimerMillis = stateTimer;
+        mPersistAtomsStorage.addRcsAcsProvisioningStats(mSubjectStats);
+        mPersistAtomsStorage.incTimeMillis(incTimeMillis);
+        savedStats =
+                mPersistAtomsStorage.getRcsAcsProvisioningStats(0L);
+
+
+        assertEquals(stateTimer, savedStats[0].stateTimerMillis);
+    }
+
+    @Test
+    public void getSipDelegateStats_24h_normalization() throws Exception {
+        final long stateTimer = HOUR_IN_MILLIS;
+        final long weightFactor = 2;
+        createTestFile(START_TIME_MILLIS);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        SipDelegateStats mSubjectStats = copyOf(mSipDelegateStats1);
+        mSubjectStats.uptimeMillis = stateTimer;
+        mPersistAtomsStorage.addSipDelegateStats(mSubjectStats);
+        mPersistAtomsStorage.incTimeMillis(DAY_IN_MILLIS * weightFactor);
+        SipDelegateStats[] savedStats =
+                mPersistAtomsStorage.getSipDelegateStats(0L);
+        for (SipDelegateStats stat : savedStats) {
+            if (stat.destroyReason
+                    == SipDelegateManager.SIP_DELEGATE_DESTROY_REASON_REQUESTED_BY_APP) {
+                assertEquals(stateTimer / weightFactor, stat.uptimeMillis);
+            }
+        }
+
+        long incTimeMillis = DAY_IN_MILLIS * 23 / 24 + 1;
+        mSubjectStats = copyOf(mSipDelegateStats1);
+        mSubjectStats.uptimeMillis = stateTimer;
+        mPersistAtomsStorage.addSipDelegateStats(mSubjectStats);
+        mPersistAtomsStorage.incTimeMillis(incTimeMillis);
+        savedStats =
+                mPersistAtomsStorage.getSipDelegateStats(0L);
+        for (SipDelegateStats stat : savedStats) {
+            if (stat.destroyReason
+                    == SipDelegateManager.SIP_DELEGATE_DESTROY_REASON_REQUESTED_BY_APP) {
+                assertEquals(stateTimer, stat.uptimeMillis);
+            }
+        }
+    }
+
+    @Test
+    public void getSipTransportFeatureTagStats_24h_normalization() throws Exception {
+        final long stateTimer = HOUR_IN_MILLIS;
+        final long weightFactor = 2;
+        createTestFile(START_TIME_MILLIS);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        SipTransportFeatureTagStats mSubjectStats = copyOf(mSipTransportFeatureTagStats1);
+        mSubjectStats.associatedMillis = stateTimer;
+        mPersistAtomsStorage.addSipTransportFeatureTagStats(mSubjectStats);
+        mPersistAtomsStorage.incTimeMillis(DAY_IN_MILLIS * weightFactor);
+        SipTransportFeatureTagStats[] savedStats =
+                mPersistAtomsStorage.getSipTransportFeatureTagStats(0L);
+        assertEquals((stateTimer) / weightFactor, savedStats[0].associatedMillis);
+
+        long incTimeMillis = DAY_IN_MILLIS * 23 / 24 + 1;
+        mSubjectStats = copyOf(mSipTransportFeatureTagStats1);
+        mSubjectStats.associatedMillis = stateTimer;
+        mPersistAtomsStorage.addSipTransportFeatureTagStats(mSubjectStats);
+        mPersistAtomsStorage.incTimeMillis(incTimeMillis);
+        savedStats =
+                mPersistAtomsStorage.getSipTransportFeatureTagStats(0L);
+        assertEquals(stateTimer, savedStats[0].associatedMillis);
+    }
+
+    @Test
+    public void getImsRegistrationServiceDescStats_24h_normalization() throws Exception {
+        final long stateTimer = HOUR_IN_MILLIS;
+        final long weightFactor = 2;
+        createTestFile(START_TIME_MILLIS);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        ImsRegistrationServiceDescStats mSubjectStats = copyOf(mImsRegistrationServiceIm);
+        mSubjectStats.publishedMillis = stateTimer;
+        mPersistAtomsStorage.addImsRegistrationServiceDescStats(mSubjectStats);
+        mPersistAtomsStorage.incTimeMillis(DAY_IN_MILLIS * weightFactor);
+        ImsRegistrationServiceDescStats[] savedStats =
+                mPersistAtomsStorage.getImsRegistrationServiceDescStats(0L);
+        assertEquals(
+                (START_TIME_MILLIS + stateTimer) / weightFactor, savedStats[0].publishedMillis);
+
+        long incTimeMillis = DAY_IN_MILLIS * 23 / 24 + 1;
+        mSubjectStats = copyOf(mImsRegistrationServiceIm);
+        mSubjectStats.publishedMillis = stateTimer;
+        mPersistAtomsStorage.addImsRegistrationServiceDescStats(mSubjectStats);
+        mPersistAtomsStorage.incTimeMillis(incTimeMillis);
+        savedStats =
+                mPersistAtomsStorage.getImsRegistrationServiceDescStats(0L);
+        assertEquals(stateTimer, savedStats[0].publishedMillis);
     }
 
     @Test
