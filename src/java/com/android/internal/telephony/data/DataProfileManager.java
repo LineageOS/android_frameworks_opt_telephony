@@ -273,7 +273,7 @@ public class DataProfileManager extends Handler {
         }
 
         // Check if any of the profile already supports IMS, if not, add the default one.
-        DataProfile dataProfile = profiles.stream()
+        dataProfile = profiles.stream()
                 .filter(dp -> dp.canSatisfy(NetworkCapabilities.NET_CAPABILITY_IMS))
                 .findFirst()
                 .orElse(null);
