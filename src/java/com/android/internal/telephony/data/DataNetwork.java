@@ -1312,8 +1312,6 @@ public class DataNetwork extends StateMachine {
                 case EVENT_VOICE_CALL_STARTED:
                 case EVENT_VOICE_CALL_ENDED:
                 case EVENT_CSS_INDICATOR_CHANGED:
-                    // We might entered non-VoPS network. Need to update the network capability to
-                    // remove MMTEL capability.
                     updateSuspendState();
                     updateNetworkCapabilities();
                     break;
@@ -1491,8 +1489,6 @@ public class DataNetwork extends StateMachine {
                 case EVENT_CSS_INDICATOR_CHANGED:
                 case EVENT_VOICE_CALL_STARTED:
                 case EVENT_VOICE_CALL_ENDED:
-                    // We might entered non-VoPS network. Need to update the network capability to
-                    // remove MMTEL capability.
                     updateSuspendState();
                     updateNetworkCapabilities();
                     break;
@@ -1824,14 +1820,13 @@ public class DataNetwork extends StateMachine {
             }
         }
 
-        // If voice call is on-going, do not change MMTEL capability, which is an immutable
-        // capability. Changing it will result in CS tearing down IMS network, and the voice
-        // call will drop.
-        if (shouldDelayImsTearDown() && mNetworkCapabilities != null
+        // Once we set the MMTEL capability, we should never remove it because it's an immutable
+        // capability defined by connectivity service. When the device enters from VoPS to non-VoPS,
+        // we should perform grace tear down from data network controller if needed.
+        if (mNetworkCapabilities != null
                 && mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL)) {
             // Previous capability has MMTEL, so add it again.
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL);
-            log("Delayed IMS tear down. Reporting MMTEL capability for now.");
         } else {
             // Always add MMTEL capability on IMS network unless network explicitly indicates VoPS
             // not supported.
@@ -2487,7 +2482,7 @@ public class DataNetwork extends StateMachine {
     public boolean shouldDelayImsTearDown() {
         return mDataConfigManager.isImsDelayTearDownEnabled()
                 && mNetworkCapabilities != null
-                && mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
+                && mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL)
                 && mPhone.getImsPhone() != null
                 && mPhone.getImsPhone().getCallTracker().getState()
                 != PhoneConstants.State.IDLE;
@@ -2990,6 +2985,14 @@ public class DataNetwork extends StateMachine {
                         NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
                 && mNetworkCapabilities.hasCapability(
                         NetworkCapabilities.NET_CAPABILITY_NOT_VPN);
+    }
+
+    /**
+     * @return {@code true} if this network was setup for SUPL during emergency call. {@code false}
+     * otherwise.
+     */
+    public boolean isEmergencySupl() {
+        return mDataAllowedReason == DataAllowedReason.EMERGENCY_SUPL;
     }
 
     /**
