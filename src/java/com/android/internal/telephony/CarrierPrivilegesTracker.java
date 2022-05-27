@@ -31,6 +31,8 @@ import static android.telephony.TelephonyManager.SIM_STATE_NOT_READY;
 import static android.telephony.TelephonyManager.SIM_STATE_READY;
 import static android.telephony.TelephonyManager.SIM_STATE_UNKNOWN;
 
+import static com.android.internal.telephony.SubscriptionInfoUpdater.simStateString;
+
 import android.annotation.ElapsedRealtimeLong;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -113,6 +115,17 @@ public class CarrierPrivilegesTracker extends Handler {
     private static final long CLEAR_UICC_RULES_DELAY_MILLIS = TimeUnit.SECONDS.toMillis(30);
 
     /**
+     * PackageManager flags used to query installed packages.
+     * Include DISABLED_UNTIL_USED components. This facilitates cases where a carrier app
+     * is disabled by default, and some other component wants to enable it when it has
+     * gained carrier privileges (as an indication that a matching SIM has been inserted).
+     */
+    private static final int INSTALLED_PACKAGES_QUERY_FLAGS =
+            PackageManager.GET_SIGNING_CERTIFICATES
+                    | PackageManager.MATCH_DISABLED_UNTIL_USED_COMPONENTS
+                    | PackageManager.MATCH_HIDDEN_UNTIL_INSTALLED_COMPONENTS;
+
+    /**
      * Action to register a Registrant with this Tracker.
      * obj: Registrant that will be notified of Carrier Privileged UID changes.
      */
@@ -139,16 +152,17 @@ public class CarrierPrivilegesTracker extends Handler {
     private static final int ACTION_SIM_STATE_UPDATED = 4;
 
     /**
-     * Action for tracking when a package is installed or replaced on the device.
-     * obj: String package name that was installed or replaced on the device.
+     * Action for tracking when a package is installed, replaced or changed (exclude the case
+     * disabled by user) on the device.
+     * obj: String package name that was installed, replaced or changed on the device.
      */
-    private static final int ACTION_PACKAGE_ADDED_OR_REPLACED = 5;
+    private static final int ACTION_PACKAGE_ADDED_REPLACED_OR_CHANGED = 5;
 
     /**
-     * Action for tracking when a package is uninstalled on the device.
-     * obj: String package name that was installed on the device.
+     * Action for tracking when a package is uninstalled or disabled by user on the device.
+     * obj: String package name that was installed or disabled by user on the device.
      */
-    private static final int ACTION_PACKAGE_REMOVED = 6;
+    private static final int ACTION_PACKAGE_REMOVED_OR_DISABLED_BY_USER = 6;
 
     /**
      * Action used to initialize the state of the Tracker.
@@ -165,6 +179,11 @@ public class CarrierPrivilegesTracker extends Handler {
      * Action to clear UICC rules.
      */
     private static final int ACTION_CLEAR_UICC_RULES = 9;
+
+    /**
+     * Action to handle the case when UiccAccessRules has been loaded.
+     */
+    private static final int ACTION_UICC_ACCESS_RULES_LOADED = 10;
 
     private final Context mContext;
     private final Phone mPhone;
@@ -306,17 +325,32 @@ public class CarrierPrivilegesTracker extends Handler {
                         }
                         case Intent.ACTION_PACKAGE_ADDED: // fall through
                         case Intent.ACTION_PACKAGE_REPLACED: // fall through
-                        case Intent.ACTION_PACKAGE_REMOVED: {
-                            int what =
-                                    (action.equals(Intent.ACTION_PACKAGE_REMOVED))
-                                            ? ACTION_PACKAGE_REMOVED
-                                            : ACTION_PACKAGE_ADDED_OR_REPLACED;
+                        case Intent.ACTION_PACKAGE_REMOVED: // fall through
+                        case Intent.ACTION_PACKAGE_CHANGED: {
                             Uri uri = intent.getData();
                             String pkgName = (uri != null) ? uri.getSchemeSpecificPart() : null;
                             if (TextUtils.isEmpty(pkgName)) {
                                 Rlog.e(TAG, "Failed to get package from Intent");
                                 return;
                             }
+
+                            boolean removed = action.equals(Intent.ACTION_PACKAGE_REMOVED);
+                            boolean disabledByUser = false;
+                            boolean notExist = false;
+                            try {
+                                disabledByUser = action.equals(Intent.ACTION_PACKAGE_CHANGED)
+                                        && mPackageManager.getApplicationEnabledSetting(pkgName)
+                                        == PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER;
+                            } catch (IllegalArgumentException iae) {
+                                // Very rare case when package changed race with package removed
+                                Rlog.w(TAG, "Package does not exist: " + pkgName);
+                                notExist = true;
+                            }
+                            // When a package is explicitly disabled by the user or does not exist,
+                            // treat them as if it was removed: clear it from the cache
+                            int what = (removed || disabledByUser || notExist)
+                                    ? ACTION_PACKAGE_REMOVED_OR_DISABLED_BY_USER
+                                    : ACTION_PACKAGE_ADDED_REPLACED_OR_CHANGED;
 
                             sendMessage(obtainMessage(what, pkgName));
                             break;
@@ -349,6 +383,7 @@ public class CarrierPrivilegesTracker extends Handler {
         packageFilter.addAction(Intent.ACTION_PACKAGE_ADDED);
         packageFilter.addAction(Intent.ACTION_PACKAGE_REPLACED);
         packageFilter.addAction(Intent.ACTION_PACKAGE_REMOVED);
+        packageFilter.addAction(Intent.ACTION_PACKAGE_CHANGED);
 
         // For package-related broadcasts, specify the data scheme for "package" to receive the
         // package name along with the broadcast
@@ -379,14 +414,14 @@ public class CarrierPrivilegesTracker extends Handler {
                 handleSimStateChanged(msg.arg1, msg.arg2);
                 break;
             }
-            case ACTION_PACKAGE_ADDED_OR_REPLACED: {
+            case ACTION_PACKAGE_ADDED_REPLACED_OR_CHANGED: {
                 String pkgName = (String) msg.obj;
-                handlePackageAddedOrReplaced(pkgName);
+                handlePackageAddedReplacedOrChanged(pkgName);
                 break;
             }
-            case ACTION_PACKAGE_REMOVED: {
+            case ACTION_PACKAGE_REMOVED_OR_DISABLED_BY_USER: {
                 String pkgName = (String) msg.obj;
-                handlePackageRemoved(pkgName);
+                handlePackageRemovedOrDisabledByUser(pkgName);
                 break;
             }
             case ACTION_INITIALIZE_TRACKER: {
@@ -400,6 +435,10 @@ public class CarrierPrivilegesTracker extends Handler {
             }
             case ACTION_CLEAR_UICC_RULES: {
                 handleClearUiccRules();
+                break;
+            }
+            case ACTION_UICC_ACCESS_RULES_LOADED: {
+                handleUiccAccessRulesLoaded();
                 break;
             }
             default: {
@@ -474,16 +513,8 @@ public class CarrierPrivilegesTracker extends Handler {
 
         // Only include the UICC rules if the SIM is fully loaded
         if (simState == SIM_STATE_LOADED) {
-            mClearUiccRulesUptimeMillis = CLEAR_UICC_RULE_NOT_SCHEDULED;
-            removeMessages(ACTION_CLEAR_UICC_RULES);
-
-            updatedUiccRules = getSimRules();
-
-            mLocalLog.log("SIM fully loaded:"
-                    + " slotId=" + slotId
-                    + " simState=" + simState
-                    + " updated SIM-loaded rules=" + updatedUiccRules);
-            maybeUpdateRulesAndNotifyRegistrants(mUiccRules, updatedUiccRules);
+            mLocalLog.log("SIM fully loaded, handleUiccAccessRulesLoaded.");
+            handleUiccAccessRulesLoaded();
         } else {
             if (!mUiccRules.isEmpty()
                     && mClearUiccRulesUptimeMillis == CLEAR_UICC_RULE_NOT_SCHEDULED) {
@@ -491,13 +522,29 @@ public class CarrierPrivilegesTracker extends Handler {
                         SystemClock.uptimeMillis() + CLEAR_UICC_RULES_DELAY_MILLIS;
                 sendMessageAtTime(obtainMessage(ACTION_CLEAR_UICC_RULES),
                         mClearUiccRulesUptimeMillis);
-                mLocalLog.log("SIM is gone. Delay " + TimeUnit.MILLISECONDS.toSeconds(
+                mLocalLog.log("SIM is gone, simState=" + simStateString(simState)
+                        + ". Delay " + TimeUnit.MILLISECONDS.toSeconds(
                         CLEAR_UICC_RULES_DELAY_MILLIS) + " seconds to clear UICC rules.");
             } else {
                 mLocalLog.log(
                         "Ignore SIM gone event while UiccRules is empty or waiting to be emptied.");
             }
         }
+    }
+
+    private void handleUiccAccessRulesLoaded() {
+        mClearUiccRulesUptimeMillis = CLEAR_UICC_RULE_NOT_SCHEDULED;
+        removeMessages(ACTION_CLEAR_UICC_RULES);
+
+        List<UiccAccessRule> updatedUiccRules = getSimRules();
+        mLocalLog.log("UiccAccessRules loaded:"
+                + " updated SIM-loaded rules=" + updatedUiccRules);
+        maybeUpdateRulesAndNotifyRegistrants(mUiccRules, updatedUiccRules);
+    }
+
+    /** Called when UiccAccessRules has been loaded */
+    public void onUiccAccessRulesLoaded() {
+        sendEmptyMessage(ACTION_UICC_ACCESS_RULES_LOADED);
     }
 
     private void handleClearUiccRules() {
@@ -530,12 +577,12 @@ public class CarrierPrivilegesTracker extends Handler {
         return uiccProfile.getCarrierPrivilegeAccessRules();
     }
 
-    private void handlePackageAddedOrReplaced(@Nullable String pkgName) {
+    private void handlePackageAddedReplacedOrChanged(@Nullable String pkgName) {
         if (pkgName == null) return;
 
         PackageInfo pkg;
         try {
-            pkg = mPackageManager.getPackageInfo(pkgName, PackageManager.GET_SIGNING_CERTIFICATES);
+            pkg = mPackageManager.getPackageInfo(pkgName, INSTALLED_PACKAGES_QUERY_FLAGS);
         } catch (NameNotFoundException e) {
             Rlog.e(TAG, "Error getting installed package: " + pkgName, e);
             return;
@@ -546,9 +593,11 @@ public class CarrierPrivilegesTracker extends Handler {
         // installed for a user it wasn't installed in before, which means there will be an
         // additional UID.
         getUidsForPackage(pkg.packageName, /* invalidateCache= */ true);
-        mLocalLog.log("Package added/replaced:"
-                + " pkg=" + Rlog.pii(TAG, pkgName)
-                + " cert hashes=" + mInstalledPackageCerts.get(pkgName));
+        if (VDBG) {
+            Rlog.d(TAG, "Package added/replaced/changed:"
+                    + " pkg=" + Rlog.pii(TAG, pkgName)
+                    + " cert hashes=" + mInstalledPackageCerts.get(pkgName));
+        }
 
         maybeUpdatePrivilegedPackagesAndNotifyRegistrants();
     }
@@ -567,15 +616,17 @@ public class CarrierPrivilegesTracker extends Handler {
         mInstalledPackageCerts.put(pkg.packageName, certs);
     }
 
-    private void handlePackageRemoved(@Nullable String pkgName) {
+    private void handlePackageRemovedOrDisabledByUser(@Nullable String pkgName) {
         if (pkgName == null) return;
 
         if (mInstalledPackageCerts.remove(pkgName) == null || mCachedUids.remove(pkgName) == null) {
-            Rlog.e(TAG, "Unknown package was uninstalled: " + pkgName);
+            Rlog.e(TAG, "Unknown package was uninstalled or disabled by user: " + pkgName);
             return;
         }
 
-        mLocalLog.log("Package removed: pkg=" + Rlog.pii(TAG, pkgName));
+        if (VDBG) {
+            Rlog.d(TAG, "Package removed or disabled by user: pkg=" + Rlog.pii(TAG, pkgName));
+        }
 
         maybeUpdatePrivilegedPackagesAndNotifyRegistrants();
     }
@@ -607,16 +658,9 @@ public class CarrierPrivilegesTracker extends Handler {
     }
 
     private void refreshInstalledPackageCache() {
-        // Include DISABLED_UNTIL_USED components. This facilitates cases where a carrier app
-        // is disabled by default, and some other component wants to enable it when it has
-        // gained carrier privileges (as an indication that a matching SIM has been inserted).
-        int flags =
-                PackageManager.GET_SIGNING_CERTIFICATES
-                        | PackageManager.MATCH_DISABLED_UNTIL_USED_COMPONENTS
-                        | PackageManager.MATCH_HIDDEN_UNTIL_INSTALLED_COMPONENTS;
         List<PackageInfo> installedPackages =
                 mPackageManager.getInstalledPackagesAsUser(
-                        flags, UserHandle.SYSTEM.getIdentifier());
+                        INSTALLED_PACKAGES_QUERY_FLAGS, UserHandle.SYSTEM.getIdentifier());
         for (PackageInfo pkg : installedPackages) {
             updateCertsForPackage(pkg);
             // This may be unnecessary before initialization, but invalidate the cache all the time

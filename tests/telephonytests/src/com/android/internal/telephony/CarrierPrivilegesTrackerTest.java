@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES;
 import static android.os.UserHandle.SYSTEM;
 import static android.telephony.CarrierConfigManager.EXTRA_SLOT_INDEX;
 import static android.telephony.CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX;
@@ -200,7 +199,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
             pkg.signatures = new Signature[] {new Signature(pkgCertInfo.cert)};
 
             when(mPackageManager.getPackageInfo(
-                    eq(pkgCertInfo.pkgName), eq(GET_SIGNING_CERTIFICATES)))
+                    eq(pkgCertInfo.pkgName), eq(PM_FLAGS)))
                     .thenReturn(pkg);
             when(mPackageManager.getPackageUidAsUser(
                     eq(pkgCertInfo.pkgName), eq(pkgCertInfo.userInfo.id)))
@@ -309,6 +308,22 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
                                 eq(PHONE_ID),
                                 eq(expectedUpdate.first),
                                 eq(expectedUpdate.second));
+            }
+        }
+    }
+
+    private void verifyCarrierServicesChangedUpdates(List<Pair<String, Integer>> expectedUpdates) {
+        if (expectedUpdates.isEmpty()) {
+            verify(mTelephonyRegistryManager, never())
+                    .notifyCarrierPrivilegesChanged(anyInt(), any(), any());
+        } else {
+            InOrder inOrder = inOrder(mTelephonyRegistryManager);
+            for (Pair<String, Integer> expectedUpdate : expectedUpdates) {
+                // By looking at TelephonyRegistryManager, we can see the full flow as
+                // it evolves.
+                inOrder.verify(mTelephonyRegistryManager)
+                        .notifyCarrierServiceChanged(
+                                eq(PHONE_ID), eq(expectedUpdate.first), eq(expectedUpdate.second));
             }
         }
     }
@@ -798,7 +813,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         // Update PACKAGE_1 to have no signatures
         PackageInfo pkg = new PackageInfo();
         pkg.packageName = PACKAGE_1;
-        when(mPackageManager.getPackageInfo(eq(PACKAGE_1), eq(GET_SIGNING_CERTIFICATES)))
+        when(mPackageManager.getPackageInfo(eq(PACKAGE_1), eq(PM_FLAGS)))
                 .thenReturn(pkg);
 
         sendPackageChangedIntent(Intent.ACTION_PACKAGE_ADDED, PACKAGE_1);
@@ -865,6 +880,47 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCurrentState(Set.of(), new int[0]);
         verifyRegistrantUpdates(null /* expectedUidUpdates */, 0 /* expectedUidUpdates */);
         verifyCarrierPrivilegesChangedUpdates(List.of());
+    }
+
+    @Test
+    public void testPackageDisabledAndThenEnabled() throws Exception {
+        // Start with certs and packages installed
+        setupCarrierConfigRules(carrierConfigRuleString(getHash(CERT_1)));
+        setupInstalledPackages(
+                new PackageCertInfo(PACKAGE_1, CERT_1, USER_1, UID_1),
+                new PackageCertInfo(PACKAGE_2, CERT_2, USER_1, UID_2));
+        when(mPackageManager.getPackageUid(eq(PACKAGE_1), anyInt())).thenReturn(UID_1);
+        when(mPackageManager.getPackageUid(eq(PACKAGE_2), anyInt())).thenReturn(UID_2);
+        ResolveInfo resolveInfoPkg1 = new ResolveInfoBuilder().setService(PACKAGE_1).build();
+        doReturn(List.of(resolveInfoPkg1))
+                .when(mPackageManager)
+                .queryIntentServices(any(), anyInt());
+        mCarrierPrivilegesTracker = createCarrierPrivilegesTracker();
+
+        // Package_1 is disabled
+        when(mPackageManager.getApplicationEnabledSetting(eq(PACKAGE_1))).thenReturn(
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER);
+        doReturn(List.of()).when(
+                mPackageManager).queryIntentServices(any(), anyInt());
+        sendPackageChangedIntent(Intent.ACTION_PACKAGE_CHANGED, PACKAGE_1);
+        mTestableLooper.processAllMessages();
+
+        verifyCurrentState(Set.of(), new int[0]);
+        verifyCarrierPrivilegesChangedUpdates(List.of(new Pair<>(Set.of(), Set.of())));
+        verifyCarrierServicesChangedUpdates(List.of(new Pair<>(null, -1)));
+
+        // Package_1 is re-enabled
+        when(mPackageManager.getApplicationEnabledSetting(eq(PACKAGE_1))).thenReturn(
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED);
+        doReturn(List.of(resolveInfoPkg1)).when(
+                mPackageManager).queryIntentServices(any(), anyInt());
+        sendPackageChangedIntent(Intent.ACTION_PACKAGE_CHANGED, PACKAGE_1);
+        mTestableLooper.processAllMessages();
+
+        verifyCurrentState(Set.of(PACKAGE_1), new int[] {UID_1});
+        verifyCarrierPrivilegesChangedUpdates(
+                List.of(new Pair<>(Set.of(PACKAGE_1), Set.of(UID_1))));
+        verifyCarrierServicesChangedUpdates(List.of(new Pair<>(PACKAGE_1, UID_1)));
     }
 
     @Test
