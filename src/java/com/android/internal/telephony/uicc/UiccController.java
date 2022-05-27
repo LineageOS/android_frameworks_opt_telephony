@@ -42,8 +42,10 @@ import android.telephony.TelephonyManager;
 import android.telephony.UiccCardInfo;
 import android.telephony.UiccPortInfo;
 import android.telephony.UiccSlotMapping;
+import android.telephony.data.ApnSetting;
 import android.text.TextUtils;
 import android.util.LocalLog;
+import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandException;
@@ -1322,6 +1324,81 @@ public class UiccController extends Handler {
                 return true;
             }
         }
+        return false;
+    }
+
+    private static boolean iccidMatches(String mvnoData, String iccId) {
+        String[] mvnoIccidList = mvnoData.split(",");
+        for (String mvnoIccid : mvnoIccidList) {
+            if (iccId.startsWith(mvnoIccid)) {
+                Log.d(LOG_TAG, "mvno icc id match found");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean imsiMatches(String imsiDB, String imsiSIM) {
+        // Note: imsiDB value has digit number or 'x' character for separating USIM information
+        // for MVNO operator. And then digit number is matched at same order and 'x' character
+        // could replace by any digit number.
+        // ex) if imsiDB inserted '310260x10xxxxxx' for GG Operator,
+        //     that means first 6 digits, 8th and 9th digit
+        //     should be set in USIM for GG Operator.
+        int len = imsiDB.length();
+
+        if (len <= 0) return false;
+        if (len > imsiSIM.length()) return false;
+
+        for (int idx = 0; idx < len; idx++) {
+            char c = imsiDB.charAt(idx);
+            if ((c == 'x') || (c == 'X') || (c == imsiSIM.charAt(idx))) {
+                continue;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Check if MVNO type and data match IccRecords.
+     *
+     * @param slotIndex SIM slot index.
+     * @param mvnoType the MVNO type
+     * @param mvnoMatchData the MVNO match data
+     * @return {@code true} if MVNO type and data match IccRecords, {@code false} otherwise.
+     */
+    public boolean mvnoMatches(int slotIndex, int mvnoType, String mvnoMatchData) {
+        IccRecords iccRecords = getIccRecords(slotIndex, UiccController.APP_FAM_3GPP);
+        if (iccRecords == null) {
+            Log.d(LOG_TAG, "isMvnoMatched# IccRecords is null");
+            return false;
+        }
+        if (mvnoType == ApnSetting.MVNO_TYPE_SPN) {
+            String spn = iccRecords.getServiceProviderNameWithBrandOverride();
+            if ((spn != null) && spn.equalsIgnoreCase(mvnoMatchData)) {
+                return true;
+            }
+        } else if (mvnoType == ApnSetting.MVNO_TYPE_IMSI) {
+            String imsiSIM = iccRecords.getIMSI();
+            if ((imsiSIM != null) && imsiMatches(mvnoMatchData, imsiSIM)) {
+                return true;
+            }
+        } else if (mvnoType == ApnSetting.MVNO_TYPE_GID) {
+            String gid1 = iccRecords.getGid1();
+            int mvno_match_data_length = mvnoMatchData.length();
+            if ((gid1 != null) && (gid1.length() >= mvno_match_data_length)
+                    && gid1.substring(0, mvno_match_data_length).equalsIgnoreCase(mvnoMatchData)) {
+                return true;
+            }
+        } else if (mvnoType == ApnSetting.MVNO_TYPE_ICCID) {
+            String iccId = iccRecords.getIccId();
+            if ((iccId != null) && iccidMatches(mvnoMatchData, iccId)) {
+                return true;
+            }
+        }
+
         return false;
     }
 
