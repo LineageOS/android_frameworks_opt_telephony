@@ -72,8 +72,8 @@ import java.util.stream.Collectors;
  * {@link CarrierConfigManager}. All the data config will be loaded once and stored here.
  */
 public class DataConfigManager extends Handler {
-    /** The max timeout in ms for data network stuck in a transit state. */
-    public static final int MAX_NETWORK_TRANSIT_STATE_TIMEOUT_MS = 3600000;
+    /** The default timeout in ms for data network stuck in a transit state. */
+    private static final int DEFAULT_NETWORK_TRANSIT_STATE_TIMEOUT_MS = 300000;
 
     /** Event for carrier config changed. */
     private static final int EVENT_CARRIER_CONFIG_CHANGED = 1;
@@ -417,11 +417,12 @@ public class DataConfigManager extends Handler {
         mIsInvalidQnsParamAnomalyReportEnabled = properties.getBoolean(
                 KEY_ANOMALY_QNS_PARAM, false);
         mNetworkConnectingTimeout = properties.getInt(
-                KEY_ANOMALY_NETWORK_CONNECTING_TIMEOUT, MAX_NETWORK_TRANSIT_STATE_TIMEOUT_MS);
+                KEY_ANOMALY_NETWORK_CONNECTING_TIMEOUT, DEFAULT_NETWORK_TRANSIT_STATE_TIMEOUT_MS);
         mNetworkDisconnectingTimeout = properties.getInt(
-                KEY_ANOMALY_NETWORK_DISCONNECTING_TIMEOUT, MAX_NETWORK_TRANSIT_STATE_TIMEOUT_MS);
+                KEY_ANOMALY_NETWORK_DISCONNECTING_TIMEOUT,
+                DEFAULT_NETWORK_TRANSIT_STATE_TIMEOUT_MS);
         mNetworkHandoverTimeout = properties.getInt(
-                KEY_ANOMALY_NETWORK_HANDOVER_TIMEOUT, MAX_NETWORK_TRANSIT_STATE_TIMEOUT_MS);
+                KEY_ANOMALY_NETWORK_HANDOVER_TIMEOUT, DEFAULT_NETWORK_TRANSIT_STATE_TIMEOUT_MS);
     }
 
     /**
