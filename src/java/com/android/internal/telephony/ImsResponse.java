@@ -56,11 +56,13 @@ public class ImsResponse extends IRadioImsResponse.Stub {
             Object[] response = { "", null };
 
             if (responseInfo.error == RadioError.NONE) {
-                int[] info = new int[3];
-                info[0] = failureInfo.failureReason;
-                info[1] = failureInfo.causeCode;
-                info[2] = failureInfo.waitTimeMillis;
-                response[1] = info;
+                if (failureInfo != null) {
+                    int[] info = new int[3];
+                    info[0] = failureInfo.failureReason;
+                    info[1] = failureInfo.causeCode;
+                    info[2] = failureInfo.waitTimeMillis;
+                    response[1] = info;
+                }
 
                 RadioResponse.sendMessageResponse(rr.mResult, response);
             }
