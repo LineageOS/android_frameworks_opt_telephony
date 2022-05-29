@@ -29,6 +29,7 @@ import android.os.PowerManager;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.SubscriptionManager;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.telephony.Rlog;
 
 /**
@@ -41,14 +42,26 @@ import com.android.telephony.Rlog;
 public class SmsStorageMonitor extends Handler {
     private static final String TAG = "SmsStorageMonitor";
 
+    /** Maximum number of times to retry memory status reporting */
+    private static final int MAX_RETRIES = 1;
+
+    /** Delay before next attempt on a failed memory status reporting, in milliseconds. */
+    private static final int RETRY_DELAY = 5000; // 5 seconds
+
     /** SIM/RUIM storage is full */
     private static final int EVENT_ICC_FULL = 1;
 
+    /** Report memory status */
+    private static final int EVENT_REPORT_MEMORY_STATUS = 2;
+
     /** Memory status reporting is acknowledged by RIL */
-    private static final int EVENT_REPORT_MEMORY_STATUS_DONE = 2;
+    private static final int EVENT_REPORT_MEMORY_STATUS_DONE = 3;
+
+    /** Retry memory status reporting */
+    private static final int EVENT_RETRY_MEMORY_STATUS_REPORTING = 4;
 
     /** Radio is ON */
-    private static final int EVENT_RADIO_ON = 3;
+    private static final int EVENT_RADIO_ON = 5;
 
     /** Context from phone object passed to constructor. */
     private final Context mContext;
@@ -56,14 +69,19 @@ public class SmsStorageMonitor extends Handler {
     /** Wake lock to ensure device stays awake while dispatching the SMS intent. */
     private PowerManager.WakeLock mWakeLock;
 
-    private boolean mReportMemoryStatusPending;
+    private int mMaxRetryCount = MAX_RETRIES;
+    private int mRetryDelay = RETRY_DELAY;
+    private int mRetryCount = 0;
+    private boolean mIsWaitingResponse = false;
+    private boolean mNeedNewReporting = false;
+    private boolean mIsMemoryStatusReportingFailed = false;
 
     /** it is use to put in to extra value for SIM_FULL_ACTION and SMS_REJECTED_ACTION */
     Phone mPhone;
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    final CommandsInterface mCi;                            // accessed from inner class
-    boolean mStorageAvailable = true;                       // accessed from inner class
+    final CommandsInterface mCi;
+    boolean mStorageAvailable = true;
 
     /**
      * Hold the wake lock for 5 seconds, which should be enough time for
@@ -93,6 +111,16 @@ public class SmsStorageMonitor extends Handler {
         mContext.registerReceiver(mResultReceiver, filter);
     }
 
+    @VisibleForTesting
+    public void setMaxRetries(int maxCount) {
+        mMaxRetryCount = maxCount;
+    }
+
+    @VisibleForTesting
+    public void setRetryDelayInMillis(int delay) {
+        mRetryDelay = delay;
+    }
+
     public void dispose() {
         mCi.unSetOnIccSmsFull(this);
         mCi.unregisterForOn(this);
@@ -105,33 +133,83 @@ public class SmsStorageMonitor extends Handler {
      */
     @Override
     public void handleMessage(Message msg) {
-        AsyncResult ar;
+        boolean isAvailable = mStorageAvailable;
 
         switch (msg.what) {
             case EVENT_ICC_FULL:
                 handleIccFull();
                 break;
 
-            case EVENT_REPORT_MEMORY_STATUS_DONE:
-                ar = (AsyncResult) msg.obj;
-                if (ar.exception != null) {
-                    mReportMemoryStatusPending = true;
-                    Rlog.v(TAG, "Memory status report to modem pending : mStorageAvailable = "
-                            + mStorageAvailable);
+            case EVENT_REPORT_MEMORY_STATUS:
+                if (mIsWaitingResponse) {
+                    Rlog.v(TAG, "EVENT_REPORT_MEMORY_STATUS - deferred");
+                    // Previous reporting is on-going now. New reporting will be issued in
+                    // EVENT_REPORT_MEMORY_STATUS_DONE.
+                    mNeedNewReporting = true;
                 } else {
-                    mReportMemoryStatusPending = false;
+                    Rlog.v(TAG, "EVENT_REPORT_MEMORY_STATUS - report sms memory status"
+                            + (isAvailable ? "(not full)" : "(full)"));
+                    // Clear a delayed EVENT_RETRY_MEMORY_STATUS_REPORTING
+                    // and mIsMemoryStatusReportingFailed.
+                    removeMessages(EVENT_RETRY_MEMORY_STATUS_REPORTING);
+                    mIsMemoryStatusReportingFailed = false;
+                    mRetryCount = 0;
+                    sendMemoryStatusReport(isAvailable);
                 }
                 break;
 
+            case EVENT_REPORT_MEMORY_STATUS_DONE:
+                AsyncResult ar = (AsyncResult) msg.obj;
+                mIsWaitingResponse = false;
+                Rlog.v(TAG, "EVENT_REPORT_MEMORY_STATUS_DONE - "
+                        + (ar.exception == null ? "succeeded" : "failed"));
+                if (mNeedNewReporting) {
+                    Rlog.v(TAG, "EVENT_REPORT_MEMORY_STATUS_DONE - report again now"
+                            + (isAvailable ? "(not full)" : "(full)"));
+                    // New reportings have been requested, report last memory status here.
+                    mNeedNewReporting = false;
+                    mRetryCount = 0;
+                    sendMemoryStatusReport(isAvailable);
+                } else {
+                    if (ar.exception != null) {
+                        if (mRetryCount++ < mMaxRetryCount) {
+                            Rlog.v(TAG, "EVENT_REPORT_MEMORY_STATUS_DONE - retry in "
+                                    + mRetryDelay + "ms");
+                            sendMessageDelayed(
+                                    obtainMessage(EVENT_RETRY_MEMORY_STATUS_REPORTING),
+                                    mRetryDelay);
+                        } else {
+                            Rlog.v(TAG, "EVENT_REPORT_MEMORY_STATUS_DONE - "
+                                    + "no retry anymore(pended)");
+                            mRetryCount = 0;
+                            mIsMemoryStatusReportingFailed = true;
+                        }
+                    } else {
+                        mRetryCount = 0;
+                        mIsMemoryStatusReportingFailed = false;
+                    }
+                }
+                break;
+
+            case EVENT_RETRY_MEMORY_STATUS_REPORTING:
+                Rlog.v(TAG, "EVENT_RETRY_MEMORY_STATUS_REPORTING - retry"
+                        + (isAvailable ? "(not full)" : "(full)"));
+                sendMemoryStatusReport(isAvailable);
+                break;
+
             case EVENT_RADIO_ON:
-                if (mReportMemoryStatusPending) {
-                    Rlog.v(TAG, "Sending pending memory status report : mStorageAvailable = "
-                            + mStorageAvailable);
-                    mCi.reportSmsMemoryStatus(mStorageAvailable,
-                            obtainMessage(EVENT_REPORT_MEMORY_STATUS_DONE));
+                if (mIsMemoryStatusReportingFailed) {
+                    Rlog.v(TAG, "EVENT_RADIO_ON - report failed sms memory status"
+                            + (isAvailable ? "(not full)" : "(full)"));
+                    sendMemoryStatusReport(isAvailable);
                 }
                 break;
         }
+    }
+
+    private void sendMemoryStatusReport(boolean isAvailable) {
+        mIsWaitingResponse = true;
+        mCi.reportSmsMemoryStatus(isAvailable, obtainMessage(EVENT_REPORT_MEMORY_STATUS_DONE));
     }
 
     private void createWakelock() {
@@ -161,12 +239,12 @@ public class SmsStorageMonitor extends Handler {
     private final BroadcastReceiver mResultReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent.getAction().equals(Intent.ACTION_DEVICE_STORAGE_FULL)) {
-                mStorageAvailable = false;
-                mCi.reportSmsMemoryStatus(false, obtainMessage(EVENT_REPORT_MEMORY_STATUS_DONE));
-            } else if (intent.getAction().equals(Intent.ACTION_DEVICE_STORAGE_NOT_FULL)) {
-                mStorageAvailable = true;
-                mCi.reportSmsMemoryStatus(true, obtainMessage(EVENT_REPORT_MEMORY_STATUS_DONE));
+            final String action = intent.getAction();
+            if (Intent.ACTION_DEVICE_STORAGE_FULL.equals(action)
+                    || Intent.ACTION_DEVICE_STORAGE_NOT_FULL.equals(action)) {
+                mStorageAvailable =
+                        Intent.ACTION_DEVICE_STORAGE_FULL.equals(action) ? false : true;
+                sendMessage(obtainMessage(EVENT_REPORT_MEMORY_STATUS));
             }
         }
     };
