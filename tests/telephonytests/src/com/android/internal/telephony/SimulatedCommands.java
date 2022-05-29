@@ -181,6 +181,7 @@ public class SimulatedCommands extends BaseCommands
     private boolean mDcSuccess = true;
     private SetupDataCallResult mSetupDataCallResult;
     private boolean mIsRadioPowerFailResponse = false;
+    private boolean mIsReportSmsMemoryStatusFailResponse = false;
 
     public boolean mSetRadioPowerForEmergencyCall;
     public boolean mSetRadioPowerAsSelectedPhoneForEmergencyCall;
@@ -1298,8 +1299,17 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void reportSmsMemoryStatus(boolean available, Message result) {
-        resultSuccess(result, null);
+        if (!mIsReportSmsMemoryStatusFailResponse) {
+            resultSuccess(result, null);
+        } else {
+            CommandException ex = new CommandException(CommandException.Error.GENERIC_FAILURE);
+            resultFail(result, null, ex);
+        }
         SimulatedCommandsVerifier.getInstance().reportSmsMemoryStatus(available, result);
+    }
+
+    public void setReportSmsMemoryStatusFailResponse(boolean fail) {
+        mIsReportSmsMemoryStatusFailResponse = fail;
     }
 
     @Override
