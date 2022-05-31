@@ -2846,7 +2846,8 @@ public class SubscriptionController extends ISub.Stub {
         if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
             throw new RuntimeException("setDefaultVoiceSubId called with DEFAULT_SUB_ID");
         }
-        if (DBG) logdl("[setDefaultVoiceSubId] subId=" + subId);
+
+        logdl("[setDefaultVoiceSubId] subId=" + subId);
 
         int previousDefaultSub = getDefaultSubId();
 
