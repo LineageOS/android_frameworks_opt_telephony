@@ -312,14 +312,15 @@ public class DataProfileManager extends Handler {
             profilesChanged = true;
         }
 
+        // Reload the latest preferred data profile from either database or config.
+        profilesChanged |= updatePreferredDataProfile();
+
         int setId = getPreferredDataProfileSetId();
         if (setId != mPreferredDataProfileSetId) {
             logl("Changed preferred data profile set id to " + setId);
             mPreferredDataProfileSetId = setId;
             profilesChanged = true;
         }
-        // Reload the latest preferred data profile from either database or config.
-        profilesChanged |= updatePreferredDataProfile();
 
         updateDataProfilesAtModem();
         updateInitialAttachDataProfileAtModem();
@@ -461,6 +462,8 @@ public class DataProfileManager extends Handler {
             preferredDataProfile = getPreferredDataProfileFromDb();
             if (preferredDataProfile == null) {
                 preferredDataProfile = getPreferredDataProfileFromConfig();
+                // Save the preferred data profile into database.
+                setPreferredDataProfile(preferredDataProfile);
             }
         } else {
             preferredDataProfile = null;
@@ -647,7 +650,7 @@ public class DataProfileManager extends Handler {
             return null;
         }
 
-        // Check if the remaining data profiles can used in current data network type.
+        // Check if the remaining data profiles can be used in current data network type.
         dataProfiles = dataProfiles.stream()
                 .filter(dp -> dp.getApnSetting() != null
                         && dp.getApnSetting().canSupportNetworkType(networkType))
