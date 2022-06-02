@@ -43,6 +43,7 @@ import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
+import android.telephony.data.TrafficDescriptor;
 import android.telephony.data.TrafficDescriptor.OsAppId;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
@@ -948,5 +949,44 @@ public class DataProfileManagerTest extends TelephonyTest {
         assertThat(dataProfiles.stream()
                 .filter(dp -> dp.canSatisfy(NetworkCapabilities.NET_CAPABILITY_IMS))
                 .collect(Collectors.toList())).hasSize(1);
+    }
+
+    @Test
+    public void testDataProfileCompatibility() throws Exception {
+        DataProfile enterpriseDataProfile = new DataProfile.Builder()
+                .setTrafficDescriptor(new TrafficDescriptor(null,
+                        new TrafficDescriptor.OsAppId(TrafficDescriptor.OsAppId.ANDROID_OS_ID,
+                                "ENTERPRISE", 1).getBytes()))
+                .build();
+
+        // Make sure the TD only profile is always compatible.
+        assertThat(mDataProfileManagerUT.isDataProfileCompatible(enterpriseDataProfile)).isTrue();
+
+        // Make sure the profile which is slightly modified is also compatible.
+        DataProfile dataProfile1 = new DataProfile.Builder()
+                .setApnSetting(new ApnSetting.Builder()
+                        .setEntryName(GENERAL_PURPOSE_APN)
+                        .setId(1)
+                        .setApnName(GENERAL_PURPOSE_APN)
+                        .setProxyAddress("")
+                        .setMmsProxyAddress("")
+                        .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_MMS
+                                | ApnSetting.TYPE_SUPL | ApnSetting.TYPE_IA | ApnSetting.TYPE_FOTA)
+                        .setUser("")
+                        .setPassword("")
+                        .setAuthType(ApnSetting.AUTH_TYPE_NONE)
+                        .setProtocol(ApnSetting.PROTOCOL_IPV4V6)
+                        .setRoamingProtocol(ApnSetting.PROTOCOL_IPV4V6)
+                        .setCarrierEnabled(true)
+                        .setPersistent(true)
+                        .setMtuV4(1280)
+                        .setMtuV6(1280)
+                        .setNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_LTE
+                                | TelephonyManager.NETWORK_TYPE_BITMASK_NR))
+                        .setMvnoMatchData("")
+                        .build())
+                .build();
+
+        assertThat(mDataProfileManagerUT.isDataProfileCompatible(dataProfile1)).isTrue();
     }
 }
