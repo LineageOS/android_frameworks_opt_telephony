@@ -209,6 +209,15 @@ public class DataCallSessionStats {
         }
     }
 
+    /** Stores the current unmetered network types information in permanent storage. */
+    public void onUnmeteredUpdate(@NetworkType int networkType) {
+        mAtomsStorage
+                .addUnmeteredNetworks(
+                        mPhone.getPhoneId(),
+                        mPhone.getCarrierId(),
+                        TelephonyManager.getBitMaskForNetworkType(networkType));
+    }
+
     /**
      * Take a snapshot of the on-going data call segment to add to the atom storage.
      *

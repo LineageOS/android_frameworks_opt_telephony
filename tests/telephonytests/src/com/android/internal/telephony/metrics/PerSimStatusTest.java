@@ -19,6 +19,7 @@ package com.android.internal.telephony.metrics;
 import static android.telephony.SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER;
 import static android.telephony.SubscriptionManager.PHONE_NUMBER_SOURCE_IMS;
 import static android.telephony.SubscriptionManager.PHONE_NUMBER_SOURCE_UICC;
+import static android.telephony.TelephonyManager.NETWORK_TYPE_BITMASK_GSM;
 
 import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_A;
 import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_B;
@@ -116,6 +117,7 @@ public class PerSimStatusTest extends TelephonyTest {
         UiccSlot uiccSlot1 = mock(UiccSlot.class);
         doReturn(UiccSlot.VOLTAGE_CLASS_A).when(uiccSlot1).getMinimumVoltageClass();
         doReturn(uiccSlot1).when(mUiccController).getUiccSlotForPhone(0);
+        doReturn(NETWORK_TYPE_BITMASK_GSM).when(mPersistAtomsStorage).getUnmeteredNetworks(0, 100);
         // phone 1 setup
         doReturn(mContext).when(mSecondPhone).getContext();
         doReturn(1).when(mSecondPhone).getPhoneId();
@@ -156,6 +158,7 @@ public class PerSimStatusTest extends TelephonyTest {
         UiccSlot uiccSlot2 = mock(UiccSlot.class);
         doReturn(UiccSlot.VOLTAGE_CLASS_B).when(uiccSlot2).getMinimumVoltageClass();
         doReturn(uiccSlot2).when(mUiccController).getUiccSlotForPhone(1);
+        doReturn(NETWORK_TYPE_BITMASK_GSM).when(mPersistAtomsStorage).getUnmeteredNetworks(1, 101);
 
         PerSimStatus perSimStatus1 = PerSimStatus.getCurrentState(mPhone);
         PerSimStatus perSimStatus2 = PerSimStatus.getCurrentState(mSecondPhone);
@@ -178,6 +181,7 @@ public class PerSimStatusTest extends TelephonyTest {
         assertEquals(
                 PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_A,
                 perSimStatus1.minimumVoltageClass);
+        assertEquals(NETWORK_TYPE_BITMASK_GSM, perSimStatus1.unmeteredNetworks);
         assertEquals(101, perSimStatus2.carrierId);
         assertEquals(1, perSimStatus2.phoneNumberSourceUicc);
         assertEquals(2, perSimStatus2.phoneNumberSourceCarrier);
@@ -195,6 +199,7 @@ public class PerSimStatusTest extends TelephonyTest {
         assertEquals(
                 PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_B,
                 perSimStatus2.minimumVoltageClass);
+        assertEquals(NETWORK_TYPE_BITMASK_GSM, perSimStatus2.unmeteredNetworks);
     }
 
     @Test
@@ -239,6 +244,7 @@ public class PerSimStatusTest extends TelephonyTest {
         UiccSlot uiccSlot1 = mock(UiccSlot.class);
         doReturn(UiccSlot.VOLTAGE_CLASS_A).when(uiccSlot1).getMinimumVoltageClass();
         doReturn(uiccSlot1).when(mUiccController).getUiccSlotForPhone(0);
+        doReturn(NETWORK_TYPE_BITMASK_GSM).when(mPersistAtomsStorage).getUnmeteredNetworks(0, 100);
 
         PerSimStatus perSimStatus = PerSimStatus.getCurrentState(mPhone);
 
@@ -258,6 +264,7 @@ public class PerSimStatusTest extends TelephonyTest {
         assertEquals(
                 PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_A,
                 perSimStatus.minimumVoltageClass);
+        assertEquals(NETWORK_TYPE_BITMASK_GSM, perSimStatus.unmeteredNetworks);
     }
 
     @Test
@@ -294,6 +301,7 @@ public class PerSimStatusTest extends TelephonyTest {
         UiccSlot uiccSlot1 = mock(UiccSlot.class);
         doReturn(UiccSlot.VOLTAGE_CLASS_A).when(uiccSlot1).getMinimumVoltageClass();
         doReturn(uiccSlot1).when(mUiccController).getUiccSlotForPhone(0);
+        doReturn(NETWORK_TYPE_BITMASK_GSM).when(mPersistAtomsStorage).getUnmeteredNetworks(0, 100);
 
         PerSimStatus perSimStatus = PerSimStatus.getCurrentState(mPhone);
 
@@ -313,6 +321,7 @@ public class PerSimStatusTest extends TelephonyTest {
         assertEquals(
                 PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_A,
                 perSimStatus.minimumVoltageClass);
+        assertEquals(NETWORK_TYPE_BITMASK_GSM, perSimStatus.unmeteredNetworks);
     }
 
     @Test
@@ -345,6 +354,7 @@ public class PerSimStatusTest extends TelephonyTest {
         doReturn(true).when(iccCard).getIccLockEnabled();
         doReturn(iccCard).when(mPhone).getIccCard();
         doReturn(null).when(mUiccController).getUiccSlotForPhone(0);
+        doReturn(NETWORK_TYPE_BITMASK_GSM).when(mPersistAtomsStorage).getUnmeteredNetworks(0, 100);
 
         PerSimStatus perSimStatus = PerSimStatus.getCurrentState(mPhone);
 
@@ -364,5 +374,6 @@ public class PerSimStatusTest extends TelephonyTest {
         assertEquals(
                 PER_SIM_STATUS__SIM_VOLTAGE_CLASS__VOLTAGE_CLASS_UNKNOWN,
                 perSimStatus.minimumVoltageClass);
+        assertEquals(NETWORK_TYPE_BITMASK_GSM, perSimStatus.unmeteredNetworks);
     }
 }
