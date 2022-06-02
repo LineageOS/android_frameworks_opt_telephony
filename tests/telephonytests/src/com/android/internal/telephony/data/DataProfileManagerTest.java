@@ -21,7 +21,6 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
@@ -841,7 +840,7 @@ public class DataProfileManagerTest extends TelephonyTest {
     }
 
     @Test
-    public void testResetApnNoPreferredConfig() {
+    public void testResetApn() {
         mSimInserted = true;
         mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
         processAllMessages();
@@ -870,41 +869,6 @@ public class DataProfileManagerTest extends TelephonyTest {
         // There should be no preferred APN after APN reset
         assertThat(mDataProfileManagerUT.isAnyPreferredDataProfileExisting()).isFalse();
         assertThat(mDataProfileManagerUT.isDataProfilePreferred(dataProfile)).isFalse();
-    }
-
-    @Test
-    public void testResetApnWithPreferredConfig() {
-        // carrier configured preferred data profile should be picked
-        doReturn(GENERAL_PURPOSE_APN1).when(mDataConfigManager).getDefaultPreferredApn();
-        clearInvocations(mDataConfigManager);
-        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(
-                new NetworkRequest.Builder()
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        .build(), mPhone);
-        mSimInserted = true;
-        mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
-        processAllMessages();
-
-        // The carrier configured data profile should be the preferred APN after APN reset
-        DataProfile dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
-                tnr, TelephonyManager.NETWORK_TYPE_LTE);
-
-        verify(mDataConfigManager).getDefaultPreferredApn();
-        assertThat(dataProfile.getApnSetting().getApnName()).isEqualTo(GENERAL_PURPOSE_APN1);
-        assertThat(mDataProfileManagerUT.isDataProfilePreferred(dataProfile)).isTrue();
-
-        // APN reset
-        mPreferredApnId = -1;
-        mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
-        clearInvocations(mDataConfigManager);
-        processAllMessages();
-
-        // The carrier configured data profile should be the preferred APN after APN reset
-        dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
-                tnr, TelephonyManager.NETWORK_TYPE_LTE);
-        verify(mDataConfigManager).getDefaultPreferredApn();
-        assertThat(dataProfile.getApnSetting().getApnName()).isEqualTo(GENERAL_PURPOSE_APN1);
-        assertThat(mDataProfileManagerUT.isDataProfilePreferred(dataProfile)).isTrue();
     }
 
     @Test
