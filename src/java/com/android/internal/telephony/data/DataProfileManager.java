@@ -312,14 +312,15 @@ public class DataProfileManager extends Handler {
             profilesChanged = true;
         }
 
+        // Reload the latest preferred data profile from either database or config.
+        profilesChanged |= updatePreferredDataProfile();
+
         int setId = getPreferredDataProfileSetId();
         if (setId != mPreferredDataProfileSetId) {
             logl("Changed preferred data profile set id to " + setId);
             mPreferredDataProfileSetId = setId;
             profilesChanged = true;
         }
-        // Reload the latest preferred data profile from either database or config.
-        profilesChanged |= updatePreferredDataProfile();
 
         updateDataProfilesAtModem();
         updateInitialAttachDataProfileAtModem();
@@ -461,6 +462,10 @@ public class DataProfileManager extends Handler {
             preferredDataProfile = getPreferredDataProfileFromDb();
             if (preferredDataProfile == null) {
                 preferredDataProfile = getPreferredDataProfileFromConfig();
+                if (preferredDataProfile != null) {
+                    // Save the carrier specified preferred data profile into database
+                    setPreferredDataProfile(preferredDataProfile);
+                }
             }
         } else {
             preferredDataProfile = null;
