@@ -235,12 +235,6 @@ public class DataNetwork extends StateMachine {
     /** Event for CSS indicator changed. */
     private static final int EVENT_CSS_INDICATOR_CHANGED = 24;
 
-    /** The default MTU for IPv4 network. */
-    private static final int DEFAULT_MTU_V4 = 1280;
-
-    /** The default MTU for IPv6 network. */
-    private static final int DEFAULT_MTU_V6 = 1280;
-
     /** Invalid context id. */
     private static final int INVALID_CID = -1;
 
@@ -2248,7 +2242,7 @@ public class DataNetwork extends StateMachine {
                 mtuV4 = mDataProfile.getApnSetting().getMtuV4();
             }
             if (mtuV4 <= 0) {
-                mtuV4 = DEFAULT_MTU_V4;
+                mtuV4 = mDataConfigManager.getDefaultMtu();
             }
         }
 
@@ -2260,7 +2254,7 @@ public class DataNetwork extends StateMachine {
                 mtuV6 = mDataProfile.getApnSetting().getMtuV6();
             }
             if (mtuV6 <= 0) {
-                mtuV6 = DEFAULT_MTU_V6;
+                mtuV6 = mDataConfigManager.getDefaultMtu();
             }
         }
 
