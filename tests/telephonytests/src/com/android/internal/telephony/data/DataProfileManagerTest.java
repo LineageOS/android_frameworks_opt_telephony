@@ -21,7 +21,6 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
@@ -364,6 +363,16 @@ public class DataProfileManagerTest extends TelephonyTest {
             logd("ApnSettingContentProvider: uri=" + uri + ", values=" + values);
             if (uri.isPathPrefixMatch(Telephony.Carriers.PREFERRED_APN_URI)) {
                 mPreferredApnId = values.getAsInteger(Telephony.Carriers.APN_ID);
+                if (mPreferredApnId != -1) {
+                    for (Object apnSetting : mAllApnSettings) {
+                        int id = (int) ((Object[]) apnSetting)[0];
+                        if (id == mPreferredApnId) {
+                            mPreferredApnSet = (int) ((Object[]) apnSetting)[28]; //update setId too
+                        }
+                    }
+                } else {
+                    mPreferredApnSet = 0; // db is emptied
+                }
                 logd("mPreferredApnId=" + mPreferredApnId);
             }
             return null;
@@ -833,7 +842,7 @@ public class DataProfileManagerTest extends TelephonyTest {
     }
 
     @Test
-    public void testResetApnNoPreferredConfig() {
+    public void testResetApn() {
         mSimInserted = true;
         mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
         processAllMessages();
@@ -868,7 +877,6 @@ public class DataProfileManagerTest extends TelephonyTest {
     public void testResetApnWithPreferredConfig() {
         // carrier configured preferred data profile should be picked
         doReturn(GENERAL_PURPOSE_APN1).when(mDataConfigManager).getDefaultPreferredApn();
-        clearInvocations(mDataConfigManager);
         TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -881,20 +889,18 @@ public class DataProfileManagerTest extends TelephonyTest {
         DataProfile dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
                 tnr, TelephonyManager.NETWORK_TYPE_LTE);
 
-        verify(mDataConfigManager).getDefaultPreferredApn();
         assertThat(dataProfile.getApnSetting().getApnName()).isEqualTo(GENERAL_PURPOSE_APN1);
         assertThat(mDataProfileManagerUT.isDataProfilePreferred(dataProfile)).isTrue();
 
         // APN reset
         mPreferredApnId = -1;
         mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
-        clearInvocations(mDataConfigManager);
+        Mockito.clearInvocations(mDataConfigManager);
         processAllMessages();
 
         // The carrier configured data profile should be the preferred APN after APN reset
         dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
                 tnr, TelephonyManager.NETWORK_TYPE_LTE);
-        verify(mDataConfigManager).getDefaultPreferredApn();
         assertThat(dataProfile.getApnSetting().getApnName()).isEqualTo(GENERAL_PURPOSE_APN1);
         assertThat(mDataProfileManagerUT.isDataProfilePreferred(dataProfile)).isTrue();
     }
