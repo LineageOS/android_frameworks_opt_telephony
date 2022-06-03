@@ -1258,6 +1258,10 @@ public class DataConfigManager extends Handler {
         pw.println("mSetupDataCallAnomalyReport=" + mSetupDataCallAnomalyReportThreshold);
         pw.println("mNetworkUnwantedAnomalyReport=" + mNetworkUnwantedAnomalyReportThreshold);
         pw.println("mImsReleaseRequestAnomalyReport=" + mImsReleaseRequestAnomalyReportThreshold);
+        pw.println("mQnsFrequentApnTypeChangeAnomalyReportThreshold="
+                + mQnsFrequentApnTypeChangeAnomalyReportThreshold);
+        pw.println("mIsInvalidQnsParamAnomalyReportEnabled="
+                + mIsInvalidQnsParamAnomalyReportEnabled);
         pw.println("mNetworkConnectingTimeout=" + mNetworkConnectingTimeout);
         pw.println("mNetworkDisconnectingTimeout=" + mNetworkDisconnectingTimeout);
         pw.println("mNetworkHandoverTimeout=" + mNetworkHandoverTimeout);
