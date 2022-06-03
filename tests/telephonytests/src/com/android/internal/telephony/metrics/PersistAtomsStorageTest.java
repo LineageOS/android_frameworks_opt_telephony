@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.metrics;
 
+import static android.telephony.TelephonyManager.NETWORK_TYPE_BITMASK_GPRS;
+import static android.telephony.TelephonyManager.NETWORK_TYPE_BITMASK_GSM;
 import static android.text.format.DateUtils.DAY_IN_MILLIS;
 
 import static com.android.internal.telephony.TelephonyStatsLog.GBA_EVENT__FAILED_REASON__FEATURE_NOT_READY;
@@ -3108,6 +3110,169 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                         newSipTransportSession}, outputs);
     }
 
+    @Test
+    @SmallTest
+    public void getUnmeteredNetworks_noExistingEntry() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+
+        assertEquals(0L, mPersistAtomsStorage.getUnmeteredNetworks(1, 0));
+
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    @SmallTest
+    public void getUnmeteredNetworks() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+
+        mPersistAtomsStorage.addUnmeteredNetworks(0, 0, NETWORK_TYPE_BITMASK_GPRS);
+        inOrder.verify(mTestFileOutputStream, times(1))
+                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
+        inOrder.verify(mTestFileOutputStream, times(1)).close();
+        inOrder.verifyNoMoreInteractions();
+
+        assertEquals(NETWORK_TYPE_BITMASK_GPRS, mPersistAtomsStorage.getUnmeteredNetworks(0, 0));
+        inOrder.verify(mTestFileOutputStream, times(1))
+                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
+        inOrder.verify(mTestFileOutputStream, times(1)).close();
+        inOrder.verifyNoMoreInteractions();
+
+        assertEquals(0L, mPersistAtomsStorage.getUnmeteredNetworks(0, 0));
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    @SmallTest
+    public void getUnmeteredNetworks_carrierIdMismatch() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+
+        mPersistAtomsStorage.addUnmeteredNetworks(0, 0, NETWORK_TYPE_BITMASK_GPRS);
+        inOrder.verify(mTestFileOutputStream, times(1))
+                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
+        inOrder.verify(mTestFileOutputStream, times(1)).close();
+        inOrder.verifyNoMoreInteractions();
+
+        assertEquals(0L, mPersistAtomsStorage.getUnmeteredNetworks(0, 1));
+        inOrder.verify(mTestFileOutputStream, times(1))
+                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
+        inOrder.verify(mTestFileOutputStream, times(1)).close();
+        inOrder.verifyNoMoreInteractions();
+
+        assertEquals(0L, mPersistAtomsStorage.getUnmeteredNetworks(0, 0));
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    @SmallTest
+    public void addUnmeteredNetworks() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+
+        mPersistAtomsStorage.addUnmeteredNetworks(0, 0, NETWORK_TYPE_BITMASK_GPRS);
+        inOrder.verify(mTestFileOutputStream, times(1))
+                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
+        inOrder.verify(mTestFileOutputStream, times(1)).close();
+        inOrder.verifyNoMoreInteractions();
+
+        mPersistAtomsStorage.addUnmeteredNetworks(0, 0, NETWORK_TYPE_BITMASK_GSM);
+        inOrder.verify(mTestFileOutputStream, times(1))
+                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
+        inOrder.verify(mTestFileOutputStream, times(1)).close();
+        inOrder.verifyNoMoreInteractions();
+
+        assertEquals(
+                NETWORK_TYPE_BITMASK_GPRS | NETWORK_TYPE_BITMASK_GSM,
+                mPersistAtomsStorage.getUnmeteredNetworks(0, 0));
+        inOrder.verify(mTestFileOutputStream, times(1))
+                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
+        inOrder.verify(mTestFileOutputStream, times(1)).close();
+        inOrder.verifyNoMoreInteractions();
+
+        assertEquals(0, mPersistAtomsStorage.getUnmeteredNetworks(0, 0));
+        inOrder.verifyNoMoreInteractions();
+
+        mPersistAtomsStorage.addUnmeteredNetworks(1, 2, NETWORK_TYPE_BITMASK_GPRS);
+        inOrder.verify(mTestFileOutputStream, times(1))
+                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
+        inOrder.verify(mTestFileOutputStream, times(1)).close();
+        inOrder.verifyNoMoreInteractions();
+
+        mPersistAtomsStorage.addUnmeteredNetworks(1, 2, NETWORK_TYPE_BITMASK_GSM);
+        inOrder.verify(mTestFileOutputStream, times(1))
+                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
+        inOrder.verify(mTestFileOutputStream, times(1)).close();
+        inOrder.verifyNoMoreInteractions();
+
+        assertEquals(
+                NETWORK_TYPE_BITMASK_GPRS | NETWORK_TYPE_BITMASK_GSM,
+                mPersistAtomsStorage.getUnmeteredNetworks(1, 2));
+        inOrder.verify(mTestFileOutputStream, times(1))
+                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
+        inOrder.verify(mTestFileOutputStream, times(1)).close();
+        inOrder.verifyNoMoreInteractions();
+
+        assertEquals(0, mPersistAtomsStorage.getUnmeteredNetworks(1, 2));
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    @SmallTest
+    public void addUnmeteredNetworks_carrierIdMismatch() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+
+        mPersistAtomsStorage.addUnmeteredNetworks(0, 0, NETWORK_TYPE_BITMASK_GPRS);
+        inOrder.verify(mTestFileOutputStream, times(1))
+                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
+        inOrder.verify(mTestFileOutputStream, times(1)).close();
+        inOrder.verifyNoMoreInteractions();
+
+        mPersistAtomsStorage.addUnmeteredNetworks(0, 1, NETWORK_TYPE_BITMASK_GSM);
+        inOrder.verify(mTestFileOutputStream, times(1))
+                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
+        inOrder.verify(mTestFileOutputStream, times(1)).close();
+        inOrder.verifyNoMoreInteractions();
+
+        assertEquals(NETWORK_TYPE_BITMASK_GSM, mPersistAtomsStorage.getUnmeteredNetworks(0, 1));
+        inOrder.verify(mTestFileOutputStream, times(1))
+                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
+        inOrder.verify(mTestFileOutputStream, times(1)).close();
+        inOrder.verifyNoMoreInteractions();
+
+        assertEquals(0L, mPersistAtomsStorage.getUnmeteredNetworks(0, 1));
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    @SmallTest
+    public void addUnmeteredNetworks_sameBitmask() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+
+        mPersistAtomsStorage.addUnmeteredNetworks(0, 0, NETWORK_TYPE_BITMASK_GPRS);
+        inOrder.verify(mTestFileOutputStream, times(1))
+                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
+        inOrder.verify(mTestFileOutputStream, times(1)).close();
+        inOrder.verifyNoMoreInteractions();
+
+        mPersistAtomsStorage.addUnmeteredNetworks(0, 0, NETWORK_TYPE_BITMASK_GPRS);
+        inOrder.verifyNoMoreInteractions();
+
+        assertEquals(NETWORK_TYPE_BITMASK_GPRS, mPersistAtomsStorage.getUnmeteredNetworks(0, 0));
+        inOrder.verify(mTestFileOutputStream, times(1))
+                .write(eq(PersistAtoms.toByteArray(mPersistAtomsStorage.getAtomsProto())));
+        inOrder.verify(mTestFileOutputStream, times(1)).close();
+        inOrder.verifyNoMoreInteractions();
+    }
     /* Utilities */
 
     private void createEmptyTestFile() throws Exception {
