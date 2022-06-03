@@ -36,6 +36,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.preference.PreferenceManager;
 import android.sysprop.TelephonyProperties;
+import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -65,6 +66,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.IntStream;
 
 /**
@@ -910,8 +912,13 @@ public class UiccController extends Handler {
                     cardId = convertToPublicCardId(eid);
                 } else {
                     // In case of non Euicc, use default port index to get the IccId.
-                    String iccId = card.getUiccPort(TelephonyManager.DEFAULT_PORT_INDEX).getIccId();
-                    // leave eid null if the UICC is not embedded
+                    UiccPort port = card.getUiccPort(TelephonyManager.DEFAULT_PORT_INDEX);
+                    if (port == null) {
+                        AnomalyReporter.reportAnomaly(
+                                UUID.fromString("92885ba7-98bb-490a-ba19-987b1c8b2055"),
+                                "UiccController: Found UiccPort Null object.");
+                    }
+                    String iccId = (port != null) ? port.getIccId() : null;
                     cardId = convertToPublicCardId(iccId);
                 }
             } else {
