@@ -5010,6 +5010,12 @@ public class ServiceStateTracker extends Handler {
         synchronized (this) {
             if (!mPendingRadioPowerOffAfterDataOff) {
                 if (mPhone.isUsingNewDataStack()) {
+                    // hang up all active voice calls first
+                    if (mPhone.isPhoneTypeGsm() && mPhone.isInCall()) {
+                        mPhone.mCT.mRingingCall.hangupIfAlive();
+                        mPhone.mCT.mBackgroundCall.hangupIfAlive();
+                        mPhone.mCT.mForegroundCall.hangupIfAlive();
+                    }
                     if (mAnyDataExisting) {
                         log("powerOffRadioSafely: Tear down all data networks.");
                         mPhone.getDataNetworkController().tearDownAllDataNetworks(
