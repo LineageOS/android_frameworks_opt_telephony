@@ -228,14 +228,8 @@ public class DataSettingsManager extends Handler {
             }
             case EVENT_SET_DATA_ROAMING_ENABLED: {
                 boolean enabled = (boolean) msg.obj;
-                // Will trigger handleDataOnRoamingChange() through observer
-                boolean changed = GlobalSettingsHelper.setBoolean(mPhone.getContext(),
-                        Settings.Global.DATA_ROAMING, mSubId, enabled);
-                if (changed) {
-                    logl("DataRoamingEnabled changed to " + enabled);
-                    mDataSettingsManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
-                            () -> callback.onDataRoamingEnabledChanged(enabled)));
-                }
+                setDataRoamingEnabledInternal(enabled);
+                setDataRoamingFromUserAction();
                 break;
             }
             case EVENT_SET_ALWAYS_ALLOW_MMS_DATA: {
@@ -501,11 +495,26 @@ public class DataSettingsManager extends Handler {
     }
 
     /**
-     * Enable or disable data roaming.
+     * Enable or disable data roaming from user settings.
      * @param enabled {@code true} to enable data roaming and {@code false} to disable.
      */
     public void setDataRoamingEnabled(boolean enabled) {
         obtainMessage(EVENT_SET_DATA_ROAMING_ENABLED, enabled).sendToTarget();
+    }
+
+    /**
+     * Enable or disable data roaming.
+     * @param enabled {@code true} to enable data roaming and {@code false} to disable.
+     */
+    private void setDataRoamingEnabledInternal(boolean enabled) {
+        // Will trigger handleDataOnRoamingChange() through observer
+        boolean changed = GlobalSettingsHelper.setBoolean(mPhone.getContext(),
+                Settings.Global.DATA_ROAMING, mSubId, enabled);
+        if (changed) {
+            logl("DataRoamingEnabled changed to " + enabled);
+            mDataSettingsManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                    () -> callback.onDataRoamingEnabledChanged(enabled)));
+        }
     }
 
     /**
@@ -537,7 +546,7 @@ public class DataSettingsManager extends Handler {
     public void setDefaultDataRoamingEnabled() {
         // For SSSS, this is a per-phone property from DATA_ROAMING_IS_USER_SETTING_KEY.
         // For DSDS, this is a per-sub property from Settings.Global.DATA_ROAMING + subId.
-        // If the user has not manually set the value, use the default from carrier configurations.
+        // If the user has not manually set the value, use the default value.
         boolean useCarrierSpecificDefault = false;
         if (mPhone.getContext().getSystemService(TelephonyManager.class).getSimCount() != 1) {
             String setting = Settings.Global.DATA_ROAMING + mPhone.getSubId();
@@ -554,7 +563,7 @@ public class DataSettingsManager extends Handler {
         log("setDefaultDataRoamingEnabled: useCarrierSpecificDefault=" + useCarrierSpecificDefault);
         if (useCarrierSpecificDefault) {
             boolean defaultVal = isDefaultDataRoamingEnabled();
-            setDataRoamingEnabled(defaultVal);
+            setDataRoamingEnabledInternal(defaultVal);
         }
     }
 
@@ -571,6 +580,17 @@ public class DataSettingsManager extends Handler {
             sp.edit().putBoolean(Phone.DATA_ROAMING_IS_USER_SETTING_KEY, false).commit();
         }
         return sp.getBoolean(Phone.DATA_ROAMING_IS_USER_SETTING_KEY, true);
+    }
+
+    /**
+     * Indicate that the user has manually enabled or disabled the data roaming value from settings.
+     * If the user has not manually set the data roaming value, the default value from
+     * {@link #isDefaultDataRoamingEnabled()} will continue to be used.
+     */
+    private void setDataRoamingFromUserAction() {
+        final SharedPreferences.Editor sp = PreferenceManager
+                .getDefaultSharedPreferences(mPhone.getContext()).edit();
+        sp.putBoolean(Phone.DATA_ROAMING_IS_USER_SETTING_KEY, true).commit();
     }
 
     private @NonNull DataEnabledOverride getDataEnabledOverride() {
@@ -724,6 +744,9 @@ public class DataSettingsManager extends Handler {
         pw.println("isDataEnabled(internet)=" + isDataEnabled(ApnSetting.TYPE_DEFAULT));
         pw.println("isDataEnabled(mms)=" + isDataEnabled(ApnSetting.TYPE_MMS));
         pw.println("isUserDataEnabled=" + isUserDataEnabled());
+        pw.println("isDataRoamingEnabled=" + isDataRoamingEnabled());
+        pw.println("isDefaultDataRoamingEnabled=" + isDefaultDataRoamingEnabled());
+        pw.println("isDataRoamingFromUserAction=" + isDataRoamingFromUserAction());
         pw.println("device_provisioned=" + Settings.Global.getInt(
                 mResolver, Settings.Global.DEVICE_PROVISIONED, 0));
         pw.println("isProvisioningDataEnabled=" + isProvisioningDataEnabled());
