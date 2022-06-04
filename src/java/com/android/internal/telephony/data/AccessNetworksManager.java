@@ -243,6 +243,8 @@ public class AccessNetworksManager extends Handler {
         public void binderDied() {
             // TODO: try to rebind the service.
             String message = "Qualified network service " + mLastBoundPackageName + " died.";
+            // clear the anomaly report counters when QNS crash
+            mApnTypeToQnsChangeNetworkCounter.clear();
             loge(message);
             AnomalyReporter.reportAnomaly(mAnomalyUUID, message, mPhone.getCarrierId());
         }
