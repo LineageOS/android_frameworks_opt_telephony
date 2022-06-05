@@ -3455,14 +3455,15 @@ public class ServiceStateTracker extends Handler {
         useDataRegStateForDataOnlyDevices();
         processIwlanRegistrationInfo();
 
+        updateNrFrequencyRangeFromPhysicalChannelConfigs(mLastPhysicalChannelConfigList, mNewSS);
+        updateNrStateFromPhysicalChannelConfigs(mLastPhysicalChannelConfigList, mNewSS);
+
         if (TelephonyUtils.IS_DEBUGGABLE && mPhone.mTelephonyTester != null) {
             mPhone.mTelephonyTester.overrideServiceState(mNewSS);
         }
 
         NetworkRegistrationInfo networkRegState = mNewSS.getNetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        updateNrFrequencyRangeFromPhysicalChannelConfigs(mLastPhysicalChannelConfigList, mNewSS);
-        updateNrStateFromPhysicalChannelConfigs(mLastPhysicalChannelConfigList, mNewSS);
         setPhyCellInfoFromCellIdentity(mNewSS, networkRegState.getCellIdentity());
 
         if (DBG) {
