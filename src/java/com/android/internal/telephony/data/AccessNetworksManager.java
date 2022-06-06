@@ -364,13 +364,18 @@ public class AccessNetworksManager extends Handler {
             }
 
             List<QualifiedNetworks> qualifiedNetworksList = new ArrayList<>();
+            // For anomaly report, only track frequent HO between cellular and IWLAN
+            boolean isRequestedNetworkOnIwlan = Arrays.stream(qualifiedNetworkTypes)
+                    .anyMatch(network -> network == AccessNetworkType.IWLAN);
             int satisfiedApnTypes = 0;
             for (int apnType : SUPPORTED_APN_TYPES) {
                 if ((apnTypes & apnType) == apnType) {
                     // skip the APN anomaly detection if not using the T data stack
                     if (mDataConfigManager != null) {
                         satisfiedApnTypes |= apnType;
-                        trackFrequentApnTypeChange(apnType);
+                        if (isRequestedNetworkOnIwlan) {
+                            trackFrequentApnTypeChange(apnType);
+                        }
                     }
 
                     if (mAvailableNetworks.get(apnType) != null) {
