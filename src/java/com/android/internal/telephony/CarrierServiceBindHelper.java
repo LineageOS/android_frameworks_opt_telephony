@@ -29,6 +29,7 @@ import android.content.pm.ResolveInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.HandlerExecutor;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Process;
@@ -47,6 +48,8 @@ import com.android.internal.telephony.util.TelephonyUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.Set;
 
 /**
  * Manages long-lived bindings to carrier services
@@ -71,6 +74,8 @@ public class CarrierServiceBindHelper {
     public SparseArray<AppBinding> mBindings = new SparseArray();
     @VisibleForTesting
     public SparseArray<String> mLastSimState = new SparseArray<>();
+    // TODO(b/201423849): Clean up PackageChangeReceiver/UserUnlockedReceiver/SIM State change if
+    // CarrierServiceChangeCallback can cover the cases
     private final PackageChangeReceiver mPackageMonitor = new CarrierServicePackageMonitor();
     private final LocalLog mLocalLog = new LocalLog(100);
 
@@ -89,6 +94,30 @@ public class CarrierServiceBindHelper {
             }
         }
     };
+
+    private class CarrierServiceChangeCallback implements
+            TelephonyManager.CarrierPrivilegesCallback {
+        final int mPhoneId;
+
+        CarrierServiceChangeCallback(int phoneId) {
+            this.mPhoneId = phoneId;
+        }
+
+        @Override
+        public void onCarrierPrivilegesChanged(Set<String> privilegedPackageNames,
+                Set<Integer> privilegedUids) {
+            // Ignored, not interested here
+        }
+
+        @Override
+        public void onCarrierServiceChanged(String carrierServicePackageName,
+                int carrierServiceUid) {
+            logdWithLocalLog("onCarrierServiceChanged, carrierServicePackageName="
+                    + carrierServicePackageName + ", carrierServiceUid=" + carrierServiceUid
+                    + ", mPhoneId=" + mPhoneId);
+            mHandler.sendMessage(mHandler.obtainMessage(EVENT_REBIND, mPhoneId));
+        }
+    }
 
     private static final int EVENT_REBIND = 0;
     @VisibleForTesting
@@ -123,6 +152,8 @@ public class CarrierServiceBindHelper {
                 case EVENT_MULTI_SIM_CONFIG_CHANGED:
                     updateBindingsAndSimStates();
                     break;
+                default:
+                    Log.e(LOG_TAG, "Unsupported event received: " + msg.what);
             }
         }
     };
@@ -162,6 +193,7 @@ public class CarrierServiceBindHelper {
 
         // If prevLen > newLen, dispose AppBinding and simState objects.
         for (int phoneId = newLen; phoneId < prevLen; phoneId++) {
+            mBindings.get(phoneId).tearDown();
             mBindings.get(phoneId).unbind(true);
             mBindings.delete(phoneId);
             mLastSimState.delete(phoneId);
@@ -193,9 +225,23 @@ public class CarrierServiceBindHelper {
         private String carrierPackage;
         private String carrierServiceClass;
         private long mUnbindScheduledUptimeMillis = -1;
+        private final CarrierServiceChangeCallback mCarrierServiceChangeCallback;
 
         public AppBinding(int phoneId) {
             this.phoneId = phoneId;
+            this.mCarrierServiceChangeCallback = new CarrierServiceChangeCallback(phoneId);
+            TelephonyManager tm = mContext.getSystemService(TelephonyManager.class);
+            if (tm != null) {
+                tm.registerCarrierPrivilegesCallback(phoneId, new HandlerExecutor(mHandler),
+                        mCarrierServiceChangeCallback);
+            }
+        }
+
+        public void tearDown() {
+            TelephonyManager tm = mContext.getSystemService(TelephonyManager.class);
+            if (tm != null && mCarrierServiceChangeCallback != null) {
+                tm.unregisterCarrierPrivilegesCallback(mCarrierServiceChangeCallback);
+            }
         }
 
         public int getPhoneId() {
@@ -365,6 +411,7 @@ public class CarrierServiceBindHelper {
             pw.println("  unbindCount: " + unbindCount);
             pw.println("  lastUnbindMillis: " + lastUnbindMillis);
             pw.println("  mUnbindScheduledUptimeMillis: " + mUnbindScheduledUptimeMillis);
+            pw.println("  mCarrierServiceChangeCallback: " + mCarrierServiceChangeCallback);
             pw.println();
         }
     }
@@ -405,27 +452,32 @@ public class CarrierServiceBindHelper {
     private class CarrierServicePackageMonitor extends PackageChangeReceiver {
         @Override
         public void onPackageAdded(String packageName) {
+            logdWithLocalLog("onPackageAdded: " + packageName);
             evaluateBinding(packageName, true /* forceUnbind */);
         }
 
         @Override
         public void onPackageRemoved(String packageName) {
+            logdWithLocalLog("onPackageRemoved: " + packageName);
             evaluateBinding(packageName, true /* forceUnbind */);
         }
 
         @Override
         public void onPackageUpdateFinished(String packageName) {
+            logdWithLocalLog("onPackageUpdateFinished: " + packageName);
             evaluateBinding(packageName, true /* forceUnbind */);
         }
 
         @Override
         public void onPackageModified(String packageName) {
+            logdWithLocalLog("onPackageModified: " + packageName);
             evaluateBinding(packageName, false /* forceUnbind */);
         }
 
         @Override
         public void onHandleForceStop(String[] packages, boolean doit) {
             if (doit) {
+                logdWithLocalLog("onHandleForceStop: " + Arrays.toString(packages));
                 for (String packageName : packages) {
                     evaluateBinding(packageName, true /* forceUnbind */);
                 }
