@@ -95,6 +95,7 @@ public class EmergencyNumberTracker extends Handler {
 
     private final CommandsInterface mCi;
     private final Phone mPhone;
+    private int mPhoneId;
     private String mCountryIso;
     private String mLastKnownEmergencyCountryIso = "";
     private int mCurrentDatabaseVersion = INVALID_DATABASE_VERSION;
@@ -166,6 +167,7 @@ public class EmergencyNumberTracker extends Handler {
         mCi = ci;
 
         if (mPhone != null) {
+            mPhoneId = phone.getPhoneId();
             CarrierConfigManager configMgr = (CarrierConfigManager)
                     mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
             if (configMgr != null) {
@@ -1158,16 +1160,16 @@ public class EmergencyNumberTracker extends Handler {
         return new ArrayList<>(mEmergencyNumberListFromRadio);
     }
 
-    private static void logd(String str) {
-        Rlog.d(TAG, str);
+    private void logd(String str) {
+        Rlog.d(TAG, "[" + mPhoneId + "]" + str);
     }
 
-    private static void logw(String str) {
-        Rlog.w(TAG, str);
+    private void logw(String str) {
+        Rlog.w(TAG, "[" + mPhoneId + "]" + str);
     }
 
-    private static void loge(String str) {
-        Rlog.e(TAG, str);
+    private void loge(String str) {
+        Rlog.e(TAG, "[" + mPhoneId + "]" +  str);
     }
 
     private void writeUpdatedEmergencyNumberListMetrics(
