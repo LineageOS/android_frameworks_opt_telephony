@@ -30,6 +30,7 @@
 package com.android.internal.telephony.uicc;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
 import android.content.Intent;
@@ -37,6 +38,8 @@ import android.os.AsyncResult;
 import android.os.HandlerThread;
 import android.os.Message;
 
+import com.android.internal.telephony.CommandException;
+import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
@@ -87,4 +90,69 @@ public class IsimUiccRecordsTest extends TelephonyTest {
             ((Intent) intentCapture.getValue()).getAction(), IsimUiccRecords.INTENT_ISIM_REFRESH);
     }
 
+    @Test
+    public void testPsiSmscTelValue() {
+        // Testing smsc successfully reading case
+        String smscTest = "tel:+13123149810";
+        String hexSmsc =
+                "801074656C3A2B3133313233313439383130FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+                        + "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
+        byte[] smscBytes = getStringToByte(hexSmsc);
+        Message message = mIsimUiccRecords.obtainMessage(
+                IccRecords.EVENT_GET_ICC_RECORD_DONE, mIsimUiccRecords.getPsiSmscObject());
+        AsyncResult ar = AsyncResult.forMessage(message, smscBytes, null);
+        mIsimUiccRecords.handleMessage(message);
+        assertEquals(smscTest, mIsimUiccRecords.getSmscIdentity());
+    }
+
+    private byte[] getStringToByte(String hexSmsc) {
+        byte[] smscBytes = IccUtils.hexStringToBytes(hexSmsc);
+        return smscBytes;
+    }
+
+    @Test
+    public void testGetPsiSmscSipValue() {
+        // Testing smsc successfully reading case
+        String smscTest = "sip:+12063130004@msg.pc.t-mobile.com;user=phone";
+        byte[] smscBytes = getStringToByte(
+                "802F7369703A2B3132303633313330303034406D73672E70632E742D6D6F62696C6"
+                        + "52E636F6D3B757365723D70686F6E65FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+                        + "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+                        + "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+        Message message = mIsimUiccRecords.obtainMessage(
+                IccRecords.EVENT_GET_ICC_RECORD_DONE, mIsimUiccRecords.getPsiSmscObject());
+        AsyncResult ar = AsyncResult.forMessage(message, smscBytes, null);
+        mIsimUiccRecords.handleMessage(message);
+        assertEquals(smscTest, mIsimUiccRecords.getSmscIdentity());
+    }
+
+    @Test
+    public void testGetPsiSmscValueException() {
+        // Testing smsc exception handling case
+        String hexSmsc =
+                "801074656C3A2B3133313233313439383130FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+                        + "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
+        byte[] smscBytes = getStringToByte(hexSmsc);
+        Message message = mIsimUiccRecords.obtainMessage(
+                IccRecords.EVENT_GET_ICC_RECORD_DONE, mIsimUiccRecords.getPsiSmscObject());
+        AsyncResult ar = AsyncResult.forMessage(message, smscBytes,
+                new CommandException(
+                        CommandException.Error.OPERATION_NOT_ALLOWED));
+        mIsimUiccRecords.handleMessage(message);
+        assertEquals(null, mIsimUiccRecords.getSmscIdentity());
+    }
+
+    @Test
+    public void testGetPsiSmscValueInvalidObject() {
+        // Testing smsc invalid data handling case
+        String smscTest = "tel:+13123149810";
+        byte[] smscBytes = GsmAlphabet.stringToGsm8BitPacked(smscTest);
+        Message message = mIsimUiccRecords.obtainMessage(
+                IccRecords.EVENT_GET_ICC_RECORD_DONE, mIsimUiccRecords.getPsiSmscObject());
+        AsyncResult ar = AsyncResult.forMessage(message, smscBytes,
+                new CommandException(
+                        CommandException.Error.OPERATION_NOT_ALLOWED));
+        mIsimUiccRecords.handleMessage(message);
+        assertEquals(null, mIsimUiccRecords.getSmscIdentity());
+    }
 }

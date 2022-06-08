@@ -24,6 +24,7 @@ import android.os.Build;
 import android.os.Message;
 import android.telephony.SubscriptionManager;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.gsm.SimTlv;
 import com.android.telephony.Rlog;
@@ -69,7 +70,8 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
                 + " mIsimDomain=" + mIsimDomain
                 + " mIsimImpu=" + mIsimImpu
                 + " mIsimIst=" + mIsimIst
-                + " mIsimPcscf=" + mIsimPcscf) : "");
+                + " mIsimPcscf=" + mIsimPcscf
+                + " mPsiSmsc=" + mPsiSmsc) : "");
     }
 
     public IsimUiccRecords(UiccCardApplication app, Context c, CommandsInterface ci) {
@@ -142,6 +144,10 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
         mRecordsToLoad++;
         mFh.loadEFLinearFixedAll(EF_PCSCF, obtainMessage(
                     IccRecords.EVENT_GET_ICC_RECORD_DONE, new EfIsimPcscfLoaded()));
+        mRecordsToLoad++;
+
+        mFh.loadEFLinearFixed(EF_PSISMSC, 1, obtainMessage(
+                IccRecords.EVENT_GET_ICC_RECORD_DONE, new EfIsimPsiSmscLoaded()));
         mRecordsToLoad++;
 
         if (DBG) log("fetchIsimRecords " + mRecordsToLoad + " requested: " + mRecordsRequested);
@@ -229,6 +235,29 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
         }
     }
 
+    private class EfIsimPsiSmscLoaded implements IccRecords.IccRecordLoaded {
+
+        @Override
+        public String getEfName() {
+            return "EF_ISIM_PSISMSC";
+        }
+
+        @Override
+        public void onRecordLoaded(AsyncResult ar) {
+            byte[] data = (byte[]) ar.result;
+            if (data != null && data.length > 0) {
+                mPsiSmsc = parseEfPsiSmsc(data);
+                if (VDBG) {
+                    log("IsimUiccRecords - EF_PSISMSC value = " + mPsiSmsc);
+                }
+            }
+        }
+    }
+
+    @VisibleForTesting
+    public EfIsimPsiSmscLoaded getPsiSmscObject() {
+        return new EfIsimPsiSmscLoaded();
+    }
     /**
      * ISIM records for IMS are stored inside a Tag-Length-Value record as a UTF-8 string
      * with tag value 0x80.
@@ -438,6 +467,7 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
             pw.println(" mIsimImpu[]=" + Arrays.toString(mIsimImpu));
             pw.println(" mIsimIst" + mIsimIst);
             pw.println(" mIsimPcscf" + mIsimPcscf);
+            pw.println(" mPsismsc=" + mPsiSmsc);
         }
         pw.flush();
     }
@@ -446,5 +476,4 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
     public int getVoiceMessageCount() {
         return 0; // Not applicable to Isim
     }
-
 }

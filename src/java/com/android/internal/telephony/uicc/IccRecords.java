@@ -35,6 +35,7 @@ import android.util.Pair;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MccTable;
+import com.android.internal.telephony.gsm.SimTlv;
 import com.android.internal.telephony.util.ArrayUtils;
 import com.android.telephony.Rlog;
 
@@ -43,6 +44,7 @@ import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Objects;
@@ -173,6 +175,10 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected String[] mEhplmns;
     protected String[] mFplmns;
 
+    // SIP or TEL URI [ Public Service Identity of the SM-SC]
+    // Reference: TS 31.102 section 4.5.9
+    protected String mPsiSmsc;
+
     CarrierTestOverride mCarrierTestOverride;
 
     //Arbitrary offset for the Handler
@@ -232,6 +238,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
     // arrive and returning null to the callers.
     private static final long ICC_SIM_CHALLENGE_TIMEOUT_MILLIS = 2500;
 
+    // TAG value to retrieve EF_PSISMSC from parsed SimTlv object
+    private static final int TAG_TLV_USIM_VALUE_80 = 0x80;
     /**
      * There are two purposes for this class. First, each instance of AuthAsyncResponse acts as a
      * lock to for calling thead to wait in getIccSimChallengeResponse(). Second, pass the IMS
@@ -1304,6 +1312,34 @@ public abstract class IccRecords extends Handler implements IccConstants {
     public int getSmsCapacityOnIcc() {
         if (DBG) log("getSmsCapacityOnIcc: " + mSmsCountOnIcc);
         return mSmsCountOnIcc;
+    }
+
+    /**
+     * parse EF PSISMSC value [3GPP TS 31.102 Section 4.5.9]
+     *
+     * @param data read from EF PSISMSC field of type byte[]
+     * @return SIP URI or tel URI of type string
+     */
+    protected String parseEfPsiSmsc(byte[] data) {
+        SimTlv tlv = new SimTlv(data, 0, data.length);
+        if (tlv.isValidObject() && tlv.getData() != null) {
+            if (tlv.getTag() == TAG_TLV_USIM_VALUE_80) {
+                return new String(tlv.getData(), Charset.forName("UTF-8"));
+            }
+        }
+        if (VDBG) {
+            log("Can't find EF PSISMSC field in SIM = " + IccUtils.bytesToHexString(data));
+        }
+        return null;
+    }
+
+    /**
+     * SMSC address read from the elementary file EF_PSISMSC
+     *
+     * @return SIP URI or tel URI of type string
+     */
+    public String getSmscIdentity() {
+        return mPsiSmsc;
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
