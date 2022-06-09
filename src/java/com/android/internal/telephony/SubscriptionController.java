@@ -28,9 +28,6 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
-import android.app.compat.CompatChanges;
-import android.compat.annotation.ChangeId;
-import android.compat.annotation.EnabledSince;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -169,15 +166,6 @@ public class SubscriptionController extends ISub.Stub {
 
     // Allows test mocks to avoid SELinux failures on invalidate calls.
     private static boolean sCachingEnabled = true;
-
-    /**
-     * Apps targeting on Android T and beyond will get exception if there is no
-     * {@link Manifest.permission#USE_ICC_AUTH_WITH_DEVICE_IDENTIFIER} permission
-     * when calling SubscriptionManager#getSubscriptionsInGroup.
-     */
-    @ChangeId
-    @EnabledSince(targetSdkVersion = Build.VERSION_CODES.TIRAMISU)
-    public static final long REQUIRE_ICC_AUTH_DEVICE_IDENTIFIERS_FOR_GROUP_UUID = 213902861L;
 
     // Each slot can have multiple subs.
     private static class WatchedSlotIndexToSubIds {
@@ -473,11 +461,10 @@ public class SubscriptionController extends ISub.Stub {
     /**
      * Returns whether the {@code callingPackage} has access to subscriber identifiers on the
      * specified {@code subId} using the provided {@code message} in any resulting
-     * SecurityException. {@code throwException} flag to indicate if throw exception.
+     * SecurityException.
      */
     private boolean hasSubscriberIdentifierAccess(int subId, String callingPackage,
-            String callingFeatureId, String message, boolean reportFailure,
-            boolean throwException) {
+            String callingFeatureId, String message, boolean reportFailure) {
         try {
             return TelephonyPermissions.checkCallingOrSelfReadSubscriberIdentifiers(mContext, subId,
                     callingPackage, callingFeatureId, message, reportFailure);
@@ -485,9 +472,6 @@ public class SubscriptionController extends ISub.Stub {
             // A SecurityException indicates that the calling package is targeting at least the
             // minimum level that enforces identifier access restrictions and the new access
             // requirements are not met.
-            if (throwException) {
-                throw e;
-            }
             return false;
         }
     }
@@ -3965,20 +3949,9 @@ public class SubscriptionController extends ISub.Stub {
      * Get subscriptionInfo list of subscriptions that are in the same group of given subId.
      * See {@link #createSubscriptionGroup(int[], String)} for more details.
      *
-     * Caller must have {@link android.Manifest.permission#READ_PHONE_STATE}
-     * or carrier privilege permission on the subscription.
+     * Caller will either have {@link android.Manifest.permission#READ_PHONE_STATE}
+     * permission or had carrier privilege permission on the subscription.
      * {@link TelephonyManager#hasCarrierPrivileges(int)}
-     *
-     * <p>Starting with API level 33, the caller needs the additional permission
-     * {@link Manifest.permission#USE_ICC_AUTH_WITH_DEVICE_IDENTIFIER}
-     * to get the list of subscriptions associated with a group UUID.
-     * This method can be invoked if one of the following requirements is met:
-     * <ul>
-     *     <li>If the app has carrier privilege permission.
-     *     {@link TelephonyManager#hasCarrierPrivileges()}
-     *     <li>If the app has {@link android.Manifest.permission#READ_PHONE_STATE} and
-     *     {@link Manifest.permission#USE_ICC_AUTH_WITH_DEVICE_IDENTIFIER} permission.
-     * </ul>
      *
      * @throws SecurityException if the caller doesn't meet the requirements
      *             outlined above.
@@ -4007,29 +3980,15 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         return subInfoList.stream().filter(info -> {
-            int subId = info.getSubscriptionId();
-            boolean permission = checkPermissionForGroupUuid(subId, callingPackage,
-                    callingFeatureId, Binder.getCallingUid());
             if (!groupUuid.equals(info.getGroupUuid())) return false;
-            return permission || info.canManageSubscription(mContext, callingPackage);
+            int subId = info.getSubscriptionId();
+            return TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext, subId,
+                    callingPackage, callingFeatureId, "getSubscriptionsInGroup")
+                    || info.canManageSubscription(mContext, callingPackage);
         }).map(subscriptionInfo -> conditionallyRemoveIdentifiers(subscriptionInfo,
                 callingPackage, callingFeatureId, "getSubscriptionsInGroup"))
         .collect(Collectors.toList());
-    }
 
-    private boolean checkPermissionForGroupUuid(int subId, String callingPackage,
-            String callingFeatureId, int uid) {
-        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext, subId,
-                callingPackage, callingFeatureId, "getSubscriptionsInGroup")) {
-            return false;
-        }
-
-        if (CompatChanges.isChangeEnabled(
-                REQUIRE_ICC_AUTH_DEVICE_IDENTIFIERS_FOR_GROUP_UUID, uid)) {
-            return hasSubscriberIdentifierAccess(subId, callingPackage,
-                    callingFeatureId, "getSubscriptionsInGroup", true, true);
-        }
-        return true;
     }
 
     /**
@@ -4343,7 +4302,7 @@ public class SubscriptionController extends ISub.Stub {
             if (canReadPhoneState) {
                 canReadIdentifiers = hasSubscriberIdentifierAccess(
                         SubscriptionManager.INVALID_SUBSCRIPTION_ID, callingPackage,
-                        callingFeatureId, "getSubscriptionInfoList", false, false);
+                        callingFeatureId, "getSubscriptionInfoList", false);
                 canReadPhoneNumber = hasPhoneNumberAccess(
                         SubscriptionManager.INVALID_SUBSCRIPTION_ID, callingPackage,
                         callingFeatureId, "getSubscriptionInfoList");
@@ -4395,7 +4354,7 @@ public class SubscriptionController extends ISub.Stub {
         SubscriptionInfo result = subInfo;
         int subId = subInfo.getSubscriptionId();
         boolean hasIdentifierAccess = hasSubscriberIdentifierAccess(subId, callingPackage,
-                callingFeatureId, message, true, false);
+                callingFeatureId, message, true);
         boolean hasPhoneNumberAccess = hasPhoneNumberAccess(subId, callingPackage, callingFeatureId,
                 message);
         return conditionallyRemoveIdentifiers(subInfo, hasIdentifierAccess, hasPhoneNumberAccess);
