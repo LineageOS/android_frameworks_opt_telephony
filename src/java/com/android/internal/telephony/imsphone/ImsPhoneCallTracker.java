@@ -507,6 +507,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         PENDING_RESUME_FOREGROUND_AFTER_FAILURE,
         // Pending holding a call to dial another outgoing call
         HOLDING_TO_DIAL_OUTGOING,
+        // Pending resuming the foreground call after it has completed an ongoing hold operation.
+        PENDING_RESUME_FOREGROUND_AFTER_HOLD
     }
 
     //***** Instance Variables
@@ -2069,9 +2071,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         //they were switched before holding
         ImsCall imsCall = mForegroundCall.getImsCall();
         if (imsCall != null) {
-            imsCall.resume();
-            mMetrics.writeOnImsCommand(mPhone.getPhoneId(), imsCall.getSession(),
-                    ImsCommand.IMS_CMD_RESUME);
+            if (!imsCall.isPendingHold()) {
+                imsCall.resume();
+                mMetrics.writeOnImsCommand(mPhone.getPhoneId(), imsCall.getSession(),
+                        ImsCommand.IMS_CMD_RESUME);
+            } else {
+                mHoldSwitchingState =
+                        HoldSwapState.PENDING_RESUME_FOREGROUND_AFTER_HOLD;
+                logHoldSwapState("resumeForegroundCall - unhold pending; resume request again");
+            }
         }
     }
 
@@ -3449,7 +3457,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 // processCallStateChange above may have caused the mBackgroundCall and
                 // mForegroundCall references below to change meaning.  Watch out for this if you
                 // are reading through this code.
-                if (oldState == ImsPhoneCall.State.ACTIVE) {
+                if (mHoldSwitchingState
+                        == HoldSwapState.PENDING_RESUME_FOREGROUND_AFTER_HOLD) {
+                    sendEmptyMessage(EVENT_RESUME_NOW_FOREGROUND_CALL);
+                    mHoldSwitchingState = HoldSwapState.INACTIVE;
+                    mCallExpectedToResume = null;
+                } else if (oldState == ImsPhoneCall.State.ACTIVE) {
                     // Note: This case comes up when we have just held a call in response to a
                     // switchWaitingOrHoldingAndActive.  We now need to resume the background call.
                     if (mForegroundCall.getState() == ImsPhoneCall.State.HOLDING
@@ -3494,7 +3507,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
             synchronized (mSyncHold) {
                 ImsPhoneCall.State bgState = mBackgroundCall.getState();
-                if (reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_CALL_TERMINATED) {
+                if (mHoldSwitchingState
+                        == HoldSwapState.PENDING_RESUME_FOREGROUND_AFTER_HOLD) {
+                    mHoldSwitchingState = HoldSwapState.INACTIVE;
+                } else if (reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_CALL_TERMINATED) {
                     // disconnected while processing hold
                     if (mPendingMO != null) {
                         dialPendingMO();
@@ -4591,6 +4607,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 break;
             case HOLDING_TO_DIAL_OUTGOING:
                 holdSwapState = "HOLDING_TO_DIAL_OUTGOING";
+                break;
+            case PENDING_RESUME_FOREGROUND_AFTER_HOLD:
+                holdSwapState = "PENDING_RESUME_FOREGROUND_AFTER_HOLD";
                 break;
         }
         logi("holdSwapState set to " + holdSwapState + " at " + loc);
