@@ -3156,11 +3156,23 @@ public class DataNetwork extends StateMachine {
             mDataNetworkCallback.invokeFromExecutor(
                     () -> mDataNetworkCallback.onHandoverFailed(DataNetwork.this,
                             mFailCause, retry, handoverFailureMode));
-            mDataCallSessionStats.onHandoverFailure(mFailCause);
+            trackHandoverFailure();
         }
 
         // No matter handover succeeded or not, transit back to connected state.
         transitionTo(mConnectedState);
+    }
+
+    /**
+     * Called when handover failed. Record the source and target RAT{@link NetworkType} and the
+     * failure cause {@link android.telephony.DataFailCause}.
+     */
+    private void trackHandoverFailure() {
+        int sourceRat = getDataNetworkType();
+        int targetTransport = DataUtils.getTargetTransport(mTransport);
+        int targetRat = getDataNetworkType(targetTransport);
+
+        mDataCallSessionStats.onHandoverFailure(mFailCause, sourceRat, targetRat);
     }
 
     /**

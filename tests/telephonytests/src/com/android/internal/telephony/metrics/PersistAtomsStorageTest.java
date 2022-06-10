@@ -34,6 +34,7 @@ import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSIO
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_VERY_FAST;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_VERY_SLOW;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -554,6 +555,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mDataCallSession0.setupFailed = false;
         mDataCallSession0.durationMinutes = 20;
         mDataCallSession0.ongoing = true;
+        mDataCallSession0.handoverFailureCauses = new int[]{3, 2, 1};
+        mDataCallSession0.handoverFailureRat = new int[]{5, 5, 6};
 
         mDataCallSession1 = new DataCallSession();
         mDataCallSession1.dimension = 222;
@@ -1815,6 +1818,12 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         assertProtoArrayEqualsIgnoringOrder(
                 new DataCallSession[]{mDataCallSession0, mDataCallSession1},
                 dataCalls);
+        for (DataCallSession dataCallSession : dataCalls) {
+            if (dataCallSession.dimension == mDataCallSession0.dimension) {
+                assertArrayEquals(new int[]{1, 2, 3}, dataCallSession.handoverFailureCauses);
+                assertArrayEquals(new int[]{6, 5, 5}, dataCallSession.handoverFailureRat);
+            }
+        }
     }
 
     @Test
@@ -1848,11 +1857,15 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         newDataCallSession0.ratAtEnd = TelephonyManager.NETWORK_TYPE_LTE;
         newDataCallSession0.durationMinutes = 10;
         newDataCallSession0.ratSwitchCount = 5;
+        newDataCallSession0.handoverFailureCauses = new int[]{4};
+        newDataCallSession0.handoverFailureRat = new int[]{4};
         DataCallSession totalDataCallSession0 = copyOf(newDataCallSession0);
         totalDataCallSession0.durationMinutes =
                 mDataCallSession0.durationMinutes + newDataCallSession0.durationMinutes;
         totalDataCallSession0.ratSwitchCount =
                 mDataCallSession0.ratSwitchCount + newDataCallSession0.ratSwitchCount;
+        totalDataCallSession0.handoverFailureCauses = new int[]{1, 2, 3, 4};
+        totalDataCallSession0.handoverFailureRat = new int[]{6, 5, 5, 4};
 
         mPersistAtomsStorage.addDataCallSession(mDataCallSession0);
         mPersistAtomsStorage.addDataCallSession(newDataCallSession0);
