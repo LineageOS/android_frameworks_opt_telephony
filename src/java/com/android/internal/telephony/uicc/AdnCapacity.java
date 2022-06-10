@@ -110,6 +110,21 @@ public class AdnCapacity implements Parcelable {
         return mMaxAdnCount > 0;
     }
 
+    @Override
+    public String toString() {
+        String capacity = "getAdnRecordsCapacity : max adn=" + mMaxAdnCount
+                + ", used adn=" + mUsedAdnCount
+                + ", max email=" + mMaxEmailCount
+                + ", used email=" + mUsedEmailCount
+                + ", max anr=" + mMaxAnrCount
+                + ", used anr=" + mUsedAnrCount
+                + ", max name length=" + mMaxNameLength
+                + ", max number length =" + mMaxNumberLength
+                + ", max email length =" + mMaxEmailLength
+                + ", max anr length =" + mMaxAnrLength;
+        return capacity;
+    }
+
     public static final Parcelable.Creator<AdnCapacity> CREATOR
             = new Parcelable.Creator<AdnCapacity>() {
         @Override
