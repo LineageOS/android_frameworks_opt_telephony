@@ -102,6 +102,8 @@ public class DataNetworkTest extends TelephonyTest {
     private static final int ADMIN_UID1 = 1234;
     private static final int ADMIN_UID2 = 5678;
 
+    private static final int DEFAULT_MTU = 1501;
+
     private static final String FAKE_IMSI = "123456789";
 
     private DataNetwork mDataNetworkUT;
@@ -218,7 +220,6 @@ public class DataNetworkTest extends TelephonyTest {
                             InetAddresses.parseNumericAddress("fd00:976a:c202:1d::7"),
                             InetAddresses.parseNumericAddress("fd00:976a:c305:1d::5")))
                     .setMtuV4(1234)
-                    .setMtuV6(5678)
                     .setPduSessionId(1)
                     .setQosBearerSessions(new ArrayList<>())
                     .setTrafficDescriptors(tds)
@@ -318,6 +319,7 @@ public class DataNetworkTest extends TelephonyTest {
                 .when(mDataConfigManager).getBandwidthEstimateSource();
         doReturn(true).when(mDataConfigManager).isTempNotMeteredSupportedByCarrier();
         doReturn(true).when(mDataConfigManager).isImsDelayTearDownEnabled();
+        doReturn(DEFAULT_MTU).when(mDataConfigManager).getDefaultMtu();
         doReturn(FAKE_IMSI).when(mPhone).getSubscriberId();
         doReturn(true).when(mDataNetworkController)
                 .isNetworkRequestExisting(any(TelephonyNetworkRequest.class));
@@ -402,9 +404,10 @@ public class DataNetworkTest extends TelephonyTest {
         assertThat(lp.getRoutes().get(0).getMtu()).isEqualTo(1234);
         assertThat(lp.getRoutes().get(1).getGateway()).isEqualTo(
                 InetAddresses.parseNumericAddress("fe80::2"));
-        assertThat(lp.getRoutes().get(1).getMtu()).isEqualTo(5678);
+        // The default from carrier configs should be used if MTU is not set.
+        assertThat(lp.getRoutes().get(1).getMtu()).isEqualTo(DEFAULT_MTU);
         // The higher value of v4 and v6 should be used.
-        assertThat(lp.getMtu()).isEqualTo(5678);
+        assertThat(lp.getMtu()).isEqualTo(DEFAULT_MTU);
 
         ArgumentCaptor<PreciseDataConnectionState> pdcsCaptor =
                 ArgumentCaptor.forClass(PreciseDataConnectionState.class);
