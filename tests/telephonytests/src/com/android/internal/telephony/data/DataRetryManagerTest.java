@@ -22,7 +22,6 @@ import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
@@ -57,7 +56,6 @@ import org.mockito.Mockito;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -152,28 +150,6 @@ public class DataRetryManagerTest extends TelephonyTest {
                 mMockedWlanDataServiceManager);
         mDataRetryManagerUT = new DataRetryManager(mPhone, mDataNetworkController,
                 mockedDataServiceManagers, Looper.myLooper(), mDataRetryManagerCallbackMock);
-
-        doAnswer(invocation -> {
-            String apnName = (String) invocation.getArguments()[0];
-            TrafficDescriptor td = (TrafficDescriptor) invocation.getArguments()[1];
-
-            if (apnName == null && td == null) return null;
-
-            List<DataProfile> dataProfiles = mAllDataProfileList;
-            if (apnName != null) {
-                dataProfiles = dataProfiles.stream()
-                        .filter(dp -> dp.getApnSetting() != null
-                                && apnName.equals(dp.getApnSetting().getApnName()))
-                        .collect(Collectors.toList());
-            }
-            if (td != null) {
-                dataProfiles = dataProfiles.stream()
-                        .filter(dp -> dp.getTrafficDescriptor() != null
-                                && td.equals(dp.getTrafficDescriptor()))
-                        .collect(Collectors.toList());
-            }
-            return dataProfiles.isEmpty() ? null : dataProfiles.get(0);
-        }).when(mDataProfileManager).getDataProfile(anyString(), any());
 
         ArgumentCaptor<DataConfigManagerCallback> dataConfigManagerCallbackCaptor =
                 ArgumentCaptor.forClass(DataConfigManagerCallback.class);
@@ -375,6 +351,41 @@ public class DataRetryManagerTest extends TelephonyTest {
                 .onDataNetworkSetupRetry(dataSetupRetryEntryCaptor.capture());
         DataSetupRetryEntry entry = dataSetupRetryEntryCaptor.getValue();
         assertThat(entry.dataProfile).isEqualTo(mDataProfile3);
+        assertThat(entry.retryDelayMillis).isEqualTo(0);
+        assertThat(entry.transport).isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+    }
+
+    @Test
+    public void testEnterpriseUnthrottling() throws Exception {
+        NetworkRequest request = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)
+                .build();
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+        DataNetworkController.NetworkRequestList
+                networkRequestList = new DataNetworkController.NetworkRequestList(tnr);
+
+        DataProfile enterpriseDataProfile = new DataProfile.Builder()
+                .setTrafficDescriptor(new TrafficDescriptor(null,
+                        new TrafficDescriptor.OsAppId(TrafficDescriptor.OsAppId.ANDROID_OS_ID,
+                                "ENTERPRISE", 1).getBytes()))
+                .build();
+
+        mDataRetryManagerUT.evaluateDataSetupRetry(enterpriseDataProfile,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, networkRequestList, 123,
+                Long.MAX_VALUE);
+        processAllFutureMessages();
+
+        mDataRetryManagerUT.obtainMessage(6/*EVENT_DATA_PROFILE_UNTHROTTLED*/,
+                new AsyncResult(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, enterpriseDataProfile,
+                        null)).sendToTarget();
+        processAllMessages();
+
+        ArgumentCaptor<DataSetupRetryEntry> dataSetupRetryEntryCaptor =
+                ArgumentCaptor.forClass(DataSetupRetryEntry.class);
+        verify(mDataRetryManagerCallbackMock)
+                .onDataNetworkSetupRetry(dataSetupRetryEntryCaptor.capture());
+        DataSetupRetryEntry entry = dataSetupRetryEntryCaptor.getValue();
+        assertThat(entry.dataProfile).isEqualTo(enterpriseDataProfile);
         assertThat(entry.retryDelayMillis).isEqualTo(0);
         assertThat(entry.transport).isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
     }
