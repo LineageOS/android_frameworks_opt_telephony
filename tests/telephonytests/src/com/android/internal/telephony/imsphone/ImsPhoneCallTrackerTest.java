@@ -1585,11 +1585,14 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(1, mCTUT.getConnections().size());
         assertNotNull(mCTUT.getPendingMO());
         assertEquals(Call.State.DIALING, mCTUT.mForegroundCall.getState());
+        assertEquals(PhoneConstants.State.OFFHOOK, mCTUT.getState());
 
         mCTUT.cleanupAndRemoveConnection(conn);
         assertEquals(0, mCTUT.getConnections().size());
         assertNull(mCTUT.getPendingMO());
         assertEquals(Call.State.IDLE, mCTUT.mForegroundCall.getState());
+
+        assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
     }
 
     private void sendCarrierConfigChanged() {
