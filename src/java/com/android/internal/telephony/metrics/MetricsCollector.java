@@ -787,7 +787,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 sms.isMultiSim,
                 sms.isEsim,
                 sms.carrierId,
-                sms.messageId);
+                sms.messageId,
+                sms.count);
     }
 
     private static StatsEvent buildStatsEvent(OutgoingSms sms) {
@@ -806,7 +807,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 sms.carrierId,
                 sms.messageId,
                 sms.retryId,
-                sms.intervalMillis);
+                sms.intervalMillis,
+                sms.count);
     }
 
     private static StatsEvent buildStatsEvent(DataCallSession dataCallSession) {
