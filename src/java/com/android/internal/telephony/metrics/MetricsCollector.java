@@ -48,6 +48,7 @@ import static com.android.internal.telephony.TelephonyStatsLog.TELEPHONY_NETWORK
 import static com.android.internal.telephony.TelephonyStatsLog.UCE_EVENT_STATS;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_RAT_USAGE;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION;
+import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_UNKNOWN;
 
 import android.annotation.Nullable;
 import android.app.StatsManager;
@@ -737,7 +738,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 session.bearerAtStart,
                 session.bearerAtEnd,
                 session.direction,
-                session.setupDuration,
+                // deprecated and replaced by setupDurationMillis
+                VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_UNKNOWN,
                 session.setupFailed,
                 session.disconnectReasonCode,
                 session.disconnectExtraCode,
