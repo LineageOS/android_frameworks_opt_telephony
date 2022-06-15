@@ -187,10 +187,10 @@ message PersistAtoms {
 // NOTE: StatsLog functions use int in place of enum
 
 message VoiceCallSession {
+    reserved 4;
     optional int32 bearer_at_start = 1;
     optional int32 bearer_at_end = 2;
     optional int32 direction = 3;
-    optional int32 setup_duration = 4;
     optional bool setup_failed = 5;
     optional int32 disconnect_reason_code = 6;
     optional int32 disconnect_extra_code = 7;

@@ -33,16 +33,6 @@ import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSIO
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__MAIN_CODEC_QUALITY__CODEC_QUALITY_SUPER_WIDEBAND;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__MAIN_CODEC_QUALITY__CODEC_QUALITY_UNKNOWN;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__MAIN_CODEC_QUALITY__CODEC_QUALITY_WIDEBAND;
-import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_EXTREMELY_FAST;
-import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_EXTREMELY_SLOW;
-import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_FAST;
-import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_NORMAL;
-import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_SLOW;
-import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_ULTRA_FAST;
-import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_ULTRA_SLOW;
-import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_UNKNOWN;
-import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_VERY_FAST;
-import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_VERY_SLOW;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__SIGNAL_STRENGTH_AT_END__SIGNAL_STRENGTH_GREAT;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__SIGNAL_STRENGTH_AT_END__SIGNAL_STRENGTH_NONE_OR_UNKNOWN;
 
@@ -124,9 +114,6 @@ public class VoiceCallSessionStats {
 
     /** Holds the audio codec value for IMS calls. */
     private static final SparseIntArray IMS_CODEC_MAP = buildImsCodecMap();
-
-    /** Holds setup duration buckets with values as their upper bounds in milliseconds. */
-    private static final SparseIntArray CALL_SETUP_DURATION_MAP = buildCallSetupDurationMap();
 
     /** Holds call duration buckets with values as their upper bounds in milliseconds. */
     private static final SparseIntArray CALL_DURATION_MAP = buildCallDurationMap();
@@ -395,7 +382,6 @@ public class VoiceCallSessionStats {
             logd("acceptCall: resetting setup info, connectionId=%d", id);
             VoiceCallSession proto = mCallProtos.get(id);
             proto.setupBeginMillis = getTimeMillis();
-            proto.setupDuration = VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_UNKNOWN;
         } else {
             loge("acceptCall: untracked connection, connectionId=%d", id);
         }
@@ -424,7 +410,6 @@ public class VoiceCallSessionStats {
         proto.bearerAtStart = bearer;
         proto.bearerAtEnd = bearer;
         proto.direction = getDirection(conn);
-        proto.setupDuration = VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_UNKNOWN;
         proto.setupFailed = true;
         proto.disconnectReasonCode = conn.getDisconnectCause();
         proto.disconnectExtraCode = conn.getPreciseDisconnectCause();
@@ -542,7 +527,6 @@ public class VoiceCallSessionStats {
     private void checkCallSetup(Connection conn, VoiceCallSession proto) {
         if (proto.setupBeginMillis != 0L && isSetupFinished(conn.getCall())) {
             proto.setupDurationMillis = (int) (getTimeMillis() - proto.setupBeginMillis);
-            proto.setupDuration = classifySetupDuration(proto.setupDurationMillis);
             proto.setupBeginMillis = 0L;
         }
         // Clear setupFailed if call now active, but otherwise leave it unchanged
@@ -746,16 +730,6 @@ public class VoiceCallSessionStats {
         }
     }
 
-    private static int classifySetupDuration(int durationMillis) {
-        // keys in CALL_SETUP_DURATION_MAP are upper bounds in ascending order
-        for (int i = 0; i < CALL_SETUP_DURATION_MAP.size(); i++) {
-            if (durationMillis < CALL_SETUP_DURATION_MAP.keyAt(i)) {
-                return CALL_SETUP_DURATION_MAP.valueAt(i);
-            }
-        }
-        return VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_EXTREMELY_SLOW;
-    }
-
     private static int classifyCallDuration(long durationMillis) {
         if (durationMillis == 0L) {
             return VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_UNKNOWN;
@@ -831,41 +805,6 @@ public class VoiceCallSessionStats {
         map.put(ImsStreamMediaProfile.AUDIO_QUALITY_EVS_WB, AudioCodec.AUDIO_CODEC_EVS_WB);
         map.put(ImsStreamMediaProfile.AUDIO_QUALITY_EVS_SWB, AudioCodec.AUDIO_CODEC_EVS_SWB);
         map.put(ImsStreamMediaProfile.AUDIO_QUALITY_EVS_FB, AudioCodec.AUDIO_CODEC_EVS_FB);
-        return map;
-    }
-
-    private static SparseIntArray buildCallSetupDurationMap() {
-        SparseIntArray map = new SparseIntArray();
-
-        map.put(
-                CALL_SETUP_DURATION_UNKNOWN,
-                VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_UNKNOWN);
-        map.put(
-                CALL_SETUP_DURATION_EXTREMELY_FAST,
-                VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_EXTREMELY_FAST);
-        map.put(
-                CALL_SETUP_DURATION_ULTRA_FAST,
-                VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_ULTRA_FAST);
-        map.put(
-                CALL_SETUP_DURATION_VERY_FAST,
-                VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_VERY_FAST);
-        map.put(
-                CALL_SETUP_DURATION_FAST,
-                VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_FAST);
-        map.put(
-                CALL_SETUP_DURATION_NORMAL,
-                VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_NORMAL);
-        map.put(
-                CALL_SETUP_DURATION_SLOW,
-                VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_SLOW);
-        map.put(
-                CALL_SETUP_DURATION_VERY_SLOW,
-                VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_VERY_SLOW);
-        map.put(
-                CALL_SETUP_DURATION_ULTRA_SLOW,
-                VOICE_CALL_SESSION__SETUP_DURATION__CALL_SETUP_DURATION_ULTRA_SLOW);
-        // anything above would be CALL_SETUP_DURATION_EXTREMELY_SLOW
-
         return map;
     }
 
