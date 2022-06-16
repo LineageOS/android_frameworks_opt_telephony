@@ -1147,7 +1147,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void showNewMessageNotification() {
         // Do not show the notification on non-FBE devices.
-        if (!StorageManager.isFileEncryptedNativeOrEmulated()) {
+        if (!StorageManager.isFileEncrypted()) {
             return;
         }
         log("Show new message notification.");
