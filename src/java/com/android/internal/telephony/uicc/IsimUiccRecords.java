@@ -23,6 +23,7 @@ import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Message;
 import android.telephony.SubscriptionManager;
+import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
@@ -42,7 +43,9 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
     protected static final String LOG_TAG = "IsimUiccRecords";
 
     private static final boolean DBG = true;
-    private static final boolean VDBG = false; // STOPSHIP if true
+    private static final boolean FORCE_VERBOSE_STATE_LOGGING = false; /* stopship if true */
+    private static final boolean VDBG =  FORCE_VERBOSE_STATE_LOGGING ||
+            Rlog.isLoggable(LOG_TAG, Log.VERBOSE);
     private static final boolean DUMP_RECORDS = false;  // Note: PII is logged when this is true
                                                         // STOPSHIP if true
     public static final String INTENT_ISIM_REFRESH = "com.android.intent.isim_refresh";
@@ -70,8 +73,9 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
                 + " mIsimDomain=" + mIsimDomain
                 + " mIsimImpu=" + mIsimImpu
                 + " mIsimIst=" + mIsimIst
-                + " mIsimPcscf=" + mIsimPcscf
-                + " mPsiSmsc=" + mPsiSmsc) : "");
+                + " mIsimPcscf=" + Arrays.toString(mIsimPcscf)
+                + " mPsiSmsc=" + mPsiSmsc
+                + " mSmss TPMR=" + getSmssTpmrValue()) : "");
     }
 
     public IsimUiccRecords(UiccCardApplication app, Context c, CommandsInterface ci) {
@@ -113,7 +117,6 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
                     broadcastRefresh();
                     super.handleMessage(msg);
                     break;
-
                 default:
                     super.handleMessage(msg);   // IccRecords handles generic record load responses
 
@@ -144,6 +147,9 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
         mRecordsToLoad++;
         mFh.loadEFLinearFixedAll(EF_PCSCF, obtainMessage(
                     IccRecords.EVENT_GET_ICC_RECORD_DONE, new EfIsimPcscfLoaded()));
+        mRecordsToLoad++;
+        mFh.loadEFTransparent(EF_SMSS,  obtainMessage(
+                IccRecords.EVENT_GET_ICC_RECORD_DONE, new EfIsimSmssLoaded()));
         mRecordsToLoad++;
 
         mFh.loadEFLinearFixed(EF_PSISMSC, 1, obtainMessage(
@@ -218,6 +224,23 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
             if (DUMP_RECORDS) log("EF_IST=" + mIsimIst);
         }
     }
+
+    private class EfIsimSmssLoaded implements IccRecords.IccRecordLoaded {
+
+        @Override
+        public String getEfName() {
+            return "EF_ISIM_SMSS";
+        }
+
+        @Override
+        public void onRecordLoaded(AsyncResult ar) {
+            mSmssValues = (byte[]) ar.result;
+            if (VDBG) {
+                log("IsimUiccRecords - EF_SMSS TPMR value = " + getSmssTpmrValue());
+            }
+        }
+    }
+
     private class EfIsimPcscfLoaded implements IccRecords.IccRecordLoaded {
         public String getEfName() {
             return "EF_ISIM_PCSCF";
@@ -468,6 +491,7 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
             pw.println(" mIsimIst" + mIsimIst);
             pw.println(" mIsimPcscf" + mIsimPcscf);
             pw.println(" mPsismsc=" + mPsiSmsc);
+            pw.println(" mSmss TPMR=" + getSmssTpmrValue());
         }
         pw.flush();
     }

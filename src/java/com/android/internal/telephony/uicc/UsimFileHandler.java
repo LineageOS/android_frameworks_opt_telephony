@@ -68,6 +68,7 @@ public final class UsimFileHandler extends IccFileHandler implements IccConstant
         case EF_FPLMN:
         case EF_LRPLMNSI:
         case EF_HPPLMN:
+        case EF_SMSS:
             return MF_SIM + DF_ADF;
 
         case EF_PBR:
