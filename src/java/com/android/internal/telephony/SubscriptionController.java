@@ -4741,6 +4741,63 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
+     * Querying last used TP - MessageRef for particular subId from SIMInfo table.
+     * @return messageRef
+     */
+    public int getMessageRef(int subId) {
+        try (Cursor cursor = mContext.getContentResolver().query(SubscriptionManager.CONTENT_URI,
+                new String[]{SubscriptionManager.TP_MESSAGE_REF},
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=\"" + subId
+                        + "\"", null, null)) {
+            try {
+                if (cursor != null && cursor.moveToFirst()) {
+                    do {
+                        return cursor.getInt(cursor.getColumnIndexOrThrow(
+                                SubscriptionManager.TP_MESSAGE_REF));
+                    } while (cursor.moveToNext());
+                } else {
+                    if (DBG) logd("Valid row not present in db");
+                }
+            } catch (Exception e) {
+                if (DBG) logd("Query failed " + e.getMessage());
+            } finally {
+                if (cursor != null) {
+                    cursor.close();
+                }
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Update the TP - Message Reference value for every SMS Sent
+     * @param messageRef
+     * @param subId
+     */
+    public void updateMessageRef(int subId, int messageRef) {
+        TelephonyPermissions.enforceCallingOrSelfModifyPermissionOrCarrierPrivilege(
+                mContext, subId, mContext.getOpPackageName());
+
+        if (mContext == null) {
+            logel("[updateMessageRef] mContext is null");
+            return;
+        }
+        try {
+            if (SubscriptionManager.CONTENT_URI != null) {
+                ContentValues values = new ContentValues(1);
+                values.put(SubscriptionManager.TP_MESSAGE_REF, messageRef);
+                mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, values,
+                        SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=\"" + subId
+                                + "\"", null);
+            } else {
+                if (DBG) logd("TP - Message reference value not updated to DB");
+            }
+        } finally {
+            if (DBG) logd("TP - Message reference updated to DB Successfully :" + messageRef);
+        }
+    }
+
+    /**
      * @hide
      */
     private void setGlobalSetting(String name, int value) {

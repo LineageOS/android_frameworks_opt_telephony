@@ -66,9 +66,12 @@ import com.android.internal.telephony.ContextFixture;
 import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.SmsDispatchersController;
+import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.TelephonyTestUtils;
 import com.android.internal.telephony.TestApplication;
+import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.uicc.IsimUiccRecords;
 
 import org.junit.After;
 import org.junit.Before;
@@ -502,5 +505,76 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
                 any(Message.class));
         verify(mSimulatedCommandsVerifier).sendSMS(anyString(), anyString(),
                 any(Message.class));
+    }
+
+
+    @Test
+    public void testSendTextWithMessageRef() throws Exception {
+        int messageRef = mGsmSmsDispatcher.nextMessageRef() + 1;
+        mGsmSmsDispatcher.sendText("111", "222" /*scAddr*/, TAG,
+                null, null, null, null, false, -1, false, -1, false, 0L);
+
+        ArgumentCaptor<String> pduCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mSimulatedCommandsVerifier).sendSMS(anyString(), pduCaptor.capture(),
+                any(Message.class));
+        byte[] pdu = IccUtils.hexStringToBytes(pduCaptor.getValue());
+        assertEquals(pdu[1], messageRef);
+    }
+
+    @Test
+    public void testSendMultipartWithMessageRef() throws Exception {
+        ArrayList<String> parts = new ArrayList<>();
+        parts.add("segment1");
+        parts.add("segment2");
+        parts.add("segment3");
+        int messageRef = mGsmSmsDispatcher.nextMessageRef() + parts.size();
+        mGsmSmsDispatcher.sendMultipartText("6501002000" /*destAddr*/, "222" /*scAddr*/, parts,
+                null, null, null, null, false, -1, false, -1, 0L);
+        waitForMs(150);
+        ArgumentCaptor<String> pduCaptor = ArgumentCaptor.forClass(String.class);
+
+        verify(mSimulatedCommandsVerifier, times(parts.size() - 1)).sendSMSExpectMore(anyString(),
+                anyString(),
+                any(Message.class));
+        verify(mSimulatedCommandsVerifier).sendSMS(anyString(), pduCaptor.capture(),
+                any(Message.class));
+        byte[] pdu = IccUtils.hexStringToBytes(pduCaptor.getValue());
+        assertEquals(pdu[1], messageRef);
+    }
+
+    @Test
+    public void testSendTextWithMessageRefNegativeBoundaryCondition() throws Exception {
+        mIsimUiccRecords = new IsimUiccRecords(mUiccCardApplication3gpp, mContext,
+                mSimulatedCommands);
+        doReturn(mIsimUiccRecords).when(mPhone).getIccRecords();
+        Message msg = mGsmSmsDispatcher.obtainMessage(17);
+        mPhone.getIccRecords().setSmssTpmrValue(-1, msg);
+        SubscriptionController.getInstance().updateMessageRef(mPhone.getSubId(), -1);
+        mGsmSmsDispatcher.sendText("111", "222" /*scAddr*/, TAG,
+                null, null, null, null, false, -1, false, -1, false, 0L);
+
+        ArgumentCaptor<String> pduCaptor1 = ArgumentCaptor.forClass(String.class);
+        verify(mSimulatedCommandsVerifier).sendSMS(anyString(), pduCaptor1.capture(),
+                any(Message.class));
+        byte[] pdu1 = IccUtils.hexStringToBytes(pduCaptor1.getValue());
+        assertEquals(pdu1[1], 0);
+    }
+
+    @Test
+    public void testSendTextWithMessageRefMaxBoundaryCondition() throws Exception {
+        mIsimUiccRecords = new IsimUiccRecords(mUiccCardApplication3gpp, mContext,
+                mSimulatedCommands);
+        doReturn(mIsimUiccRecords).when(mPhone).getIccRecords();
+        Message msg = mGsmSmsDispatcher.obtainMessage(17);
+
+        mPhone.getIccRecords().setSmssTpmrValue(255, null);
+        mGsmSmsDispatcher.sendText("111", "222" /*scAddr*/, TAG,
+                null, null, null, null, false, -1, false, -1, false, 0L);
+
+        ArgumentCaptor<String> pduCaptor2 = ArgumentCaptor.forClass(String.class);
+        verify(mSimulatedCommandsVerifier).sendSMS(anyString(), pduCaptor2.capture(),
+                any(Message.class));
+        byte[] pdu2 = IccUtils.hexStringToBytes(pduCaptor2.getValue());
+        assertEquals(pdu2[1], 0);
     }
 }
