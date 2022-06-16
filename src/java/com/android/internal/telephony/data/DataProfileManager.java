@@ -815,10 +815,17 @@ public class DataProfileManager extends Handler {
         for (int i = 0; i < profiles.size(); i++) {
             ApnSetting a = profiles.get(i).getApnSetting();
             if (a == null) continue;
-            if ((a.getNetworkTypeBitmask() | a.getLingeringNetworkTypeBitmask())
+            if (// Lingering network is not the default and doesn't cover all the regular networks
+                    (int) TelephonyManager.NETWORK_TYPE_BITMASK_UNKNOWN
+                    != a.getLingeringNetworkTypeBitmask()
+                            && (a.getNetworkTypeBitmask() | a.getLingeringNetworkTypeBitmask())
                     != a.getLingeringNetworkTypeBitmask()) {
-                reportAnomaly("Apn[" + a.getApnName()
-                                + "] supported network should be a subset of the lingering network",
+                reportAnomaly("Apn[" + a.getApnName() + "] network "
+                                + TelephonyManager.convertNetworkTypeBitmaskToString(
+                                        a.getNetworkTypeBitmask()) + " should be a subset of "
+                                + "the lingering network "
+                                + TelephonyManager.convertNetworkTypeBitmaskToString(
+                                a.getLingeringNetworkTypeBitmask()),
                         "9af73e18-b523-4dc5-adab-4bb24355d838");
             }
             for (int j = i + 1; j < profiles.size(); j++) {
