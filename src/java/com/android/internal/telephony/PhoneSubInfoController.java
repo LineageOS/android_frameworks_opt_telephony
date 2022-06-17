@@ -583,6 +583,30 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         }
     }
 
+    /**
+     * Returns SIP URI or tel URI of the Public Service Identity of the SM-SC that fetched from
+     * EFPSISMSC elementary field that are loaded based on the ISIM/USIM appType.
+     */
+    public String getSmscIdentity(int subId, int appType)
+            throws RemoteException {
+        return callPhoneMethodForSubIdWithPrivilegedCheck(subId, "getSmscIdentity",
+                (phone) -> {
+                    UiccPort uiccPort = phone.getUiccPort();
+                    if (uiccPort == null || uiccPort.getUiccProfile() == null) {
+                        loge("getSmscIdentity(): uiccPort or uiccProfile is null");
+                        return null;
+                    }
+                    UiccCardApplication uiccApp = uiccPort.getUiccProfile().getApplicationByType(
+                            appType);
+                    if (uiccApp == null) {
+                        loge("getSmscIdentity(): no app with specified type = "
+                                + appType);
+                        return null;
+                    }
+                    return uiccApp.getIccRecords().getSmscIdentity();
+                });
+    }
+
     private void log(String s) {
         Rlog.d(TAG, s);
     }

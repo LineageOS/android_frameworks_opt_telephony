@@ -16,6 +16,7 @@
 package com.android.internal.telephony;
 
 import static android.Manifest.permission.READ_PHONE_STATE;
+import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -33,15 +34,27 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.Build;
+import android.os.RemoteException;
 import android.test.suitebuilder.annotation.SmallTest;
+
+import com.android.internal.telephony.uicc.IsimUiccRecords;
+import com.android.internal.telephony.uicc.SIMRecords;
+import com.android.internal.telephony.uicc.UiccCardApplication;
+import com.android.internal.telephony.uicc.UiccPort;
+import com.android.internal.telephony.uicc.UiccProfile;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 public class PhoneSubInfoControllerTest extends TelephonyTest {
     private static final String FEATURE_ID = "myfeatureId";
+    private static final String PSI_SMSC_TEL1 = "tel:+91123456789";
+    private static final String PSI_SMSC_SIP1 = "sip:+1234567890@msg.pc.t-mobile.com;user=phone";
+    private static final String PSI_SMSC_TEL2 = "tel:+91987654321";
+    private static final String PSI_SMSC_SIP2 = "sip:+19876543210@msg.pc.t-mobile.com;user=phone";
 
     private PhoneSubInfoController mPhoneSubInfoControllerUT;
     private AppOpsManager mAppOsMgr;
@@ -921,5 +934,142 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
                 .getVoiceMailAlphaTagForSubscriber(0, TAG, FEATURE_ID));
         assertEquals("VM_SIM_1", mPhoneSubInfoControllerUT
                 .getVoiceMailAlphaTagForSubscriber(1, TAG, FEATURE_ID));
+    }
+
+    private void setUpInitials() {
+        UiccPort uiccPort1 = Mockito.mock(UiccPort.class);
+        UiccProfile uiccProfile1 = Mockito.mock(UiccProfile.class);
+        UiccCardApplication uiccCardApplication1 = Mockito.mock(UiccCardApplication.class);
+        SIMRecords simRecords1 = Mockito.mock(SIMRecords.class);
+        IsimUiccRecords isimUiccRecords1 = Mockito.mock(IsimUiccRecords.class);
+
+        doReturn(uiccPort1).when(mPhone).getUiccPort();
+        doReturn(uiccProfile1).when(uiccPort1).getUiccProfile();
+        doReturn(uiccCardApplication1).when(uiccProfile1).getApplicationByType(anyInt());
+        doReturn(simRecords1).when(uiccCardApplication1).getIccRecords();
+        doReturn(isimUiccRecords1).when(uiccCardApplication1).getIccRecords();
+        doReturn(PSI_SMSC_TEL1).when(simRecords1).getSmscIdentity();
+        doReturn(PSI_SMSC_TEL1).when(isimUiccRecords1).getSmscIdentity();
+
+        doReturn(mUiccPort).when(mSecondPhone).getUiccPort();
+        doReturn(mUiccProfile).when(mUiccPort).getUiccProfile();
+        doReturn(mUiccCardApplicationIms).when(mUiccProfile).getApplicationByType(anyInt());
+        doReturn(mSimRecords).when(mUiccCardApplicationIms).getIccRecords();
+        doReturn(mIsimUiccRecords).when(mUiccCardApplicationIms).getIccRecords();
+        doReturn(PSI_SMSC_TEL2).when(mSimRecords).getSmscIdentity();
+        doReturn(PSI_SMSC_TEL2).when(mIsimUiccRecords).getSmscIdentity();
+    }
+
+    @Test
+    public void testGetSmscIdentityForTelUri() {
+        try {
+            setUpInitials();
+            assertEquals(PSI_SMSC_TEL1, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(0, 5));
+            assertEquals(PSI_SMSC_TEL1, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(0, 3));
+            assertEquals(PSI_SMSC_TEL2, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(1, 5));
+            assertEquals(PSI_SMSC_TEL2, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(1, 5));
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testGetSmscIdentityForSipUri() {
+        try {
+            UiccPort uiccPort1 = Mockito.mock(UiccPort.class);
+            UiccProfile uiccProfile1 = Mockito.mock(UiccProfile.class);
+            UiccCardApplication uiccCardApplication1 = Mockito.mock(UiccCardApplication.class);
+            SIMRecords simRecords1 = Mockito.mock(SIMRecords.class);
+            IsimUiccRecords isimUiccRecords1 = Mockito.mock(IsimUiccRecords.class);
+
+            doReturn(uiccPort1).when(mPhone).getUiccPort();
+            doReturn(uiccProfile1).when(uiccPort1).getUiccProfile();
+            doReturn(uiccCardApplication1).when(uiccProfile1).getApplicationByType(anyInt());
+            doReturn(simRecords1).when(uiccCardApplication1).getIccRecords();
+            doReturn(isimUiccRecords1).when(uiccCardApplication1).getIccRecords();
+            doReturn(PSI_SMSC_SIP1).when(simRecords1).getSmscIdentity();
+            doReturn(PSI_SMSC_SIP1).when(isimUiccRecords1).getSmscIdentity();
+
+            doReturn(mUiccPort).when(mSecondPhone).getUiccPort();
+            doReturn(mUiccProfile).when(mUiccPort).getUiccProfile();
+            doReturn(mUiccCardApplicationIms).when(mUiccProfile).getApplicationByType(anyInt());
+            doReturn(mSimRecords).when(mUiccCardApplicationIms).getIccRecords();
+            doReturn(mIsimUiccRecords).when(mUiccCardApplicationIms).getIccRecords();
+            doReturn(PSI_SMSC_SIP2).when(mSimRecords).getSmscIdentity();
+            doReturn(PSI_SMSC_SIP2).when(mIsimUiccRecords).getSmscIdentity();
+
+            assertEquals(PSI_SMSC_SIP1, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(0, 5));
+            assertEquals(PSI_SMSC_SIP1, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(0, 3));
+            assertEquals(PSI_SMSC_SIP2, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(1, 5));
+            assertEquals(PSI_SMSC_SIP2, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(1, 5));
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testGetSmscIdentityWithOutPermissions() {
+        setUpInitials();
+
+        //case 1: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
+        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
+        try {
+            mPhoneSubInfoControllerUT.getSmscIdentity(0, 5);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getSmscIdentity"));
+        }
+
+        try {
+            mPhoneSubInfoControllerUT.getSmscIdentity(1, 5);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getSmscIdentity"));
+        }
+
+        try {
+            mPhoneSubInfoControllerUT.getSmscIdentity(0, 3);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getSmscIdentity"));
+        }
+
+        try {
+            mPhoneSubInfoControllerUT.getSmscIdentity(1, 3);
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getSmscIdentity"));
+        }
+
+        //case 2: no READ_PRIVILEGED_PHONE_STATE
+        mContextFixture.addCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE);
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOp(
+                eq(AppOpsManager.OPSTR_READ_PHONE_STATE), anyInt(), eq(TAG), eq(FEATURE_ID),
+                nullable(String.class));
+
+        try {
+            assertEquals(PSI_SMSC_TEL1, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(0, 5));
+            assertEquals(PSI_SMSC_TEL1, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(0, 3));
+            assertEquals(PSI_SMSC_TEL2, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(1, 5));
+            assertEquals(PSI_SMSC_TEL2, mPhoneSubInfoControllerUT
+                    .getSmscIdentity(1, 5));
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
     }
 }
