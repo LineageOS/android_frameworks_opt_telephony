@@ -4984,6 +4984,27 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return mNewDataStackEnabled;
     }
 
+    /**
+     * Returns the user's last setting for terminal-based call waiting
+     * @param forCsOnly indicates the caller expects the result for CS calls only
+     */
+    public int getTerminalBasedCallWaitingState(boolean forCsOnly) {
+        return CallWaitingController.TERMINAL_BASED_NOT_SUPPORTED;
+    }
+
+    /**
+     * Notifies the change of the user setting of the terminal-based call waiting service
+     * to IMS service.
+     */
+    public void setTerminalBasedCallWaitingStatus(int state) {
+    }
+
+    /**
+     * Notifies that the IMS service connected supports the terminal-based call waiting service
+     */
+    public void setTerminalBasedCallWaitingSupported(boolean supported) {
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Phone: subId=" + getSubId());
         pw.println(" mPhoneId=" + mPhoneId);

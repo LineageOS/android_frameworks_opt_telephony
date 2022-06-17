@@ -18,8 +18,11 @@ package com.android.internal.telephony.imsphone;
 
 import static android.telephony.CarrierConfigManager.USSD_OVER_CS_PREFERRED;
 import static android.telephony.CarrierConfigManager.USSD_OVER_IMS_ONLY;
+import static android.telephony.ims.ImsService.CAPABILITY_TERMINAL_BASED_CALL_WAITING;
 
 import static com.android.internal.annotations.VisibleForTesting.Visibility.PRIVATE;
+import static com.android.internal.telephony.CallWaitingController.TERMINAL_BASED_ACTIVATED;
+import static com.android.internal.telephony.CallWaitingController.TERMINAL_BASED_NOT_SUPPORTED;
 import static com.android.internal.telephony.Phone.CS_FALLBACK;
 
 import android.Manifest;
@@ -1151,6 +1154,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         // For compatibility with apps that still use deprecated intent
         sendImsServiceStateIntent(ImsManager.ACTION_IMS_SERVICE_UP);
         mCurrentlyConnectedSubId = Optional.of(subId);
+
+        initializeTerminalBasedCallWaiting();
     }
 
     /**
@@ -5455,5 +5460,39 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             return true;
         }
         return false;
+    }
+
+    private void initializeTerminalBasedCallWaiting() {
+        boolean capable = false;
+        if (mImsManager != null) {
+            try {
+                capable = mImsManager.isCapable(CAPABILITY_TERMINAL_BASED_CALL_WAITING);
+            } catch (ImsException e) {
+                loge("initializeTerminalBasedCallWaiting : exception " + e);
+            }
+        }
+        logi("initializeTerminalBasedCallWaiting capable=" + capable);
+        mPhone.setTerminalBasedCallWaitingSupported(capable);
+
+        if (capable) {
+            setTerminalBasedCallWaitingStatus(mPhone.getTerminalBasedCallWaitingState(false));
+        }
+    }
+
+    /**
+     * Notifies the change of the user setting of the terminal-based call waiting service
+     * to IMS service.
+     */
+    public void setTerminalBasedCallWaitingStatus(int state) {
+        if (state == TERMINAL_BASED_NOT_SUPPORTED) return;
+        if (mImsManager != null) {
+            try {
+                log("setTerminalBasedCallWaitingStatus state=" + state);
+                mImsManager.setTerminalBasedCallWaitingStatus(
+                        state == TERMINAL_BASED_ACTIVATED);
+            } catch (ImsException e) {
+                loge("setTerminalBasedCallWaitingStatus : exception " + e);
+            }
+        }
     }
 }
