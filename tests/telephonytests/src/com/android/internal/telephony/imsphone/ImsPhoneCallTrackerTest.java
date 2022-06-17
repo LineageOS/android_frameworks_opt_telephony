@@ -508,6 +508,24 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(DisconnectCause.INCOMING_REJECTED, connection.getDisconnectCause());
     }
 
+    @Test
+    @SmallTest
+    public void testRejectedElsewhereIsRejected() {
+        ImsPhoneConnection connection = setupRingingConnection();
+        mImsCallListener.onCallTerminated(connection.getImsCall(),
+                new ImsReasonInfo(ImsReasonInfo.CODE_REJECTED_ELSEWHERE, 0));
+        assertEquals(DisconnectCause.INCOMING_REJECTED, connection.getDisconnectCause());
+    }
+
+    @Test
+    @SmallTest
+    public void testRemoteCallDeclineIsRejected() {
+        ImsPhoneConnection connection = setupRingingConnection();
+        mImsCallListener.onCallTerminated(connection.getImsCall(),
+                new ImsReasonInfo(ImsReasonInfo.CODE_REMOTE_CALL_DECLINE, 0));
+        assertEquals(DisconnectCause.INCOMING_REJECTED, connection.getDisconnectCause());
+    }
+
     private ImsPhoneConnection setupRingingConnection() {
         mImsCallProfile.setCallerNumberVerificationStatus(
                 ImsCallProfile.VERIFICATION_STATUS_PASSED);
