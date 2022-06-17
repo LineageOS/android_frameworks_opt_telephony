@@ -28,6 +28,7 @@ import static junit.framework.Assert.assertNotNull;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -1560,6 +1561,20 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         verify(mImsManager, never()).setOfferedRtpHeaderExtensionTypes(any());
     }
 
+    @Test
+    @SmallTest
+    public void testCleanupAndRemoveConnection() throws Exception {
+        ImsPhoneConnection conn = placeCall();
+        assertEquals(1, mCTUT.getConnections().size());
+        assertNotNull(mCTUT.getPendingMO());
+        assertEquals(Call.State.DIALING, mCTUT.mForegroundCall.getState());
+
+        mCTUT.cleanupAndRemoveConnection(conn);
+        assertEquals(0, mCTUT.getConnections().size());
+        assertNull(mCTUT.getPendingMO());
+        assertEquals(Call.State.IDLE, mCTUT.mForegroundCall.getState());
+    }
+
     private void sendCarrierConfigChanged() {
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         intent.putExtra(CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
@@ -1595,6 +1610,16 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     }
 
     private ImsPhoneConnection placeCallAndMakeActive() {
+        ImsPhoneConnection connection = placeCall();
+        ImsCall imsCall = connection.getImsCall();
+        imsCall.getImsCallSessionListenerProxy().callSessionProgressing(imsCall.getSession(),
+                new ImsStreamMediaProfile());
+        imsCall.getImsCallSessionListenerProxy().callSessionStarted(imsCall.getSession(),
+                new ImsCallProfile());
+        return connection;
+    }
+
+    private ImsPhoneConnection placeCall() {
         try {
             doAnswer(new Answer<ImsCall>() {
                 @Override
@@ -1606,6 +1631,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                     imsCallMocking(imsCall);
                     return imsCall;
                 }
+
             }).when(mImsManager).makeCall(eq(mImsCallProfile), (String[]) any(),
                     (ImsCall.Listener) any());
         } catch (ImsException ie) {
@@ -1622,11 +1648,6 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         if (connection == null) {
             Assert.fail("connection is null");
         }
-        ImsCall imsCall = connection.getImsCall();
-        imsCall.getImsCallSessionListenerProxy().callSessionProgressing(imsCall.getSession(),
-                new ImsStreamMediaProfile());
-        imsCall.getImsCallSessionListenerProxy().callSessionStarted(imsCall.getSession(),
-                new ImsCallProfile());
         return connection;
     }
 }
