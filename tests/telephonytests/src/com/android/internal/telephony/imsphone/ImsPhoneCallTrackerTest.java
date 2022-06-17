@@ -1881,6 +1881,22 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
     }
 
+    @Test
+    @SmallTest
+    public void testCallSessionUpdatedAfterSrvccCompleted() throws RemoteException {
+        startOutgoingCall();
+
+        // Move the connection to the handover state.
+        mCTUT.notifySrvccState(Call.SrvccState.COMPLETED);
+
+        try {
+            // When trigger CallSessionUpdated after Srvcc completes, checking no exception.
+            mImsCallListener.onCallUpdated(mSecondImsCall);
+        } catch (Exception ex) {
+            Assert.fail("unexpected exception thrown" + ex.getMessage());
+        }
+    }
+
     private void sendCarrierConfigChanged() {
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         intent.putExtra(CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
