@@ -2683,6 +2683,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             mPendingMO.finalize();
             mPendingMO = null;
         }
+        // Ensure aggregate state for this tracker is also updated to reflect the new state.
+        updatePhoneState();
+        mPhone.notifyPreciseCallStateChanged();
     }
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
