@@ -2054,4 +2054,16 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertTrue(mSubscriptionControllerUT.checkPhoneIdAndIccIdMatch(0, "test2"));
         assertFalse(mSubscriptionControllerUT.checkPhoneIdAndIccIdMatch(0, "test3"));
     }
+
+    @Test
+    @SmallTest
+    public void testMessageRefDBFetchAndUpdate() throws Exception {
+        testInsertSim();
+        int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
+        assertTrue(subIds != null && subIds.length != 0);
+        final int subId = subIds[0];
+        SubscriptionController.getInstance().updateMessageRef(subId, 201);
+        int messageRef = SubscriptionController.getInstance().getMessageRef(subId);
+        assertTrue("201 :", messageRef == 201);
+    }
 }

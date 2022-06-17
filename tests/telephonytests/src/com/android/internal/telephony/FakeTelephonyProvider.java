@@ -123,6 +123,8 @@ public class FakeTelephonyProvider extends MockContentProvider {
                     + Telephony.SimInfo.COLUMN_PORT_INDEX + " INTEGER DEFAULT -1,"
                     + Telephony.SimInfo.COLUMN_USAGE_SETTING + " INTEGER DEFAULT "
                             + SubscriptionManager.USAGE_SETTING_UNKNOWN
+                    + "," + Telephony.SimInfo.COLUMN_TP_MESSAGE_REF
+                    + "  INTEGER DEFAULT -1"
                     + ");";
         }
 
