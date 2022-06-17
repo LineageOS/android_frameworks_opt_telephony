@@ -3295,12 +3295,20 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
                 } else if (conn.isIncoming() && conn.getConnectTime() == 0
                         && cause != DisconnectCause.ANSWERED_ELSEWHERE) {
-
-                    if (conn.getDisconnectCause() == DisconnectCause.LOCAL) {
+                    // Two cases where the call is declared as rejected.
+                    // 1. The disconnect was initiated by the user.  I.e. the connection's
+                    // disconnect cause is LOCAL at this point.
+                    // 2. The network provided disconnect cause is INCOMING_REJECTED.  This will be
+                    // the case for ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE and
+                    // ImsReasonInfo.CODE_REJECTED_ELSEWHERE.
+                    if (conn.getDisconnectCause() == DisconnectCause.LOCAL
+                            || cause == DisconnectCause.INCOMING_REJECTED) {
                         // If the user initiated a disconnect of this connection, then we will treat
                         // this is a rejected call.
-                        // Note; the record the fact that this is a local disconnect in
+                        // Note; we record the fact that this is a local disconnect in
                         // ImsPhoneConnection#onHangupLocal
+                        // Alternatively, the network can specify INCOMING_REJECTED as a result of
+                        // remote reject on another device; we'll still treat as rejected.
                         cause = DisconnectCause.INCOMING_REJECTED;
                     } else {
                         // Otherwise in all other cases consider it missed.
