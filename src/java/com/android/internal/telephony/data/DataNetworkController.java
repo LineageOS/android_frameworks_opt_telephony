@@ -2661,7 +2661,7 @@ public class DataNetworkController extends Handler {
             return;
         }
 
-        logl("Start handover " + dataNetwork + " to "
+        logl("onDataNetworkHandoverRetry: Start handover " + dataNetwork + " to "
                 + AccessNetworkConstants.transportTypeToString(preferredTransport)
                 + ", " + dataHandoverRetryEntry);
         dataNetwork.startHandover(preferredTransport, dataHandoverRetryEntry);
