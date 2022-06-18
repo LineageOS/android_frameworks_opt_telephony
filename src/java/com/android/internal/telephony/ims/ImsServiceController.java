@@ -52,7 +52,6 @@ import com.android.internal.telephony.ExponentialBackoff;
 import com.android.internal.telephony.util.TelephonyUtils;
 
 import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -452,19 +451,24 @@ public class ImsServiceController {
                     SparseIntArray  slotIdToSubIdMap) throws RemoteException {
         sanitizeFeatureConfig(newImsFeatures);
         synchronized (mLock) {
-            HashSet<Integer> slotIDs =  new HashSet<>();
-            slotIDs.addAll(newImsFeatures.stream().map(e -> e.slotId).collect(Collectors.toSet()));
-            ArrayList<Integer> changedSubIds = new ArrayList<Integer>();
+            HashSet<Integer> slotIDs = newImsFeatures.stream().map(e -> e.slotId).collect(
+                    Collectors.toCollection(HashSet::new));
+            // detect which subIds have changed on a per-slot basis
+            SparseIntArray changedSubIds = new SparseIntArray(slotIDs.size());
             for (Integer slotID : slotIDs) {
-                if (mSlotIdToSubIdMap.get(slotID, PLACEHOLDER_SUBSCRIPTION_ID_BASE)
-                        != slotIdToSubIdMap.get(slotID)) {
-                    changedSubIds.add(slotIdToSubIdMap.get(slotID));
-                    mLocalLog.log("changed sub IDs: " + changedSubIds);
-                    Log.i(LOG_TAG, "changed sub IDs: " + changedSubIds);
+                int oldSubId = mSlotIdToSubIdMap.get(slotID, PLACEHOLDER_SUBSCRIPTION_ID_BASE);
+                int newSubId = slotIdToSubIdMap.get(slotID);
+                if (oldSubId != newSubId) {
+                    changedSubIds.put(slotID, newSubId);
+                    mLocalLog.log("subId changed for slot: " + slotID + ", " + oldSubId + " -> "
+                            + newSubId);
+                    Log.i(LOG_TAG, "subId changed for slot: " + slotID + ", " + oldSubId + " -> "
+                            + newSubId);
                 }
             }
             mSlotIdToSubIdMap = slotIdToSubIdMap;
-            if (mImsFeatures.equals(newImsFeatures) && !isSubIdChanged(changedSubIds)) {
+            // no change, return early.
+            if (mImsFeatures.equals(newImsFeatures) && changedSubIds.size() == 0) {
                 return;
             }
             mLocalLog.log("Features (" + mImsFeatures + "->" + newImsFeatures + ")");
@@ -496,22 +500,22 @@ public class ImsServiceController {
                         new HashSet<>(mImsFeatures);
                 unchangedFeatures.removeAll(oldFeatures);
                 unchangedFeatures.removeAll(newFeatures);
-                // ensure remove and add unchanged features that have a slot ID associated with
-                // the new subscription ID.
-                if (isSubIdChanged(changedSubIds)) {
-                    for (Integer changedSubId : changedSubIds) {
-                        int slotId = mSlotIdToSubIdMap.indexOfValue(changedSubId);
+                // Go through ImsFeatures whose associated subId have changed and recreate them.
+                if (changedSubIds.size() > 0) {
+                    for (int slotId : changedSubIds.copyKeys()) {
+                        int subId = changedSubIds.get(slotId,
+                                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
                         HashSet<ImsFeatureConfiguration.FeatureSlotPair>
-                                removeAddFeatures = new HashSet<>();
-                        removeAddFeatures.addAll(unchangedFeatures.stream()
-                                .filter(e -> e.slotId == slotId).collect(Collectors.toSet()));
+                                removeAddFeatures = unchangedFeatures.stream()
+                                .filter(e -> e.slotId == slotId).collect(
+                                        Collectors.toCollection(HashSet::new));
                         for (ImsFeatureConfiguration.FeatureSlotPair i : removeAddFeatures) {
                             removeImsServiceFeature(i, true);
                         }
                         for (ImsFeatureConfiguration.FeatureSlotPair i : removeAddFeatures) {
                             long caps = modifyCapabiltiesForSlot(mImsFeatures, i.slotId,
                                     mServiceCapabilities);
-                            addImsServiceFeature(i, caps, changedSubId);
+                            addImsServiceFeature(i, caps, subId);
                         }
                         unchangedFeatures.removeAll(removeAddFeatures);
                     }
@@ -917,10 +921,6 @@ public class ImsServiceController {
         }
         String message = "IMS Service Crashed";
         AnomalyReporter.reportAnomaly(mAnomalyUUID, message);
-    }
-
-    private boolean isSubIdChanged(ArrayList<Integer> changedSubIds) {
-        return !changedSubIds.isEmpty();
     }
 
     @Override
