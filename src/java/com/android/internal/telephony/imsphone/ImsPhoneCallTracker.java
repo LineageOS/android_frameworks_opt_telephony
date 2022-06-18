@@ -66,6 +66,7 @@ import android.telephony.TelephonyLocalConnection;
 import android.telephony.TelephonyManager;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsCallProfile;
+import android.telephony.ims.ImsCallSession;
 import android.telephony.ims.ImsConferenceState;
 import android.telephony.ims.ImsMmTelManager;
 import android.telephony.ims.ImsReasonInfo;
@@ -2798,7 +2799,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     private void maybeSetVideoCallProvider(ImsPhoneConnection conn, ImsCall imsCall) {
         android.telecom.Connection.VideoProvider connVideoProvider = conn.getVideoProvider();
-        if (connVideoProvider != null || imsCall.getCallSession().getVideoCallProvider() == null) {
+        ImsCallSession callSession = imsCall.getCallSession(); 
+        if (connVideoProvider != null || callSession == null
+            || callSession.getVideoCallProvider() == null) {
             return;
         }
 
