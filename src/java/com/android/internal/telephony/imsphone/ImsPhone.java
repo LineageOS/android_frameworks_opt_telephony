@@ -2617,6 +2617,11 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public void setTerminalBasedCallWaitingStatus(int state) {
+        mCT.setTerminalBasedCallWaitingStatus(state);
+    }
+
+    @Override
     public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
         IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         pw.println("ImsPhone extends:");

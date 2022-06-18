@@ -18,6 +18,7 @@ package com.android.internal.telephony.imsphone;
 
 import static junit.framework.Assert.fail;
 
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
@@ -26,9 +27,11 @@ import static org.mockito.Mockito.mock;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
+import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
+import com.android.internal.telephony.SsDomainController;
 import com.android.internal.telephony.TelephonyTest;
 
 import org.junit.After;
@@ -116,5 +119,34 @@ public class ImsPhoneMmiCodeTest extends TelephonyTest {
         bundle.putBoolean(CarrierConfigManager
                 .KEY_CARRIER_SUPPORTS_CALLER_ID_VERTICAL_SERVICE_CODES_BOOL, true);
         doReturn(bundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
+    }
+
+    @Test
+    @SmallTest
+    public void testGetSuppServiceRoutingInfo() {
+        // Tests for valid service codes are done in SsDomainControllerTest.
+
+        // verifies that null returns when invalid service code is given
+        // emergency number
+        SsDomainController.SuppServiceRoutingInfo ssInfo =
+                ImsPhoneMmiCode.getSuppServiceRoutingInfo("911",
+                        (SsDomainController) null);
+        assertNull(ssInfo);
+
+        // normal number
+        ssInfo = ImsPhoneMmiCode.getSuppServiceRoutingInfo("0123456789",
+                (SsDomainController) null);
+        assertNull(ssInfo);
+        ssInfo = ImsPhoneMmiCode.getSuppServiceRoutingInfo("+1234567890",
+                (SsDomainController) null);
+        assertNull(ssInfo);
+
+        // USSD
+        ssInfo = ImsPhoneMmiCode.getSuppServiceRoutingInfo("*0123456789#",
+                (SsDomainController) null);
+        assertNull(ssInfo);
+        ssInfo = ImsPhoneMmiCode.getSuppServiceRoutingInfo("*1234#56789#",
+                (SsDomainController) null);
+        assertNull(ssInfo);
     }
 }

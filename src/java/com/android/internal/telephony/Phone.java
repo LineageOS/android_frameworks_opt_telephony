@@ -4865,7 +4865,17 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return null;
     }
 
-    public boolean useSsOverIms(Message onComplete) {
+    /**
+     * Returns the instance of SsDomainController
+     */
+    public SsDomainController getSsDomainController() {
+        return null;
+    }
+
+    /**
+     * Returns whether it will be served with Ut or not.
+     */
+    public boolean useSsOverUt(Message onComplete) {
         return false;
     }
 
@@ -4972,6 +4982,27 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     // This flag and the old data stack code will be deleted in Android 14.
     public boolean isUsingNewDataStack() {
         return mNewDataStackEnabled;
+    }
+
+    /**
+     * Returns the user's last setting for terminal-based call waiting
+     * @param forCsOnly indicates the caller expects the result for CS calls only
+     */
+    public int getTerminalBasedCallWaitingState(boolean forCsOnly) {
+        return CallWaitingController.TERMINAL_BASED_NOT_SUPPORTED;
+    }
+
+    /**
+     * Notifies the change of the user setting of the terminal-based call waiting service
+     * to IMS service.
+     */
+    public void setTerminalBasedCallWaitingStatus(int state) {
+    }
+
+    /**
+     * Notifies that the IMS service connected supports the terminal-based call waiting service
+     */
+    public void setTerminalBasedCallWaitingSupported(boolean supported) {
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

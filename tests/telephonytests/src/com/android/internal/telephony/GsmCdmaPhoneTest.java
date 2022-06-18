@@ -2031,4 +2031,151 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         doReturn(false).when(mUiccCardApplication3gpp).getIccFdnAvailable();
         doReturn(false).when(mUiccCardApplication3gpp).getIccFdnEnabled();
     }
+
+    @Test
+    @SmallTest
+    public void testUpdateSsOverUtSupported() throws Exception {
+        doReturn(true).when(mImsPhone).isUtEnabled();
+        replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
+
+        // Ut is disabled in config
+        doReturn(false).when(mSsDomainController).useCfOverUt(anyInt());
+        doReturn(false).when(mSsDomainController).useCbOverUt(anyString());
+        doReturn(false).when(mSsDomainController).useSsOverUt(anyString());
+        replaceInstance(GsmCdmaPhone.class, "mSsDomainController", mPhoneUT, mSsDomainController);
+
+        mPhoneUT.getCallForwardingOption(0, 0, null);
+        verify(mImsPhone, times(0)).getCallForwardingOption(eq(0), eq(0), any());
+
+        mPhoneUT.setCallForwardingOption(0, 0, null, 0, 0, null);
+        verify(mImsPhone, times(0)).setCallForwardingOption(
+                eq(0), eq(0), any(), eq(0), eq(0), any());
+
+        mPhoneUT.getCallBarring(CommandsInterface.CB_FACILITY_BAIC, null, null, 0);
+        verify(mImsPhone, times(0)).getCallBarring(
+                eq(CommandsInterface.CB_FACILITY_BAIC), any(), any(), eq(0));
+
+        mPhoneUT.setCallBarring(CommandsInterface.CB_FACILITY_BAOC, false, null, null, 0);
+        verify(mImsPhone, times(0)).setCallBarring(
+                eq(CommandsInterface.CB_FACILITY_BAOC), eq(false), any(), any(), eq(0));
+
+        mPhoneUT.getOutgoingCallerIdDisplay(null);
+        verify(mImsPhone, times(0)).getOutgoingCallerIdDisplay(any());
+
+        mPhoneUT.setOutgoingCallerIdDisplay(0, null);
+        verify(mImsPhone, times(0)).setOutgoingCallerIdDisplay(eq(0), any());
+
+        mPhoneUT.queryCLIP(null);
+        verify(mImsPhone, times(0)).queryCLIP(any());
+
+        mPhoneUT.getCallWaiting(null);
+        verify(mImsPhone, times(0)).getCallWaiting(any());
+
+        mPhoneUT.setCallWaiting(false, CommandsInterface.SERVICE_CLASS_VOICE, null);
+        verify(mImsPhone, times(0)).setCallWaiting(eq(false), any());
+
+        // config changed but isUtEnabled still returns false
+        doReturn(true).when(mSsDomainController).useCfOverUt(anyInt());
+        doReturn(true).when(mSsDomainController).useCbOverUt(anyString());
+        doReturn(true).when(mSsDomainController).useSsOverUt(anyString());
+
+        mPhoneUT.getCallForwardingOption(0, 0, null);
+        verify(mImsPhone, times(0)).getCallForwardingOption(eq(0), eq(0), any());
+
+        mPhoneUT.setCallForwardingOption(0, 0, null, 0, 0, null);
+        verify(mImsPhone, times(0)).setCallForwardingOption(
+                eq(0), eq(0), any(), eq(0), eq(0), any());
+
+        mPhoneUT.getCallBarring(CommandsInterface.CB_FACILITY_BAIC, null, null, 0);
+        verify(mImsPhone, times(0)).getCallBarring(
+                eq(CommandsInterface.CB_FACILITY_BAIC), any(), any(), eq(0));
+
+        mPhoneUT.setCallBarring(CommandsInterface.CB_FACILITY_BAOC, false, null, null, 0);
+        verify(mImsPhone, times(0)).setCallBarring(
+                eq(CommandsInterface.CB_FACILITY_BAOC), eq(false), any(), any(), eq(0));
+
+        mPhoneUT.getOutgoingCallerIdDisplay(null);
+        verify(mImsPhone, times(0)).getOutgoingCallerIdDisplay(any());
+
+        mPhoneUT.setOutgoingCallerIdDisplay(0, null);
+        verify(mImsPhone, times(0)).setOutgoingCallerIdDisplay(eq(0), any());
+
+        mPhoneUT.queryCLIP(null);
+        verify(mImsPhone, times(0)).queryCLIP(any());
+
+        mPhoneUT.getCallWaiting(null);
+        verify(mImsPhone, times(0)).getCallWaiting(any());
+
+        mPhoneUT.setCallWaiting(false, CommandsInterface.SERVICE_CLASS_VOICE, null);
+        verify(mImsPhone, times(0)).setCallWaiting(eq(false), any());
+
+        // isUtEnabled returns true
+        doReturn(true).when(mSsDomainController).isUtEnabled();
+
+        mPhoneUT.getCallForwardingOption(0, 0, null);
+        verify(mImsPhone, times(1)).getCallForwardingOption(eq(0), eq(0), any());
+
+        mPhoneUT.setCallForwardingOption(0, 0, null, 0, 0, null);
+        verify(mImsPhone, times(1)).setCallForwardingOption(
+                eq(0), eq(0), any(), eq(0), eq(0), any());
+
+        mPhoneUT.getCallBarring(CommandsInterface.CB_FACILITY_BAIC, null, null, 0);
+        verify(mImsPhone, times(1)).getCallBarring(
+                eq(CommandsInterface.CB_FACILITY_BAIC), any(), any(), eq(0));
+
+        mPhoneUT.setCallBarring(CommandsInterface.CB_FACILITY_BAOC, false, null, null, 0);
+        verify(mImsPhone, times(1)).setCallBarring(
+                eq(CommandsInterface.CB_FACILITY_BAOC), eq(false), any(), any(), eq(0));
+
+        mPhoneUT.getOutgoingCallerIdDisplay(null);
+        verify(mImsPhone, times(1)).getOutgoingCallerIdDisplay(any());
+
+        mPhoneUT.setOutgoingCallerIdDisplay(0, null);
+        verify(mImsPhone, times(1)).setOutgoingCallerIdDisplay(eq(0), any());
+
+        mPhoneUT.queryCLIP(null);
+        verify(mImsPhone, times(1)).queryCLIP(any());
+
+        mPhoneUT.getCallWaiting(null);
+        verify(mImsPhone, times(1)).getCallWaiting(any());
+
+        mPhoneUT.setCallWaiting(false, CommandsInterface.SERVICE_CLASS_VOICE, null);
+        verify(mImsPhone, times(1)).setCallWaiting(eq(false), any());
+
+        // configure changed, not support Ut
+        doReturn(false).when(mSsDomainController).useCfOverUt(anyInt());
+        doReturn(false).when(mSsDomainController).useCbOverUt(anyString());
+        doReturn(false).when(mSsDomainController).useSsOverUt(anyString());
+
+        // no change in interfactiion counts
+        mPhoneUT.getCallForwardingOption(0, 0, null);
+        verify(mImsPhone, times(1)).getCallForwardingOption(eq(0), eq(0), any());
+
+        mPhoneUT.setCallForwardingOption(0, 0, null, 0, 0, null);
+        verify(mImsPhone, times(1)).setCallForwardingOption(
+                eq(0), eq(0), any(), eq(0), eq(0), any());
+
+        mPhoneUT.getCallBarring(CommandsInterface.CB_FACILITY_BAIC, null, null, 0);
+        verify(mImsPhone, times(1)).getCallBarring(
+                eq(CommandsInterface.CB_FACILITY_BAIC), any(), any(), eq(0));
+
+        mPhoneUT.setCallBarring(CommandsInterface.CB_FACILITY_BAOC, false, null, null, 0);
+        verify(mImsPhone, times(1)).setCallBarring(
+                eq(CommandsInterface.CB_FACILITY_BAOC), eq(false), any(), any(), eq(0));
+
+        mPhoneUT.getOutgoingCallerIdDisplay(null);
+        verify(mImsPhone, times(1)).getOutgoingCallerIdDisplay(any());
+
+        mPhoneUT.setOutgoingCallerIdDisplay(0, null);
+        verify(mImsPhone, times(1)).setOutgoingCallerIdDisplay(eq(0), any());
+
+        mPhoneUT.queryCLIP(null);
+        verify(mImsPhone, times(1)).queryCLIP(any());
+
+        mPhoneUT.getCallWaiting(null);
+        verify(mImsPhone, times(1)).getCallWaiting(any());
+
+        mPhoneUT.setCallWaiting(false, CommandsInterface.SERVICE_CLASS_VOICE, null);
+        verify(mImsPhone, times(1)).setCallWaiting(eq(false), any());
+    }
 }

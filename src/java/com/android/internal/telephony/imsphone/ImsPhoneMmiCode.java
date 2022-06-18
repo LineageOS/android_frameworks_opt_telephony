@@ -32,10 +32,14 @@ import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_PAC
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_PAD;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_SMS;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
+import static com.android.internal.telephony.SsDomainController.SS_CLIP;
+import static com.android.internal.telephony.SsDomainController.SS_CLIR;
+import static com.android.internal.telephony.SsDomainController.SS_COLP;
+import static com.android.internal.telephony.SsDomainController.SS_COLR;
+import static com.android.internal.telephony.SsDomainController.SS_CW;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
-import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
@@ -58,10 +62,12 @@ import com.android.ims.ImsException;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CallStateException;
+import com.android.internal.telephony.CallWaitingController;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.SsDomainController;
 import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.telephony.Rlog;
@@ -487,17 +493,12 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
 
     static boolean
     isServiceCodeCallBarring(String sc) {
-        Resources resource = Resources.getSystem();
-        if (sc != null) {
-            String[] barringMMI = resource.getStringArray(
-                com.android.internal.R.array.config_callBarringMMI_for_ims);
-            if (barringMMI != null) {
-                for (String match : barringMMI) {
-                    if (sc.equals(match)) return true;
-                }
-            }
-        }
-        return false;
+        return sc != null
+                && (sc.equals(SC_BAOC)
+                || sc.equals(SC_BAOIC) || sc.equals(SC_BAOICxH)
+                || sc.equals(SC_BAIC) || sc.equals(SC_BAICr)
+                || sc.equals(SC_BA_ALL) || sc.equals(SC_BA_MO)
+                || sc.equals(SC_BA_MT));
     }
 
     static boolean isPinPukCommand(String sc) {
@@ -509,9 +510,11 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
      * Whether the dial string is supplementary service code.
      *
      * @param dialString The dial string.
-     * @return true if the dial string is supplementary service code, and {@code false} otherwise.
+     * @return an instance of SsDomainController.SuppServiceRoutingInfo if the dial string
+     * is supplementary service code, and null otherwise.
      */
-    public static boolean isSuppServiceCodes(String dialString, Phone phone) {
+    public static SsDomainController.SuppServiceRoutingInfo getSuppServiceRoutingInfo(
+            String dialString, Phone phone) {
         if (phone != null && phone.getServiceState().getVoiceRoaming()
                 && phone.getDefaultPhone().supportsConversionOfCdmaCallerIdMmiCodesWhileRoaming()) {
             /* The CDMA MMI coded dialString will be converted to a 3GPP MMI Coded dialString
@@ -520,38 +523,54 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             dialString = convertCdmaMmiCodesTo3gppMmiCodes(dialString);
         }
 
+        if (phone == null) return null;
+        return getSuppServiceRoutingInfo(dialString, phone.getSsDomainController());
+    }
+
+    /**
+     * Whether the dial string is supplementary service code.
+     */
+    @VisibleForTesting
+    public static SsDomainController.SuppServiceRoutingInfo getSuppServiceRoutingInfo(
+            String dialString, SsDomainController controller) {
         Matcher m = sPatternSuppService.matcher(dialString);
         if (m.matches()) {
             String sc = makeEmptyNull(m.group(MATCH_GROUP_SERVICE_CODE));
             if (isServiceCodeCallForwarding(sc)) {
-                return true;
+                return controller.getSuppServiceRoutingInfoForCf(scToCallForwardReason(sc));
             } else if (isServiceCodeCallBarring(sc)) {
-                return true;
+                return controller.getSuppServiceRoutingInfoForCb(scToBarringFacility(sc));
             } else if (sc != null && sc.equals(SC_CFUT)) {
-                return true;
+                // for backward compatibility, not specified by CarrierConfig
+                return SsDomainController.SS_ROUTING_OVER_UT;
             } else if (sc != null && sc.equals(SC_CLIP)) {
-                return true;
+                return controller.getSuppServiceRoutingInfoForSs(SS_CLIP);
             } else if (sc != null && sc.equals(SC_CLIR)) {
-                return true;
+                return controller.getSuppServiceRoutingInfoForSs(SS_CLIR);
             } else if (sc != null && sc.equals(SC_COLP)) {
-                return true;
+                return controller.getSuppServiceRoutingInfoForSs(SS_COLP);
             } else if (sc != null && sc.equals(SC_COLR)) {
-                return true;
+                return controller.getSuppServiceRoutingInfoForSs(SS_COLR);
             } else if (sc != null && sc.equals(SC_CNAP)) {
-                return true;
+                // for backward compatibility, not specified by CarrierConfig
+                return SsDomainController.SS_ROUTING_OVER_UT;
             } else if (sc != null && sc.equals(SC_BS_MT)) {
-                return true;
+                return controller.getSuppServiceRoutingInfoForCb(
+                        SsDomainController.CB_FACILITY_BIL);
             } else if (sc != null && sc.equals(SC_BAICa)) {
-                return true;
+                return controller.getSuppServiceRoutingInfoForCb(
+                        SsDomainController.CB_FACILITY_ACR);
             } else if (sc != null && sc.equals(SC_PWD)) {
-                return true;
+                // for backward compatibility, not specified by CarrierConfig
+                return SsDomainController.SS_ROUTING_OVER_UT;
             } else if (sc != null && sc.equals(SC_WAIT)) {
-                return true;
+                return controller.getSuppServiceRoutingInfoForSs(SS_CW);
             } else if (isPinPukCommand(sc)) {
-                return true;
+                // for backward compatibility, not specified by CarrierConfig
+                return SsDomainController.SS_ROUTING_OVER_UT;
             }
         }
-        return false;
+        return null;
     }
 
     static String
@@ -1096,10 +1115,25 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 int serviceClass = siToServiceClass(mSia);
 
                 if (isActivate() || isDeactivate()) {
+                    if (serviceClass == SERVICE_CLASS_NONE
+                            || (serviceClass & SERVICE_CLASS_VOICE) == SERVICE_CLASS_VOICE) {
+                        if (mPhone.getTerminalBasedCallWaitingState(false)
+                                != CallWaitingController.TERMINAL_BASED_NOT_SUPPORTED) {
+                            mPhone.getDefaultPhone().setCallWaiting(isActivate(), serviceClass,
+                                    obtainMessage(EVENT_SET_COMPLETE, this));
+                            return;
+                        }
+                    }
                     mPhone.setCallWaiting(isActivate(), serviceClass,
                             obtainMessage(EVENT_SET_COMPLETE, this));
                 } else if (isInterrogate()) {
-                    mPhone.getCallWaiting(obtainMessage(EVENT_QUERY_COMPLETE, this));
+                    if (mPhone.getTerminalBasedCallWaitingState(false)
+                            != CallWaitingController.TERMINAL_BASED_NOT_SUPPORTED) {
+                        mPhone.getDefaultPhone()
+                                .getCallWaiting(obtainMessage(EVENT_QUERY_COMPLETE, this));
+                    } else {
+                        mPhone.getCallWaiting(obtainMessage(EVENT_QUERY_COMPLETE, this));
+                    }
                 } else {
                     throw new RuntimeException ("Invalid or Unsupported MMI Code");
                 }
