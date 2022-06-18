@@ -508,6 +508,24 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(DisconnectCause.INCOMING_REJECTED, connection.getDisconnectCause());
     }
 
+    @Test
+    @SmallTest
+    public void testRejectedElsewhereIsRejected() {
+        ImsPhoneConnection connection = setupRingingConnection();
+        mImsCallListener.onCallTerminated(connection.getImsCall(),
+                new ImsReasonInfo(ImsReasonInfo.CODE_REJECTED_ELSEWHERE, 0));
+        assertEquals(DisconnectCause.INCOMING_REJECTED, connection.getDisconnectCause());
+    }
+
+    @Test
+    @SmallTest
+    public void testRemoteCallDeclineIsRejected() {
+        ImsPhoneConnection connection = setupRingingConnection();
+        mImsCallListener.onCallTerminated(connection.getImsCall(),
+                new ImsReasonInfo(ImsReasonInfo.CODE_REMOTE_CALL_DECLINE, 0));
+        assertEquals(DisconnectCause.INCOMING_REJECTED, connection.getDisconnectCause());
+    }
+
     private ImsPhoneConnection setupRingingConnection() {
         mImsCallProfile.setCallerNumberVerificationStatus(
                 ImsCallProfile.VERIFICATION_STATUS_PASSED);
@@ -1858,6 +1876,22 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(0, mCTUT.getConnections().size());
         assertNull(mCTUT.getPendingMO());
         assertEquals(Call.State.IDLE, mCTUT.mForegroundCall.getState());
+    }
+
+    @Test
+    @SmallTest
+    public void testCallSessionUpdatedAfterSrvccCompleted() throws RemoteException {
+        startOutgoingCall();
+
+        // Move the connection to the handover state.
+        mCTUT.notifySrvccState(Call.SrvccState.COMPLETED);
+
+        try {
+            // When trigger CallSessionUpdated after Srvcc completes, checking no exception.
+            mImsCallListener.onCallUpdated(mSecondImsCall);
+        } catch (Exception ex) {
+            Assert.fail("unexpected exception thrown" + ex.getMessage());
+        }
     }
 
     private void sendCarrierConfigChanged() {
