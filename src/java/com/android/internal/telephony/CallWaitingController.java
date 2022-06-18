@@ -55,7 +55,7 @@ import java.io.PrintWriter;
  */
 public class CallWaitingController extends Handler {
 
-    public static final String LOG_TAG = "CallWaiting";
+    public static final String LOG_TAG = "CallWaitingCtrl";
     private static final boolean DBG = false; /* STOPSHIP if true */
 
     // Terminal-based call waiting is not supported. */
@@ -107,7 +107,7 @@ public class CallWaitingController extends Handler {
                         SubscriptionManager.INVALID_PHONE_INDEX);
 
                 if (slotId <= SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
-                    Rlog.e(LOG_TAG, "onReceive ACTION_CARRIER_CONFIG_CHANGED invalid slotId "
+                    loge("onReceive ACTION_CARRIER_CONFIG_CHANGED invalid slotId "
                             + slotId);
                     return;
                 }
@@ -155,7 +155,7 @@ public class CallWaitingController extends Handler {
         mCallWaitingState = sp.getInt(KEY_STATE + subId, TERMINAL_BASED_NOT_SUPPORTED);
         mSyncPreference = sp.getInt(KEY_CS_SYNC + phoneId, CALL_WAITING_SYNC_NONE);
 
-        Rlog.i(LOG_TAG, "initialize phoneId=" + phoneId
+        logi("initialize phoneId=" + phoneId
                 + ", lastSubId=" + mLastSubId + ", subId=" + subId
                 + ", state=" + mCallWaitingState + ", sync=" + mSyncPreference
                 + ", csEnabled=" + mCsEnabled);
@@ -189,7 +189,7 @@ public class CallWaitingController extends Handler {
     public synchronized boolean getCallWaiting(@Nullable Message onComplete) {
         if (mCallWaitingState == TERMINAL_BASED_NOT_SUPPORTED) return false;
 
-        Rlog.i(LOG_TAG, "getCallWaiting " + mCallWaitingState);
+        logi("getCallWaiting " + mCallWaitingState);
 
         if (mSyncPreference == CALL_WAITING_SYNC_FIRST_CHANGE) {
             // Interrogate CW in CS network
@@ -234,7 +234,7 @@ public class CallWaitingController extends Handler {
 
         if ((serviceClass & SERVICE_CLASS_VOICE) != SERVICE_CLASS_VOICE) return false;
 
-        Rlog.i(LOG_TAG, "setCallWaiting enable=" + enable + ", service=" + serviceClass);
+        logi("setCallWaiting enable=" + enable + ", service=" + serviceClass);
 
         if (mSyncPreference == CALL_WAITING_SYNC_FIRST_CHANGE) {
             // Enable CW in the CS network
@@ -295,22 +295,22 @@ public class CallWaitingController extends Handler {
     private synchronized void onSetCallWaitingDone(AsyncResult ar) {
         if (ar.userObj == null) {
             // For the case, CALL_WAITING_SYNC_FIRST_POWER_UP
-            if (DBG) Rlog.d(LOG_TAG, "onSetCallWaitingDone to sync on network attached");
+            if (DBG) logd("onSetCallWaitingDone to sync on network attached");
             if (ar.exception == null) {
                 updateSyncState(true);
             } else {
-                Rlog.e(LOG_TAG, "onSetCallWaitingDone e=" + ar.exception);
+                loge("onSetCallWaitingDone e=" + ar.exception);
             }
             return;
         }
 
         if (!(ar.userObj instanceof Cw)) {
             // Unexpected state
-            if (DBG) Rlog.d(LOG_TAG, "onSetCallWaitingDone unexpected result");
+            if (DBG) logd("onSetCallWaitingDone unexpected result");
             return;
         }
 
-        if (DBG) Rlog.d(LOG_TAG, "onSetCallWaitingDone");
+        if (DBG) logd("onSetCallWaitingDone");
         Cw cw = (Cw) ar.userObj;
 
         if (mSyncPreference == CALL_WAITING_SYNC_IMS_ONLY) {
@@ -341,7 +341,7 @@ public class CallWaitingController extends Handler {
     private synchronized void onGetCallWaitingDone(AsyncResult ar) {
         if (ar.userObj == null) {
             // For the case, CALL_WAITING_SYNC_FIRST_POWER_UP
-            if (DBG) Rlog.d(LOG_TAG, "onGetCallWaitingDone to sync on network attached");
+            if (DBG) logd("onGetCallWaitingDone to sync on network attached");
             boolean enabled = false;
             if (ar.exception == null) {
                 //resp[0]: 1 if enabled, 0 otherwise
@@ -351,15 +351,15 @@ public class CallWaitingController extends Handler {
                     enabled = (resp[0] == 1)
                             && (resp[1] & SERVICE_CLASS_VOICE) == SERVICE_CLASS_VOICE;
                 } else {
-                    Rlog.e(LOG_TAG, "onGetCallWaitingDone unexpected response");
+                    loge("onGetCallWaitingDone unexpected response");
                 }
             } else {
-                Rlog.e(LOG_TAG, "onGetCallWaitingDone e=" + ar.exception);
+                loge("onGetCallWaitingDone e=" + ar.exception);
             }
             if (enabled) {
                 updateSyncState(true);
             } else {
-                Rlog.i(LOG_TAG, "onGetCallWaitingDone enabling CW service in CS network");
+                logi("onGetCallWaitingDone enabling CW service in CS network");
                 mPhone.mCi.setCallWaiting(true, SERVICE_CLASS_VOICE,
                         obtainMessage(EVENT_SET_CALL_WAITING_DONE));
             }
@@ -369,11 +369,11 @@ public class CallWaitingController extends Handler {
 
         if (!(ar.userObj instanceof Cw)) {
             // Unexpected state
-            if (DBG) Rlog.d(LOG_TAG, "onGetCallWaitingDone unexpected result");
+            if (DBG) logd("onGetCallWaitingDone unexpected result");
             return;
         }
 
-        if (DBG) Rlog.d(LOG_TAG, "onGetCallWaitingDone");
+        if (DBG) logd("onGetCallWaitingDone");
         Cw cw = (Cw) ar.userObj;
 
         if (mSyncPreference == CALL_WAITING_SYNC_IMS_ONLY) {
@@ -387,7 +387,7 @@ public class CallWaitingController extends Handler {
             //resp[0]: 1 if enabled, 0 otherwise
             //resp[1]: bitwise ORs of SERVICE_CLASS_
             if (resp == null || resp.length < 2) {
-                Rlog.i(LOG_TAG, "onGetCallWaitingDone unexpected response");
+                logi("onGetCallWaitingDone unexpected response");
                 if (mSyncPreference == CALL_WAITING_SYNC_FIRST_CHANGE) {
                     // no exception but unexpected response, local setting is preferred.
                     sendGetCallWaitingResponse(cw.mOnComplete);
@@ -405,7 +405,7 @@ public class CallWaitingController extends Handler {
 
                 if (!enabled && !cw.mImsRegistered) {
                     // IMS is not registered, change the local setting
-                    Rlog.i(LOG_TAG, "onGetCallWaitingDone CW in CS network is disabled.");
+                    logi("onGetCallWaitingDone CW in CS network is disabled.");
                     updateState(TERMINAL_BASED_NOT_ACTIVATED);
                 }
 
@@ -419,7 +419,7 @@ public class CallWaitingController extends Handler {
             if (cw.mImsRegistered) {
                 // queryCallWaiting failed. However, IMS is registered. Do not notify error.
                 // return the user setting saved
-                Rlog.i(LOG_TAG, "onGetCallWaitingDone get an exception, but IMS is registered");
+                logi("onGetCallWaitingDone get an exception, but IMS is registered");
                 sendGetCallWaitingResponse(cw.mOnComplete);
                 return;
             }
@@ -447,7 +447,7 @@ public class CallWaitingController extends Handler {
     private synchronized void onRegisteredToNetwork() {
         if (mCsEnabled) return;
 
-        if (DBG) Rlog.d(LOG_TAG, "onRegisteredToNetwork");
+        if (DBG) logd("onRegisteredToNetwork");
 
         mPhone.mCi.queryCallWaiting(SERVICE_CLASS_NONE,
                 obtainMessage(EVENT_GET_CALL_WAITING_DONE));
@@ -456,7 +456,7 @@ public class CallWaitingController extends Handler {
     private synchronized void onCarrierConfigChanged() {
         int subId = mPhone.getSubId();
         if (!SubscriptionManager.isValidSubscriptionId(subId)) {
-            Rlog.i(LOG_TAG, "onCarrierConfigChanged invalid subId=" + subId);
+            logi("onCarrierConfigChanged invalid subId=" + subId);
 
             mValidSubscription = false;
             unregisterForNetworkAttached();
@@ -468,7 +468,7 @@ public class CallWaitingController extends Handler {
 
         updateCarrierConfig(subId, b, false);
 
-        Rlog.i(LOG_TAG, "onCarrierConfigChanged cs_enabled=" + mCsEnabled);
+        logi("onCarrierConfigChanged cs_enabled=" + mCsEnabled);
 
         if (mSyncPreference == CALL_WAITING_SYNC_FIRST_POWER_UP) {
             if (!mCsEnabled) {
@@ -504,7 +504,7 @@ public class CallWaitingController extends Handler {
         int savedState = getSavedState(subId);
 
         if (DBG) {
-            Rlog.d(LOG_TAG, "updateCarrierConfig phoneId=" + mPhone.getPhoneId()
+            logd("updateCarrierConfig phoneId=" + mPhone.getPhoneId()
                     + ", subId=" + subId + ", support=" + supportsTerminalBased
                     + ", sync=" + syncPreference + ", default=" + defaultState
                     + ", savedState=" + savedState);
@@ -545,7 +545,7 @@ public class CallWaitingController extends Handler {
 
         int phoneId = mPhone.getPhoneId();
 
-        Rlog.i(LOG_TAG, "updateState phoneId=" + phoneId
+        logi("updateState phoneId=" + phoneId
                 + ", subId=" + subId + ", state=" + state
                 + ", sync=" + syncPreference + ", ignoreSavedState=" + ignoreSavedState);
 
@@ -573,7 +573,7 @@ public class CallWaitingController extends Handler {
                 mContext.getSharedPreferences(PREFERENCE_TBCW, Context.MODE_PRIVATE);
         int state = sp.getInt(KEY_STATE + subId, TERMINAL_BASED_NOT_SUPPORTED);
 
-        Rlog.i(LOG_TAG, "getSavedState subId=" + subId + ", state=" + state);
+        logi("getSavedState subId=" + subId + ", state=" + state);
 
         return state;
     }
@@ -581,7 +581,7 @@ public class CallWaitingController extends Handler {
     private void updateSyncState(boolean enabled) {
         int phoneId = mPhone.getPhoneId();
 
-        Rlog.i(LOG_TAG, "updateSyncState phoneId=" + phoneId + ", enabled=" + enabled);
+        logi("updateSyncState phoneId=" + phoneId + ", enabled=" + enabled);
 
         mCsEnabled = enabled;
     }
@@ -595,13 +595,13 @@ public class CallWaitingController extends Handler {
     }
 
     private boolean isCircuitSwitchedNetworkAvailable() {
-        Rlog.i(LOG_TAG, "isCircuitSwitchedNetworkAvailable="
+        logi("isCircuitSwitchedNetworkAvailable="
                 + (mSST.getServiceState().getState() == ServiceState.STATE_IN_SERVICE));
         return mSST.getServiceState().getState() == ServiceState.STATE_IN_SERVICE;
     }
 
     private boolean isImsRegistered() {
-        Rlog.i(LOG_TAG, "isImsRegistered " + mImsRegistered);
+        logi("isImsRegistered " + mImsRegistered);
         return mImsRegistered;
     }
 
@@ -609,13 +609,13 @@ public class CallWaitingController extends Handler {
      * Sets the registration state of IMS service.
      */
     public synchronized void setImsRegistrationState(boolean registered) {
-        Rlog.i(LOG_TAG, "setImsRegistrationState prev=" + mImsRegistered
+        logi("setImsRegistrationState prev=" + mImsRegistered
                 + ", new=" + registered);
         mImsRegistered = registered;
     }
 
     private void registerForNetworkAttached() {
-        Rlog.i(LOG_TAG, "registerForNetworkAttached");
+        logi("registerForNetworkAttached");
         if (mRegisteredForNetworkAttach) return;
 
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
@@ -623,7 +623,7 @@ public class CallWaitingController extends Handler {
     }
 
     private void unregisterForNetworkAttached() {
-        Rlog.i(LOG_TAG, "unregisterForNetworkAttached");
+        logi("unregisterForNetworkAttached");
         if (!mRegisteredForNetworkAttach) return;
 
         mSST.unregisterForNetworkAttached(this);
@@ -639,7 +639,7 @@ public class CallWaitingController extends Handler {
     public synchronized void setTerminalBasedCallWaitingSupported(boolean supported) {
         if (mSupportedByImsService == supported) return;
 
-        Rlog.i(LOG_TAG, "setTerminalBasedCallWaitingSupported " + supported);
+        logi("setTerminalBasedCallWaitingSupported " + supported);
 
         mSupportedByImsService = supported;
 
@@ -668,7 +668,7 @@ public class CallWaitingController extends Handler {
     /**
      * Dump this instance into a readable format for dumpsys usage.
      */
-    public synchronized void dump(PrintWriter printWriter) {
+    public void dump(PrintWriter printWriter) {
         IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         pw.increaseIndent();
         pw.println("CallWaitingController:");
@@ -681,5 +681,17 @@ public class CallWaitingController extends Handler {
         pw.println(" mRegisteredForNetworkAttach=" + mRegisteredForNetworkAttach);
         pw.println(" mImsRegistered=" + mImsRegistered);
         pw.decreaseIndent();
+    }
+
+    private void loge(String msg) {
+        Rlog.e(LOG_TAG, "[" + mPhone.getPhoneId() + "] " + msg);
+    }
+
+    private void logi(String msg) {
+        Rlog.i(LOG_TAG, "[" + mPhone.getPhoneId() + "] " + msg);
+    }
+
+    private void logd(String msg) {
+        Rlog.d(LOG_TAG, "[" + mPhone.getPhoneId() + "] " + msg);
     }
 }
