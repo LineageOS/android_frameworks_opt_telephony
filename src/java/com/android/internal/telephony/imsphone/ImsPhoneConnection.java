@@ -1167,17 +1167,24 @@ public class ImsPhoneConnection extends Connection implements
      */
     public void startRtt(android.telecom.Connection.RttTextStream textStream) {
         ImsCall imsCall = getImsCall();
-        if (imsCall != null) {
-            getImsCall().sendRttModifyRequest(true);
-            setCurrentRttTextStream(textStream);
+        if (imsCall == null) {
+            Rlog.w(LOG_TAG, "startRtt failed, imsCall is null");
+            return;
         }
+        imsCall.sendRttModifyRequest(true);
+        setCurrentRttTextStream(textStream);
     }
 
     /**
      * Terminate the current RTT session.
      */
     public void stopRtt() {
-        getImsCall().sendRttModifyRequest(false);
+        ImsCall imsCall = getImsCall();
+        if (imsCall == null) {
+            Rlog.w(LOG_TAG, "stopRtt failed, imsCall is null");
+            return;
+        }
+        imsCall.sendRttModifyRequest(false);
     }
 
     /**
@@ -1189,14 +1196,15 @@ public class ImsPhoneConnection extends Connection implements
     public void sendRttModifyResponse(android.telecom.Connection.RttTextStream textStream) {
         boolean accept = textStream != null;
         ImsCall imsCall = getImsCall();
-
-        if (imsCall != null) {
-            imsCall.sendRttModifyResponse(accept);
-            if (accept) {
-                setCurrentRttTextStream(textStream);
-            } else {
-                Rlog.e(LOG_TAG, "sendRttModifyResponse: foreground call has no connections");
-            }
+        if (imsCall == null) {
+            Rlog.w(LOG_TAG, "sendRttModifyResponse failed, imsCall is null");
+            return;
+        }
+        imsCall.sendRttModifyResponse(accept);
+        if (accept) {
+            setCurrentRttTextStream(textStream);
+        } else {
+            Rlog.e(LOG_TAG, "sendRttModifyResponse: foreground call has no connections");
         }
     }
 
@@ -1277,6 +1285,8 @@ public class ImsPhoneConnection extends Connection implements
                     ImsCall imsCall = getImsCall();
                     if (imsCall != null) {
                         imsCall.sendRttMessage(message);
+                    } else {
+                        Rlog.w(LOG_TAG, "createRttTextHandler: imsCall is null");
                     }
                 });
         mRttTextHandler.initialize(mRttTextStream);
