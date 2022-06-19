@@ -2178,4 +2178,32 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mPhoneUT.setCallWaiting(false, CommandsInterface.SERVICE_CLASS_VOICE, null);
         verify(mImsPhone, times(1)).setCallWaiting(eq(false), any());
     }
+
+    @Test
+    @SmallTest
+    public void testOemHandlesTerminalBasedCallWaiting() throws Exception {
+        doReturn(true).when(mImsPhone).isUtEnabled();
+        replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
+
+        // Ut is disabled in config
+        doReturn(false).when(mSsDomainController).useSsOverUt(anyString());
+        doReturn(false).when(mSsDomainController).getOemHandlesTerminalBasedCallWaiting();
+
+        replaceInstance(GsmCdmaPhone.class, "mSsDomainController", mPhoneUT, mSsDomainController);
+
+        mPhoneUT.getCallWaiting(null);
+        verify(mImsPhone, times(0)).getCallWaiting(any());
+
+        mPhoneUT.setCallWaiting(false, CommandsInterface.SERVICE_CLASS_VOICE, null);
+        verify(mImsPhone, times(0)).setCallWaiting(eq(false), any());
+
+        // OEM handles the terminal-based call waiting service by itself.
+        doReturn(true).when(mSsDomainController).getOemHandlesTerminalBasedCallWaiting();
+
+        mPhoneUT.getCallWaiting(null);
+        verify(mImsPhone, times(1)).getCallWaiting(any());
+
+        mPhoneUT.setCallWaiting(false, CommandsInterface.SERVICE_CLASS_VOICE, null);
+        verify(mImsPhone, times(1)).setCallWaiting(eq(false), any());
+    }
 }

@@ -127,10 +127,6 @@ public class SsDomainController {
     public static final String SS_COLP = "COLP";
     public static final String SS_COLR = "COLR";
 
-    // Common instance indicating that Ut is available.
-    public static final SuppServiceRoutingInfo SS_ROUTING_OVER_UT =
-            new SuppServiceRoutingInfo(true, true, true);
-
     // Barring list of incoming numbers
     public static final String CB_FACILITY_BIL = "BIL";
     // Barring of all anonymous incoming number
@@ -143,19 +139,19 @@ public class SsDomainController {
             new ConnectivityManager.NetworkCallback() {
                 @Override
                 public void onAvailable(Network network) {
-                    Rlog.i(LOG_TAG, "Network available: " + network);
+                    logi("Network available: " + network);
                     updateWifiForUt(true);
                 }
 
                 @Override
                 public void onLost(Network network) {
-                    Rlog.i(LOG_TAG, "Network lost: " + network);
+                    logi("Network lost: " + network);
                     updateWifiForUt(false);
                 }
 
                 @Override
                 public void onUnavailable() {
-                    Rlog.i(LOG_TAG, "Network unavailable");
+                    logi("Network unavailable");
                     updateWifiForUt(false);
                 }
             };
@@ -174,6 +170,9 @@ public class SsDomainController {
     private Set<Integer> mUtAvailableRats = new HashSet<>();
     private boolean mWiFiAvailable = false;
     private boolean mIsMonitoringConnectivity = false;
+    /** true if Ims service handles the terminal-based call waiting service by itself. */
+    private boolean mOemHandlesTerminalBasedCallWaiting = false;
+    private boolean mSupportsTerminalBasedCallWaiting = false;
 
     public SsDomainController(GsmCdmaPhone phone) {
         mPhone = phone;
@@ -204,13 +203,16 @@ public class SsDomainController {
         int[] utRats = b.getIntArray(
                 CarrierConfigManager.ImsSs.KEY_XCAP_OVER_UT_SUPPORTED_RATS_INT_ARRAY);
 
+        int[] tbServices = b.getIntArray(
+                CarrierConfigManager.ImsSs.KEY_UT_TERMINAL_BASED_SERVICES_INT_ARRAY);
+
         updateSsOverUtConfig(supportsUt, supportsCsfb, requiresImsRegistration,
-                availableWhenPsDataOff, availableWhenRoaming, services, utRats);
+                availableWhenPsDataOff, availableWhenRoaming, services, utRats, tbServices);
     }
 
     private void updateSsOverUtConfig(boolean supportsUt, boolean supportsCsfb,
             boolean requiresImsRegistration, boolean availableWhenPsDataOff,
-            boolean availableWhenRoaming, int[] services, int[] utRats) {
+            boolean availableWhenRoaming, int[] services, int[] utRats, int[] tbServices) {
 
         mUtSupported = supportsUt;
         mCsfbSupported = supportsCsfb;
@@ -218,13 +220,25 @@ public class SsDomainController {
         mUtAvailableWhenPsDataOff = availableWhenPsDataOff;
         mUtAvailableWhenRoaming = availableWhenRoaming;
 
+        mSupportsTerminalBasedCallWaiting = false;
+        if (tbServices != null) {
+            for (int tbService : tbServices) {
+                if (tbService == SUPPLEMENTARY_SERVICE_CW) {
+                    mSupportsTerminalBasedCallWaiting = true;
+                    break;
+                }
+            }
+        }
+        logi("updateSsOverUtConfig terminal-based cw "
+                + mSupportsTerminalBasedCallWaiting);
+
         mCbOverUtSupported.clear();
         mCfOverUtSupported.clear();
         mSsOverUtSupported.clear();
         mUtAvailableRats.clear();
 
         if (!mUtSupported) {
-            Rlog.d(LOG_TAG, "updateSsOverUtConfig Ut is not supported");
+            logd("updateSsOverUtConfig Ut is not supported");
             unregisterForConnectivityChanges();
             return;
         }
@@ -245,7 +259,7 @@ public class SsDomainController {
             unregisterForConnectivityChanges();
         }
 
-        Rlog.i(LOG_TAG, "updateSsOverUtConfig supportsUt=" + mUtSupported
+        logi("updateSsOverUtConfig supportsUt=" + mUtSupported
                 + ", csfb=" + mCsfbSupported
                 + ", regRequire=" + mUtRequiresImsRegistration
                 + ", whenPsDataOff=" + mUtAvailableWhenPsDataOff
@@ -308,18 +322,18 @@ public class SsDomainController {
     public boolean isUtEnabled() {
         Phone imsPhone = mPhone.getImsPhone();
         if (imsPhone == null) {
-            Rlog.d(LOG_TAG, "isUtEnabled: called for GsmCdma");
+            logd("isUtEnabled: called for GsmCdma");
             return false;
         }
 
         if (!mUtSupported) {
-            Rlog.d(LOG_TAG, "isUtEnabled: not supported");
+            logd("isUtEnabled: not supported");
             return false;
         }
 
         if (mUtRequiresImsRegistration
                 && imsPhone.getServiceState().getState() != ServiceState.STATE_IN_SERVICE) {
-            Rlog.d(LOG_TAG, "isUtEnabled: not registered");
+            logd("isUtEnabled: not registered");
             return false;
         }
 
@@ -335,34 +349,34 @@ public class SsDomainController {
         int state = Settings.Global.getInt(mPhone.getContext().getContentResolver(),
                 Settings.Global.MOBILE_DATA, -1);
         if (state == -1) {
-            Rlog.i(LOG_TAG, "isMobileDataEnabled MOBILE_DATA not found");
+            logi("isMobileDataEnabled MOBILE_DATA not found");
             enabled = "true".equalsIgnoreCase(
                     SystemProperties.get("ro.com.android.mobiledata", "true"));
         } else {
             enabled = (state != 0);
         }
-        Rlog.i(LOG_TAG, "isMobileDataEnabled enabled=" + enabled);
+        logi("isMobileDataEnabled enabled=" + enabled);
         return enabled;
     }
 
     private boolean isUtAvailableOnAnyTransport() {
         if (mUtAvailableWhenPsDataOff || isMobileDataEnabled()) {
             if (isUtAvailableOverCellular()) {
-                Rlog.i(LOG_TAG, "isUtAvailableOnAnyTransport found cellular");
+                logi("isUtAvailableOnAnyTransport found cellular");
                 return true;
             }
         }
 
-        Rlog.i(LOG_TAG, "isUtAvailableOnAnyTransport wifiConnected=" + mWiFiAvailable);
+        logi("isUtAvailableOnAnyTransport wifiConnected=" + mWiFiAvailable);
         if (mWiFiAvailable) {
             if (mUtAvailableRats.contains(IWLAN)) {
-                Rlog.i(LOG_TAG, "isUtAvailableOnAnyTransport found wifi");
+                logi("isUtAvailableOnAnyTransport found wifi");
                 return true;
             }
-            Rlog.i(LOG_TAG, "isUtAvailableOnAnyTransport wifi not support Ut");
+            logi("isUtAvailableOnAnyTransport wifi not support Ut");
         }
 
-        Rlog.i(LOG_TAG, "isUtAvailableOnAnyTransport no transport");
+        logi("isUtAvailableOnAnyTransport no transport");
         return false;
     }
 
@@ -371,7 +385,7 @@ public class SsDomainController {
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
         if (nri != null && nri.isRegistered()) {
             if (!mUtAvailableWhenRoaming && nri.isRoaming()) {
-                Rlog.i(LOG_TAG, "isUtAvailableOverCellular not available in roaming");
+                logi("isUtAvailableOverCellular not available in roaming");
                 return false;
             }
 
@@ -401,7 +415,7 @@ public class SsDomainController {
             }
         }
 
-        Rlog.i(LOG_TAG, "isUtAvailableOverCellular no cellular");
+        logi("isUtAvailableOverCellular no cellular");
         return false;
     }
 
@@ -424,7 +438,7 @@ public class SsDomainController {
         ConnectivityManager cm = (ConnectivityManager) mPhone.getContext()
                 .getSystemService(Context.CONNECTIVITY_SERVICE);
         if (cm != null) {
-            Rlog.i(LOG_TAG, "registerForConnectivityChanges");
+            logi("registerForConnectivityChanges");
             NetworkRequest.Builder builder = new NetworkRequest.Builder();
             builder.addTransportType(NetworkCapabilities.TRANSPORT_WIFI);
             cm.registerNetworkCallback(builder.build(), mNetworkCallback);
@@ -443,7 +457,7 @@ public class SsDomainController {
         ConnectivityManager cm = (ConnectivityManager) mPhone.getContext()
                 .getSystemService(Context.CONNECTIVITY_SERVICE);
         if (cm != null) {
-            Rlog.i(LOG_TAG, "unregisterForConnectivityChanges");
+            logi("unregisterForConnectivityChanges");
             cm.unregisterNetworkCallback(mNetworkCallback);
             mIsMonitoringConnectivity = false;
         }
@@ -455,7 +469,7 @@ public class SsDomainController {
     @VisibleForTesting
     public boolean useCbOverUt(String facility) {
         if (!mUtSupported) {
-            Rlog.d(LOG_TAG, "useCbOverUt: Ut not supported");
+            logd("useCbOverUt: Ut not supported");
             return false;
         }
 
@@ -468,7 +482,7 @@ public class SsDomainController {
     @VisibleForTesting
     public boolean useCfOverUt(int reason) {
         if (!mUtSupported) {
-            Rlog.d(LOG_TAG, "useCfOverUt: Ut not supported");
+            logd("useCfOverUt: Ut not supported");
             return false;
         }
 
@@ -481,7 +495,7 @@ public class SsDomainController {
     @VisibleForTesting
     public boolean useSsOverUt(String service) {
         if (!mUtSupported) {
-            Rlog.d(LOG_TAG, "useSsOverUt: Ut not supported");
+            logd("useSsOverUt: Ut not supported");
             return false;
         }
 
@@ -493,7 +507,7 @@ public class SsDomainController {
      */
     public boolean supportCsfb() {
         if (!mUtSupported) {
-            Rlog.d(LOG_TAG, "supportsCsfb: Ut not supported");
+            logd("supportsCsfb: Ut not supported");
             return true;
         }
 
@@ -521,7 +535,22 @@ public class SsDomainController {
      * Only for ImsPhoneMmiCode.
      */
     public SuppServiceRoutingInfo getSuppServiceRoutingInfoForSs(String service) {
+        if (SS_CW.equals(service) && getOemHandlesTerminalBasedCallWaiting()) {
+            // Ims service handles the terminal based call waiting service by itself.
+            // Use legacy implementation. Forward the request to Ims service if Ut is available.
+            Phone imsPhone = mPhone.getImsPhone();
+            boolean isUtEnabled = (imsPhone != null) && imsPhone.isUtEnabled();
+            return new SuppServiceRoutingInfo(true, isUtEnabled, true);
+        }
         return new SuppServiceRoutingInfo(useSsOverUt(service), isUtEnabled(), supportCsfb());
+    }
+
+    /**
+     * Returns SuppServiceRoutingInfo instance for a service will be served by Ut interface.
+     * Only for ImsPhoneMmiCode.
+     */
+    public SuppServiceRoutingInfo getSsRoutingOverUt() {
+        return new SuppServiceRoutingInfo(true, isUtEnabled(), true);
     }
 
     /**
@@ -531,17 +560,37 @@ public class SsDomainController {
     @VisibleForTesting
     public void updateCarrierConfigForTest(boolean supportsUt, boolean supportsCsfb,
             boolean requiresImsRegistration, boolean availableWhenPsDataOff,
-            boolean availableWhenRoaming, int[] services, int[] utRats) {
-        Rlog.i(LOG_TAG, "updateCarrierConfigForTest supportsUt=" + supportsUt
+            boolean availableWhenRoaming, int[] services, int[] utRats, int[] tbServices) {
+        logi("updateCarrierConfigForTest supportsUt=" + supportsUt
                 +  ", csfb=" + supportsCsfb
                 + ", reg=" + requiresImsRegistration
                 + ", whenPsDataOff=" + availableWhenPsDataOff
                 + ", whenRoaming=" + availableWhenRoaming
                 + ", services=" + Arrays.toString(services)
-                + ", rats=" + Arrays.toString(utRats));
+                + ", rats=" + Arrays.toString(utRats)
+                + ", tbServices=" + Arrays.toString(tbServices));
 
         updateSsOverUtConfig(supportsUt, supportsCsfb, requiresImsRegistration,
-                availableWhenPsDataOff, availableWhenRoaming, services, utRats);
+                availableWhenPsDataOff, availableWhenRoaming, services, utRats, tbServices);
+    }
+
+    /**
+     * @param state true if Ims service handles the terminal-based call waiting service by itself.
+     *              Otherwise, false.
+     */
+    public void setOemHandlesTerminalBasedCallWaiting(boolean state) {
+        logi("setOemHandlesTerminalBasedCallWaiting " + state);
+        mOemHandlesTerminalBasedCallWaiting = state;
+    }
+
+    /**
+     * Returns whether the carrier supports the terminal-based call waiting service
+     * and Ims service handles it by itself.
+     */
+    public boolean getOemHandlesTerminalBasedCallWaiting() {
+        logi("getOemHandlesTerminalBasedCallWaiting "
+                + mSupportsTerminalBasedCallWaiting + ", " + mOemHandlesTerminalBasedCallWaiting);
+        return mSupportsTerminalBasedCallWaiting && mOemHandlesTerminalBasedCallWaiting;
     }
 
     /**
@@ -561,6 +610,16 @@ public class SsDomainController {
         pw.println(" mUtAvailableWhenRoaming=" + mUtAvailableWhenRoaming);
         pw.println(" mUtAvailableRats=" + mUtAvailableRats);
         pw.println(" mWiFiAvailable=" + mWiFiAvailable);
+        pw.println(" mOemHandlesTerminalBasedCallWaiting=" + mOemHandlesTerminalBasedCallWaiting);
+        pw.println(" mSupportsTerminalBasedCallWaiting=" + mSupportsTerminalBasedCallWaiting);
         pw.decreaseIndent();
+    }
+
+    private void logi(String msg) {
+        Rlog.i(LOG_TAG, "[" + mPhone.getPhoneId() + "] " + msg);
+    }
+
+    private void logd(String msg) {
+        Rlog.d(LOG_TAG, "[" + mPhone.getPhoneId() + "] " + msg);
     }
 }
