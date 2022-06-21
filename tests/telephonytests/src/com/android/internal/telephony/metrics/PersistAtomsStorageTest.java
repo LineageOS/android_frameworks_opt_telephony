@@ -3273,6 +3273,28 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         inOrder.verify(mTestFileOutputStream, times(1)).close();
         inOrder.verifyNoMoreInteractions();
     }
+
+    @Test
+    @SmallTest
+    public void clearAtoms() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addCompleteSipTransportSession(copyOf(mSipTransportSession1));
+        mPersistAtomsStorage.incTimeMillis(100L);
+        verifyCurrentStateSavedToFileOnce();
+
+        mPersistAtomsStorage.addUceEventStats(mUceEventStats1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        verifyCurrentStateSavedToFileOnce();
+
+        mPersistAtomsStorage.clearAtoms();
+        verifyCurrentStateSavedToFileOnce();
+        UceEventStats[] uceEventStats = mPersistAtomsStorage.getUceEventStats(0L);
+        assertEquals(null, uceEventStats);
+        SipTransportSession[] sipTransportSession = mPersistAtomsStorage.getSipTransportSession(0L);
+        assertEquals(null, sipTransportSession);
+    }
+
     /* Utilities */
 
     private void createEmptyTestFile() throws Exception {

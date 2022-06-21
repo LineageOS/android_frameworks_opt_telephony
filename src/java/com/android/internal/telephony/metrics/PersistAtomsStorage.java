@@ -158,7 +158,7 @@ public class PersistAtomsStorage {
     private final int mMaxNumGbaEventStats;
 
     /** Stores persist atoms and persist states of the puller. */
-    @VisibleForTesting protected final PersistAtoms mAtoms;
+    @VisibleForTesting protected PersistAtoms mAtoms;
 
     /** Aggregates RAT duration and call count. */
     private final VoiceCallRatTracker mVoiceCallRatTracker;
@@ -1098,12 +1098,15 @@ public class PersistAtomsStorage {
         return bitmask;
     }
 
-    /** Saves a pending {@link PersistAtoms} to a file in private storage immediately. */
-    public void flushAtoms() {
-        if (mHandler.hasCallbacks(mSaveRunnable)) {
-            mHandler.removeCallbacks(mSaveRunnable);
-            saveAtomsToFileNow();
-        }
+    /** Saves {@link PersistAtoms} to a file in private storage immediately. */
+    public synchronized void flushAtoms() {
+        saveAtomsToFile(0);
+    }
+
+    /** Clears atoms for testing purpose. */
+    public synchronized void clearAtoms() {
+        mAtoms = makeNewPersistAtoms();
+        saveAtomsToFile(0);
     }
 
     /** Loads {@link PersistAtoms} from a file in private storage. */
@@ -1289,14 +1292,14 @@ public class PersistAtomsStorage {
     }
 
     /**
-     * Posts message to save a copy of {@link PersistAtoms} to a file after a delay.
+     * Posts message to save a copy of {@link PersistAtoms} to a file after a delay or immediately.
      *
      * <p>The delay is introduced to avoid too frequent operations to disk, which would negatively
      * impact the power consumption.
      */
-    private void saveAtomsToFile(int delayMillis) {
+    private synchronized void saveAtomsToFile(int delayMillis) {
+        mHandler.removeCallbacks(mSaveRunnable);
         if (delayMillis > 0 && !mSaveImmediately) {
-            mHandler.removeCallbacks(mSaveRunnable);
             if (mHandler.postDelayed(mSaveRunnable, delayMillis)) {
                 return;
             }
