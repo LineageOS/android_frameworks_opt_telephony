@@ -2860,15 +2860,9 @@ public class SubscriptionController extends ISub.Stub {
                         subId);
 
         TelecomManager telecomManager = mContext.getSystemService(TelecomManager.class);
-        PhoneAccountHandle currentHandle = telecomManager.getUserSelectedOutgoingPhoneAccount();
-        logd("[setDefaultVoiceSubId] current phoneAccountHandle=" + currentHandle);
 
-        if (!Objects.equals(currentHandle, newHandle)) {
-            telecomManager.setUserSelectedOutgoingPhoneAccount(newHandle);
-            logd("[setDefaultVoiceSubId] change to phoneAccountHandle=" + newHandle);
-        } else {
-            logd("[setDefaultVoiceSubId] default phoneAccountHandle not changed.");
-        }
+        telecomManager.setUserSelectedOutgoingPhoneAccount(newHandle);
+        logd("[setDefaultVoiceSubId] requesting change to phoneAccountHandle=" + newHandle);
 
         if (previousDefaultSub != getDefaultSubId()) {
             sendDefaultChangedBroadcast(getDefaultSubId());
