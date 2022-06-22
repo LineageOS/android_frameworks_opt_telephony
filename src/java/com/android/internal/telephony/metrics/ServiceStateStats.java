@@ -188,9 +188,6 @@ public class ServiceStateStats {
             case TelephonyManager.NETWORK_TYPE_LTE_CA:
                 band = AccessNetworkUtils.getOperatingBandForEarfcn(chNumber);
                 break;
-            case TelephonyManager.NETWORK_TYPE_NR:
-                band = AccessNetworkUtils.getOperatingBandForNrarfcn(chNumber);
-                break;
             default:
                 Rlog.w(TAG, "getBand: unknown WWAN RAT " + rat);
                 band = 0;
