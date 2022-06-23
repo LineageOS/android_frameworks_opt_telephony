@@ -518,7 +518,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         verify(mSimulatedCommandsVerifier).sendSMS(anyString(), pduCaptor.capture(),
                 any(Message.class));
         byte[] pdu = IccUtils.hexStringToBytes(pduCaptor.getValue());
-        assertEquals(pdu[1], messageRef);
+        assertEquals(messageRef, pdu[1]);
     }
 
     @Test
@@ -539,7 +539,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         verify(mSimulatedCommandsVerifier).sendSMS(anyString(), pduCaptor.capture(),
                 any(Message.class));
         byte[] pdu = IccUtils.hexStringToBytes(pduCaptor.getValue());
-        assertEquals(pdu[1], messageRef);
+        assertEquals(messageRef, pdu[1]);
     }
 
     @Test
@@ -553,11 +553,11 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         mGsmSmsDispatcher.sendText("111", "222" /*scAddr*/, TAG,
                 null, null, null, null, false, -1, false, -1, false, 0L);
 
-        ArgumentCaptor<String> pduCaptor1 = ArgumentCaptor.forClass(String.class);
-        verify(mSimulatedCommandsVerifier).sendSMS(anyString(), pduCaptor1.capture(),
+        ArgumentCaptor<String> pduCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mSimulatedCommandsVerifier).sendSMS(anyString(), pduCaptor.capture(),
                 any(Message.class));
-        byte[] pdu1 = IccUtils.hexStringToBytes(pduCaptor1.getValue());
-        assertEquals(pdu1[1], 0);
+        byte[] pdu = IccUtils.hexStringToBytes(pduCaptor.getValue());
+        assertEquals(0, pdu[1]);
     }
 
     @Test
@@ -566,15 +566,14 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
                 mSimulatedCommands);
         doReturn(mIsimUiccRecords).when(mPhone).getIccRecords();
         Message msg = mGsmSmsDispatcher.obtainMessage(17);
-
-        mPhone.getIccRecords().setSmssTpmrValue(255, null);
+        mPhone.getIccRecords().setSmssTpmrValue(255, msg);
         mGsmSmsDispatcher.sendText("111", "222" /*scAddr*/, TAG,
                 null, null, null, null, false, -1, false, -1, false, 0L);
 
-        ArgumentCaptor<String> pduCaptor2 = ArgumentCaptor.forClass(String.class);
-        verify(mSimulatedCommandsVerifier).sendSMS(anyString(), pduCaptor2.capture(),
+        ArgumentCaptor<String> pduCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mSimulatedCommandsVerifier).sendSMS(anyString(), pduCaptor.capture(),
                 any(Message.class));
-        byte[] pdu2 = IccUtils.hexStringToBytes(pduCaptor2.getValue());
-        assertEquals(pdu2[1], 0);
+        byte[] pdu = IccUtils.hexStringToBytes(pduCaptor.getValue());
+        assertEquals(0, pdu[1]);
     }
 }

@@ -29,6 +29,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.AsyncResult;
+import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
 import android.os.UserManager;
@@ -240,6 +241,21 @@ public class SmsDispatchersController extends Handler {
                     mGsmDispatcher.handleMessage(msg);
                 }
         }
+    }
+
+    private String getSmscAddressFromUSIM(String callingPkg) {
+        IccSmsInterfaceManager iccSmsIntMgr = mPhone.getIccSmsInterfaceManager();
+        if (iccSmsIntMgr != null) {
+            long identity = Binder.clearCallingIdentity();
+            try {
+                return iccSmsIntMgr.getSmscAddressFromIccEf(callingPkg);
+            } finally {
+                Binder.restoreCallingIdentity(identity);
+            }
+        } else {
+            Rlog.d(TAG, "getSmscAddressFromIccEf iccSmsIntMgr is null");
+        }
+        return null;
     }
 
     private void reevaluateTimerStatus() {
@@ -671,6 +687,9 @@ public class SmsDispatchersController extends Handler {
      */
     protected void sendData(String callingPackage, String destAddr, String scAddr, int destPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent, boolean isForVvm) {
+        if (scAddr == null) {
+            scAddr = getSmscAddressFromUSIM(callingPackage);
+        }
         if (mImsSmsDispatcher.isAvailable()) {
             mImsSmsDispatcher.sendData(callingPackage, destAddr, scAddr, destPort, data, sentIntent,
                     deliveryIntent, isForVvm);
@@ -784,6 +803,9 @@ public class SmsDispatchersController extends Handler {
             PendingIntent deliveryIntent, Uri messageUri, String callingPkg, boolean persistMessage,
             int priority, boolean expectMore, int validityPeriod, boolean isForVvm,
             long messageId) {
+        if (scAddr == null) {
+            scAddr = getSmscAddressFromUSIM(callingPkg);
+        }
         if (mImsSmsDispatcher.isAvailable() || mImsSmsDispatcher.isEmergencySmsSupport(destAddr)) {
             mImsSmsDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
                     messageUri, callingPkg, persistMessage, priority, false /*expectMore*/,
@@ -910,6 +932,9 @@ public class SmsDispatchersController extends Handler {
             ArrayList<PendingIntent> deliveryIntents, Uri messageUri, String callingPkg,
             boolean persistMessage, int priority, boolean expectMore, int validityPeriod,
             long messageId) {
+        if (scAddr == null) {
+            scAddr = getSmscAddressFromUSIM(callingPkg);
+        }
         if (mImsSmsDispatcher.isAvailable()) {
             mImsSmsDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents,
                     deliveryIntents, messageUri, callingPkg, persistMessage, priority,
