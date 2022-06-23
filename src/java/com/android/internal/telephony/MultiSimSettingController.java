@@ -760,6 +760,12 @@ public class MultiSimSettingController extends Handler {
             boolean voiceSelected, boolean smsSelected) {
         int dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_NONE;
 
+        // Do not show preference selection dialog during SuW as there is fullscreen activity to
+        // choose preference.
+        if (Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.DEVICE_PROVISIONED, 0) == 0) {
+            return dialogType;
+        }
         // If a primary subscription is removed and only one is left active, ask user
         // for preferred sub selection if any default setting is not set.
         // If another primary subscription is added or default data is not selected, ask
@@ -768,12 +774,8 @@ public class MultiSimSettingController extends Handler {
                 && (!dataSelected || !smsSelected || !voiceSelected)) {
             dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_ALL;
         } else if (mPrimarySubList.size() > 1 && (isUserVisibleChange(change)
-                || (change == PRIMARY_SUB_INITIALIZED && !dataSelected
-                && Settings.Global.getInt(mContext.getContentResolver(),
-                Settings.Global.DEVICE_PROVISIONED, 0) != 0))) {
+                || (change == PRIMARY_SUB_INITIALIZED && !dataSelected))) {
             // If change is SWAPPED_IN_GROUP or MARKED_OPPT, don't ask user again.
-            // In default DSDS devices, do not show data selection dialog during SuW as there is
-            // fullscreen activity to choose data preference.
             dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_DATA;
         }
 
