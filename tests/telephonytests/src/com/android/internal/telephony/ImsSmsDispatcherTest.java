@@ -293,7 +293,7 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
         verify(mImsManager).sendSms(eq(token + 2), eq(messageRef), eq(SmsMessage.FORMAT_3GPP),
                 nullable(String.class), eq(true), byteCaptor.capture());
         byte[] pdu = byteCaptor.getValue();
-        assertEquals(pdu[1], messageRef);
+        assertEquals(messageRef, pdu[1]);
         assertEquals(0x04, (pdu[0] & 0x04));
     }
 }
