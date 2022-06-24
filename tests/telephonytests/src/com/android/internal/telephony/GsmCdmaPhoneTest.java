@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
+import static com.android.internal.telephony.CommandsInterface.CLIR_SUPPRESSION;
 import static com.android.internal.telephony.Phone.EVENT_ICC_CHANGED;
 import static com.android.internal.telephony.Phone.EVENT_SRVCC_STATE_CHANGED;
 import static com.android.internal.telephony.Phone.EVENT_UICC_APPS_ENABLEMENT_STATUS_CHANGED;
@@ -2205,5 +2206,33 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         mPhoneUT.setCallWaiting(false, CommandsInterface.SERVICE_CLASS_VOICE, null);
         verify(mImsPhone, times(1)).setCallWaiting(eq(false), any());
+    }
+
+    @Test
+    @SmallTest
+    public void testOemHandlesTerminalBasedClir() throws Exception {
+        doReturn(true).when(mImsPhone).isUtEnabled();
+        replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
+
+        // Ut is disabled in config
+        doReturn(false).when(mSsDomainController).useSsOverUt(anyString());
+        doReturn(false).when(mSsDomainController).getOemHandlesTerminalBasedClir();
+
+        replaceInstance(GsmCdmaPhone.class, "mSsDomainController", mPhoneUT, mSsDomainController);
+
+        mPhoneUT.getOutgoingCallerIdDisplay(null);
+        verify(mImsPhone, times(0)).getOutgoingCallerIdDisplay(any());
+
+        mPhoneUT.setOutgoingCallerIdDisplay(CLIR_SUPPRESSION, null);
+        verify(mImsPhone, times(0)).setOutgoingCallerIdDisplay(anyInt(), any());
+
+        // OEM handles the terminal-based CLIR by itself.
+        doReturn(true).when(mSsDomainController).getOemHandlesTerminalBasedClir();
+
+        mPhoneUT.getOutgoingCallerIdDisplay(null);
+        verify(mImsPhone, times(1)).getOutgoingCallerIdDisplay(any());
+
+        mPhoneUT.setOutgoingCallerIdDisplay(CLIR_SUPPRESSION, null);
+        verify(mImsPhone, times(1)).setOutgoingCallerIdDisplay(eq(CLIR_SUPPRESSION), any());
     }
 }
