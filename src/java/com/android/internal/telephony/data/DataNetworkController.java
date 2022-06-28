@@ -1110,8 +1110,8 @@ public class DataNetworkController extends Handler {
                 log("Subscription plans changed: " + Arrays.toString(plans));
                 mSubscriptionPlans.clear();
                 mSubscriptionPlans.addAll(Arrays.asList(plans));
-                mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
-                        () -> callback.onSubscriptionPlanOverride()));
+                mDataNetworkControllerCallbacks.forEach(cb -> cb.invokeFromExecutor(
+                        () -> cb.onSubscriptionPlanOverride()));
                 break;
             case EVENT_SUBSCRIPTION_OVERRIDE:
                 int overrideMask = msg.arg1;
@@ -1130,8 +1130,8 @@ public class DataNetworkController extends Handler {
                             mUnmeteredOverrideNetworkTypes.remove(networkType);
                         }
                     }
-                    mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
-                            () -> callback.onSubscriptionPlanOverride()));
+                    mDataNetworkControllerCallbacks.forEach(cb -> cb.invokeFromExecutor(
+                            () -> cb.onSubscriptionPlanOverride()));
                 } else if (overrideMask == NetworkPolicyManager.SUBSCRIPTION_OVERRIDE_CONGESTED) {
                     log("Congested subscription override: override=" + override
                             + ", networkTypes=" + Arrays.stream(networkTypes)
@@ -1144,8 +1144,8 @@ public class DataNetworkController extends Handler {
                             mCongestedOverrideNetworkTypes.remove(networkType);
                         }
                     }
-                    mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
-                            () -> callback.onSubscriptionPlanOverride()));
+                    mDataNetworkControllerCallbacks.forEach(cb -> cb.invokeFromExecutor(
+                            () -> cb.onSubscriptionPlanOverride()));
                 } else {
                     loge("Unknown override mask: " + overrideMask);
                 }
