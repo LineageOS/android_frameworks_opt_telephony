@@ -1189,10 +1189,14 @@ public class DataNetwork extends StateMachine {
                     deferMessage(msg);
                     break;
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
-                    reportAnomaly("Data network stuck in connecting state for "
-                            + TimeUnit.MILLISECONDS.toSeconds(
-                            mDataConfigManager.getAnomalyNetworkConnectingTimeoutMs())
-                            + " seconds.", "58c56403-7ea7-4e56-a0c7-e467114d09b8");
+                    // enable detection only for valid timeout range
+                    if (mDataConfigManager.getAnomalyNetworkConnectingTimeoutMs()
+                            < DataConfigManager.MAX_NETWORK_TRANSIT_STATE_TIMEOUT_MS) {
+                        reportAnomaly("Data network stuck in connecting state for "
+                                + TimeUnit.MILLISECONDS.toSeconds(
+                                mDataConfigManager.getAnomalyNetworkConnectingTimeoutMs())
+                                + " seconds.", "58c56403-7ea7-4e56-a0c7-e467114d09b8");
+                    }
                     // Setup data failed. Use the retry logic defined in
                     // CarrierConfigManager.KEY_TELEPHONY_DATA_SETUP_RETRY_RULES_STRING_ARRAY.
                     mRetryDelayMillis = DataCallResponse.RETRY_DURATION_UNDEFINED;
@@ -1314,8 +1318,6 @@ public class DataNetwork extends StateMachine {
                 case EVENT_VOICE_CALL_STARTED:
                 case EVENT_VOICE_CALL_ENDED:
                 case EVENT_CSS_INDICATOR_CHANGED:
-                    // We might entered non-VoPS network. Need to update the network capability to
-                    // remove MMTEL capability.
                     updateSuspendState();
                     updateNetworkCapabilities();
                     break;
@@ -1381,10 +1383,14 @@ public class DataNetwork extends StateMachine {
                     break;
                 case EVENT_STUCK_IN_TRANSIENT_STATE:
                     // enable detection only for valid timeout range
-                    reportAnomaly("Data service did not respond the handover request within "
-                                    + TimeUnit.MILLISECONDS.toSeconds(
-                            mDataConfigManager.getNetworkHandoverTimeoutMs()) + " seconds.",
-                            "1afe68cb-8b41-4964-a737-4f34372429ea");
+                    if (mDataConfigManager.getNetworkHandoverTimeoutMs()
+                            < DataConfigManager.MAX_NETWORK_TRANSIT_STATE_TIMEOUT_MS) {
+                        reportAnomaly("Data service did not respond the handover request within "
+                                        + TimeUnit.MILLISECONDS.toSeconds(
+                                mDataConfigManager.getNetworkHandoverTimeoutMs()) + " seconds.",
+                                "1afe68cb-8b41-4964-a737-4f34372429ea");
+                    }
+
                     // Handover failed. Use the retry logic defined in
                     // CarrierConfigManager.KEY_TELEPHONY_DATA_HANDOVER_RETRY_RULES_STRING_ARRAY.
                     long retry = DataCallResponse.RETRY_DURATION_UNDEFINED;
@@ -1479,11 +1485,15 @@ public class DataNetwork extends StateMachine {
                     // After frameworks issues deactivate data call request, RIL should report
                     // data disconnected through data call list changed event subsequently.
 
-                    reportAnomaly("RIL did not send data call list changed event after "
-                            + "deactivate data call request within "
-                            + TimeUnit.MILLISECONDS.toSeconds(
-                            mDataConfigManager.getAnomalyNetworkDisconnectingTimeoutMs())
-                            + " seconds.", "d0e4fa1c-c57b-4ba5-b4b6-8955487012cc");
+                    // enable detection only for valid timeout range
+                    if (mDataConfigManager.getAnomalyNetworkDisconnectingTimeoutMs()
+                            < DataConfigManager.MAX_NETWORK_TRANSIT_STATE_TIMEOUT_MS) {
+                        reportAnomaly("RIL did not send data call list changed event after "
+                                + "deactivate data call request within "
+                                + TimeUnit.MILLISECONDS.toSeconds(
+                                mDataConfigManager.getAnomalyNetworkDisconnectingTimeoutMs())
+                                + " seconds.", "d0e4fa1c-c57b-4ba5-b4b6-8955487012cc");
+                    }
                     mFailCause = DataFailCause.LOST_CONNECTION;
                     transitionTo(mDisconnectedState);
                     break;
@@ -1493,8 +1503,6 @@ public class DataNetwork extends StateMachine {
                 case EVENT_CSS_INDICATOR_CHANGED:
                 case EVENT_VOICE_CALL_STARTED:
                 case EVENT_VOICE_CALL_ENDED:
-                    // We might entered non-VoPS network. Need to update the network capability to
-                    // remove MMTEL capability.
                     updateSuspendState();
                     updateNetworkCapabilities();
                     break;
@@ -1828,14 +1836,13 @@ public class DataNetwork extends StateMachine {
             }
         }
 
-        // If voice call is on-going, do not change MMTEL capability, which is an immutable
-        // capability. Changing it will result in CS tearing down IMS network, and the voice
-        // call will drop.
-        if (shouldDelayImsTearDown() && mNetworkCapabilities != null
+        // Once we set the MMTEL capability, we should never remove it because it's an immutable
+        // capability defined by connectivity service. When the device enters from VoPS to non-VoPS,
+        // we should perform grace tear down from data network controller if needed.
+        if (mNetworkCapabilities != null
                 && mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL)) {
             // Previous capability has MMTEL, so add it again.
             builder.addCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL);
-            log("Delayed IMS tear down. Reporting MMTEL capability for now.");
         } else {
             // Always add MMTEL capability on IMS network unless network explicitly indicates VoPS
             // not supported.
@@ -2491,7 +2498,7 @@ public class DataNetwork extends StateMachine {
     public boolean shouldDelayImsTearDown() {
         return mDataConfigManager.isImsDelayTearDownEnabled()
                 && mNetworkCapabilities != null
-                && mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
+                && mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL)
                 && mPhone.getImsPhone() != null
                 && mPhone.getImsPhone().getCallTracker().getState()
                 != PhoneConstants.State.IDLE;
@@ -2997,6 +3004,14 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
+     * @return {@code true} if this network was setup for SUPL during emergency call. {@code false}
+     * otherwise.
+     */
+    public boolean isEmergencySupl() {
+        return mDataAllowedReason == DataAllowedReason.EMERGENCY_SUPL;
+    }
+
+    /**
      * Get precise data connection state
      *
      * @return The {@link PreciseDataConnectionState}
@@ -3151,6 +3166,7 @@ public class DataNetwork extends StateMachine {
             mDataNetworkCallback.invokeFromExecutor(
                     () -> mDataNetworkCallback.onHandoverFailed(DataNetwork.this,
                             mFailCause, retry, handoverFailureMode));
+            mDataCallSessionStats.onHandoverFailure(mFailCause);
         }
 
         // No matter handover succeeded or not, transit back to connected state.

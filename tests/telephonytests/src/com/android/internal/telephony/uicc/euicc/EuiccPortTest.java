@@ -118,7 +118,7 @@ public class EuiccPortTest extends TelephonyTest {
         mMockIccCardStatus.mSlotPortMapping = new IccSlotPortMapping();
         mEuiccPort =
             new EuiccPort(mContext, mMockCi, mMockIccCardStatus,
-                0 /* phoneId */, new Object(), mEuiccCard) {
+                0 /* phoneId */, new Object(), mEuiccCard, false) {
                 @Override
                 protected byte[] getDeviceId() {
                     return IccUtils.bcdToBytes("987654321012345");
@@ -166,6 +166,24 @@ public class EuiccPortTest extends TelephonyTest {
     }
 
     @Test
+    public void testEuiccPortProfile_MEP() {
+        int channel = mockLogicalChannelResponses(
+                "BF2D14A012E3105A0A896700000000004523019F7001019000");
+
+        ResultCaptor<EuiccProfileInfo[]> resultCaptor = new ResultCaptor<>();
+        mEuiccPort.mIsSupportsMultipleEnabledProfiles = true; // MEP capable
+        mEuiccPort.getAllProfiles(resultCaptor, mHandler);
+        processAllMessages();
+
+        assertUnexpectedException(resultCaptor.exception);
+        EuiccProfileInfo[] profiles = resultCaptor.result;
+        assertEquals(1, profiles.length);
+        assertEquals("98760000000000543210", profiles[0].getIccid());
+        assertEquals(EuiccProfileInfo.PROFILE_STATE_ENABLED, profiles[0].getState());
+        verifyStoreData(channel, "BF2D0F5C0D5A909192B79F709599BF769F24");
+    }
+
+    @Test
     public void testGetAllProfiles() {
         int channel = mockLogicalChannelResponses(
                 "BF2D14A012E3105A0A896700000000004523019F7001019000");
@@ -180,6 +198,44 @@ public class EuiccPortTest extends TelephonyTest {
         assertEquals("98760000000000543210", profiles[0].getIccid());
         assertEquals(EuiccProfileInfo.PROFILE_STATE_ENABLED, profiles[0].getState());
         verifyStoreData(channel, "BF2D0D5C0B5A909192B79F709599BF76");
+    }
+
+    @Test
+    public void testEnabledOnEsimPort_GetAllProfiles() {
+        int channel = mockLogicalChannelResponses(
+                "BF2D18A016E3145A0A896700000000004523019F7001009F2401019000");
+
+        ResultCaptor<EuiccProfileInfo[]> resultCaptor = new ResultCaptor<>();
+        mEuiccPort.mIsSupportsMultipleEnabledProfiles = true; // MEP capable
+        mEuiccPort.getAllProfiles(resultCaptor, mHandler);
+        processAllMessages();
+
+        assertUnexpectedException(resultCaptor.exception);
+        EuiccProfileInfo[] profiles = resultCaptor.result;
+        assertEquals(1, profiles.length);
+        assertEquals("98760000000000543210", profiles[0].getIccid());
+        // Even though profilestate is disabled in the response, enabledOnEsimPort is 1
+        // which is valid port. So the state should be enabled.
+        // (As per MEP state and enabledOnEsimPort concept)
+        assertEquals(EuiccProfileInfo.PROFILE_STATE_ENABLED, profiles[0].getState());
+        verifyStoreData(channel, "BF2D0F5C0D5A909192B79F709599BF769F24");
+    }
+
+    @Test
+    public void testGetAllProfiles_DisableState() {
+        // iccID is 987600000000005432FF.
+        int channel = mockLogicalChannelResponses(
+                "BF2D14A012E3105A0A896700000000004523FF9F7001009000");
+
+        ResultCaptor<EuiccProfileInfo[]> resultCaptor = new ResultCaptor<>();
+        mEuiccPort.mIsSupportsMultipleEnabledProfiles = true; // MEP capable
+        mEuiccPort.getAllProfiles(resultCaptor, mHandler);
+        processAllMessages();
+
+        EuiccProfileInfo[] profiles = resultCaptor.result;
+        assertEquals(1, profiles.length);
+        assertEquals(EuiccProfileInfo.PROFILE_STATE_DISABLED, profiles[0].getState());
+        verifyStoreData(channel, "BF2D0F5C0D5A909192B79F709599BF769F24");
     }
 
     @Test
@@ -242,7 +298,8 @@ public class EuiccPortTest extends TelephonyTest {
                                 "com.google.android.apps.myapp", 1)
                 },
                 profile.getUiccAccessRules().toArray());
-        verifyStoreData(channel, "BF2D1BA00C5A0A896700000000004523015C0B5A909192B79F709599BF76");
+        verifyStoreData(channel,
+                "BF2D1BA00C5A0A896700000000004523015C0B5A909192B79F709599BF76");
     }
 
     @Test

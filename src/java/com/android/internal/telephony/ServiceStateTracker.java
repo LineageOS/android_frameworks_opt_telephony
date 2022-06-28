@@ -286,6 +286,9 @@ public class ServiceStateTracker extends Handler {
     private static final int EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT   = 62;
     protected static final int EVENT_RESET_LAST_KNOWN_CELL_IDENTITY    = 63;
     private static final int EVENT_REGISTER_DATA_NETWORK_EXISTING_CHANGED = 64;
+    // Telecom has un/registered a PhoneAccount that provides OTT voice calling capability, e.g.
+    // wi-fi calling.
+    protected static final int EVENT_TELECOM_VOICE_SERVICE_STATE_OVERRIDE_CHANGED = 65;
 
     /**
      * The current service state.
@@ -1735,6 +1738,15 @@ public class ServiceStateTracker extends Handler {
                 break;
             }
 
+            case EVENT_TELECOM_VOICE_SERVICE_STATE_OVERRIDE_CHANGED:
+                if (DBG) log("EVENT_TELECOM_VOICE_SERVICE_STATE_OVERRIDE_CHANGED");
+                // Similar to IMS, OTT voice state will only affect the merged service state if the
+                // CS voice service state of GsmCdma phone is not STATE_IN_SERVICE.
+                if (mSS.getState() != ServiceState.STATE_IN_SERVICE) {
+                    mPhone.notifyServiceStateChanged(mPhone.getServiceState());
+                }
+                break;
+
             default:
                 log("Unhandled message with number: " + msg.what);
                 break;
@@ -1926,7 +1938,7 @@ public class ServiceStateTracker extends Handler {
         if (ar.userObj != mPollingContext) return;
 
         if (ar.exception != null) {
-            CommandException.Error err=null;
+            CommandException.Error err = null;
 
             if (ar.exception instanceof IllegalStateException) {
                 log("handlePollStateResult exception " + ar.exception);
@@ -1936,15 +1948,22 @@ public class ServiceStateTracker extends Handler {
                 err = ((CommandException)(ar.exception)).getCommandError();
             }
 
+            if (mCi.getRadioState() != TelephonyManager.RADIO_POWER_ON) {
+                log("handlePollStateResult: Invalid response due to radio off or unavailable. "
+                        + "Set ServiceState to out of service.");
+                pollStateInternal(false);
+                return;
+            }
+
             if (err == CommandException.Error.RADIO_NOT_AVAILABLE) {
-                // Radio has crashed or turned off
+                loge("handlePollStateResult: RIL returned RADIO_NOT_AVAILABLE when radio is on.");
                 cancelPollState();
                 return;
             }
 
             if (err != CommandException.Error.OP_NOT_ALLOWED_BEFORE_REG_NW) {
-                loge("RIL implementation has returned an error where it must succeed" +
-                        ar.exception);
+                loge("handlePollStateResult: RIL returned an error where it must succeed: "
+                        + ar.exception);
             }
         } else try {
             handlePollStateResultMessage(what, ar);
@@ -3316,10 +3335,9 @@ public class ServiceStateTracker extends Handler {
 
     private void pollStateInternal(boolean modemTriggered) {
         mPollingContext = new int[1];
-        mPollingContext[0] = 0;
         NetworkRegistrationInfo nri;
 
-        log("pollState: modemTriggered=" + modemTriggered);
+        log("pollState: modemTriggered=" + modemTriggered + ", radioState=" + mCi.getRadioState());
 
         switch (mCi.getRadioState()) {
             case TelephonyManager.RADIO_POWER_UNAVAILABLE:
@@ -3353,8 +3371,8 @@ public class ServiceStateTracker extends Handler {
                 mPhone.getSignalStrengthController().setSignalStrengthDefaultValues();
                 mLastNitzData = null;
                 mNitzState.handleNetworkUnavailable();
-                // don't poll when device is shutting down or the poll was not modemTrigged
-                // (they sent us new radio data) and current network is not IWLAN
+                // Don't poll when device is shutting down or the poll was not modemTriggered
+                // (they sent us new radio data) and the current network is not IWLAN
                 if (mDeviceShuttingDown ||
                         (!modemTriggered && ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
                         != mSS.getRilDataRadioTechnology())) {
@@ -5288,6 +5306,11 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
+    /** Called when telecom has reported a voice service state change. */
+    public void onTelecomVoiceServiceStateOverrideChanged() {
+        sendMessage(obtainMessage(EVENT_TELECOM_VOICE_SERVICE_STATE_OVERRIDE_CHANGED));
+    }
+
     private void dumpCellInfoList(PrintWriter pw) {
         pw.print(" mLastCellInfoList={");
         if(mLastCellInfoList != null) {
@@ -5454,6 +5477,13 @@ public class ServiceStateTracker extends Handler {
         final String homeMCC = homeNumeric.substring(0, 3);
         final String networkCountry = MccTable.countryCodeForMcc(networkMCC);
         final String homeCountry = MccTable.countryCodeForMcc(homeMCC);
+
+        if (mLocaleTracker != null && !TextUtils.isEmpty(mLocaleTracker.getCountryOverride())) {
+            log("inSameCountry:  countryOverride var set.  This should only be set for testing "
+                    + "purposes to override the device location.");
+            return mLocaleTracker.getCountryOverride().equals(homeCountry);
+        }
+
         if (networkCountry.isEmpty() || homeCountry.isEmpty()) {
             // Not a valid country
             return false;

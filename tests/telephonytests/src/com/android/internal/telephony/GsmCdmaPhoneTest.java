@@ -65,6 +65,7 @@ import android.telephony.CellIdentityGsm;
 import android.telephony.LinkCapacityEstimate;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -105,7 +106,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     // Mocked classes
     private Handler mTestHandler;
     private UiccSlot mUiccSlot;
-    private UiccPort mUiccPort;
     private CommandsInterface mMockCi;
 
     //mPhoneUnderTest
@@ -1252,8 +1252,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         // Have IccId defined. But expected value and current value are the same. So no RIL command
         // should be sent.
         String iccId = "Fake iccId";
-        doReturn(mUiccPort).when(mUiccController).getUiccPort(anyInt());
-        doReturn(iccId).when(mUiccPort).getIccId();
+        doReturn(iccId).when(mUiccSlot).getIccId(anyInt());
         Message.obtain(mPhoneUT, EVENT_ICC_CHANGED, null).sendToTarget();
         processAllMessages();
         verify(mSubscriptionController).getSubInfoForIccId(iccId);
@@ -1267,9 +1266,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         // Set SIM to be present, with a fake iccId, and notify enablement being false.
         doReturn(mUiccSlot).when(mUiccController).getUiccSlotForPhone(anyInt());
         doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mUiccSlot).getCardState();
-        doReturn(mUiccPort).when(mUiccController).getUiccPort(anyInt());
         String iccId = "Fake iccId";
-        doReturn(iccId).when(mUiccPort).getIccId();
+        doReturn(iccId).when(mUiccSlot).getIccId(anyInt());
         Message.obtain(mPhoneUT, EVENT_UICC_APPS_ENABLEMENT_STATUS_CHANGED,
                 new AsyncResult(null, false, null)).sendToTarget();
         processAllMessages();
@@ -1320,9 +1318,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         // Set SIM to be present, with a fake iccId, and notify enablement being false.
         doReturn(mUiccSlot).when(mUiccController).getUiccSlotForPhone(anyInt());
         doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mUiccSlot).getCardState();
-        doReturn(mUiccPort).when(mUiccController).getUiccPort(anyInt());
         String iccId = "Fake iccId";
-        doReturn(iccId).when(mUiccPort).getIccId();
+        doReturn(iccId).when(mUiccSlot).getIccId(anyInt());
         Message.obtain(mPhoneUT, EVENT_UICC_APPS_ENABLEMENT_STATUS_CHANGED,
                 new AsyncResult(null, false, null)).sendToTarget();
         processAllMessages();
@@ -1605,5 +1602,128 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 anyString(), anyBoolean());
 
         mPhoneUT.setImsPhone(mImsPhone);
+    }
+
+    @Test
+    public void testSetVoiceServiceStateOverride() throws Exception {
+        // Start with CS voice and IMS both OOS, no override
+        ServiceState csServiceState = new ServiceState();
+        csServiceState.setStateOutOfService();
+        csServiceState.setDataRegState(ServiceState.STATE_IN_SERVICE);
+        doReturn(csServiceState).when(mSST).getServiceState();
+        ServiceState imsServiceState = new ServiceState();
+        imsServiceState.setStateOutOfService();
+        doReturn(imsServiceState).when(mImsPhone).getServiceState();
+        replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
+
+        assertEquals(ServiceState.STATE_OUT_OF_SERVICE, mPhoneUT.getServiceState().getState());
+
+        // Now set the telecom override
+        mPhoneUT.setVoiceServiceStateOverride(true);
+        verify(mSST).onTelecomVoiceServiceStateOverrideChanged();
+        assertEquals(ServiceState.STATE_IN_SERVICE, mPhoneUT.getServiceState().getState());
+
+        // IMS and telecom voice are treated as equivalent for merging purposes
+        imsServiceState.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
+        assertEquals(ServiceState.STATE_IN_SERVICE, mPhoneUT.getServiceState().getState());
+
+        // Clearing the telecom override still lets IMS override separately
+        mPhoneUT.setVoiceServiceStateOverride(false);
+        verify(mSST, times(2)).onTelecomVoiceServiceStateOverrideChanged();
+        assertEquals(ServiceState.STATE_IN_SERVICE, mPhoneUT.getServiceState().getState());
+
+        // And now removing the IMS IN_SERVICE results in the base OOS showing through
+        imsServiceState.setStateOutOfService();
+        assertEquals(ServiceState.STATE_OUT_OF_SERVICE, mPhoneUT.getServiceState().getState());
+    }
+
+    private void setupUsageSettingResources() {
+        // The most common case, request a voice-centric->data-centric change
+        mContextFixture.putIntResource(
+                com.android.internal.R.integer.config_default_cellular_usage_setting,
+                SubscriptionManager.USAGE_SETTING_VOICE_CENTRIC);
+        mContextFixture.putIntArrayResource(
+                com.android.internal.R.array.config_supported_cellular_usage_settings,
+                new int[]{
+                        SubscriptionManager.USAGE_SETTING_VOICE_CENTRIC,
+                        SubscriptionManager.USAGE_SETTING_DATA_CENTRIC});
+    }
+
+
+    private SubscriptionInfo makeSubscriptionInfo(boolean isOpportunistic, int usageSetting) {
+        return new SubscriptionInfo(
+                 1, "xxxxxxxxx", 1, "Android Test", "Android Test", 0, 0, "8675309", 0,
+                null, "001", "01", "us", true, null, null, 0, isOpportunistic, null, false,
+                1, 1, 0, null, null, true, 0, usageSetting);
+    }
+
+    @Test
+    @SmallTest
+    public void testUsageSettingUpdate_DataCentric() {
+        setupUsageSettingResources();
+        mPhoneUT.mCi = mMockCi;
+
+        final SubscriptionInfo si = makeSubscriptionInfo(
+                false, SubscriptionManager.USAGE_SETTING_DATA_CENTRIC);
+
+        doReturn(si).when(mSubscriptionController).getSubscriptionInfo(anyInt());
+
+        mPhoneUT.updateUsageSetting();
+        processAllMessages();
+
+        verify(mMockCi).getUsageSetting(any());
+        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_GET_USAGE_SETTING_DONE,
+                new AsyncResult(null,
+                        new int[]{SubscriptionManager.USAGE_SETTING_VOICE_CENTRIC}, null)));
+        processAllMessages();
+        verify(mMockCi).setUsageSetting(any(), eq(SubscriptionManager.USAGE_SETTING_DATA_CENTRIC));
+        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_SET_USAGE_SETTING_DONE,
+                new AsyncResult(null, null, null)));
+    }
+
+    @Test
+    @SmallTest
+    public void testUsageSettingUpdate_DefaultOpportunistic() {
+        setupUsageSettingResources();
+        mPhoneUT.mCi = mMockCi;
+
+        final SubscriptionInfo si = makeSubscriptionInfo(
+                true, SubscriptionManager.USAGE_SETTING_DEFAULT);
+        doReturn(si).when(mSubscriptionController).getSubscriptionInfo(anyInt());
+
+        mPhoneUT.updateUsageSetting();
+        processAllMessages();
+
+        verify(mMockCi).getUsageSetting(any());
+        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_GET_USAGE_SETTING_DONE,
+                new AsyncResult(null,
+                        new int[]{SubscriptionManager.USAGE_SETTING_VOICE_CENTRIC}, null)));
+        processAllMessages();
+        verify(mMockCi).setUsageSetting(any(), eq(SubscriptionManager.USAGE_SETTING_DATA_CENTRIC));
+        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_SET_USAGE_SETTING_DONE,
+                new AsyncResult(null, null, null)));
+    }
+
+    @Test
+    @SmallTest
+    public void testUsageSettingUpdate_DefaultNonOpportunistic() {
+        setupUsageSettingResources();
+        mPhoneUT.mCi = mMockCi;
+
+        final SubscriptionInfo si = makeSubscriptionInfo(
+                false, SubscriptionManager.USAGE_SETTING_DEFAULT);
+
+        assertNotNull(si);
+        doReturn(si).when(mSubscriptionController).getSubscriptionInfo(anyInt());
+
+        mPhoneUT.updateUsageSetting();
+        processAllMessages();
+
+        verify(mMockCi).getUsageSetting(any());
+        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_GET_USAGE_SETTING_DONE,
+                new AsyncResult(null,
+                        new int[]{SubscriptionManager.USAGE_SETTING_VOICE_CENTRIC}, null)));
+        processAllMessages();
+        verify(mMockCi, never()).setUsageSetting(any(), anyInt());
     }
 }

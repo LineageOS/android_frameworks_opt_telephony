@@ -768,8 +768,12 @@ public class MultiSimSettingController extends Handler {
                 && (!dataSelected || !smsSelected || !voiceSelected)) {
             dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_ALL;
         } else if (mPrimarySubList.size() > 1 && (isUserVisibleChange(change)
-                || (change == PRIMARY_SUB_INITIALIZED && !dataSelected))) {
+                || (change == PRIMARY_SUB_INITIALIZED && !dataSelected
+                && Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.DEVICE_PROVISIONED, 0) != 0))) {
             // If change is SWAPPED_IN_GROUP or MARKED_OPPT, don't ask user again.
+            // In default DSDS devices, do not show data selection dialog during SuW as there is
+            // fullscreen activity to choose data preference.
             dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_DATA;
         }
 
@@ -978,7 +982,7 @@ public class MultiSimSettingController extends Handler {
             EuiccManager euiccManager = (EuiccManager)
                     mContext.getSystemService(Context.EUICC_SERVICE);
             euiccManager.switchToSubscription(SubscriptionManager.INVALID_SUBSCRIPTION_ID,
-                    PendingIntent.getService(
+                    info.getPortIndex(), PendingIntent.getService(
                             mContext, 0, new Intent(), PendingIntent.FLAG_IMMUTABLE));
         }
     }

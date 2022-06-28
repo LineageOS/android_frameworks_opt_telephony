@@ -123,9 +123,11 @@ public class EuiccPort extends UiccPort {
     private final ApduSender mApduSender;
     private EuiccSpecVersion mSpecVersion;
     private volatile String mEid;
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public boolean mIsSupportsMultipleEnabledProfiles;
 
     public EuiccPort(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock,
-            UiccCard card) {
+            UiccCard card, boolean isSupportsMultipleEnabledProfiles) {
         super(c, ci, ics, phoneId, lock, card);
         // TODO: Set supportExtendedApdu based on ATR.
         mApduSender = new ApduSender(ci, ISD_R_AID, false /* supportExtendedApdu */);
@@ -135,6 +137,7 @@ public class EuiccPort extends UiccPort {
             mEid = ics.eid;
             mCardId = ics.eid;
         }
+        mIsSupportsMultipleEnabledProfiles = isSupportsMultipleEnabledProfiles;
     }
 
     /**
@@ -162,6 +165,15 @@ public class EuiccPort extends UiccPort {
     }
 
     /**
+     * Updates MEP(Multiple Enabled Profile) support flag.
+     * The flag can be updated after the port creation.
+     */
+    public void updateSupportMultipleEnabledProfile(boolean supported) {
+        logd("updateSupportMultipleEnabledProfile");
+        mIsSupportsMultipleEnabledProfiles = supported;
+    }
+
+    /**
      * Gets a list of user-visible profiles.
      *
      * @param callback The callback to get the result.
@@ -169,10 +181,12 @@ public class EuiccPort extends UiccPort {
      * @since 1.1.0 [GSMA SGP.22]
      */
     public void getAllProfiles(AsyncResultCallback<EuiccProfileInfo[]> callback, Handler handler) {
+        byte[] profileTags = mIsSupportsMultipleEnabledProfiles ? Tags.EUICC_PROFILE_MEP_TAGS
+                : Tags.EUICC_PROFILE_TAGS;
         sendApdu(
                 newRequestProvider((RequestBuilder requestBuilder) ->
                         requestBuilder.addStoreData(Asn1Node.newBuilder(Tags.TAG_GET_PROFILES)
-                                .addChildAsBytes(Tags.TAG_TAG_LIST, Tags.EUICC_PROFILE_TAGS)
+                                .addChildAsBytes(Tags.TAG_TAG_LIST, profileTags)
                                 .build().toHex())),
                 response -> {
                     List<Asn1Node> profileNodes = new Asn1Decoder(response).nextNode()
@@ -209,6 +223,8 @@ public class EuiccPort extends UiccPort {
      */
     public final void getProfile(String iccid, AsyncResultCallback<EuiccProfileInfo> callback,
             Handler handler) {
+        byte[] profileTags = mIsSupportsMultipleEnabledProfiles ? Tags.EUICC_PROFILE_MEP_TAGS
+                : Tags.EUICC_PROFILE_TAGS;
         sendApdu(
                 newRequestProvider((RequestBuilder requestBuilder) ->
                         requestBuilder.addStoreData(Asn1Node.newBuilder(Tags.TAG_GET_PROFILES)
@@ -216,7 +232,7 @@ public class EuiccPort extends UiccPort {
                                         .addChildAsBytes(Tags.TAG_ICCID,
                                                 IccUtils.bcdToBytes(padTrailingFs(iccid)))
                                         .build())
-                                .addChildAsBytes(Tags.TAG_TAG_LIST, Tags.EUICC_PROFILE_TAGS)
+                                .addChildAsBytes(Tags.TAG_TAG_LIST, profileTags)
                                 .build().toHex())),
                 response -> {
                     List<Asn1Node> profileNodes = new Asn1Decoder(response).nextNode()
@@ -1224,8 +1240,17 @@ public class EuiccPort extends UiccPort {
         }
 
         if (profileNode.hasChild(Tags.TAG_PROFILE_STATE)) {
-            // noinspection WrongConstant
-            profileBuilder.setState(profileNode.getChild(Tags.TAG_PROFILE_STATE).asInteger());
+            // In case of MEP capable eUICC, the profileState value returned SHALL only be Enabled
+            // if the Profile is in the Enabled state on the same eSIM Port as where this
+            // getProfilesInfo command was sent. So should check for enabledOnEsimPort(TAG_PORT)
+            // tag and verify its value is a valid port (means port value is >=0) or not.
+            if (profileNode.hasChild(Tags.TAG_PORT)
+                    && profileNode.getChild(Tags.TAG_PORT).asInteger() >= 0) {
+                profileBuilder.setState(EuiccProfileInfo.PROFILE_STATE_ENABLED);
+            } else {
+                // noinspection WrongConstant
+                profileBuilder.setState(profileNode.getChild(Tags.TAG_PROFILE_STATE).asInteger());
+            }
         } else {
             profileBuilder.setState(EuiccProfileInfo.PROFILE_STATE_DISABLED);
         }
@@ -1389,5 +1414,6 @@ public class EuiccPort extends UiccPort {
         super.dump(fd, pw, args);
         pw.println("EuiccPort:");
         pw.println(" mEid=" + mEid);
+        pw.println(" mIsSupportsMultipleEnabledProfiles=" + mIsSupportsMultipleEnabledProfiles);
     }
 }

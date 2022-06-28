@@ -28,6 +28,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.UiccCard;
+import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.euicc.async.AsyncResultCallback;
 import com.android.telephony.Rlog;
 
@@ -41,14 +42,33 @@ public class EuiccCard extends UiccCard {
     private volatile String mEid;
     private RegistrantList mEidReadyRegistrants;
 
-    public EuiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock) {
-        super(c, ci, ics, phoneId, lock);
+    public EuiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock,
+            boolean isSupportsMultipleEnabledProfiles) {
+        super(c, ci, ics, phoneId, lock, isSupportsMultipleEnabledProfiles);
         if (TextUtils.isEmpty(ics.eid)) {
             loge("no eid given in constructor for phone " + phoneId);
             loadEidAndNotifyRegistrants();
         } else {
             mEid = ics.eid;
             mCardId = ics.eid;
+        }
+    }
+
+    /**
+     * Updates MEP(Multiple Enabled Profile) support flag.
+     *
+     * <p>If IccSlotStatus comes later, the number of ports reported is only known after the
+     * UiccCard creation which will impact UICC MEP capability.
+     */
+    @Override
+    public void updateSupportMultipleEnabledProfile(boolean supported) {
+        mIsSupportsMultipleEnabledProfiles = supported;
+        for (UiccPort port : mUiccPorts.values()) {
+            if (port instanceof EuiccPort) {
+                ((EuiccPort) port).updateSupportMultipleEnabledProfile(supported);
+            } else {
+                loge("eUICC card has non-euicc port object:" + port.toString());
+            }
         }
     }
 
