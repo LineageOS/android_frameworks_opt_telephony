@@ -4464,11 +4464,11 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     private void refreshCachedOpportunisticSubscriptionInfoList() {
-        List<SubscriptionInfo> subList = getSubInfo(
-                SubscriptionManager.IS_OPPORTUNISTIC + "=1 AND ("
-                        + SubscriptionManager.SIM_SLOT_INDEX + ">=0 OR "
-                        + SubscriptionManager.IS_EMBEDDED + "=1)", null);
         synchronized (mSubInfoListLock) {
+            List<SubscriptionInfo> subList = getSubInfo(
+                    SubscriptionManager.IS_OPPORTUNISTIC + "=1 AND ("
+                            + SubscriptionManager.SIM_SLOT_INDEX + ">=0 OR "
+                            + SubscriptionManager.IS_EMBEDDED + "=1)", null);
             List<SubscriptionInfo> oldOpptCachedList = mCacheOpportunisticSubInfoList;
 
             if (subList != null) {
