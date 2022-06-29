@@ -170,9 +170,10 @@ public class SsDomainController {
     private Set<Integer> mUtAvailableRats = new HashSet<>();
     private boolean mWiFiAvailable = false;
     private boolean mIsMonitoringConnectivity = false;
-    /** true if Ims service handles the terminal-based call waiting service by itself. */
-    private boolean mOemHandlesTerminalBasedCallWaiting = false;
+    /** true if Ims service handles the terminal-based service by itself. */
+    private boolean mOemHandlesTerminalBasedService = false;
     private boolean mSupportsTerminalBasedCallWaiting = false;
+    private boolean mSupportsTerminalBasedClir = false;
 
     public SsDomainController(GsmCdmaPhone phone) {
         mPhone = phone;
@@ -221,16 +222,19 @@ public class SsDomainController {
         mUtAvailableWhenRoaming = availableWhenRoaming;
 
         mSupportsTerminalBasedCallWaiting = false;
+        mSupportsTerminalBasedClir = false;
         if (tbServices != null) {
             for (int tbService : tbServices) {
                 if (tbService == SUPPLEMENTARY_SERVICE_CW) {
                     mSupportsTerminalBasedCallWaiting = true;
-                    break;
+                }
+                if (tbService == SUPPLEMENTARY_SERVICE_IDENTIFICATION_OIR) {
+                    mSupportsTerminalBasedClir = true;
                 }
             }
         }
-        logi("updateSsOverUtConfig terminal-based cw "
-                + mSupportsTerminalBasedCallWaiting);
+        logi("updateSsOverUtConfig terminal-based cw=" + mSupportsTerminalBasedCallWaiting
+                + ", clir=" + mSupportsTerminalBasedClir);
 
         mCbOverUtSupported.clear();
         mCfOverUtSupported.clear();
@@ -535,8 +539,9 @@ public class SsDomainController {
      * Only for ImsPhoneMmiCode.
      */
     public SuppServiceRoutingInfo getSuppServiceRoutingInfoForSs(String service) {
-        if (SS_CW.equals(service) && getOemHandlesTerminalBasedCallWaiting()) {
-            // Ims service handles the terminal based call waiting service by itself.
+        if ((SS_CW.equals(service) && getOemHandlesTerminalBasedCallWaiting())
+                || (SS_CLIR.equals(service) && getOemHandlesTerminalBasedClir())) {
+            // Ims service handles the terminal based service by itself.
             // Use legacy implementation. Forward the request to Ims service if Ut is available.
             Phone imsPhone = mPhone.getImsPhone();
             boolean isUtEnabled = (imsPhone != null) && imsPhone.isUtEnabled();
@@ -575,12 +580,12 @@ public class SsDomainController {
     }
 
     /**
-     * @param state true if Ims service handles the terminal-based call waiting service by itself.
+     * @param state true if Ims service handles the terminal-based service by itself.
      *              Otherwise, false.
      */
-    public void setOemHandlesTerminalBasedCallWaiting(boolean state) {
-        logi("setOemHandlesTerminalBasedCallWaiting " + state);
-        mOemHandlesTerminalBasedCallWaiting = state;
+    public void setOemHandlesTerminalBasedService(boolean state) {
+        logi("setOemHandlesTerminalBasedService " + state);
+        mOemHandlesTerminalBasedService = state;
     }
 
     /**
@@ -589,8 +594,18 @@ public class SsDomainController {
      */
     public boolean getOemHandlesTerminalBasedCallWaiting() {
         logi("getOemHandlesTerminalBasedCallWaiting "
-                + mSupportsTerminalBasedCallWaiting + ", " + mOemHandlesTerminalBasedCallWaiting);
-        return mSupportsTerminalBasedCallWaiting && mOemHandlesTerminalBasedCallWaiting;
+                + mSupportsTerminalBasedCallWaiting + ", " + mOemHandlesTerminalBasedService);
+        return mSupportsTerminalBasedCallWaiting && mOemHandlesTerminalBasedService;
+    }
+
+    /**
+     * Returns whether the carrier supports the terminal-based CLIR
+     * and Ims service handles it by itself.
+     */
+    public boolean getOemHandlesTerminalBasedClir() {
+        logi("getOemHandlesTerminalBasedClir "
+                + mSupportsTerminalBasedClir + ", " + mOemHandlesTerminalBasedService);
+        return mSupportsTerminalBasedClir && mOemHandlesTerminalBasedService;
     }
 
     /**
@@ -610,8 +625,9 @@ public class SsDomainController {
         pw.println(" mUtAvailableWhenRoaming=" + mUtAvailableWhenRoaming);
         pw.println(" mUtAvailableRats=" + mUtAvailableRats);
         pw.println(" mWiFiAvailable=" + mWiFiAvailable);
-        pw.println(" mOemHandlesTerminalBasedCallWaiting=" + mOemHandlesTerminalBasedCallWaiting);
+        pw.println(" mOemHandlesTerminalBasedService=" + mOemHandlesTerminalBasedService);
         pw.println(" mSupportsTerminalBasedCallWaiting=" + mSupportsTerminalBasedCallWaiting);
+        pw.println(" mSupportsTerminalBasedClir=" + mSupportsTerminalBasedClir);
         pw.decreaseIndent();
     }
 
