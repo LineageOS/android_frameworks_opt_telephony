@@ -918,7 +918,7 @@ public class DataNetworkTest extends TelephonyTest {
 
         verify(mDataNetworkCallback).onHandoverFailed(eq(mDataNetworkUT),
                 eq(DataFailCause.SERVICE_TEMPORARILY_UNAVAILABLE), eq(-1L),
-                eq(DataCallResponse.HANDOVER_FAILURE_MODE_LEGACY));
+                eq(DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN));
         verify(mLinkBandwidthEstimator, never()).unregisterForBandwidthChanged(
                 eq(mDataNetworkUT.getHandler()));
         assertThat(mDataNetworkUT.getTransport())
