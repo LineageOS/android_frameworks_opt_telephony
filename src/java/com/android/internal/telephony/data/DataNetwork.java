@@ -1109,7 +1109,14 @@ public class DataNetwork extends StateMachine {
                     log("Ignored " + eventToString(msg.what));
                     break;
                 case EVENT_START_HANDOVER:
-                    log("Ignore the handover to " + AccessNetworkConstants
+                    // We reach here if network is not in the connected/connecting state.
+                    if (msg.obj != null) {
+                        // Cancel it because it's either HO in progress or will soon disconnect.
+                        // Either case we want to clean up obsolete retry attempts.
+                        DataHandoverRetryEntry retryEntry = (DataHandoverRetryEntry) msg.obj;
+                        retryEntry.setState(DataRetryEntry.RETRY_STATE_CANCELLED);
+                    }
+                    log("Ignore retry for the handover to " + AccessNetworkConstants
                             .transportTypeToString(msg.arg1) + " request.");
                     break;
                 case EVENT_RADIO_NOT_AVAILABLE:
