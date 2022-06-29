@@ -1631,7 +1631,7 @@ public class DcTracker extends Handler {
                             apnContext.getApnTypeBitmask()));
         }
         if (DBG) log(logStr);
-        apnContext.requestLog(logStr);
+        ApnContext.requestLog(apnContext, logStr);
         if (!isDataAllowed) {
             StringBuilder str = new StringBuilder();
 
@@ -1664,7 +1664,7 @@ public class DcTracker extends Handler {
             }
 
             if (DBG) log(str.toString());
-            apnContext.requestLog(str.toString());
+            ApnContext.requestLog(apnContext, str.toString());
             if (requestType == REQUEST_TYPE_HANDOVER) {
                 // If fails due to latest preference already changed back to source transport, then
                 // just fallback (will not attempt handover anymore, and will not tear down the
@@ -1679,7 +1679,7 @@ public class DcTracker extends Handler {
         if (apnContext.getState() == DctConstants.State.FAILED) {
             String str = "trySetupData: make a FAILED ApnContext IDLE so its reusable";
             if (DBG) log(str);
-            apnContext.requestLog(str);
+            ApnContext.requestLog(apnContext, str);
             apnContext.setState(DctConstants.State.IDLE);
         }
         int radioTech = getDataRat();
@@ -1696,7 +1696,7 @@ public class DcTracker extends Handler {
             if (waitingApns.isEmpty()) {
                 String str = "trySetupData: X No APN found retValue=false";
                 if (DBG) log(str);
-                apnContext.requestLog(str);
+                ApnContext.requestLog(apnContext, str);
                 if (requestType == REQUEST_TYPE_HANDOVER) {
                     sendHandoverCompleteMessages(apnContext.getApnTypeBitmask(), false,
                             false);
@@ -1846,7 +1846,7 @@ public class DcTracker extends Handler {
         String str = "cleanUpConnectionInternal: detach=" + detach + " reason="
                 + apnContext.getReason();
         if (VDBG) log(str + " apnContext=" + apnContext);
-        apnContext.requestLog(str);
+        ApnContext.requestLog(apnContext, str);
         if (detach) {
             if (apnContext.isDisconnected()) {
                 // The request is detach and but ApnContext is not connected.
@@ -1870,7 +1870,7 @@ public class DcTracker extends Handler {
                         str = "cleanUpConnectionInternal: tearing down"
                                 + (disconnectAll ? " all" : "") + " using gen#" + generation;
                         if (DBG) log(str + "apnContext=" + apnContext);
-                        apnContext.requestLog(str);
+                        ApnContext.requestLog(apnContext, str);
                         Pair<ApnContext, Integer> pair = new Pair<>(apnContext, generation);
                         Message msg = obtainMessage(DctConstants.EVENT_DISCONNECT_DONE, pair);
 
@@ -1886,7 +1886,8 @@ public class DcTracker extends Handler {
                     // apn is connected but no reference to the data connection.
                     // Should not be happen, but reset the state in case.
                     apnContext.setState(DctConstants.State.IDLE);
-                    apnContext.requestLog("cleanUpConnectionInternal: connected, bug no dc");
+                    ApnContext.requestLog(
+                            apnContext, "cleanUpConnectionInternal: connected, bug no dc");
                 }
             }
         } else {
@@ -2146,7 +2147,8 @@ public class DcTracker extends Handler {
             log("setupData: apnContext=" + apnContext + ", requestType="
                     + requestTypeToString(requestType));
         }
-        apnContext.requestLog("setupData. requestType=" + requestTypeToString(requestType));
+        ApnContext.requestLog(
+                apnContext, "setupData. requestType=" + requestTypeToString(requestType));
         ApnSetting apnSetting;
         DataConnection dataConnection = null;
 
@@ -2764,14 +2766,14 @@ public class DcTracker extends Handler {
         String str = "onEnableApn: apnType=" + ApnSetting.getApnTypeString(apnType)
                 + ", request type=" + requestTypeToString(requestType);
         if (DBG) log(str);
-        apnContext.requestLog(str);
+        ApnContext.requestLog(apnContext, str);
 
         if (!apnContext.isDependencyMet()) {
             apnContext.setReason(Phone.REASON_DATA_DEPENDENCY_UNMET);
             apnContext.setEnabled(true);
             str = "onEnableApn: dependency is not met.";
             if (DBG) log(str);
-            apnContext.requestLog(str);
+            ApnContext.requestLog(apnContext, str);
             if (onHandoverCompleteMsg != null) {
                 sendHandoverCompleteMsg(onHandoverCompleteMsg, false, mTransportType, false);
             }
@@ -2848,7 +2850,7 @@ public class DcTracker extends Handler {
         String str = "onDisableApn: apnType=" + ApnSetting.getApnTypeString(apnType)
                 + ", release type=" + releaseTypeToString(releaseType);
         if (DBG) log(str);
-        apnContext.requestLog(str);
+        ApnContext.requestLog(apnContext, str);
 
         if (apnContext.isReady()) {
             cleanup = (releaseType == RELEASE_TYPE_DETACH
@@ -2867,7 +2869,7 @@ public class DcTracker extends Handler {
                     str = "Clean up the connection. Apn type = " + apnContext.getApnType()
                             + ", state = " + apnContext.getState();
                     if (DBG) log(str);
-                    apnContext.requestLog(str);
+                    ApnContext.requestLog(apnContext, str);
                     cleanup = true;
                 }
             } else {
@@ -4677,6 +4679,7 @@ public class DcTracker extends Handler {
             for (Entry<String, ApnContext> entry : apnCtxsSet) {
                 entry.getValue().dump(fd, pw, args);
             }
+            ApnContext.dumpLocalLog(fd, pw, args);
             pw.println(" ***************************************");
         } else {
             pw.println(" mApnContexts=null");

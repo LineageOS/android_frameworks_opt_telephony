@@ -355,11 +355,13 @@ public class UiccControllerTest extends TelephonyTest {
         doReturn("A1B2C3D4").when(mMockCard).getCardId();
         doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mMockCard).getCardState();
         doReturn(true).when(mMockSlot).isActive(); //TODO: use UICCPort when ready
+
         // Mock out UiccPort
         doReturn(new int[]{0}).when(mMockSlot).getPortList();
         doReturn(mMockPort).when(mMockCard).getUiccPort(0);
         doReturn("123451234567890").when(mMockPort).getIccId();
         doReturn(true).when(mMockSlot).isPortActive(0);
+        doReturn("123451234567890").when(mMockSlot).getIccId(0);
 
         // simulate card status loaded so that the UiccController sets the card ID
         IccCardStatus ics = new IccCardStatus();
@@ -410,6 +412,7 @@ public class UiccControllerTest extends TelephonyTest {
         doReturn("123451234567890F").when(mMockPort).getIccId();
         doReturn(new int[]{0}).when(mMockSlot).getPortList();
         doReturn(true).when(mMockSlot).isPortActive(0);
+        doReturn("123451234567890F").when(mMockSlot).getIccId(0);
 
         // simulate card status loaded so that the UiccController sets the card ID
         IccCardStatus ics = new IccCardStatus();
@@ -455,6 +458,7 @@ public class UiccControllerTest extends TelephonyTest {
         // Mock out Port Index and IccId
         doReturn(new int[]{0}).when(mMockSlot).getPortList();
         doReturn("123451234567890").when(mMockSlot).getIccId(0);
+        doReturn(-1).when(mMockSlot).getPhoneIdFromPortIndex(0);
 
         // simulate card status loaded so that the UiccController sets the card ID
         IccCardStatus ics = new IccCardStatus();

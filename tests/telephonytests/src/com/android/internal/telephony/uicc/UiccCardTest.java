@@ -61,7 +61,7 @@ public class UiccCardTest extends TelephonyTest {
         mIccIoResult = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes("FF40"));
         mSimulatedCommands.setIccIoResultForApduLogicalChannel(mIccIoResult);
         mUiccCard = new UiccCard(mContext, mSimulatedCommands, mIccCardStatus, 0 /* phoneId */,
-            new Object());
+            new Object(), false);
         processAllMessages();
         logd("create UiccCard");
     }
