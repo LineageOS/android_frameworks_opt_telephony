@@ -3157,8 +3157,10 @@ public class DataNetwork extends StateMachine {
             // Handover failed.
             long retry = response != null ? response.getRetryDurationMillis()
                     : DataCallResponse.RETRY_DURATION_UNDEFINED;
+            // If the handover mode is unspecified, default to HANDOVER_FAILURE_MODE_UNKNOWN,
+            // which will retry handover if retry rules are defined.
             int handoverFailureMode = response != null ? response.getHandoverFailureMode()
-                    : DataCallResponse.HANDOVER_FAILURE_MODE_LEGACY;
+                    : DataCallResponse.HANDOVER_FAILURE_MODE_UNKNOWN;
             if (retryEntry != null) retryEntry.setState(DataRetryEntry.RETRY_STATE_FAILED);
             mDataNetworkCallback.invokeFromExecutor(
                     () -> mDataNetworkCallback.onHandoverFailed(DataNetwork.this,
