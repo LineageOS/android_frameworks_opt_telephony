@@ -240,6 +240,12 @@ public class VoiceCallSessionStats {
         }
     }
 
+    /** Updates internal states when an IMS fails to start. */
+    public synchronized void onImsCallStartFailed(
+            @Nullable ImsPhoneConnection conn, ImsReasonInfo reasonInfo) {
+        onImsCallTerminated(conn, reasonInfo);
+    }
+
     /** Updates internal states when an IMS call is terminated. */
     public synchronized void onImsCallTerminated(
             @Nullable ImsPhoneConnection conn, ImsReasonInfo reasonInfo) {
