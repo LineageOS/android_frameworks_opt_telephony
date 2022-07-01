@@ -3206,6 +3206,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }
             }
 
+            mPhone.getVoiceCallSessionStats()
+                    .onImsCallStartFailed(
+                            findConnection(imsCall),
+                            new ImsReasonInfo(
+                                    maybeRemapReasonCode(reasonInfo),
+                                    reasonInfo.mExtraCode,
+                                    reasonInfo.mExtraMessage));
+
             if (mPendingMO != null) {
                 // To initiate dialing circuit-switched call
                 if (reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_CALL_CS_RETRY_REQUIRED
