@@ -493,7 +493,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
             if (phone != null) {
                 return callMethodHelper.callMethod(phone);
             } else {
-                loge(message + " phone is null for Subscription:" + subId);
+                if (VDBG) loge(message + " phone is null for Subscription:" + subId);
                 return null;
             }
         } finally {
