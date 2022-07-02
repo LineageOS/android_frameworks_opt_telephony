@@ -417,6 +417,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 callback1.capture());
         verify(dataNetworkController_phone2, times(1)).registerDataNetworkControllerCallback(
                 callback2.capture());
+        assertTrue(sst.hasMessages(38 /* EVENT_SET_RADIO_POWER_OFF */));
 
         // Data disconnected on sub 2, still waiting for data disconnected on sub 1
         doReturn(true).when(dataNetworkController_phone2).areAllDataDisconnected();
@@ -430,8 +431,58 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(true).when(mDataNetworkController).areAllDataDisconnected();
         callback1.getValue().onAnyDataNetworkExistingChanged(false);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-        verify(mDataNetworkController, times(1)).unregisterDataNetworkControllerCallback(any());
+        verify(mDataNetworkController, times(2)).unregisterDataNetworkControllerCallback(any());
         assertEquals(TelephonyManager.RADIO_POWER_OFF, mSimulatedCommands.getRadioState());
+    }
+
+    @Test
+    public void testSetRadioPowerCancelWaitForAllDataDisconnected() throws Exception {
+        // Set up DSDS environment
+        GsmCdmaPhone phone2 = Mockito.mock(GsmCdmaPhone.class);
+        DataNetworkController dataNetworkController_phone2 =
+                Mockito.mock(DataNetworkController.class);
+        mPhones = new Phone[] {mPhone, phone2};
+        replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
+        doReturn(dataNetworkController_phone2).when(phone2).getDataNetworkController();
+        doReturn(mSST).when(phone2).getServiceStateTracker();
+        doReturn(true).when(phone2).isUsingNewDataStack();
+        doReturn(false).when(mDataNetworkController).areAllDataDisconnected();
+        doReturn(false).when(dataNetworkController_phone2).areAllDataDisconnected();
+        doReturn(1).when(mPhone).getSubId();
+        doReturn(2).when(phone2).getSubId();
+
+        // Start with radio on
+        sst.setRadioPower(true);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
+
+        // Turn on APM and verify that both subs are waiting for all data disconnected
+        sst.setRadioPower(false);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
+        verify(mDataNetworkController).tearDownAllDataNetworks(
+                eq(3 /* TEAR_DOWN_REASON_AIRPLANE_MODE_ON */));
+        verify(dataNetworkController_phone2, never()).tearDownAllDataNetworks(anyInt());
+        ArgumentCaptor<DataNetworkController.DataNetworkControllerCallback> callback1 =
+                ArgumentCaptor.forClass(DataNetworkController.DataNetworkControllerCallback.class);
+        ArgumentCaptor<DataNetworkController.DataNetworkControllerCallback> callback2 =
+                ArgumentCaptor.forClass(DataNetworkController.DataNetworkControllerCallback.class);
+        verify(mDataNetworkController, times(1)).registerDataNetworkControllerCallback(
+                callback1.capture());
+        verify(dataNetworkController_phone2, times(1)).registerDataNetworkControllerCallback(
+                callback2.capture());
+        assertTrue(sst.hasMessages(38 /* EVENT_SET_RADIO_POWER_OFF */));
+
+        // Turn off APM while waiting for data to disconnect
+        sst.setRadioPower(true);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        // Check that radio is on and pending power off messages were cleared
+        assertFalse(sst.hasMessages(38 /* EVENT_SET_RADIO_POWER_OFF */));
+        verify(mDataNetworkController, times(1)).unregisterDataNetworkControllerCallback(any());
+        verify(dataNetworkController_phone2, times(1)).unregisterDataNetworkControllerCallback(
+                any());
+        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
     }
 
     @Test
