@@ -34,6 +34,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
@@ -71,6 +72,7 @@ import android.util.LocalLog;
 import android.util.Log;
 
 import com.android.ims.ImsManager;
+import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.data.DataEnabledOverride;
@@ -1547,9 +1549,9 @@ public class SubscriptionController extends ISub.Stub {
                     if (!TextUtils.isEmpty(simCarrierName)) {
                         nameToSet = simCarrierName;
                     } else {
-                        nameToSet = "CARD " + Integer.toString(slotIndex + 1);
+                        Resources r = Resources.getSystem();
+                        nameToSet = r.getString(R.string.default_card_name, (slotIndex + 1));
                     }
-
                     ContentValues value = new ContentValues();
                     value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
                     resolver.update(SubscriptionManager.getUriForSubscriptionId(subId), value,
@@ -2019,7 +2021,9 @@ public class SubscriptionController extends ISub.Stub {
                 if (TextUtils.isEmpty(nameToSet)) {
                     if (nameSource == SubscriptionManager.NAME_SOURCE_USER_INPUT
                             && SubscriptionManager.isValidSlotIndex(getSlotIndex(subId))) {
-                        nameToSet = "CARD " + (getSlotIndex(subId) + 1);
+                        Resources r = Resources.getSystem();
+                        nameToSet = r.getString(R.string.default_card_name,
+                                (getSlotIndex(subId) + 1));
                     } else {
                         nameToSet = mContext.getString(SubscriptionManager.DEFAULT_NAME_RES);
                     }
