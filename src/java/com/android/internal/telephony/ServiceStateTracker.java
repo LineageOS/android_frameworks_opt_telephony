@@ -216,7 +216,6 @@ public class ServiceStateTracker extends Handler {
     private RegistrantList mNrStateChangedRegistrants = new RegistrantList();
     private RegistrantList mNrFrequencyChangedRegistrants = new RegistrantList();
     private RegistrantList mCssIndicatorChangedRegistrants = new RegistrantList();
-    private final RegistrantList mBandwidthChangedRegistrants = new RegistrantList();
     private final RegistrantList mAirplaneModeChangedRegistrants = new RegistrantList();
     private final RegistrantList mAreaCodeChangedRegistrants = new RegistrantList();
 
@@ -1651,6 +1650,7 @@ public class ServiceStateTracker extends Handler {
                     // Notify NR frequency, NR connection status or bandwidths changed.
                     if (hasChanged) {
                         mPhone.notifyServiceStateChanged(mPhone.getServiceState());
+                        mServiceStateChangedRegistrants.notifyRegistrants();
                         TelephonyMetrics.getInstance().writeServiceStateChanged(
                                 mPhone.getPhoneId(), mSS);
                         mPhone.getVoiceCallSessionStats().onServiceStateChanged(mSS);
@@ -2066,16 +2066,20 @@ public class ServiceStateTracker extends Handler {
         if (physicalChannelConfigs != null) {
             for (PhysicalChannelConfig config : physicalChannelConfigs) {
                 if (isNrPhysicalChannelConfig(config) && isInternetPhysicalChannelConfig(config)) {
-                    // Update the NR frequency range if there is an internet data connection
+                    // Update the NR frequency range if there is an active internet data connection
                     // associated with this NR physical channel channel config.
-                    newFrequencyRange = ServiceState.getBetterNRFrequencyRange(
-                            newFrequencyRange, config.getFrequencyRange());
-                    break;
+                    // If there are multiple valid configs, use the highest frequency range value.
+                    newFrequencyRange = Math.max(newFrequencyRange, config.getFrequencyRange());
                 }
             }
         }
 
         boolean hasChanged = newFrequencyRange != ss.getNrFrequencyRange();
+        if (hasChanged) {
+            log(String.format("NR frequency range changed from %s to %s.",
+                    ServiceState.frequencyRangeToString(ss.getNrFrequencyRange()),
+                    ServiceState.frequencyRangeToString(newFrequencyRange)));
+        }
         ss.setNrFrequencyRange(newFrequencyRange);
         return hasChanged;
     }
@@ -2106,6 +2110,11 @@ public class ServiceStateTracker extends Handler {
         }
 
         boolean hasChanged = newNrState != oldNrState;
+        if (hasChanged) {
+            log(String.format("NR state changed from %s to %s.",
+                    NetworkRegistrationInfo.nrStateToString(oldNrState),
+                    NetworkRegistrationInfo.nrStateToString(newNrState)));
+        }
         regInfo.setNrState(newNrState);
         ss.addNetworkRegistrationInfo(regInfo);
         return hasChanged;
@@ -3674,10 +3683,6 @@ public class ServiceStateTracker extends Handler {
 
         if (hasCssIndicatorChanged) {
             mCssIndicatorChangedRegistrants.notifyRegistrants();
-        }
-
-        if (hasBandwidthChanged) {
-            mBandwidthChangedRegistrants.notifyRegistrants();
         }
 
         if (hasRejectCauseChanged) {
@@ -5832,25 +5837,6 @@ public class ServiceStateTracker extends Handler {
      */
     public void unregisterForCssIndicatorChanged(Handler h) {
         mCssIndicatorChangedRegistrants.remove(h);
-    }
-
-    /**
-     * Registers for cell bandwidth changed.
-     * @param h handler to notify
-     * @param what what code of message when delivered
-     * @param obj placed in Message.obj
-     */
-    public void registerForBandwidthChanged(Handler h, int what, Object obj) {
-        Registrant r = new Registrant(h, what, obj);
-        mBandwidthChangedRegistrants.add(r);
-    }
-
-    /**
-     * Unregisters for cell bandwidth changed.
-     * @param h handler to notify
-     */
-    public void unregisterForBandwidthChanged(Handler h) {
-        mBandwidthChangedRegistrants.remove(h);
     }
 
     /**
