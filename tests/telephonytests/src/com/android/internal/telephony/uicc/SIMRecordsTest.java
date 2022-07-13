@@ -597,7 +597,6 @@ public class SIMRecordsTest extends TelephonyTest {
         data[5] = (byte) (lacTacEnd >>> 8);
         data[6] = (byte) lacTacEnd;
         data[7] = (byte) pnnIndex;
-
         return data;
     }
 
@@ -667,5 +666,54 @@ public class SIMRecordsTest extends TelephonyTest {
         mSIMRecordsUT.handleMessage(message);
         assertEquals(null, mSIMRecordsUT.getSmscIdentity());
         assertTrue(ar.exception instanceof CommandException);
+    }
+
+    @Test
+    public void testGetSimServiceTable() {
+        // reading sim service table successfully case
+        byte[] sst = new byte[111];
+        for (int i = 0; i < sst.length; i++) {
+            if (i % 2 == 0) {
+                sst[i] = 0;
+            } else {
+                sst[i] = 1;
+            }
+        }
+        Message message = mSIMRecordsUT.obtainMessage(SIMRecords.EVENT_GET_SST_DONE);
+        AsyncResult ar = AsyncResult.forMessage(message, sst, null);
+        mSIMRecordsUT.handleMessage(message);
+        String mockSst = IccUtils.bytesToHexString(sst);
+        String resultSst = mSIMRecordsUT.getSimServiceTable();
+        assertEquals(mockSst, resultSst);
+    }
+
+    @Test
+    public void testGetSimServiceTableException() {
+        // sim service table exception handling case
+        Message message = mSIMRecordsUT.obtainMessage(SIMRecords.EVENT_GET_SST_DONE);
+        AsyncResult ar = AsyncResult.forMessage(message, null, new CommandException(
+                CommandException.Error.OPERATION_NOT_ALLOWED));
+        mSIMRecordsUT.handleMessage(message);
+        String resultSst = mSIMRecordsUT.getSimServiceTable();
+        assertEquals(null, resultSst);
+    }
+
+    @Test
+    public void testGetSsimServiceTableLessTableSize() {
+        // sim service table reading case
+        byte[] sst = new byte[12];
+        for (int i = 0; i < sst.length; i++) {
+            if (i % 2 == 0) {
+                sst[i] = 0;
+            } else {
+                sst[i] = 1;
+            }
+        }
+        Message message = mSIMRecordsUT.obtainMessage(SIMRecords.EVENT_GET_SST_DONE);
+        AsyncResult ar = AsyncResult.forMessage(message, sst, null);
+        mSIMRecordsUT.handleMessage(message);
+        String mockSst = IccUtils.bytesToHexString(sst);
+        String resultSst = mSIMRecordsUT.getSimServiceTable();
+        assertEquals(mockSst, resultSst);
     }
 }

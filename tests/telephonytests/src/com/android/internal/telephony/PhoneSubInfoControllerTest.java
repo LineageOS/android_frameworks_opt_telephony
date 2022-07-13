@@ -1072,4 +1072,97 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             e.printStackTrace();
         }
     }
+
+    @Test
+    public void testGetSimServiceTable() throws RemoteException {
+        String refSst = "1234567";
+        doReturn(mUiccPort).when(mPhone).getUiccPort();
+        doReturn(mUiccProfile).when(mUiccPort).getUiccProfile();
+        doReturn(mUiccCardApplicationIms).when(mUiccProfile).getApplicationByType(anyInt());
+        doReturn(mSimRecords).when(mUiccCardApplicationIms).getIccRecords();
+
+        doReturn(refSst).when(mSimRecords).getSimServiceTable();
+
+        String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt());
+        assertEquals(refSst, resultSst);
+    }
+
+    @Test
+    public void testGetSimServiceTableEmpty() throws RemoteException {
+        String refSst = null;
+        doReturn(mUiccPort).when(mPhone).getUiccPort();
+        doReturn(mUiccProfile).when(mUiccPort).getUiccProfile();
+        doReturn(mUiccCardApplicationIms).when(mUiccProfile).getApplicationByType(anyInt());
+        doReturn(mSimRecords).when(mUiccCardApplicationIms).getIccRecords();
+
+        doReturn(refSst).when(mSimRecords).getSimServiceTable();
+
+        String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt());
+        assertEquals(refSst, resultSst);
+    }
+
+    @Test
+    public void testGetSstWhenNoUiccPort() throws RemoteException {
+            String refSst = "1234567";
+            doReturn(null).when(mPhone).getUiccPort();
+            doReturn(mUiccProfile).when(mUiccPort).getUiccProfile();
+            doReturn(mUiccCardApplicationIms).when(mUiccProfile).getApplicationByType(anyInt());
+            doReturn(mSimRecords).when(mUiccCardApplicationIms).getIccRecords();
+
+            doReturn(refSst).when(mSimRecords).getSimServiceTable();
+
+            String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt());
+            assertEquals(null, resultSst);
+    }
+
+    @Test
+    public void testGetSstWhenNoUiccProfile() throws RemoteException {
+        String refSst = "1234567";
+        doReturn(mUiccPort).when(mPhone).getUiccPort();
+        doReturn(null).when(mUiccPort).getUiccProfile();
+        doReturn(mUiccCardApplicationIms).when(mUiccProfile).getApplicationByType(anyInt());
+        doReturn(mSimRecords).when(mUiccCardApplicationIms).getIccRecords();
+
+        doReturn(refSst).when(mSimRecords).getSimServiceTable();
+
+        String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt());
+        assertEquals(null, resultSst);
+    }
+
+    @Test
+    public void testGetSstWhenNoUiccApplication() throws RemoteException {
+        String refSst = "1234567";
+        doReturn(mUiccPort).when(mPhone).getUiccPort();
+        doReturn(mUiccProfile).when(mUiccPort).getUiccProfile();
+        doReturn(null).when(mUiccProfile).getApplicationByType(anyInt());
+        doReturn(mSimRecords).when(mUiccCardApplicationIms).getIccRecords();
+
+        doReturn(refSst).when(mSimRecords).getSimServiceTable();
+
+        String resultSst = mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt());
+        assertEquals(null, resultSst);
+    }
+
+    @Test
+    public void testGetSimServiceTableWithOutPermissions() throws RemoteException {
+        String refSst = "1234567";
+        doReturn(mUiccPort).when(mPhone).getUiccPort();
+        doReturn(mUiccProfile).when(mUiccPort).getUiccProfile();
+        doReturn(mUiccCardApplicationIms).when(mUiccProfile).getApplicationByType(anyInt());
+        doReturn(mSimRecords).when(mUiccCardApplicationIms).getIccRecords();
+
+        doReturn(refSst).when(mSimRecords).getSimServiceTable();
+
+        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
+        try {
+            mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt());
+            Assert.fail("expected Security Exception Thrown");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("getSimServiceTable"));
+        }
+
+        mContextFixture.addCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE);
+        assertEquals(refSst, mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt()));
+    }
 }

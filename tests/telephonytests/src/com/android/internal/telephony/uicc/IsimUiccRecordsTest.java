@@ -303,4 +303,77 @@ public class IsimUiccRecordsTest extends TelephonyTest {
         assertTrue(((CommandException) ar.exception).getCommandError() ==
                 CommandException.Error.OPERATION_NOT_ALLOWED);
     }
+
+    @Test
+    public void testGetSimServiceTable() {
+        // reading sim service table successfully case
+        byte[] sst = new byte[9];
+        for (int i = 0; i < sst.length; i++) {
+            if (i % 2 == 0) {
+                sst[i] = 0;
+            } else {
+                sst[i] = 1;
+            }
+        }
+        Message message = mIsimUiccRecordsUT.obtainMessage(
+                IccRecords.EVENT_GET_ICC_RECORD_DONE, mIsimUiccRecordsUT.getIsimIstObject());
+        AsyncResult ar = AsyncResult.forMessage(message, sst, null);
+        mIsimUiccRecordsUT.handleMessage(message);
+        String mockSst = IccUtils.bytesToHexString(sst);
+        String resultSst = mIsimUiccRecordsUT.getIsimIst();
+        assertEquals(mockSst, resultSst);
+    }
+
+    @Test
+    public void testGetSimServiceTableException() {
+        // sim service table exception handling case
+        Message message = mIsimUiccRecordsUT.obtainMessage(
+                IccRecords.EVENT_GET_ICC_RECORD_DONE, mIsimUiccRecordsUT.getIsimIstObject());
+        AsyncResult ar = AsyncResult.forMessage(message,  null, new CommandException(
+                CommandException.Error.OPERATION_NOT_ALLOWED));
+        mIsimUiccRecordsUT.handleMessage(message);
+        String resultSst = mIsimUiccRecordsUT.getIsimIst();
+        assertEquals(null, resultSst);
+    }
+
+    @Test
+    public void testGetSsimServiceTableLessTableSize() {
+        // The less IST table size will not give any problem
+        byte[] sst = new byte[5];
+        for (int i = 0; i < sst.length; i++) {
+            if (i % 2 == 0) {
+                sst[i] = 0;
+            } else {
+                sst[i] = 1;
+            }
+        }
+        Message message = mIsimUiccRecordsUT.obtainMessage(
+                IccRecords.EVENT_GET_ICC_RECORD_DONE, mIsimUiccRecordsUT.getIsimIstObject());
+        AsyncResult ar = AsyncResult.forMessage(message, sst, null);
+        mIsimUiccRecordsUT.handleMessage(message);
+        String mockSst = IccUtils.bytesToHexString(sst);
+        String resultSst = mIsimUiccRecordsUT.getIsimIst();
+        assertEquals(mockSst, resultSst);
+    }
+
+    @Test
+    public void testGetSsimServiceTableLargeTableSize() {
+        // The Big IST table size will not give any problem [ in feature the table may grows]
+        byte[] sst = new byte[99];
+        for (int i = 0; i < sst.length; i++) {
+            if (i % 2 == 0) {
+                sst[i] = 0;
+            } else {
+                sst[i] = 1;
+            }
+        }
+        Message message = mIsimUiccRecordsUT.obtainMessage(
+                IccRecords.EVENT_GET_ICC_RECORD_DONE, mIsimUiccRecordsUT.getIsimIstObject());
+        AsyncResult ar = AsyncResult.forMessage(message, sst, null);
+        mIsimUiccRecordsUT.handleMessage(message);
+        String mockSst = IccUtils.bytesToHexString(sst);
+        String resultSst = mIsimUiccRecordsUT.getIsimIst();
+        assertEquals(mockSst, resultSst);
+    }
+
 }
