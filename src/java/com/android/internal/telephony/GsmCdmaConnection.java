@@ -478,7 +478,7 @@ public class GsmCdmaConnection extends Connection {
      * @return the corresponding value from {@link DisconnectCause}
      */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    int disconnectCauseFromCode(int causeCode) {
+    public int disconnectCauseFromCode(int causeCode) {
         /**
          * See 22.001 Annex F.4 for mapping of cause codes
          * to local tones
@@ -564,6 +564,14 @@ public class GsmCdmaConnection extends Connection {
 
             case CallFailCause.RADIO_OFF:
                 return DisconnectCause.POWER_OFF;
+
+            case CallFailCause.NO_VALID_SIM:
+                return DisconnectCause.ICC_ERROR;
+
+            case CallFailCause.LOCAL_NETWORK_NO_SERVICE:
+                // fallthrough
+            case CallFailCause.LOCAL_SERVICE_UNAVAILABLE:
+                return DisconnectCause.OUT_OF_SERVICE;
 
             case CallFailCause.ACCESS_CLASS_BLOCKED:
             case CallFailCause.ERROR_UNSPECIFIED:
