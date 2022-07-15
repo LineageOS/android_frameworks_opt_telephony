@@ -193,9 +193,6 @@ public class DataNetwork extends StateMachine {
     /** Event for display info changed. This is for getting 5G NSA or mmwave information. */
     private static final int EVENT_DISPLAY_INFO_CHANGED = 13;
 
-    /** Event for initiating an handover between cellular and IWLAN. */
-    private static final int EVENT_START_HANDOVER = 14;
-
     /** Event for setup data call (for handover) response from the data service. */
     private static final int EVENT_HANDOVER_RESPONSE = 15;
 
@@ -234,6 +231,24 @@ public class DataNetwork extends StateMachine {
 
     /** Event for CSS indicator changed. */
     private static final int EVENT_CSS_INDICATOR_CHANGED = 24;
+
+    /**
+     * Event for notifying source transport that handover is about to be initiated on target
+     * transport.
+     */
+    private static final int EVENT_NOTIFY_HANDOVER_STARTED = 25;
+
+    /**
+     * Event for the response of notifying source transport that handover is about to be initiated
+     * on target transport.
+     */
+    private static final int EVENT_NOTIFY_HANDOVER_STARTED_RESPONSE = 26;
+
+    /**
+     * Event for the response of notifying source transport that handover is cancelled/failed on the
+     * target transport.
+     */
+    private static final int EVENT_NOTIFY_HANDOVER_CANCELLED_RESPONSE = 27;
 
     /** Invalid context id. */
     private static final int INVALID_CID = -1;
@@ -1096,6 +1111,9 @@ public class DataNetwork extends StateMachine {
                     updateNetworkCapabilities();
                     break;
                 }
+                case EVENT_NOTIFY_HANDOVER_CANCELLED_RESPONSE:
+                    log("Notified handover cancelled.");
+                    break;
                 case EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED:
                 case EVENT_TEAR_DOWN_NETWORK:
                 case EVENT_PCO_DATA_RECEIVED:
@@ -1108,15 +1126,16 @@ public class DataNetwork extends StateMachine {
                     // Ignore the events when not in the correct state.
                     log("Ignored " + eventToString(msg.what));
                     break;
-                case EVENT_START_HANDOVER:
-                    // We reach here if network is not in the connected/connecting state.
+                case EVENT_NOTIFY_HANDOVER_STARTED_RESPONSE:
+                case EVENT_NOTIFY_HANDOVER_STARTED:
+                    // We reach here if network is not in the right state.
                     if (msg.obj != null) {
                         // Cancel it because it's either HO in progress or will soon disconnect.
                         // Either case we want to clean up obsolete retry attempts.
                         DataHandoverRetryEntry retryEntry = (DataHandoverRetryEntry) msg.obj;
                         retryEntry.setState(DataRetryEntry.RETRY_STATE_CANCELLED);
                     }
-                    log("Ignore retry for the handover to " + AccessNetworkConstants
+                    log("Ignore handover to " + AccessNetworkConstants
                             .transportTypeToString(msg.arg1) + " request.");
                     break;
                 case EVENT_RADIO_NOT_AVAILABLE:
@@ -1187,7 +1206,7 @@ public class DataNetwork extends StateMachine {
                             msg.getData().getParcelable(DataServiceManager.DATA_CALL_RESPONSE);
                     onSetupResponse(resultCode, dataCallResponse);
                     break;
-                case EVENT_START_HANDOVER:
+                case EVENT_NOTIFY_HANDOVER_STARTED:
                 case EVENT_TEAR_DOWN_NETWORK:
                 case EVENT_PCO_DATA_RECEIVED:
                 case EVENT_WAITING_FOR_TEARING_DOWN_CONDITION_MET:
@@ -1300,8 +1319,21 @@ public class DataNetwork extends StateMachine {
                 case EVENT_DISPLAY_INFO_CHANGED:
                     onDisplayInfoChanged();
                     break;
-                case EVENT_START_HANDOVER:
-                    onStartHandover(msg.arg1, (DataHandoverRetryEntry) msg.obj);
+                case EVENT_NOTIFY_HANDOVER_STARTED:
+                    // Notify source transport that handover is about to start. Note this will not
+                    // initiate the handover process on target transport, but more for notifying
+                    // the source transport so that PDU session id can be preserved if network
+                    // notifies PDN lost during handover. The real handover process will kick off
+                    // after receiving EVENT_NOTIFY_HANDOVER_STARTED_RESPONSE.
+                    log("Notifying source transport "
+                            + AccessNetworkConstants.transportTypeToString(mTransport)
+                            + " that handover is about to start.");
+                    mDataServiceManagers.get(mTransport).startHandover(mCid.get(mTransport),
+                            obtainMessage(EVENT_NOTIFY_HANDOVER_STARTED_RESPONSE, 0, msg.arg2,
+                                    msg.obj));
+                    // We enter handover state here because this is the first action we do for
+                    // handover.
+                    transitionTo(mHandoverState);
                     break;
                 case EVENT_SUBSCRIPTION_PLAN_OVERRIDE:
                     updateMeteredAndCongested();
@@ -1372,6 +1404,9 @@ public class DataNetwork extends StateMachine {
                     // Defer the request until handover succeeds or fails.
                     log("Defer message " + eventToString(msg.what));
                     deferMessage(msg);
+                    break;
+                case EVENT_NOTIFY_HANDOVER_STARTED_RESPONSE:
+                    onStartHandover(msg.arg2, (DataHandoverRetryEntry) msg.obj);
                     break;
                 case EVENT_HANDOVER_RESPONSE:
                     int resultCode = msg.arg1;
@@ -3038,6 +3073,12 @@ public class DataNetwork extends StateMachine {
     /**
      * Request the data network to handover to the target transport.
      *
+     * This is the starting point of initiating IWLAN/cellular handover. It will first call
+     * {@link DataServiceManager#startHandover(int, Message)} to notify source transport that
+     * handover is about to start, and then call {@link DataServiceManager#setupDataCall(int,
+     * DataProfile, boolean, boolean, int, LinkProperties, int, NetworkSliceInfo, TrafficDescriptor,
+     * boolean, Message)} on target transport to initiate the handover process.
+     *
      * @param targetTransport The target transport.
      * @param retryEntry Data handover retry entry. This would be {@code null} for first time
      * handover attempt.
@@ -3050,12 +3091,16 @@ public class DataNetwork extends StateMachine {
             if (retryEntry != null) retryEntry.setState(DataRetryEntry.RETRY_STATE_CANCELLED);
             return false;
         }
-        sendMessage(obtainMessage(EVENT_START_HANDOVER, targetTransport, 0, retryEntry));
+
+        // Before we really initiate the handover process on target transport, we need to notify
+        // source transport that handover is about to start. Handover will be eventually initiated
+        // in onStartHandover().
+        sendMessage(obtainMessage(EVENT_NOTIFY_HANDOVER_STARTED, 0, targetTransport, retryEntry));
         return true;
     }
 
     /**
-     * Called when handover between IWLAN and cellular is needed.
+     * Called when starting IWLAN/cellular handover process on the target transport.
      *
      * @param targetTransport The target transport.
      * @param retryEntry Data handover retry entry. This would be {@code null} for first time
@@ -3110,7 +3155,6 @@ public class DataNetwork extends StateMachine {
                 DataService.REQUEST_REASON_HANDOVER, mLinkProperties, mPduSessionId,
                 mNetworkSliceInfo, mHandoverDataProfile.getTrafficDescriptor(), true,
                 obtainMessage(EVENT_HANDOVER_RESPONSE, retryEntry));
-        transitionTo(mHandoverState);
     }
 
     /**
@@ -3155,6 +3199,12 @@ public class DataNetwork extends StateMachine {
                     () -> mDataNetworkCallback.onHandoverSucceeded(DataNetwork.this));
         } else {
             // Handover failed.
+
+            // Notify source transport that handover failed on target transport so that PDU session
+            // id can be released if it is preserved for handover.
+            mDataServiceManagers.get(mTransport).cancelHandover(mCid.get(mTransport),
+                    obtainMessage(EVENT_NOTIFY_HANDOVER_CANCELLED_RESPONSE));
+
             long retry = response != null ? response.getRetryDurationMillis()
                     : DataCallResponse.RETRY_DURATION_UNDEFINED;
             // If the handover mode is unspecified, default to HANDOVER_FAILURE_MODE_UNKNOWN,
@@ -3334,8 +3384,6 @@ public class DataNetwork extends StateMachine {
                 return "EVENT_BANDWIDTH_ESTIMATE_FROM_MODEM_CHANGED";
             case EVENT_DISPLAY_INFO_CHANGED:
                 return "EVENT_DISPLAY_INFO_CHANGED";
-            case EVENT_START_HANDOVER:
-                return "EVENT_START_HANDOVER";
             case EVENT_HANDOVER_RESPONSE:
                 return "EVENT_HANDOVER_RESPONSE";
             case EVENT_SUBSCRIPTION_PLAN_OVERRIDE:
@@ -3356,6 +3404,12 @@ public class DataNetwork extends StateMachine {
                 return "EVENT_VOICE_CALL_ENDED";
             case EVENT_CSS_INDICATOR_CHANGED:
                 return "EVENT_CSS_INDICATOR_CHANGED";
+            case EVENT_NOTIFY_HANDOVER_STARTED:
+                return "EVENT_NOTIFY_HANDOVER_STARTED";
+            case EVENT_NOTIFY_HANDOVER_STARTED_RESPONSE:
+                return "EVENT_NOTIFY_HANDOVER_STARTED_RESPONSE";
+            case EVENT_NOTIFY_HANDOVER_CANCELLED_RESPONSE:
+                return "EVENT_NOTIFY_HANDOVER_CANCELLED_RESPONSE";
             default:
                 return "Unknown(" + event + ")";
         }
