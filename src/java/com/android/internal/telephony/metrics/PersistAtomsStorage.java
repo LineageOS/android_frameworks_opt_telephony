@@ -63,6 +63,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.stream.IntStream;
 
 /**
@@ -320,6 +321,16 @@ public class PersistAtomsStorage {
             DataCallSession existingCall = mAtoms.dataCallSession[index];
             dataCall.ratSwitchCount += existingCall.ratSwitchCount;
             dataCall.durationMinutes += existingCall.durationMinutes;
+
+            dataCall.handoverFailureCauses = IntStream.concat(Arrays.stream(
+                            dataCall.handoverFailureCauses),
+                    Arrays.stream(existingCall.handoverFailureCauses))
+                    .limit(DataCallSessionStats.SIZE_LIMIT_HANDOVER_FAILURES).toArray();
+            dataCall.handoverFailureRat = IntStream.concat(Arrays.stream(
+                            dataCall.handoverFailureRat),
+                    Arrays.stream(existingCall.handoverFailureRat))
+                    .limit(DataCallSessionStats.SIZE_LIMIT_HANDOVER_FAILURES).toArray();
+
             mAtoms.dataCallSession[index] = dataCall;
         } else {
             mAtoms.dataCallSession =
@@ -723,13 +734,35 @@ public class PersistAtomsStorage {
             saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
             for (DataCallSession dataCallSession : previousDataCallSession) {
                 // sort to de-correlate any potential pattern for UII concern
-                Arrays.sort(dataCallSession.handoverFailureCauses);
+                sortBaseOnArray(dataCallSession.handoverFailureCauses,
+                        dataCallSession.handoverFailureRat);
             }
             return previousDataCallSession;
         } else {
             return null;
         }
     }
+
+    /**
+     * Sort the other array base on the natural order of the primary array. Both arrays will be
+     * sorted in-place.
+     * @param primary The primary array to be sorted.
+     * @param other The other array to be sorted in the order of primary array.
+     */
+    private void sortBaseOnArray(int[] primary, int[] other) {
+        if (other.length != primary.length) return;
+        int[] index = IntStream.range(0, primary.length).boxed()
+                .sorted(Comparator.comparingInt(i -> primary[i]))
+                .mapToInt(Integer::intValue)
+                .toArray();
+        int[] primaryCopy = Arrays.copyOf(primary,  primary.length);
+        int[] otherCopy = Arrays.copyOf(other,  other.length);
+        for (int i = 0; i < index.length; i++) {
+            primary[i] = primaryCopy[index[i]];
+            other[i] = otherCopy[index[i]];
+        }
+    }
+
 
     /**
      * Returns and clears the service state durations if last pulled longer than {@code

@@ -49,7 +49,6 @@ import java.util.Random;
 /** Collects data call change events per DataConnection for the pulled atom. */
 public class DataCallSessionStats {
     private static final String TAG = DataCallSessionStats.class.getSimpleName();
-    private static final int SIZE_LIMIT_HANDOVER_FAILURE_CAUSES = 15;
 
     private final Phone mPhone;
     private long mStartTime;
@@ -59,6 +58,8 @@ public class DataCallSessionStats {
             PhoneFactory.getMetricsCollector().getAtomsStorage();
 
     private static final Random RANDOM = new Random();
+
+    public static final int SIZE_LIMIT_HANDOVER_FAILURES = 15;
 
     public DataCallSessionStats(Phone phone) {
         mPhone = phone;
@@ -175,17 +176,30 @@ public class DataCallSessionStats {
      *
      * @param failureCause failure cause as per android.telephony.DataFailCause
      */
-    public synchronized void onHandoverFailure(@DataFailureCause int failureCause) {
+    public synchronized void onHandoverFailure(@DataFailureCause int failureCause,
+            @NetworkType int sourceRat, @NetworkType int targetRat) {
         if (mDataCallSession != null
                 && mDataCallSession.handoverFailureCauses.length
-                < SIZE_LIMIT_HANDOVER_FAILURE_CAUSES) {
+                < SIZE_LIMIT_HANDOVER_FAILURES) {
+
             int[] failureCauses = mDataCallSession.handoverFailureCauses;
-            for (int cause : failureCauses) {
-                if (failureCause == cause) return;
+            int[] handoverFailureRats = mDataCallSession.handoverFailureRat;
+            int failureDirection = sourceRat | (targetRat << 16);
+
+            for (int i = 0; i < failureCauses.length; i++) {
+                if (failureCauses[i] == failureCause
+                        && handoverFailureRats[i] == failureDirection) {
+                    return;
+                }
             }
+
             mDataCallSession.handoverFailureCauses = Arrays.copyOf(
                     failureCauses, failureCauses.length + 1);
             mDataCallSession.handoverFailureCauses[failureCauses.length] = failureCause;
+
+            mDataCallSession.handoverFailureRat = Arrays.copyOf(handoverFailureRats,
+                    handoverFailureRats.length + 1);
+            mDataCallSession.handoverFailureRat[handoverFailureRats.length] = failureDirection;
         }
     }
 
@@ -224,6 +238,7 @@ public class DataCallSessionStats {
      * Note the following fields are reset after the snapshot:
      * - rat switch count
      * - handover failure causes
+     * - handover failure rats
      */
     public synchronized void conclude() {
         if (mDataCallSession != null) {
@@ -233,6 +248,7 @@ public class DataCallSessionStats {
             mStartTime = nowMillis;
             mDataCallSession.ratSwitchCount = 0L;
             mDataCallSession.handoverFailureCauses = new int[0];
+            mDataCallSession.handoverFailureRat = new int[0];
             mAtomsStorage.addDataCallSession(call);
         }
     }
@@ -274,6 +290,8 @@ public class DataCallSessionStats {
         copy.bandAtEnd = call.bandAtEnd;
         copy.handoverFailureCauses = Arrays.copyOf(call.handoverFailureCauses,
                 call.handoverFailureCauses.length);
+        copy.handoverFailureRat = Arrays.copyOf(call.handoverFailureRat,
+                call.handoverFailureRat.length);
         return copy;
     }
 
@@ -297,6 +315,7 @@ public class DataCallSessionStats {
         proto.durationMinutes = 0;
         proto.ongoing = true;
         proto.handoverFailureCauses = new int[0];
+        proto.handoverFailureRat = new int[0];
         return proto;
     }
 
