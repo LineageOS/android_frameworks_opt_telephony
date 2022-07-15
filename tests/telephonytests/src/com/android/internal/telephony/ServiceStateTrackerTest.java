@@ -464,30 +464,37 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @Test
     @MediumTest
     public void testSetRadioPowerForReason() {
+        testSetRadioPowerForReason(TelephonyManager.RADIO_POWER_REASON_THERMAL);
+        testSetRadioPowerForReason(TelephonyManager.RADIO_POWER_REASON_NEARBY_DEVICE);
+        testSetRadioPowerForReason(TelephonyManager.RADIO_POWER_REASON_CARRIER);
+    }
+
+    private void testSetRadioPowerForReason(int reason) {
         // Radio does not turn on if off for other reason and not emergency call.
         assertTrue(mSimulatedCommands.getRadioState() == TelephonyManager.RADIO_POWER_ON);
         assertTrue(sst.getRadioPowerOffReasons().isEmpty());
-        sst.setRadioPowerForReason(false, false, false, false, Phone.RADIO_POWER_REASON_THERMAL);
-        assertTrue(sst.getRadioPowerOffReasons().contains(Phone.RADIO_POWER_REASON_THERMAL));
+        sst.setRadioPowerForReason(false, false, false, false, reason);
+        assertTrue(sst.getRadioPowerOffReasons().contains(reason));
         assertTrue(sst.getRadioPowerOffReasons().size() == 1);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertTrue(mSimulatedCommands.getRadioState() == TelephonyManager.RADIO_POWER_OFF);
-        sst.setRadioPowerForReason(true, false, false, false, Phone.RADIO_POWER_REASON_USER);
-        assertTrue(sst.getRadioPowerOffReasons().contains(Phone.RADIO_POWER_REASON_THERMAL));
+        sst.setRadioPowerForReason(true, false, false, false,
+                TelephonyManager.RADIO_POWER_REASON_USER);
+        assertTrue(sst.getRadioPowerOffReasons().contains(reason));
         assertTrue(sst.getRadioPowerOffReasons().size() == 1);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertTrue(mSimulatedCommands.getRadioState() == TelephonyManager.RADIO_POWER_OFF);
 
         // Radio power state reason is removed and radio turns on if turned on for same reason it
         // had been turned off for.
-        sst.setRadioPowerForReason(true, false, false, false, Phone.RADIO_POWER_REASON_THERMAL);
+        sst.setRadioPowerForReason(true, false, false, false, reason);
         assertTrue(sst.getRadioPowerOffReasons().isEmpty());
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertTrue(mSimulatedCommands.getRadioState() == TelephonyManager.RADIO_POWER_ON);
 
         // Turn radio off, then successfully turn radio on for emergency call.
-        sst.setRadioPowerForReason(false, false, false, false, Phone.RADIO_POWER_REASON_THERMAL);
-        assertTrue(sst.getRadioPowerOffReasons().contains(Phone.RADIO_POWER_REASON_THERMAL));
+        sst.setRadioPowerForReason(false, false, false, false, reason);
+        assertTrue(sst.getRadioPowerOffReasons().contains(reason));
         assertTrue(sst.getRadioPowerOffReasons().size() == 1);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertTrue(mSimulatedCommands.getRadioState() == TelephonyManager.RADIO_POWER_OFF);
@@ -499,33 +506,83 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     @MediumTest
-    public void testSetRadioPowerFromCarrier() {
+    public void testSetRadioPowerForMultipleReasons() {
+        assertTrue(mSimulatedCommands.getRadioState() == TelephonyManager.RADIO_POWER_ON);
+        assertTrue(sst.getRadioPowerOffReasons().isEmpty());
+
+        // Turn off radio
+        turnRadioOffForReason(TelephonyManager.RADIO_POWER_REASON_USER, 1);
+        turnRadioOffForReason(TelephonyManager.RADIO_POWER_REASON_THERMAL, 2);
+        turnRadioOffForReason(TelephonyManager.RADIO_POWER_REASON_CARRIER, 3);
+        turnRadioOffForReason(TelephonyManager.RADIO_POWER_REASON_NEARBY_DEVICE, 4);
+
+        // Turn on radio
+        turnRadioOnForReason(TelephonyManager.RADIO_POWER_REASON_NEARBY_DEVICE, 3,
+                TelephonyManager.RADIO_POWER_OFF);
+        turnRadioOnForReason(TelephonyManager.RADIO_POWER_REASON_THERMAL, 2,
+                TelephonyManager.RADIO_POWER_OFF);
+        turnRadioOnForReason(TelephonyManager.RADIO_POWER_REASON_CARRIER, 1,
+                TelephonyManager.RADIO_POWER_OFF);
+        turnRadioOnForReason(TelephonyManager.RADIO_POWER_REASON_USER, 0,
+                TelephonyManager.RADIO_POWER_ON);
+    }
+
+    private void turnRadioOffForReason(int reason, int powerOffReasonSize) {
+        sst.setRadioPowerForReason(false, false, false, false, reason);
+        assertTrue(sst.getRadioPowerOffReasons().contains(reason));
+        assertTrue(sst.getRadioPowerOffReasons().size() == powerOffReasonSize);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertTrue(mSimulatedCommands.getRadioState() == TelephonyManager.RADIO_POWER_OFF);
+    }
+
+    private void turnRadioOnForReason(int reason, int powerOffReasonSize,
+            int expectedRadioPowerState) {
+        sst.setRadioPowerForReason(true, false, false, false, reason);
+        assertFalse(sst.getRadioPowerOffReasons().contains(reason));
+        assertTrue(sst.getRadioPowerOffReasons().size() == powerOffReasonSize);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertTrue(mSimulatedCommands.getRadioState() == expectedRadioPowerState);
+    }
+
+    @Test
+    @MediumTest
+    public void testSetRadioPowerForReasonCarrier() {
         // Carrier disable radio power
-        sst.setRadioPowerFromCarrier(false);
+        sst.setRadioPowerForReason(false, false, false, false,
+                TelephonyManager.RADIO_POWER_REASON_CARRIER);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertFalse(mSimulatedCommands.getRadioState()
                 == TelephonyManager.RADIO_POWER_ON);
-        assertTrue(sst.getDesiredPowerState());
+        assertFalse(sst.getDesiredPowerState());
         assertFalse(sst.getPowerStateFromCarrier());
+        assertTrue(sst.getRadioPowerOffReasons().contains(
+                TelephonyManager.RADIO_POWER_REASON_CARRIER));
+        assertTrue(sst.getRadioPowerOffReasons().size() == 1);
 
         // User toggle radio power will not overrides carrier settings
         sst.setRadioPower(true);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertFalse(mSimulatedCommands.getRadioState()
                 == TelephonyManager.RADIO_POWER_ON);
-        assertTrue(sst.getDesiredPowerState());
+        assertFalse(sst.getDesiredPowerState());
         assertFalse(sst.getPowerStateFromCarrier());
+        assertTrue(sst.getRadioPowerOffReasons().contains(
+                TelephonyManager.RADIO_POWER_REASON_CARRIER));
+        assertTrue(sst.getRadioPowerOffReasons().size() == 1);
 
         // Carrier re-enable radio power
-        sst.setRadioPowerFromCarrier(true);
+        sst.setRadioPowerForReason(true, false, false, false,
+                TelephonyManager.RADIO_POWER_REASON_CARRIER);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertTrue(mSimulatedCommands.getRadioState() == TelephonyManager.RADIO_POWER_ON);
         assertTrue(sst.getDesiredPowerState());
         assertTrue(sst.getPowerStateFromCarrier());
+        assertTrue(sst.getRadioPowerOffReasons().isEmpty());
 
         // User toggle radio power off (airplane mode) and set carrier on
         sst.setRadioPower(false);
-        sst.setRadioPowerFromCarrier(true);
+        sst.setRadioPowerForReason(true, false, false, false,
+                TelephonyManager.RADIO_POWER_REASON_CARRIER);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertFalse(mSimulatedCommands.getRadioState()
                 == TelephonyManager.RADIO_POWER_ON);

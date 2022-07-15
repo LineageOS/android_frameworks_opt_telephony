@@ -1901,7 +1901,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public boolean isRadioOffForThermalMitigation() {
         ServiceStateTracker sst = getServiceStateTracker();
         return sst != null && sst.getRadioPowerOffReasons()
-                .contains(Phone.RADIO_POWER_REASON_THERMAL);
+                .contains(TelephonyManager.RADIO_POWER_REASON_THERMAL);
     }
 
     /**
