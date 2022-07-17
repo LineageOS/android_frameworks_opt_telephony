@@ -40,6 +40,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
 
@@ -57,7 +58,8 @@ public class SmsController extends ISmsImplBase {
 
     private final Context mContext;
 
-    protected SmsController(Context context) {
+    @VisibleForTesting
+    public SmsController(Context context) {
         mContext = context;
         ServiceRegisterer smsServiceRegisterer = TelephonyFrameworkInitializer
                 .getTelephonyServiceManager()
@@ -751,6 +753,13 @@ public class SmsController extends ISmsImplBase {
     public void sendVisualVoicemailSmsForSubscriber(String callingPackage,
             String callingAttributionTag, int subId, String number, int port, String text,
             PendingIntent sentIntent) {
+        // Do not send non-emergency SMS in ECBM as it forces device to exit ECBM.
+        if(getPhone(subId).isInEcm()) {
+            Rlog.d(LOG_TAG, "sendVisualVoicemailSmsForSubscriber: Do not send non-emergency "
+                + "SMS in ECBM as it forces device to exit ECBM.");
+            return;
+        }
+
         if (port == 0) {
             sendTextForSubscriberWithSelfPermissionsInternal(subId, callingPackage,
                     callingAttributionTag, number, null, text, sentIntent, null, false,
@@ -900,7 +909,8 @@ public class SmsController extends ISmsImplBase {
      * @param destAddr destination address of the message
      * @return true if either destAddr or smscAddr is blocked due to FDN.
      */
-    private boolean isNumberBlockedByFDN(int subId, String destAddr, String callingPackage) {
+    @VisibleForTesting
+    public boolean isNumberBlockedByFDN(int subId, String destAddr, String callingPackage) {
         int phoneId = SubscriptionManager.getPhoneId(subId);
         if (!FdnUtils.isFdnEnabled(phoneId)) {
             return false;

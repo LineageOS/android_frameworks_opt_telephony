@@ -2028,6 +2028,43 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         fdnCheckCleanup();
     }
 
+    @Test
+    public void testDial_fdnCheck() throws Exception{
+        // dial setup
+        mSST.mSS = mServiceState;
+        doReturn(ServiceState.STATE_IN_SERVICE).when(mServiceState).getState();
+        mCT.mForegroundCall = mGsmCdmaCall;
+        mCT.mBackgroundCall = mGsmCdmaCall;
+        mCT.mRingingCall = mGsmCdmaCall;
+        doReturn(GsmCdmaCall.State.IDLE).when(mGsmCdmaCall).getState();
+        replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
+
+        // FDN check setup
+        fdnCheckSetup();
+        ArrayList<AdnRecord> fdnList = new ArrayList<>();
+        doReturn(fdnList).when(adnRecordCache).getRecordsIfLoaded(IccConstants.EF_FDN);
+
+        // FDN check success - no exception is returned
+        AdnRecord dialRecord = new AdnRecord(null, "1234567890");
+        fdnList.add(0, dialRecord);
+        Connection connection = mPhoneUT.dial("1234567890",
+                new PhoneInternalInterface.DialArgs.Builder().build());
+        verify(mCT).dialGsm(eq("1234567890"), any(PhoneInternalInterface.DialArgs.class));
+
+        // FDN check failure - returns CallStateException
+        fdnList.remove(0);
+        try {
+            connection = mPhoneUT.dial("1234567890",
+                    new PhoneInternalInterface.DialArgs.Builder().build());
+            fail("Expected CallStateException with ERROR_FDN_BLOCKED thrown.");
+        } catch(CallStateException e) {
+            assertEquals(CallStateException.ERROR_FDN_BLOCKED, e.getError());
+        }
+
+        // clean up
+        fdnCheckCleanup();
+    }
+
     public void fdnCheckCleanup() {
         doReturn(false).when(mUiccCardApplication3gpp).getIccFdnAvailable();
         doReturn(false).when(mUiccCardApplication3gpp).getIccFdnEnabled();
