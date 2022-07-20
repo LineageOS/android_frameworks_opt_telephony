@@ -193,7 +193,7 @@ public class CarrierResolver extends Handler {
     /**
      * This is triggered from SubscriptionInfoUpdater after sim state change.
      * The sequence of sim loading would be
-     *  1. ACTION_SUBINFO_CONTENT_CHANGE
+     *  1. OnSubscriptionsChangedListener
      *  2. ACTION_SIM_STATE_CHANGED/ACTION_SIM_CARD_STATE_CHANGED
      *  /ACTION_SIM_APPLICATION_STATE_CHANGED
      *  3. ACTION_SUBSCRIPTION_CARRIER_IDENTITY_CHANGED
