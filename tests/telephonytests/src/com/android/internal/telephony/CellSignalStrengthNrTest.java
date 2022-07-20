@@ -75,7 +75,7 @@ public class CellSignalStrengthNrTest extends TelephonyTest {
 
     private List<Integer> getCsiCqiList() {
         return CSICQI_REPORT.stream()
-                .map(cqi -> new Integer(Byte.toUnsignedInt(cqi)))
+                .map(Byte::toUnsignedInt)
                 .collect(Collectors.toList());
     }
 
@@ -188,7 +188,7 @@ public class CellSignalStrengthNrTest extends TelephonyTest {
     @Test
     public void testAsuLevel_invalidValue() {
         // GIVEN an instance of CellSignalStrengthNr with invalid csirsrp
-        CellSignalStrengthNr css = new CellSignalStrengthNr(CSIRSRP, CSIRSRQ, CSISINR,
+        CellSignalStrengthNr css = new CellSignalStrengthNr(INVALID_CSIRSRP, CSIRSRQ, CSISINR,
                 CSICQI_TABLE_INDEX, CSICQI_REPORT, INVALID_SSRSRP, SSRSRQ, SSSINR);
 
         // THEN the asu level is unknown
@@ -197,10 +197,10 @@ public class CellSignalStrengthNrTest extends TelephonyTest {
 
     @Test
     public void testSignalLevel_validValue() {
-        for (int ssRsrp = -140; ssRsrp <= -44; ssRsrp++) {
+        for (int ssRsrp = -156; ssRsrp <= -31; ssRsrp++) {
             // GIVEN an instance of CellSignalStrengthNr with valid csirsrp
             CellSignalStrengthNr css = new CellSignalStrengthNr(CSIRSRP, CSIRSRQ, CSISINR,
-                    CSICQI_TABLE_INDEX, CSICQI_REPORT, INVALID_SSRSRP, SSRSRQ, SSSINR);
+                    CSICQI_TABLE_INDEX, CSICQI_REPORT, ssRsrp, SSRSRQ, SSSINR);
 
             // THEN the signal level is valid
             assertThat(css.getLevel()).isIn(Range.range(
@@ -212,7 +212,7 @@ public class CellSignalStrengthNrTest extends TelephonyTest {
     @Test
     public void testSignalLevel_invalidValue() {
         // GIVEN an instance of CellSignalStrengthNr with invalid csirsrp
-        CellSignalStrengthNr css = new CellSignalStrengthNr(CSIRSRP, CSIRSRQ, CSISINR,
+        CellSignalStrengthNr css = new CellSignalStrengthNr(INVALID_CSIRSRP, CSIRSRQ, CSISINR,
                 CSICQI_TABLE_INDEX, CSICQI_REPORT, SSRSRP, SSRSRQ, SSSINR);
 
         // THEN the signal level is unknown
@@ -259,7 +259,7 @@ public class CellSignalStrengthNrTest extends TelephonyTest {
     }
 
     @Test
-    public void testSignalLevel_ThresholdBoundaries() {
+    public void testSignalLevel_thresholdBoundaries() {
         int[] ssRsrpThresholds = {
                 -110, /* SIGNAL_STRENGTH_POOR */
                 -90,  /* SIGNAL_STRENGTH_MODERATE */
