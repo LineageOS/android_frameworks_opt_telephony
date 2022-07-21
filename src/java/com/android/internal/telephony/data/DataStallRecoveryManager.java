@@ -26,6 +26,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.SystemClock;
+import android.provider.Settings;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.Annotation.ValidationStatus;
 import android.telephony.CellSignalStrength;
@@ -164,6 +165,8 @@ public class DataStallRecoveryManager extends Handler {
     private boolean mNetworkCheckTimerStarted = false;
     /** Whether radio state changed during data stall. */
     private boolean mRadioStateChangedDuringDataStall;
+    /** Whether airplane mode enabled during data stall. */
+    private boolean mIsAirPlaneModeEnableDuringDataStall;
     /** Whether mobile data change to Enabled during data stall. */
     private boolean mMobileDataChangedToEnabledDuringDataStall;
     /** Whether attempted all recovery steps. */
@@ -285,6 +288,12 @@ public class DataStallRecoveryManager extends Handler {
                 if (mDataStalled) {
                     // Store the radio state changed flag only when data stall occurred.
                     mRadioStateChangedDuringDataStall = true;
+                    if (Settings.Global.getInt(
+                                    mPhone.getContext().getContentResolver(),
+                                    Settings.Global.AIRPLANE_MODE_ON,
+                                    0) != 0) {
+                        mIsAirPlaneModeEnableDuringDataStall = true;
+                    }
                 }
                 break;
             default:
@@ -345,6 +354,7 @@ public class DataStallRecoveryManager extends Handler {
         mIsValidNetwork = true;
         mIsAttemptedAllSteps = false;
         mRadioStateChangedDuringDataStall = false;
+        mIsAirPlaneModeEnableDuringDataStall = false;
         mMobileDataChangedToEnabledDuringDataStall = false;
         cancelNetworkCheckTimer();
         mTimeLastRecoveryStartMs = 0;
@@ -380,6 +390,7 @@ public class DataStallRecoveryManager extends Handler {
         mTimeLastRecoveryStartMs = 0;
         mMobileDataChangedToEnabledDuringDataStall = false;
         mRadioStateChangedDuringDataStall = false;
+        mIsAirPlaneModeEnableDuringDataStall = false;
         setRecoveryAction(RECOVERY_ACTION_GET_DATA_CALL_LIST);
     }
 
@@ -628,6 +639,9 @@ public class DataStallRecoveryManager extends Handler {
             if (mLastAction > RECOVERY_ACTION_CLEANUP) {
                 ret = RECOVERED_REASON_DSRM;
             }
+            if (mIsAirPlaneModeEnableDuringDataStall) {
+                ret = RECOVERED_REASON_USER;
+            }
         } else if (mMobileDataChangedToEnabledDuringDataStall) {
             ret = RECOVERED_REASON_USER;
         }
@@ -799,6 +813,7 @@ public class DataStallRecoveryManager extends Handler {
 
         pw.println("mIsValidNetwork=" + mIsValidNetwork);
         pw.println("mIsInternetNetworkConnected=" + mIsInternetNetworkConnected);
+        pw.println("mIsAirPlaneModeEnableDuringDataStall=" + mIsAirPlaneModeEnableDuringDataStall);
         pw.println("mDataStalled=" + mDataStalled);
         pw.println("mLastAction=" + recoveryActionToString(mLastAction));
         pw.println("mIsAttemptedAllSteps=" + mIsAttemptedAllSteps);
