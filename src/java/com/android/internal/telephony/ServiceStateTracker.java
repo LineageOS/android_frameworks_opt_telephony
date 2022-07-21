@@ -1094,7 +1094,7 @@ public class ServiceStateTracker extends Handler {
     /**
      * Turn on or off radio power with option to specify whether it's for emergency call and specify
      * a reason for setting the power state.
-     * More details check {@link PhoneInternalInterface#setRadioPowerForReason(
+     * More details check {@link PhoneInternalInterface#setRadioPower(
      * boolean, boolean, boolean, boolean, int)}.
      */
     public void setRadioPowerForReason(boolean power, boolean forEmergencyCall,
@@ -1196,10 +1196,10 @@ public class ServiceStateTracker extends Handler {
         if (VDBG) log("received event " + msg.what);
         switch (msg.what) {
             case EVENT_SET_RADIO_POWER_OFF:
-                synchronized (this) {
+                synchronized(this) {
                     if (mPhone.isUsingNewDataStack()) {
+                        mPendingRadioPowerOffAfterDataOff = false;
                         log("Wait for all data networks torn down timed out. Power off now.");
-                        cancelPendingRadioPowerOff();
                         hangupAndPowerOff();
                         return;
                     }
@@ -1495,18 +1495,17 @@ public class ServiceStateTracker extends Handler {
                             areAllDataDisconnectedOnAllPhones = false;
                         }
                     }
-                    synchronized (this) {
-                        if (areAllDataDisconnectedOnAllPhones) {
-                            if (DBG) log("Data disconnected for all phones, turn radio off now.");
-                            cancelPendingRadioPowerOff();
-                            hangupAndPowerOff();
-                        }
+                    if (areAllDataDisconnectedOnAllPhones) {
+                        mPendingRadioPowerOffAfterDataOff = false;
+                        removeMessages(EVENT_SET_RADIO_POWER_OFF);
+                        if (DBG) log("Data disconnected for all phones, turn radio off now.");
+                        hangupAndPowerOff();
                     }
                     return;
                 }
                 int dds = SubscriptionManager.getDefaultDataSubscriptionId();
                 ProxyController.getInstance().unregisterForAllDataDisconnected(dds, this);
-                synchronized (this) {
+                synchronized(this) {
                     if (mPendingRadioPowerOffAfterDataOff) {
                         if (DBG) log("EVENT_ALL_DATA_DISCONNECTED, turn radio off now.");
                         hangupAndPowerOff();
@@ -3141,12 +3140,12 @@ public class ServiceStateTracker extends Handler {
                     && getRadioPowerOffDelayTimeoutForImsRegistration() > 0) {
                 if (DBG) log("setPowerStateToDesired: delaying power off until IMS dereg.");
                 startDelayRadioOffWaitingForImsDeregTimeout();
+                // Return early here as we do not want to hit the cancel timeout code below.
+                return;
             } else {
                 if (DBG) log("setPowerStateToDesired: powerOffRadioSafely()");
                 powerOffRadioSafely();
             }
-            // Return early here as we do not want to hit the cancel timeout code below.
-            return;
         } else if (mDeviceShuttingDown
                 && (mCi.getRadioState() != TelephonyManager.RADIO_POWER_UNAVAILABLE)) {
             // !mDesiredPowerState condition above will happen first if the radio is on, so we will
@@ -3156,23 +3155,6 @@ public class ServiceStateTracker extends Handler {
         }
         // Cancel any pending timeouts because the state has been re-evaluated.
         cancelDelayRadioOffWaitingForImsDeregTimeout();
-        cancelPendingRadioPowerOff();
-    }
-
-    /**
-     * Cancel the pending radio power off request that was sent to force the radio to power off
-     * if waiting for all data to disconnect times out.
-     */
-    private synchronized void cancelPendingRadioPowerOff() {
-        if (mPhone.isUsingNewDataStack() && mPendingRadioPowerOffAfterDataOff) {
-            if (DBG) log("cancelPendingRadioPowerOff: cancelling.");
-            mPendingRadioPowerOffAfterDataOff = false;
-            for (Phone phone : PhoneFactory.getPhones()) {
-                phone.getDataNetworkController().unregisterDataNetworkControllerCallback(
-                        mDataDisconnectedCallback);
-            }
-            removeMessages(EVENT_SET_RADIO_POWER_OFF);
-        }
     }
 
     /**

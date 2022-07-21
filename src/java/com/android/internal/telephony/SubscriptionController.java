@@ -493,17 +493,6 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
-     * Broadcast when SubscriptionInfo has changed
-     * FIXME: Hopefully removed if the API council accepts SubscriptionInfoListener
-     */
-     private void broadcastSimInfoContentChanged() {
-        Intent intent = new Intent(TelephonyIntents.ACTION_SUBINFO_CONTENT_CHANGE);
-        mContext.sendBroadcast(intent);
-        intent = new Intent(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED);
-        mContext.sendBroadcast(intent);
-     }
-
-    /**
      * Notify the changed of subscription info.
      */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
@@ -513,9 +502,6 @@ public class SubscriptionController extends ISub.Stub {
                         mContext.getSystemService(Context.TELEPHONY_REGISTRY_SERVICE);
         if (DBG) logd("notifySubscriptionInfoChanged:");
         trm.notifySubscriptionInfoChanged();
-
-        // FIXME: Remove if listener technique accepted.
-        broadcastSimInfoContentChanged();
 
         MultiSimSettingController.getInstance().notifySubscriptionInfoChanged();
         TelephonyMetrics metrics = TelephonyMetrics.getInstance();

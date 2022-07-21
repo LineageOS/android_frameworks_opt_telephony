@@ -273,12 +273,6 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertEquals(iconTint, subInfo.getIconTint());
         assertEquals(disNum, subInfo.getNumber());
         assertEquals(isOpportunistic, subInfo.isOpportunistic());
-
-        /* verify broadcast intent */
-        ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext, atLeast(1)).sendBroadcast(captorIntent.capture());
-        assertEquals(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED,
-                captorIntent.getValue().getAction());
     }
 
     @Test @SmallTest
@@ -299,13 +293,6 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertNotNull(subInfo);
         assertEquals(disName, subInfo.getDisplayName());
         assertEquals(nameSource, subInfo.getNameSource());
-
-        /* verify broadcast intent */
-        ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext, atLeast(1)).sendBroadcast(captorIntent.capture());
-        assertEquals(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED,
-                captorIntent.getValue().getAction());
-
     }
 
     private void setSimEmbedded(boolean isEmbedded) throws Exception {
@@ -584,12 +571,6 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertNotNull(subInfo);
         assertEquals(Integer.parseInt(mCcMncVERIZON.substring(0, 3)), subInfo.getMcc());
         assertEquals(Integer.parseInt(mCcMncVERIZON.substring(3)), subInfo.getMnc());
-
-         /* verify broadcast intent */
-        ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext, atLeast(1)).sendBroadcast(captorIntent.capture());
-        assertEquals(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED,
-                captorIntent.getValue().getAction());
     }
 
     @Test @SmallTest
@@ -602,12 +583,6 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 .getActiveSubscriptionInfo(1, mCallingPackage, mCallingFeature);
         assertNotNull(subInfo);
         assertEquals(carrierId, subInfo.getCarrierId());
-
-         /* verify broadcast intent */
-        ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext, atLeast(1)).sendBroadcast(captorIntent.capture());
-        assertEquals(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED,
-                captorIntent.getValue().getAction());
     }
 
     @Test

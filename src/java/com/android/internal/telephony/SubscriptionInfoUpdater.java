@@ -612,7 +612,8 @@ public class SubscriptionInfoUpdater extends Handler {
 
         /**
          * The sim loading sequence will be
-         *  1. ACTION_SUBINFO_CONTENT_CHANGE happens through updateSubscriptionInfoByIccId() above.
+         *  1. OnSubscriptionsChangedListener is called through updateSubscriptionInfoByIccId()
+         *  above.
          *  2. ACTION_SIM_STATE_CHANGED/ACTION_SIM_CARD_STATE_CHANGED
          *  /ACTION_SIM_APPLICATION_STATE_CHANGED
          *  3. ACTION_SUBSCRIPTION_CARRIER_IDENTITY_CHANGED
