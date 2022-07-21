@@ -60,11 +60,13 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -411,6 +413,12 @@ public class DataProfileManagerTest extends TelephonyTest {
         Method method = DataProfileManager.class.getDeclaredMethod("dedupeDataProfiles", cArgs);
         method.setAccessible(true);
         method.invoke(mDataProfileManagerUT, dataProfiles);
+    }
+
+    private @NonNull List<DataProfile> getAllDataProfiles() throws Exception {
+        Field field = DataProfileManager.class.getDeclaredField("mAllDataProfiles");
+        field.setAccessible(true);
+        return (List<DataProfile>) field.get(mDataProfileManagerUT);
     }
 
     @Before
@@ -935,5 +943,16 @@ public class DataProfileManagerTest extends TelephonyTest {
 
         assertThat(mDataProfileManagerUT.isTetheringDataProfileExisting(
                 TelephonyManager.NETWORK_TYPE_NR)).isFalse();
+    }
+
+    @Test
+    public void testNoDefaultIms() throws Exception {
+        List<DataProfile> dataProfiles = getAllDataProfiles();
+
+        // Since the database already had IMS, there should not be default IMS created in the
+        // database.
+        assertThat(dataProfiles.stream()
+                .filter(dp -> dp.canSatisfy(NetworkCapabilities.NET_CAPABILITY_IMS))
+                .collect(Collectors.toList())).hasSize(1);
     }
 }
