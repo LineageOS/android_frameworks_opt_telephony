@@ -32,6 +32,7 @@ import android.os.Message;
 import android.provider.Telephony;
 import android.telephony.Annotation;
 import android.telephony.Annotation.NetworkType;
+import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -55,6 +56,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
@@ -251,7 +253,7 @@ public class DataProfileManager extends Handler {
                 loge("Cannot access APN database through telephony provider.");
                 return;
             }
-
+            boolean isInternetSupported = false;
             while (cursor.moveToNext()) {
                 ApnSetting apn = ApnSetting.makeApnSetting(cursor);
                 if (apn != null) {
@@ -262,9 +264,21 @@ public class DataProfileManager extends Handler {
                             .build();
                     profiles.add(dataProfile);
                     log("Added " + dataProfile);
+
+                    isInternetSupported |= apn.canHandleType(ApnSetting.TYPE_DEFAULT);
+                    if (mDataConfigManager.isApnConfigAnomalyReportEnabled()) {
+                        checkApnSetting(apn);
+                    }
                 }
             }
             cursor.close();
+
+            if (!isInternetSupported
+                    && !profiles.isEmpty() // APN database has been read successfully
+                    && mDataConfigManager.isApnConfigAnomalyReportEnabled()) {
+                reportAnomaly("Carrier doesn't support internet.",
+                        "9af73e18-b523-4dc5-adab-363eb6613305");
+            }
         }
 
         // Check if any of the profile already supports ENTERPRISE, if not, check if DPC has
@@ -310,6 +324,10 @@ public class DataProfileManager extends Handler {
         }
 
         dedupeDataProfiles(profiles);
+
+        if (mDataConfigManager.isApnConfigAnomalyReportEnabled()) {
+            checkDataProfiles(profiles);
+        }
 
         log("Found " + profiles.size() + " data profiles. profiles = " + profiles);
 
@@ -762,6 +780,65 @@ public class DataProfileManager extends Handler {
     }
 
     /**
+     * Trigger anomaly report if APN Setting contains invalid info.
+     *
+     * @param setting The Apn setting to be checked.
+     */
+    private void checkApnSetting(@NonNull ApnSetting setting) {
+        if (setting.canHandleType(ApnSetting.TYPE_MMS)) {
+            if (setting.getMmsc() == null) {
+                reportAnomaly("MMS is supported but no MMSC configured " + setting,
+                        "9af73e18-b523-4dc5-adab-19d86c6a3685");
+            } else if (!setting.getMmsc().toString().matches("^https?:\\/\\/.+")) {
+                reportAnomaly("Apn config mmsc should start with http but is "
+                                + setting.getMmsc(),
+                        "9af73e18-b523-4dc5-adab-ec754d959d4d");
+            }
+            if (!TextUtils.isEmpty(setting.getMmsProxyAddressAsString())
+                    && setting.getMmsProxyAddressAsString().matches("^https?:\\/\\/.+")) {
+                reportAnomaly("Apn config mmsc_proxy should NOT start with http but is "
+                                + setting.getMmsc(), "9af73e18-b523-4dc5-adab-ec754d959d4d");
+            }
+        }
+    }
+
+    /**
+     * Trigger anomaly report if any two Apn Settings share the same APN name while having
+     * overlapped network types.
+     *
+     * @param profiles The list of data profiles to be checked.
+     */
+    private void checkDataProfiles(List<DataProfile> profiles) {
+        for (int i = 0; i < profiles.size(); i++) {
+            ApnSetting a = profiles.get(i).getApnSetting();
+            if (a == null) continue;
+            if ((a.getNetworkTypeBitmask() | a.getLingeringNetworkTypeBitmask())
+                    != a.getLingeringNetworkTypeBitmask()) {
+                reportAnomaly("Apn[" + a.getApnName()
+                                + "] supported network should be a subset of the lingering network",
+                        "9af73e18-b523-4dc5-adab-4bb24355d838");
+            }
+            for (int j = i + 1; j < profiles.size(); j++) {
+                ApnSetting b = profiles.get(j).getApnSetting();
+                if (b == null) continue;
+                String apnNameA = a.getApnName();
+                String apnNameB = b.getApnName();
+                if (TextUtils.equals(apnNameA, apnNameB)
+                        // TelephonyManager.NETWORK_TYPE_BITMASK_UNKNOWN means all network types
+                        && (a.getNetworkTypeBitmask()
+                        == (int) TelephonyManager.NETWORK_TYPE_BITMASK_UNKNOWN
+                        || b.getNetworkTypeBitmask()
+                        == (int) TelephonyManager.NETWORK_TYPE_BITMASK_UNKNOWN
+                        || (a.getNetworkTypeBitmask() & b.getNetworkTypeBitmask()) != 0)) {
+                    reportAnomaly("Found overlapped network type under the APN name"
+                                    + a.getApnName(),
+                            "9af73e18-b523-4dc5-adab-4bb24555d839");
+                }
+            }
+        }
+    }
+
+    /**
      * Merge two data profiles if possible.
      *
      * @param dp1 Data profile 1 to be merged.
@@ -897,6 +974,17 @@ public class DataProfileManager extends Handler {
      */
     public void unregisterCallback(@NonNull DataProfileManagerCallback callback) {
         mDataProfileManagerCallbacks.remove(callback);
+    }
+
+    /**
+     * Trigger the anomaly report with the specified UUID.
+     *
+     * @param anomalyMsg Description of the event
+     * @param uuid UUID associated with that event
+     */
+    private void reportAnomaly(@NonNull String anomalyMsg, @NonNull String uuid) {
+        logl(anomalyMsg);
+        AnomalyReporter.reportAnomaly(UUID.fromString(uuid), anomalyMsg, mPhone.getCarrierId());
     }
 
     /**
