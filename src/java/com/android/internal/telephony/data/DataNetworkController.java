@@ -1713,9 +1713,11 @@ public class DataNetworkController extends Handler {
                     && !dataProfile.getApnSetting().canSupportLingeringNetworkType(networkType)) {
                 log("networkType=" + TelephonyManager.getNetworkTypeName(networkType)
                         + ", networkTypeBitmask="
-                        + dataProfile.getApnSetting().getNetworkTypeBitmask()
+                        + TelephonyManager.convertNetworkTypeBitmaskToString(
+                                dataProfile.getApnSetting().getNetworkTypeBitmask())
                         + ", lingeringNetworkTypeBitmask="
-                        + dataProfile.getApnSetting().getLingeringNetworkTypeBitmask());
+                        + TelephonyManager.convertNetworkTypeBitmaskToString(
+                                dataProfile.getApnSetting().getLingeringNetworkTypeBitmask()));
                 evaluation.addDataDisallowedReason(
                         DataDisallowedReason.DATA_NETWORK_TYPE_NOT_ALLOWED);
             }
@@ -1725,13 +1727,10 @@ public class DataNetworkController extends Handler {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_DISABLED);
         }
 
-        // Check if the data profile is still valid, sometimes the users can remove it from the APN
-        // editor. We use very loose check here because APN id can change after APN reset to
-        // default
-        if (mDataProfileManager.getDataProfile(
-                dataProfile.getApnSetting() != null
-                        ? dataProfile.getApnSetting().getApnName() : null,
-                dataProfile.getTrafficDescriptor()) == null) {
+        // Check if the data profile is still compatible, sometimes the users can remove it from the
+        // APN editor. If some of the important fields are changed in APN settings, we need to
+        // tear down the network. Note traffic descriptor from the data profile will not be checked.
+        if (!mDataProfileManager.isDataProfileCompatible(dataProfile)) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_PROFILE_INVALID);
         }
 

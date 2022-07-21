@@ -86,7 +86,11 @@ public class DataProfileManager extends Handler {
     /** Cellular data service. */
     private final @NonNull DataServiceManager mWwanDataServiceManager;
 
-    /** All data profiles for the current carrier. */
+    /**
+     * All data profiles for the current carrier. Note only data profiles loaded from the APN
+     * database will be stored here. The on-demand data profiles (generated dynamically, for
+     * example, enterprise data profiles with differentiator) are not stored here.
+     */
     private final @NonNull List<DataProfile> mAllDataProfiles = new ArrayList<>();
 
     /** The data profile used for initial attach. */
@@ -911,39 +915,29 @@ public class DataProfileManager extends Handler {
     }
 
     /**
-     * Get data profile by APN name and/or traffic descriptor.
+     * Check if the provided data profile is still compatible with the current environment. Note
+     * this method ignores APN id check and traffic descriptor check. A data profile with traffic
+     * descriptor only can always be used in any condition.
      *
-     * @param apnName APN name.
-     * @param trafficDescriptor Traffic descriptor.
-     *
-     * @return Data profile by APN name and/or traffic descriptor. Either one of APN name or
-     * traffic descriptor should be provided. {@code null} if data profile is not found.
+     * @param dataProfile The data profile to check.
+     * @return {@code true} if the provided data profile can be still used in current environment.
      */
-    public @Nullable DataProfile getDataProfile(@Nullable String apnName,
-            @Nullable TrafficDescriptor trafficDescriptor) {
-        if (apnName == null && trafficDescriptor == null) return null;
-
-        List<DataProfile> dataProfiles = mAllDataProfiles;
-
-        // Check if any existing data profile has the same traffic descriptor.
-        if (trafficDescriptor != null) {
-            dataProfiles = mAllDataProfiles.stream()
-                    .filter(dp -> trafficDescriptor.equals(dp.getTrafficDescriptor()))
-                    .collect(Collectors.toList());
+    public boolean isDataProfileCompatible(@NonNull DataProfile dataProfile) {
+        if (dataProfile == null) {
+            return false;
         }
 
-        // Check if any existing data profile has the same APN name.
-        if (apnName != null) {
-            dataProfiles = dataProfiles.stream()
-                    .filter(dp -> dp.getApnSetting() != null
-                            && (dp.getApnSetting().getApnSetId()
-                            == Telephony.Carriers.MATCH_ALL_APN_SET_ID
-                            || dp.getApnSetting().getApnSetId() == mPreferredDataProfileSetId))
-                    .filter(dp -> apnName.equals(dp.getApnSetting().getApnName()))
-                    .collect(Collectors.toList());
+        if (dataProfile.getApnSetting() == null && dataProfile.getTrafficDescriptor() != null) {
+            // A traffic descriptor only data profile can be always used. Traffic descriptors are
+            // always generated on the fly instead loaded from the database.
+            return true;
         }
 
-        return dataProfiles.isEmpty() ? null : dataProfiles.get(0);
+        // Only check the APN from the profile is compatible or not.
+        return mAllDataProfiles.stream()
+                .filter(dp -> dp.getApnSetting() != null)
+                .anyMatch(dp -> dp.getApnSetting().equals(dataProfile.getApnSetting(),
+                        mPhone.getServiceState().getDataRoamingFromRegistration()));
     }
 
     /**
