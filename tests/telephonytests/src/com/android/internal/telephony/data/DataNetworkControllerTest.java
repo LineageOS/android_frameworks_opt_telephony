@@ -208,6 +208,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                     .setNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_LTE
                             | TelephonyManager.NETWORK_TYPE_BITMASK_1xRTT))
                     .setLingeringNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_LTE
+                            | TelephonyManager.NETWORK_TYPE_BITMASK_1xRTT
                             | TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN
                             | TelephonyManager.NETWORK_TYPE_BITMASK_UMTS
                             | TelephonyManager.NETWORK_TYPE_BITMASK_NR))
@@ -579,6 +580,10 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 new int[]{TelephonyManager.NETWORK_TYPE_CDMA, TelephonyManager.NETWORK_TYPE_1xRTT,
                         TelephonyManager.NETWORK_TYPE_EVDO_0, TelephonyManager.NETWORK_TYPE_EVDO_A,
                         TelephonyManager.NETWORK_TYPE_EVDO_B});
+
+        mCarrierConfig.putIntArray(CarrierConfigManager
+                        .KEY_CAPABILITIES_EXEMPT_FROM_SINGLE_DC_CHECK_INT_ARRAY,
+                new int[]{NetworkCapabilities.NET_CAPABILITY_IMS});
 
         mContextFixture.putResource(com.android.internal.R.string.config_bandwidthEstimateSource,
                 "bandwidth_estimator");
@@ -1693,11 +1698,20 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS,
                 NetworkCapabilities.NET_CAPABILITY_MMTEL);
 
-        // Add internet, should be compatible with
+        // Add internet, should be compatible
         mDataNetworkControllerUT.addNetworkRequest(
                 createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
         setSuccessfulSetupDataResponse(mMockedDataServiceManagers
                 .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), 2);
+        processAllMessages();
+
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS,
+                NetworkCapabilities.NET_CAPABILITY_MMTEL);
+
+        // Both internet and IMS should be retained after network re-evaluation
+        mDataNetworkControllerUT.obtainMessage(16/*EVENT_REEVALUATE_EXISTING_DATA_NETWORKS*/)
+                .sendToTarget();
         processAllMessages();
 
         verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_INTERNET);
@@ -1709,6 +1723,15 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_MMS));
         setSuccessfulSetupDataResponse(mMockedDataServiceManagers
                 .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), 3);
+        processAllMessages();
+
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_MMS);
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS,
+                NetworkCapabilities.NET_CAPABILITY_MMTEL);
+
+        // Both internet and IMS should be retained after network re-evaluation
+        mDataNetworkControllerUT.obtainMessage(16/*EVENT_REEVALUATE_EXISTING_DATA_NETWORKS*/)
+                .sendToTarget();
         processAllMessages();
 
         verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_MMS);
