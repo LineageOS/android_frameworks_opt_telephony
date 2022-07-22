@@ -1338,6 +1338,17 @@ public class DataNetworkController extends Handler {
     }
 
     /**
+     * @param capabilities The Network Capabilities to be checked.
+     * @return {@code true} if the capabilities contain any capability that's exempt from the single
+     * PDN rule.
+     */
+    private boolean hasCapabilityExemptsFromSinglePdnRule(@NetCapability int[] capabilities) {
+        Set<Integer> exemptCapabilities =
+                mDataConfigManager.getCapabilitiesExemptFromSingleDataNetwork();
+        return Arrays.stream(capabilities).anyMatch(exemptCapabilities::contains);
+    }
+
+    /**
      * Evaluate if telephony frameworks would allow data setup for internet in current environment.
      *
      * @return {@code true} if the environment is allowed for internet data. {@code false} if not
@@ -1501,13 +1512,12 @@ public class DataNetworkController extends Handler {
         }
 
         // Check if only one data network is allowed.
-        // Note any IMS network is ignored for the single-connection rule.
         if (isOnlySingleDataNetworkAllowed(transport)
-                && !networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
-            // if exists non-IMS network
+                && !hasCapabilityExemptsFromSinglePdnRule(networkRequest.getCapabilities())) {
+            // if exists not-exempt network.
             if (mDataNetworkList.stream()
-                    .anyMatch(dataNetwork -> !dataNetwork.getNetworkCapabilities()
-                                    .hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS))) {
+                    .anyMatch(dataNetwork -> !hasCapabilityExemptsFromSinglePdnRule(
+                            dataNetwork.getNetworkCapabilities().getCapabilities()))) {
                 evaluation.addDataDisallowedReason(
                         DataDisallowedReason.ONLY_ALLOWED_SINGLE_NETWORK);
             }
@@ -1668,16 +1678,18 @@ public class DataNetworkController extends Handler {
         }
 
         // Check if there are other network that has higher priority, and only single data network
-        // is allowed. Note IMS network is exempt from the single-connection rule.
+        // is allowed.
         if (isOnlySingleDataNetworkAllowed(dataNetwork.getTransport())
-                && !dataNetwork.getNetworkCapabilities()
-                .hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
+                && !hasCapabilityExemptsFromSinglePdnRule(
+                        dataNetwork.getNetworkCapabilities().getCapabilities())) {
             // If there is network request that has higher priority than this data network, then
             // tear down the network, regardless that network request is satisfied or not.
             if (mAllNetworkRequestList.stream()
                     .filter(request -> dataNetwork.getTransport()
                             == mAccessNetworksManager.getPreferredTransportByNetworkCapability(
                                     request.getApnTypeNetworkCapability()))
+                    .filter(request
+                            -> !hasCapabilityExemptsFromSinglePdnRule(request.getCapabilities()))
                     .anyMatch(request -> request.getPriority() > dataNetwork.getPriority())) {
                 evaluation.addDataDisallowedReason(
                         DataDisallowedReason.ONLY_ALLOWED_SINGLE_NETWORK);
