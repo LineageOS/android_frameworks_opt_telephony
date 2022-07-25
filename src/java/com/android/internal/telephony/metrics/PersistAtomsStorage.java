@@ -26,6 +26,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyManager.NetworkTypeBitMask;
+import android.util.SparseIntArray;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.nano.PersistAtomsProto.CarrierIdMismatch;
@@ -257,6 +258,7 @@ public class PersistAtomsStorage {
 
     /** Adds an incoming SMS to the storage. */
     public synchronized void addIncomingSms(IncomingSms sms) {
+        sms.hashCode = SmsStats.getSmsHashCode(sms);
         mAtoms.incomingSms = insertAtRandomPlace(mAtoms.incomingSms, sms, mMaxNumSms);
         saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
 
@@ -266,6 +268,7 @@ public class PersistAtomsStorage {
 
     /** Adds an outgoing SMS to the storage. */
     public synchronized void addOutgoingSms(OutgoingSms sms) {
+        sms.hashCode = SmsStats.getSmsHashCode(sms);
         // Update the retry id, if needed, so that it's unique and larger than all
         // previous ones. (this algorithm ignores the fact that some SMS atoms might
         // be dropped due to limit in size of the array).
@@ -1682,8 +1685,9 @@ public class PersistAtomsStorage {
     }
 
     /**
-     * Inserts a new element in a random position in an array with a maximum size, replacing the
-     * least recent item if possible.
+     * Inserts a new element in a random position in an array with a maximum size.
+     *
+     * <p>If the array is full, merge with existing item if possible or replace one item randomly.
      */
     private static <T> T[] insertAtRandomPlace(T[] storage, T instance, int maxLength) {
         final int newLength = storage.length + 1;
@@ -1692,7 +1696,11 @@ public class PersistAtomsStorage {
         if (newLength == 1) {
             result[0] = instance;
         } else if (arrayFull) {
-            result[findItemToEvict(storage)] = instance;
+            if (instance instanceof OutgoingSms || instance instanceof IncomingSms) {
+                mergeSmsOrEvictInFullStorage(result, instance);
+            } else {
+                result[findItemToEvict(storage)] = instance;
+            }
         } else {
             // insert at random place (by moving the item at the random place to the end)
             int insertAt = sRandom.nextInt(newLength);
@@ -1700,6 +1708,90 @@ public class PersistAtomsStorage {
             result[insertAt] = instance;
         }
         return result;
+    }
+
+    /**
+     * Merge new sms in a full storage.
+     *
+     * <p>If new sms is similar to old sms, merge them.
+     * If not, merge 2 old similar sms and add the new sms.
+     * If not, replace old sms with the lowest count.
+     */
+    private static <T> void mergeSmsOrEvictInFullStorage(T[] storage, T instance) {
+        // key: hashCode, value: smsIndex
+        SparseIntArray map = new SparseIntArray();
+        int smsIndex1 = -1;
+        int smsIndex2 = -1;
+        int indexLowestCount = -1;
+        int minCount = Integer.MAX_VALUE;
+
+        for (int i = 0; i < storage.length; i++) {
+            // If the new SMS can be merged to an existing item, merge it and return immediately.
+            if (areSmsMergeable(storage[i], instance)) {
+                storage[i] = mergeSms(storage[i], instance);
+                return;
+            }
+
+            // Keep sms index with lowest count to evict, in case we cannot merge any 2 messages.
+            int smsCount = getSmsCount(storage[i]);
+            if (smsCount < minCount) {
+                indexLowestCount = i;
+                minCount = smsCount;
+            }
+
+            // Find any 2 messages in the storage that can be merged together.
+            if (smsIndex1 != -1) {
+                int smsHashCode = getSmsHashCode(storage[i]);
+                if (map.indexOfKey(smsHashCode) < 0) {
+                    map.append(smsHashCode, i);
+                } else {
+                    smsIndex1 = map.get(smsHashCode);
+                    smsIndex2 = i;
+                }
+            }
+        }
+
+        // Merge 2 similar old sms and add the new sms
+        if (smsIndex1 != -1) {
+            storage[smsIndex1] = mergeSms(storage[smsIndex1], storage[smsIndex2]);
+            storage[smsIndex2] = instance;
+            return;
+        }
+
+        // Or replace old sms that has the lowest count
+        storage[indexLowestCount] = instance;
+        return;
+    }
+
+    private static <T> int getSmsHashCode(T sms) {
+        return sms instanceof OutgoingSms
+                ? ((OutgoingSms) sms).hashCode : ((IncomingSms) sms).hashCode;
+    }
+
+    private static <T> int getSmsCount(T sms) {
+        return sms instanceof OutgoingSms
+                ? ((OutgoingSms) sms).count : ((IncomingSms) sms).count;
+    }
+
+    /** Compares 2 SMS hash codes to check if they can be clubbed together in the metrics. */
+    private static <T> boolean areSmsMergeable(T instance1, T instance2) {
+        return getSmsHashCode(instance1) == getSmsHashCode(instance2);
+    }
+
+    /** Merges sms2 data on top of sms1 and returns the merged value. */
+    private static <T> T mergeSms(T sms1, T sms2) {
+        if (sms1 instanceof OutgoingSms) {
+            OutgoingSms tSms1 = (OutgoingSms) sms1;
+            OutgoingSms tSms2 = (OutgoingSms) sms2;
+            tSms1.intervalMillis = (tSms1.intervalMillis * tSms1.count
+                    + tSms2.intervalMillis * tSms2.count) / (tSms1.count + tSms2.count);
+            tSms1.count += tSms2.count;
+        } else if (sms1 instanceof IncomingSms) {
+            IncomingSms tSms1 = (IncomingSms) sms1;
+            IncomingSms tSms2 = (IncomingSms) sms2;
+            tSms1.count += tSms2.count;
+        }
+        return sms1;
     }
 
     /** Returns index of the item suitable for eviction when the array is full. */
