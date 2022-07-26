@@ -248,6 +248,10 @@ message IncomingSms {
     optional bool is_esim = 12;
     optional int32 carrier_id = 13;
     optional int64 message_id = 14;
+    optional int32 count = 15;
+
+    // Internal use only
+    optional int32 hashCode = 10001;
 }
 
 message OutgoingSms {
@@ -265,6 +269,10 @@ message OutgoingSms {
     optional int64 message_id = 12;
     optional int32 retry_id = 13;
     optional int64 interval_millis = 14;
+    optional int32 count = 15;
+
+    // Internal use only
+    optional int32 hashCode = 10001;
 }
 
 message CarrierIdMismatch {
