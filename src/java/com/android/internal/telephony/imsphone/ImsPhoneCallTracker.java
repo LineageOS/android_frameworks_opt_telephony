@@ -2791,6 +2791,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     }
                 }
             }
+        } else {
+            mPhone.getVoiceCallSessionStats().onCallStateChanged(conn.getCall());
         }
 
         if (changed) {
@@ -3171,7 +3173,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         DisconnectCause.NOT_DISCONNECTED, true /*ignore state update*/);
                 mMetrics.writeImsCallState(mPhone.getPhoneId(),
                         imsCall.getCallSession(), conn.getCall().mState);
-                mPhone.getVoiceCallSessionStats().onCallStateChanged(conn.getCall());
             }
         }
 
