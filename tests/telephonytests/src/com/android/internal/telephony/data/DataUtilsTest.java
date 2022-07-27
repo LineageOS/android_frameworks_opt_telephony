@@ -53,26 +53,40 @@ public class DataUtilsTest extends TelephonyTest {
                 NetworkCapabilities.NET_CAPABILITY_INTERNET,
                 NetworkCapabilities.NET_CAPABILITY_MMS,
                 NetworkCapabilities.NET_CAPABILITY_MMS,
-                NetworkCapabilities.NET_CAPABILITY_EIMS
+                NetworkCapabilities.NET_CAPABILITY_EIMS,
+                NetworkCapabilities.NET_CAPABILITY_ENTERPRISE,
+                NetworkCapabilities.NET_CAPABILITY_ENTERPRISE,
+                NetworkCapabilities.NET_CAPABILITY_ENTERPRISE,
         };
 
         int requestId = 0;
+        int enterpriseId = 1;
         TelephonyNetworkRequest networkRequest;
         for (int netCap : netCaps) {
-            networkRequest = new TelephonyNetworkRequest(new NetworkRequest(
-                    new NetworkCapabilities.Builder()
-                            .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-                            .addCapability(netCap).build(), -1, requestId++,
-                    NetworkRequest.Type.REQUEST), mPhone);
+            if (netCap == NetworkCapabilities.NET_CAPABILITY_ENTERPRISE) {
+                networkRequest = new TelephonyNetworkRequest(new NetworkRequest(
+                        new NetworkCapabilities.Builder()
+                                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                                .addCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)
+                                .addEnterpriseId(enterpriseId).build(), -1, requestId++,
+                        NetworkRequest.Type.REQUEST), mPhone);
+                if (enterpriseId == 1) enterpriseId++;
+            } else {
+                networkRequest = new TelephonyNetworkRequest(new NetworkRequest(
+                        new NetworkCapabilities.Builder()
+                                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                                .addCapability(netCap).build(), -1, requestId++,
+                        NetworkRequest.Type.REQUEST), mPhone);
+            }
             requestList.add(networkRequest);
         }
 
-        assertThat(requestList).hasSize(5);
+        assertThat(requestList).hasSize(8);
 
         List<NetworkRequestList> requestListList =
                 DataUtils.getGroupedNetworkRequestList(requestList);
 
-        assertThat(requestListList).hasSize(3);
+        assertThat(requestListList).hasSize(5);
         requestList = requestListList.get(0);
         assertThat(requestList).hasSize(1);
         assertThat(requestList.get(0).hasCapability(
@@ -91,6 +105,21 @@ public class DataUtilsTest extends TelephonyTest {
                 NetworkCapabilities.NET_CAPABILITY_INTERNET)).isTrue();
         assertThat(requestList.get(1).hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_INTERNET)).isTrue();
+
+        requestList = requestListList.get(3);
+        assertThat(requestList).hasSize(1);
+        assertThat(requestList.get(0).hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)).isTrue();
+        assertThat(requestList.get(0).getCapabilityDifferentiator() == 1).isTrue();
+
+        requestList = requestListList.get(4);
+        assertThat(requestList).hasSize(2);
+        assertThat(requestList.get(0).hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)).isTrue();
+        assertThat(requestList.get(0).getCapabilityDifferentiator() == 2).isTrue();
+        assertThat(requestList.get(1).hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)).isTrue();
+        assertThat(requestList.get(1).getCapabilityDifferentiator() == 2).isTrue();
     }
 
     @Test
