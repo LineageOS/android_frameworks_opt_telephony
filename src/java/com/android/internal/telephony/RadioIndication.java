@@ -139,9 +139,9 @@ public class RadioIndication extends IRadioIndication.Stub {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
         int state = RILUtils.convertHalRadioState(radioState);
-        if (RIL.RILJ_LOGD) {
-            mRil.unsljLogMore(RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED, "radioStateChanged: " +
-                    state);
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogMore(
+                    RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED, "radioStateChanged: " + state);
         }
 
         mRil.setRadioState(state, false /* forceNotifyRegistrants */);
@@ -150,7 +150,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void callStateChanged(int indicationType) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED);
 
         mRil.mCallStateRegistrants.notifyRegistrants();
     }
@@ -162,7 +162,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void networkStateChanged(int indicationType) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED);
 
         mRil.mNetworkStateRegistrants.notifyRegistrants();
     }
@@ -171,7 +171,7 @@ public class RadioIndication extends IRadioIndication.Stub {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
         byte[] pduArray = RILUtils.arrayListToPrimitiveArray(pdu);
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS);
 
         SmsMessageBase smsb = com.android.internal.telephony.gsm.SmsMessage.createFromPdu(pduArray);
         if (mRil.mGsmSmsRegistrant != null) {
@@ -184,7 +184,7 @@ public class RadioIndication extends IRadioIndication.Stub {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
         byte[] pduArray = RILUtils.arrayListToPrimitiveArray(pdu);
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT);
 
         if (mRil.mSmsStatusRegistrant != null) {
             mRil.mSmsStatusRegistrant.notifyRegistrant(new AsyncResult(null, pduArray, null));
@@ -194,7 +194,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void newSmsOnSim(int indicationType, int recordNumber) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM);
 
         if (mRil.mSmsOnSimRegistrant != null) {
             mRil.mSmsOnSimRegistrant.notifyRegistrant(new AsyncResult(null, recordNumber, null));
@@ -204,7 +204,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void onUssd(int indicationType, int ussdModeType, String msg) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogMore(RIL_UNSOL_ON_USSD, "" + ussdModeType);
+        if (mRil.isLogOrTrace()) mRil.unsljLogMore(RIL_UNSOL_ON_USSD, "" + ussdModeType);
 
         // todo: Clean this up with a parcelable class for better self-documentation
         String[] resp = new String[2];
@@ -218,7 +218,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void nitzTimeReceived(int indicationType, String nitzTime, long receivedTime) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_NITZ_TIME_RECEIVED, nitzTime);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_NITZ_TIME_RECEIVED, nitzTime);
 
         // todo: Clean this up with a parcelable class for better self-documentation
         Object[] result = new Object[2];
@@ -228,7 +228,7 @@ public class RadioIndication extends IRadioIndication.Stub {
         boolean ignoreNitz = TelephonyProperties.ignore_nitz().orElse(false);
 
         if (ignoreNitz) {
-            if (RIL.RILJ_LOGD) mRil.riljLog("ignoring UNSOL_NITZ_TIME_RECEIVED");
+            if (mRil.isLogOrTrace()) mRil.riljLog("ignoring UNSOL_NITZ_TIME_RECEIVED");
         } else {
             if (mRil.mNITZTimeRegistrant != null) {
                 mRil.mNITZTimeRegistrant.notifyRegistrant(new AsyncResult (null, result, null));
@@ -247,7 +247,7 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         SignalStrength ss = mRil.fixupSignalStrength10(ssInitial);
         // Note this is set to "verbose" because it happens frequently
-        if (RIL.RILJ_LOGV) mRil.unsljLogvRet(RIL_UNSOL_SIGNAL_STRENGTH, ss);
+        if (mRil.isLogvOrTrace()) mRil.unsljLogvRet(RIL_UNSOL_SIGNAL_STRENGTH, ss);
 
         if (mRil.mSignalStrengthRegistrant != null) {
             mRil.mSignalStrengthRegistrant.notifyRegistrant(new AsyncResult (null, ss, null));
@@ -263,7 +263,7 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         List<LinkCapacityEstimate> response = RILUtils.convertHalLceData(lce);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_LCEDATA_RECV, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_LCEDATA_RECV, response);
 
         if (mRil.mLceInfoRegistrants != null) {
             mRil.mLceInfoRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
@@ -279,7 +279,7 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         List<LinkCapacityEstimate> response = RILUtils.convertHalLceData(lce);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_LCEDATA_RECV, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_LCEDATA_RECV, response);
 
         if (mRil.mLceInfoRegistrants != null) {
             mRil.mLceInfoRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
@@ -295,7 +295,7 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         SignalStrength ss = RILUtils.convertHalSignalStrength(signalStrength);
         // Note this is set to "verbose" because it happens frequently
-        if (RIL.RILJ_LOGV) mRil.unsljLogvRet(RIL_UNSOL_SIGNAL_STRENGTH, ss);
+        if (mRil.isLogvOrTrace()) mRil.unsljLogvRet(RIL_UNSOL_SIGNAL_STRENGTH, ss);
 
         if (mRil.mSignalStrengthRegistrant != null) {
             mRil.mSignalStrengthRegistrant.notifyRegistrant(new AsyncResult(null, ss, null));
@@ -312,7 +312,7 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         SignalStrength ss = RILUtils.convertHalSignalStrength(signalStrength);
 
-        if (RIL.RILJ_LOGV) mRil.unsljLogvRet(RIL_UNSOL_SIGNAL_STRENGTH, ss);
+        if (mRil.isLogvOrTrace()) mRil.unsljLogvRet(RIL_UNSOL_SIGNAL_STRENGTH, ss);
 
         if (mRil.mSignalStrengthRegistrant != null) {
             mRil.mSignalStrengthRegistrant.notifyRegistrant(new AsyncResult(null, ss, null));
@@ -329,7 +329,7 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         SignalStrength ss = RILUtils.convertHalSignalStrength(signalStrength);
 
-        if (RIL.RILJ_LOGV) mRil.unsljLogvRet(RIL_UNSOL_SIGNAL_STRENGTH, ss);
+        if (mRil.isLogvOrTrace()) mRil.unsljLogvRet(RIL_UNSOL_SIGNAL_STRENGTH, ss);
 
         if (mRil.mSignalStrengthRegistrant != null) {
             mRil.mSignalStrengthRegistrant.notifyRegistrant(new AsyncResult(null, ss, null));
@@ -380,7 +380,7 @@ public class RadioIndication extends IRadioIndication.Stub {
             response.add(emergencyNumber);
         }
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_EMERGENCY_NUMBER_LIST, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_EMERGENCY_NUMBER_LIST, response);
 
         // Cache emergency number list from last indication.
         mRil.cacheEmergencyNumberListIndication(response);
@@ -431,7 +431,9 @@ public class RadioIndication extends IRadioIndication.Stub {
         notification.type = suppSvcNotification.type;
         notification.number = suppSvcNotification.number;
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_SUPP_SVC_NOTIFICATION, notification);
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(RIL_UNSOL_SUPP_SVC_NOTIFICATION, notification);
+        }
 
         if (mRil.mSsnRegistrant != null) {
             mRil.mSsnRegistrant.notifyRegistrant(new AsyncResult (null, notification, null));
@@ -441,7 +443,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void stkSessionEnd(int indicationType) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_STK_SESSION_END);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_STK_SESSION_END);
 
         if (mRil.mCatSessionEndRegistrant != null) {
             mRil.mCatSessionEndRegistrant.notifyRegistrant(new AsyncResult (null, null, null));
@@ -451,7 +453,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void stkProactiveCommand(int indicationType, String cmd) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_STK_PROACTIVE_COMMAND);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_STK_PROACTIVE_COMMAND);
 
         if (mRil.mCatProCmdRegistrant != null) {
             mRil.mCatProCmdRegistrant.notifyRegistrant(new AsyncResult (null, cmd, null));
@@ -461,7 +463,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void stkEventNotify(int indicationType, String cmd) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_STK_EVENT_NOTIFY);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_STK_EVENT_NOTIFY);
 
         if (mRil.mCatEventRegistrant != null) {
             mRil.mCatEventRegistrant.notifyRegistrant(new AsyncResult (null, cmd, null));
@@ -471,7 +473,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void stkCallSetup(int indicationType, long timeout) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_STK_CALL_SETUP, timeout);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_STK_CALL_SETUP, timeout);
 
         if (mRil.mCatCallSetUpRegistrant != null) {
             mRil.mCatCallSetUpRegistrant.notifyRegistrant(new AsyncResult (null, timeout, null));
@@ -481,7 +483,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void simSmsStorageFull(int indicationType) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_SIM_SMS_STORAGE_FULL);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_SIM_SMS_STORAGE_FULL);
 
         if (mRil.mIccSmsFullRegistrant != null) {
             mRil.mIccSmsFullRegistrant.notifyRegistrant();
@@ -496,7 +498,7 @@ public class RadioIndication extends IRadioIndication.Stub {
         response.efId = refreshResult.efId;
         response.aid = refreshResult.aid;
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_SIM_REFRESH, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_SIM_REFRESH, response);
 
         mRil.mIccRefreshRegistrants.notifyRegistrants(new AsyncResult (null, response, null));
     }
@@ -517,7 +519,7 @@ public class RadioIndication extends IRadioIndication.Stub {
             mRil.writeMetricsCallRing(response);
         }
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CALL_RING, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_CALL_RING, response);
 
         if (mRil.mRingRegistrant != null) {
             mRil.mRingRegistrant.notifyRegistrant(new AsyncResult (null, response, null));
@@ -527,7 +529,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void simStatusChanged(int indicationType) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED);
 
         mRil.mIccStatusChangedRegistrants.notifyRegistrants();
     }
@@ -535,7 +537,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void cdmaNewSms(int indicationType, CdmaSmsMessage msg) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_CDMA_NEW_SMS);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RESPONSE_CDMA_NEW_SMS);
 
         SmsMessage sms = new SmsMessage(RILUtils.convertHalCdmaSmsMessage(msg));
         if (mRil.mCdmaSmsRegistrant != null) {
@@ -547,9 +549,9 @@ public class RadioIndication extends IRadioIndication.Stub {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
         byte[] response = RILUtils.arrayListToPrimitiveArray(data);
-        if (RIL.RILJ_LOGD) {
-            mRil.unsljLogvRet(RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS,
-                    IccUtils.bytesToHexString(response));
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogvRet(
+                    RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS, IccUtils.bytesToHexString(response));
         }
 
         if (mRil.mGsmBroadcastSmsRegistrant != null) {
@@ -560,7 +562,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void cdmaRuimSmsStorageFull(int indicationType) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_CDMA_RUIM_SMS_STORAGE_FULL);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_CDMA_RUIM_SMS_STORAGE_FULL);
 
         if (mRil.mIccSmsFullRegistrant != null) {
             mRil.mIccSmsFullRegistrant.notifyRegistrant();
@@ -570,7 +572,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void restrictedStateChanged(int indicationType, int state) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogvRet(RIL_UNSOL_RESTRICTED_STATE_CHANGED, state);
+        if (mRil.isLogOrTrace()) mRil.unsljLogvRet(RIL_UNSOL_RESTRICTED_STATE_CHANGED, state);
 
         if (mRil.mRestrictedStateRegistrant != null) {
             mRil.mRestrictedStateRegistrant.notifyRegistrant(new AsyncResult (null, state, null));
@@ -580,7 +582,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void enterEmergencyCallbackMode(int indicationType) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_ENTER_EMERGENCY_CALLBACK_MODE);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_ENTER_EMERGENCY_CALLBACK_MODE);
 
         if (mRil.mEmergencyCallbackModeRegistrant != null) {
             mRil.mEmergencyCallbackModeRegistrant.notifyRegistrant();
@@ -605,7 +607,7 @@ public class RadioIndication extends IRadioIndication.Stub {
         notification.numberType = callWaitingRecord.numberType;
         notification.numberPlan = callWaitingRecord.numberPlan;
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CDMA_CALL_WAITING, notification);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_CDMA_CALL_WAITING, notification);
 
         mRil.mCallWaitingInfoRegistrants.notifyRegistrants(
                 new AsyncResult (null, notification, null));
@@ -617,7 +619,9 @@ public class RadioIndication extends IRadioIndication.Stub {
         int response[] = new int[1];
         response[0] = status;
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CDMA_OTA_PROVISION_STATUS, response);
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(RIL_UNSOL_CDMA_OTA_PROVISION_STATUS, response);
+        }
 
         mRil.mOtaProvisionRegistrants.notifyRegistrants(new AsyncResult (null, response, null));
     }
@@ -712,7 +716,9 @@ public class RadioIndication extends IRadioIndication.Stub {
                             + CdmaInformationRecords.idToString(id) + " ");
             }
 
-            if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CDMA_INFO_REC, cdmaInformationRecords);
+            if (mRil.isLogOrTrace()) {
+                mRil.unsljLogRet(RIL_UNSOL_CDMA_INFO_REC, cdmaInformationRecords);
+            }
             mRil.notifyRegistrantsCdmaInfoRec(cdmaInformationRecords);
         }
     }
@@ -720,7 +726,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void indicateRingbackTone(int indicationType, boolean start) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogvRet(RIL_UNSOL_RINGBACK_TONE, start);
+        if (mRil.isLogOrTrace()) mRil.unsljLogvRet(RIL_UNSOL_RINGBACK_TONE, start);
 
         mRil.mRingbackToneRegistrants.notifyRegistrants(new AsyncResult(null, start, null));
     }
@@ -728,7 +734,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void resendIncallMute(int indicationType) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESEND_INCALL_MUTE);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RESEND_INCALL_MUTE);
 
         mRil.mResendIncallMuteRegistrants.notifyRegistrants();
     }
@@ -739,7 +745,9 @@ public class RadioIndication extends IRadioIndication.Stub {
         int response[] = new int[1];
         response[0] = cdmaSource;
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED, response);
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED, response);
+        }
 
         mRil.mCdmaSubscriptionChangedRegistrants.notifyRegistrants(
                 new AsyncResult (null, response, null));
@@ -751,7 +759,7 @@ public class RadioIndication extends IRadioIndication.Stub {
         int response[] = new int[1];
         response[0] = version;
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CDMA_PRL_CHANGED, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_CDMA_PRL_CHANGED, response);
 
         mRil.mCdmaPrlChangedRegistrants.notifyRegistrants(
                 new AsyncResult (null, response, null));
@@ -760,7 +768,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void exitEmergencyCallbackMode(int indicationType) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE);
 
         mRil.mExitEmergencyCallbackModeRegistrants.notifyRegistrants();
     }
@@ -768,7 +776,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void rilConnected(int indicationType) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RIL_CONNECTED);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RIL_CONNECTED);
 
         // Initial conditions
         mRil.setRadioPower(false, null);
@@ -784,7 +792,9 @@ public class RadioIndication extends IRadioIndication.Stub {
         int response[] = new int[1];
         response[0] = rat;
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_VOICE_RADIO_TECH_CHANGED, response);
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(RIL_UNSOL_VOICE_RADIO_TECH_CHANGED, response);
+        }
 
         mRil.mVoiceRadioTechChangedRegistrants.notifyRegistrants(
                 new AsyncResult (null, response, null));
@@ -827,7 +837,7 @@ public class RadioIndication extends IRadioIndication.Stub {
 
     private void responseCellInfoList(ArrayList<? extends Object> records) {
         ArrayList<CellInfo> response = RILUtils.convertHalCellInfoList((ArrayList<Object>) records);
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CELL_INFO_LIST, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_CELL_INFO_LIST, response);
         mRil.mRilCellInfoListRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
     }
 
@@ -835,7 +845,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void uiccApplicationsEnablementChanged(int indicationType, boolean enabled) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) {
+        if (mRil.isLogOrTrace()) {
             mRil.unsljLogRet(RIL_UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED, enabled);
         }
 
@@ -875,7 +885,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void imsNetworkStateChanged(int indicationType) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED);
 
         mRil.mImsNetworkStateChangedRegistrants.notifyRegistrants();
     }
@@ -886,7 +896,9 @@ public class RadioIndication extends IRadioIndication.Stub {
         int response[] = new int[1];
         response[0] = activate ? 1 : 0;
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED, response);
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED, response);
+        }
 
         mRil.mSubscriptionStatusRegistrants.notifyRegistrants(
                 new AsyncResult (null, response, null));
@@ -898,7 +910,7 @@ public class RadioIndication extends IRadioIndication.Stub {
         int response[] = new int[1];
         response[0] = state;
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_SRVCC_STATE_NOTIFY, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_SRVCC_STATE_NOTIFY, response);
 
         mRil.writeMetricsSrvcc(state);
 
@@ -913,7 +925,7 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         ArrayList<HardwareConfig> response = RILUtils.convertHalHardwareConfigList(configs);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_HARDWARE_CONFIG_CHANGED, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_HARDWARE_CONFIG_CHANGED, response);
 
         mRil.mHardwareConfigChangeRegistrants.notifyRegistrants(
                 new AsyncResult (null, response, null));
@@ -925,7 +937,7 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         RadioCapability response = RILUtils.convertHalRadioCapability(rc, mRil);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_RADIO_CAPABILITY, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_RADIO_CAPABILITY, response);
 
         mRil.mPhoneRadioCapabilityChangedRegistrants.notifyRegistrants(
                 new AsyncResult (null, response, null));
@@ -972,7 +984,7 @@ public class RadioIndication extends IRadioIndication.Stub {
             }
         }
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_ON_SS, ssData);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_ON_SS, ssData);
 
         if (mRil.mSsRegistrant != null) {
             mRil.mSsRegistrant.notifyRegistrant(new AsyncResult(null, ssData, null));
@@ -982,7 +994,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void stkCallControlAlphaNotify(int indicationType, String alpha) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_STK_CC_ALPHA_NOTIFY, alpha);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_STK_CC_ALPHA_NOTIFY, alpha);
 
         if (mRil.mCatCcAlphaRegistrant != null) {
             mRil.mCatCcAlphaRegistrant.notifyRegistrant(new AsyncResult (null, alpha, null));
@@ -994,7 +1006,7 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         List<LinkCapacityEstimate> response = RILUtils.convertHalLceData(lce);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_LCEDATA_RECV, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_LCEDATA_RECV, response);
 
         if (mRil.mLceInfoRegistrants != null) {
             mRil.mLceInfoRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
@@ -1007,7 +1019,7 @@ public class RadioIndication extends IRadioIndication.Stub {
         PcoData response = new PcoData(pco.cid, pco.bearerProto, pco.pcoId,
                 RILUtils.arrayListToPrimitiveArray(pco.contents));
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_PCO_DATA, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_PCO_DATA, response);
 
         mRil.mPcoDataRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
     }
@@ -1015,7 +1027,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void modemReset(int indicationType, String reason) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_MODEM_RESTART, reason);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_MODEM_RESTART, reason);
 
         mRil.writeMetricsModemRestartEvent(reason);
         mRil.mModemResetRegistrants.notifyRegistrants(new AsyncResult(null, reason, null));
@@ -1028,7 +1040,9 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void carrierInfoForImsiEncryption(int indicationType) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CARRIER_INFO_IMSI_ENCRYPTION, null);
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(RIL_UNSOL_CARRIER_INFO_IMSI_ENCRYPTION, null);
+        }
 
         mRil.mCarrierInfoForImsiEncryptionRegistrants.notifyRegistrants(
                 new AsyncResult(null, null, null));
@@ -1043,9 +1057,10 @@ public class RadioIndication extends IRadioIndication.Stub {
             int indicationType, android.hardware.radio.V1_1.KeepaliveStatus halStatus) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) {
-            mRil.unsljLogRet(RIL_UNSOL_KEEPALIVE_STATUS,
-                    "handle=" + halStatus.sessionHandle + " code=" +  halStatus.code);
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(
+                    RIL_UNSOL_KEEPALIVE_STATUS,
+                    "handle=" + halStatus.sessionHandle + " code=" + halStatus.code);
         }
 
         KeepaliveStatus ks = new KeepaliveStatus(
@@ -1061,7 +1076,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void simPhonebookChanged(int indicationType) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) {
+        if (mRil.isLogOrTrace()) {
             mRil.unsljLog(RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_CHANGED);
         }
 
@@ -1084,8 +1099,9 @@ public class RadioIndication extends IRadioIndication.Stub {
             simPhonebookRecords.add(RILUtils.convertHalPhonebookRecordInfo(record));
         }
 
-        if (RIL.RILJ_LOGD) {
-            mRil.unsljLogRet(RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED,
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(
+                    RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED,
                     "status = " + status + " received " + records.size() + " records");
         }
 
@@ -1246,7 +1262,7 @@ public class RadioIndication extends IRadioIndication.Stub {
             return;
         }
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG, response);
 
         mRil.mPhysicalChannelConfigurationRegistrants.notifyRegistrants(
                 new AsyncResult(null, response, null));
@@ -1259,7 +1275,7 @@ public class RadioIndication extends IRadioIndication.Stub {
         ArrayList<CellInfo> cellInfos =
                 RILUtils.convertHalCellInfoList(new ArrayList<>(result.networkInfos));
         NetworkScanResult nsr = new NetworkScanResult(result.status, result.error, cellInfos);
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_NETWORK_SCAN_RESULT, nsr);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_NETWORK_SCAN_RESULT, nsr);
         mRil.mRilNetworkScanResultRegistrants.notifyRegistrants(new AsyncResult(null, nsr, null));
     }
 
@@ -1270,7 +1286,7 @@ public class RadioIndication extends IRadioIndication.Stub {
         ArrayList<CellInfo> cellInfos =
                 RILUtils.convertHalCellInfoList(new ArrayList<>(result.networkInfos));
         NetworkScanResult nsr = new NetworkScanResult(result.status, result.error, cellInfos);
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_NETWORK_SCAN_RESULT, nsr);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_NETWORK_SCAN_RESULT, nsr);
         mRil.mRilNetworkScanResultRegistrants.notifyRegistrants(new AsyncResult(null, nsr, null));
     }
 
@@ -1281,7 +1297,7 @@ public class RadioIndication extends IRadioIndication.Stub {
         ArrayList<CellInfo> cellInfos =
                 RILUtils.convertHalCellInfoList(new ArrayList<>(result.networkInfos));
         NetworkScanResult nsr = new NetworkScanResult(result.status, result.error, cellInfos);
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_NETWORK_SCAN_RESULT, nsr);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_NETWORK_SCAN_RESULT, nsr);
         mRil.mRilNetworkScanResultRegistrants.notifyRegistrants(new AsyncResult(null, nsr, null));
     }
 
@@ -1292,7 +1308,7 @@ public class RadioIndication extends IRadioIndication.Stub {
         ArrayList<CellInfo> cellInfos =
                 RILUtils.convertHalCellInfoList(new ArrayList<>(result.networkInfos));
         NetworkScanResult nsr = new NetworkScanResult(result.status, result.error, cellInfos);
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_NETWORK_SCAN_RESULT, nsr);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_NETWORK_SCAN_RESULT, nsr);
         mRil.mRilNetworkScanResultRegistrants.notifyRegistrants(new AsyncResult(null, nsr, null));
     }
 
@@ -1303,14 +1319,14 @@ public class RadioIndication extends IRadioIndication.Stub {
         ArrayList<CellInfo> cellInfos =
                 RILUtils.convertHalCellInfoList(new ArrayList<>(result.networkInfos));
         NetworkScanResult nsr = new NetworkScanResult(result.status, result.error, cellInfos);
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_NETWORK_SCAN_RESULT, nsr);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_NETWORK_SCAN_RESULT, nsr);
         mRil.mRilNetworkScanResultRegistrants.notifyRegistrants(new AsyncResult(null, nsr, null));
     }
 
     private void responseDataCallListChanged(int indicationType, List<?> dcList) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_DATA_CALL_LIST_CHANGED, dcList);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_DATA_CALL_LIST_CHANGED, dcList);
 
         ArrayList<DataCallResponse> response = RILUtils.convertHalDataCallResultList(dcList);
         mRil.mDataCallListChangedRegistrants.notifyRegistrants(
@@ -1320,7 +1336,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     private void responseApnUnthrottled(int indicationType, String apn) {
         mRil.processIndication(RIL.RADIO_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_UNTHROTTLE_APN, apn);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_UNTHROTTLE_APN, apn);
 
         mRil.mApnUnthrottledRegistrants.notifyRegistrants(
                 new AsyncResult(null, apn, null));
