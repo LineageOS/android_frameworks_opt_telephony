@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.os.AsyncResult;
+import android.os.Trace;
 
 import com.android.internal.telephony.uicc.IccSlotStatus;
 import com.android.telephony.Rlog;
@@ -43,7 +44,7 @@ public class RadioConfigIndicationAidl extends
     public void simSlotsStatusChanged(
             int type, android.hardware.radio.config.SimSlotStatus[] slotStatus) {
         ArrayList<IccSlotStatus> ret = RILUtils.convertHalSlotStatus(slotStatus);
-        logd("[UNSL]< UNSOL_SIM_SLOT_STATUS_CHANGED " + ret.toString());
+        logd("UNSOL_SIM_SLOT_STATUS_CHANGED " + ret.toString());
         if (mRadioConfig.mSimSlotStatusRegistrant != null) {
             mRadioConfig.mSimSlotStatusRegistrant.notifyRegistrant(
                     new AsyncResult(null, ret, null));
@@ -51,7 +52,8 @@ public class RadioConfigIndicationAidl extends
     }
 
     private static void logd(String log) {
-        Rlog.d(TAG, log);
+        Rlog.d(TAG, "[UNSL]< " + log);
+        Trace.instantForTrack(Trace.TRACE_TAG_NETWORK, "RIL", log);
     }
 
     @Override
