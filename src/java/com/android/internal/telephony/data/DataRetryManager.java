@@ -969,18 +969,16 @@ public class DataRetryManager extends Handler {
         switch (msg.what) {
             case EVENT_DATA_SETUP_RETRY:
                 DataSetupRetryEntry dataSetupRetryEntry = (DataSetupRetryEntry) msg.obj;
-                Objects.requireNonNull(dataSetupRetryEntry);
-                mDataRetryManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
-                        () -> callback.onDataNetworkSetupRetry(dataSetupRetryEntry)));
+                if (!isRetryCancelled(dataSetupRetryEntry)) {
+                    mDataRetryManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                            () -> callback.onDataNetworkSetupRetry(dataSetupRetryEntry)));
+                }
                 break;
             case EVENT_DATA_HANDOVER_RETRY:
                 DataHandoverRetryEntry dataHandoverRetryEntry = (DataHandoverRetryEntry) msg.obj;
-                Objects.requireNonNull(dataHandoverRetryEntry);
-                if (mDataRetryEntries.contains(dataHandoverRetryEntry)) {
+                if (!isRetryCancelled(dataHandoverRetryEntry)) {
                     mDataRetryManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                             () -> callback.onDataNetworkHandoverRetry(dataHandoverRetryEntry)));
-                } else {
-                    log("Handover was cancelled earlier. " + dataHandoverRetryEntry);
                 }
                 break;
             case EVENT_RADIO_ON:
@@ -1011,6 +1009,18 @@ public class DataRetryManager extends Handler {
             default:
                 loge("Unexpected message " + msg.what);
         }
+    }
+
+    /**
+     * @param retryEntry The retry entry to check.
+     * @return {@code true} if the retry is null or not in RETRY_STATE_NOT_RETRIED state.
+     */
+    private boolean isRetryCancelled(@Nullable DataRetryEntry retryEntry) {
+        if (retryEntry != null && retryEntry.getState() == DataRetryEntry.RETRY_STATE_NOT_RETRIED) {
+            return false;
+        }
+        log("Retry was removed earlier. " + retryEntry);
+        return true;
     }
 
     /**
@@ -1385,7 +1395,7 @@ public class DataRetryManager extends Handler {
      * @param remove Whether to remove unthrottled entries from the list of entries.
      */
     private void onDataProfileUnthrottled(@Nullable DataProfile dataProfile, @Nullable String apn,
-            int transport, boolean remove) {
+            @TransportType int transport, boolean remove) {
         log("onDataProfileUnthrottled: data profile=" + dataProfile + ", apn=" + apn
                 + ", transport=" + AccessNetworkConstants.transportTypeToString(transport)
                 + ", remove=" + remove);
@@ -1456,11 +1466,16 @@ public class DataRetryManager extends Handler {
         mDataRetryManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                 () -> callback.onThrottleStatusChanged(throttleStatusList)));
 
+        if (unthrottledProfile != null) {
+            // cancel pending retries since we will soon schedule an immediate retry
+            cancelRetriesForDataProfile(unthrottledProfile, transport);
+        }
+
         logl("onDataProfileUnthrottled: Removing the following throttling entries. "
                 + dataUnthrottlingEntries);
         for (DataThrottlingEntry entry : dataUnthrottlingEntries) {
+            // Immediately retry after unthrottling.
             if (entry.retryType == ThrottleStatus.RETRY_TYPE_NEW_CONNECTION) {
-                // Immediately retry after unthrottling.
                 schedule(new DataSetupRetryEntry.Builder<>()
                         .setDataProfile(entry.dataProfile)
                         .setTransport(entry.transport)
@@ -1479,6 +1494,34 @@ public class DataRetryManager extends Handler {
             mDataThrottlingEntries.removeAll(dataUnthrottlingEntries);
         }
     }
+
+    /**
+     * Cancel pending retries that uses the specified data profile, with specified target transport.
+     *
+     * @param dataProfile The data profile to cancel.
+     * @param transport The target {@link TransportType} on which the retry to cancel.
+     */
+    private void cancelRetriesForDataProfile(@NonNull DataProfile dataProfile,
+            @TransportType int transport) {
+        logl("cancelRetriesForDataProfile: Canceling pending retries for " + dataProfile);
+        mDataRetryEntries.stream()
+                .filter(entry -> {
+                    if (entry.getState() == DataRetryEntry.RETRY_STATE_NOT_RETRIED) {
+                        if (entry instanceof DataSetupRetryEntry) {
+                            DataSetupRetryEntry retryEntry = (DataSetupRetryEntry) entry;
+                            return dataProfile.equals(retryEntry.dataProfile)
+                                    && transport == retryEntry.transport;
+                        } else if (entry instanceof DataHandoverRetryEntry) {
+                            DataHandoverRetryEntry retryEntry = (DataHandoverRetryEntry) entry;
+                            return dataProfile.equals(retryEntry.dataNetwork.getDataProfile());
+                        }
+                    }
+                    return false;
+                })
+                .forEach(entry -> entry.setState(DataRetryEntry.RETRY_STATE_CANCELLED));
+    }
+
+
 
     /**
      * Check if there is any similar network request scheduled to retry. The definition of similar
@@ -1564,13 +1607,17 @@ public class DataRetryManager extends Handler {
      * @param dataNetwork The data network that was originally scheduled for handover retry.
      */
     private void onCancelPendingHandoverRetry(@NonNull DataNetwork dataNetwork) {
-        mDataRetryEntries.removeIf(entry -> entry instanceof DataHandoverRetryEntry
-                && ((DataHandoverRetryEntry) entry).dataNetwork == dataNetwork);
+        mDataRetryEntries.stream()
+                .filter(entry -> entry instanceof DataHandoverRetryEntry
+                        && ((DataHandoverRetryEntry) entry).dataNetwork == dataNetwork
+                        && entry.getState() == DataRetryEntry.RETRY_STATE_NOT_RETRIED)
+                .forEach(entry -> entry.setState(DataRetryEntry.RETRY_STATE_CANCELLED));
         mDataThrottlingEntries.removeIf(entry -> entry.dataNetwork == dataNetwork);
     }
 
     /**
      * Check if there is any data handover retry scheduled.
+     *
      *
      * @param dataNetwork The network network to retry handover.
      * @return {@code true} if there is retry scheduled for this network capability.
