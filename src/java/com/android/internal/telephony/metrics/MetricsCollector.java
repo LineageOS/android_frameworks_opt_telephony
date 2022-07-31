@@ -483,8 +483,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             return StatsManager.PULL_SKIP;
         }
 
-        data.add(TelephonyStatsLog.buildStatsEvent(DEVICE_TELEPHONY_PROPERTIES,
-                phones[0].isUsingNewDataStack()));
+        data.add(TelephonyStatsLog.buildStatsEvent(DEVICE_TELEPHONY_PROPERTIES, true));
         return StatsManager.PULL_SUCCESS;
     }
 
