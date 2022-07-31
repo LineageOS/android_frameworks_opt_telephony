@@ -22,24 +22,18 @@ import static com.android.internal.telephony.NetworkFactory.CMD_REQUEST_NETWORK;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.net.NetworkCapabilities;
 import android.net.NetworkProvider;
 import android.net.NetworkRequest;
 import android.net.TelephonyNetworkSpecifier;
-import android.os.AsyncResult;
-import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.telephony.AccessNetworkConstants;
-import android.telephony.data.ApnSetting;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -49,9 +43,6 @@ import androidx.test.filters.FlakyTest;
 
 import com.android.internal.telephony.RadioConfig;
 import com.android.internal.telephony.TelephonyTest;
-import com.android.internal.telephony.dataconnection.DataConnection;
-import com.android.internal.telephony.dataconnection.TransportManager.HandoverParams;
-import com.android.internal.telephony.dataconnection.TransportManager.HandoverParams.HandoverCallback;
 import com.android.telephony.Rlog;
 
 import org.junit.After;
@@ -59,9 +50,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -74,13 +63,12 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
     // Mocked classes
     PhoneSwitcher mPhoneSwitcher;
     private RadioConfig mMockRadioConfig;
-    private DataConnection mDataConnection;
 
     private String mTestName = "";
 
     // List of all requests filed by a test
     private final ArraySet<TelephonyNetworkRequest> mAllNetworkRequestSet = new ArraySet<>();
-    // List of requests active in DcTracker
+    // List of requests active
     private final ArrayList<TelephonyNetworkRequest> mNetworkRequestList = new ArrayList<>();
     // List of complete messages associated with the network requests
     private final Map<TelephonyNetworkRequest, Message> mNetworkRequestMessageMap = new HashMap<>();
@@ -156,7 +144,6 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
         mPhoneSwitcher = mock(PhoneSwitcher.class);
         mMockRadioConfig = mock(RadioConfig.class);
-        mDataConnection = mock(DataConnection.class);
         replaceInstance(RadioConfig.class, "sRadioConfig", null, mMockRadioConfig);
 
         mContextFixture.putStringArrayResource(com.android.internal.R.array.networkAttributes,
@@ -230,7 +217,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
     }
 
     /**
-     * Test that phone active changes cause the DcTracker to get poked.
+     * Test that phone active changes
      */
     @FlakyTest
     @Test
@@ -301,7 +288,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
     }
 
     /**
-     * Test that network request changes cause the DcTracker to get poked.
+     * Test that network request changes
      */
     @Test
     @SmallTest
@@ -363,80 +350,5 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         activatePhoneInPhoneSwitcher(phoneId, true);
         processAllMessages();
         assertEquals(3, mNetworkRequestList.size());
-    }
-
-    /**
-     * Test handover when there is no live data connection
-     */
-    @Test
-    @SmallTest
-    public void testHandoverNoLiveData() throws Exception {
-        createMockedTelephonyComponents();
-        doReturn(0).when(mSubscriptionController).getSubIdUsingPhoneId(0);
-        mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
-                TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
-
-        activatePhoneInPhoneSwitcher(0, true);
-        makeDefaultInternetRequest();
-
-        makeSubSpecificMmsRequest(0);
-        processAllMessages();
-
-        Field f = TelephonyNetworkFactory.class.getDeclaredField("mInternalHandler");
-        f.setAccessible(true);
-        Handler h = (Handler) f.get(mTelephonyNetworkFactoryUT);
-
-        HandoverCallback handoverCallback = mock(HandoverCallback.class);
-
-        HandoverParams hp = new HandoverParams(ApnSetting.TYPE_MMS,
-                AccessNetworkConstants.TRANSPORT_TYPE_WLAN, handoverCallback);
-        AsyncResult ar = new AsyncResult(null, hp, null);
-        h.sendMessage(h.obtainMessage(5, ar));
-        processAllMessages();
-
-        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
-                .getCurrentTransport(anyInt());
-
-        hp = new HandoverParams(ApnSetting.TYPE_MMS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
-                handoverCallback);
-        ar = new AsyncResult(null, hp, null);
-        h.sendMessage(h.obtainMessage(5, ar));
-        processAllMessages();
-    }
-
-    /**
-     * Test handover when the data connection is being connected.
-     */
-    @Test
-    @SmallTest
-    public void testHandoverActivatingData() throws Exception {
-        createMockedTelephonyComponents();
-        doReturn(0).when(mSubscriptionController).getSubIdUsingPhoneId(0);
-        mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
-                TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
-
-        activatePhoneInPhoneSwitcher(0, true);
-        makeDefaultInternetRequest();
-
-        makeSubSpecificMmsRequest(0);
-        processAllMessages();
-
-        Field f = TelephonyNetworkFactory.class.getDeclaredField("mInternalHandler");
-        f.setAccessible(true);
-        Handler h = (Handler) f.get(mTelephonyNetworkFactoryUT);
-
-        HandoverCallback handoverCallback = mock(HandoverCallback.class);
-        Mockito.reset(mDataNetworkController);
-        doReturn(mDataConnection).when(mDcTracker).getDataConnectionByApnType(anyString());
-        doReturn(false).when(mDataConnection).isActive();
-
-        HandoverParams hp = new HandoverParams(ApnSetting.TYPE_MMS,
-                AccessNetworkConstants.TRANSPORT_TYPE_WLAN, handoverCallback);
-        AsyncResult ar = new AsyncResult(null, hp, null);
-        h.sendMessage(h.obtainMessage(5, ar));
-        processAllMessages();
-
-        verify(mDataNetworkController, times(1)).removeNetworkRequest(any());
-        verify(mDataNetworkController, times(1)).addNetworkRequest(any());
     }
 }

@@ -103,9 +103,6 @@ import com.android.internal.telephony.data.DataRetryManager;
 import com.android.internal.telephony.data.DataServiceManager;
 import com.android.internal.telephony.data.DataSettingsManager;
 import com.android.internal.telephony.data.LinkBandwidthEstimator;
-import com.android.internal.telephony.dataconnection.DataEnabledSettings;
-import com.android.internal.telephony.dataconnection.DataThrottler;
-import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
@@ -192,7 +189,6 @@ public abstract class TelephonyTest {
     protected RegistrantList mRegistrantList;
     protected IccPhoneBookInterfaceManager mIccPhoneBookIntManager;
     protected ImsManager mImsManager;
-    protected DcTracker mDcTracker;
     protected DataNetworkController mDataNetworkController;
     protected DataRetryManager mDataRetryManager;
     protected DataSettingsManager mDataSettingsManager;
@@ -240,7 +236,6 @@ public abstract class TelephonyTest {
     protected SubscriptionInfoUpdater mSubInfoRecordUpdater;
     protected LocaleTracker mLocaleTracker;
     protected RestrictedState mRestrictedState;
-    protected DataEnabledSettings mDataEnabledSettings;
     protected DataEnabledOverride mDataEnabledOverride;
     protected PhoneConfigurationManager mPhoneConfigurationManager;
     protected CellularNetworkValidator mCellularNetworkValidator;
@@ -254,7 +249,6 @@ public abstract class TelephonyTest {
     protected PersistAtomsStorage mPersistAtomsStorage;
     protected MetricsCollector mMetricsCollector;
     protected SmsStats mSmsStats;
-    protected DataThrottler mDataThrottler;
     protected SignalStrength mSignalStrength;
     protected WifiManager mWifiManager;
     protected WifiInfo mWifiInfo;
@@ -426,7 +420,6 @@ public abstract class TelephonyTest {
         mRegistrantList = Mockito.mock(RegistrantList.class);
         mIccPhoneBookIntManager = Mockito.mock(IccPhoneBookInterfaceManager.class);
         mImsManager = Mockito.mock(ImsManager.class);
-        mDcTracker = Mockito.mock(DcTracker.class);
         mDataNetworkController = Mockito.mock(DataNetworkController.class);
         mDataRetryManager = Mockito.mock(DataRetryManager.class);
         mDataSettingsManager = Mockito.mock(DataSettingsManager.class);
@@ -474,7 +467,6 @@ public abstract class TelephonyTest {
         mSubInfoRecordUpdater = Mockito.mock(SubscriptionInfoUpdater.class);
         mLocaleTracker = Mockito.mock(LocaleTracker.class);
         mRestrictedState = Mockito.mock(RestrictedState.class);
-        mDataEnabledSettings = Mockito.mock(DataEnabledSettings.class);
         mDataEnabledOverride = Mockito.mock(DataEnabledOverride.class);
         mPhoneConfigurationManager = Mockito.mock(PhoneConfigurationManager.class);
         mCellularNetworkValidator = Mockito.mock(CellularNetworkValidator.class);
@@ -488,7 +480,6 @@ public abstract class TelephonyTest {
         mPersistAtomsStorage = Mockito.mock(PersistAtomsStorage.class);
         mMetricsCollector = Mockito.mock(MetricsCollector.class);
         mSmsStats = Mockito.mock(SmsStats.class);
-        mDataThrottler = Mockito.mock(DataThrottler.class);
         mSignalStrength = Mockito.mock(SignalStrength.class);
         mWifiManager = Mockito.mock(WifiManager.class);
         mWifiInfo = Mockito.mock(WifiInfo.class);
@@ -569,8 +560,6 @@ public abstract class TelephonyTest {
                 .makeGsmCdmaCallTracker(nullable(GsmCdmaPhone.class));
         doReturn(mIccPhoneBookIntManager).when(mTelephonyComponentFactory)
                 .makeIccPhoneBookInterfaceManager(nullable(Phone.class));
-        doReturn(mDcTracker).when(mTelephonyComponentFactory)
-                .makeDcTracker(nullable(Phone.class), anyInt());
         doReturn(mDisplayInfoController).when(mTelephonyComponentFactory)
                 .makeDisplayInfoController(nullable(Phone.class));
         doReturn(mWspTypeDecoder).when(mTelephonyComponentFactory)
@@ -598,8 +587,6 @@ public abstract class TelephonyTest {
         doReturn(mLocaleTracker).when(mTelephonyComponentFactory)
                 .makeLocaleTracker(nullable(Phone.class), nullable(NitzStateMachine.class),
                         nullable(Looper.class));
-        doReturn(mDataEnabledSettings).when(mTelephonyComponentFactory)
-                .makeDataEnabledSettings(nullable(Phone.class));
         doReturn(mEriManager).when(mTelephonyComponentFactory)
                 .makeEriManager(nullable(Phone.class), anyInt());
         doReturn(mLinkBandwidthEstimator).when(mTelephonyComponentFactory)
@@ -629,8 +616,6 @@ public abstract class TelephonyTest {
         doReturn(mAppSmsManager).when(mPhone).getAppSmsManager();
         doReturn(mIccSmsInterfaceManager).when(mPhone).getIccSmsInterfaceManager();
         doReturn(mAccessNetworksManager).when(mPhone).getAccessNetworksManager();
-        doReturn(mDataEnabledSettings).when(mPhone).getDataEnabledSettings();
-        doReturn(mDcTracker).when(mPhone).getDcTracker(anyInt());
         doReturn(mDataSettingsManager).when(mDataNetworkController).getDataSettingsManager();
         doReturn(mDataNetworkController).when(mPhone).getDataNetworkController();
         doReturn(mDataSettingsManager).when(mPhone).getDataSettingsManager();
@@ -648,7 +633,6 @@ public abstract class TelephonyTest {
         doReturn(mDataProfileManager).when(mDataNetworkController).getDataProfileManager();
         doReturn(mDataRetryManager).when(mDataNetworkController).getDataRetryManager();
         doReturn(mCarrierPrivilegesTracker).when(mPhone).getCarrierPrivilegesTracker();
-        doReturn(true).when(mPhone).isUsingNewDataStack();
         doReturn(0).when(mPhone).getPhoneId();
 
         //mUiccController
@@ -739,11 +723,6 @@ public abstract class TelephonyTest {
         doReturn(new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN})
                 .when(mAccessNetworksManager).getAvailableTransports();
-        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
-                .getCurrentTransport(anyInt());
-        doReturn(true).when(mDataEnabledSettings).isDataEnabled();
-        doReturn(true).when(mDataEnabledSettings).isDataEnabled(anyInt());
-        doReturn(true).when(mDataEnabledSettings).isInternalDataEnabled();
         doReturn(true).when(mDataSettingsManager).isDataEnabled();
         doReturn(mNetworkRegistrationInfo).when(mServiceState).getNetworkRegistrationInfo(
                 anyInt(), anyInt());
@@ -779,8 +758,6 @@ public abstract class TelephonyTest {
         Settings.Global.putInt(resolver,
                 Settings.Global.DEVICE_PROVISIONING_MOBILE_DATA_ENABLED, 1);
         Settings.Global.putInt(resolver, Settings.Global.DATA_ROAMING, 0);
-        doReturn(mDataThrottler).when(mDcTracker).getDataThrottler();
-        doReturn(-1L).when(mDataThrottler).getRetryTime(anyInt());
 
         doReturn(90).when(mDataConfigManager).getNetworkCapabilityPriority(
                 eq(NetworkCapabilities.NET_CAPABILITY_EIMS));

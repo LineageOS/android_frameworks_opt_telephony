@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import android.content.Context;
 import android.content.Intent;
@@ -34,25 +35,25 @@ import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
-import android.telephony.PcoData;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.RadioAccessFamily;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
-import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
-import com.android.internal.telephony.dataconnection.DataConnection;
+import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -60,6 +61,7 @@ import java.util.List;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
+@Ignore("b/240911460")
 public class NetworkTypeControllerTest extends TelephonyTest {
     // private constants copied over from NetworkTypeController
     private static final int EVENT_DATA_RAT_CHANGED = 2;
@@ -67,21 +69,13 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     private static final int EVENT_NR_FREQUENCY_CHANGED = 4;
     private static final int EVENT_PHYSICAL_LINK_STATUS_CHANGED = 5;
     private static final int EVENT_PHYSICAL_CHANNEL_CONFIG_NOTIF_CHANGED = 6;
-    private static final int EVENT_CARRIER_CONFIG_CHANGED = 7;
-    private static final int EVENT_PRIMARY_TIMER_EXPIRED = 8;
-    private static final int EVENT_SECONDARY_TIMER_EXPIRED = 9;
     private static final int EVENT_RADIO_OFF_OR_UNAVAILABLE = 10;
     private static final int EVENT_PREFERRED_NETWORK_MODE_CHANGED = 11;
-    private static final int EVENT_INITIALIZE = 12;
     private static final int EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED = 13;
-    private static final int EVENT_PCO_DATA_CHANGED = 14;
 
     private NetworkTypeController mNetworkTypeController;
     private PersistableBundle mBundle;
-
-    // Mocked classes
-    DataConnection mDataConnection;
-    ApnSetting mApnSetting;
+    private DataNetworkControllerCallback mDataNetworkControllerCallback;
 
     private IState getCurrentState() throws Exception {
         Method method = StateMachine.class.getDeclaredMethod("getCurrentState");
@@ -106,23 +100,28 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        mDataConnection = mock(DataConnection.class);
-        mApnSetting = mock(ApnSetting.class);
         mBundle = mContextFixture.getCarrierConfigBundle();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING,
                 "connected_mmwave:5G_Plus,connected:5G,not_restricted_rrc_idle:5G,"
                         + "not_restricted_rrc_con:5G");
+        mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 0xFF03);
         broadcastCarrierConfigs();
 
         replaceInstance(Handler.class, "mLooper", mDisplayInfoController, Looper.myLooper());
         doReturn(RadioAccessFamily.getRafFromNetworkType(
                 TelephonyManager.NETWORK_MODE_NR_LTE_CDMA_EVDO_GSM_WCDMA)).when(
                 mPhone).getCachedAllowedNetworkTypesBitmask();
-        doReturn(false).when(mTelephonyManager).isRadioInterfaceCapabilitySupported(
+        doReturn(true).when(mTelephonyManager).isRadioInterfaceCapabilitySupported(
                 TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
         doReturn(new int[] {0}).when(mServiceState).getCellBandwidths();
         mNetworkTypeController = new NetworkTypeController(mPhone, mDisplayInfoController);
         processAllMessages();
+
+        ArgumentCaptor<DataNetworkControllerCallback> dataNetworkControllerCallbackCaptor =
+                ArgumentCaptor.forClass(DataNetworkControllerCallback.class);
+        verify(mDataNetworkController).registerDataNetworkControllerCallback(
+                dataNetworkControllerCallbackCaptor.capture());
+        mDataNetworkControllerCallback = dataNetworkControllerCallbackCaptor.getValue();
     }
 
     @After
@@ -474,42 +473,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 0xFF03);
         broadcastCarrierConfigs();
-        int cid = 1;
-        byte[] contents = new byte[]{0};
-        doReturn(mDataConnection).when(mDcTracker).getDataConnectionByContextId(cid);
-        doReturn(mApnSetting).when(mDataConnection).getApnSetting();
-        doReturn(true).when(mApnSetting).canHandleType(ApnSetting.TYPE_DEFAULT);
-        mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 0xFF03);
-        broadcastCarrierConfigs();
-
-
-        mNetworkTypeController.sendMessage(EVENT_PCO_DATA_CHANGED,
-                new AsyncResult(null, new PcoData(cid, "", 0xff03, contents), null));
-        mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
-        processAllMessages();
-        assertEquals("connected", getCurrentState().getName());
-    }
-
-    @Test
-    public void testTransitionToCurrentStateNrConnectedWithPcoLength4AndNoNrAdvancedCapable()
-            throws Exception {
-        assertEquals("DefaultState", getCurrentState().getName());
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
-        doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
-        doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
-        mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 0xFF03);
-        broadcastCarrierConfigs();
-        int cid = 1;
-        byte[] contents = new byte[]{31, 1, 84, 0};
-        doReturn(mDataConnection).when(mDcTracker).getDataConnectionByContextId(cid);
-        doReturn(mApnSetting).when(mDataConnection).getApnSetting();
-        doReturn(true).when(mApnSetting).canHandleType(ApnSetting.TYPE_DEFAULT);
-        mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 0xFF03);
-        broadcastCarrierConfigs();
-
-
-        mNetworkTypeController.sendMessage(EVENT_PCO_DATA_CHANGED,
-                new AsyncResult(null, new PcoData(cid, "", 0xff03, contents), null));
+        mDataNetworkControllerCallback.onNrAdvancedCapableByPcoChanged(false);
         mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
         processAllMessages();
         assertEquals("connected", getCurrentState().getName());
@@ -522,19 +486,10 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
-        mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 0xFF03);
-        broadcastCarrierConfigs();
-        int cid = 1;
-        byte[] contents = new byte[]{1};
-        doReturn(mDataConnection).when(mDcTracker).getDataConnectionByContextId(cid);
-        doReturn(mApnSetting).when(mDataConnection).getApnSetting();
-        doReturn(true).when(mApnSetting).canHandleType(ApnSetting.TYPE_DEFAULT);
         mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 0xFF00);
         broadcastCarrierConfigs();
 
-
-        mNetworkTypeController.sendMessage(EVENT_PCO_DATA_CHANGED,
-                new AsyncResult(null, new PcoData(cid, "", 0xff03, contents), null));
+        mDataNetworkControllerCallback.onNrAdvancedCapableByPcoChanged(false);
         mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
         processAllMessages();
         assertEquals("connected", getCurrentState().getName());
@@ -547,39 +502,12 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
-        int cid = 1;
-        byte[] contents = new byte[]{1};
-        doReturn(mDataConnection).when(mDcTracker).getDataConnectionByContextId(cid);
-        doReturn(mApnSetting).when(mDataConnection).getApnSetting();
-        doReturn(true).when(mApnSetting).canHandleType(ApnSetting.TYPE_DEFAULT);
         mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 0xFF03);
         broadcastCarrierConfigs();
 
-        mNetworkTypeController.sendMessage(EVENT_PCO_DATA_CHANGED,
-                new AsyncResult(null, new PcoData(cid, "", 0xff03, contents), null));
         mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
         processAllMessages();
-        assertEquals("connected_mmwave", getCurrentState().getName());
-    }
-
-    @Test
-    public void testTransitionToCurrentStateNrConnectedWithNrAdvancedCapableAndPcoLength4()
-            throws Exception {
-        assertEquals("DefaultState", getCurrentState().getName());
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
-        doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
-        doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
-        int cid = 1;
-        byte[] contents = new byte[]{31, 1, 84, 1};
-        doReturn(mDataConnection).when(mDcTracker).getDataConnectionByContextId(cid);
-        doReturn(mApnSetting).when(mDataConnection).getApnSetting();
-        doReturn(true).when(mApnSetting).canHandleType(ApnSetting.TYPE_DEFAULT);
-        mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 0xFF03);
-        broadcastCarrierConfigs();
-
-        mNetworkTypeController.sendMessage(EVENT_PCO_DATA_CHANGED,
-                new AsyncResult(null, new PcoData(cid, "", 0xff03, contents), null));
-        mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
+        mDataNetworkControllerCallback.onNrAdvancedCapableByPcoChanged(true);
         processAllMessages();
         assertEquals("connected_mmwave", getCurrentState().getName());
     }

@@ -27,7 +27,6 @@ import android.system.ErrnoException;
 import android.system.Os;
 import android.system.OsConstants;
 import android.system.StructStatVfs;
-import android.telephony.AccessNetworkConstants.TransportType;
 import android.text.TextUtils;
 
 import com.android.ims.ImsManager;
@@ -40,9 +39,6 @@ import com.android.internal.telephony.data.DataServiceManager;
 import com.android.internal.telephony.data.DataSettingsManager;
 import com.android.internal.telephony.data.LinkBandwidthEstimator;
 import com.android.internal.telephony.data.PhoneSwitcher;
-import com.android.internal.telephony.dataconnection.DataEnabledSettings;
-import com.android.internal.telephony.dataconnection.DcTracker;
-import com.android.internal.telephony.dataconnection.TransportManager;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
@@ -313,10 +309,6 @@ public class TelephonyComponentFactory {
         return new SimActivationTracker(phone);
     }
 
-    public DcTracker makeDcTracker(Phone phone, @TransportType int transportType) {
-        return new DcTracker(phone, transportType);
-    }
-
     public CarrierSignalAgent makeCarrierSignalAgent(Phone phone) {
         return new CarrierSignalAgent(phone);
     }
@@ -404,10 +396,6 @@ public class TelephonyComponentFactory {
         return new DeviceStateMonitor(phone);
     }
 
-    public TransportManager makeTransportManager(Phone phone) {
-        return new TransportManager(phone);
-    }
-
     /**
      * Make access networks manager
      *
@@ -428,10 +416,6 @@ public class TelephonyComponentFactory {
     public LocaleTracker makeLocaleTracker(Phone phone, NitzStateMachine nitzStateMachine,
                                            Looper looper) {
         return new LocaleTracker(phone, nitzStateMachine, looper);
-    }
-
-    public DataEnabledSettings makeDataEnabledSettings(Phone phone) {
-        return new DataEnabledSettings(phone);
     }
 
     public Phone makePhone(Context context, CommandsInterface ci, PhoneNotifier notifier,

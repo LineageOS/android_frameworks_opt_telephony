@@ -839,14 +839,9 @@ public class MultiSimSettingController extends Handler {
                     && phone.isUserDataEnabled()
                     && !areSubscriptionsInSameGroup(defaultDataSub, phone.getSubId())) {
                 log("setting data to false on " + phone.getSubId());
-                if (phone.isUsingNewDataStack()) {
-                    phone.getDataSettingsManager().setDataEnabled(
-                            TelephonyManager.DATA_ENABLED_REASON_USER, false,
-                            mContext.getOpPackageName());
-                } else {
-                    phone.getDataEnabledSettings().setDataEnabled(
-                            TelephonyManager.DATA_ENABLED_REASON_USER, false);
-                }
+                phone.getDataSettingsManager().setDataEnabled(
+                        TelephonyManager.DATA_ENABLED_REASON_USER, false,
+                        mContext.getOpPackageName());
             }
         }
     }
@@ -882,13 +877,9 @@ public class MultiSimSettingController extends Handler {
                 // If enable is true and it's not opportunistic subscription, we don't enable it,
                 // as there can't be two
                 if (phone != null) {
-                    if (phone.isUsingNewDataStack()) {
-                        phone.getDataSettingsManager().setDataEnabled(
-                                TelephonyManager.DATA_ENABLED_REASON_USER, enable,
-                                mContext.getOpPackageName());
-                    } else {
-                        phone.getDataEnabledSettings().setUserDataEnabled(enable, false);
-                    }
+                    phone.getDataSettingsManager().setDataEnabled(
+                            TelephonyManager.DATA_ENABLED_REASON_USER, enable,
+                            mContext.getOpPackageName());
                 }
             } else {
                 // For inactive subscription, directly write into global settings.
@@ -1063,10 +1054,8 @@ public class MultiSimSettingController extends Handler {
         // existing phone instance.
         Phone[] phones = PhoneFactory.getPhones();
         for (int i = mCallbacksCount; i < phones.length; i++) {
-            if (phones[i].isUsingNewDataStack()) {
-                phones[i].getDataSettingsManager().registerCallback(
-                        new DataSettingsControllerCallback(phones[i], this::post));
-            }
+            phones[i].getDataSettingsManager().registerCallback(
+                    new DataSettingsControllerCallback(phones[i], this::post));
         }
         mCallbacksCount = phones.length;
     }
