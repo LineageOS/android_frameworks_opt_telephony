@@ -203,6 +203,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STOP_LCE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STOP_NETWORK_SCAN;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SWITCH_DUAL_SIM_CONFIG;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SWITCH_WAITING_OR_HOLDING_AND_ACTIVE;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_TRIGGER_EPS_FALLBACK;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_UDUB;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_UPDATE_IMS_REGISTRATION_INFO;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_UPDATE_SIM_PHONEBOOK_RECORD;
@@ -5061,6 +5062,8 @@ public class RILUtils {
                 return "STOP_IMS_TRAFFIC";
             case RIL_REQUEST_SEND_ANBR_QUERY:
                 return "SEND_ANBR_QUERY";
+            case RIL_REQUEST_TRIGGER_EPS_FALLBACK:
+                return "TRIGGER_EPS_FALLBACK";
             default:
                 return "<unknown request " + request + ">";
         }

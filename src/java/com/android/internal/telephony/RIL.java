@@ -5248,6 +5248,36 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void triggerEpsFallback(int reason, Message result) {
+        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
+        if (imsProxy.isEmpty()) return;
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_TRIGGER_EPS_FALLBACK, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
+                        + " reason=" + reason);
+            }
+
+            try {
+                imsProxy.triggerEpsFallback(rr.mSerial, reason);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(IMS_SERVICE, "triggerEpsFallback", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "triggerEpsFallback: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    @Override
     public void sendAnbrQuery(int mediaType, int direction, int bitsPerSecond,
             Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);

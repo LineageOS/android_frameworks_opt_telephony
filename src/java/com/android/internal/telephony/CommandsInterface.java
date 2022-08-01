@@ -2874,6 +2874,13 @@ public interface CommandsInterface {
     default void stopImsTraffic(String token, Message result) {}
 
     /**
+     * Triggers the UE initiated EPS fallback procedure.
+     *
+     * @param reason Specifies the reason for EPS fallback.
+     */
+    default void triggerEpsFallback(int reason, Message result) {}
+
+    /**
      * Triggers radio to send ANBRQ message to the network.
      *
      * @param mediaType Media type is used to identify media stream such as audio or video.

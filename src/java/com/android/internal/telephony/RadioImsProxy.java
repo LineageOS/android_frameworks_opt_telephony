@@ -136,6 +136,20 @@ public class RadioImsProxy extends RadioServiceProxy {
     }
 
     /**
+     * Calls IRadioIms#triggerEpsFallback.
+     * @param serial Serial number of request.
+     * @param reason Specifies the reason for EPS fallback.
+     * @throws RemoteException.
+     */
+    public void triggerEpsFallback(int serial, int reason)
+            throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mImsProxy.triggerEpsFallback(serial, reason);
+        }
+    }
+
+    /**
      * Calls IRadioIms#sendAnbrQuery.
      * @param serial Serial number of request.
      * @param mediaType Media type is used to identify media stream such as audio or video.
