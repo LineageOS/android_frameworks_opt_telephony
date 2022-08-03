@@ -32,8 +32,6 @@ import android.os.Handler;
 import android.os.HandlerExecutor;
 import android.os.Message;
 import android.os.OutcomeReceiver;
-import android.os.Registrant;
-import android.os.RegistrantList;
 import android.preference.PreferenceManager;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation.DataActivityType;
@@ -191,7 +189,6 @@ public class LinkBandwidthEstimator extends Handler {
     private String mBandwidthUpdatePlmn = UNKNOWN_PLMN;
     private BandwidthState mTxState = new BandwidthState(LINK_TX);
     private BandwidthState mRxState = new BandwidthState(LINK_RX);
-    private RegistrantList mBandwidthChangedRegistrants = new RegistrantList();
     private long mLastPlmnOrRatChangeTimeMs;
     private long mLastDrsOrRatChangeTimeMs;
 
@@ -348,33 +345,6 @@ public class LinkBandwidthEstimator extends Handler {
                 Rlog.e(TAG, "invalid message " + msg.what);
                 break;
         }
-    }
-
-    /**
-     * Registers for bandwidth estimation change. The bandwidth will be returned
-     *      * {@link AsyncResult#result} as a {@link Pair} Object.
-     *      * The {@link AsyncResult} will be in the notification {@link Message#obj}.
-     * @param h handler to notify
-     * @param what what code of message when delivered
-     * @param obj placed in Message.obj
-     *
-     * @deprecated Use {@link #registerCallback(LinkBandwidthEstimatorCallback)}.
-     */
-    @Deprecated //TODO: Remove once old data stack is removed.
-    public void registerForBandwidthChanged(Handler h, int what, Object obj) {
-        Registrant r = new Registrant(h, what, obj);
-        mBandwidthChangedRegistrants.add(r);
-    }
-
-    /**
-     * Unregisters for bandwidth estimation change.
-     * @param h handler to notify
-     *
-     * @deprecated Use {@link #unregisterCallback(LinkBandwidthEstimatorCallback)}.
-     */
-    @Deprecated //TODO: Remove once old data stack is removed.
-    public void unregisterForBandwidthChanged(Handler h) {
-        mBandwidthChangedRegistrants.remove(h);
     }
 
     /**
@@ -930,9 +900,6 @@ public class LinkBandwidthEstimator extends Handler {
 
     private void sendLinkBandwidthToDataConnection(int linkBandwidthTxKps, int linkBandwidthRxKps) {
         logv("send to DC tx " + linkBandwidthTxKps + " rx " + linkBandwidthRxKps);
-        Pair<Integer, Integer> bandwidthInfo =
-                new Pair<Integer, Integer>(linkBandwidthTxKps, linkBandwidthRxKps);
-        mBandwidthChangedRegistrants.notifyRegistrants(new AsyncResult(null, bandwidthInfo, null));
         mLinkBandwidthEstimatorCallbacks.forEach(callback -> callback.invokeFromExecutor(
                 () -> callback.onBandwidthChanged(linkBandwidthTxKps, linkBandwidthRxKps)));
     }

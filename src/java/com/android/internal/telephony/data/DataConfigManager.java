@@ -134,8 +134,7 @@ public class DataConfigManager extends Handler {
     private static final String DATA_CONFIG_NETWORK_TYPE_IDEN = "iDEN";
 
     /** Network type LTE. Should not be used outside of DataConfigManager. */
-    // TODO: Public only for use by DcTracker. This should be private once DcTracker is removed.
-    public static final String DATA_CONFIG_NETWORK_TYPE_LTE = "LTE";
+    private static final String DATA_CONFIG_NETWORK_TYPE_LTE = "LTE";
 
     /** Network type HSPA+. Should not be used outside of DataConfigManager. */
     private static final String DATA_CONFIG_NETWORK_TYPE_HSPAP = "HSPA+";
@@ -153,12 +152,10 @@ public class DataConfigManager extends Handler {
     private static final String DATA_CONFIG_NETWORK_TYPE_LTE_CA = "LTE_CA";
 
     /** Network type NR_NSA. Should not be used outside of DataConfigManager. */
-    // TODO: Public only for use by DcTracker. This should be private once DcTracker is removed.
-    public static final String DATA_CONFIG_NETWORK_TYPE_NR_NSA = "NR_NSA";
+    private static final String DATA_CONFIG_NETWORK_TYPE_NR_NSA = "NR_NSA";
 
     /** Network type NR_NSA_MMWAVE. Should not be used outside of DataConfigManager. */
-    // TODO: Public only for use by DcTracker. This should be private once DcTracker is removed.
-    public static final String DATA_CONFIG_NETWORK_TYPE_NR_NSA_MMWAVE = "NR_NSA_MMWAVE";
+    private static final String DATA_CONFIG_NETWORK_TYPE_NR_NSA_MMWAVE = "NR_NSA_MMWAVE";
 
     /** Network type NR_SA. Should not be used outside of DataConfigManager. */
     private static final String DATA_CONFIG_NETWORK_TYPE_NR_SA = "NR_SA";
@@ -985,9 +982,8 @@ public class DataConfigManager extends Handler {
      * @param displayInfo The {@link TelephonyDisplayInfo} used to determine the type.
      * @return The equivalent {@link DataConfigNetworkType}.
      */
-    public static @NonNull @DataConfigNetworkType String getDataConfigNetworkType(
+    private static @NonNull @DataConfigNetworkType String getDataConfigNetworkType(
             @NonNull TelephonyDisplayInfo displayInfo) {
-        // TODO: Make method private once DataConnection is removed
         int networkType = displayInfo.getNetworkType();
         switch (displayInfo.getOverrideNetworkType()) {
             case TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED:
