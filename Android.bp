@@ -108,6 +108,7 @@ java_library {
         "voip-common",
         "ims-common",
         "unsupportedappusage",
+        "org.lineageos.platform.internal",
     ],
     static_libs: [
         "android.hardware.radio.config-V1.0-java-shallow",
