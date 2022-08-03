@@ -1577,6 +1577,16 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 NetworkCapabilities.NET_CAPABILITY_IMS, NetworkCapabilities.NET_CAPABILITY_EIMS);
         assertThat(handoverRule.isOnlyForRoaming).isTrue();
 
+        handoverRule = new HandoverRule("source=EUTRAN|NGRAN|IWLAN|UNKNOWN, "
+                + "target=EUTRAN|NGRAN|IWLAN, type=disallowed, capabilities = IMS|EIMS");
+        assertThat(handoverRule.sourceAccessNetworks).containsExactly(AccessNetworkType.EUTRAN,
+                AccessNetworkType.NGRAN, AccessNetworkType.IWLAN, AccessNetworkType.UNKNOWN);
+        assertThat(handoverRule.targetAccessNetworks).containsExactly(AccessNetworkType.EUTRAN,
+                AccessNetworkType.NGRAN, AccessNetworkType.IWLAN);
+        assertThat(handoverRule.type).isEqualTo(HandoverRule.RULE_TYPE_DISALLOWED);
+        assertThat(handoverRule.networkCapabilities).containsExactly(
+                NetworkCapabilities.NET_CAPABILITY_IMS, NetworkCapabilities.NET_CAPABILITY_EIMS);
+
         assertThrows(IllegalArgumentException.class,
                 () -> new HandoverRule("V2hhdCBUaGUgRnVjayBpcyB0aGlzIQ=="));
 
@@ -1585,6 +1595,14 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> new HandoverRule("source=GERAN|UTRAN|EUTRAN|NGRAN|IWLAN, type=allowed"));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new HandoverRule("source=GERAN, target=UNKNOWN, type=disallowed, "
+                        + "capabilities=IMS"));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new HandoverRule("source=UNKNOWN, target=IWLAN, type=allowed, "
+                        + "capabilities=IMS"));
 
         assertThrows(IllegalArgumentException.class,
                 () -> new HandoverRule("source=GERAN, target=IWLAN, type=wtf"));
@@ -2879,6 +2897,38 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // IMS network should be torn down.
         verifyAllDataDisconnected();
+    }
+
+    @Test
+    public void testHandoverDataNetworkSourceOos() throws Exception {
+        testSetupImsDataNetwork();
+        // Configured handover is allowed from OOS to 4G/5G/IWLAN.
+        mCarrierConfig.putStringArray(
+                CarrierConfigManager.KEY_IWLAN_HANDOVER_POLICY_STRING_ARRAY,
+                new String[]{
+                        "source=EUTRAN|NGRAN|IWLAN|UNKNOWN, target=EUTRAN|NGRAN|IWLAN, "
+                                + "type=disallowed, capabilities=IMS|EIMS|MMS|XCAP|CBS"
+                });
+        carrierConfigChanged();
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING);
+
+        updateTransport(NetworkCapabilities.NET_CAPABILITY_IMS,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+
+        // Verify IMS network was torn down on source first.
+        verify(mMockedWwanDataServiceManager).deactivateDataCall(anyInt(),
+                eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
+
+        // Verify that IWLAN is brought up again on IWLAN.
+        verify(mMockedWlanDataServiceManager).setupDataCall(anyInt(),
+                any(DataProfile.class), anyBoolean(), anyBoolean(),
+                eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), any(), anyBoolean(),
+                any(Message.class));
+
+        DataNetwork dataNetwork = getDataNetworks().get(0);
+        assertThat(dataNetwork.getTransport()).isEqualTo(
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
     }
 
     @Test
