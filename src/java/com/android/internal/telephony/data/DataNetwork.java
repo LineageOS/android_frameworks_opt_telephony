@@ -896,8 +896,9 @@ public class DataNetwork extends StateMachine {
         mDataAllowedReason = dataAllowedReason;
         dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
         mAttachedNetworkRequestList.addAll(networkRequestList);
-        mCid.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, INVALID_CID);
-        mCid.put(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, INVALID_CID);
+        for (int transportType : mAccessNetworksManager.getAvailableTransports()) {
+            mCid.put(transportType, INVALID_CID);
+        }
         mTelephonyDisplayInfo = mPhone.getDisplayInfoController().getTelephonyDisplayInfo();
         mTcpBufferSizes = mDataConfigManager.getTcpConfigString(mTelephonyDisplayInfo);
 
