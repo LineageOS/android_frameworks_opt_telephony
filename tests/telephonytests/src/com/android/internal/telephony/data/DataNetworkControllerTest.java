@@ -3109,6 +3109,38 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testHandoverDataNetworkSourceOosNoUnknownRule() throws Exception {
+        testSetupImsDataNetwork();
+        // Configured handover is allowed from OOS to 4G/5G/IWLAN.
+        mCarrierConfig.putStringArray(
+                CarrierConfigManager.KEY_IWLAN_HANDOVER_POLICY_STRING_ARRAY,
+                new String[]{
+                        "source=EUTRAN|NGRAN|IWLAN, target=EUTRAN|NGRAN|IWLAN, "
+                                + "type=disallowed, capabilities=IMS|EIMS|MMS|XCAP|CBS"
+                });
+        carrierConfigChanged();
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING);
+
+        updateTransport(NetworkCapabilities.NET_CAPABILITY_IMS,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+
+        // Verify IMS network was torn down on source first.
+        verify(mMockedWwanDataServiceManager).deactivateDataCall(anyInt(),
+                eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
+
+        // Verify that IWLAN is brought up again on IWLAN.
+        verify(mMockedWlanDataServiceManager).setupDataCall(anyInt(),
+                any(DataProfile.class), anyBoolean(), anyBoolean(),
+                eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), any(), anyBoolean(),
+                any(Message.class));
+
+        DataNetwork dataNetwork = getDataNetworks().get(0);
+        assertThat(dataNetwork.getTransport()).isEqualTo(
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+    }
+
+    @Test
     public void testHandoverDataNetworkNonVops() throws Exception {
         ServiceState ss = new ServiceState();
 
