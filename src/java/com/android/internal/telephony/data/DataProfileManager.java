@@ -979,8 +979,12 @@ public class DataProfileManager extends Handler {
             return true;
         }
 
-        // Only check the APN from the profile is compatible or not.
+        // Check the APN from the profile is compatible and matches preferred data profile set id.
         return mAllDataProfiles.stream()
+                .filter(dp -> dp.getApnSetting() != null
+                        && (dp.getApnSetting().getApnSetId()
+                        == Telephony.Carriers.MATCH_ALL_APN_SET_ID
+                        || dp.getApnSetting().getApnSetId() == mPreferredDataProfileSetId))
                 .anyMatch(dp -> areDataProfileSharingApn(dataProfile, dp));
     }
 
