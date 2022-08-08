@@ -1885,8 +1885,18 @@ public class DataNetworkController extends Handler {
         if (mDataConfigManager.isIwlanHandoverPolicyEnabled()) {
             List<HandoverRule> handoverRules = mDataConfigManager.getHandoverRules();
 
+            int sourceNetworkType = getDataNetworkType(dataNetwork.getTransport());
+            if (sourceNetworkType == TelephonyManager.NETWORK_TYPE_UNKNOWN) {
+                // Using the data network type stored in the data network. We
+                // cache the last known network type in data network controller
+                // because data network has much shorter life cycle. It can prevent
+                // the obsolete last known network type cached in data network
+                // type controller.
+                sourceNetworkType = dataNetwork.getLastKnownDataNetworkType();
+            }
             int sourceAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
-                    getDataNetworkType(dataNetwork.getTransport()));
+                    sourceNetworkType);
+
             int targetAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
                     getDataNetworkType(DataUtils.getTargetTransport(dataNetwork.getTransport())));
             NetworkCapabilities capabilities = dataNetwork.getNetworkCapabilities();
