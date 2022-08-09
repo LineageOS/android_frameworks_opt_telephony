@@ -241,6 +241,7 @@ public class ImsServiceController {
     private Set<ImsFeatureConfiguration.FeatureSlotPair> mImsFeatures;
     private SparseIntArray mSlotIdToSubIdMap;
     private IImsServiceController mIImsServiceController;
+    private final ImsEnablementTracker mImsEnablementTracker;
     // The Capabilities bitmask of the connected ImsService (see ImsService#ImsServiceCapability).
     private long mServiceCapabilities;
     private ImsServiceConnection mImsServiceConnection;
@@ -332,7 +333,7 @@ public class ImsServiceController {
         mPermissionManager = (LegacyPermissionManager) mContext.getSystemService(
                 Context.LEGACY_PERMISSION_SERVICE);
         mRepo = repo;
-
+        mImsEnablementTracker = new ImsEnablementTracker(mHandlerThread.getLooper());
         mPackageManager = mContext.getPackageManager();
         if (mPackageManager != null) {
             mChangedPackages = mPackageManager.getChangedPackages(mLastSequenceNumber);
@@ -359,6 +360,7 @@ public class ImsServiceController {
                 mRestartImsServiceRunnable);
         mPermissionManager = null;
         mRepo = repo;
+        mImsEnablementTracker = new ImsEnablementTracker(handler.getLooper());
     }
 
     /**
@@ -553,15 +555,7 @@ public class ImsServiceController {
      * trigger ImsFeature status updates.
      */
     public void enableIms(int slotId, int subId) {
-        try {
-            synchronized (mLock) {
-                if (isServiceControllerAvailable()) {
-                    mIImsServiceController.enableIms(slotId, subId);
-                }
-            }
-        } catch (RemoteException e) {
-            Log.w(LOG_TAG, "Couldn't enable IMS: " + e.getMessage());
-        }
+        mImsEnablementTracker.enableIms(slotId, subId);
     }
 
     /**
@@ -569,15 +563,15 @@ public class ImsServiceController {
      * trigger ImsFeature capability status to become false.
      */
     public void disableIms(int slotId, int subId) {
-        try {
-            synchronized (mLock) {
-                if (isServiceControllerAvailable()) {
-                    mIImsServiceController.disableIms(slotId, subId);
-                }
-            }
-        } catch (RemoteException e) {
-            Log.w(LOG_TAG, "Couldn't disable IMS: " + e.getMessage());
-        }
+        mImsEnablementTracker.disableIms(slotId, subId);
+    }
+
+    /**
+     * Notify ImsService to disable IMS for the framework.
+     * And notify ImsService back to enable IMS for the framework
+     */
+    public void resetIms(int slotId, int subId) {
+        mImsEnablementTracker.resetIms(slotId, subId);
     }
 
     /**
@@ -651,6 +645,7 @@ public class ImsServiceController {
      */
     protected void setServiceController(IBinder serviceController) {
         mIImsServiceController = IImsServiceController.Stub.asInterface(serviceController);
+        mImsEnablementTracker.setServiceController(serviceController);
     }
 
     /**
