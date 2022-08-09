@@ -866,14 +866,15 @@ public class PersistAtomsStorage {
     }
 
     /**
-     * Returns and clears the ImsRegistrationFeatureTagStats if last pulled longer than {@code
-     * minIntervalMillis} ago, otherwise returns {@code null}.
+     * Returns and clears the ImsRegistrationFeatureTagStats if last pulled longer than
+     * {@code minIntervalMillis} ago, otherwise returns {@code null}.
      */
     @Nullable
     public synchronized ImsRegistrationFeatureTagStats[] getImsRegistrationFeatureTagStats(
             long minIntervalMillis) {
-        if (getWallTimeMillis() - mAtoms.imsRegistrationFeatureTagStatsPullTimestampMillis
-                > minIntervalMillis) {
+        long intervalMillis =
+                getWallTimeMillis() - mAtoms.rcsAcsProvisioningStatsPullTimestampMillis;
+        if (intervalMillis > minIntervalMillis) {
             mAtoms.imsRegistrationFeatureTagStatsPullTimestampMillis = getWallTimeMillis();
             ImsRegistrationFeatureTagStats[] previousStats =
                     mAtoms.imsRegistrationFeatureTagStats;
@@ -905,16 +906,26 @@ public class PersistAtomsStorage {
     }
 
     /**
-     * Returns and clears the RcsAcsProvisioningStats if last pulled longer than {@code
-     * minIntervalMillis} ago, otherwise returns {@code null}.
+     * Returns and clears the RcsAcsProvisioningStats normalized to 24h cycle if last pulled
+     * longer than {@code minIntervalMillis} ago, otherwise returns {@code null}.
      */
     @Nullable
     public synchronized RcsAcsProvisioningStats[] getRcsAcsProvisioningStats(
             long minIntervalMillis) {
-        if (getWallTimeMillis() - mAtoms.rcsAcsProvisioningStatsPullTimestampMillis
-                > minIntervalMillis) {
+        long intervalMillis =
+                getWallTimeMillis() - mAtoms.rcsAcsProvisioningStatsPullTimestampMillis;
+        if (intervalMillis > minIntervalMillis) {
             mAtoms.rcsAcsProvisioningStatsPullTimestampMillis = getWallTimeMillis();
             RcsAcsProvisioningStats[] previousStats = mAtoms.rcsAcsProvisioningStats;
+
+            for (RcsAcsProvisioningStats stat: previousStats) {
+                // in case pull interval is greater than 24H, normalize it as of one day interval
+                if (intervalMillis > DAY_IN_MILLIS) {
+                    stat.stateTimerMillis = normalizeDurationTo24H(stat.stateTimerMillis,
+                            intervalMillis);
+                }
+            }
+
             mAtoms.rcsAcsProvisioningStats = new RcsAcsProvisioningStats[0];
             saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
             return previousStats;
@@ -929,10 +940,19 @@ public class PersistAtomsStorage {
      */
     @Nullable
     public synchronized SipDelegateStats[] getSipDelegateStats(long minIntervalMillis) {
-        if (getWallTimeMillis() - mAtoms.sipDelegateStatsPullTimestampMillis
-                > minIntervalMillis) {
+        long intervalMillis = getWallTimeMillis() - mAtoms.sipDelegateStatsPullTimestampMillis;
+        if (intervalMillis > minIntervalMillis) {
             mAtoms.sipDelegateStatsPullTimestampMillis = getWallTimeMillis();
             SipDelegateStats[] previousStats = mAtoms.sipDelegateStats;
+
+            for (SipDelegateStats stat: previousStats) {
+                // in case pull interval is greater than 24H, normalize it as of one day interval
+                if (intervalMillis > DAY_IN_MILLIS) {
+                    stat.uptimeMillis = normalizeDurationTo24H(stat.uptimeMillis,
+                            intervalMillis);
+                }
+            }
+
             mAtoms.sipDelegateStats = new SipDelegateStats[0];
             saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
             return previousStats;
@@ -948,10 +968,20 @@ public class PersistAtomsStorage {
     @Nullable
     public synchronized SipTransportFeatureTagStats[] getSipTransportFeatureTagStats(
             long minIntervalMillis) {
-        if (getWallTimeMillis() - mAtoms.sipTransportFeatureTagStatsPullTimestampMillis
-                > minIntervalMillis) {
+        long intervalMillis =
+                getWallTimeMillis() - mAtoms.sipTransportFeatureTagStatsPullTimestampMillis;
+        if (intervalMillis > minIntervalMillis) {
             mAtoms.sipTransportFeatureTagStatsPullTimestampMillis = getWallTimeMillis();
             SipTransportFeatureTagStats[] previousStats = mAtoms.sipTransportFeatureTagStats;
+
+            for (SipTransportFeatureTagStats stat: previousStats) {
+                // in case pull interval is greater than 24H, normalize it as of one day interval
+                if (intervalMillis > DAY_IN_MILLIS) {
+                    stat.associatedMillis = normalizeDurationTo24H(stat.associatedMillis,
+                            intervalMillis);
+                }
+            }
+
             mAtoms.sipTransportFeatureTagStats = new SipTransportFeatureTagStats[0];
             saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
             return previousStats;
@@ -1045,11 +1075,21 @@ public class PersistAtomsStorage {
     @Nullable
     public synchronized ImsRegistrationServiceDescStats[] getImsRegistrationServiceDescStats(long
             minIntervalMillis) {
-        if (getWallTimeMillis() - mAtoms.imsRegistrationServiceDescStatsPullTimestampMillis
-                > minIntervalMillis) {
+        long intervalMillis =
+                getWallTimeMillis() - mAtoms.imsRegistrationServiceDescStatsPullTimestampMillis;
+        if (intervalMillis > minIntervalMillis) {
             mAtoms.imsRegistrationServiceDescStatsPullTimestampMillis = getWallTimeMillis();
             ImsRegistrationServiceDescStats[] previousStats =
                 mAtoms.imsRegistrationServiceDescStats;
+
+            for (ImsRegistrationServiceDescStats stat: previousStats) {
+                // in case pull interval is greater than 24H, normalize it as of one day interval
+                if (intervalMillis > DAY_IN_MILLIS) {
+                    stat.publishedMillis = normalizeDurationTo24H(stat.publishedMillis,
+                            intervalMillis);
+                }
+            }
+
             mAtoms.imsRegistrationServiceDescStats = new ImsRegistrationServiceDescStats[0];
             saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
             return previousStats;
