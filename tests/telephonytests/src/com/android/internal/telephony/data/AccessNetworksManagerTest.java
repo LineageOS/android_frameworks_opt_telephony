@@ -18,7 +18,6 @@ package com.android.internal.telephony.data;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import static org.junit.Assume.assumeFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -115,7 +114,7 @@ public class AccessNetworksManagerTest extends TelephonyTest {
         processAllMessages();
         replaceInstance(AccessNetworksManager.class, "mDataConfigManager",
                 mAccessNetworksManager, mMockedDataConfigManager);
-        assumeFalse(mAccessNetworksManager.isInLegacyMode());
+
         logd("-setUp");
     }
 

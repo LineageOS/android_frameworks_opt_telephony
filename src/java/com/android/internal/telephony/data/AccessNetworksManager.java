@@ -19,7 +19,6 @@ package com.android.internal.telephony.data;
 import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
-import android.annotation.StringDef;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -34,7 +33,6 @@ import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.RemoteException;
-import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
@@ -56,14 +54,11 @@ import android.util.LocalLog;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.SlidingWindowEventCounter;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -81,35 +76,6 @@ import java.util.stream.Collectors;
  */
 public class AccessNetworksManager extends Handler {
     private static final boolean DBG = false;
-    public static final String SYSTEM_PROPERTIES_IWLAN_OPERATION_MODE =
-            "ro.telephony.iwlan_operation_mode";
-
-    @Retention(RetentionPolicy.SOURCE)
-    @StringDef(prefix = {"IWLAN_OPERATION_MODE_"},
-            value = {
-                    IWLAN_OPERATION_MODE_DEFAULT,
-                    IWLAN_OPERATION_MODE_LEGACY,
-                    IWLAN_OPERATION_MODE_AP_ASSISTED})
-    public @interface IwlanOperationMode {}
-
-    /**
-     * IWLAN default mode. On device that has IRadio 1.4 or above, it means
-     * {@link #IWLAN_OPERATION_MODE_AP_ASSISTED}. On device that has IRadio 1.3 or below, it means
-     * {@link #IWLAN_OPERATION_MODE_LEGACY}.
-     */
-    public static final String IWLAN_OPERATION_MODE_DEFAULT = "default";
-
-    /**
-     * IWLAN legacy mode. IWLAN is completely handled by the modem, and when the device is on
-     * IWLAN, modem reports IWLAN as a RAT.
-     */
-    public static final String IWLAN_OPERATION_MODE_LEGACY = "legacy";
-
-    /**
-     * IWLAN application processor assisted mode. IWLAN is handled by the bound IWLAN data service
-     * and network service separately.
-     */
-    public static final String IWLAN_OPERATION_MODE_AP_ASSISTED = "AP-assisted";
 
     /**
      * The counters to detect frequent QNS attempt to change preferred network transport by ApnType.
@@ -392,28 +358,19 @@ public class AccessNetworksManager extends Handler {
                 Context.CARRIER_CONFIG_SERVICE);
         mLogTag = "ANM-" + mPhone.getPhoneId();
         mApnTypeToQnsChangeNetworkCounter = new SparseArray<>();
-
-        if (isInLegacyMode()) {
-            log("operates in legacy mode.");
-            // For legacy mode, WWAN is the only transport to handle all data connections, even
-            // the IWLAN ones.
-            mAvailableTransports = new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN};
-        } else {
-            log("operates in AP-assisted mode.");
-            mAvailableTransports = new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
-                    AccessNetworkConstants.TRANSPORT_TYPE_WLAN};
-            IntentFilter intentFilter = new IntentFilter();
-            intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-            try {
-                Context contextAsUser = phone.getContext().createPackageContextAsUser(
-                        phone.getContext().getPackageName(), 0, UserHandle.ALL);
-                contextAsUser.registerReceiver(mConfigChangedReceiver, intentFilter,
-                        null /* broadcastPermission */, null);
-            } catch (PackageManager.NameNotFoundException e) {
-                loge("Package name not found: ", e);
-            }
-            bindQualifiedNetworksService();
+        mAvailableTransports = new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN};
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        try {
+            Context contextAsUser = phone.getContext().createPackageContextAsUser(
+                    phone.getContext().getPackageName(), 0, UserHandle.ALL);
+            contextAsUser.registerReceiver(mConfigChangedReceiver, intentFilter,
+                    null /* broadcastPermission */, null);
+        } catch (PackageManager.NameNotFoundException e) {
+            loge("Package name not found: ", e);
         }
+        bindQualifiedNetworksService();
 
         // Using post to delay the registering because data retry manager and data config
         // manager instances are created later than access networks manager.
@@ -516,8 +473,7 @@ public class AccessNetworksManager extends Handler {
     /**
      * Get the qualified network service package.
      *
-     * @return package name of the qualified networks service package. Return empty string when in
-     * legacy mode (i.e. Dedicated IWLAN data/network service is not supported).
+     * @return package name of the qualified networks service package.
      */
     private String getQualifiedNetworksServicePackageName() {
         // Read package name from the resource
@@ -594,30 +550,9 @@ public class AccessNetworksManager extends Handler {
     }
 
     /**
-     * @return {@code true} if the device operates in legacy mode, otherwise {@code false}.
+     * @return The available transports.
      */
-    public boolean isInLegacyMode() {
-        // Get IWLAN operation mode from the system property. If the system property is configured
-        // to default or not configured, the mode is tied to IRadio version. For 1.4 or above, it's
-        // AP-assisted mode, for 1.3 or below, it's legacy mode.
-        String mode = SystemProperties.get(SYSTEM_PROPERTIES_IWLAN_OPERATION_MODE);
-
-        if (mode.equals(IWLAN_OPERATION_MODE_AP_ASSISTED)) {
-            return false;
-        } else if (mode.equals(IWLAN_OPERATION_MODE_LEGACY)) {
-            return true;
-        }
-
-        return mPhone.getHalVersion().less(RIL.RADIO_HAL_VERSION_1_4);
-    }
-
-    /**
-     * @return The available transports. Note that on legacy devices, the only available transport
-     * would be WWAN only. If the device is configured as AP-assisted mode, the available transport
-     * will always be WWAN and WLAN (even if the device is not camped on IWLAN).
-     * See {@link #isInLegacyMode()} for mode details.
-     */
-    public synchronized @NonNull int[] getAvailableTransports() {
+    public @NonNull int[] getAvailableTransports() {
         return mAvailableTransports;
     }
 
@@ -652,11 +587,6 @@ public class AccessNetworksManager extends Handler {
      * @return The preferred transport.
      */
     public @TransportType int getPreferredTransport(@ApnType int apnType) {
-        // In legacy mode, always preferred on cellular.
-        if (isInLegacyMode()) {
-            return AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
-        }
-
         return mPreferredTransports.get(apnType) == null
                 ? AccessNetworkConstants.TRANSPORT_TYPE_WWAN : mPreferredTransports.get(apnType);
     }
@@ -759,9 +689,6 @@ public class AccessNetworksManager extends Handler {
         }
 
         pw.decreaseIndent();
-        pw.println("isInLegacy=" + isInLegacyMode());
-        pw.println("IWLAN operation mode="
-                + SystemProperties.get(SYSTEM_PROPERTIES_IWLAN_OPERATION_MODE));
         pw.println("Local logs=");
         pw.increaseIndent();
         mLocalLog.dump(fd, pw, args);
