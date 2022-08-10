@@ -935,10 +935,9 @@ public class DataRetryManager extends Handler {
                 DataRetryManager.this.onCarrierConfigUpdated();
             }
         });
-        mDataServiceManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                .registerForApnUnthrottled(this, EVENT_DATA_PROFILE_UNTHROTTLED);
-        if (!mPhone.getAccessNetworksManager().isInLegacyMode()) {
-            mDataServiceManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
+
+        for (int transport : mPhone.getAccessNetworksManager().getAvailableTransports()) {
+            mDataServiceManagers.get(transport)
                     .registerForApnUnthrottled(this, EVENT_DATA_PROFILE_UNTHROTTLED);
         }
         mDataProfileManager.registerCallback(new DataProfileManagerCallback(this::post) {

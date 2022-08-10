@@ -108,7 +108,6 @@ public class UiccSlot extends Handler {
      * Update slot. The main trigger for this is a change in the ICC Card status.
      */
     public void update(CommandsInterface ci, IccCardStatus ics, int phoneId, int slotIndex) {
-        if (DBG) log("cardStatus update: " + ics.toString());
         synchronized (mLock) {
             mPortIdxToPhoneId.put(ics.mSlotPortMapping.mPortIndex, phoneId);
             CardState oldState = mCardState;
@@ -172,7 +171,6 @@ public class UiccSlot extends Handler {
      * Update slot based on IccSlotStatus.
      */
     public void update(CommandsInterface[] ci, IccSlotStatus iss, int slotIndex) {
-        if (DBG) log("slotStatus update: " + iss.toString());
         synchronized (mLock) {
             IccSimPortInfo[] simPortInfos = iss.mSimPortInfos;
             CardState oldState = mCardState;

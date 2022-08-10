@@ -457,11 +457,7 @@ public class ImsPhone extends ImsPhoneBase {
         mCT.registerPhoneStateListener(mExternalCallTracker);
         mExternalCallTracker.setCallPuller(mCT);
 
-        boolean legacyMode = true;
-        if (mDefaultPhone.getAccessNetworksManager() != null) {
-            legacyMode = mDefaultPhone.getAccessNetworksManager().isInLegacyMode();
-        }
-        mSS.setOutOfService(legacyMode, false);
+        mSS.setOutOfService(false);
 
         mPhoneId = mDefaultPhone.getPhoneId();
 
@@ -2370,7 +2366,7 @@ public class ImsPhone extends ImsPhoneBase {
     /**
      * Update roaming state and WFC mode in the following situations:
      *     1) voice is in service.
-     *     2) data is in service and it is not IWLAN (if in legacy mode).
+     *     2) data is in service.
      * @param ss non-null ServiceState
      */
     private void updateRoamingState(ServiceState ss) {
@@ -2391,15 +2387,7 @@ public class ImsPhone extends ImsPhoneBase {
             logi("updateRoamingState: we are not IN_SERVICE, ignoring roaming change.");
             return;
         }
-        // We ignore roaming changes when moving to IWLAN because it always sets the roaming
-        // mode to home and masks the actual cellular roaming status if voice is not registered. If
-        // we just moved to IWLAN because WFC roaming mode is IWLAN preferred and WFC home mode is
-        // cell preferred, we can get into a condition where the modem keeps bouncing between
-        // IWLAN->cell->IWLAN->cell...
-        if (isCsNotInServiceAndPsWwanReportingWlan(ss)) {
-            logi("updateRoamingState: IWLAN masking roaming, ignore roaming change.");
-            return;
-        }
+
         if (mCT.getState() == PhoneConstants.State.IDLE) {
             if (DBG) logd("updateRoamingState now: " + newRoamingState);
             mLastKnownRoamingState = newRoamingState;
@@ -2416,30 +2404,6 @@ public class ImsPhone extends ImsPhoneBase {
             if (DBG) logd("updateRoamingState postponed: " + newRoamingState);
             mCT.registerForVoiceCallEnded(this, EVENT_VOICE_CALL_ENDED, null);
         }
-    }
-
-    /**
-     * In legacy mode, data registration will report IWLAN when we are using WLAN for data,
-     * effectively masking the true roaming state of the device if voice is not registered.
-     *
-     * @return true if we are reporting not in service for CS domain over WWAN transport and WLAN
-     * for PS domain over WWAN transport.
-     */
-    private boolean isCsNotInServiceAndPsWwanReportingWlan(ServiceState ss) {
-        // We can not get into this condition if we are in AP-Assisted mode.
-        if (mDefaultPhone.getAccessNetworksManager() == null
-                || !mDefaultPhone.getAccessNetworksManager().isInLegacyMode()) {
-            return false;
-        }
-        NetworkRegistrationInfo csInfo = ss.getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        NetworkRegistrationInfo psInfo = ss.getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        // We will return roaming state correctly if the CS domain is in service because
-        // ss.getRoaming() returns isVoiceRoaming||isDataRoaming result and isDataRoaming==false
-        // when the modem reports IWLAN RAT.
-        return psInfo != null && csInfo != null && !csInfo.isInService()
-                && psInfo.getAccessNetworkTechnology() == TelephonyManager.NETWORK_TYPE_IWLAN;
     }
 
     public RegistrationManager.RegistrationCallback getImsMmTelRegistrationCallback() {

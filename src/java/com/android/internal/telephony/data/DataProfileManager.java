@@ -496,6 +496,16 @@ public class DataProfileManager extends Handler {
                 if (preferredDataProfile != null) {
                     // Save the carrier specified preferred data profile into database
                     setPreferredDataProfile(preferredDataProfile);
+                } else {
+                    preferredDataProfile = mAllDataProfiles.stream()
+                            .filter(dp -> areDataProfileSharingApn(dp, mPreferredDataProfile))
+                            .findFirst()
+                            .orElse(null);
+                    if (preferredDataProfile != null) {
+                        log("updatePreferredDataProfile: preferredDB is empty and no carrier "
+                                + "default configured, setting preferred to be prev preferred DP.");
+                        setPreferredDataProfile(preferredDataProfile);
+                    }
                 }
             }
         } else {
@@ -714,13 +724,14 @@ public class DataProfileManager extends Handler {
     }
 
     /**
-     * Check if the data profile is the preferred data profile.
+     * Check if the data profile is essentially the preferred data profile. The non-essential
+     * elements include e.g.APN Id.
      *
      * @param dataProfile The data profile to check.
-     * @return {@code true} if the data profile is the preferred data profile.
+     * @return {@code true} if the data profile is essentially the preferred data profile.
      */
     public boolean isDataProfilePreferred(@NonNull DataProfile dataProfile) {
-        return dataProfile.equals(mPreferredDataProfile);
+        return areDataProfileSharingApn(dataProfile, mPreferredDataProfile);
     }
 
     /**
@@ -954,9 +965,19 @@ public class DataProfileManager extends Handler {
 
         // Only check the APN from the profile is compatible or not.
         return mAllDataProfiles.stream()
-                .filter(dp -> dp.getApnSetting() != null)
-                .anyMatch(dp -> dp.getApnSetting().equals(dataProfile.getApnSetting(),
-                        mPhone.getServiceState().getDataRoamingFromRegistration()));
+                .anyMatch(dp -> areDataProfileSharingApn(dataProfile, dp));
+    }
+
+    /**
+     * @return {@code true} if both data profiles' APN setting are non-null and essentially the same
+     * (non-essential elements include e.g.APN Id).
+     */
+    private boolean areDataProfileSharingApn(@Nullable DataProfile a, @Nullable DataProfile b) {
+        return a != null
+                && b != null
+                && a.getApnSetting() != null
+                && a.getApnSetting().equals(b.getApnSetting(),
+                mPhone.getServiceState().getDataRoamingFromRegistration());
     }
 
     /**
