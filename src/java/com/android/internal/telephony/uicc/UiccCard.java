@@ -31,6 +31,7 @@ import com.android.telephony.Rlog;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 /**
  * {@hide}
@@ -51,7 +52,7 @@ public class UiccCard {
     protected String mCardId;
     protected boolean mIsSupportsMultipleEnabledProfiles;
 
-    protected HashMap<Integer, UiccPort> mUiccPorts = new HashMap<>();
+    protected LinkedHashMap<Integer, UiccPort> mUiccPorts = new LinkedHashMap<>();
     private HashMap<Integer, Integer> mPhoneIdToPortIdx = new HashMap<>();
 
     public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock,
