@@ -67,6 +67,7 @@ import android.telephony.TelephonyManager;
 import android.telephony.TelephonyManager.HalService;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.RegistrationManager;
+import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.text.TextUtils;
 import android.util.LocalLog;
@@ -4929,7 +4930,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param reason specifies the reason for EPS fallback.
      * @param response is callback message.
      */
-    public void triggerEpsFallback(int reason, Message response) {
+    public void triggerEpsFallback(@MmTelFeature.EpsFallbackReason int reason, Message response) {
         mCi.triggerEpsFallback(reason, response);
     }
 
