@@ -734,6 +734,7 @@ public class ImsPhoneTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testRoamingToAirplanModeIwlanInService() throws Exception {
+        doReturn(true).when(mAccessNetworksManager).isInLegacyMode();
         doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
         doReturn(true).when(mPhone).isRadioOn();
 
@@ -761,6 +762,7 @@ public class ImsPhoneTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testRoamingToOutOfService() throws Exception {
+        doReturn(true).when(mAccessNetworksManager).isInLegacyMode();
         doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
         doReturn(true).when(mPhone).isRadioOn();
 
@@ -780,6 +782,83 @@ public class ImsPhoneTest extends TelephonyTest {
 
         // setWfcMode should not be called again, out_of_service should not trigger move out of
         // roaming.
+        verify(mImsManager, times(1)).setWfcMode(anyInt(), anyBoolean());
+    }
+
+    @Test
+    @SmallTest
+    public void testRoamingChangeForLteInLegacyMode() throws Exception {
+        doReturn(true).when(mAccessNetworksManager).isInLegacyMode();
+        doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
+        doReturn(true).when(mPhone).isRadioOn();
+
+        //roaming - data registration only on LTE
+        Message m = getServiceStateChangedMessage(getServiceStateDataOnly(
+                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.STATE_IN_SERVICE, true));
+        // Inject the message synchronously instead of waiting for the thread to do it.
+        mImsPhoneUT.handleMessage(m);
+        m.recycle();
+
+        verify(mImsManager, times(1)).setWfcMode(anyInt(), eq(true));
+
+        // not roaming - data registration on LTE
+        m = getServiceStateChangedMessage(getServiceStateDataOnly(
+                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.STATE_IN_SERVICE, false));
+        mImsPhoneUT.handleMessage(m);
+        m.recycle();
+
+        verify(mImsManager, times(1)).setWfcMode(anyInt(), eq(false));
+    }
+
+    @Test
+    @SmallTest
+    public void testDataOnlyRoamingCellToIWlanInLegacyMode() throws Exception {
+        doReturn(true).when(mAccessNetworksManager).isInLegacyMode();
+        doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
+        doReturn(true).when(mPhone).isRadioOn();
+
+        //roaming - data registration only on LTE
+        Message m = getServiceStateChangedMessage(getServiceStateDataOnly(
+                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.STATE_IN_SERVICE, true));
+        // Inject the message synchronously instead of waiting for the thread to do it.
+        mImsPhoneUT.handleMessage(m);
+        m.recycle();
+
+        verify(mImsManager, times(1)).setWfcMode(anyInt(), eq(true));
+
+        // not roaming - data registration onto IWLAN
+        m = getServiceStateChangedMessage(getServiceStateDataOnly(
+                ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN, ServiceState.STATE_IN_SERVICE, false));
+        mImsPhoneUT.handleMessage(m);
+        m.recycle();
+
+        // Verify that it hasn't been called again.
+        verify(mImsManager, times(1)).setWfcMode(anyInt(), anyBoolean());
+    }
+
+    @Test
+    @SmallTest
+    public void testCellVoiceDataChangeToWlanInLegacyMode() throws Exception {
+        doReturn(true).when(mAccessNetworksManager).isInLegacyMode();
+        doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
+        doReturn(true).when(mPhone).isRadioOn();
+
+        //roaming - voice/data registration on LTE
+        ServiceState ss = getServiceStateDataAndVoice(
+                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.STATE_IN_SERVICE, true);
+        Message m = getServiceStateChangedMessage(ss);
+        // Inject the message synchronously instead of waiting for the thread to do it.
+        mImsPhoneUT.handleMessage(m);
+
+        verify(mImsManager, times(1)).setWfcMode(anyInt(), eq(true));
+
+        // roaming - voice LTE, data registration onto IWLAN
+        modifyServiceStateData(ss, ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN,
+                ServiceState.STATE_IN_SERVICE, false);
+        mImsPhoneUT.handleMessage(m);
+        m.recycle();
+
+        // Verify that it hasn't been called again.
         verify(mImsManager, times(1)).setWfcMode(anyInt(), anyBoolean());
     }
 

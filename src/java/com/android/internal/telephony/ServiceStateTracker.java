@@ -660,7 +660,7 @@ public class ServiceStateTracker extends Handler {
 
         mAccessNetworksManager = mPhone.getAccessNetworksManager();
         mOutOfServiceSS = new ServiceState();
-        mOutOfServiceSS.setOutOfService(false);
+        mOutOfServiceSS.setOutOfService(mAccessNetworksManager.isInLegacyMode(), false);
 
         for (int transportType : mAccessNetworksManager.getAvailableTransports()) {
             mRegStateManagers.append(transportType, new NetworkRegistrationManager(
@@ -762,9 +762,9 @@ public class ServiceStateTracker extends Handler {
         }
 
         mSS = new ServiceState();
-        mSS.setOutOfService(false);
+        mSS.setOutOfService(mAccessNetworksManager.isInLegacyMode(), false);
         mNewSS = new ServiceState();
-        mNewSS.setOutOfService(false);
+        mNewSS.setOutOfService(mAccessNetworksManager.isInLegacyMode(), false);
         mLastCellInfoReqTime = 0;
         mLastCellInfoList = null;
         mStartedGprsRegCheck = false;
@@ -3302,7 +3302,7 @@ public class ServiceStateTracker extends Handler {
                 nri = mNewSS.getNetworkRegistrationInfo(
                         NetworkRegistrationInfo.DOMAIN_PS,
                         AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
-                mNewSS.setOutOfService(false);
+                mNewSS.setOutOfService(mAccessNetworksManager.isInLegacyMode(), false);
                 // Add the IWLAN registration info back to service state.
                 if (nri != null) {
                     mNewSS.addNetworkRegistrationInfo(nri);
@@ -3319,7 +3319,7 @@ public class ServiceStateTracker extends Handler {
                 nri = mNewSS.getNetworkRegistrationInfo(
                         NetworkRegistrationInfo.DOMAIN_PS,
                         AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
-                mNewSS.setOutOfService(true);
+                mNewSS.setOutOfService(mAccessNetworksManager.isInLegacyMode(), true);
                 // Add the IWLAN registration info back to service state.
                 if (nri != null) {
                     mNewSS.addNetworkRegistrationInfo(nri);
@@ -3446,10 +3446,14 @@ public class ServiceStateTracker extends Handler {
                 mSS.getState() == ServiceState.STATE_POWER_OFF
                         && mNewSS.getState() != ServiceState.STATE_POWER_OFF;
 
-        SparseBooleanArray hasDataAttached = new SparseBooleanArray();
-        SparseBooleanArray hasDataDetached = new SparseBooleanArray();
-        SparseBooleanArray hasRilDataRadioTechnologyChanged = new SparseBooleanArray();
-        SparseBooleanArray hasDataRegStateChanged = new SparseBooleanArray();
+        SparseBooleanArray hasDataAttached = new SparseBooleanArray(
+                mAccessNetworksManager.getAvailableTransports().length);
+        SparseBooleanArray hasDataDetached = new SparseBooleanArray(
+                mAccessNetworksManager.getAvailableTransports().length);
+        SparseBooleanArray hasRilDataRadioTechnologyChanged = new SparseBooleanArray(
+                mAccessNetworksManager.getAvailableTransports().length);
+        SparseBooleanArray hasDataRegStateChanged = new SparseBooleanArray(
+                mAccessNetworksManager.getAvailableTransports().length);
         boolean anyDataRegChanged = false;
         boolean anyDataRatChanged = false;
         boolean hasAlphaRawChanged =
@@ -3638,7 +3642,7 @@ public class ServiceStateTracker extends Handler {
         ServiceState oldMergedSS = new ServiceState(mPhone.getServiceState());
         mSS = new ServiceState(mNewSS);
 
-        mNewSS.setOutOfService(false);
+        mNewSS.setOutOfService(mAccessNetworksManager.isInLegacyMode(), false);
 
         mCellIdentity = primaryCellIdentity;
         if (mSS.getState() == ServiceState.STATE_IN_SERVICE && primaryCellIdentity != null) {
@@ -5514,7 +5518,8 @@ public class ServiceStateTracker extends Handler {
 
 
     /**
-     * This method makes some adjustments when the device camps on IWLAN in airplane mode.
+     * This method adds IWLAN registration info for legacy mode devices camped on IWLAN. It also
+     * makes some adjustments when the device camps on IWLAN in airplane mode.
      */
     private void processIwlanRegistrationInfo() {
         if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF) {
@@ -5528,7 +5533,7 @@ public class ServiceStateTracker extends Handler {
             }
             // operator info should be kept in SS
             String operator = mNewSS.getOperatorAlphaLong();
-            mNewSS.setOutOfService(true);
+            mNewSS.setOutOfService(mAccessNetworksManager.isInLegacyMode(), true);
             if (resetIwlanRatVal) {
                 mNewSS.setDataRegState(ServiceState.STATE_IN_SERVICE);
                 NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
@@ -5538,6 +5543,17 @@ public class ServiceStateTracker extends Handler {
                         .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
                         .build();
                 mNewSS.addNetworkRegistrationInfo(nri);
+                if (mAccessNetworksManager.isInLegacyMode()) {
+                    // If in legacy mode, simulate the behavior that IWLAN registration info
+                    // is reported through WWAN transport.
+                    nri = new NetworkRegistrationInfo.Builder()
+                            .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                            .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                            .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_IWLAN)
+                            .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                            .build();
+                    mNewSS.addNetworkRegistrationInfo(nri);
+                }
                 mNewSS.setOperatorAlphaLong(operator);
                 // Since it's in airplane mode, cellular must be out of service. The only possible
                 // transport for data to go through is the IWLAN transport. Setting this to true
@@ -5546,6 +5562,31 @@ public class ServiceStateTracker extends Handler {
                 log("pollStateDone: mNewSS = " + mNewSS);
             }
             return;
+        }
+
+        // If the device operates in legacy mode and camps on IWLAN, modem reports IWLAN as a RAT
+        // through WWAN registration info. To be consistent with the behavior with AP-assisted mode,
+        // we manually make a WLAN registration info for clients to consume. In this scenario,
+        // both WWAN and WLAN registration info are the IWLAN registration info and that's the
+        // unfortunate limitation we have when the device operates in legacy mode. In AP-assisted
+        // mode, the WWAN registration will correctly report the actual cellular registration info
+        // when the device camps on IWLAN.
+        if (mAccessNetworksManager.isInLegacyMode()) {
+            NetworkRegistrationInfo wwanNri = mNewSS.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            if (wwanNri != null && wwanNri.getAccessNetworkTechnology()
+                    == TelephonyManager.NETWORK_TYPE_IWLAN) {
+                NetworkRegistrationInfo wlanNri = new NetworkRegistrationInfo.Builder()
+                        .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
+                        .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                        .setRegistrationState(wwanNri.getInitialRegistrationState())
+                        .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_IWLAN)
+                        .setRejectCause(wwanNri.getRejectCause())
+                        .setEmergencyOnly(wwanNri.isEmergencyEnabled())
+                        .setAvailableServices(wwanNri.getAvailableServices())
+                        .build();
+                mNewSS.addNetworkRegistrationInfo(wlanNri);
+            }
         }
     }
 
