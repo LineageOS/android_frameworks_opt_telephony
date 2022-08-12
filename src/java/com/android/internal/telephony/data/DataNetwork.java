@@ -643,6 +643,11 @@ public class DataNetwork extends StateMachine {
      */
     private @TransportType int mTransport;
 
+    /**
+     * The last known data network type.
+     */
+    private @NetworkType int mLastKnownDataNetworkType;
+
     /** The reason that why setting up this data network is allowed. */
     private @NonNull DataAllowedReason mDataAllowedReason;
 
@@ -887,6 +892,7 @@ public class DataNetwork extends StateMachine {
             mTrafficDescriptors.add(dataProfile.getTrafficDescriptor());
         }
         mTransport = transport;
+        mLastKnownDataNetworkType = getDataNetworkType();
         mDataAllowedReason = dataAllowedReason;
         dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
         mAttachedNetworkRequestList.addAll(networkRequestList);
@@ -1077,7 +1083,11 @@ public class DataNetwork extends StateMachine {
                     onCarrierConfigUpdated();
                     break;
                 case EVENT_SERVICE_STATE_CHANGED: {
-                    mDataCallSessionStats.onDrsOrRatChanged(getDataNetworkType());
+                    int networkType = getDataNetworkType();
+                    mDataCallSessionStats.onDrsOrRatChanged(networkType);
+                    if (networkType != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
+                        mLastKnownDataNetworkType = networkType;
+                    }
                     updateSuspendState();
                     updateNetworkCapabilities();
                     break;
@@ -3289,8 +3299,14 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
-     * @return The PCO data map of the network. The key is the PCO id, the value is the PCO data.
-     * An empty map if PCO data is not available.
+     * @return The last known data network type of the data network.
+     */
+    public @NetworkType int getLastKnownDataNetworkType() {
+        return mLastKnownDataNetworkType;
+    }
+
+    /**
+     * @return The PCO data received from the network.
      */
     public @NonNull Map<Integer, PcoData> getPcoData() {
         if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN
@@ -3528,6 +3544,8 @@ public class DataNetwork extends StateMachine {
         pw.increaseIndent();
         pw.println("mSubId=" + mSubId);
         pw.println("mTransport=" + AccessNetworkConstants.transportTypeToString(mTransport));
+        pw.println("mLastKnownDataNetworkType=" + TelephonyManager
+                .getNetworkTypeName(mLastKnownDataNetworkType));
         pw.println("WWAN cid=" + mCid.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN));
         pw.println("WLAN cid=" + mCid.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN));
         pw.println("mNetworkScore=" + mNetworkScore);
