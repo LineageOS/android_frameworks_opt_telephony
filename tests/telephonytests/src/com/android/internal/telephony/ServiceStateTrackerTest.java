@@ -92,7 +92,6 @@ import androidx.test.filters.FlakyTest;
 
 import com.android.internal.R;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
-import com.android.internal.telephony.data.DataNetworkController;
 import com.android.internal.telephony.metrics.ServiceStateStats;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
@@ -378,65 +377,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertTrue(oldState
                 != (mSimulatedCommands.getRadioState() == TelephonyManager.RADIO_POWER_ON));
-    }
-
-    @Test
-    public void testSetRadioPowerWaitForAllDataDisconnected() {
-        // Start with radio on
-        sst.setRadioPower(true);
-        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
-
-        // Ensure data is connected
-        ArgumentCaptor<DataNetworkController.DataNetworkControllerCallback> callback =
-                ArgumentCaptor.forClass(DataNetworkController.DataNetworkControllerCallback.class);
-        verify(mDataNetworkController, times(1)).registerDataNetworkControllerCallback(
-                callback.capture());
-        callback.getValue().onAnyDataNetworkExistingChanged(true);
-
-        // Turn on APM and verify that SST is waiting for all data disconnected
-        sst.setRadioPower(false);
-        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
-        verify(mDataNetworkController).tearDownAllDataNetworks(
-                eq(3 /* TEAR_DOWN_REASON_AIRPLANE_MODE_ON */));
-        assertTrue(sst.hasMessages(38 /* EVENT_SET_RADIO_POWER_OFF */));
-
-        // Data disconnected, radio should power off now
-        callback.getValue().onAnyDataNetworkExistingChanged(false);
-        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-        assertEquals(TelephonyManager.RADIO_POWER_OFF, mSimulatedCommands.getRadioState());
-    }
-
-    @Test
-    public void testSetRadioPowerCancelWaitForAllDataDisconnected() {
-        // Start with radio on
-        sst.setRadioPower(true);
-        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
-
-        // Ensure data is connected
-        ArgumentCaptor<DataNetworkController.DataNetworkControllerCallback> callback =
-                ArgumentCaptor.forClass(DataNetworkController.DataNetworkControllerCallback.class);
-        verify(mDataNetworkController, times(1)).registerDataNetworkControllerCallback(
-                callback.capture());
-        callback.getValue().onAnyDataNetworkExistingChanged(true);
-
-        // Turn on APM and verify that SST is waiting for all data disconnected
-        sst.setRadioPower(false);
-        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
-        verify(mDataNetworkController).tearDownAllDataNetworks(
-                eq(3 /* TEAR_DOWN_REASON_AIRPLANE_MODE_ON */));
-        assertTrue(sst.hasMessages(38 /* EVENT_SET_RADIO_POWER_OFF */));
-
-        // Turn off APM while waiting for data to disconnect
-        sst.setRadioPower(true);
-        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
-
-        // Check that radio is on and pending power off messages were cleared
-        assertFalse(sst.hasMessages(38 /* EVENT_SET_RADIO_POWER_OFF */));
-        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
     }
 
     @Test
