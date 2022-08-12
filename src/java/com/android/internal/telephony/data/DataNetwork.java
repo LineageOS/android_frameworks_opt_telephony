@@ -3315,6 +3315,17 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
+     * Check if any of the attached request has the specified network capability.
+     *
+     * @param netCapability The network capability to check.
+     * @return {@code true} if at least one network request has specified network capability.
+     */
+    public boolean hasNetworkCapabilityInNetworkRequests(@NetCapability int netCapability) {
+        return mAttachedNetworkRequestList.stream().anyMatch(
+                request -> request.hasCapability(netCapability));
+    }
+
+    /**
      * Convert the data tear down reason to string.
      *
      * @param reason Data deactivation reason.

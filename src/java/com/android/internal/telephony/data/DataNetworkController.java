@@ -1540,8 +1540,10 @@ public class DataNetworkController extends Handler {
                 // Check if it's SUPL during emergency call.
                 evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_SUPL);
             } else if (!networkRequest.hasCapability(
-                    NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
-                // Check if request is restricted.
+                    NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED) && !networkRequest
+                    .hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN)) {
+                // Check if request is restricted and not for tethering, which always comes with
+                // a restricted network request.
                 evaluation.addDataAllowedReason(DataAllowedReason.RESTRICTED_REQUEST);
             } else if (transport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
                 // Check if request is unmetered (WiFi or unmetered APN).
@@ -1782,8 +1784,11 @@ public class DataNetworkController extends Handler {
                 // Check if it's SUPL during emergency call.
                 evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_SUPL);
             } else if (!dataNetwork.getNetworkCapabilities().hasCapability(
-                    NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
-                // Check if request is restricted
+                    NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                    && !dataNetwork.hasNetworkCapabilityInNetworkRequests(
+                            NetworkCapabilities.NET_CAPABILITY_DUN)) {
+                // Check if request is restricted and there are no DUN network requests attached to
+                // the network.
                 evaluation.addDataAllowedReason(DataAllowedReason.RESTRICTED_REQUEST);
             } else if (dataNetwork.getTransport() == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
                 // Check if request is unmetered (WiFi or unmetered APN)
