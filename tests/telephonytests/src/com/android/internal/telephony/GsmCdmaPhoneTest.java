@@ -1606,4 +1606,37 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         mPhoneUT.setImsPhone(mImsPhone);
     }
+
+    @Test
+    public void testSetVoiceServiceStateOverride() throws Exception {
+        // Start with CS voice and IMS both OOS, no override
+        ServiceState csServiceState = new ServiceState();
+        csServiceState.setStateOutOfService();
+        csServiceState.setDataRegState(ServiceState.STATE_IN_SERVICE);
+        doReturn(csServiceState).when(mSST).getServiceState();
+        ServiceState imsServiceState = new ServiceState();
+        imsServiceState.setStateOutOfService();
+        doReturn(imsServiceState).when(mImsPhone).getServiceState();
+        replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
+
+        assertEquals(ServiceState.STATE_OUT_OF_SERVICE, mPhoneUT.getServiceState().getState());
+
+        // Now set the telecom override
+        mPhoneUT.setVoiceServiceStateOverride(true);
+        verify(mSST).onTelecomVoiceServiceStateOverrideChanged();
+        assertEquals(ServiceState.STATE_IN_SERVICE, mPhoneUT.getServiceState().getState());
+
+        // IMS and telecom voice are treated as equivalent for merging purposes
+        imsServiceState.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
+        assertEquals(ServiceState.STATE_IN_SERVICE, mPhoneUT.getServiceState().getState());
+
+        // Clearing the telecom override still lets IMS override separately
+        mPhoneUT.setVoiceServiceStateOverride(false);
+        verify(mSST, times(2)).onTelecomVoiceServiceStateOverrideChanged();
+        assertEquals(ServiceState.STATE_IN_SERVICE, mPhoneUT.getServiceState().getState());
+
+        // And now removing the IMS IN_SERVICE results in the base OOS showing through
+        imsServiceState.setStateOutOfService();
+        assertEquals(ServiceState.STATE_OUT_OF_SERVICE, mPhoneUT.getServiceState().getState());
+    }
 }

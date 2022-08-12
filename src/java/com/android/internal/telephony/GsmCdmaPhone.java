@@ -264,6 +264,9 @@ public class GsmCdmaPhone extends Phone {
 
     private int mRilVersion;
     private boolean mBroadcastEmergencyCallStateChanges = false;
+    private @ServiceState.RegState int mTelecomVoiceServiceStateOverride =
+            ServiceState.STATE_OUT_OF_SERVICE;
+
     private CarrierKeyDownloadManager mCDM;
     private CarrierInfoManager mCIM;
 
@@ -600,19 +603,19 @@ public class GsmCdmaPhone extends Phone {
     @Override
     @NonNull
     public ServiceState getServiceState() {
-        if (mSST == null || mSST.mSS.getState() != ServiceState.STATE_IN_SERVICE) {
-            if (mImsPhone != null) {
-                return mergeServiceStates((mSST == null)
-                                ? new ServiceState() : mSST.getServiceState(),
-                        mImsPhone.getServiceState());
-            }
-        }
+        ServiceState baseSs = mSST != null ? mSST.getServiceState() : new ServiceState();
+        ServiceState imsSs = mImsPhone != null ? mImsPhone.getServiceState() : new ServiceState();
+        return mergeVoiceServiceStates(baseSs, imsSs, mTelecomVoiceServiceStateOverride);
+    }
 
-        if (mSST != null) {
-            return mSST.getServiceState();
-        } else {
-            // avoid potential NPE in EmergencyCallHelper during Phone switch
-            return new ServiceState();
+    @Override
+    public void setVoiceServiceStateOverride(boolean hasService) {
+        int newOverride =
+                hasService ? ServiceState.STATE_IN_SERVICE : ServiceState.STATE_OUT_OF_SERVICE;
+        boolean changed = newOverride != mTelecomVoiceServiceStateOverride;
+        mTelecomVoiceServiceStateOverride = newOverride;
+        if (changed && mSST != null) {
+            mSST.onTelecomVoiceServiceStateOverrideChanged();
         }
     }
 
@@ -1093,28 +1096,48 @@ public class GsmCdmaPhone extends Phone {
     }
 
     /**
-     * ImsService reports "IN_SERVICE" for its voice registration state even if the device
-     * has lost the physical link to the tower. This helper method merges the IMS and modem
-     * ServiceState, only overriding the voice registration state when we are registered to IMS. In
-     * this case the voice registration state may be "OUT_OF_SERVICE", so override the voice
-     * registration state with the data registration state.
+     * Amends {@code baseSs} if its voice registration state is {@code OUT_OF_SERVICE}.
+     *
+     * <p>Even if the device has lost the CS link to the tower, there are two potential additional
+     * sources of voice capability not directly saved inside ServiceStateTracker:
+     *
+     * <ul>
+     *   <li>IMS voice registration state ({@code imsSs}) - if this is {@code IN_SERVICE} for voice,
+     *       we substite {@code baseSs#getDataRegState} as the final voice service state (ImsService
+     *       reports {@code IN_SERVICE} for its voice registration state even if the device has lost
+     *       the physical link to the tower)
+     *   <li>OTT voice capability provided through telecom ({@code telecomSs}) - if this is {@code
+     *       IN_SERVICE}, we directly substitute it as the final voice service state
+     * </ul>
      */
-    private ServiceState mergeServiceStates(ServiceState baseSs, ServiceState imsSs) {
-        // No need to merge states if the baseSs is IN_SERVICE.
+    private static ServiceState mergeVoiceServiceStates(
+            ServiceState baseSs, ServiceState imsSs, @ServiceState.RegState int telecomSs) {
         if (baseSs.getState() == ServiceState.STATE_IN_SERVICE) {
+            // No need to merge states if the baseSs is IN_SERVICE.
             return baseSs;
         }
-        // "IN_SERVICE" in this case means IMS is registered.
-        if (imsSs.getState() != ServiceState.STATE_IN_SERVICE) {
+        // If any of the following additional sources are IN_SERVICE, we use that since voice calls
+        // can be routed through something other than the CS link.
+        @ServiceState.RegState int finalVoiceSs = ServiceState.STATE_OUT_OF_SERVICE;
+        if (telecomSs == ServiceState.STATE_IN_SERVICE) {
+            // If telecom reports there's a PhoneAccount that can provide voice service
+            // (CAPABILITY_VOICE_CALLING_AVAILABLE), then we trust that info as it may account for
+            // external possibilities like wi-fi calling provided by the SIM call manager app. Note
+            // that CAPABILITY_PLACE_EMERGENCY_CALLS is handled separately.
+            finalVoiceSs = telecomSs;
+        } else if (imsSs.getState() == ServiceState.STATE_IN_SERVICE) {
+            // Voice override for IMS case. In this case, voice registration is OUT_OF_SERVICE, but
+            // IMS is available, so use data registration state as a basis for determining
+            // whether or not the physical link is available.
+            finalVoiceSs = baseSs.getDataRegistrationState();
+        }
+        if (finalVoiceSs != ServiceState.STATE_IN_SERVICE) {
+            // None of the additional sources provide a usable route, and they only use IN/OUT.
             return baseSs;
         }
-
         ServiceState newSs = new ServiceState(baseSs);
-        // Voice override for IMS case. In this case, voice registration is OUT_OF_SERVICE, but
-        // IMS is available, so use data registration state as a basis for determining
-        // whether or not the physical link is available.
-        newSs.setVoiceRegState(baseSs.getDataRegistrationState());
-        newSs.setEmergencyOnly(false); // only get here if voice is IN_SERVICE
+        newSs.setVoiceRegState(finalVoiceSs);
+        newSs.setEmergencyOnly(false); // Must be IN_SERVICE if we're here
         return newSs;
     }
 
@@ -4263,6 +4286,10 @@ public class GsmCdmaPhone extends Phone {
         }
         pw.println(" isCspPlmnEnabled()=" + isCspPlmnEnabled());
         pw.println(" mManualNetworkSelectionPlmn=" + mManualNetworkSelectionPlmn);
+        pw.println(
+                " mTelecomVoiceServiceStateOverride=" + mTelecomVoiceServiceStateOverride + "("
+                        + ServiceState.rilServiceStateToString(mTelecomVoiceServiceStateOverride)
+                        + ")");
         pw.flush();
     }
 
