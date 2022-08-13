@@ -2067,11 +2067,27 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void setInitialAttachApn(DataProfile dataProfile, boolean isRoaming, Message result) {
+        SimulatedCommandsVerifier.getInstance().setInitialAttachApn(dataProfile, isRoaming, result);
+        resultSuccess(result, null);
     }
 
     @Override
     public void setDataProfile(DataProfile[] dps, boolean isRoaming, Message result) {
+        SimulatedCommandsVerifier.getInstance().setDataProfile(dps, isRoaming, result);
+        resultSuccess(result, null);
     }
+
+    @Override
+    public void startHandover(Message result, int callId) {
+        SimulatedCommandsVerifier.getInstance().startHandover(result, callId);
+        resultSuccess(result, null);
+    };
+
+    @Override
+    public void cancelHandover(Message result, int callId) {
+        SimulatedCommandsVerifier.getInstance().cancelHandover(result, callId);
+        resultSuccess(result, null);
+    };
 
     public void setImsRegistrationState(int[] regState) {
         mImsRegState = regState;

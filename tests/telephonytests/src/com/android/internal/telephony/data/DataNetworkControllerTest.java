@@ -1194,6 +1194,41 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testPsRestrictedAllowIwlan() throws Exception {
+        // IMS preferred on IWLAN.
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(
+                        eq(NetworkCapabilities.NET_CAPABILITY_IMS));
+
+        // PS restricted
+        mDataNetworkControllerUT.obtainMessage(6/*EVENT_PS_RESTRICT_ENABLED*/).sendToTarget();
+        processAllMessages();
+
+        // PS restricted, new setup NOT allowed
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        setSuccessfulSetupDataResponse(mMockedDataServiceManagers
+                .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), 2);
+        processAllMessages();
+        verifyAllDataDisconnected();
+
+        // Request IMS
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS,
+                        NetworkCapabilities.NET_CAPABILITY_MMTEL));
+        setSuccessfulSetupDataResponse(mMockedDataServiceManagers
+                .get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN), 3);
+        processAllMessages();
+
+        // Make sure IMS on IWLAN.
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
+        assertThat(getDataNetworks()).hasSize(1);
+        DataNetwork dataNetwork = getDataNetworks().get(0);
+        assertThat(dataNetwork.getTransport()).isEqualTo(
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+    }
+
+    @Test
     public void testRatChanges() throws Exception {
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
@@ -2595,6 +2630,64 @@ public class DataNetworkControllerTest extends TelephonyTest {
         assertThat(dataNetworkList.get(0).getNetworkCapabilities()
                 .hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)).isTrue();
         assertThat(dataNetworkList.get(0).isConnected()).isTrue();
+    }
+
+    @Test
+    public void testDataDisableTearingDownTetheringNetwork() throws Exception {
+        // User data enabled
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, true, mContext.getOpPackageName());
+        processAllMessages();
+
+        // Request the restricted tethering network.
+        NetworkCapabilities netCaps = new NetworkCapabilities();
+        netCaps.addCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
+        netCaps.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+
+        NetworkRequest nativeNetworkRequest = new NetworkRequest(netCaps,
+                ConnectivityManager.TYPE_MOBILE, ++mNetworkRequestId, NetworkRequest.Type.REQUEST);
+
+        mDataNetworkControllerUT.addNetworkRequest(
+                new TelephonyNetworkRequest(nativeNetworkRequest, mPhone));
+        processAllMessages();
+
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_DUN);
+
+        // User data disabled
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false, mContext.getOpPackageName());
+        processAllMessages();
+
+        // Everything should be disconnected.
+        verifyAllDataDisconnected();
+    }
+
+    @Test
+    public void testDataDisableNotAllowingBringingUpTetheringNetwork() throws Exception {
+        // User data disabled
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false, mContext.getOpPackageName());
+        processAllMessages();
+
+        // Request the restricted tethering network.
+        NetworkCapabilities netCaps = new NetworkCapabilities();
+        netCaps.addCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
+        netCaps.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+
+        NetworkRequest nativeNetworkRequest = new NetworkRequest(netCaps,
+                ConnectivityManager.TYPE_MOBILE, ++mNetworkRequestId, NetworkRequest.Type.REQUEST);
+
+        mDataNetworkControllerUT.addNetworkRequest(
+                new TelephonyNetworkRequest(nativeNetworkRequest, mPhone));
+        processAllMessages();
+
+        // Everything should be disconnected.
+        verifyAllDataDisconnected();
+
+        // Telephony should not try to setup a data call for DUN.
+        verify(mMockedWwanDataServiceManager, never()).setupDataCall(anyInt(),
+                any(DataProfile.class), anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(),
+                any(), any(), anyBoolean(), any(Message.class));
     }
 
     @Test
