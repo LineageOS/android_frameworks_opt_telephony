@@ -404,9 +404,27 @@ public class DataUtils {
                             .boxed().collect(Collectors.toSet()),
                     v -> new NetworkRequestList()).add(networkRequest);
         }
-        // Sort the list, so the network request list contains higher priority will be in the front
-        // of the list.
-        return new ArrayList<>(requestsMap.values()).stream()
+        List<NetworkRequestList> requests = new ArrayList<>();
+        // Create separate groups for enterprise requests with different enterprise IDs.
+        for (NetworkRequestList requestList : requestsMap.values()) {
+            List<TelephonyNetworkRequest> enterpriseRequests = requestList.stream()
+                    .filter(request ->
+                            request.hasCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE))
+                    .collect(Collectors.toList());
+            if (enterpriseRequests.isEmpty()) {
+                requests.add(requestList);
+                continue;
+            }
+            // Key is the enterprise ID
+            Map<Integer, NetworkRequestList> enterpriseRequestsMap = new ArrayMap<>();
+            for (TelephonyNetworkRequest request : enterpriseRequests) {
+                enterpriseRequestsMap.computeIfAbsent(request.getCapabilityDifferentiator(),
+                        v -> new NetworkRequestList()).add(request);
+            }
+            requests.addAll(enterpriseRequestsMap.values());
+        }
+        // Sort the requests so the network request list with higher priority will be at the front.
+        return requests.stream()
                 .sorted((list1, list2) -> Integer.compare(
                         list2.get(0).getPriority(), list1.get(0).getPriority()))
                 .collect(Collectors.toList());
