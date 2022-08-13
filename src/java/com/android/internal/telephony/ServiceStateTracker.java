@@ -2818,6 +2818,7 @@ public class ServiceStateTracker extends Handler {
         String wfcFlightSpnFormat = null;
         int combinedRegState = getCombinedRegState(mSS);
         if (mPhone.getImsPhone() != null && mPhone.getImsPhone().isWifiCallingEnabled()
+                && mPhone.isImsRegistered()
                 && (combinedRegState == ServiceState.STATE_IN_SERVICE
                 && mSS.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN)) {
             // In Wi-Fi Calling mode (connected to WiFi and WFC enabled),

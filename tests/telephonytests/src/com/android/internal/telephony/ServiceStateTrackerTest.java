@@ -2690,6 +2690,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // wifi-calling is enabled
         doReturn(true).when(mPhone).isWifiCallingEnabled();
+        doReturn(true).when(mPhone).isImsRegistered();
 
         // update the spn
         sst.updateSpnDisplay();
@@ -2722,6 +2723,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // wifi-calling is enabled
         doReturn(true).when(mPhone).isWifiCallingEnabled();
+        doReturn(true).when(mPhone).isImsRegistered();
 
         // update the spn
         sst.updateSpnDisplay();
