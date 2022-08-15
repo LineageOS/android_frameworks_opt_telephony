@@ -235,6 +235,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(mIwlanNetworkServiceStub).when(mIwlanNetworkServiceStub).asBinder();
         addNetworkService();
 
+        doReturn(true).when(mDcTracker).areAllDataDisconnected();
         doReturn(true).when(mDataNetworkController).areAllDataDisconnected();
 
         doReturn(new ServiceState()).when(mPhone).getServiceState();
@@ -260,6 +261,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         int dds = SubscriptionManager.getDefaultDataSubscriptionId();
         doReturn(dds).when(mPhone).getSubId();
+        doReturn(true).when(mPhone).areAllDataDisconnected();
 
         doReturn(true).when(mPackageManager)
                 .hasSystemFeature(PackageManager.FEATURE_TELEPHONY_CDMA);
@@ -389,6 +391,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
         doReturn(dataNetworkController_phone2).when(phone2).getDataNetworkController();
         doReturn(mSST).when(phone2).getServiceStateTracker();
+        doReturn(true).when(phone2).isUsingNewDataStack();
         doReturn(false).when(mDataNetworkController).areAllDataDisconnected();
         doReturn(false).when(dataNetworkController_phone2).areAllDataDisconnected();
         doReturn(1).when(mPhone).getSubId();
@@ -1768,6 +1771,29 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertEquals(TelephonyManager.RADIO_POWER_UNAVAILABLE, mSimulatedCommands.getRadioState());
     }
 
+    @Test
+    @SmallTest
+    public void testImsRegisteredDelayShutDown() throws Exception {
+        doReturn(false).when(mPhone).isUsingNewDataStack();
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+        mContextFixture.putIntResource(
+                com.android.internal.R.integer.config_delay_for_ims_dereg_millis, 1000 /*ms*/);
+        sst.setImsRegistrationState(true);
+        mSimulatedCommands.setRadioPowerFailResponse(false);
+        sst.setRadioPower(true);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        // Turn off the radio and ensure radio power is still on
+        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
+        sst.setRadioPower(false);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
+
+        // Now set IMS reg state to false and ensure we see the modem move to power off.
+        sst.setImsRegistrationState(false);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(TelephonyManager.RADIO_POWER_OFF, mSimulatedCommands.getRadioState());
+    }
 
     @Test
     @SmallTest
@@ -1782,6 +1808,33 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // Turn off the radio and ensure radio power is off
         assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
         sst.setRadioPower(false);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(TelephonyManager.RADIO_POWER_OFF, mSimulatedCommands.getRadioState());
+    }
+
+    @Test
+    @SmallTest
+    public void testImsRegisteredDelayShutDownTimeout() throws Exception {
+        doReturn(false).when(mPhone).isUsingNewDataStack();
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+        mContextFixture.putIntResource(
+                com.android.internal.R.integer.config_delay_for_ims_dereg_millis, 1000 /*ms*/);
+        sst.setImsRegistrationState(true);
+        mSimulatedCommands.setRadioPowerFailResponse(false);
+        sst.setRadioPower(true);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        // Turn off the radio and ensure radio power is still on
+        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
+        sst.setRadioPower(false);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
+
+        // Ensure that if we never turn deregister for IMS, we still eventually see radio state
+        // move to off.
+        // Timeout for IMS reg + some extra time to remove race conditions
+        waitForDelayedHandlerAction(mSSTTestHandler.getThreadHandler(),
+                sst.getRadioPowerOffDelayTimeoutForImsRegistration() + 1000, 1000);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertEquals(TelephonyManager.RADIO_POWER_OFF, mSimulatedCommands.getRadioState());
     }

@@ -25,6 +25,7 @@ import android.net.NetworkAgentConfig;
 import android.net.NetworkProvider;
 import android.net.NetworkScore;
 import android.net.QosFilter;
+import android.net.QosSessionAttributes;
 import android.net.Uri;
 import android.os.Looper;
 import android.util.ArraySet;
@@ -45,8 +46,9 @@ import java.util.concurrent.Executor;
  * for telephony to propagate network related information to the connectivity service. It always
  * has an associated parent {@link DataNetwork}.
  */
-public class TelephonyNetworkAgent extends NetworkAgent {
+public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSessionInterface {
     private final String mLogTag;
+    private final Phone mPhone;
     private final LocalLog mLocalLog = new LocalLog(128);
 
     /** The parent data network. */
@@ -157,6 +159,7 @@ public class TelephonyNetworkAgent extends NetworkAgent {
         mDataNetwork = dataNetwork;
         mNetworkAgentConfig = config;
         mTelephonyNetworkAgentCallbacks.add(callback);
+        mPhone = phone;
         mId = getNetwork().getNetId();
         mLogTag = "TNA-" + mId;
 
@@ -283,6 +286,37 @@ public class TelephonyNetworkAgent extends NetworkAgent {
         }
         mTelephonyNetworkAgentCallbacks.forEach(callback -> callback.invokeFromExecutor(
                 () -> callback.onQosCallbackUnregistered(qosCallbackId)));
+    }
+
+    /**
+     * Sends the attributes of Qos Session back to the Application. This method is create for
+     * Mockito to mock since
+     * {@link NetworkAgent#sendQosSessionAvailable(int, int, QosSessionAttributes)} is
+     * {@code final} that can't be mocked.
+     *
+     * @param qosCallbackId the callback id that the session belongs to.
+     * @param sessionId the unique session id across all Qos Sessions.
+     * @param attributes the attributes of the Qos Session.
+     */
+    @Override
+    public void notifyQosSessionAvailable(final int qosCallbackId, final int sessionId,
+            @NonNull final QosSessionAttributes attributes) {
+        super.sendQosSessionAvailable(qosCallbackId, sessionId, attributes);
+    }
+
+    /**
+     * Sends event that the Qos Session was lost. This method is create for Mockito to mock
+     * since {@link NetworkAgent#sendQosSessionLost(int, int, int)} is {@code final} that can't be
+     * mocked..
+     *
+     * @param qosCallbackId the callback id that the session belongs to.
+     * @param sessionId the unique session id across all Qos Sessions.
+     * @param qosSessionType the session type {@code QosSession#QosSessionType}.
+     */
+    @Override
+    public void notifyQosSessionLost(final int qosCallbackId,
+            final int sessionId, final int qosSessionType) {
+        super.sendQosSessionLost(qosCallbackId, sessionId, qosSessionType);
     }
 
     /**

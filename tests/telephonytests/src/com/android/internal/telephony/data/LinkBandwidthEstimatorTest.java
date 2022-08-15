@@ -32,6 +32,7 @@ import static com.android.internal.telephony.data.LinkBandwidthEstimator.UNKNOWN
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.eq;
@@ -42,7 +43,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.net.NetworkCapabilities;
+import android.os.AsyncResult;
 import android.os.Handler;
+import android.os.Message;
 import android.telephony.CellIdentityLte;
 import android.telephony.ModemActivityInfo;
 import android.telephony.NetworkRegistrationInfo;
@@ -60,6 +63,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 @RunWith(AndroidTestingRunner.class)
@@ -76,6 +80,7 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
             new ModemActivityInfo(100L, 0, 0, TX_TIME_2_MS, RX_TIME_2_MS);
     private static final ModemActivityInfo MAI_RX_TIME_HIGH =
             new ModemActivityInfo(100L, 0, 0, TX_TIME_1_MS, RX_TIME_2_MS);
+    private static final int EVENT_BANDWIDTH_ESTIMATOR_UPDATE = 1;
     private NetworkCapabilities mNetworkCapabilities;
     private CellIdentityLte mCellIdentity;
     private long mElapsedTimeMs = 0;
@@ -84,20 +89,14 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
     private NetworkRegistrationInfo mNri;
 
     // Mocked classes
-    private TelephonyFacade mTelephonyFacade;
+    TelephonyFacade mTelephonyFacade;
     private Handler mTestHandler;
-    private LinkBandwidthEstimatorCallback mLinkBandwidthEstimatorCallback;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         mTelephonyFacade = mock(TelephonyFacade.class);
         mTestHandler = mock(Handler.class);
-        mLinkBandwidthEstimatorCallback = Mockito.mock(LinkBandwidthEstimatorCallback.class);
-        doAnswer(invocation -> {
-            ((Runnable) invocation.getArguments()[0]).run();
-            return null;
-        }).when(mLinkBandwidthEstimatorCallback).invokeFromExecutor(any(Runnable.class));
         mNetworkCapabilities = new NetworkCapabilities.Builder()
                 .addTransportType(TRANSPORT_CELLULAR)
                 .build();
@@ -117,10 +116,10 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
         when(mSignalStrength.getDbm()).thenReturn(-100);
         when(mSignalStrength.getLevel()).thenReturn(1);
         mLBE = new LinkBandwidthEstimator(mPhone, mTelephonyFacade);
+        mLBE.registerForBandwidthChanged(mTestHandler, EVENT_BANDWIDTH_ESTIMATOR_UPDATE, null);
         mLBE.obtainMessage(MSG_DEFAULT_NETWORK_CHANGED, mNetworkCapabilities).sendToTarget();
         mLBE.obtainMessage(MSG_SCREEN_STATE_CHANGED, false).sendToTarget();
         mLBE.obtainMessage(MSG_ACTIVE_PHONE_CHANGED, 1).sendToTarget();
-        mLBE.registerCallback(mLinkBandwidthEstimatorCallback);
         processAllMessages();
     }
 
@@ -185,8 +184,12 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
     }
 
     private void verifyUpdateBandwidth(int txKbps, int rxKbps) {
-        verify(mLinkBandwidthEstimatorCallback, atLeast(1))
-                .onBandwidthChanged(eq(txKbps), eq(rxKbps));
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mTestHandler, atLeast(1))
+                .sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
+        assertEquals(EVENT_BANDWIDTH_ESTIMATOR_UPDATE, messageArgumentCaptor.getValue().what);
+        assertEquals(new Pair<Integer, Integer>(txKbps, rxKbps),
+                ((AsyncResult) messageArgumentCaptor.getValue().obj).result);
     }
 
     @Test
