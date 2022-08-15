@@ -28,6 +28,7 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.telephony.RadioAccessFamily;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
@@ -154,6 +155,34 @@ public class ProxyController {
         PhoneConfigurationManager.registerForMultiSimConfigChange(
                 mHandler, EVENT_MULTI_SIM_CONFIG_CHANGED, null);
         logd("Constructor - Exit");
+    }
+
+    public void registerForAllDataDisconnected(int subId, Handler h, int what) {
+        int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
+
+        if (SubscriptionManager.isValidPhoneId(phoneId)) {
+            mPhones[phoneId].registerForAllDataDisconnected(h, what);
+        }
+    }
+
+    public void unregisterForAllDataDisconnected(int subId, Handler h) {
+        int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
+
+        if (SubscriptionManager.isValidPhoneId(phoneId)) {
+            mPhones[phoneId].unregisterForAllDataDisconnected(h);
+        }
+    }
+
+
+    public boolean areAllDataDisconnected(int subId) {
+        int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
+
+        if (SubscriptionManager.isValidPhoneId(phoneId)) {
+            return mPhones[phoneId].areAllDataDisconnected();
+        } else {
+            // if we can't find a phone for the given subId, it is disconnected.
+            return true;
+        }
     }
 
     /**

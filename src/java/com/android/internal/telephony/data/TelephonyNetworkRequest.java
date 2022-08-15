@@ -157,7 +157,8 @@ public class TelephonyNetworkRequest {
     /**
      * Data config manager for retrieving data config.
      */
-    private final @NonNull DataConfigManager mDataConfigManager;
+    // TODO: Make this @NonNull after old data stack removed.
+    private final @Nullable DataConfigManager mDataConfigManager;
 
     /**
      * The attached data network. Note that the data network could be in any state. {@code null}
@@ -203,8 +204,12 @@ public class TelephonyNetworkRequest {
         // to satisfy it.
         mState = REQUEST_STATE_UNSATISFIED;
         mCreatedTimeMillis = SystemClock.elapsedRealtime();
-        mDataConfigManager = phone.getDataNetworkController().getDataConfigManager();
-        updatePriority();
+        if (phone.isUsingNewDataStack()) {
+            mDataConfigManager = phone.getDataNetworkController().getDataConfigManager();
+            updatePriority();
+        } else {
+            mDataConfigManager = null;
+        }
     }
 
     /**
@@ -396,7 +401,8 @@ public class TelephonyNetworkRequest {
      * @return {@code true} if this network request can result in bringing up a metered network.
      */
     public boolean isMeteredRequest() {
-        return mDataConfigManager.isAnyMeteredCapability(
+        // TODO: Remove null check after old data stack removed.
+        return mDataConfigManager != null && mDataConfigManager.isAnyMeteredCapability(
                 getCapabilities(), mPhone.getServiceState().getDataRoaming());
     }
 

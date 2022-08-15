@@ -68,7 +68,6 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyLocalConnection;
 import android.telephony.TelephonyManager;
-import android.telephony.TelephonyManager.DataEnabledChangedReason;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsCallSession;
@@ -120,6 +119,8 @@ import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.d2d.RtpTransport;
 import com.android.internal.telephony.data.DataSettingsManager;
+import com.android.internal.telephony.dataconnection.DataEnabledSettings;
+import com.android.internal.telephony.dataconnection.DataEnabledSettings.DataEnabledChangedReason;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.imsphone.ImsPhone.ImsDialArgs;
@@ -965,7 +966,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     };
 
-    private @NonNull DataSettingsManager.DataSettingsManagerCallback mSettingsCallback;
+    // TODO: make @NonNull after removing DataEnabledSettings
+    private DataSettingsManager.DataSettingsManagerCallback mSettingsCallback;
 
     /**
      * Allows the FeatureConnector used to be swapped for easier testing.
@@ -1011,14 +1013,39 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mPhone.getContext().registerReceiver(mReceiver, intentfilter);
         updateCarrierConfiguration(mPhone.getSubId(), getCarrierConfigBundle(mPhone.getSubId()));
 
-        mSettingsCallback = new DataSettingsManager.DataSettingsManagerCallback(this::post) {
-                @Override
-                public void onDataEnabledChanged(boolean enabled,
-                        @DataEnabledChangedReason int reason,
-                        @NonNull String callingPackage) {
-                    ImsPhoneCallTracker.this.onDataEnabledChanged(enabled, reason);
-                }};
-        mPhone.getDefaultPhone().getDataSettingsManager().registerCallback(mSettingsCallback);
+        if (mPhone.getDefaultPhone().isUsingNewDataStack()) {
+            mSettingsCallback = new DataSettingsManager.DataSettingsManagerCallback(this::post) {
+                    @Override
+                    public void onDataEnabledChanged(boolean enabled,
+                            @TelephonyManager.DataEnabledChangedReason int reason,
+                            @NonNull String callingPackage) {
+                        int internalReason;
+                        switch (reason) {
+                            case TelephonyManager.DATA_ENABLED_REASON_USER:
+                                internalReason = DataEnabledSettings.REASON_USER_DATA_ENABLED;
+                                break;
+                            case TelephonyManager.DATA_ENABLED_REASON_POLICY:
+                                internalReason = DataEnabledSettings.REASON_POLICY_DATA_ENABLED;
+                                break;
+                            case TelephonyManager.DATA_ENABLED_REASON_CARRIER:
+                                internalReason = DataEnabledSettings.REASON_DATA_ENABLED_BY_CARRIER;
+                                break;
+                            case TelephonyManager.DATA_ENABLED_REASON_THERMAL:
+                                internalReason = DataEnabledSettings.REASON_THERMAL_DATA_ENABLED;
+                                break;
+                            case TelephonyManager.DATA_ENABLED_REASON_OVERRIDE:
+                                internalReason = DataEnabledSettings.REASON_OVERRIDE_RULE_CHANGED;
+                                break;
+                            default:
+                                internalReason = DataEnabledSettings.REASON_INTERNAL_DATA_ENABLED;
+                        }
+                        ImsPhoneCallTracker.this.onDataEnabledChanged(enabled, internalReason);
+                    }};
+            mPhone.getDefaultPhone().getDataSettingsManager().registerCallback(mSettingsCallback);
+        } else {
+            mPhone.getDefaultPhone().getDataEnabledSettings().registerForDataEnabledChanged(
+                    this, EVENT_DATA_ENABLED_CHANGED, null);
+        }
 
         final TelecomManager telecomManager =
                 (TelecomManager) mPhone.getContext().getSystemService(Context.TELECOM_SERVICE);
@@ -1263,7 +1290,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         clearDisconnected();
         mPhone.getContext().unregisterReceiver(mReceiver);
-        mPhone.getDefaultPhone().getDataSettingsManager().unregisterCallback(mSettingsCallback);
+        if (mPhone.getDefaultPhone().isUsingNewDataStack()) {
+            mPhone.getDefaultPhone().getDataSettingsManager().unregisterCallback(mSettingsCallback);
+        } else {
+            mPhone.getDefaultPhone().getDataEnabledSettings().unregisterForDataEnabledChanged(this);
+        }
         mImsManagerConnector.disconnect();
 
         final NetworkStatsManager statsManager =
@@ -2779,7 +2810,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     private void maybeSetVideoCallProvider(ImsPhoneConnection conn, ImsCall imsCall) {
         android.telecom.Connection.VideoProvider connVideoProvider = conn.getVideoProvider();
-        ImsCallSession callSession = imsCall.getCallSession();
+        ImsCallSession callSession = imsCall.getCallSession(); 
         if (connVideoProvider != null || callSession == null
             || callSession.getVideoCallProvider() == null) {
             return;
@@ -3809,11 +3840,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         @Override
         public void onCallHandover(ImsCall imsCall, int srcAccessTech, int targetAccessTech,
             ImsReasonInfo reasonInfo) {
-            // Check if data is enabled; there may be a case when
+            // Check with the DCTracker to see if data is enabled; there may be a case when
             // ImsPhoneCallTracker isn't being informed of the right data enabled state via its
             // registration, so we'll refresh now.
             boolean isDataEnabled;
-            isDataEnabled = mPhone.getDefaultPhone().getDataSettingsManager().isDataEnabled();
+            if (mPhone.getDefaultPhone().isUsingNewDataStack()) {
+                isDataEnabled = mPhone.getDefaultPhone().getDataSettingsManager().isDataEnabled();
+            } else {
+                isDataEnabled = mPhone.getDefaultPhone().getDataEnabledSettings().isDataEnabled();
+            }
 
             if (DBG) {
                 log("onCallHandover ::  srcAccessTech=" + srcAccessTech + ", targetAccessTech="
@@ -4993,9 +5028,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     /**
      * Handler of data enabled changed event
      * @param enabled True if data is enabled, otherwise disabled.
-     * @param reason Reason for data enabled/disabled.
+     * @param reason Reason for data enabled/disabled. See {@link DataEnabledChangedReason}.
      */
     private void onDataEnabledChanged(boolean enabled, @DataEnabledChangedReason int reason) {
+        // TODO: TelephonyManager.DataEnabledChangedReason instead once DataEnabledSettings is gone
         log("onDataEnabledChanged: enabled=" + enabled + ", reason=" + reason);
 
         mIsDataEnabled = enabled;
@@ -5015,9 +5051,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
 
         int reasonCode;
-        if (reason == TelephonyManager.DATA_ENABLED_REASON_POLICY) {
+        if (reason == DataEnabledSettings.REASON_POLICY_DATA_ENABLED) {
             reasonCode = ImsReasonInfo.CODE_DATA_LIMIT_REACHED;
-        } else if (reason == TelephonyManager.DATA_ENABLED_REASON_USER) {
+        } else if (reason == DataEnabledSettings.REASON_USER_DATA_ENABLED) {
             reasonCode = ImsReasonInfo.CODE_DATA_DISABLED;
         } else {
             // Unexpected code, default to data disabled.
@@ -5030,10 +5066,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         // Handle video state changes required as a result of data being enabled/disabled.
         handleDataEnabledChange(enabled, reasonCode);
 
-        // We do not want to update the ImsConfig for REASON_UNKNOWN, since it can happen before
+        // We do not want to update the ImsConfig for REASON_REGISTERED, since it can happen before
         // the carrier config has loaded and will deregister IMS.
         if (!mShouldUpdateImsConfigOnDisconnect
-                && reason != TelephonyManager.DATA_ENABLED_REASON_UNKNOWN
+                && reason != DataEnabledSettings.REASON_REGISTERED
                 && mCarrierConfigLoadedForSubscription) {
             // This will call into updateVideoCallFeatureValue and eventually all clients will be
             // asynchronously notified that the availability of VT over LTE has changed.

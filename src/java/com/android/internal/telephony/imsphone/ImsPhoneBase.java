@@ -41,6 +41,7 @@ import com.android.internal.telephony.OperatorInfo;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
+import com.android.internal.telephony.dataconnection.DataConnection;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.telephony.Rlog;
 
@@ -170,6 +171,11 @@ abstract class ImsPhoneBase extends Phone {
     @Override
     public List<? extends MmiCode> getPendingMmiCodes() {
         return new ArrayList<MmiCode>(0);
+    }
+
+    @Override
+    public PhoneConstants.DataState getDataConnectionState() {
+        return PhoneConstants.DataState.DISCONNECTED;
     }
 
     @Override
@@ -426,6 +432,10 @@ abstract class ImsPhoneBase extends Phone {
     @Override
     public void selectNetworkManually(OperatorInfo network, boolean persistSelection,
             Message response) {
+    }
+
+    public List<DataConnection> getCurrentDataConnectionList () {
+        return null;
     }
 
     @Override
