@@ -625,9 +625,9 @@ public class IccSmsInterfaceManager {
         }
 
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
-            log("pdu: " + pdu +
-                "\n format=" + format +
-                "\n receivedIntent=" + receivedIntent);
+            log("pdu: " + IccUtils.bytesToHexString(pdu)
+                    + "\n format=" + format
+                    + "\n receivedIntent=" + receivedIntent);
         }
         mDispatchersController.injectSmsPdu(pdu, format, false /* isOverIms */,
                 result -> {
