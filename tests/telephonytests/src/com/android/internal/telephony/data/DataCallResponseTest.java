@@ -16,6 +16,12 @@
 
 package com.android.internal.telephony.data;
 
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_ADDRESS;
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_DNS;
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_GATEWAY;
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_IFNAME;
+import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_PCSCF_ADDRESS;
+
 import android.net.InetAddresses;
 import android.net.LinkAddress;
 import android.os.Parcel;
@@ -31,20 +37,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public class DataCallResponseTest extends AndroidTestCase {
-    private static final String FAKE_ADDRESS = "99.88.77.66";
-    private static final String FAKE_DNS = "55.66.77.88";
-    private static final String FAKE_DNN = "FAKE_DNN";
-    private static final String FAKE_GATEWAY = "11.22.33.44";
-    private static final String FAKE_IFNAME = "FAKE IFNAME";
-    private static final String FAKE_PCSCF_ADDRESS = "22.33.44.55";
+    public static final String FAKE_DNN = "FAKE_DNN";
     // 97a498e3fc925c9489860333d06e4e470a454e5445525052495345.
     // [OsAppId.ANDROID_OS_ID, "ENTERPRISE", 1]
-    private static final byte[] FAKE_OS_APP_ID = {-105, -92, -104, -29, -4, -110, 92,
+    public static final byte[] FAKE_OS_APP_ID = {-105, -92, -104, -29, -4, -110, 92,
             -108, -119, -122, 3, 51, -48, 110, 78, 71, 10, 69, 78, 84, 69,
             82, 80, 82, 73, 83, 69};
     // 97a498e3fc925c9489860333d06e4e470a454e544552505249534532.
     // [OsAppId.ANDROID_OS_ID, "ENTERPRISE", 2]
-    private static final byte[] FAKE_OS_APP_ID_2 = {-105, -92, -104, -29, -4, -110, 92,
+    public static final byte[] FAKE_OS_APP_ID_2 = {-105, -92, -104, -29, -4, -110, 92,
             -108, -119, -122, 3, 51, -48, 110, 78, 71, 10, 69, 78, 84, 69,
             82, 80, 82, 73, 83, 69, 50};
 
