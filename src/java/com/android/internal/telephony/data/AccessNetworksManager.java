@@ -434,6 +434,9 @@ public class AccessNetworksManager extends Handler {
      * @param apnType The requested apnType.
      */
     private void trackFrequentApnTypeChange(@ApnSetting.ApnType int apnType) {
+        DataNetworkController dnc = mPhone.getDataNetworkController();
+        // ignore the report when no existing network request
+        if (!dnc.isCapabilityRequestExisting(DataUtils.apnTypeToNetworkCapability(apnType))) return;
         SlidingWindowEventCounter counter = mApnTypeToQnsChangeNetworkCounter.get(apnType);
         if (counter == null) {
             counter = new SlidingWindowEventCounter(
@@ -445,7 +448,7 @@ public class AccessNetworksManager extends Handler {
             reportAnomaly("QNS requested network change for "
                             + ApnSetting.getApnTypeString(apnType) + " "
                             + counter.getFrequencyString(),
-                    "3e89a3df-3524-45fa-b5f2-b8911abc7d57");
+                    "3e89a3df-3524-45fa-b5f2-b8911abc7d56");
         }
     }
 
