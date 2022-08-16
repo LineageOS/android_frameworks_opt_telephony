@@ -1599,7 +1599,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         doReturn(true).when(mTelephonyManager).isEmergencyNumber(anyString());
         doReturn(isEmergencyPerDialedSim).when(mEmergencyNumberTracker).isEmergencyNumber(
-                anyString(), anyBoolean());
+                anyString());
 
         mPhoneUT.setImsPhone(mImsPhone);
     }
