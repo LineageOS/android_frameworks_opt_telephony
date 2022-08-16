@@ -323,8 +323,6 @@ public class ServiceStateTracker extends Handler {
     private CarrierDisplayNameResolver mCdnr;
 
     private boolean mImsRegistrationOnOff = false;
-    /** Radio is disabled by carrier. Radio power will not be override if this field is set */
-    private boolean mRadioDisabledByCarrier = false;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean mDeviceShuttingDown = false;
     /** Keep track of SPN display rules, so we only broadcast intent if something changes. */
@@ -686,7 +684,7 @@ public class ServiceStateTracker extends Handler {
                 Settings.Global.ENABLE_CELLULAR_ON_BOOT, 1);
         mDesiredPowerState = (enableCellularOnBoot > 0) && ! (airplaneMode > 0);
         if (!mDesiredPowerState) {
-            mRadioPowerOffReasons.add(Phone.RADIO_POWER_REASON_USER);
+            mRadioPowerOffReasons.add(TelephonyManager.RADIO_POWER_REASON_USER);
         }
         mRadioPowerLog.log("init : airplane mode = " + airplaneMode + " enableCellularOnBoot = " +
                 enableCellularOnBoot);
@@ -872,7 +870,10 @@ public class ServiceStateTracker extends Handler {
     public boolean getDesiredPowerState() {
         return mDesiredPowerState;
     }
-    public boolean getPowerStateFromCarrier() { return !mRadioDisabledByCarrier; }
+
+    public boolean getPowerStateFromCarrier() {
+        return !mRadioPowerOffReasons.contains(TelephonyManager.RADIO_POWER_REASON_CARRIER);
+    }
 
     public List<PhysicalChannelConfig> getPhysicalChannelConfigList() {
         return mLastPhysicalChannelConfigList;
@@ -1062,7 +1063,7 @@ public class ServiceStateTracker extends Handler {
      * @return the current reasons for which the radio is off.
      */
     public Set<Integer> getRadioPowerOffReasons() {
-        return mRadioPowerOffReasons;
+        return Set.copyOf(mRadioPowerOffReasons);
     }
 
     /**
@@ -1088,7 +1089,7 @@ public class ServiceStateTracker extends Handler {
     public void setRadioPower(boolean power, boolean forEmergencyCall,
             boolean isSelectedPhoneForEmergencyCall, boolean forceApply) {
         setRadioPowerForReason(power, forEmergencyCall, isSelectedPhoneForEmergencyCall, forceApply,
-                Phone.RADIO_POWER_REASON_USER);
+                TelephonyManager.RADIO_POWER_REASON_USER);
     }
 
     /**
@@ -1126,23 +1127,6 @@ public class ServiceStateTracker extends Handler {
 
         mDesiredPowerState = power;
         setPowerStateToDesired(forEmergencyCall, isSelectedPhoneForEmergencyCall, forceApply);
-    }
-
-    /**
-     * Radio power set from carrier action. if set to false means carrier desire to turn radio off
-     * and radio wont be re-enabled unless carrier explicitly turn it back on.
-     * @param enable indicate if radio power is enabled or disabled from carrier action.
-     */
-    public void setRadioPowerFromCarrier(boolean enable) {
-        boolean disableByCarrier = !enable;
-        if (mRadioDisabledByCarrier == disableByCarrier) {
-            log("setRadioPowerFromCarrier mRadioDisabledByCarrier is already "
-                    + disableByCarrier + " Do nothing.");
-            return;
-        }
-
-        mRadioDisabledByCarrier = disableByCarrier;
-        setPowerStateToDesired();
     }
 
     /**
@@ -1670,7 +1654,8 @@ public class ServiceStateTracker extends Handler {
                 if (ar.exception == null) {
                     boolean enable = (boolean) ar.result;
                     if (DBG) log("EVENT_RADIO_POWER_FROM_CARRIER: " + enable);
-                    setRadioPowerFromCarrier(enable);
+                    setRadioPowerForReason(enable, false, false, false,
+                            TelephonyManager.RADIO_POWER_REASON_CARRIER);
                 }
                 break;
 
@@ -3113,12 +3098,12 @@ public class ServiceStateTracker extends Handler {
     protected void setPowerStateToDesired(boolean forEmergencyCall,
             boolean isSelectedPhoneForEmergencyCall, boolean forceApply) {
         if (DBG) {
-            String tmpLog = "setPowerStateToDesired: mDeviceShuttingDown=" + mDeviceShuttingDown +
-                    ", mDesiredPowerState=" + mDesiredPowerState +
-                    ", getRadioState=" + mCi.getRadioState() +
-                    ", mRadioDisabledByCarrier=" + mRadioDisabledByCarrier +
-                    ", IMS reg state=" + mImsRegistrationOnOff +
-                    ", pending radio off=" + hasMessages(EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT);
+            String tmpLog = "setPowerStateToDesired: mDeviceShuttingDown=" + mDeviceShuttingDown
+                    + ", mDesiredPowerState=" + mDesiredPowerState
+                    + ", getRadioState=" + mCi.getRadioState()
+                    + ", mRadioPowerOffReasons=" + mRadioPowerOffReasons
+                    + ", IMS reg state=" + mImsRegistrationOnOff
+                    + ", pending radio off=" + hasMessages(EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT);
             log(tmpLog);
             mRadioPowerLog.log(tmpLog);
         }
@@ -3130,10 +3115,10 @@ public class ServiceStateTracker extends Handler {
         }
 
         // If we want it on and it's off, turn it on
-        if (mDesiredPowerState && !mRadioDisabledByCarrier
+        if (mDesiredPowerState && mRadioPowerOffReasons.isEmpty()
                 && (forceApply || mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF)) {
             mCi.setRadioPower(true, forEmergencyCall, isSelectedPhoneForEmergencyCall, null);
-        } else if ((!mDesiredPowerState || mRadioDisabledByCarrier) && mCi.getRadioState()
+        } else if ((!mDesiredPowerState || !mRadioPowerOffReasons.isEmpty()) && mCi.getRadioState()
                 == TelephonyManager.RADIO_POWER_ON) {
             // If it's on and available and we want it off gracefully
             if (!mPhone.isUsingNewDataStack() && mImsRegistrationOnOff
@@ -5410,7 +5395,7 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mImsRegistrationOnOff=" + mImsRegistrationOnOff);
         pw.println(" pending radio off event="
                 + hasMessages(EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT));
-        pw.println(" mRadioDisabledByCarrier" + mRadioDisabledByCarrier);
+        pw.println(" mRadioPowerOffReasons=" + mRadioPowerOffReasons);
         pw.println(" mDeviceShuttingDown=" + mDeviceShuttingDown);
         pw.println(" mSpnUpdatePending=" + mSpnUpdatePending);
         pw.println(" mCellInfoMinIntervalMs=" + mCellInfoMinIntervalMs);
