@@ -260,6 +260,26 @@ public class AnswerToResetTest {
 
     @Test
     @SmallTest
+    public void testAnswerToRestEuiccMultipleEnabledProfilesSupported() {
+        String str = "3B9F97C00AB1FE453FC6838031E073FE211F65D002341561810F29";
+        AnswerToReset atr = AnswerToReset.parseAtr(str);
+        assertNotNull(atr);
+        assertTrue(atr.isEuiccSupported());
+        assertTrue(atr.isMultipleEnabledProfilesSupported());
+    }
+
+    @Test
+    @SmallTest
+    public void testAnswerToRestEuiccMultipleEnabledProfilesNotSupported() {
+        String str = "3B9F97C00A3FC6828031E073FE211F65D002341512810F51";
+        AnswerToReset atr = AnswerToReset.parseAtr(str);
+        assertNotNull(atr);
+        assertTrue(atr.isEuiccSupported());
+        assertFalse(atr.isMultipleEnabledProfilesSupported());
+    }
+
+    @Test
+    @SmallTest
     public void testAnswerToRestEuiccNotSupportedDueToIncorrectT() {
         String str = "3F979580BEFE8210428031A073BE211797";
         AnswerToReset atr = AnswerToReset.parseAtr(str);

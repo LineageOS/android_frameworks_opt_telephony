@@ -17,7 +17,6 @@
 package com.android.internal.telephony;
 
 import static com.android.internal.telephony.RILConstants.*;
-import static com.android.internal.util.Preconditions.checkNotNull;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -95,6 +94,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -541,11 +541,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             if (mMockModem != null) {
+                mRadioVersion = RADIO_HAL_VERSION_UNKNOWN;
+                mMockModem = null;
                 for (int service = MIN_SERVICE_IDX; service <= MAX_SERVICE_IDX; service++) {
-                    mMockModem.unbindMockModemService(service);
                     resetProxyAndRequestList(service);
                 }
-                mMockModem = null;
             }
         }
 
@@ -676,8 +676,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     }
                 } else {
                     mDisabledRadioServices.get(RADIO_SERVICE).add(mPhoneId);
-                    riljLoge("getRadioProxy: mRadioProxy for "
-                            + HIDL_SERVICE_NAME[mPhoneId] + " is disabled");
+                    riljLoge("getRadioProxy: set mRadioProxy for "
+                            + HIDL_SERVICE_NAME[mPhoneId] + " as disabled");
                 }
             }
         } catch (RemoteException e) {
@@ -974,8 +974,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     }
                 } else {
                     mDisabledRadioServices.get(service).add(mPhoneId);
-                    riljLoge("getRadioServiceProxy: " + serviceToString(service) + " for "
-                            + HIDL_SERVICE_NAME[mPhoneId] + " is disabled");
+                    riljLoge("getRadioServiceProxy: set " + serviceToString(service) + " for "
+                            + HIDL_SERVICE_NAME[mPhoneId] + " as disabled");
                 }
             }
         } catch (RemoteException e) {
@@ -4393,7 +4393,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setAllowedCarriers(CarrierRestrictionRules carrierRestrictionRules,
             Message result, WorkSource workSource) {
-        checkNotNull(carrierRestrictionRules, "Carrier restriction cannot be null.");
+        Objects.requireNonNull(carrierRestrictionRules, "Carrier restriction cannot be null.");
 
         RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
         if (!simProxy.isEmpty()) {
@@ -4546,7 +4546,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo,
             Message result) {
-        checkNotNull(imsiEncryptionInfo, "ImsiEncryptionInfo cannot be null.");
+        Objects.requireNonNull(imsiEncryptionInfo, "ImsiEncryptionInfo cannot be null.");
         RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
         if (simProxy.isEmpty()) return;
         if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_1)) {
@@ -4576,7 +4576,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void startNattKeepalive(int contextId, KeepalivePacketData packetData,
             int intervalMillis, Message result) {
-        checkNotNull(packetData, "KeepaliveRequest cannot be null.");
+        Objects.requireNonNull(packetData, "KeepaliveRequest cannot be null.");
         RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class, result);
         if (dataProxy.isEmpty()) return;
         if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_1_1)) {

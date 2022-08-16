@@ -202,7 +202,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 .getSubInfoUsingSlotIndexPrivileged(eq(FAKE_SUB_ID_1));
         doReturn(new int[]{FAKE_SUB_ID_1}).when(mSubscriptionController)
                 .getActiveSubIdList(/*visibleOnly*/false);
-        mUpdater.updateInternalIccStateForInactiveSlot(FAKE_SUB_ID_1, null);
+        mUpdater.updateInternalIccStateForInactivePort(FAKE_SUB_ID_1, null);
 
         processAllMessages();
         assertTrue(mUpdater.isSubInfoInitialized());
@@ -627,12 +627,12 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         // Info for 1 and 3 should be updated as active embedded subscriptions.
         ArgumentCaptor<ContentValues> iccid1Values = ArgumentCaptor.forClass(ContentValues.class);
         verify(mContentProvider).update(eq(SubscriptionManager.CONTENT_URI), iccid1Values.capture(),
-                eq(SubscriptionManager.ICC_ID + "=\"1\""), isNull());
+                eq(SubscriptionManager.ICC_ID + "='1'"), isNull());
         assertEquals(1,
                 iccid1Values.getValue().getAsInteger(SubscriptionManager.IS_EMBEDDED).intValue());
         ArgumentCaptor<ContentValues> iccid3Values = ArgumentCaptor.forClass(ContentValues.class);
         verify(mContentProvider).update(eq(SubscriptionManager.CONTENT_URI), iccid3Values.capture(),
-                eq(SubscriptionManager.ICC_ID + "=\"3\""), isNull());
+                eq(SubscriptionManager.ICC_ID + "='3'"), isNull());
         assertEquals(1,
                 iccid3Values.getValue().getAsInteger(SubscriptionManager.IS_EMBEDDED).intValue());
 
@@ -640,7 +640,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         // in the list provided by the LPA.
         ArgumentCaptor<ContentValues> iccid2Values = ArgumentCaptor.forClass(ContentValues.class);
         verify(mContentProvider).update(eq(SubscriptionManager.CONTENT_URI), iccid2Values.capture(),
-                eq(SubscriptionManager.ICC_ID + " IN (\"2\")"), isNull());
+                eq(SubscriptionManager.ICC_ID + " IN ('2')"), isNull());
         assertEquals(0,
                 iccid2Values.getValue().getAsInteger(SubscriptionManager.IS_EMBEDDED).intValue());
     }
@@ -863,6 +863,103 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testUpdateFromCarrierConfigPreferredUsageSettingDataCentric() throws Exception {
+        testUpdateFromCarrierConfigPreferredUsageSetting(
+                SubscriptionManager.USAGE_SETTING_UNKNOWN,
+                SubscriptionManager.USAGE_SETTING_DATA_CENTRIC,
+                SubscriptionManager.USAGE_SETTING_DATA_CENTRIC);
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateFromCarrierConfigPreferredUsageSettingDataCentric2() throws Exception {
+        testUpdateFromCarrierConfigPreferredUsageSetting(
+                SubscriptionManager.USAGE_SETTING_DEFAULT,
+                SubscriptionManager.USAGE_SETTING_DATA_CENTRIC,
+                SubscriptionManager.USAGE_SETTING_DATA_CENTRIC);
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateFromCarrierConfigPreferredUsageSettingDefault() throws Exception {
+        testUpdateFromCarrierConfigPreferredUsageSetting(
+                SubscriptionManager.USAGE_SETTING_DATA_CENTRIC,
+                SubscriptionManager.USAGE_SETTING_DEFAULT,
+                SubscriptionManager.USAGE_SETTING_DEFAULT);
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateFromCarrierConfigPreferredUsageSettingNoChange() throws Exception {
+        testUpdateFromCarrierConfigPreferredUsageSetting(
+                SubscriptionManager.USAGE_SETTING_DATA_CENTRIC,
+                SubscriptionManager.USAGE_SETTING_DATA_CENTRIC,
+                SubscriptionManager.USAGE_SETTING_DATA_CENTRIC);
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateFromCarrierConfigPreferredUsageSettingInvalid() throws Exception {
+        testUpdateFromCarrierConfigPreferredUsageSetting(
+                SubscriptionManager.USAGE_SETTING_DATA_CENTRIC,
+                SubscriptionManager.USAGE_SETTING_UNKNOWN,
+                SubscriptionManager.USAGE_SETTING_DATA_CENTRIC);
+    }
+
+    private PersistableBundle getCarrierConfigForSubInfoUpdateUsageSetting(
+            @SubscriptionManager.UsageSetting int usageSetting) {
+        PersistableBundle p = new PersistableBundle();
+        p.putString(CarrierConfigManager.KEY_SUBSCRIPTION_GROUP_UUID_STRING, "");
+        p.putBoolean(CarrierConfigManager.KEY_IS_OPPORTUNISTIC_SUBSCRIPTION_BOOL, false);
+        p.putInt(CarrierConfigManager.KEY_CELLULAR_USAGE_SETTING_INT, usageSetting);
+        return p;
+    }
+
+    private void testUpdateFromCarrierConfigPreferredUsageSetting(
+            int initialSetting, int requestedSetting, int expectedSetting) throws Exception {
+        final String carrierPackageName = "FakeCarrierPackageName";
+        final int phoneId = mPhone.getPhoneId();
+
+        // Install fixtures, ensure the test will hit the right code path
+        doReturn(carrierPackageName).when(mTelephonyManager)
+                .getCarrierServicePackageNameForLogicalSlot(eq(phoneId));
+        ((MockContentResolver) mContext.getContentResolver()).addProvider(
+                SubscriptionManager.CONTENT_URI.getAuthority(),
+                new FakeSubscriptionContentProvider());
+
+        // Setup overlay
+        setupUsageSettingResources();
+
+        // Setup subscription
+        doReturn(FAKE_SUB_ID_1).when(mSubscriptionController).getSubIdUsingPhoneId(phoneId);
+        doReturn(mSubInfo).when(mSubscriptionController).getSubscriptionInfo(eq(FAKE_SUB_ID_1));
+        doReturn(null).when(mSubInfo).getGroupUuid();
+        doReturn(false).when(mSubInfo).isOpportunistic();
+        doReturn(initialSetting).when(mSubInfo).getUsageSetting();
+
+        // Get a config bundle for that prefers data centric
+        PersistableBundle carrierConfig = getCarrierConfigForSubInfoUpdateUsageSetting(
+                requestedSetting);
+
+        mUpdater.updateSubscriptionByCarrierConfig(mPhone.getPhoneId(),
+                carrierPackageName, carrierConfig);
+
+        ArgumentCaptor<ContentValues> cvCaptor = ArgumentCaptor.forClass(ContentValues.class);
+        verify(mContentProvider, times(1)).update(
+                eq(SubscriptionManager.getUriForSubscriptionId(FAKE_SUB_ID_1)),
+                cvCaptor.capture(), eq(null), eq(null));
+
+        if (initialSetting != expectedSetting) {
+            assertEquals(expectedSetting,
+                    (int) cvCaptor.getValue().getAsInteger(SubscriptionManager.USAGE_SETTING));
+        } else {
+            // If the content value was not set, the captor value will be null
+            assertNull(cvCaptor.getValue().getAsInteger(SubscriptionManager.USAGE_SETTING));
+        }
+    }
+
+    @Test
+    @SmallTest
     public void testUpdateFromCarrierConfigCarrierCertificates() {
         String[] certs = new String[2];
         certs[0] = "d1f1";
@@ -943,5 +1040,37 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         verify(mSubscriptionManager, times(1)).addSubscriptionInfoRecord(
                 eq(FAKE_ICCID_1), eq(FAKE_SUB_ID_1));
         verify(mSubscriptionController, times(1)).notifySubscriptionInfoChanged();
+    }
+
+    private void setupUsageSettingResources() {
+        // The most common case, request a voice-centric->data-centric change
+        mContextFixture.putIntResource(
+                com.android.internal.R.integer.config_default_cellular_usage_setting,
+                SubscriptionManager.USAGE_SETTING_VOICE_CENTRIC);
+        mContextFixture.putIntArrayResource(
+                com.android.internal.R.array.config_supported_cellular_usage_settings,
+                new int[]{
+                        SubscriptionManager.USAGE_SETTING_VOICE_CENTRIC,
+                        SubscriptionManager.USAGE_SETTING_DATA_CENTRIC});
+    }
+
+    @Test
+    @SmallTest
+    public void testCalculateUsageSetting() throws Exception {
+        setupUsageSettingResources();
+        assertEquals(SubscriptionManager.USAGE_SETTING_DATA_CENTRIC,
+                mUpdater.calculateUsageSetting(
+                    SubscriptionManager.USAGE_SETTING_VOICE_CENTRIC,
+                    SubscriptionManager.USAGE_SETTING_DATA_CENTRIC));
+
+        // Test that a voice-centric-only device only allows voice-centric configuration
+        mContextFixture.putIntArrayResource(
+                com.android.internal.R.array.config_supported_cellular_usage_settings,
+                new int[]{SubscriptionManager.USAGE_SETTING_VOICE_CENTRIC});
+
+        assertEquals(SubscriptionManager.USAGE_SETTING_VOICE_CENTRIC,
+                mUpdater.calculateUsageSetting(
+                    SubscriptionManager.USAGE_SETTING_VOICE_CENTRIC,
+                    SubscriptionManager.USAGE_SETTING_DATA_CENTRIC));
     }
 }

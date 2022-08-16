@@ -99,7 +99,7 @@ public class UiccStateChangedLauncherTest extends TelephonyTest {
 
         // The first broadcast should be sent after initialization.
         UiccCard card = new UiccCard(mContext, mSimulatedCommands,
-                makeCardStatus(CardState.CARDSTATE_PRESENT), 0 /* phoneId */, new Object());
+                makeCardStatus(CardState.CARDSTATE_PRESENT), 0 /* phoneId */, new Object(), false);
         when(UiccController.getInstance().getUiccCardForPhone(0)).thenReturn(card);
         uiccLauncher.handleMessage(msg);
 

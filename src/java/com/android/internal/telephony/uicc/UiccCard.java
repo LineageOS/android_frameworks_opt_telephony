@@ -49,14 +49,17 @@ public class UiccCard {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private CardState mCardState;
     protected String mCardId;
+    protected boolean mIsSupportsMultipleEnabledProfiles;
 
     protected HashMap<Integer, UiccPort> mUiccPorts = new HashMap<>();
     private HashMap<Integer, Integer> mPhoneIdToPortIdx = new HashMap<>();
 
-    public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock) {
+    public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock,
+            boolean isSupportsMultipleEnabledProfiles) {
         if (DBG) log("Creating");
         mCardState = ics.mCardState;
         mLock = lock;
+        mIsSupportsMultipleEnabledProfiles = isSupportsMultipleEnabledProfiles;
         update(c, ci, ics, phoneId);
     }
 
@@ -105,7 +108,8 @@ public class UiccCard {
                 UiccPort port = mUiccPorts.get(portIdx);
                 if (port == null) {
                     if (this instanceof EuiccCard) {
-                        port = new EuiccPort(c, ci, ics, phoneId, mLock, this); // eSim
+                        port = new EuiccPort(c, ci, ics, phoneId, mLock, this,
+                                mIsSupportsMultipleEnabledProfiles); // eSim
                     } else {
                         port = new UiccPort(c, ci, ics, phoneId, mLock, this); // pSim
                     }
@@ -135,6 +139,17 @@ public class UiccCard {
      */
     protected void updateCardId(String iccId) {
         mCardId = iccId;
+    }
+
+
+    /**
+     * Updates MEP(Multiple Enabled Profile) support flag.
+     *
+     * <p>If IccSlotStatus comes later, the number of ports reported is only known after the
+     * UiccCard creation which will impact UICC MEP capability.
+     */
+    public void updateSupportMultipleEnabledProfile(boolean supported) {
+        mIsSupportsMultipleEnabledProfiles = supported;
     }
 
     @UnsupportedAppUsage
@@ -200,6 +215,7 @@ public class UiccCard {
         pw.println(" mCardState=" + mCardState);
         pw.println(" mCardId=" + mCardId);
         pw.println(" mNumberOfPorts=" + mUiccPorts.size());
+        pw.println( "mIsSupportsMultipleEnabledProfiles=" + mIsSupportsMultipleEnabledProfiles);
         pw.println();
         for (UiccPort uiccPort : mUiccPorts.values()) {
             uiccPort.dump(fd, pw, args);

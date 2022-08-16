@@ -36,6 +36,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.preference.PreferenceManager;
 import android.sysprop.TelephonyProperties;
+import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -65,6 +66,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.IntStream;
 
 /**
@@ -172,11 +174,17 @@ public class UiccController extends Handler {
     // SharedPreference key for saving the known card strings (ICCIDs and EIDs) ordered by card ID
     private static final String CARD_STRINGS = "card_strings";
 
+    // SharedPreference key for saving the flag to set removable eSIM as default eUICC or not.
+    private static final String REMOVABLE_ESIM_AS_DEFAULT = "removable_esim";
+
     // Whether the device has an eUICC built in.
     private boolean mHasBuiltInEuicc = false;
 
     // Whether the device has a currently active built in eUICC
     private boolean mHasActiveBuiltInEuicc = false;
+
+    // Use removable eSIM as default eUICC. This flag will be set from phone debug hidden menu
+    private boolean mUseRemovableEsimAsDefault = false;
 
     // The physical slots which correspond to built-in eUICCs
     private final int[] mEuiccSlots;
@@ -260,6 +268,10 @@ public class UiccController extends Handler {
                 this, EVENT_MULTI_SIM_CONFIG_CHANGED, null);
 
         mPinStorage = new PinStorage(mContext);
+        if (!TelephonyUtils.IS_USER) {
+            mUseRemovableEsimAsDefault = PreferenceManager.getDefaultSharedPreferences(mContext)
+                    .getBoolean(REMOVABLE_ESIM_AS_DEFAULT, false);
+        }
     }
 
     /**
@@ -707,8 +719,7 @@ public class UiccController extends Handler {
 
         SubscriptionInfoUpdater subInfoUpdator = PhoneFactory.getSubscriptionInfoUpdater();
         if (subInfoUpdator != null) {
-            // TODO: Rename API from InactiveSlot -> InactivePort
-            subInfoUpdator.updateInternalIccStateForInactiveSlot(prevActivePhoneId, iccId);
+            subInfoUpdator.updateInternalIccStateForInactivePort(prevActivePhoneId, iccId);
         } else {
             Rlog.e(LOG_TAG, "subInfoUpdate is null.");
         }
@@ -809,7 +820,8 @@ public class UiccController extends Handler {
                 if (mDefaultEuiccCardId == UNINITIALIZED_CARD_ID
                         || mDefaultEuiccCardId == TEMPORARILY_UNSUPPORTED_CARD_ID) {
                     mDefaultEuiccCardId = convertToPublicCardId(cardString);
-                    logWithLocalLog("IccCardStatus eid=" + cardString + " slot=" + slotId
+                    logWithLocalLog("IccCardStatus eid="
+                            + Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, cardString) + " slot=" + slotId
                             + " mDefaultEuiccCardId=" + mDefaultEuiccCardId);
                 }
             }
@@ -900,8 +912,13 @@ public class UiccController extends Handler {
                     cardId = convertToPublicCardId(eid);
                 } else {
                     // In case of non Euicc, use default port index to get the IccId.
-                    String iccId = card.getUiccPort(TelephonyManager.DEFAULT_PORT_INDEX).getIccId();
-                    // leave eid null if the UICC is not embedded
+                    UiccPort port = card.getUiccPort(TelephonyManager.DEFAULT_PORT_INDEX);
+                    if (port == null) {
+                        AnomalyReporter.reportAnomaly(
+                                UUID.fromString("92885ba7-98bb-490a-ba19-987b1c8b2055"),
+                                "UiccController: Found UiccPort Null object.");
+                    }
+                    String iccId = (port != null) ? port.getIccId() : null;
                     cardId = convertToPublicCardId(iccId);
                 }
             } else {
@@ -916,19 +933,9 @@ public class UiccController extends Handler {
             List<UiccPortInfo> portInfos = new ArrayList<>();
             int[] portIndexes = slot.getPortList();
             for (int portIdx : portIndexes) {
-                if (slot.isPortActive(portIdx)) {
-                    UiccPort port = slot.getUiccCard().getUiccPort(portIdx);
-                    portInfos.add(new UiccPortInfo(IccUtils.stripTrailingFs(port.getIccId()),
-                            port.getPortIdx(),
-                            port.getPhoneId(),
-                            true));
-                } else {
-                    // If port is inactive, use slot.getIccId API to get iccid value.
-                    portInfos.add(new UiccPortInfo(IccUtils.stripTrailingFs(slot.getIccId(portIdx)),
-                            portIdx,
-                            -1/*Invalid phoneId*/,
-                            false));
-                }
+                String iccId = IccUtils.stripTrailingFs(slot.getIccId(portIdx));
+                portInfos.add(new UiccPortInfo(iccId, portIdx,
+                        slot.getPhoneIdFromPortIndex(portIdx), slot.isPortActive(portIdx)));
             }
             UiccCardInfo info = new UiccCardInfo(
                     isEuicc, cardId, eid, slotIndex, isRemovable,
@@ -944,6 +951,21 @@ public class UiccController extends Handler {
     public int getCardIdForDefaultEuicc() {
         if (mDefaultEuiccCardId == TEMPORARILY_UNSUPPORTED_CARD_ID) {
             return UNSUPPORTED_CARD_ID;
+        }
+        // To support removable eSIM to pass GCT/PTCRB test in DSDS mode, we should make sure all
+        // the download/activation requests are by default route to the removable eSIM slot.
+        // To satisfy above condition, we should return removable eSIM cardId as default.
+        if (mUseRemovableEsimAsDefault && !TelephonyUtils.IS_USER) {
+            for (UiccSlot slot : mUiccSlots) {
+                if (slot != null && slot.isRemovable() && slot.isEuicc() && slot.isActive()) {
+                    int cardId = convertToPublicCardId(slot.getEid());
+                    Rlog.d(LOG_TAG,
+                            "getCardIdForDefaultEuicc: Removable eSIM is default, cardId: "
+                                    + cardId);
+                    return cardId;
+                }
+            }
+            Rlog.d(LOG_TAG, "getCardIdForDefaultEuicc: No removable eSIM slot is found");
         }
         return mDefaultEuiccCardId;
     }
@@ -1070,8 +1092,9 @@ public class UiccController extends Handler {
                 if (!mUiccSlots[i].isRemovable() && !isDefaultEuiccCardIdSet) {
                     isDefaultEuiccCardIdSet = true;
                     mDefaultEuiccCardId = convertToPublicCardId(eid);
-                    logWithLocalLog("Using eid=" + eid + " in slot=" + i
-                            + " to set mDefaultEuiccCardId=" + mDefaultEuiccCardId);
+                    logWithLocalLog("Using eid=" + Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, eid)
+                            + " in slot=" + i + " to set mDefaultEuiccCardId="
+                            + mDefaultEuiccCardId);
                 }
             }
         }
@@ -1088,8 +1111,10 @@ public class UiccController extends Handler {
                     if (!TextUtils.isEmpty(eid)) {
                         isDefaultEuiccCardIdSet = true;
                         mDefaultEuiccCardId = convertToPublicCardId(eid);
-                        logWithLocalLog("Using eid=" + eid + " from removable eUICC in slot="
-                                + i + " to set mDefaultEuiccCardId=" + mDefaultEuiccCardId);
+                        logWithLocalLog("Using eid="
+                                + Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, eid)
+                                + " from removable eUICC in slot=" + i
+                                + " to set mDefaultEuiccCardId=" + mDefaultEuiccCardId);
                         break;
                     }
                 }
@@ -1267,14 +1292,17 @@ public class UiccController extends Handler {
                 || mDefaultEuiccCardId == TEMPORARILY_UNSUPPORTED_CARD_ID) {
             if (!mUiccSlots[slotId].isRemovable()) {
                 mDefaultEuiccCardId = convertToPublicCardId(eid);
-                logWithLocalLog("onEidReady: eid=" + eid + " slot=" + slotId
-                        + " mDefaultEuiccCardId=" + mDefaultEuiccCardId);
+                logWithLocalLog("onEidReady: eid="
+                        + Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, eid)
+                        + " slot=" + slotId + " mDefaultEuiccCardId=" + mDefaultEuiccCardId);
             } else if (!mHasActiveBuiltInEuicc) {
                 // we only set a removable eUICC to the default if there are no active non-removable
                 // eUICCs
                 mDefaultEuiccCardId = convertToPublicCardId(eid);
-                logWithLocalLog("onEidReady: eid=" + eid + " from removable eUICC in slot=" + slotId
-                        + " mDefaultEuiccCardId=" + mDefaultEuiccCardId);
+                logWithLocalLog("onEidReady: eid="
+                        + Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, eid)
+                        + " from removable eUICC in slot=" + slotId + " mDefaultEuiccCardId="
+                        + mDefaultEuiccCardId);
             }
         }
         card.unregisterForEidReady(this);
@@ -1402,6 +1430,30 @@ public class UiccController extends Handler {
         return false;
     }
 
+    /**
+     * Set removable eSIM as default.
+     * This API is added for test purpose to set removable eSIM as default eUICC.
+     * @param isDefault Flag to set removable eSIM as default or not.
+     */
+    public void setRemovableEsimAsDefaultEuicc(boolean isDefault) {
+        mUseRemovableEsimAsDefault = isDefault;
+        SharedPreferences.Editor editor =
+                PreferenceManager.getDefaultSharedPreferences(mContext).edit();
+        editor.putBoolean(REMOVABLE_ESIM_AS_DEFAULT, isDefault);
+        editor.apply();
+        Rlog.d(LOG_TAG, "setRemovableEsimAsDefaultEuicc isDefault: " + isDefault);
+    }
+
+    /**
+     * Returns whether the removable eSIM is default eUICC or not.
+     * This API is added for test purpose to check whether removable eSIM is default eUICC or not.
+     */
+    public boolean isRemovableEsimDefaultEuicc() {
+        Rlog.d(LOG_TAG, "mUseRemovableEsimAsDefault: " + mUseRemovableEsimAsDefault);
+        return mUseRemovableEsimAsDefault;
+    }
+
+
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void log(String string) {
         Rlog.d(LOG_TAG, string);
@@ -1439,6 +1491,7 @@ public class UiccController extends Handler {
         pw.println(" mCardStrings=" + mCardStrings);
         pw.println(" mDefaultEuiccCardId=" + mDefaultEuiccCardId);
         pw.println(" mPhoneIdToSlotId=" + Arrays.toString(mPhoneIdToSlotId));
+        pw.println(" mUseRemovableEsimAsDefault=" + mUseRemovableEsimAsDefault);
         pw.println(" mUiccSlots: size=" + mUiccSlots.length);
         for (int i = 0; i < mUiccSlots.length; i++) {
             if (mUiccSlots[i] == null) {

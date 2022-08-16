@@ -17,7 +17,6 @@ android_test {
     name: "FrameworksTelephonyTests",
     // For access hidden connectivity methods in tests
     defaults: ["framework-connectivity-test-defaults"],
-    certificate: "platform",
     srcs: ["**/*.java"],
 
     libs: [
@@ -33,6 +32,7 @@ android_test {
         "androidx.test.rules",
         "frameworks-base-testutils",
         "guava",
+        "libphonenumber-nogeocoder",
         "mockito-target-minus-junit4",
         "net-tests-utils",
         "platform-test-annotations",
@@ -40,6 +40,7 @@ android_test {
         "services.net",
         "truth-prebuilt",
         "testables",
+        "platform-compat-test-rules"
     ],
 
     jarjar_rules: ":jarjar-rules-telephony-tests",

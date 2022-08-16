@@ -95,16 +95,14 @@ public class MetricsCollectorTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        mMetricsCollector = new MetricsCollector(mContext);
-        mMetricsCollector.setPersistAtomsStorage(mPersistAtomsStorage);
         mSecondPhone = mock(Phone.class);
         mPhysicalSlot = mock(UiccSlot.class);
         mEsimSlot = mock(UiccSlot.class);
         mActiveCard = mock(UiccCard.class);
         mActivePort = mock(UiccPort.class);
         mServiceStateStats = mock(ServiceStateStats.class);
-        mMetricsCollector = new MetricsCollector(mContext);
-        mMetricsCollector.setPersistAtomsStorage(mPersistAtomsStorage);
+        mMetricsCollector =
+                new MetricsCollector(mContext, mPersistAtomsStorage);
         doReturn(mSST).when(mSecondPhone).getServiceStateTracker();
         doReturn(mServiceStateStats).when(mSST).getServiceStateStats();
     }

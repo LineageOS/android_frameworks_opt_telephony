@@ -56,6 +56,7 @@ import android.telephony.RadioAccessFamily;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.SimDisplayNameSource;
+import android.telephony.SubscriptionManager.UsageSetting;
 import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
@@ -119,7 +120,7 @@ import java.util.stream.Collectors;
  */
 public class SubscriptionController extends ISub.Stub {
     private static final String LOG_TAG = "SubscriptionController";
-    private static final boolean DBG = true;
+    private static final boolean DBG = false;
     private static final boolean VDBG = Rlog.isLoggable(LOG_TAG, Log.VERBOSE);
     private static final boolean DBG_CACHE = false;
     private static final int DEPRECATED_SETTING = -1;
@@ -598,6 +599,9 @@ public class SubscriptionController extends ISub.Stub {
         boolean areUiccApplicationsEnabled = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.UICC_APPLICATIONS_ENABLED)) == 1;
 
+        int usageSetting = cursor.getInt(cursor.getColumnIndexOrThrow(
+                SubscriptionManager.USAGE_SETTING));
+
         if (VDBG) {
             String iccIdToPrint = SubscriptionInfo.givePrintableIccid(iccId);
             String cardIdToPrint = SubscriptionInfo.givePrintableIccid(cardId);
@@ -613,7 +617,8 @@ public class SubscriptionController extends ISub.Stub {
                     + " isOpportunistic:" + isOpportunistic + " groupUUID:" + groupUUID
                     + " profileClass:" + profileClass + " subscriptionType: " + subType
                     + " carrierConfigAccessRules:" + carrierConfigAccessRules
-                    + " areUiccApplicationsEnabled: " + areUiccApplicationsEnabled);
+                    + " areUiccApplicationsEnabled: " + areUiccApplicationsEnabled
+                    + " usageSetting: " + usageSetting);
         }
 
         // If line1number has been set to a different number, use it instead.
@@ -621,12 +626,14 @@ public class SubscriptionController extends ISub.Stub {
         if (!TextUtils.isEmpty(line1Number) && !line1Number.equals(number)) {
             number = line1Number;
         }
+        // FIXME(b/210771052): constructing a complete SubscriptionInfo requires a port index,
+        // but the port index isn't available here. Should it actually be part of SubscriptionInfo?
         SubscriptionInfo info = new SubscriptionInfo(id, iccId, simSlotIndex, displayName,
                 carrierName, nameSource, iconTint, number, dataRoaming, /* icon= */ null,
                 mcc, mnc, countryIso, isEmbedded, accessRules, cardId, publicCardId,
                 isOpportunistic, groupUUID, /* isGroupDisabled= */ false , carrierId, profileClass,
                 subType, groupOwner, carrierConfigAccessRules, areUiccApplicationsEnabled,
-                portIndex);
+                portIndex, usageSetting);
         info.setAssociatedPlmns(ehplmns, hplmns);
         return info;
     }
@@ -882,6 +889,10 @@ public class SubscriptionController extends ISub.Stub {
                     if (DBG) {
                         logd("[getActiveSubscriptionInfoForSimSlotIndex]+ slotIndex="
                                 + slotIndex + " subId=" + si);
+                    } else {
+                        logd("[getActiveSubscriptionInfoForSimSlotIndex]+ slotIndex="
+                                + slotIndex + " subId=" + conditionallyRemoveIdentifiers(si, false,
+                                false));
                     }
                     return conditionallyRemoveIdentifiers(si, callingPackage, callingFeatureId,
                             "getActiveSubscriptionInfoForSimSlotIndex");
@@ -1260,7 +1271,7 @@ public class SubscriptionController extends ISub.Stub {
             if (i > 0) {
                 whereClause.append(",");
             }
-            whereClause.append("\"").append(embeddedIccids[i]).append("\"");
+            whereClause.append("'").append(embeddedIccids[i]).append("'");
         }
         whereClause.append(")");
 
@@ -1753,6 +1764,9 @@ public class SubscriptionController extends ISub.Stub {
         value.put(SubscriptionManager.ALLOWED_NETWORK_TYPES,
                 "user=" + RadioAccessFamily.getRafFromNetworkType(
                         RILConstants.PREFERRED_NETWORK_MODE));
+
+        value.put(SubscriptionManager.USAGE_SETTING,
+                SubscriptionManager.USAGE_SETTING_UNKNOWN);
 
         Uri uri = resolver.insert(SubscriptionManager.CONTENT_URI, value);
 
@@ -2815,7 +2829,8 @@ public class SubscriptionController extends ISub.Stub {
         if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
             throw new RuntimeException("setDefaultVoiceSubId called with DEFAULT_SUB_ID");
         }
-        if (DBG) logdl("[setDefaultVoiceSubId] subId=" + subId);
+
+        logdl("[setDefaultVoiceSubId] subId=" + subId);
 
         int previousDefaultSub = getDefaultSubId();
 
@@ -2829,16 +2844,21 @@ public class SubscriptionController extends ISub.Stub {
 
         TelecomManager telecomManager = mContext.getSystemService(TelecomManager.class);
         PhoneAccountHandle currentHandle = telecomManager.getUserSelectedOutgoingPhoneAccount();
+        logd("[setDefaultVoiceSubId] current phoneAccountHandle=" + currentHandle);
 
         if (!Objects.equals(currentHandle, newHandle)) {
             telecomManager.setUserSelectedOutgoingPhoneAccount(newHandle);
             logd("[setDefaultVoiceSubId] change to phoneAccountHandle=" + newHandle);
         } else {
-            logd("[setDefaultVoiceSubId] default phone account not changed");
+            logd("[setDefaultVoiceSubId] default phoneAccountHandle not changed.");
         }
 
         if (previousDefaultSub != getDefaultSubId()) {
             sendDefaultChangedBroadcast(getDefaultSubId());
+            logd(String.format("[setDefaultVoiceSubId] change to subId=%d", getDefaultSubId()));
+        } else {
+            logd(String.format("[setDefaultVoiceSubId] default subId not changed. subId=%d",
+                    previousDefaultSub));
         }
     }
 
@@ -3054,9 +3074,9 @@ public class SubscriptionController extends ISub.Stub {
     private void validateSubId(int subId) {
         if (DBG) logd("validateSubId subId: " + subId);
         if (!SubscriptionManager.isValidSubscriptionId(subId)) {
-            throw new RuntimeException("Invalid sub id passed as parameter");
+            throw new IllegalArgumentException("Invalid sub id passed as parameter");
         } else if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
-            throw new RuntimeException("Default sub id passed as parameter");
+            throw new IllegalArgumentException("Default sub id passed as parameter");
         }
     }
 
@@ -3095,26 +3115,33 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public int[] getActiveSubIdList(boolean visibleOnly) {
-        List<Integer> allSubs = getActiveSubIdArrayList();
+        enforceReadPrivilegedPhoneState("getActiveSubIdList");
 
-        if (visibleOnly) {
-            // Grouped opportunistic subscriptions should be hidden.
-            allSubs = allSubs.stream().filter(subId -> isSubscriptionVisible(subId))
-                    .collect(Collectors.toList());
-        }
+        final long token = Binder.clearCallingIdentity();
+        try {
+            List<Integer> allSubs = getActiveSubIdArrayList();
 
-        int[] subIdArr = new int[allSubs.size()];
-        int i = 0;
-        for (int sub : allSubs) {
-            subIdArr[i] = sub;
-            i++;
-        }
+            if (visibleOnly) {
+                // Grouped opportunistic subscriptions should be hidden.
+                allSubs = allSubs.stream().filter(subId -> isSubscriptionVisible(subId))
+                        .collect(Collectors.toList());
+            }
 
-        if (VDBG) {
-            logdl("[getActiveSubIdList] allSubs=" + allSubs + " subIdArr.length="
-                    + subIdArr.length);
+            int[] subIdArr = new int[allSubs.size()];
+            int i = 0;
+            for (int sub : allSubs) {
+                subIdArr[i] = sub;
+                i++;
+            }
+
+            if (VDBG) {
+                logdl("[getActiveSubIdList] allSubs=" + allSubs + " subIdArr.length="
+                        + subIdArr.length);
+            }
+            return subIdArr;
+        } finally {
+            Binder.restoreCallingIdentity(token);
         }
-        return subIdArr;
     }
 
     @Override
@@ -3237,6 +3264,7 @@ public class SubscriptionController extends ISub.Stub {
             case SubscriptionManager.CROSS_SIM_CALLING_ENABLED:
             case SubscriptionManager.VOIMS_OPT_IN_STATUS:
             case SubscriptionManager.NR_ADVANCED_CALLING_ENABLED:
+            case SubscriptionManager.USAGE_SETTING:
                 value.put(propKey, Integer.parseInt(propValue));
                 break;
             case SubscriptionManager.ALLOWED_NETWORK_TYPES:
@@ -3326,12 +3354,13 @@ public class SubscriptionController extends ISub.Stub {
                         case SubscriptionManager.GROUP_UUID:
                         case SubscriptionManager.DATA_ENABLED_OVERRIDE_RULES:
                         case SubscriptionManager.ALLOWED_NETWORK_TYPES:
-                        case SubscriptionManager.VOIMS_OPT_IN_STATUS:
                         case SubscriptionManager.D2D_STATUS_SHARING:
+                        case SubscriptionManager.VOIMS_OPT_IN_STATUS:
                         case SubscriptionManager.D2D_STATUS_SHARING_SELECTED_CONTACTS:
                         case SubscriptionManager.NR_ADVANCED_CALLING_ENABLED:
                         case SimInfo.COLUMN_PHONE_NUMBER_SOURCE_CARRIER:
                         case SimInfo.COLUMN_PHONE_NUMBER_SOURCE_IMS:
+                        case SubscriptionManager.USAGE_SETTING:
                             resultValue = cursor.getString(0);
                             break;
                         default:
@@ -3919,9 +3948,9 @@ public class SubscriptionController extends ISub.Stub {
         selection.append(SubscriptionManager.ICC_ID);
         selection.append(" IN (");
         for (int i = 0; i < iccIds.length - 1; i++) {
-            selection.append("\"" + iccIds[i] + "\", ");
+            selection.append("'" + iccIds[i] + "', ");
         }
-        selection.append("\"" + iccIds[iccIds.length - 1] + "\"");
+        selection.append("'" + iccIds[iccIds.length - 1] + "'");
         selection.append(")");
 
         return selection.toString();
@@ -4665,6 +4694,49 @@ public class SubscriptionController extends ISub.Stub {
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
+    }
+
+    /**
+     * Set the Usage Setting for this subscription.
+     *
+     * @param usageSetting the cellular usage setting
+     * @param subId the unique SubscriptionInfo index in database
+     * @param callingPackage the package making the IPC
+     * @return the number of records updated
+     *
+     * @throws SecurityException if doesn't have required permission.
+     */
+    @Override
+    public int setUsageSetting(@UsageSetting int usageSetting, int subId, String callingPackage) {
+        try {
+            TelephonyPermissions.enforceCallingOrSelfModifyPermissionOrCarrierPrivilege(
+                    mContext, subId, callingPackage);
+        } catch (SecurityException e) {
+            enforceCarrierPrivilegeOnInactiveSub(subId, callingPackage,
+                    "Caller requires permission on sub " + subId);
+        }
+
+        if (usageSetting < SubscriptionManager.USAGE_SETTING_DEFAULT
+                || usageSetting > SubscriptionManager.USAGE_SETTING_DATA_CENTRIC) {
+            throw new IllegalArgumentException("setUsageSetting: Invalid usage setting: "
+                    + usageSetting);
+        }
+
+        final long token = Binder.clearCallingIdentity();
+        int ret;
+        try {
+            ret = setSubscriptionProperty(subId, SubscriptionManager.USAGE_SETTING,
+                    String.valueOf(usageSetting));
+
+            // ret is the number of records updated in the DB, which should always be 1.
+            // TODO(b/205027930): move this check prior to the database mutation request
+            if (ret != 1) throw new IllegalArgumentException(
+                    "Invalid SubscriptionId for setUsageSetting");
+        } finally {
+            Binder.restoreCallingIdentity(token);
+            // FIXME(b/205726099) return void
+        }
+        return ret;
     }
 
     /**

@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.uicc;
 
+import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
@@ -28,6 +29,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.UserHandle;
+import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -40,12 +42,17 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.euicc.EuiccCard;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * This class represents a physical slot on the device.
@@ -58,6 +65,17 @@ public class UiccSlot extends Handler {
             "com.android.internal.telephony.uicc.ICC_CARD_ADDED";
     public static final int INVALID_PHONE_ID = -1;
 
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(
+            prefix = {"VOLTAGE_CLASS_"},
+            value = {VOLTAGE_CLASS_UNKNOWN, VOLTAGE_CLASS_A, VOLTAGE_CLASS_B, VOLTAGE_CLASS_C})
+    public @interface VoltageClass {}
+
+    public static final int VOLTAGE_CLASS_UNKNOWN = 0;
+    public static final int VOLTAGE_CLASS_A = 1;
+    public static final int VOLTAGE_CLASS_B = 2;
+    public static final int VOLTAGE_CLASS_C = 3;
+
     private final Object mLock = new Object();
     private boolean mActive;
     private boolean mStateIsUnknown = true;
@@ -65,6 +83,7 @@ public class UiccSlot extends Handler {
     private Context mContext;
     private UiccCard mUiccCard;
     private boolean mIsEuicc;
+    private @VoltageClass int mMinimumVoltageClass;
     private String mEid;
     private AnswerToReset mAtr;
     private boolean mIsRemovable;
@@ -128,14 +147,17 @@ public class UiccSlot extends Handler {
                 }
 
                 if (!mIsEuicc) {
-                    mUiccCard = new UiccCard(mContext, ci, ics, phoneId, mLock);
+                    // Uicc does not support MEP, passing false by default.
+                    mUiccCard = new UiccCard(mContext, ci, ics, phoneId, mLock, false);
                 } else {
                     // The EID should be reported with the card status, but in case it's not we want
                     // to catch that here
                     if (TextUtils.isEmpty(ics.eid)) {
-                        loge("update: eid is missing. ics.eid=" + ics.eid);
+                        loge("update: eid is missing. ics.eid="
+                                + Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, ics.eid));
                     }
-                    mUiccCard = new EuiccCard(mContext, ci, ics, phoneId, mLock);
+                    mUiccCard = new EuiccCard(mContext, ci, ics, phoneId, mLock,
+                            isMultipleEnabledProfileSupported());
                 }
             } else {
                 if (mUiccCard != null) {
@@ -201,6 +223,11 @@ public class UiccSlot extends Handler {
                 mPortIdxToPhoneId.put(i, simPortInfos[i].mPortActive ?
                         simPortInfos[i].mLogicalSlotIndex : INVALID_PHONE_ID);
             }
+            // Since the MEP capability is related with number ports reported, thus need to
+            // update the flag after UiccCard creation.
+            if (mUiccCard != null) {
+                mUiccCard.updateSupportMultipleEnabledProfile(isMultipleEnabledProfileSupported());
+            }
         }
     }
 
@@ -230,6 +257,11 @@ public class UiccSlot extends Handler {
         }
     }
 
+    /** Return whether the passing portIndex belong to this physical slot */
+    public boolean isValidPortIndex(int portIndex) {
+        return mPortIdxToPhoneId.containsKey(portIndex);
+    }
+
     public int getPortIndexFromPhoneId(int phoneId) {
         synchronized (mLock) {
             for (Map.Entry<Integer, Integer> entry : mPortIdxToPhoneId.entrySet()) {
@@ -241,16 +273,10 @@ public class UiccSlot extends Handler {
         }
     }
 
-    public boolean isIccIdMappedToPortIndex(String iccId) {
-        synchronized (mLock) {
-            return mIccIds.containsValue(iccId);
-        }
-    }
-
     public int getPortIndexFromIccId(String iccId) {
         synchronized (mLock) {
             for (Map.Entry<Integer, String> entry : mIccIds.entrySet()) {
-                if (entry.getValue().equalsIgnoreCase(iccId)) {
+                if (IccUtils.compareIgnoreTrailingFs(entry.getValue(), iccId)) {
                     return entry.getKey();
                 }
             }
@@ -266,19 +292,19 @@ public class UiccSlot extends Handler {
     }
 
     public boolean isPortActive(int portIdx) {
-        UiccPort uiccPort = null;
         synchronized (mLock) {
-            if (mUiccCard != null) {
-                uiccPort = mUiccCard.getUiccPort(portIdx);
-            }
-            return uiccPort != null;
+            return SubscriptionManager.isValidPhoneId(
+                    mPortIdxToPhoneId.getOrDefault(portIdx, INVALID_PHONE_ID));
         }
     }
 
     /* Returns true if multiple enabled profiles are supported */
     public boolean isMultipleEnabledProfileSupported() {
-        // True if num of port indexes are more than 1
-        return mPortIdxToPhoneId.size() > 1;
+        // even ATR suggest UICC supports multiple enabled profiles, MEP can be disabled per
+        // carrier restrictions, so checking the real number of ports reported from modem is
+        // necessary.
+        return mPortIdxToPhoneId.size() > 1 && mAtr != null &&
+                mAtr.isMultipleEnabledProfilesSupported();
     }
 
     private boolean absentStateUpdateNeeded(CardState oldState) {
@@ -311,7 +337,6 @@ public class UiccSlot extends Handler {
         }
         mStateIsUnknown = stateUnknown;
         mUiccCard = null;
-        mPortIdxToPhoneId.clear();
     }
 
     public boolean isStateUnknown() {
@@ -342,20 +367,57 @@ public class UiccSlot extends Handler {
     }
 
     private void checkIsEuiccSupported() {
-        if (mAtr != null && mAtr.isEuiccSupported()) {
-            mIsEuicc = true;
-        } else {
+        if (mAtr == null) {
             mIsEuicc = false;
+            return;
         }
+        mIsEuicc = mAtr.isEuiccSupported();
+        log(" checkIsEuiccSupported : " + mIsEuicc);
+    }
+
+    private void checkMinimumVoltageClass() {
+        mMinimumVoltageClass = VOLTAGE_CLASS_UNKNOWN;
+        if (mAtr == null) {
+            return;
+        }
+        // Supported voltage classes are stored in the 5 least significant bits of the TA byte for
+        // global interface.
+        List<AnswerToReset.InterfaceByte> interfaceBytes = mAtr.getInterfaceBytes();
+        for (int i = 0; i < interfaceBytes.size() - 1; i++) {
+            if (interfaceBytes.get(i).getTD() != null
+                    && (interfaceBytes.get(i).getTD() & AnswerToReset.T_MASK)
+                            == AnswerToReset.T_VALUE_FOR_GLOBAL_INTERFACE
+                    && interfaceBytes.get(i + 1).getTA() != null) {
+                byte ta = interfaceBytes.get(i + 1).getTA();
+                if ((ta & 0x01) != 0) {
+                    mMinimumVoltageClass = VOLTAGE_CLASS_A;
+                }
+                if ((ta & 0x02) != 0) {
+                    mMinimumVoltageClass = VOLTAGE_CLASS_B;
+                }
+                if ((ta & 0x04) != 0) {
+                    mMinimumVoltageClass = VOLTAGE_CLASS_C;
+                }
+                return;
+            }
+        }
+        // Use default value - only class A
+        mMinimumVoltageClass = VOLTAGE_CLASS_A;
     }
 
     private void parseAtr(String atr) {
         mAtr = AnswerToReset.parseAtr(atr);
         checkIsEuiccSupported();
+        checkMinimumVoltageClass();
     }
 
     public boolean isEuicc() {
         return mIsEuicc;
+    }
+
+    @VoltageClass
+    public int getMinimumVoltageClass() {
+        return mMinimumVoltageClass;
     }
 
     public boolean isActive() {
@@ -530,6 +592,13 @@ public class UiccSlot extends Handler {
         Rlog.e(TAG, msg);
     }
 
+    private Map<Integer, String> getPrintableIccIds() {
+        Map<Integer, String> printableIccIds = mIccIds.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey,
+                        e -> SubscriptionInfo.givePrintableIccid(e.getValue())));
+        return printableIccIds;
+    }
+
     /**
      * Dump
      */
@@ -537,10 +606,13 @@ public class UiccSlot extends Handler {
         pw.println("UiccSlot:");
         pw.println(" mActive=" + mActive);
         pw.println(" mIsEuicc=" + mIsEuicc);
+        pw.println(" isEuiccSupportsMultipleEnabledProfiles="
+                + isMultipleEnabledProfileSupported());
         pw.println(" mIsRemovable=" + mIsRemovable);
         pw.println(" mLastRadioState=" + mLastRadioState);
-        pw.println(" mIccIds=" + mIccIds.values());
-        pw.println(" mEid=" + mEid);
+        pw.println(" mIccIds=" + getPrintableIccIds());
+        pw.println(" mPortIdxToPhoneId=" + mPortIdxToPhoneId);
+        pw.println(" mEid=" + Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, mEid));
         pw.println(" mCardState=" + mCardState);
         if (mUiccCard != null) {
             pw.println(" mUiccCard=" + mUiccCard);

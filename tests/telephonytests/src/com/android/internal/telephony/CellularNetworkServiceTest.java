@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
@@ -27,6 +28,9 @@ import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
 import android.os.RemoteException;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.CellIdentityGsm;
+import android.telephony.CellIdentityLte;
+import android.telephony.CellIdentityWcdma;
 import android.telephony.INetworkService;
 import android.telephony.INetworkServiceCallback;
 import android.telephony.LteVopsSupportInfo;
@@ -36,8 +40,10 @@ import android.telephony.NetworkServiceCallback;
 import android.telephony.NrVopsSupportInfo;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.VopsSupportInfo;
 import android.test.suitebuilder.annotation.MediumTest;
+import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.R;
 
@@ -182,7 +188,7 @@ public class CellularNetworkServiceTest extends TelephonyTest {
     public void testGetNetworkRegistrationInfoV1_5() {
         // common parameters
         int regState = NetworkRegistrationInfo.REGISTRATION_STATE_HOME;
-        int radioTech = ServiceState.RIL_RADIO_TECHNOLOGY_LTE;
+        final int radioTech = ServiceState.RIL_RADIO_TECHNOLOGY_LTE;
         int reasonForDenial = 0;
 
         // voice services
@@ -211,8 +217,11 @@ public class CellularNetworkServiceTest extends TelephonyTest {
                 new android.hardware.radio.V1_5.RegStateResult();
 
         regResult.regState = regState;
-        regResult.rat = radioTech;
         regResult.reasonForDenial = reasonForDenial;
+
+        regResult.rat = radioTech;
+        regResult.cellIdentity = new android.hardware.radio.V1_5.CellIdentity();
+        regResult.cellIdentity.lte(new android.hardware.radio.V1_5.CellIdentityLte());
 
         android.hardware.radio.V1_5.RegStateResult.AccessTechnologySpecificInfo
                 .EutranRegistrationInfo eutranInfo = new android.hardware.radio.V1_5
@@ -240,7 +249,8 @@ public class CellularNetworkServiceTest extends TelephonyTest {
         NetworkRegistrationInfo expectedState = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 regState, ServiceState.rilRadioTechnologyToNetworkType(radioTech), reasonForDenial,
-                false, availableVoiceServices, null, "", false, 0, 0, 0);
+                false, availableVoiceServices,
+                RILUtils.convertHalCellIdentity(regResult.cellIdentity), "", false, 0, 0, 0);
 
         try {
             verify(mCallback, timeout(1000).times(1)).onRequestNetworkRegistrationInfoComplete(
@@ -259,8 +269,9 @@ public class CellularNetworkServiceTest extends TelephonyTest {
         expectedState = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 regState, ServiceState.rilRadioTechnologyToNetworkType(radioTech), reasonForDenial,
-                false, availableDataServices, null, "", maxDataCalls, isDcNrRestricted,
-                isNrAvailable, isEndcAvailable, vops);
+                false, availableDataServices,
+                RILUtils.convertHalCellIdentity(regResult.cellIdentity),
+                "", maxDataCalls, isDcNrRestricted, isNrAvailable, isEndcAvailable, vops);
 
         try {
             verify(mCallback, timeout(1000).times(1)).onRequestNetworkRegistrationInfoComplete(
@@ -275,7 +286,7 @@ public class CellularNetworkServiceTest extends TelephonyTest {
     public void testGetNetworkRegistrationInfoV1_6WithLte() {
         // common parameters
         int regState = NetworkRegistrationInfo.REGISTRATION_STATE_HOME;
-        int radioTech = ServiceState.RIL_RADIO_TECHNOLOGY_LTE;
+        final int radioTech = ServiceState.RIL_RADIO_TECHNOLOGY_LTE;
         int reasonForDenial = 0;
 
         // voice services
@@ -304,8 +315,11 @@ public class CellularNetworkServiceTest extends TelephonyTest {
                 new android.hardware.radio.V1_6.RegStateResult();
 
         regResult.regState = regState;
-        regResult.rat = radioTech;
         regResult.reasonForDenial = reasonForDenial;
+
+        regResult.rat = radioTech;
+        regResult.cellIdentity = new android.hardware.radio.V1_5.CellIdentity();
+        regResult.cellIdentity.lte(new android.hardware.radio.V1_5.CellIdentityLte());
 
         android.hardware.radio.V1_5.RegStateResult.AccessTechnologySpecificInfo
                 .EutranRegistrationInfo eutranInfo = new android.hardware.radio.V1_5
@@ -333,7 +347,8 @@ public class CellularNetworkServiceTest extends TelephonyTest {
         NetworkRegistrationInfo expectedState = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 regState, ServiceState.rilRadioTechnologyToNetworkType(radioTech), reasonForDenial,
-                false, availableVoiceServices, null, "", false, 0, 0, 0);
+                false, availableVoiceServices,
+                RILUtils.convertHalCellIdentity(regResult.cellIdentity), "", false, 0, 0, 0);
 
         try {
             verify(mCallback, timeout(1000).times(1)).onRequestNetworkRegistrationInfoComplete(
@@ -352,8 +367,9 @@ public class CellularNetworkServiceTest extends TelephonyTest {
         expectedState = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 regState, ServiceState.rilRadioTechnologyToNetworkType(radioTech), reasonForDenial,
-                false, availableDataServices, null, "", maxDataCalls, isDcNrRestricted,
-                isNrAvailable, isEndcAvailable, vops);
+                false, availableDataServices,
+                RILUtils.convertHalCellIdentity(regResult.cellIdentity),
+                "", maxDataCalls, isDcNrRestricted, isNrAvailable, isEndcAvailable, vops);
 
         try {
             verify(mCallback, timeout(1000).times(1)).onRequestNetworkRegistrationInfoComplete(
@@ -369,7 +385,7 @@ public class CellularNetworkServiceTest extends TelephonyTest {
     public void testGetNetworkRegistrationInfoV1_6WithNr() {
         // common parameters
         int regState = NetworkRegistrationInfo.REGISTRATION_STATE_HOME;
-        int radioTech = ServiceState.RIL_RADIO_TECHNOLOGY_NR;
+        final int radioTech = ServiceState.RIL_RADIO_TECHNOLOGY_NR;
         int reasonForDenial = 0;
 
         // voice services
@@ -394,8 +410,11 @@ public class CellularNetworkServiceTest extends TelephonyTest {
                 new android.hardware.radio.V1_6.RegStateResult();
 
         regResult.regState = regState;
-        regResult.rat = radioTech;
         regResult.reasonForDenial = reasonForDenial;
+
+        regResult.rat = radioTech;
+        regResult.cellIdentity = new android.hardware.radio.V1_5.CellIdentity();
+        regResult.cellIdentity.nr(new android.hardware.radio.V1_5.CellIdentityNr());
 
         regResult.accessTechnologySpecificInfo.ngranNrVopsInfo(new android.hardware.radio.V1_6
                 .NrVopsInfo());
@@ -419,7 +438,8 @@ public class CellularNetworkServiceTest extends TelephonyTest {
         NetworkRegistrationInfo expectedState = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 regState, ServiceState.rilRadioTechnologyToNetworkType(radioTech), reasonForDenial,
-                false, availableVoiceServices, null, "", false, 0, 0, 0);
+                false, availableVoiceServices,
+                RILUtils.convertHalCellIdentity(regResult.cellIdentity), "", false, 0, 0, 0);
 
         try {
             verify(mCallback, timeout(1000).times(1)).onRequestNetworkRegistrationInfoComplete(
@@ -438,7 +458,9 @@ public class CellularNetworkServiceTest extends TelephonyTest {
         expectedState = new NetworkRegistrationInfo(
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 regState, ServiceState.rilRadioTechnologyToNetworkType(radioTech), reasonForDenial,
-                false, availableDataServices, null, "", maxDataCalls, false, false, false, vops);
+                false, availableDataServices,
+                RILUtils.convertHalCellIdentity(regResult.cellIdentity),
+                "", maxDataCalls, false, false, false, vops);
 
         try {
             verify(mCallback, timeout(1000).times(1)).onRequestNetworkRegistrationInfoComplete(
@@ -446,5 +468,46 @@ public class CellularNetworkServiceTest extends TelephonyTest {
         } catch (RemoteException e) {
             assertTrue(false);
         }
+    }
+
+    @Test
+    @SmallTest
+    public void testNetworkTypeForCellIdentity() {
+        assertEquals(
+                TelephonyManager.NETWORK_TYPE_GSM,
+                CellularNetworkService.getNetworkTypeForCellIdentity(
+                        TelephonyManager.NETWORK_TYPE_HSDPA,
+                        new CellIdentityGsm(),
+                        mPhone.getCarrierId()));
+        assertEquals(
+                TelephonyManager.NETWORK_TYPE_LTE,
+                CellularNetworkService.getNetworkTypeForCellIdentity(
+                        TelephonyManager.NETWORK_TYPE_NR,
+                        new CellIdentityLte(),
+                        mPhone.getCarrierId()));
+        assertEquals(
+                TelephonyManager.NETWORK_TYPE_LTE,
+                CellularNetworkService.getNetworkTypeForCellIdentity(
+                        TelephonyManager.NETWORK_TYPE_IWLAN,
+                        new CellIdentityLte(),
+                        mPhone.getCarrierId()));
+        assertEquals(
+                TelephonyManager.NETWORK_TYPE_LTE,
+                CellularNetworkService.getNetworkTypeForCellIdentity(
+                        TelephonyManager.NETWORK_TYPE_LTE_CA,
+                        new CellIdentityLte(),
+                        mPhone.getCarrierId()));
+        assertEquals(
+                TelephonyManager.NETWORK_TYPE_EDGE,
+                CellularNetworkService.getNetworkTypeForCellIdentity(
+                        TelephonyManager.NETWORK_TYPE_EDGE,
+                        new CellIdentityGsm(),
+                        mPhone.getCarrierId()));
+        assertEquals(
+                TelephonyManager.NETWORK_TYPE_UMTS,
+                CellularNetworkService.getNetworkTypeForCellIdentity(
+                        TelephonyManager.NETWORK_TYPE_UNKNOWN,
+                        new CellIdentityWcdma(),
+                        mPhone.getCarrierId()));
     }
 }
