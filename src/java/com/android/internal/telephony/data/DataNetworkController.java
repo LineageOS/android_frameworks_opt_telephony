@@ -2086,6 +2086,18 @@ public class DataNetworkController extends Handler {
     }
 
     /**
+     * Check if a request for the capability currently exists. Note this method id not thread safe
+     * so can be only called within the modules in {@link com.android.internal.telephony.data}.
+     *
+     * @param capability Network capability to check
+     * @return {@code true} if the request for the capability exists.
+     */
+    public boolean isCapabilityRequestExisting(@NetCapability int capability) {
+        return mAllNetworkRequestList.stream()
+                .anyMatch(request -> request.hasCapability(capability));
+    }
+
+    /**
      * Check if there are existing networks having the same interface name.
      *
      * @param interfaceName The interface name to check.
