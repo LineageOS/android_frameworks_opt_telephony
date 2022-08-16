@@ -98,19 +98,19 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
             "T-mobile", "T-mobile", 0, 255, "12345", 0, null, "310", "260",
             "156", false, null, null, -1, false, mGroupUuid1.toString(), false,
             TelephonyManager.UNKNOWN_CARRIER_ID, SubscriptionManager.PROFILE_CLASS_DEFAULT,
-            SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM, null, null, true);
+            SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM, null, null, true, -1);
 
     private final SubscriptionInfo mSubInfo3 = new SubscriptionInfo(3, "subInfo3 IccId", -1,
             "T-mobile", "T-mobile", 0, 255, "12345", 0, null, "310", "260",
             "156", false, null, null, -1, false, mGroupUuid1.toString(), false,
             TelephonyManager.UNKNOWN_CARRIER_ID, SubscriptionManager.PROFILE_CLASS_DEFAULT,
-            SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM, null, null, true);
+            SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM, null, null, true, -1);
 
     private final SubscriptionInfo mSubInfo4 = new SubscriptionInfo(4, "subInfo4 IccId", -1,
             "T-mobile", "T-mobile", 0, 255, "12345", 0, null, "310", "260",
             "156", false, null, null, -1, false, mGroupUuid1.toString(), false,
             TelephonyManager.UNKNOWN_CARRIER_ID, SubscriptionManager.PROFILE_CLASS_DEFAULT,
-            SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM, null, null, true);
+            SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM, null, null, true, -1);
 
     @Before
     public void setUp() throws Exception {
@@ -460,6 +460,35 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         processAllMessages();
         verify(mDataEnabledSettingsMock1, times(1)).setDataEnabled(anyInt(), anyBoolean());
         verify(mDataEnabledSettingsMock2, times(1)).setDataEnabled(anyInt(), anyBoolean());
+    }
+
+    @Test
+    @SmallTest
+    public void testSimpleDsdsInSuW() {
+        // at first boot default is not set
+        doReturn(-1).when(mSubControllerMock).getDefaultDataSubId();
+
+        doReturn(true).when(mPhoneMock1).isUserDataEnabled();
+        doReturn(true).when(mPhoneMock2).isUserDataEnabled();
+        // setting DEVICE_PROVISIONED as 0 to indicate SuW is running.
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.DEVICE_PROVISIONED, 0);
+        // After initialization, sub 2 should have mobile data off.
+        mMultiSimSettingControllerUT.notifyAllSubscriptionLoaded();
+        mMultiSimSettingControllerUT.notifyCarrierConfigChanged(0, 1);
+        mMultiSimSettingControllerUT.notifyCarrierConfigChanged(1, 2);
+        processAllMessages();
+        verify(mDataEnabledSettingsMock1).setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false);
+        verify(mDataEnabledSettingsMock2).setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false);
+
+        // as a result of the above calls, update new values to be returned
+        doReturn(false).when(mPhoneMock1).isUserDataEnabled();
+        doReturn(false).when(mPhoneMock2).isUserDataEnabled();
+
+        // No user selection needed, no intent should be sent.
+        verify(mContext, never()).sendBroadcast(any());
     }
 
     @Test

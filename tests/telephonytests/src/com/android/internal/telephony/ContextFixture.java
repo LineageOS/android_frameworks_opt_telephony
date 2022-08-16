@@ -729,6 +729,8 @@ public class ContextFixture implements TestFixture<Context> {
             .getDefaultSharedPreferences(TestApplication.getAppContext());
     private final MockContentResolver mContentResolver = new MockContentResolver();
     private final PersistableBundle mBundle = new PersistableBundle();
+    private final Network mNetwork = mock(Network.class);
+    private int mNetworkId = 200;
 
     public ContextFixture() {
         MockitoAnnotations.initMocks(this);
@@ -768,10 +770,9 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         doReturn(mBundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
-        //doReturn(mBundle).when(mCarrierConfigManager).getConfig(anyInt());
         doReturn(mBundle).when(mCarrierConfigManager).getConfig();
-
-        doReturn(mock(Network.class)).when(mConnectivityManager).registerNetworkAgent(
+        doAnswer(invocation -> mNetworkId++).when(mNetwork).getNetId();
+        doReturn(mNetwork).when(mConnectivityManager).registerNetworkAgent(
                 any(), any(), any(), any(), any(), any(), anyInt());
 
         doReturn(true).when(mEuiccManager).isEnabled();
@@ -869,6 +870,14 @@ public class ContextFixture implements TestFixture<Context> {
         synchronized (mPermissionTable) {
             if (mPermissionTable != null && permission != null) {
                 mPermissionTable.remove(PERMISSION_ENABLE_ALL);
+                mPermissionTable.add(permission);
+            }
+        }
+    }
+
+    public void addCallingOrSelfPermissionToCurrentPermissions(String permission) {
+        synchronized (mPermissionTable) {
+            if (mPermissionTable != null && permission != null) {
                 mPermissionTable.add(permission);
             }
         }

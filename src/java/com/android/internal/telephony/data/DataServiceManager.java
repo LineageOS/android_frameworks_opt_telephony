@@ -373,7 +373,7 @@ public class DataServiceManager extends Handler {
                 loge("onApnUnthrottled: apn is null");
             }
         }
-      
+
         @Override
         public void onDataProfileUnthrottled(DataProfile dataProfile) {
             if (dataProfile != null) {
@@ -382,7 +382,7 @@ public class DataServiceManager extends Handler {
             } else {
                 loge("onDataProfileUnthrottled: dataProfile is null");
             }
-        }      
+        }
     }
 
     /**

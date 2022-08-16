@@ -25,6 +25,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -64,9 +65,7 @@ import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.uicc.IccCardStatus;
-import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
-import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.UiccSlot;
 
 import org.junit.After;
@@ -142,7 +141,6 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mCarrierConfigs = mContextFixture.getCarrierConfigBundle();
 
         mContextFixture.putIntArrayResource(com.android.internal.R.array.sim_colors, new int[]{5});
-
         setupMocksForTelephonyPermissions(Build.VERSION_CODES.R);
     }
 
@@ -202,6 +200,42 @@ public class SubscriptionControllerTest extends TelephonyTest {
                     mSubList.get(i).getSubscriptionId()));
             assertTrue(SubscriptionManager.isValidSlotIndex(mSubList.get(i).getSimSlotIndex()));
         }
+    }
+
+    @Test @SmallTest
+    public void testUsageSettingProperty() {
+        testInsertSim();
+        /* Get SUB ID */
+        int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
+        assertTrue(subIds != null && subIds.length != 0);
+        final int subId = subIds[0];
+
+        /* Getting, there is no direct getter function for each fields of property */
+        SubscriptionInfo subInfo = mSubscriptionControllerUT
+                .getActiveSubscriptionInfo(subId, mCallingPackage, mCallingFeature);
+
+        // assertEquals(SubscriptionManager.USAGE_SETTING_UNKNOWN, subInfo.getUsageSetting());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> mSubscriptionControllerUT.setUsageSetting(
+                        SubscriptionManager.USAGE_SETTING_UNKNOWN,
+                        subId,
+                        mCallingPackage));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> mSubscriptionControllerUT.setUsageSetting(
+                        SubscriptionManager.USAGE_SETTING_DEFAULT,
+                        SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+                        mCallingPackage));
+
+        mSubscriptionControllerUT.setUsageSetting(
+                SubscriptionManager.USAGE_SETTING_DATA_CENTRIC,
+                subId,
+                mCallingPackage);
+
+        subInfo = mSubscriptionControllerUT
+                .getActiveSubscriptionInfo(subId, mCallingPackage, mCallingFeature);
+        assertEquals(SubscriptionManager.USAGE_SETTING_DATA_CENTRIC, subInfo.getUsageSetting());
     }
 
     @Test @SmallTest
@@ -996,7 +1030,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertEquals(null, prop);
 
         // group UUID should succeed once privileged phone state permission is granted
-        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        setupReadPrivilegePermission();
         prop = mSubscriptionControllerUT.getSubscriptionProperty(1, SubscriptionManager.GROUP_UUID,
                 mContext.getOpPackageName(), mContext.getAttributionTag());
         assertNotEquals(null, prop);
@@ -1340,8 +1374,10 @@ public class SubscriptionControllerTest extends TelephonyTest {
         // If the calling package does not have the READ_PHONE_STATE permission or carrier
         // privileges then getActiveSubscriptionInfo should throw a SecurityException;
         testInsertSim();
-        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
+        setupReadPrivilegePermission();
         int subId = getFirstSubId();
+        removeReadPrivilegePermission();
+        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
 
         try {
             mSubscriptionControllerUT.getActiveSubscriptionInfo(subId, mCallingPackage,
@@ -1359,6 +1395,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         testInsertSim();
         setupReadPhoneNumbersTest();
         setIdentifierAccess(false);
+        setupReadPrivilegePermission();
         int subId = getFirstSubId();
 
         SubscriptionInfo subscriptionInfo = mSubscriptionControllerUT.getActiveSubscriptionInfo(
@@ -1378,6 +1415,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         testInsertSim();
         setupReadPhoneNumbersTest();
         setPhoneNumberAccess(PackageManager.PERMISSION_GRANTED);
+        setupReadPrivilegePermission();
         int subId = getFirstSubId();
 
         SubscriptionInfo subscriptionInfo = mSubscriptionControllerUT.getActiveSubscriptionInfo(
@@ -1393,6 +1431,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         // privileges the ICC ID should be available in the SubscriptionInfo.
         testInsertSim();
         setupIdentifierCarrierPrivilegesTest();
+        setupReadPrivilegePermission();
         int subId = getFirstSubId();
 
         SubscriptionInfo subscriptionInfo = mSubscriptionControllerUT.getActiveSubscriptionInfo(
@@ -1774,6 +1813,15 @@ public class SubscriptionControllerTest extends TelephonyTest {
         setupMocksForTelephonyPermissions();
         setIdentifierAccess(false);
         setCarrierPrivileges(true);
+    }
+
+    private void setupReadPrivilegePermission() throws Exception {
+        mContextFixture.addCallingOrSelfPermissionToCurrentPermissions(
+                Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+    }
+    private void removeReadPrivilegePermission() throws Exception {
+        mContextFixture.removeCallingOrSelfPermission(
+                Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
     }
 
     private int getFirstSubId() throws Exception {

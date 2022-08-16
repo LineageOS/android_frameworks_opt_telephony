@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.dataconnection;
+package com.android.internal.telephony.data;
 
 import static com.android.internal.telephony.data.QosCallbackTrackerTest.createEpsQos;
 import static com.android.internal.telephony.data.QosCallbackTrackerTest.createIpv4QosFilter;

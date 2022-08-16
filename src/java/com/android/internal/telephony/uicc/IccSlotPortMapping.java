@@ -18,10 +18,6 @@ package com.android.internal.telephony.uicc;
 
 import android.telephony.TelephonyManager;
 
-/**
- * This class provides the physical slot index and port index mapping as per the
- * Multiple Enabled Profiles requirement.
- */
 public class IccSlotPortMapping {
 
     public int mPhysicalSlotIndex = UiccController.INVALID_SLOT_ID;

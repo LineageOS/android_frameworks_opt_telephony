@@ -15,7 +15,6 @@ rule com.android.internal.util.FastXmlSerializer* com.android.internal.telephony
 rule com.android.internal.util.HexDump* com.android.internal.telephony.HexDump@1
 rule com.android.internal.util.IState* com.android.internal.telephony.IState@1
 rule com.android.internal.util.IndentingPrintWriter* com.android.internal.telephony.IndentingPrintWriter@1
-rule com.android.internal.util.Preconditions* com.android.internal.telephony.Preconditions@1
 rule com.android.internal.util.State* com.android.internal.telephony.State@1
 rule com.android.internal.util.StateMachine* com.android.internal.telephony.StateMachine@1
 rule com.android.internal.util.UserIcons* com.android.internal.telephony.UserIcons@1

@@ -45,6 +45,7 @@ import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.HandlerExecutor;
 import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
@@ -275,6 +276,8 @@ public class GsmCdmaPhone extends Phone {
     private final ImsManagerFactory mImsManagerFactory;
     private final CarrierPrivilegesTracker mCarrierPrivilegesTracker;
 
+    private final SubscriptionManager.OnSubscriptionsChangedListener mSubscriptionsChangedListener;
+
     // Constructors
 
     public GsmCdmaPhone(Context context, CommandsInterface ci, PhoneNotifier notifier, int phoneId,
@@ -382,6 +385,19 @@ public class GsmCdmaPhone extends Phone {
         loadTtyMode();
 
         CallManager.getInstance().registerPhone(this);
+
+        mSubscriptionsChangedListener =
+                new SubscriptionManager.OnSubscriptionsChangedListener() {
+            @Override
+            public void onSubscriptionsChanged() {
+                sendEmptyMessage(EVENT_SUBSCRIPTIONS_CHANGED);
+            }
+        };
+
+        SubscriptionManager subMan = context.getSystemService(SubscriptionManager.class);
+        subMan.addOnSubscriptionsChangedListener(
+                new HandlerExecutor(this), mSubscriptionsChangedListener);
+
         logd("GsmCdmaPhone: constructor: sub = " + mPhoneId);
     }
 
@@ -464,7 +480,7 @@ public class GsmCdmaPhone extends Phone {
         filter.addAction(TelecomManager.ACTION_CURRENT_TTY_MODE_CHANGED);
         filter.addAction(TelecomManager.ACTION_TTY_PREFERRED_MODE_CHANGED);
         mContext.registerReceiver(mBroadcastReceiver, filter,
-                android.Manifest.permission.MODIFY_PHONE_STATE, null);
+                android.Manifest.permission.MODIFY_PHONE_STATE, null, Context.RECEIVER_EXPORTED);
 
         mCDM = new CarrierKeyDownloadManager(this);
         mCIM = new CarrierInfoManager();
@@ -3115,26 +3131,6 @@ public class GsmCdmaPhone extends Phone {
                 }
             break;
 
-            case EVENT_GET_IMEI_DONE:
-                ar = (AsyncResult)msg.obj;
-
-                if (ar.exception != null) {
-                    break;
-                }
-
-                mImei = (String)ar.result;
-            break;
-
-            case EVENT_GET_IMEISV_DONE:
-                ar = (AsyncResult)msg.obj;
-
-                if (ar.exception != null) {
-                    break;
-                }
-
-                mImeiSv = (String)ar.result;
-            break;
-
             case EVENT_USSD:
                 ar = (AsyncResult)msg.obj;
 
@@ -3374,6 +3370,10 @@ public class GsmCdmaPhone extends Phone {
             }
             case EVENT_SET_VONR_ENABLED_DONE:
                 logd("EVENT_SET_VONR_ENABLED_DONE is done");
+                break;
+            case EVENT_SUBSCRIPTIONS_CHANGED:
+                logd("EVENT_SUBSCRIPTIONS_CHANGED");
+                updateUsageSetting();
                 break;
 
             default:
@@ -4678,9 +4678,12 @@ public class GsmCdmaPhone extends Phone {
             return;
         }
 
-        UiccPort port = mUiccController.getUiccPort(mPhoneId);
-        String iccId = (port == null) ? null : port.getIccId();
+        // Due to timing issue, sometimes UiccPort is coming null, so don't use UiccPort object
+        // to retrieve the iccId here. Instead, depend on the UiccSlot API.
+        String iccId = slot.getIccId(slot.getPortIndexFromPhoneId(mPhoneId));
         if (iccId == null) {
+            loge("reapplyUiccAppsEnablementIfNeeded iccId is null, phoneId: " + mPhoneId
+                    + " portIndex: " + slot.getPortIndexFromPhoneId(mPhoneId));
             return;
         }
 

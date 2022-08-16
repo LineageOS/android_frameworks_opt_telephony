@@ -273,8 +273,6 @@ public class TelephonyNetworkFactory extends NetworkFactory {
     }
 
     private void releaseNetworkInternal(TelephonyNetworkRequest networkRequest) {
-        NetworkRequestsStats.addNetworkRelease(networkRequest.getNativeNetworkRequest(),
-                mSubscriptionId);
         mPhone.getDataNetworkController().removeNetworkRequest(networkRequest);
     }
 
@@ -282,8 +280,6 @@ public class TelephonyNetworkFactory extends NetworkFactory {
     private void releaseNetworkInternal(TelephonyNetworkRequest networkRequest,
                                         @ReleaseNetworkType int releaseType,
                                         int transport) {
-        NetworkRequestsStats.addNetworkRelease(networkRequest.getNativeNetworkRequest(),
-                mSubscriptionId);
         if (mPhone.isUsingNewDataStack()) {
             mPhone.getDataNetworkController().removeNetworkRequest(networkRequest);
         } else {

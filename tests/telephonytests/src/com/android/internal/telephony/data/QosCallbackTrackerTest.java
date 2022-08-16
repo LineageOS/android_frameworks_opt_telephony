@@ -139,7 +139,7 @@ public class QosCallbackTrackerTest extends TelephonyTest {
                 7, 987, 678, QosBearerFilter.QOS_FILTER_DIRECTION_BIDIRECTIONAL, precedence);
     }
 
-    public static QosBearerFilter createIpv4QosFilter(String localAddress, String remoteAddress,
+    private static QosBearerFilter createIpv4QosFilter(String localAddress, String remoteAddress,
             QosBearerFilter.PortRange localPort, QosBearerFilter.PortRange remotePort,
             int precedence) {
         return new QosBearerFilter(

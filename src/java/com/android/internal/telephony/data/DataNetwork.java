@@ -2986,6 +2986,8 @@ public class DataNetwork extends StateMachine {
                 && mNetworkCapabilities.hasCapability(
                         NetworkCapabilities.NET_CAPABILITY_TRUSTED)
                 && mNetworkCapabilities.hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
+                && mNetworkCapabilities.hasCapability(
                         NetworkCapabilities.NET_CAPABILITY_NOT_VPN);
     }
 
@@ -3154,6 +3156,7 @@ public class DataNetwork extends StateMachine {
             mDataNetworkCallback.invokeFromExecutor(
                     () -> mDataNetworkCallback.onHandoverFailed(DataNetwork.this,
                             mFailCause, retry, handoverFailureMode));
+            mDataCallSessionStats.onHandoverFailure(mFailCause);
         }
 
         // No matter handover succeeded or not, transit back to connected state.
