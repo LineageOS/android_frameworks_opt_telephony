@@ -92,8 +92,7 @@ public class CellBroadcastServiceManager {
             Log.d(TAG, "GSM CB message ignored - CB messages disabled by OEM.");
             CellBroadcastStatsLog.write(CellBroadcastStatsLog.CB_MESSAGE_FILTERED,
                     CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_FILTERED__TYPE__GSM,
-                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_FILTERED__FILTER__DISABLED_BY_OEM,
-                    0, 0);
+                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_FILTERED__FILTER__DISABLED_BY_OEM);
             return;
         }
         m.what = EVENT_NEW_GSM_SMS_CB;
@@ -109,8 +108,7 @@ public class CellBroadcastServiceManager {
             Log.d(TAG, "CDMA CB message ignored - CB messages disabled by OEM.");
             CellBroadcastStatsLog.write(CellBroadcastStatsLog.CB_MESSAGE_FILTERED,
                     CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_FILTERED__TYPE__CDMA,
-                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_FILTERED__FILTER__DISABLED_BY_OEM,
-                    0, 0);
+                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_FILTERED__FILTER__DISABLED_BY_OEM);
             return;
         }
         Message m = Message.obtain();
@@ -128,8 +126,7 @@ public class CellBroadcastServiceManager {
             Log.d(TAG, "CDMA SCP CB message ignored - CB messages disabled by OEM.");
             CellBroadcastStatsLog.write(CellBroadcastStatsLog.CB_MESSAGE_FILTERED,
                     CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_FILTERED__TYPE__CDMA_SPC,
-                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_FILTERED__FILTER__DISABLED_BY_OEM,
-                    0, 0);
+                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_FILTERED__FILTER__DISABLED_BY_OEM);
             return;
         }
         Message m = Message.obtain();
@@ -195,8 +192,7 @@ public class CellBroadcastServiceManager {
                             mLocalLog.log("GSM SMS CB for phone " + mPhone.getPhoneId());
                             CellBroadcastStatsLog.write(CellBroadcastStatsLog.CB_MESSAGE_REPORTED,
                                     CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_REPORTED__TYPE__GSM,
-                                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_REPORTED__SOURCE__FRAMEWORK,
-                                    0, 0);
+                                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_REPORTED__SOURCE__FRAMEWORK);
                             cellBroadcastService.handleGsmCellBroadcastSms(mPhone.getPhoneId(),
                                     (byte[]) ((AsyncResult) msg.obj).result);
                         } else if (msg.what == EVENT_NEW_CDMA_SMS_CB) {
@@ -204,16 +200,14 @@ public class CellBroadcastServiceManager {
                             SmsMessage sms = (SmsMessage) msg.obj;
                             CellBroadcastStatsLog.write(CellBroadcastStatsLog.CB_MESSAGE_REPORTED,
                                     CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_REPORTED__TYPE__CDMA,
-                                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_REPORTED__SOURCE__FRAMEWORK,
-                                    0, 0);
+                                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_REPORTED__SOURCE__FRAMEWORK);
                             cellBroadcastService.handleCdmaCellBroadcastSms(mPhone.getPhoneId(),
                                     sms.getEnvelopeBearerData(), sms.getEnvelopeServiceCategory());
                         } else if (msg.what == EVENT_NEW_CDMA_SCP_MESSAGE) {
                             mLocalLog.log("CDMA SCP message for phone " + mPhone.getPhoneId());
                             CellBroadcastStatsLog.write(CellBroadcastStatsLog.CB_MESSAGE_REPORTED,
                                     CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_REPORTED__TYPE__CDMA_SPC,
-                                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_REPORTED__SOURCE__FRAMEWORK,
-                                    0, 0);
+                                    CellBroadcastStatsLog.CELL_BROADCAST_MESSAGE_REPORTED__SOURCE__FRAMEWORK);
                             Pair<SmsMessage, RemoteCallback> smsAndCallback =
                                     (Pair<SmsMessage, RemoteCallback>) msg.obj;
                             SmsMessage sms = smsAndCallback.first;
