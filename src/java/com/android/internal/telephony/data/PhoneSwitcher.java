@@ -245,7 +245,7 @@ public class PhoneSwitcher extends Handler {
         @Override
         public void set(int newValue) {
             super.set(newValue);
-            SubscriptionController.invalidateActiveDataSubIdCaches();
+            SubscriptionManager.invalidateActiveDataSubIdCaches();
         }
     };
 
@@ -391,7 +391,7 @@ public class PhoneSwitcher extends Handler {
     public static PhoneSwitcher make(int maxDataAttachModemCount, Context context, Looper looper) {
         if (sPhoneSwitcher == null) {
             sPhoneSwitcher = new PhoneSwitcher(maxDataAttachModemCount, context, looper);
-            SubscriptionController.invalidateActiveDataSubIdCaches();
+            SubscriptionManager.invalidateActiveDataSubIdCaches();
         }
 
         return sPhoneSwitcher;

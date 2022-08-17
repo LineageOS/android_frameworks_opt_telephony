@@ -32,7 +32,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
@@ -154,7 +153,6 @@ public class SubscriptionControllerTest extends TelephonyTest {
          * between each test case. */
         if (mSubscriptionControllerUT != null) {
             mSubscriptionControllerUT.clearSubInfo();
-            mSubscriptionControllerUT.resetStaticMembers();
             mSubscriptionControllerUT = null;
         }
 
