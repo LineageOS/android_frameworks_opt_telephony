@@ -27,17 +27,15 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.annotation.NonNull;
-import android.net.INetworkAgentRegistry;
 import android.net.InetAddresses;
 import android.net.LinkAddress;
 import android.net.Network;
-import android.net.NetworkAgent;
-import android.net.QosSession;
 import android.telephony.data.EpsBearerQosSessionAttributes;
 import android.telephony.data.EpsQos;
 import android.telephony.data.Qos;
 import android.telephony.data.QosBearerFilter;
 import android.telephony.data.QosBearerSession;
+import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -93,7 +91,6 @@ public class QosCallbackTrackerTest extends TelephonyTest {
     // Mocked classes
     private Phone mPhone;
     private TelephonyNetworkAgent mNetworkAgent;
-    private INetworkAgentRegistry mINetworkAgentRegistry;
     private Network mNetwork;
     private RcsStats mRcsStats;
 
@@ -104,9 +101,6 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
         mPhone = mock(Phone.class);
         mNetworkAgent = mock(TelephonyNetworkAgent.class);
-        mINetworkAgentRegistry = mock(INetworkAgentRegistry.class);
-        replaceInstance(NetworkAgent.class, "mRegistry", mNetworkAgent, mINetworkAgentRegistry);
-        replaceInstance(NetworkAgent.class, "mPreConnectedQueue", mNetworkAgent, new ArrayList());
         mNetwork = mock(Network.class);
         mRcsStats = mock(RcsStats.class);
         doReturn(mNetwork).when(mNetworkAgent).getNetwork();
@@ -159,6 +153,7 @@ public class QosCallbackTrackerTest extends TelephonyTest {
     }
 
     @Test
+    @SmallTest
     public void testAddFilterBeforeUpdateSessions() throws Exception {
         Filter filter = new Filter(new InetSocketAddress(
                 InetAddresses.parseNumericAddress("122.22.22.22"), 2222));
@@ -175,8 +170,8 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         mQosCallbackTracker.updateSessions(qosSessions);
         processAllMessages();
 
-        verify(mINetworkAgentRegistry, never()).sendEpsQosSessionAvailable(eq(1),
-                any(QosSession.class), any(EpsBearerQosSessionAttributes.class));
+        verify(mNetworkAgent, never()).notifyQosSessionAvailable(eq(1),
+                eq(1234), any(EpsBearerQosSessionAttributes.class));
 
         // Matching QosBearerFilter
         ArrayList<QosBearerFilter> qosFilters2 = new ArrayList<>();
@@ -187,12 +182,14 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         mQosCallbackTracker.updateSessions(qosSessions);
         processAllMessages();
 
-        verify(mINetworkAgentRegistry, times(1)).sendEpsQosSessionAvailable(eq(1),
-                any(QosSession.class), any(EpsBearerQosSessionAttributes.class));
+        verify(mNetworkAgent, times(1)).notifyQosSessionAvailable(eq(1),
+                eq(1235), any(EpsBearerQosSessionAttributes.class));
+
     }
 
 
     @Test
+    @SmallTest
     public void testAddFilterAfterUpdateSessions() throws Exception {
         // Non-matching QosBearerFilter
         ArrayList<QosBearerFilter> qosFilters1 = new ArrayList<>();
@@ -216,11 +213,13 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         mQosCallbackTracker.addFilter(1, filter);
         processAllMessages();
 
-        verify(mINetworkAgentRegistry, times(1)).sendEpsQosSessionAvailable(eq(1),
-                any(QosSession.class), any(EpsBearerQosSessionAttributes.class));
+        verify(mNetworkAgent, times(1)).notifyQosSessionAvailable(eq(1),
+                eq(1235), any(EpsBearerQosSessionAttributes.class));
+
     }
 
     @Test
+    @SmallTest
     public void testRemoveFilter() throws Exception {
         // Add filter
         Filter filter = new Filter(new InetSocketAddress(
@@ -238,8 +237,8 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         mQosCallbackTracker.updateSessions(qosSessions);
         processAllMessages();
 
-        verify(mINetworkAgentRegistry, never()).sendEpsQosSessionAvailable(eq(1),
-                any(QosSession.class), any(EpsBearerQosSessionAttributes.class));
+        verify(mNetworkAgent, never()).notifyQosSessionAvailable(eq(1),
+                eq(1234), any(EpsBearerQosSessionAttributes.class));
 
         // Remove the filter
         mQosCallbackTracker.removeFilter(1);
@@ -254,11 +253,13 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         processAllMessages();
 
         // Verify that notifyQosSessionAvailable is not invoked as the filter is already removed
-        verify(mINetworkAgentRegistry, never()).sendEpsQosSessionAvailable(eq(1),
-                any(QosSession.class), any(EpsBearerQosSessionAttributes.class));
+        verify(mNetworkAgent, never()).notifyQosSessionAvailable(eq(1),
+                eq(1235), any(EpsBearerQosSessionAttributes.class));
+
     }
 
     @Test
+    @SmallTest
     public void testSessionLost() throws Exception {
         // Non-matching QosBearerFilter
         ArrayList<QosBearerFilter> qosFilters1 = new ArrayList<>();
@@ -286,18 +287,19 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         mQosCallbackTracker.addFilter(1, filter);
         processAllMessages();
 
-        verify(mINetworkAgentRegistry, times(1)).sendEpsQosSessionAvailable(eq(1),
-                any(QosSession.class), any(EpsBearerQosSessionAttributes.class));
+        verify(mNetworkAgent, times(1)).notifyQosSessionAvailable(eq(1),
+                eq(1235), any(EpsBearerQosSessionAttributes.class));
 
         // Remove the matching QosBearerFilter
         qosSessions.remove(1);
         mQosCallbackTracker.updateSessions(qosSessions);
         processAllMessages();
 
-        verify(mINetworkAgentRegistry, times(1)).sendQosSessionLost(eq(1), any(QosSession.class));
+        verify(mNetworkAgent, times(1)).notifyQosSessionLost(eq(1), eq(1235), eq(1));
     }
 
     @Test
+    @SmallTest
     public void testModifiedQos() throws Exception {
         // Non-matching QosBearerFilter
         ArrayList<QosBearerFilter> qosFilters1 = new ArrayList<>();
@@ -324,10 +326,10 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         mQosCallbackTracker.addFilter(1, filter);
         processAllMessages();
 
-        verify(mINetworkAgentRegistry, times(1)).sendEpsQosSessionAvailable(eq(1),
-                any(QosSession.class), any(EpsBearerQosSessionAttributes.class));
+        verify(mNetworkAgent, times(1)).notifyQosSessionAvailable(eq(1),
+                eq(1235), any(EpsBearerQosSessionAttributes.class));
 
-        reset(mINetworkAgentRegistry);
+        reset(mNetworkAgent);
 
         // Update the QOS
         qosSessions.remove(1);
@@ -335,11 +337,12 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         mQosCallbackTracker.updateSessions(qosSessions);
         processAllMessages();
 
-        verify(mINetworkAgentRegistry, times(1)).sendEpsQosSessionAvailable(eq(1),
-                any(QosSession.class), any(EpsBearerQosSessionAttributes.class));
+        verify(mNetworkAgent, times(1)).notifyQosSessionAvailable(eq(1),
+                eq(1235), any(EpsBearerQosSessionAttributes.class));
     }
 
     @Test
+    @SmallTest
     public void testUnmodifiedQos() throws Exception {
         // Non-matching QosBearerFilter
         ArrayList<QosBearerFilter> qosFilters1 = new ArrayList<>();
@@ -366,8 +369,8 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         mQosCallbackTracker.addFilter(1, filter);
         processAllMessages();
 
-        verify(mINetworkAgentRegistry, times(1)).sendEpsQosSessionAvailable(eq(1),
-                any(QosSession.class), any(EpsBearerQosSessionAttributes.class));
+        verify(mNetworkAgent, times(1)).notifyQosSessionAvailable(eq(1),
+                eq(1235), any(EpsBearerQosSessionAttributes.class));
 
         reset(mNetworkAgent);
 
@@ -377,11 +380,12 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         mQosCallbackTracker.updateSessions(qosSessions);
         processAllMessages();
 
-        verify(mINetworkAgentRegistry, times(1)).sendEpsQosSessionAvailable(eq(1),
-                any(QosSession.class), any(EpsBearerQosSessionAttributes.class));
+        verify(mNetworkAgent, never()).notifyQosSessionAvailable(eq(1),
+                eq(1235), any(EpsBearerQosSessionAttributes.class));
     }
 
     @Test
+    @SmallTest
     public void testEmptyQosSessions() throws Exception {
         // Add filter
         Filter filter = new Filter(new InetSocketAddress(
@@ -414,21 +418,21 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         mQosCallbackTracker.addFilter(2, filter2);
         processAllMessages();
 
-        verify(mINetworkAgentRegistry, times(1)).sendEpsQosSessionAvailable(eq(1),
-                any(QosSession.class), any(EpsBearerQosSessionAttributes.class));
-        verify(mINetworkAgentRegistry, times(1)).sendEpsQosSessionAvailable(eq(2),
-                any(QosSession.class), any(EpsBearerQosSessionAttributes.class));
-
+        verify(mNetworkAgent, times(1)).notifyQosSessionAvailable(eq(1),
+                eq(1234), any(EpsBearerQosSessionAttributes.class));
+        verify(mNetworkAgent, times(1)).notifyQosSessionAvailable(eq(2),
+                eq(1235), any(EpsBearerQosSessionAttributes.class));
 
         // Update empty QOS sessions list
         mQosCallbackTracker.updateSessions(new ArrayList<>());
         processAllMessages();
 
-        verify(mINetworkAgentRegistry, times(1)).sendQosSessionLost(eq(1), any(QosSession.class));
-        verify(mINetworkAgentRegistry, times(1)).sendQosSessionLost(eq(2), any(QosSession.class));
+        verify(mNetworkAgent, times(1)).notifyQosSessionLost(eq(1), eq(1234), eq(1));
+        verify(mNetworkAgent, times(1)).notifyQosSessionLost(eq(2), eq(1235), eq(1));
     }
 
     @Test
+    @SmallTest
     public void testMultipleQosSessions() throws Exception {
         // Add filter 1
         Filter filter1 = new Filter(new InetSocketAddress(
@@ -461,20 +465,21 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         mQosCallbackTracker.updateSessions(qosSessions);
         processAllMessages();
 
-        verify(mINetworkAgentRegistry, times(1)).sendEpsQosSessionAvailable(eq(1),
-                any(QosSession.class), any(EpsBearerQosSessionAttributes.class));
-        verify(mINetworkAgentRegistry, times(1)).sendEpsQosSessionAvailable(eq(2),
-                any(QosSession.class), any(EpsBearerQosSessionAttributes.class));
+        verify(mNetworkAgent, times(1)).notifyQosSessionAvailable(eq(1),
+                eq(1234), any(EpsBearerQosSessionAttributes.class));
+        verify(mNetworkAgent, times(1)).notifyQosSessionAvailable(eq(2),
+                eq(1235), any(EpsBearerQosSessionAttributes.class));
 
         // Update empty QOS sessions list
         mQosCallbackTracker.updateSessions(new ArrayList<>());
         processAllMessages();
 
-        verify(mINetworkAgentRegistry, times(1)).sendQosSessionLost(eq(1), any(QosSession.class));
-        verify(mINetworkAgentRegistry, times(1)).sendQosSessionLost(eq(2), any(QosSession.class));
+        verify(mNetworkAgent, times(1)).notifyQosSessionLost(eq(1), eq(1234), eq(1));
+        verify(mNetworkAgent, times(1)).notifyQosSessionLost(eq(2), eq(1235), eq(1));
     }
 
     @Test
+    @SmallTest
     public void testQosSessionWithInvalidPortRange() throws Exception {
         // Non-matching QosBearerFilter
         ArrayList<QosBearerFilter> qosFilters1 = new ArrayList<>();
@@ -498,12 +503,14 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         mQosCallbackTracker.addFilter(1, filter);
         processAllMessages();
 
-        verify(mINetworkAgentRegistry, never()).sendEpsQosSessionAvailable(eq(1),
-                any(QosSession.class), any(EpsBearerQosSessionAttributes.class));
+        verify(mNetworkAgent, never()).notifyQosSessionAvailable(eq(1),
+                eq(1235), any(EpsBearerQosSessionAttributes.class));
+
     }
 
     @Test
-    public void testQosMetrics() {
+    @SmallTest
+    public void testQosMetrics() throws Exception {
         final int callbackId = 1;
         final int slotId = mPhone.getPhoneId();
         // Add filter before update session
