@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "42f897cb_85c7a246",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 17649
+      },
+      "writtenOn": "2022-08-17T00:20:43Z",
+      "side": 1,
+      "message": "fixes missing ringback tone for volte/vowifi calls using kanged A11 radio/ims blobs",
+      "revId": "b238c3ed99ae0fb46a2b60ef4c84c237b61d0255",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
