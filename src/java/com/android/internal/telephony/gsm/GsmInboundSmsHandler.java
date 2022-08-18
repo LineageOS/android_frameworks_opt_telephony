@@ -43,7 +43,7 @@ import com.android.internal.telephony.uicc.UsimServiceTable;
  */
 public class GsmInboundSmsHandler extends InboundSmsHandler {
 
-    private static BroadcastReceiver sTestBroadcastReceiver;
+    private BroadcastReceiver mTestBroadcastReceiver;
     /** Handler for SMS-PP data download messages to UICC. */
     private final UsimDataDownloadHandler mDataDownloadHandler;
 
@@ -63,11 +63,11 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
         mCellBroadcastServiceManager.enable();
 
         if (TEST_MODE) {
-            if (sTestBroadcastReceiver == null) {
-                sTestBroadcastReceiver = new GsmCbTestBroadcastReceiver();
+            if (mTestBroadcastReceiver == null) {
+                mTestBroadcastReceiver = new GsmCbTestBroadcastReceiver();
                 IntentFilter filter = new IntentFilter();
                 filter.addAction(TEST_ACTION);
-                context.registerReceiver(sTestBroadcastReceiver, filter,
+                context.registerReceiver(mTestBroadcastReceiver, filter,
                         Context.RECEIVER_EXPORTED);
             }
         }
