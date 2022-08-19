@@ -19,6 +19,8 @@ package com.android.internal.telephony.imsphone;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.os.Build;
 import android.telephony.DisconnectCause;
+import android.telephony.ims.ImsCallProfile;
+import android.telephony.ims.ImsCallSession;
 import android.telephony.ims.ImsStreamMediaProfile;
 import android.util.Log;
 
@@ -325,6 +327,41 @@ public class ImsPhoneCall extends Call {
     public ImsCall getImsCall() {
         ImsPhoneConnection connection = getFirstConnection();
         return (connection == null) ? null : connection.getImsCall();
+    }
+
+    /**
+     * Retrieves the {@link ImsCallSession#getCallId()} for the current {@link ImsPhoneCall}.
+     */
+    @VisibleForTesting
+    public String getCallSessionId() {
+        return ((getImsCall() == null) ? null : getImsCall().getSession()) == null
+                ? null : getImsCall().getSession().getCallId();
+    }
+
+    /**
+     * Retrieves the service type in {@link ImsCallProfile} for the current {@link ImsPhoneCall}.
+     */
+    @VisibleForTesting
+    public int getServiceType() {
+        if (getFirstConnection() == null) {
+            return ImsCallProfile.SERVICE_TYPE_NONE;
+        } else {
+            return getFirstConnection().isEmergencyCall()
+                    ? ImsCallProfile.SERVICE_TYPE_EMERGENCY : ImsCallProfile.SERVICE_TYPE_NORMAL;
+        }
+    }
+
+    /**
+     * Retrieves the call type in {@link ImsCallProfile} for the current {@link ImsPhoneCall}.
+     */
+    @VisibleForTesting
+    public int getCallType() {
+        if (getImsCall() == null) {
+            return ImsCallProfile.CALL_TYPE_NONE;
+        } else {
+            return getImsCall().isVideoCall()
+                    ? ImsCallProfile.CALL_TYPE_VT : ImsCallProfile.CALL_TYPE_VOICE;
+        }
     }
 
     /*package*/ static boolean isLocalTone(ImsCall imsCall) {
