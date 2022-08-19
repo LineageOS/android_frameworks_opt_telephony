@@ -3290,14 +3290,14 @@ public class DataNetwork extends StateMachine {
 
     /**
      * @return The PCO data map of the network. The key is the PCO id, the value is the PCO data.
-     * An empty map if PCO data is not available.
+     * An empty map if PCO data is not available (or when the network is on IWLAN).
      */
     public @NonNull Map<Integer, PcoData> getPcoData() {
         if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN
                 || mCid.get(mTransport) == INVALID_CID) {
             return Collections.emptyMap();
         }
-        return mPcoData.get(mCid.get(mTransport));
+        return mPcoData.getOrDefault(mCid.get(mTransport), Collections.emptyMap());
     }
 
     /**
