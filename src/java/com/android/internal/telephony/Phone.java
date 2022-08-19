@@ -399,7 +399,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public static final String EXTRA_KEY_ALERT_SHOW = "alertShow";
     public static final String EXTRA_KEY_NOTIFICATION_MESSAGE = "notificationMessage";
 
-    private final RegistrantList mPreciseCallStateRegistrants = new RegistrantList();
+    protected final RegistrantList mPreciseCallStateRegistrants = new RegistrantList();
 
     private final RegistrantList mHandoverRegistrants = new RegistrantList();
 
@@ -982,17 +982,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     @UnsupportedAppUsage
     public void unregisterForPreciseCallStateChanged(Handler h) {
         mPreciseCallStateRegistrants.remove(h);
-    }
-
-    /**
-     * Subclasses of Phone probably want to replace this with a
-     * version scoped to their packages
-     */
-    protected void notifyPreciseCallStateChangedP() {
-        AsyncResult ar = new AsyncResult(null, this, null);
-        mPreciseCallStateRegistrants.notifyRegistrants(ar);
-
-        mNotifier.notifyPreciseCallState(this);
     }
 
     /**
