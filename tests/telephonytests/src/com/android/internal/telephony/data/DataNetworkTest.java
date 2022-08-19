@@ -1063,6 +1063,17 @@ public class DataNetworkTest extends TelephonyTest {
         assertThat(pdcsList.get(3).getState()).isEqualTo(TelephonyManager.DATA_CONNECTED);
         assertThat(pdcsList.get(3).getLastCauseCode())
                 .isEqualTo(DataFailCause.SERVICE_TEMPORARILY_UNAVAILABLE);
+
+        // Test source PDN lost during the HO, expect tear down after HO
+        setFailedSetupDataResponse(mMockedWlanDataServiceManager,
+                DataServiceCallback.RESULT_ERROR_TEMPORARILY_UNAVAILABLE);
+        mDataNetworkUT.startHandover(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, null);
+        mDataNetworkUT.sendMessage(8/*EVENT_DATA_STATE_CHANGED*/,
+                new AsyncResult(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                        Collections.emptyList(), null)); // the source transport report PDN lost
+        processAllMessages();
+
+        assertThat(mDataNetworkUT.isConnected()).isFalse();
     }
 
     @Test
