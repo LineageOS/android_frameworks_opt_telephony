@@ -1399,8 +1399,15 @@ public class DataNetwork extends StateMachine {
                     // Otherwise the deferred message might be incorrectly treated as "disconnected"
                     // signal. So we only defer the related data call list changed event, and drop
                     // the unrelated.
-                    if (shouldDeferDataStateChangedEvent(msg)) {
-                        log("Defer message " + eventToString(msg.what));
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    int transport = (int) ar.userObj;
+                    List<DataCallResponse> responseList = (List<DataCallResponse>) ar.result;
+                    if (transport != mTransport) {
+                        log("Dropped unrelated "
+                                + AccessNetworkConstants.transportTypeToString(transport)
+                                + " data call list changed event. " + responseList);
+                    } else {
+                        log("Defer message " + eventToString(msg.what) + ":" + responseList);
                         deferMessage(msg);
                     }
                     break;
@@ -1446,39 +1453,6 @@ public class DataNetwork extends StateMachine {
                     return NOT_HANDLED;
             }
             return HANDLED;
-        }
-
-        /**
-         * Check if the data call list changed event should be deferred or dropped when handover
-         * is in progress.
-         *
-         * @param msg The data call list changed message.
-         *
-         * @return {@code true} if the message should be deferred.
-         */
-        private boolean shouldDeferDataStateChangedEvent(@NonNull Message msg) {
-            // The data call list changed event should be conditionally deferred.
-            // Otherwise the deferred message might be incorrectly treated as "disconnected"
-            // signal. So we only defer the related data call list changed event, and drop
-            // the unrelated.
-            AsyncResult ar = (AsyncResult) msg.obj;
-            int transport = (int) ar.userObj;
-            List<DataCallResponse> responseList = (List<DataCallResponse>) ar.result;
-            if (transport != mTransport) {
-                log("Dropped unrelated " + AccessNetworkConstants.transportTypeToString(transport)
-                        + " data call list changed event. " + responseList);
-                return false;
-            }
-
-            // Check if the data call list changed event are related to the current data network.
-            boolean related = responseList.stream().anyMatch(
-                    r -> mCid.get(mTransport) == r.getId());
-            if (related) {
-                log("Deferred the related data call list changed event." + responseList);
-            } else {
-                log("Dropped unrelated data call list changed event. " + responseList);
-            }
-            return related;
         }
     }
 
