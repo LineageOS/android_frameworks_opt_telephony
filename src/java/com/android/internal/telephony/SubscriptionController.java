@@ -166,15 +166,10 @@ public class SubscriptionController extends ISub.Stub {
 
     private AppOpsManager mAppOps;
 
-    // Allows test mocks to avoid SELinux failures on invalidate calls.
-    private static boolean sCachingEnabled = true;
-
     // Each slot can have multiple subs.
     private static class WatchedSlotIndexToSubIds {
-        private Map<Integer, ArrayList<Integer>> mSlotIndexToSubIds = new ConcurrentHashMap<>();
-
-        WatchedSlotIndexToSubIds() {
-        }
+        private final Map<Integer, ArrayList<Integer>> mSlotIndexToSubIds =
+                new ConcurrentHashMap<>();
 
         public void clear() {
             mSlotIndexToSubIds.clear();
@@ -193,7 +188,7 @@ public class SubscriptionController extends ISub.Stub {
                 return null;
             }
 
-            return new ArrayList<Integer>(subIdList);
+            return new ArrayList<>(subIdList);
         }
 
         public void put(int slotIndex, ArrayList<Integer> value) {
@@ -275,9 +270,9 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    private static WatchedSlotIndexToSubIds sSlotIndexToSubIds = new WatchedSlotIndexToSubIds();
+    private final WatchedSlotIndexToSubIds mSlotIndexToSubIds = new WatchedSlotIndexToSubIds();
 
-    protected static WatchedInt sDefaultFallbackSubId =
+    private final WatchedInt mDefaultFallbackSubId =
             new WatchedInt(SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
         @Override
         public void set(int newValue) {
@@ -1469,7 +1464,7 @@ public class SubscriptionController extends ISub.Stub {
                             int defaultSubId = getDefaultSubId();
                             if (DBG) {
                                 logdl("[addSubInfoRecord]"
-                                        + " sSlotIndexToSubIds.size=" + sSlotIndexToSubIds.size()
+                                        + " mSlotIndexToSubIds.size=" + mSlotIndexToSubIds.size()
                                         + " slotIndex=" + slotIndex + " subId=" + subId
                                         + " defaultSubId=" + defaultSubId
                                         + " simCount=" + subIdCountMax);
@@ -1549,7 +1544,7 @@ public class SubscriptionController extends ISub.Stub {
                     if (DBG) logdl("[addSubInfoRecord] sim name = " + nameToSet);
                 }
 
-                if (DBG) logdl("[addSubInfoRecord]- info size=" + sSlotIndexToSubIds.size());
+                if (DBG) logdl("[addSubInfoRecord]- info size=" + mSlotIndexToSubIds.size());
             }
 
         } finally {
@@ -1653,7 +1648,7 @@ public class SubscriptionController extends ISub.Stub {
                 return -1;
             }
             refreshCachedActiveSubscriptionInfoList();
-            result = sSlotIndexToSubIds.removeFromSubIdList(slotIndex, subId);
+            result = mSlotIndexToSubIds.removeFromSubIdList(slotIndex, subId);
             if (result == NO_ENTRY_FOR_SLOT_INDEX) {
                 loge("sSlotIndexToSubIds has no entry for slotIndex = " + slotIndex);
             } else if (result == SUB_ID_NOT_IN_SLOT) {
@@ -1697,7 +1692,7 @@ public class SubscriptionController extends ISub.Stub {
         // Refresh the Cache of Active Subscription Info List
         refreshCachedActiveSubscriptionInfoList();
 
-        sSlotIndexToSubIds.remove(slotIndex);
+        mSlotIndexToSubIds.remove(slotIndex);
     }
 
     /**
@@ -2586,14 +2581,14 @@ public class SubscriptionController extends ISub.Stub {
             return SubscriptionManager.INVALID_SIM_SLOT_INDEX;
         }
 
-        int size = sSlotIndexToSubIds.size();
+        int size = mSlotIndexToSubIds.size();
 
         if (size == 0) {
             if (DBG) logd("[getSlotIndex]- size == 0, return SIM_NOT_INSERTED instead");
             return SubscriptionManager.SIM_NOT_INSERTED;
         }
 
-        for (Entry<Integer, ArrayList<Integer>> entry : sSlotIndexToSubIds.entrySet()) {
+        for (Entry<Integer, ArrayList<Integer>> entry : mSlotIndexToSubIds.entrySet()) {
             int sim = entry.getKey();
             ArrayList<Integer> subs = entry.getValue();
 
@@ -2636,7 +2631,7 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         // Check if we've got any SubscriptionInfo records using slotIndexToSubId as a surrogate.
-        int size = sSlotIndexToSubIds.size();
+        int size = mSlotIndexToSubIds.size();
         if (size == 0) {
             if (VDBG) {
                 logd("[getSubId]- sSlotIndexToSubIds.size == 0, return null slotIndex="
@@ -2646,7 +2641,7 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         // Convert ArrayList to array
-        ArrayList<Integer> subIds = sSlotIndexToSubIds.getCopy(slotIndex);
+        ArrayList<Integer> subIds = mSlotIndexToSubIds.getCopy(slotIndex);
         if (subIds != null && subIds.size() > 0) {
             int[] subIdArr = new int[subIds.size()];
             for (int i = 0; i < subIds.size(); i++) {
@@ -2679,7 +2674,7 @@ public class SubscriptionController extends ISub.Stub {
             return SubscriptionManager.INVALID_PHONE_INDEX;
         }
 
-        int size = sSlotIndexToSubIds.size();
+        int size = mSlotIndexToSubIds.size();
         if (size == 0) {
             phoneId = mDefaultPhoneId;
             if (VDBG) logdl("[getPhoneId]- no sims, returning default phoneId=" + phoneId);
@@ -2687,7 +2682,7 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         // FIXME: Assumes phoneId == slotIndex
-        for (Entry<Integer, ArrayList<Integer>> entry: sSlotIndexToSubIds.entrySet()) {
+        for (Entry<Integer, ArrayList<Integer>> entry: mSlotIndexToSubIds.entrySet()) {
             int sim = entry.getKey();
             ArrayList<Integer> subs = entry.getValue();
 
@@ -2715,14 +2710,14 @@ public class SubscriptionController extends ISub.Stub {
         // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
         try {
-            int size = sSlotIndexToSubIds.size();
+            int size = mSlotIndexToSubIds.size();
 
             if (size == 0) {
                 if (DBG) logdl("[clearSubInfo]- no simInfo size=" + size);
                 return 0;
             }
 
-            sSlotIndexToSubIds.clear();
+            mSlotIndexToSubIds.clear();
             if (DBG) logdl("[clearSubInfo]- clear size=" + size);
             return size;
         } finally {
@@ -2773,7 +2768,7 @@ public class SubscriptionController extends ISub.Stub {
             if (VDBG) logdl("[getDefaultSubId] NOT VoiceCapable subId=" + subId);
         }
         if (!isActiveSubId(subId)) {
-            subId = sDefaultFallbackSubId.get();
+            subId = mDefaultFallbackSubId.get();
             if (VDBG) logdl("[getDefaultSubId] NOT active use fall back subId=" + subId);
         }
         if (VDBG) logv("[getDefaultSubId]- value = " + subId);
@@ -2960,7 +2955,7 @@ public class SubscriptionController extends ISub.Stub {
         }
         int previousDefaultSub = getDefaultSubId();
         if (isSubscriptionForRemoteSim(subscriptionType)) {
-            sDefaultFallbackSubId.set(subId);
+            mDefaultFallbackSubId.set(subId);
             return;
         }
         if (SubscriptionManager.isValidSubscriptionId(subId)) {
@@ -2968,7 +2963,7 @@ public class SubscriptionController extends ISub.Stub {
             if (phoneId >= 0 && (phoneId < mTelephonyManager.getPhoneCount()
                     || mTelephonyManager.getSimCount() == 1)) {
                 if (DBG) logdl("[setDefaultFallbackSubId] set sDefaultFallbackSubId=" + subId);
-                sDefaultFallbackSubId.set(subId);
+                mDefaultFallbackSubId.set(subId);
                 // Update MCC MNC device configuration information
                 String defaultMccMnc = mTelephonyManager.getSimOperatorNumericForPhone(phoneId);
                 MccTable.updateMccMncConfiguration(mContext, defaultMccMnc);
@@ -3068,7 +3063,7 @@ public class SubscriptionController extends ISub.Stub {
     private synchronized ArrayList<Integer> getActiveSubIdArrayList() {
         // Clone the sub id list so it can't change out from under us while iterating
         List<Entry<Integer, ArrayList<Integer>>> simInfoList =
-                new ArrayList<>(sSlotIndexToSubIds.entrySet());
+                new ArrayList<>(mSlotIndexToSubIds.entrySet());
 
         // Put the set of sub ids in slot index order
         Collections.sort(simInfoList, (x, y) -> x.getKey().compareTo(y.getKey()));
@@ -3398,7 +3393,7 @@ public class SubscriptionController extends ISub.Stub {
                     .from(mContext).getDefaultSmsPhoneId());
             pw.flush();
 
-            for (Entry<Integer, ArrayList<Integer>> entry : sSlotIndexToSubIds.entrySet()) {
+            for (Entry<Integer, ArrayList<Integer>> entry : mSlotIndexToSubIds.entrySet()) {
                 pw.println(" sSlotIndexToSubId[" + entry.getKey() + "]: subIds=" + entry);
             }
             pw.flush();
@@ -3510,9 +3505,7 @@ public class SubscriptionController extends ISub.Stub {
         try {
             int ret = setSubscriptionProperty(subId, SubscriptionManager.IS_OPPORTUNISTIC,
                     String.valueOf(opportunistic ? 1 : 0));
-
             if (ret != 0) notifySubscriptionInfoChanged();
-
             return ret;
         } finally {
             Binder.restoreCallingIdentity(token);
@@ -3529,8 +3522,15 @@ public class SubscriptionController extends ISub.Stub {
 
         SubscriptionManager subManager = (SubscriptionManager)
                 mContext.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
-        List<SubscriptionInfo> subInfo = getSubInfo(
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + subId, null);
+
+        List<SubscriptionInfo> subInfo;
+        long token = Binder.clearCallingIdentity();
+        try {
+            subInfo = getSubInfo(
+                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + subId, null);
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
 
         try {
             if (!isActiveSubId(subId) && subInfo != null && subInfo.size() == 1
@@ -4383,10 +4383,10 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     private synchronized boolean addToSubIdList(int slotIndex, int subId, int subscriptionType) {
-        ArrayList<Integer> subIdsList = sSlotIndexToSubIds.getCopy(slotIndex);
+        ArrayList<Integer> subIdsList = mSlotIndexToSubIds.getCopy(slotIndex);
         if (subIdsList == null) {
             subIdsList = new ArrayList<>();
-            sSlotIndexToSubIds.put(slotIndex, subIdsList);
+            mSlotIndexToSubIds.put(slotIndex, subIdsList);
         }
 
         // add the given subId unless it already exists
@@ -4396,20 +4396,20 @@ public class SubscriptionController extends ISub.Stub {
         }
         if (isSubscriptionForRemoteSim(subscriptionType)) {
             // For Remote SIM subscriptions, a slot can have multiple subscriptions.
-            sSlotIndexToSubIds.addToSubIdList(slotIndex, subId);
+            mSlotIndexToSubIds.addToSubIdList(slotIndex, subId);
         } else {
             // for all other types of subscriptions, a slot can have only one subscription at a time
-            sSlotIndexToSubIds.clearSubIdList(slotIndex);
-            sSlotIndexToSubIds.addToSubIdList(slotIndex, subId);
+            mSlotIndexToSubIds.clearSubIdList(slotIndex);
+            mSlotIndexToSubIds.addToSubIdList(slotIndex, subId);
         }
 
 
         // Remove the slot from sSlotIndexToSubIds if it has the same sub id with the added slot
-        for (Entry<Integer, ArrayList<Integer>> entry : sSlotIndexToSubIds.entrySet()) {
+        for (Entry<Integer, ArrayList<Integer>> entry : mSlotIndexToSubIds.entrySet()) {
             if (entry.getKey() != slotIndex && entry.getValue() != null
                     && entry.getValue().contains(subId)) {
                 logdl("addToSubIdList - remove " + entry.getKey());
-                sSlotIndexToSubIds.remove(entry.getKey());
+                mSlotIndexToSubIds.remove(entry.getKey());
             }
         }
 
@@ -4427,17 +4427,7 @@ public class SubscriptionController extends ISub.Stub {
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     public Map<Integer, ArrayList<Integer>> getSlotIndexToSubIdsMap() {
-        return sSlotIndexToSubIds.getMap();
-    }
-
-    /**
-     * This is only for testing
-     * @hide
-     */
-    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
-    public void resetStaticMembers() {
-        sDefaultFallbackSubId.set(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
-        mDefaultPhoneId = SubscriptionManager.DEFAULT_PHONE_INDEX;
+        return mSlotIndexToSubIds.getMap();
     }
 
     private void notifyOpportunisticSubscriptionInfoChanged() {
@@ -4786,77 +4776,36 @@ public class SubscriptionController extends ISub.Stub {
      */
     private void setGlobalSetting(String name, int value) {
         Settings.Global.putInt(mContext.getContentResolver(), name, value);
-        if (name == Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION) {
+        if (TextUtils.equals(name, Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION)) {
             invalidateDefaultDataSubIdCaches();
             invalidateActiveDataSubIdCaches();
             invalidateDefaultSubIdCaches();
             invalidateSlotIndexCaches();
-        } else if (name == Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION) {
+        } else if (TextUtils.equals(name, Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION)) {
             invalidateDefaultSubIdCaches();
             invalidateSlotIndexCaches();
-        } else if (name == Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION) {
+        } else if (TextUtils.equals(name, Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION)) {
             invalidateDefaultSmsSubIdCaches();
         }
     }
 
-    /**
-     * @hide
-     */
     private static void invalidateDefaultSubIdCaches() {
-        if (sCachingEnabled) {
-            SubscriptionManager.invalidateDefaultSubIdCaches();
-        }
+        SubscriptionManager.invalidateDefaultSubIdCaches();
     }
 
-    /**
-     * @hide
-     */
     private static void invalidateDefaultDataSubIdCaches() {
-        if (sCachingEnabled) {
-            SubscriptionManager.invalidateDefaultDataSubIdCaches();
-        }
+        SubscriptionManager.invalidateDefaultDataSubIdCaches();
     }
 
-    /**
-     * @hide
-     */
     private static void invalidateDefaultSmsSubIdCaches() {
-        if (sCachingEnabled) {
-            SubscriptionManager.invalidateDefaultSmsSubIdCaches();
-        }
+        SubscriptionManager.invalidateDefaultSmsSubIdCaches();
     }
 
-    /**
-     * @hide
-     */
-    public static void invalidateActiveDataSubIdCaches() {
-        if (sCachingEnabled) {
-            SubscriptionManager.invalidateActiveDataSubIdCaches();
-        }
+    private static void invalidateActiveDataSubIdCaches() {
+        SubscriptionManager.invalidateActiveDataSubIdCaches();
     }
 
-    /**
-     * @hide
-     */
-    protected static void invalidateSlotIndexCaches() {
-        if (sCachingEnabled) {
-            SubscriptionManager.invalidateSlotIndexCaches();
-        }
-    }
-
-    /**
-     * @hide
-     */
-    @VisibleForTesting
-    public static void disableCaching() {
-        sCachingEnabled = false;
-    }
-
-    /**
-     * @hide
-     */
-    @VisibleForTesting
-    public static void enableCaching() {
-        sCachingEnabled = true;
+    private static void invalidateSlotIndexCaches() {
+        SubscriptionManager.invalidateSlotIndexCaches();
     }
 }

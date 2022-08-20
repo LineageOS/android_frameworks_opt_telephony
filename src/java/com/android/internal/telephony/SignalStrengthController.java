@@ -56,6 +56,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
@@ -227,6 +228,11 @@ public class SignalStrengthController extends Handler {
                 while (it.hasNext()) {
                     SignalRequestRecord srr = it.next();
                     if (srr.mRequest.getLiveToken().equals(record.mRequest.getLiveToken())) {
+                        try {
+                            srr.mRequest.getLiveToken().unlinkToDeath(srr, 0);
+                        } catch (NoSuchElementException ignored) {
+                            // Either never linked or has already unlinked, ignore anyway
+                        }
                         it.remove();
                     }
                 }
