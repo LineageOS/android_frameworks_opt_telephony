@@ -3510,9 +3510,7 @@ public class SubscriptionController extends ISub.Stub {
         try {
             int ret = setSubscriptionProperty(subId, SubscriptionManager.IS_OPPORTUNISTIC,
                     String.valueOf(opportunistic ? 1 : 0));
-
             if (ret != 0) notifySubscriptionInfoChanged();
-
             return ret;
         } finally {
             Binder.restoreCallingIdentity(token);
@@ -3529,8 +3527,15 @@ public class SubscriptionController extends ISub.Stub {
 
         SubscriptionManager subManager = (SubscriptionManager)
                 mContext.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
-        List<SubscriptionInfo> subInfo = getSubInfo(
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + subId, null);
+
+        List<SubscriptionInfo> subInfo;
+        long token = Binder.clearCallingIdentity();
+        try {
+            subInfo = getSubInfo(
+                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + subId, null);
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
 
         try {
             if (!isActiveSubId(subId) && subInfo != null && subInfo.size() == 1

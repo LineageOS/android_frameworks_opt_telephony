@@ -3313,7 +3313,7 @@ public class DataNetwork extends StateMachine {
                 || mCid.get(mTransport) == INVALID_CID) {
             return Collections.emptyMap();
         }
-        return mPcoData.get(mCid.get(mTransport));
+        return mPcoData.getOrDefault(mCid.get(mTransport), Collections.emptyMap());
     }
 
     /**
