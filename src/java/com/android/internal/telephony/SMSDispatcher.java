@@ -672,26 +672,50 @@ public abstract class SMSDispatcher extends Handler {
         @Override
         public void onSendSmsComplete(int result, int messageRef) {
             Rlog.d(TAG, "onSendSmsComplete: result=" + result + " messageRef=" + messageRef);
-            if (mCallbackCalled) {
-                logWithLocalLog("onSendSmsComplete: unexpected call");
-                AnomalyReporter.reportAnomaly(sAnomalyUnexpectedCallback,
-                        "Unexpected onSendSmsComplete", mPhone.getCarrierId());
+            if (cleanupOnSendSmsComplete("onSendSmsComplete")) {
                 return;
             }
-            mCallbackCalled = true;
+
             final long identity = Binder.clearCallingIdentity();
             try {
-                mSmsSender.mCarrierMessagingServiceWrapper.disconnect();
                 processSendSmsResponse(mSmsSender.getSmsTracker(), result, messageRef);
-                mSmsSender.removeTimeout();
             } finally {
                 Binder.restoreCallingIdentity(identity);
             }
         }
 
+        /**
+         * This method should be called only once.
+         */
         @Override
         public void onSendMultipartSmsComplete(int result, int[] messageRefs) {
-            Rlog.e(TAG, "Unexpected onSendMultipartSmsComplete call with result: " + result);
+            Rlog.d(TAG, "onSendMultipartSmsComplete: result=" + result + " messageRefs="
+                    + Arrays.toString(messageRefs));
+            if (cleanupOnSendSmsComplete("onSendMultipartSmsComplete")) {
+                return;
+            }
+
+            final long identity = Binder.clearCallingIdentity();
+            try {
+                processSendMultipartSmsResponse(mSmsSender.getSmsTrackers(), result, messageRefs);
+            } finally {
+                Binder.restoreCallingIdentity(identity);
+            }
+        }
+
+        private boolean cleanupOnSendSmsComplete(String callingFunction) {
+            if (mCallbackCalled) {
+                logWithLocalLog(callingFunction + ": unexpected call");
+                AnomalyReporter.reportAnomaly(sAnomalyUnexpectedCallback,
+                        "Unexpected " + callingFunction, mPhone.getCarrierId());
+                return true;
+            }
+
+            mCallbackCalled = true;
+            mSmsSender.removeTimeout();
+            mSmsSender.mCarrierMessagingServiceWrapper.disconnect();
+
+            return false;
         }
 
         @Override
@@ -766,8 +790,7 @@ public abstract class SMSDispatcher extends Handler {
         }
 
         @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-        void sendSmsByCarrierApp(String carrierPackageName,
-                                 MultipartSmsSenderCallback senderCallback) {
+        void sendSmsByCarrierApp(String carrierPackageName, SmsSenderCallback senderCallback) {
             super.sendSmsByCarrierApp(carrierPackageName, senderCallback);
         }
 
@@ -812,69 +835,6 @@ public abstract class SMSDispatcher extends Handler {
         @Override
         public SmsTracker[] getSmsTrackers() {
             return mTrackers;
-        }
-    }
-
-    /**
-     * Callback for MultipartSmsSender from the carrier messaging service.
-     * Once the result is ready, the carrier messaging service connection is disposed.
-     */
-    private final class MultipartSmsSenderCallback implements CarrierMessagingCallback {
-        private final MultipartSmsSender mSmsSender;
-        private boolean mCallbackCalled = false;
-
-        MultipartSmsSenderCallback(MultipartSmsSender smsSender) {
-            mSmsSender = smsSender;
-        }
-
-        @Override
-        public void onSendSmsComplete(int result, int messageRef) {
-            Rlog.e(TAG, "Unexpected onSendSmsComplete call with result: " + result);
-        }
-
-        /**
-         * This method should be called only once.
-         */
-        @Override
-        public void onSendMultipartSmsComplete(int result, int[] messageRefs) {
-            Rlog.d(TAG, "onSendMultipartSmsComplete: result=" + result + " messageRefs="
-                    + Arrays.toString(messageRefs));
-            if (mCallbackCalled) {
-                logWithLocalLog("onSendMultipartSmsComplete: unexpected call");
-                AnomalyReporter.reportAnomaly(sAnomalyUnexpectedCallback,
-                        "Unexpected onSendMultipartSmsComplete", mPhone.getCarrierId());
-                return;
-            }
-            mCallbackCalled = true;
-            mSmsSender.removeTimeout();
-            mSmsSender.mCarrierMessagingServiceWrapper.disconnect();
-
-            if (mSmsSender.mTrackers == null) {
-                Rlog.e(TAG, "Unexpected onSendMultipartSmsComplete call with null trackers.");
-                return;
-            }
-
-            final long identity = Binder.clearCallingIdentity();
-            try {
-                processSendMultipartSmsResponse(mSmsSender.mTrackers, result, messageRefs);
-            } finally {
-                Binder.restoreCallingIdentity(identity);
-            }
-        }
-
-        @Override
-        public void onReceiveSmsComplete(int result) {
-            Rlog.e(TAG, "Unexpected onReceiveSmsComplete call with result: " + result);
-        }
-
-        @Override
-        public void onSendMmsComplete(int result, byte[] sendConfPdu) {
-            Rlog.e(TAG, "Unexpected onSendMmsComplete call with result: " + result);
-        }
-
-        @Override
-        public void onDownloadMmsComplete(int result) {
-            Rlog.e(TAG, "Unexpected onDownloadMmsComplete call with result: " + result);
         }
     }
 
@@ -1624,12 +1584,10 @@ public abstract class SMSDispatcher extends Handler {
 
         String carrierPackage = getCarrierAppPackageName();
         if (carrierPackage != null) {
-            Rlog.d(TAG, "Found carrier package " + carrierPackage
-                    + " "
+            Rlog.d(TAG, "Found carrier package " + carrierPackage + " "
                     + SmsController.formatCrossStackMessageId(getMultiTrackermessageId(trackers)));
             MultipartSmsSender smsSender = new MultipartSmsSender(parts, trackers);
-            smsSender.sendSmsByCarrierApp(carrierPackage,
-                    new MultipartSmsSenderCallback(smsSender));
+            smsSender.sendSmsByCarrierApp(carrierPackage, new SmsSenderCallback(smsSender));
         } else {
             Rlog.v(TAG, "No carrier package. "
                     + SmsController.formatCrossStackMessageId(getMultiTrackermessageId(trackers)));
