@@ -495,7 +495,8 @@ public class UiccCarrierPrivilegeRules extends Handler {
                         }
                     } else {
                         if (mAIDInUse == ARAM) {
-                            String errorMsg = "Invalid response: payload=" + response.payload
+                            String errorMsg = "Invalid response: payload="
+                                    + IccUtils.bytesToHexString(response.payload)
                                     + " sw1=" + response.sw1 + " sw2=" + response.sw2;
                             updateState(STATE_ERROR, errorMsg);
                         }

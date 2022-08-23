@@ -42,6 +42,9 @@ import androidx.test.filters.FlakyTest;
 
 import com.android.internal.telephony.PhoneInternalInterface.DialArgs;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -109,7 +112,9 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
             processAllMessages();
         } catch(Exception ex) {
             ex.printStackTrace();
-            Assert.fail("unexpected exception thrown"+ex.getMessage()+ex.getStackTrace());
+            StringWriter exString = new StringWriter();
+            ex.printStackTrace(new PrintWriter(exString));
+            Assert.fail("unexpected exception thrown" + exString);
         }
 
         assertEquals(PhoneConstants.State.OFFHOOK, mCTUT.getState());
