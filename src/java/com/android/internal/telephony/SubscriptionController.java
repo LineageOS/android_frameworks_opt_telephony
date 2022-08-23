@@ -616,7 +616,6 @@ public class SubscriptionController extends ISub.Stub {
                     + " publicCardId:" + publicCardId
                     + " isOpportunistic:" + isOpportunistic + " groupUUID:" + groupUUID
                     + " profileClass:" + profileClass + " subscriptionType: " + subType
-                    + " carrierConfigAccessRules:" + carrierConfigAccessRules
                     + " areUiccApplicationsEnabled: " + areUiccApplicationsEnabled
                     + " usageSetting: " + usageSetting);
         }
@@ -2661,7 +2660,7 @@ public class SubscriptionController extends ISub.Stub {
             for (int i = 0; i < subIds.size(); i++) {
                 subIdArr[i] = subIds.get(i);
             }
-            if (VDBG) logd("[getSubId]- subIdArr=" + subIdArr);
+            if (VDBG) logd("[getSubId]- subIdArr=" + Arrays.toString(subIdArr));
             return subIdArr;
         } else {
             if (DBG) logd("[getSubId]- numSubIds == 0, return null slotIndex=" + slotIndex);
@@ -3642,7 +3641,7 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public ParcelUuid createSubscriptionGroup(int[] subIdList, String callingPackage) {
         if (subIdList == null || subIdList.length == 0) {
-            throw new IllegalArgumentException("Invalid subIdList " + subIdList);
+            throw new IllegalArgumentException("Invalid subIdList " + Arrays.toString(subIdList));
         }
 
         // Makes sure calling package matches caller UID.
