@@ -5347,8 +5347,7 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mNewSS=" + mNewSS);
         pw.println(" mVoiceCapable=" + mVoiceCapable);
         pw.println(" mRestrictedState=" + mRestrictedState);
-        pw.println(" mPollingContext=" + mPollingContext + " - " +
-                (mPollingContext != null ? mPollingContext[0] : ""));
+        pw.println(" mPollingContext=" + Arrays.toString(mPollingContext));
         pw.println(" mDesiredPowerState=" + mDesiredPowerState);
         pw.println(" mRestrictedState=" + mRestrictedState);
         pw.println(" mPendingRadioPowerOffAfterDataOff=" + mPendingRadioPowerOffAfterDataOff);
@@ -5387,8 +5386,8 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mDefaultRoamingIndicator=" + mDefaultRoamingIndicator);
         pw.println(" mRegistrationState=" + mRegistrationState);
         pw.println(" mMdn=" + mMdn);
-        pw.println(" mHomeSystemId=" + mHomeSystemId);
-        pw.println(" mHomeNetworkId=" + mHomeNetworkId);
+        pw.println(" mHomeSystemId=" + Arrays.toString(mHomeSystemId));
+        pw.println(" mHomeNetworkId=" + Arrays.toString(mHomeNetworkId));
         pw.println(" mMin=" + mMin);
         pw.println(" mPrlVersion=" + mPrlVersion);
         pw.println(" mIsMinInfoReady=" + mIsMinInfoReady);
