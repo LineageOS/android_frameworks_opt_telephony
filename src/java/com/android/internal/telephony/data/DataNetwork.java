@@ -1417,6 +1417,13 @@ public class DataNetwork extends StateMachine {
                                 + AccessNetworkConstants.transportTypeToString(transport)
                                 + " data call list changed event. " + responseList);
                     } else {
+                        // If source PDN is reported lost, notify network agent that the PDN is
+                        // temporarily suspended and the old interface name is no longer usable.
+                        boolean currentPdnIsAlive = responseList.stream()
+                                .anyMatch(r -> mCid.get(mTransport) == r.getId());
+                        if (!currentPdnIsAlive) {
+                            notifyNetworkUnusable();
+                        }
                         log("Defer message " + eventToString(msg.what) + ":" + responseList);
                         deferMessage(msg);
                     }
@@ -1463,6 +1470,25 @@ public class DataNetwork extends StateMachine {
                     return NOT_HANDLED;
             }
             return HANDLED;
+        }
+
+        /**
+         * Notify network agent that the PDN is temporarily suspended and the old interface name is
+         * no longer usable. The state will be re-evaluated when the handover ends.
+         */
+        private void notifyNetworkUnusable() {
+            log(AccessNetworkConstants.transportTypeToString(mTransport)
+                    + " reports current PDN lost, update capability to SUSPENDED,"
+                    + " TNA interfaceName to \"\"");
+            mNetworkCapabilities = new NetworkCapabilities
+                    .Builder(mNetworkCapabilities)
+                    .removeCapability(
+                            NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
+                    .build();
+            mNetworkAgent.sendNetworkCapabilities(mNetworkCapabilities);
+
+            mLinkProperties.setInterfaceName("");
+            mNetworkAgent.sendLinkProperties(mLinkProperties);
         }
     }
 
