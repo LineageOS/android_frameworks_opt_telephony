@@ -1846,6 +1846,31 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
+     * In some rare cases we need to re-create the network agent, for example, underlying network
+     * IP changed, or when we unfortunately need to remove/add a immutable network capability.
+     */
+    private void recreateNetworkAgent() {
+        if (isConnecting() || isDisconnected() || isDisconnecting()) {
+            loge("Incorrect state for re-creating the network agent.");
+            return;
+        }
+
+        // Abandon the network agent because we are going to create a new one.
+        mNetworkAgent.abandon();
+        // Create a new network agent and register with connectivity service. Note that the agent
+        // will always be registered with NOT_SUSPENDED capability.
+        mNetworkAgent = createNetworkAgent();
+        mNetworkAgent.markConnected();
+        // Because network agent is always created with NOT_SUSPENDED, we need to update
+        // the suspended if it's was in suspended state.
+        if (mSuspended) {
+            log("recreateNetworkAgent: The network is in suspended state. Update the network"
+                    + " capability again. nc=" + mNetworkCapabilities);
+            mNetworkAgent.sendNetworkCapabilities(mNetworkCapabilities);
+        }
+    }
+
+    /**
      * Update the network capabilities.
      */
     private void updateNetworkCapabilities() {
@@ -2043,13 +2068,8 @@ public class DataNetwork extends StateMachine {
                 logl("updateNetworkCapabilities: Immutable capabilities changed. Re-create the "
                         + "network agent. Attempted to change from " + mNetworkCapabilities + " to "
                         + nc);
-                // Abandon the network agent because we are going to create a new one.
-                mNetworkAgent.abandon();
-                // Update the capabilities first so the new network agent would be created with the
-                // new capabilities.
                 mNetworkCapabilities = nc;
-                mNetworkAgent = createNetworkAgent();
-                mNetworkAgent.markConnected();
+                recreateNetworkAgent();
             } else {
                 // Now we need to inform connectivity service and data network controller
                 // about the capabilities changed.
@@ -2344,14 +2364,7 @@ public class DataNetwork extends StateMachine {
                         + linkProperties);
 
                 mLinkProperties = linkProperties;
-
-                // Abandon the network agent because we are going to create a new one.
-                mNetworkAgent.abandon();
-                // Update the link properties first so the new network agent would be created with
-                // the new link properties.
-                mLinkProperties = linkProperties;
-                mNetworkAgent = createNetworkAgent();
-                mNetworkAgent.markConnected();
+                recreateNetworkAgent();
             } else {
                 mLinkProperties = linkProperties;
                 log("sendLinkProperties " + mLinkProperties);
