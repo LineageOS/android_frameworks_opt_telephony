@@ -77,6 +77,13 @@ public class DataProfileManager extends Handler {
     private final String mLogTag;
     private final LocalLog mLocalLog = new LocalLog(128);
 
+    /**
+     * Should only be used by update updateDataProfiles() to indicate whether resend IA to modem
+     * regardless whether IA changed.
+     **/
+    private final boolean FORCED_UPDATE_IA = true;
+    private final boolean ONLY_UPDATE_IA_IF_CHANGED = false;
+
     /** Data network controller. */
     private final @NonNull DataNetworkController mDataNetworkController;
 
@@ -182,11 +189,11 @@ public class DataProfileManager extends Handler {
         switch (msg.what) {
             case EVENT_SIM_REFRESH:
                 log("Update data profiles due to SIM refresh.");
-                updateDataProfiles();
+                updateDataProfiles(FORCED_UPDATE_IA);
                 break;
             case EVENT_APN_DATABASE_CHANGED:
                 log("Update data profiles due to APN db updated.");
-                updateDataProfiles();
+                updateDataProfiles(ONLY_UPDATE_IA_IF_CHANGED);
                 break;
             default:
                 loge("Unexpected event " + msg);
@@ -199,7 +206,7 @@ public class DataProfileManager extends Handler {
      */
     private void onCarrierConfigUpdated() {
         log("Update data profiles due to carrier config updated.");
-        updateDataProfiles();
+        updateDataProfiles(FORCED_UPDATE_IA);
 
         //TODO: more works needed to be done here.
     }
@@ -237,8 +244,10 @@ public class DataProfileManager extends Handler {
     /**
      * Update all data profiles, including preferred data profile, and initial attach data profile.
      * Also send those profiles down to the modem if needed.
+     *
+     * @param forceUpdateIa If {@code true}, we should always send IA again to modem.
      */
-    private void updateDataProfiles() {
+    private void updateDataProfiles(boolean forceUpdateIa) {
         List<DataProfile> profiles = new ArrayList<>();
         if (mDataConfigManager.isConfigCarrierSpecific()) {
             Cursor cursor = mPhone.getContext().getContentResolver().query(
@@ -345,7 +354,7 @@ public class DataProfileManager extends Handler {
         }
 
         updateDataProfilesAtModem();
-        updateInitialAttachDataProfileAtModem();
+        updateInitialAttachDataProfileAtModem(forceUpdateIa);
 
         if (profilesChanged) {
             mDataProfileManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
@@ -403,7 +412,7 @@ public class DataProfileManager extends Handler {
                 .orElse(null);
         // Save the preferred data profile into database.
         setPreferredDataProfile(dataProfile);
-        updateDataProfiles();
+        updateDataProfiles(ONLY_UPDATE_IA_IF_CHANGED);
     }
 
     /**
@@ -525,8 +534,10 @@ public class DataProfileManager extends Handler {
      * Some carriers might explicitly require that using "user-added" APN for initial
      * attach. In this case, exception can be configured through
      * {@link CarrierConfigManager#KEY_ALLOWED_INITIAL_ATTACH_APN_TYPES_STRING_ARRAY}.
+     *
+     * @param forceUpdateIa If {@code true}, we should always send IA again to modem.
      */
-    private void updateInitialAttachDataProfileAtModem() {
+    private void updateInitialAttachDataProfileAtModem(boolean forceUpdateIa) {
         DataProfile initialAttachDataProfile = null;
 
         // Sort the data profiles so the preferred data profile is at the beginning.
@@ -542,11 +553,12 @@ public class DataProfileManager extends Handler {
             if (initialAttachDataProfile != null) break;
         }
 
-        if (!Objects.equals(mInitialAttachDataProfile, initialAttachDataProfile)) {
+        if (forceUpdateIa || !Objects.equals(mInitialAttachDataProfile, initialAttachDataProfile)) {
             mInitialAttachDataProfile = initialAttachDataProfile;
-            logl("Initial attach data profile updated as " + mInitialAttachDataProfile);
+            logl("Initial attach data profile updated as " + mInitialAttachDataProfile
+                    + " or forceUpdateIa= " + forceUpdateIa);
             // TODO: Push the null data profile to modem on new AIDL HAL. Modem should clear the IA
-            //  APN.
+            //  APN, tracking for U b/227579876, now using forceUpdateIa which always push to modem
             if (mInitialAttachDataProfile != null) {
                 mWwanDataServiceManager.setInitialAttachApn(mInitialAttachDataProfile,
                         mPhone.getServiceState().getDataRoamingFromRegistration(), null);
@@ -815,10 +827,17 @@ public class DataProfileManager extends Handler {
         for (int i = 0; i < profiles.size(); i++) {
             ApnSetting a = profiles.get(i).getApnSetting();
             if (a == null) continue;
-            if ((a.getNetworkTypeBitmask() | a.getLingeringNetworkTypeBitmask())
+            if (// Lingering network is not the default and doesn't cover all the regular networks
+                    (int) TelephonyManager.NETWORK_TYPE_BITMASK_UNKNOWN
+                    != a.getLingeringNetworkTypeBitmask()
+                            && (a.getNetworkTypeBitmask() | a.getLingeringNetworkTypeBitmask())
                     != a.getLingeringNetworkTypeBitmask()) {
-                reportAnomaly("Apn[" + a.getApnName()
-                                + "] supported network should be a subset of the lingering network",
+                reportAnomaly("Apn[" + a.getApnName() + "] network "
+                                + TelephonyManager.convertNetworkTypeBitmaskToString(
+                                        a.getNetworkTypeBitmask()) + " should be a subset of "
+                                + "the lingering network "
+                                + TelephonyManager.convertNetworkTypeBitmaskToString(
+                                a.getLingeringNetworkTypeBitmask()),
                         "9af73e18-b523-4dc5-adab-4bb24355d838");
             }
             for (int j = i + 1; j < profiles.size(); j++) {
