@@ -1339,7 +1339,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
         // Make sure the return sub ids are sorted by slot index
-        assertTrue("active sub ids = " + subIds, Arrays.equals(subIds, new int[]{2, 1}));
+        assertTrue("active sub ids = " + Arrays.toString(subIds),
+                Arrays.equals(subIds, new int[]{2, 1}));
     }
 
     @Test

@@ -57,15 +57,17 @@ import com.android.internal.telephony.cdma.sms.SmsEnvelope;
 import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -111,7 +113,9 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
         try {
             doReturn(new int[]{UserHandle.USER_SYSTEM}).when(mIActivityManager).getRunningUserIds();
         } catch (RemoteException re) {
-            fail("Unexpected RemoteException: " + re.getStackTrace());
+            StringWriter reString = new StringWriter();
+            re.printStackTrace(new PrintWriter(reString));
+            fail("Unexpected RemoteException: " + reString);
         }
 
         mSmsMessage.mWrappedSmsMessage = mCdmaSmsMessage;
