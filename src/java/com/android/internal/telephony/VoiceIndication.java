@@ -78,7 +78,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
             mRil.writeMetricsCallRing(response);
         }
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CALL_RING, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_CALL_RING, response);
 
         if (mRil.mRingRegistrant != null) {
             mRil.mRingRegistrant.notifyRegistrant(new AsyncResult(null, response, null));
@@ -92,7 +92,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
     public void callStateChanged(int indicationType) {
         mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED);
 
         mRil.mCallStateRegistrants.notifyRegistrants();
     }
@@ -121,7 +121,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
         notification.numberType = callWaitingRecord.numberType;
         notification.numberPlan = callWaitingRecord.numberPlan;
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CDMA_CALL_WAITING, notification);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_CDMA_CALL_WAITING, notification);
 
         mRil.mCallWaitingInfoRegistrants.notifyRegistrants(
                 new AsyncResult(null, notification, null));
@@ -220,7 +220,9 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
                             + CdmaInformationRecords.idToString(id) + " ");
             }
 
-            if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CDMA_INFO_REC, cdmaInformationRecords);
+            if (mRil.isLogOrTrace()) {
+                mRil.unsljLogRet(RIL_UNSOL_CDMA_INFO_REC, cdmaInformationRecords);
+            }
             mRil.notifyRegistrantsCdmaInfoRec(cdmaInformationRecords);
         }
     }
@@ -235,7 +237,9 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
 
         int[] response = new int[] {status};
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CDMA_OTA_PROVISION_STATUS, response);
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(RIL_UNSOL_CDMA_OTA_PROVISION_STATUS, response);
+        }
 
         mRil.mOtaProvisionRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
     }
@@ -259,7 +263,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
             response.add(emergencyNumber);
         }
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_EMERGENCY_NUMBER_LIST, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_EMERGENCY_NUMBER_LIST, response);
 
         // Cache emergency number list from last indication.
         mRil.cacheEmergencyNumberListIndication(response);
@@ -277,7 +281,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
     public void enterEmergencyCallbackMode(int indicationType) {
         mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_ENTER_EMERGENCY_CALLBACK_MODE);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_ENTER_EMERGENCY_CALLBACK_MODE);
 
         if (mRil.mEmergencyCallbackModeRegistrant != null) {
             mRil.mEmergencyCallbackModeRegistrant.notifyRegistrant();
@@ -292,7 +296,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
     public void exitEmergencyCallbackMode(int indicationType) {
         mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE);
 
         mRil.mExitEmergencyCallbackModeRegistrants.notifyRegistrants();
     }
@@ -305,7 +309,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
     public void indicateRingbackTone(int indicationType, boolean start) {
         mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogvRet(RIL_UNSOL_RINGBACK_TONE, start);
+        if (mRil.isLogOrTrace()) mRil.unsljLogvRet(RIL_UNSOL_RINGBACK_TONE, start);
 
         mRil.mRingbackToneRegistrants.notifyRegistrants(new AsyncResult(null, start, null));
     }
@@ -355,7 +359,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
             }
         }
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_ON_SS, ssData);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_ON_SS, ssData);
 
         if (mRil.mSsRegistrant != null) {
             mRil.mSsRegistrant.notifyRegistrant(new AsyncResult(null, ssData, null));
@@ -372,7 +376,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
     public void onUssd(int indicationType, int ussdModeType, String msg) {
         mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogMore(RIL_UNSOL_ON_USSD, "" + ussdModeType);
+        if (mRil.isLogOrTrace()) mRil.unsljLogMore(RIL_UNSOL_ON_USSD, "" + ussdModeType);
 
         // TODO: Clean this up with a parcelable class for better self-documentation
         String[] resp = new String[]{"" + ussdModeType, msg};
@@ -388,7 +392,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
     public void resendIncallMute(int indicationType) {
         mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESEND_INCALL_MUTE);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RESEND_INCALL_MUTE);
 
         mRil.mResendIncallMuteRegistrants.notifyRegistrants();
     }
@@ -403,7 +407,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
 
         int[] response = new int[] {state};
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_SRVCC_STATE_NOTIFY, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_SRVCC_STATE_NOTIFY, response);
 
         mRil.writeMetricsSrvcc(state);
         mRil.mSrvccStateRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
@@ -417,7 +421,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
     public void stkCallControlAlphaNotify(int indicationType, String alpha) {
         mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_STK_CC_ALPHA_NOTIFY, alpha);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_STK_CC_ALPHA_NOTIFY, alpha);
 
         if (mRil.mCatCcAlphaRegistrant != null) {
             mRil.mCatCcAlphaRegistrant.notifyRegistrant(new AsyncResult(null, alpha, null));
@@ -432,7 +436,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
     public void stkCallSetup(int indicationType, long timeout) {
         mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_STK_CALL_SETUP, timeout);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_STK_CALL_SETUP, timeout);
 
         if (mRil.mCatCallSetUpRegistrant != null) {
             mRil.mCatCallSetUpRegistrant.notifyRegistrant(new AsyncResult(null, timeout, null));
