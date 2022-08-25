@@ -468,6 +468,32 @@ public class LinkBandwidthEstimatorTest extends TelephonyTest {
     }
 
     @Test
+    public void testNoOverflowAfterLargeTimeGap() throws Exception {
+        mLBE.obtainMessage(MSG_SCREEN_STATE_CHANGED, true).sendToTarget();
+        processAllMessages();
+
+        for (int i = 0; i < BW_STATS_COUNT_THRESHOLD + 2; i++) {
+            addTxBytes(10_000L);
+            addRxBytes(500_000L);
+            if (i == BW_STATS_COUNT_THRESHOLD) {
+                addElapsedTime(26 * 24 * 3_600_000L);
+                moveTimeForward(26 * 24 * 3_600_000L);
+            } else {
+                addElapsedTime(5_100);
+                moveTimeForward(5_100);
+            }
+            processAllMessages();
+            mLBE.obtainMessage(MSG_MODEM_ACTIVITY_RETURNED, new ModemActivityInfo(
+                    i * 5_100L, 0, 0, TX_TIME_2_MS, i * RX_TIME_2_MS)).sendToTarget();
+            processAllMessages();
+        }
+
+        verify(mTelephonyManager, times(BW_STATS_COUNT_THRESHOLD + 2))
+                .requestModemActivityInfo(any(), any());
+        verifyUpdateBandwidth(-1, 19_531);
+    }
+
+    @Test
     public void testAbnormalTrafficCountTriggerLessBwUpdate() throws Exception {
         mLBE.obtainMessage(MSG_SCREEN_STATE_CHANGED, true).sendToTarget();
         processAllMessages();
