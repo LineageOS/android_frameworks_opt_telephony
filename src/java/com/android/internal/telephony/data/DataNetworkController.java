@@ -711,9 +711,9 @@ public class DataNetworkController extends Handler {
                         + "\"" + ruleString + "\"");
             }
 
-            if (source.contains(AccessNetworkType.UNKNOWN)) {
-                throw new IllegalArgumentException("Source access networks contains unknown. "
-                        + "\"" + ruleString + "\"");
+            if (source.contains(AccessNetworkType.UNKNOWN) && type != RULE_TYPE_DISALLOWED) {
+                throw new IllegalArgumentException("Unknown access network can be only specified in"
+                        + " the disallowed rule. \"" + ruleString + "\"");
             }
 
             if (target.contains(AccessNetworkType.UNKNOWN)) {
