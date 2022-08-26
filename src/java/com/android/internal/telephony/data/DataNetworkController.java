@@ -1885,8 +1885,18 @@ public class DataNetworkController extends Handler {
         if (mDataConfigManager.isIwlanHandoverPolicyEnabled()) {
             List<HandoverRule> handoverRules = mDataConfigManager.getHandoverRules();
 
+            int sourceNetworkType = getDataNetworkType(dataNetwork.getTransport());
+            if (sourceNetworkType == TelephonyManager.NETWORK_TYPE_UNKNOWN) {
+                // Using the data network type stored in the data network. We
+                // cache the last known network type in data network controller
+                // because data network has much shorter life cycle. It can prevent
+                // the obsolete last known network type cached in data network
+                // type controller.
+                sourceNetworkType = dataNetwork.getLastKnownDataNetworkType();
+            }
             int sourceAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
-                    getDataNetworkType(dataNetwork.getTransport()));
+                    sourceNetworkType);
+
             int targetAccessNetwork = DataUtils.networkTypeToAccessNetworkType(
                     getDataNetworkType(DataUtils.getTargetTransport(dataNetwork.getTransport())));
             NetworkCapabilities capabilities = dataNetwork.getNetworkCapabilities();
@@ -2089,6 +2099,18 @@ public class DataNetworkController extends Handler {
      */
     public boolean isNetworkRequestExisting(@NonNull TelephonyNetworkRequest networkRequest) {
         return mAllNetworkRequestList.contains(networkRequest);
+    }
+
+    /**
+     * Check if a request for the capability currently exists. Note this method id not thread safe
+     * so can be only called within the modules in {@link com.android.internal.telephony.data}.
+     *
+     * @param capability Network capability to check
+     * @return {@code true} if the request for the capability exists.
+     */
+    public boolean isCapabilityRequestExisting(@NetCapability int capability) {
+        return mAllNetworkRequestList.stream()
+                .anyMatch(request -> request.hasCapability(capability));
     }
 
     /**

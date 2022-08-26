@@ -33,6 +33,7 @@ import android.app.ActivityManager;
 import android.app.AppOpsManager;
 import android.app.IActivityManager;
 import android.app.KeyguardManager;
+import android.app.PropertyInvalidatedCache;
 import android.app.usage.NetworkStatsManager;
 import android.content.ContentProvider;
 import android.content.ContentResolver;
@@ -501,7 +502,7 @@ public abstract class TelephonyTest {
         mMockedWlanDataServiceManager = Mockito.mock(DataServiceManager.class);
 
         TelephonyManager.disableServiceHandleCaching();
-        SubscriptionController.disableCaching();
+        PropertyInvalidatedCache.disableForTestMode();
         // For testing do not allow Log.WTF as it can cause test process to crash
         Log.setWtfHandler((tagString, what, system) -> Log.d(TAG, "WTF captured, ignoring. Tag: "
                 + tagString + ", exception: " + what));
@@ -898,7 +899,6 @@ public abstract class TelephonyTest {
         }
         restoreInstances();
         TelephonyManager.enableServiceHandleCaching();
-        SubscriptionController.enableCaching();
 
         mNetworkRegistrationInfo = null;
         mActivityManager = null;
