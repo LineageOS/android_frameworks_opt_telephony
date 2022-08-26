@@ -154,7 +154,6 @@ public class SubscriptionControllerTest extends TelephonyTest {
          * between each test case. */
         if (mSubscriptionControllerUT != null) {
             mSubscriptionControllerUT.clearSubInfo();
-            mSubscriptionControllerUT.resetStaticMembers();
             mSubscriptionControllerUT = null;
         }
 
