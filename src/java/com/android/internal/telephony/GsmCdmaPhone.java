@@ -1446,8 +1446,7 @@ public class GsmCdmaPhone extends Phone {
         // emergency number list on another SIM, but is not on theirs.  In this case we will use the
         // emergency number list for this carrier's SIM only.
         if (useOnlyDialedSimEccList) {
-            isEmergency = getEmergencyNumberTracker().isEmergencyNumber(dialString,
-                    true /* exactMatch */);
+            isEmergency = getEmergencyNumberTracker().isEmergencyNumber(dialString);
             logi("dial; isEmergency=" + isEmergency
                     + " (based on this phone only); globalIsEmergency="
                     + tm.isEmergencyNumber(dialString));

@@ -712,7 +712,7 @@ public class EmergencyNumberTracker extends Handler {
      *
      * @return {@code true} if it is; {@code false} otherwise.
      */
-    public boolean isEmergencyNumber(String number, boolean exactMatch) {
+    public boolean isEmergencyNumber(String number) {
         if (number == null) {
             return false;
         }
@@ -728,31 +728,14 @@ public class EmergencyNumberTracker extends Handler {
 
         if (!mEmergencyNumberListFromRadio.isEmpty()) {
             for (EmergencyNumber num : mEmergencyNumberList) {
-                // According to com.android.i18n.phonenumbers.ShortNumberInfo, in
-                // these countries, if extra digits are added to an emergency number,
-                // it no longer connects to the emergency service.
-                String countryIso = getLastKnownEmergencyCountryIso();
-                if (countryIso.equals("br") || countryIso.equals("cl")
-                        || countryIso.equals("ni")) {
-                    exactMatch = true;
-                } else {
-                    exactMatch = false || exactMatch;
-                }
-                if (exactMatch) {
-                    if (num.getNumber().equals(number)) {
-                        logd("Found in mEmergencyNumberList [exact match] ");
-                        return true;
-                    }
-                } else {
-                    if (number.startsWith(num.getNumber())) {
-                        logd("Found in mEmergencyNumberList [not exact match] ");
-                        return true;
-                    }
+                if (num.getNumber().equals(number)) {
+                    logd("Found in mEmergencyNumberList");
+                    return true;
                 }
             }
             return false;
         } else {
-            boolean inEccList = isEmergencyNumberFromEccList(number, exactMatch);
+            boolean inEccList = isEmergencyNumberFromEccList(number);
             boolean inEmergencyNumberDb = isEmergencyNumberFromDatabase(number);
             boolean inEmergencyNumberTestList = isEmergencyNumberForTest(number);
             logd("Search results - inRilEccList:" + inEccList
@@ -954,7 +937,7 @@ public class EmergencyNumberTracker extends Handler {
      * Back-up old logics for {@link PhoneNumberUtils#isEmergencyNumberInternal} for legacy
      * and deprecate purpose.
      */
-    private boolean isEmergencyNumberFromEccList(String number, boolean useExactMatch) {
+    private boolean isEmergencyNumberFromEccList(String number) {
         // If the number passed in is null, just return false:
         if (number == null) return false;
 
@@ -1001,31 +984,16 @@ public class EmergencyNumberTracker extends Handler {
                 // searches through the comma-separated list for a match,
                 // return true if one is found.
                 for (String emergencyNum : emergencyNumbers.split(",")) {
-                    // According to com.android.i18n.phonenumbers.ShortNumberInfo, in
-                    // these countries, if extra digits are added to an emergency number,
-                    // it no longer connects to the emergency service.
-                    if (useExactMatch || countryIso.equals("br") || countryIso.equals("cl")
-                        || countryIso.equals("ni")) {
-                        if (number.equals(emergencyNum)) {
-                            return true;
-                        } else {
-                            for (String prefix : mEmergencyNumberPrefix) {
-                                if (number.equals(prefix + emergencyNum)) {
-                                    return true;
-                                }
-                            }
-                        }
+                    if (number.equals(emergencyNum)) {
+                        return true;
                     } else {
-                        if (number.startsWith(emergencyNum)) {
-                            return true;
-                        } else {
-                            for (String prefix : mEmergencyNumberPrefix) {
-                                if (number.startsWith(prefix + emergencyNum)) {
-                                    return true;
-                                }
+                        for (String prefix : mEmergencyNumberPrefix) {
+                            if (number.equals(prefix + emergencyNum)) {
+                                return true;
                             }
                         }
                     }
+
                 }
                 // no matches found against the list!
                 return false;
@@ -1040,57 +1008,31 @@ public class EmergencyNumberTracker extends Handler {
         emergencyNumbers = ((isSimAbsent()) ? "112,911,000,08,110,118,119,999" : "112,911");
 
         for (String emergencyNum : emergencyNumbers.split(",")) {
-            if (useExactMatch) {
-                if (number.equals(emergencyNum)) {
-                    return true;
-                } else {
-                    for (String prefix : mEmergencyNumberPrefix) {
-                        if (number.equals(prefix + emergencyNum)) {
-                            return true;
-                        }
-                    }
-                }
+            if (number.equals(emergencyNum)) {
+                return true;
             } else {
-                if (number.startsWith(emergencyNum)) {
-                    return true;
-                } else {
-                    for (String prefix : mEmergencyNumberPrefix) {
-                        if (number.equals(prefix + emergencyNum)) {
-                            return true;
-                        }
+                for (String prefix : mEmergencyNumberPrefix) {
+                    if (number.equals(prefix + emergencyNum)) {
+                        return true;
                     }
                 }
             }
         }
 
-        if(isSimAbsent()) {
+        if (isSimAbsent()) {
             // No ecclist system property, so use our own list.
             if (countryIso != null) {
                 ShortNumberInfo info = ShortNumberInfo.getInstance();
-                if (useExactMatch) {
-                    if (info.isEmergencyNumber(number, countryIso.toUpperCase())) {
-                        return true;
-                    } else {
-                        for (String prefix : mEmergencyNumberPrefix) {
-                            if (info.isEmergencyNumber(prefix + number, countryIso.toUpperCase())) {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
+                if (info.isEmergencyNumber(number, countryIso.toUpperCase())) {
+                    return true;
                 } else {
-                    if (info.connectsToEmergencyNumber(number, countryIso.toUpperCase())) {
-                        return true;
-                    } else {
-                        for (String prefix : mEmergencyNumberPrefix) {
-                            if (info.connectsToEmergencyNumber(prefix + number,
-                                    countryIso.toUpperCase())) {
-                                return true;
-                            }
+                    for (String prefix : mEmergencyNumberPrefix) {
+                        if (info.isEmergencyNumber(prefix + number, countryIso.toUpperCase())) {
+                            return true;
                         }
                     }
-                    return false;
                 }
+                return false;
             }
         }
 
@@ -1109,7 +1051,7 @@ public class EmergencyNumberTracker extends Handler {
      */
     private void updateEmergencyNumberListTestModeAndNotify(int action, EmergencyNumber num) {
         if (action == ADD_EMERGENCY_NUMBER_TEST_MODE) {
-            if (!isEmergencyNumber(num.getNumber(), true)) {
+            if (!isEmergencyNumber(num.getNumber())) {
                 mEmergencyNumberListFromTestMode.add(num);
             }
         } else if (action == RESET_EMERGENCY_NUMBER_TEST_MODE) {
