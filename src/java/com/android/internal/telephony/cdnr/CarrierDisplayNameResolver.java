@@ -482,7 +482,7 @@ public class CarrierDisplayNameResolver {
             }
         } else if (mPhone.getServiceStateTracker().getCombinedRegState(getServiceState())
                 == ServiceState.STATE_IN_SERVICE) {
-            if (mPhone.isWifiCallingEnabled()) {
+            if (mPhone.isWifiCallingEnabled() && mPhone.isImsRegistered()) {
                 data = getCarrierDisplayNameFromWifiCallingOverride(data);
                 if (DBG) {
                     Rlog.d(TAG, "CarrierName override by wifi-calling " + data);
