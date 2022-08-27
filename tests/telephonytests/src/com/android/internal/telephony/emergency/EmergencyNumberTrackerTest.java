@@ -388,7 +388,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         processAllMessages();
 
         replaceInstance(ShortNumberInfo.class, "INSTANCE", null, mShortNumberInfo);
-        mEmergencyNumberTrackerMock.isEmergencyNumber(NON_3GPP_EMERGENCY_TEST_NUMBER, true);
+        mEmergencyNumberTrackerMock.isEmergencyNumber(NON_3GPP_EMERGENCY_TEST_NUMBER);
 
         //verify that we fall back to shortnumber xml when there are no SIMs
         verify(mShortNumberInfo).isEmergencyNumber(NON_3GPP_EMERGENCY_TEST_NUMBER, "JP");
@@ -436,7 +436,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         processAllMessages();
 
         replaceInstance(ShortNumberInfo.class, "INSTANCE", null, mShortNumberInfo);
-        mEmergencyNumberTrackerMock.isEmergencyNumber(NON_3GPP_EMERGENCY_TEST_NUMBER, true);
+        mEmergencyNumberTrackerMock.isEmergencyNumber(NON_3GPP_EMERGENCY_TEST_NUMBER);
 
         //verify we do not use ShortNumber xml
         verify(mShortNumberInfo, never()).isEmergencyNumber(anyString(), anyString());
