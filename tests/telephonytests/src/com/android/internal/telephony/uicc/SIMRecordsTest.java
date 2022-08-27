@@ -22,9 +22,11 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.content.Context;
@@ -41,6 +43,7 @@ import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.uicc.IccRecords.OperatorPlmnInfo;
 import com.android.internal.telephony.uicc.IccRecords.PlmnNetworkName;
+import com.android.telephony.Rlog;
 
 import org.junit.After;
 import org.junit.Before;
@@ -50,6 +53,8 @@ import org.junit.runner.RunWith;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(AndroidJUnit4.class)
 public class SIMRecordsTest extends TelephonyTest {
@@ -715,5 +720,220 @@ public class SIMRecordsTest extends TelephonyTest {
         String mockSst = IccUtils.bytesToHexString(sst);
         String resultSst = mSIMRecordsUT.getSimServiceTable();
         assertEquals(mockSst, resultSst);
+    }
+
+    @Test
+    public void testSetVoiceMailNumber() throws InterruptedException {
+
+        String voiceMailNumber = "1234567890";
+        String alphaTag = "Voicemail";
+        final CountDownLatch latch = new CountDownLatch(2);
+        doAnswer(
+                invocation -> {
+                    int[] result = new int[3];
+                    result[0] = 32;
+                    result[1] = 32;
+                    result[2] = 1;
+                    Rlog.d("SIMRecordsTest", "Executing the test invocation1");
+                    Message response = invocation.getArgument(2);
+                    AsyncResult.forMessage(response, result, null);
+                    response.sendToTarget();
+                    latch.countDown();
+                    return null;
+                })
+                .when(mFhMock)
+                .getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
+
+        doAnswer(
+                invocation -> {
+                    int[] result = new int[3];
+                    result[0] = 32;
+                    result[1] = 32;
+                    result[2] = 1;
+                    Rlog.d("SIMRecordsTest", "Executing the test invocation2");
+                    Message response = invocation.getArgument(5);
+                    AsyncResult.forMessage(response, result, null);
+                    response.sendToTarget();
+                    latch.countDown();
+                    return null;
+                })
+                .when(mFhMock)
+                .updateEFLinearFixed(anyInt(), eq(null), anyInt(), any(byte[].class),
+                        eq(null), any(Message.class));
+
+
+        mSIMRecordsUT.setMailboxIndex(1);
+        Message message = Message.obtain(mTestHandler);
+        mSIMRecordsUT.setVoiceMailNumber(alphaTag, voiceMailNumber, message);
+        latch.await(5, TimeUnit.SECONDS);
+        mTestLooper.startAutoDispatch();
+        verify(mFhMock, times(1)).getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
+        verify(mFhMock, times(1)).updateEFLinearFixed(anyInt(), eq(null),
+                anyInt(), any(byte[].class), eq(null), any(Message.class));
+
+        assertEquals(voiceMailNumber, mSIMRecordsUT.getVoiceMailNumber());
+        assertEquals(alphaTag, mSIMRecordsUT.getVoiceMailAlphaTag());
+    }
+
+    @Test
+    public void testSetVoiceMailNumberBigAlphatag() throws InterruptedException {
+
+        String voiceMailNumber = "1234567890";
+        String alphaTag = "VoicemailAlphaTag-VoicemailAlphaTag";
+        final CountDownLatch latch = new CountDownLatch(2);
+        doAnswer(
+                invocation -> {
+                    int[] result = new int[3];
+                    result[0] = 32;
+                    result[1] = 32;
+                    result[2] = 1;
+                    Rlog.d("SIMRecordsTest", "Executing the test invocation1");
+                    Message response = invocation.getArgument(2);
+                    AsyncResult.forMessage(response, result, null);
+                    response.sendToTarget();
+                    latch.countDown();
+                    return null;
+                })
+                .when(mFhMock)
+                .getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
+
+        doAnswer(
+                invocation -> {
+                    int[] result = new int[3];
+                    result[0] = 32;
+                    result[1] = 32;
+                    result[2] = 1;
+                    Rlog.d("SIMRecordsTest", "Executing the test invocation2");
+                    Message response = invocation.getArgument(5);
+                    AsyncResult.forMessage(response, result, null);
+                    response.sendToTarget();
+                    latch.countDown();
+                    return null;
+                })
+                .when(mFhMock)
+                .updateEFLinearFixed(anyInt(), eq(null), anyInt(), any(byte[].class),
+                        eq(null), any(Message.class));
+
+
+        mSIMRecordsUT.setMailboxIndex(1);
+        Message message = Message.obtain(mTestHandler);
+        mSIMRecordsUT.setVoiceMailNumber(alphaTag, voiceMailNumber, message);
+        latch.await(8, TimeUnit.SECONDS);
+        mTestLooper.startAutoDispatch();
+        verify(mFhMock, times(1)).getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
+        verify(mFhMock, times(1)).updateEFLinearFixed(anyInt(), eq(null),
+                anyInt(), any(byte[].class), eq(null), any(Message.class));
+
+        //if attempt to save bugAlphatag which sim don't support so we will make it null
+        assertEquals(null, mSIMRecordsUT.getVoiceMailAlphaTag());
+        assertEquals(voiceMailNumber, mSIMRecordsUT.getVoiceMailNumber());
+    }
+
+    @Test
+    public void testSetVoiceMailNumberUtf16Alphatag() throws InterruptedException {
+
+        String voiceMailNumber = "1234567890";
+        String alphaTag = "หมายเลขข้อความเสียง"; // Messagerie vocale
+        final CountDownLatch latch = new CountDownLatch(2);
+        doAnswer(
+                invocation -> {
+                    int[] result = new int[3];
+                    result[0] = 32;
+                    result[1] = 32;
+                    result[2] = 1;
+                    Rlog.d("SIMRecordsTest", "Executing the test invocation1");
+                    Message response = invocation.getArgument(2);
+                    AsyncResult.forMessage(response, result, null);
+                    response.sendToTarget();
+                    latch.countDown();
+                    return null;
+                })
+                .when(mFhMock)
+                .getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
+
+        doAnswer(
+                invocation -> {
+                    int[] result = new int[3];
+                    result[0] = 32;
+                    result[1] = 32;
+                    result[2] = 1;
+                    Rlog.d("SIMRecordsTest", "Executing the test invocation2");
+                    Message response = invocation.getArgument(5);
+                    AsyncResult.forMessage(response, result, null);
+                    response.sendToTarget();
+                    latch.countDown();
+                    return null;
+                })
+                .when(mFhMock)
+                .updateEFLinearFixed(anyInt(), eq(null), anyInt(), any(byte[].class),
+                        eq(null), any(Message.class));
+
+
+        mSIMRecordsUT.setMailboxIndex(1);
+        Message message = Message.obtain(mTestHandler);
+        mSIMRecordsUT.setVoiceMailNumber(alphaTag, voiceMailNumber, message);
+        latch.await(5, TimeUnit.SECONDS);
+        mTestLooper.startAutoDispatch();
+        verify(mFhMock, times(1)).getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
+        verify(mFhMock, times(1)).updateEFLinearFixed(anyInt(), eq(null),
+                anyInt(), any(byte[].class), eq(null), any(Message.class));
+
+        assertEquals(voiceMailNumber, mSIMRecordsUT.getVoiceMailNumber());
+        //if attempt to save bugAlphatag which sim don't support so we will make it null
+        assertEquals(null, mSIMRecordsUT.getVoiceMailAlphaTag());
+    }
+
+
+    @Test
+    public void testSetVoiceMailNullNumber() throws InterruptedException {
+
+        String voiceMailNumber = null;
+        String alphaTag = "VoicemailAlphaTag"; // Messagerie vocale
+        final CountDownLatch latch = new CountDownLatch(2);
+        doAnswer(
+                invocation -> {
+                    int[] result = new int[3];
+                    result[0] = 32;
+                    result[1] = 32;
+                    result[2] = 1;
+                    Rlog.d("SIMRecordsTest", "Executing the test invocation1");
+                    Message response = invocation.getArgument(2);
+                    AsyncResult.forMessage(response, result, null);
+                    response.sendToTarget();
+                    latch.countDown();
+                    return null;
+                })
+                .when(mFhMock)
+                .getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
+
+        doAnswer(
+                invocation -> {
+                    int[] result = new int[3];
+                    result[0] = 32;
+                    result[1] = 32;
+                    result[2] = 1;
+                    Rlog.d("SIMRecordsTest", "Executing the test invocation2");
+                    Message response = invocation.getArgument(5);
+                    AsyncResult.forMessage(response, result, null);
+                    response.sendToTarget();
+                    latch.countDown();
+                    return null;
+                })
+                .when(mFhMock)
+                .updateEFLinearFixed(anyInt(), eq(null), anyInt(), any(byte[].class),
+                        eq(null), any(Message.class));
+
+
+        mSIMRecordsUT.setMailboxIndex(1);
+        Message message = Message.obtain(mTestHandler);
+        mSIMRecordsUT.setVoiceMailNumber(alphaTag, voiceMailNumber, message);
+        latch.await(5, TimeUnit.SECONDS);
+        mTestLooper.startAutoDispatch();
+        verify(mFhMock, times(1)).getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
+        verify(mFhMock, times(1)).updateEFLinearFixed(anyInt(), eq(null),
+                anyInt(), any(byte[].class), eq(null), any(Message.class));
+
+        assertEquals(null, mSIMRecordsUT.getVoiceMailNumber());
+        assertEquals(alphaTag, mSIMRecordsUT.getVoiceMailAlphaTag());
     }
 }
