@@ -33,6 +33,23 @@
       "message": "Indentation is wrong.",
       "revId": "b238c3ed99ae0fb46a2b60ef4c84c237b61d0255",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "85a49d16_588eb6af",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 6360
+      },
+      "writtenOn": "2022-08-28T05:22:39Z",
+      "side": 1,
+      "message": "Wether -\u003e Whether\n\ntypo",
+      "revId": "b238c3ed99ae0fb46a2b60ef4c84c237b61d0255",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
