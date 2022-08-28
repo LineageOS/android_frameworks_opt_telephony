@@ -1149,7 +1149,7 @@ public class DataNetworkTest extends TelephonyTest {
         verify(mVcnManager).addVcnNetworkPolicyChangeListener(any(Executor.class),
                 any(VcnNetworkPolicyChangeListener.class));
         verify(mSST).registerForCssIndicatorChanged(any(Handler.class), anyInt(), eq(null));
-        verify(mSST).registerForServiceStateChanged(any(Handler.class), anyInt());
+        verify(mSST).registerForServiceStateChanged(any(Handler.class), anyInt(), any());
         verify(mCT).registerForVoiceCallStarted(any(Handler.class), anyInt(), eq(null));
         verify(mCT).registerForVoiceCallEnded(any(Handler.class), anyInt(), eq(null));
         verify(mImsCT).registerForVoiceCallStarted(any(Handler.class), anyInt(), eq(null));

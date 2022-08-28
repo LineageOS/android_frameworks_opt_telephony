@@ -103,6 +103,7 @@ import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.MultiSimSettingController;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksManagerCallback;
@@ -680,7 +681,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(infoList).when(mSubscriptionController).getSubscriptionsInGroup(
                 any(), any(), any());
         doReturn(true).when(mSubscriptionController).isActiveSubId(anyInt());
-        doReturn(0).when(mSubscriptionController).getPhoneId(anyInt());
+        doReturn(0).when(mSubscriptionController).getPhoneId(1);
+        doReturn(1).when(mSubscriptionController).getPhoneId(2);
 
         for (int transport : new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN}) {
@@ -1497,7 +1499,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     @Test
-    public void testIsDataEnabledOverriddenForApn_dataDuringCall() throws Exception {
+    public void testIsDataEnabledOverriddenForApnDataDuringCall() throws Exception {
         doReturn(1).when(mPhone).getSubId();
         doReturn(2).when(mSubscriptionController).getDefaultDataSubId();
         // Data disabled
@@ -1530,6 +1532,49 @@ public class DataNetworkControllerTest extends TelephonyTest {
         // Disable during data call mobile policy
         mDataNetworkControllerUT.getDataSettingsManager().setMobileDataPolicy(TelephonyManager
                 .MOBILE_DATA_POLICY_DATA_ON_NON_DEFAULT_DURING_VOICE_CALL, false);
+        processAllMessages();
+
+        // Verify no internet connection
+        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+    }
+
+    @Test
+    public void testIsDataEnabledOverriddenForApnAutoDataSwitch() throws Exception {
+        // Assume phone2 is the default data phone
+        Phone phone2 = Mockito.mock(Phone.class);
+        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[]{mPhone, phone2});
+        doReturn(2).when(mSubscriptionController).getDefaultDataSubId();
+
+        // Data disabled on nonDDS
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false, mContext.getOpPackageName());
+
+        // Enable auto data switch mobile policy
+        mDataNetworkControllerUT.getDataSettingsManager().setMobileDataPolicy(TelephonyManager
+                .MOBILE_DATA_POLICY_AUTO_DATA_SWITCH, true);
+        processAllMessages();
+
+        // use disabled data on DDS
+        doReturn(false).when(phone2).isUserDataEnabled();
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        processAllMessages();
+
+        // Verify no internet connection
+        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+
+        // use enabled data on DDS
+        doReturn(true).when(phone2).isUserDataEnabled();
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        processAllMessages();
+
+        // Verify internet connection
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+
+        // Disable auto data switch mobile policy
+        mDataNetworkControllerUT.getDataSettingsManager().setMobileDataPolicy(TelephonyManager
+                .MOBILE_DATA_POLICY_AUTO_DATA_SWITCH, false);
         processAllMessages();
 
         // Verify no internet connection

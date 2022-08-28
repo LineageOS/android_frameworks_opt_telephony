@@ -45,6 +45,7 @@ import android.util.LocalLog;
 import com.android.internal.telephony.GlobalSettingsHelper;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SettingsObserver;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
@@ -708,13 +709,25 @@ public class DataSettingsManager extends Handler {
             overridden = apnType == ApnSetting.TYPE_MMS;
         }
 
-        boolean isNonDds = mPhone.getSubId() != SubscriptionController.getInstance()
-                .getDefaultDataSubId();
+        SubscriptionController subscriptionController = SubscriptionController.getInstance();
+        boolean isNonDds = mPhone.getSubId() != subscriptionController.getDefaultDataSubId();
 
         // mobile data policy : data during call
         if (isMobileDataPolicyEnabled(TelephonyManager
                 .MOBILE_DATA_POLICY_DATA_ON_NON_DEFAULT_DURING_VOICE_CALL)) {
             overridden = isNonDds && mPhone.getState() != PhoneConstants.State.IDLE;
+        }
+
+        // mobile data policy : auto data switch
+        if (isMobileDataPolicyEnabled(TelephonyManager.MOBILE_DATA_POLICY_AUTO_DATA_SWITCH)) {
+            // check user enabled data on the default data phone
+            Phone defaultDataPhone = PhoneFactory.getPhone(subscriptionController.getPhoneId(
+                    subscriptionController.getDefaultDataSubId()));
+            if (defaultDataPhone == null) {
+                loge("isDataEnabledOverriddenForApn: unexpected defaultDataPhone is null");
+            } else {
+                overridden = isNonDds && defaultDataPhone.isUserDataEnabled();
+            }
         }
         return overridden;
     }
