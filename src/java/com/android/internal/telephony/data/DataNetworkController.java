@@ -3030,7 +3030,7 @@ public class DataNetworkController extends Handler {
             }
 
             if (nrAdvancedCapableByPco != mNrAdvancedCapableByPco) {
-                log("onPcoDataChanged: mNrAdvancedCapableByPco = " + mNrAdvancedCapableByPco);
+                log("onPcoDataChanged: mNrAdvancedCapableByPco = " + nrAdvancedCapableByPco);
                 mNrAdvancedCapableByPco = nrAdvancedCapableByPco;
                 mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                         () -> callback.onNrAdvancedCapableByPcoChanged(mNrAdvancedCapableByPco)));
