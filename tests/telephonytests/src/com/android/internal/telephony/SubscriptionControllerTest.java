@@ -17,6 +17,7 @@ package com.android.internal.telephony;
 
 import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_REMOTE_SERVICE_EXCEPTION;
 
+import static com.android.internal.telephony.SubscriptionController.REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID;
 import static com.android.internal.telephony.uicc.IccCardStatus.CardState.CARDSTATE_PRESENT;
 
 import static org.junit.Assert.assertEquals;
@@ -32,7 +33,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -40,6 +43,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.Manifest;
+import android.compat.testing.PlatformCompatChangeRule;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Intent;
@@ -67,9 +71,14 @@ import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccSlot;
 
+import libcore.junit.util.compat.CoreCompatChangeRule.DisableCompatChanges;
+import libcore.junit.util.compat.CoreCompatChangeRule.EnableCompatChanges;
+
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 import org.mockito.ArgumentCaptor;
 
 import java.util.ArrayList;
@@ -106,6 +115,9 @@ public class SubscriptionControllerTest extends TelephonyTest {
     private static final String UNAVAILABLE_NUMBER = "";
     private static final String DISPLAY_NUMBER = "123456";
     private static final String DISPLAY_NAME = "testing_display_name";
+
+    @Rule
+    public TestRule mCompatChangeRule = new PlatformCompatChangeRule();
 
     @Before
     public void setUp() throws Exception {
@@ -1072,6 +1084,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    @EnableCompatChanges({REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID})
     public void testAddSubscriptionIntoGroupWithCarrierPrivilegePermission() throws Exception {
         testInsertSim();
         // Adding a second profile and mark as embedded.
@@ -1088,6 +1101,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         // Create group for sub 1.
         int[] subIdList = new int[] {1};
+        doReturn(subIdList).when(mSubscriptionManager).getCompleteActiveSubscriptionIdList();
         doReturn(true).when(mTelephonyManager).hasCarrierPrivileges(1);
         ParcelUuid groupId = mSubscriptionControllerUT.createSubscriptionGroup(
                 subIdList, "packageName1");
@@ -1123,6 +1137,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    @EnableCompatChanges({REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID})
     public void testUpdateSubscriptionGroupWithCarrierPrivilegePermission() throws Exception {
         testInsertSim();
         // Adding a second profile and mark as embedded.
@@ -1139,6 +1154,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         int[] subIdList = new int[] {1};
 
+        doReturn(subIdList).when(mSubscriptionManager).getCompleteActiveSubscriptionIdList();
         doReturn(true).when(mTelephonyManager).hasCarrierPrivileges(1);
         doReturn(true).when(mTelephonyManager).hasCarrierPrivileges(2);
 
@@ -1244,6 +1260,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    @EnableCompatChanges({REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID})
     public void testSetSubscriptionGroup() throws Exception {
         testInsertSim();
         // Adding a second profile and mark as embedded.
@@ -1266,6 +1283,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         assertNotEquals(null, groupUuid);
 
         // Sub 1 and sub 2 should be in same group.
+        doReturn(subIdList).when(mSubscriptionManager).getCompleteActiveSubscriptionIdList();
         List<SubscriptionInfo> infoList = mSubscriptionControllerUT.getSubscriptionsInGroup(
                 groupUuid, mContext.getOpPackageName(), mContext.getAttributionTag());
         assertNotEquals(null, infoList);
@@ -1679,26 +1697,9 @@ public class SubscriptionControllerTest extends TelephonyTest {
     }
 
     @Test
-    public void testGetSubscriptionsInGroupWithNoPermission() throws Exception {
-        // If the calling package does not have the READ_PHONE_STATE permission or carrier
-        // privileges then getSubscriptionsInGroup should throw a SecurityException when the
-        // READ_PHONE_STATE permission check is performed.
-        ParcelUuid groupUuid = setupGetSubscriptionsInGroupTest();
-        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
-
-        try {
-            mSubscriptionControllerUT.getSubscriptionsInGroup(groupUuid, mCallingPackage,
-                    mCallingFeature);
-            fail("getSubscriptionsInGroup should fail when invoked with no permissions");
-        } catch (SecurityException expected) {
-        }
-    }
-
-    @Test
+    @DisableCompatChanges({REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID})
     public void testGetSubscriptionsInGroupWithReadPhoneState() throws Exception {
-        // If the calling package only has the READ_PHONE_STATE permission then
-        // getSubscriptionsInGroup should still return the list of SubscriptionInfo objects
-        // but the ICC ID should not be available via getIccId or getCardString.
+        // For backward compatibility test
         ParcelUuid groupUuid = setupGetSubscriptionsInGroupTest();
         setupReadPhoneNumbersTest();
         setIdentifierAccess(false);
@@ -1715,6 +1716,72 @@ public class SubscriptionControllerTest extends TelephonyTest {
     }
 
     @Test
+    @EnableCompatChanges({REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID})
+    public void testGetSubscriptionsInGroupWithoutAppropriatePermission() throws Exception {
+        ParcelUuid groupUuid = setupGetSubscriptionsInGroupTest();
+
+        // no permission
+        setNoPermission();
+        try {
+            mSubscriptionControllerUT.getSubscriptionsInGroup(groupUuid, mCallingPackage,
+                    mCallingFeature);
+            fail("getSubscriptionsInGroup should fail when invoked with no permissions");
+        } catch (SecurityException expected) {
+        }
+
+        // only has the USE_ICC_AUTH_WITH_DEVICE_IDENTIFIER permission
+        setIdentifierAccess(true);
+        try {
+            mSubscriptionControllerUT.getSubscriptionsInGroup(groupUuid, mCallingPackage,
+                    mCallingFeature);
+            fail("getSubscriptionsInGroup should fail when invoked with no"
+                    + "READ_PHONE_STATE permissions");
+        } catch (SecurityException expected) {
+        }
+
+        // only has the READ_PHONE_STATE permission
+        setIdentifierAccess(false);
+        setReadPhoneState();
+        try {
+            mSubscriptionControllerUT.getSubscriptionsInGroup(groupUuid, mCallingPackage,
+                    mCallingFeature);
+            fail("getSubscriptionsInGroup should fail when invoked with no "
+                    + "USE_ICC_AUTH_WITH_DEVICE_IDENTIFIER permissions");
+        } catch (SecurityException expected) {
+        }
+    }
+
+    @Test
+    @EnableCompatChanges({REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID})
+    public void testGetSubscriptionsInGroupWithReadDeviceIdentifier() throws Exception {
+        ParcelUuid groupUuid = setupGetSubscriptionsInGroupTest();
+        setNoPermission();
+        setCarrierPrivileges(false);
+        setIdentifierAccess(true);
+        setReadPhoneState();
+
+        List<SubscriptionInfo> subInfoList = mSubscriptionControllerUT.getSubscriptionsInGroup(
+                groupUuid, mCallingPackage, mCallingFeature);
+
+        assertTrue(subInfoList.size() > 0);
+        for (SubscriptionInfo info : subInfoList) {
+            assertTrue(info.getIccId().length() > 0);
+            assertTrue(info.getCardString().length() > 0);
+        }
+    }
+
+    private void setNoPermission() {
+        doThrow(new SecurityException()).when(mContext)
+                .enforcePermission(anyString(), anyInt(), anyInt(), anyString());
+    }
+
+    private void setReadPhoneState() {
+        doNothing().when(mContext).enforcePermission(
+                eq(android.Manifest.permission.READ_PHONE_STATE), anyInt(), anyInt(), anyString());
+    }
+
+    @Test
+    @EnableCompatChanges({REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID})
     public void testGetSubscriptionInGroupWithPhoneNumberAccess() throws Exception {
         // If the calling package meets any of the requirements for the
         // LegacyPermissionManager#checkPhoneNumberAccess test then the number should be available
@@ -1732,6 +1799,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     }
 
     @Test
+    @EnableCompatChanges({REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID})
     public void testGetSubscriptionsInGroupWithCarrierPrivileges() throws Exception {
         // If the calling package has the READ_PRIVILEGED_PHONE_STATE permission or carrier
         // privileges the ICC ID should be available in the SubscriptionInfo objects in the List.
@@ -1749,6 +1817,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     }
 
     @Test
+    @EnableCompatChanges({REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID})
     public void testGetSubscriptionsInGroupWithPrivilegedPermission() throws Exception {
         // If the calling package has the READ_PRIVILEGED_PHONE_STATE permission or carrier
         // privileges the ICC ID should be available in the SubscriptionInfo objects in the List.
@@ -1770,6 +1839,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
         ParcelUuid groupUuid = mSubscriptionControllerUT.createSubscriptionGroup(subIdList,
                 mCallingPackage);
         assertNotNull(groupUuid);
+        doReturn(subIdList).when(mSubscriptionManager).getCompleteActiveSubscriptionIdList();
         return groupUuid;
     }
 
