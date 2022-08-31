@@ -917,6 +917,9 @@ public class DataProfileManager extends Handler {
                 ? apn1.getMtuV4() : apn2.getMtuV4());
         apnBuilder.setMtuV6(apn2.getMtuV6() <= ApnSetting.UNSET_MTU
                 ? apn1.getMtuV6() : apn2.getMtuV6());
+        // legacy properties that don't matter
+        apnBuilder.setMvnoType(apn1.getMvnoType());
+        apnBuilder.setMvnoMatchData(apn1.getMvnoMatchData());
 
         // The following fields in apn1 and apn2 should be the same, otherwise ApnSetting.similar()
         // should fail earlier.
@@ -931,8 +934,6 @@ public class DataProfileManager extends Handler {
         apnBuilder.setMaxConns(apn1.getMaxConns());
         apnBuilder.setWaitTime(apn1.getWaitTime());
         apnBuilder.setMaxConnsTime(apn1.getMaxConnsTime());
-        apnBuilder.setMvnoType(apn1.getMvnoType());
-        apnBuilder.setMvnoMatchData(apn1.getMvnoMatchData());
         apnBuilder.setApnSetId(apn1.getApnSetId());
         apnBuilder.setCarrierId(apn1.getCarrierId());
         apnBuilder.setSkip464Xlat(apn1.getSkip464Xlat());
