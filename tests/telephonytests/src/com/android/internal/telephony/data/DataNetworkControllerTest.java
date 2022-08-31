@@ -2342,6 +2342,76 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testNrAdvancedByEarlyPco() {
+        Mockito.reset(mMockedWwanDataServiceManager);
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        processAllMessages();
+
+        // PCO data arrives before data network entering connected state.
+        mSimulatedCommands.triggerPcoData(1, "IPV6", 1234, new byte[]{1});
+        processAllMessages();
+
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mMockedWwanDataServiceManager).setupDataCall(anyInt(), any(DataProfile.class),
+                anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(), any(), any(), anyBoolean(),
+                messageCaptor.capture());
+
+        // Send setup data call complete message.
+        Message msg = messageCaptor.getValue();
+        msg.getData().putParcelable("data_call_response",
+                createDataCallResponse(1, DataCallResponse.LINK_STATUS_ACTIVE));
+        msg.arg1 = DataServiceCallback.RESULT_SUCCESS;
+        msg.sendToTarget();
+        processAllMessages();
+
+        verify(mMockedDataNetworkControllerCallback).onNrAdvancedCapableByPcoChanged(eq(true));
+    }
+
+    @Test
+    public void testNrAdvancedByPcoMultipleNetworks() throws Exception {
+        testSetupDataNetwork();
+        setSuccessfulSetupDataResponse(mMockedDataServiceManagers
+                .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), 2);
+        testSetupImsDataNetwork();
+
+        verify(mMockedDataNetworkControllerCallback, never())
+                .onNrAdvancedCapableByPcoChanged(anyBoolean());
+        mSimulatedCommands.triggerPcoData(2, "IPV6", 1234, new byte[]{1});
+        processAllMessages();
+        verify(mMockedDataNetworkControllerCallback).onNrAdvancedCapableByPcoChanged(eq(true));
+    }
+
+    @Test
+    public void testNrAdvancedByEarlyUnrelatedPco() {
+        Mockito.reset(mMockedWwanDataServiceManager);
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        processAllMessages();
+
+        // Unrelated PCO data arrives before data network entering connected state.
+        mSimulatedCommands.triggerPcoData(2, "IPV6", 1234, new byte[]{1});
+        processAllMessages();
+
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mMockedWwanDataServiceManager).setupDataCall(anyInt(), any(DataProfile.class),
+                anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(), any(), any(), anyBoolean(),
+                messageCaptor.capture());
+
+        // Send setup data call complete message.
+        Message msg = messageCaptor.getValue();
+        msg.getData().putParcelable("data_call_response",
+                createDataCallResponse(1, DataCallResponse.LINK_STATUS_ACTIVE));
+        msg.arg1 = DataServiceCallback.RESULT_SUCCESS;
+        msg.sendToTarget();
+        processAllMessages();
+
+        verify(mMockedDataNetworkControllerCallback, never()).onNrAdvancedCapableByPcoChanged(
+                anyBoolean());
+    }
+
+
+    @Test
     public void testSetupDataNetworkVcnManaged() throws Exception {
         // VCN managed
         setVcnManagerPolicy(true, false);
