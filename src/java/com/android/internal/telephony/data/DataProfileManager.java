@@ -852,7 +852,7 @@ public class DataProfileManager extends Handler {
                         || b.getNetworkTypeBitmask()
                         == (int) TelephonyManager.NETWORK_TYPE_BITMASK_UNKNOWN
                         || (a.getNetworkTypeBitmask() & b.getNetworkTypeBitmask()) != 0)) {
-                    reportAnomaly("Found overlapped network type under the APN name"
+                    reportAnomaly("Found overlapped network type under the APN name "
                                     + a.getApnName(),
                             "9af73e18-b523-4dc5-adab-4bb24555d839");
                 }
