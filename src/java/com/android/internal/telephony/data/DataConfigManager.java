@@ -288,6 +288,8 @@ public class DataConfigManager extends Handler {
     /** The network types that only support single data networks */
     private @NonNull final @NetworkType List<Integer> mSingleDataNetworkTypeList =
             new ArrayList<>();
+    private @NonNull final @NetCapability Set<Integer> mCapabilitiesExemptFromSingleDataList =
+            new HashSet<>();
     /** The network types that support temporarily not metered */
     private @NonNull final @DataConfigNetworkType Set<String> mUnmeteredNetworkTypes =
             new HashSet<>();
@@ -458,13 +460,13 @@ public class DataConfigManager extends Handler {
         updateNetworkCapabilityPriority();
         updateDataRetryRules();
         updateMeteredApnTypes();
-        updateSingleDataNetworkTypeList();
+        updateSingleDataNetworkTypeAndCapabilityExemption();
         updateUnmeteredNetworkTypes();
         updateBandwidths();
         updateTcpBuffers();
         updateHandoverRules();
 
-        log("Data config updated. Config is " + (isConfigCarrierSpecific() ? "" : "not ")
+        log("Carrier config updated. Config is " + (isConfigCarrierSpecific() ? "" : "not ")
                 + "carrier specific.");
     }
 
@@ -649,14 +651,21 @@ public class DataConfigManager extends Handler {
     /**
      * Update the network types for only single data networks from the carrier config.
      */
-    private void updateSingleDataNetworkTypeList() {
+    private void updateSingleDataNetworkTypeAndCapabilityExemption() {
         synchronized (this) {
             mSingleDataNetworkTypeList.clear();
+            mCapabilitiesExemptFromSingleDataList.clear();
             int[] singleDataNetworkTypeList = mCarrierConfig.getIntArray(
                     CarrierConfigManager.KEY_ONLY_SINGLE_DC_ALLOWED_INT_ARRAY);
             if (singleDataNetworkTypeList != null) {
-                Arrays.stream(singleDataNetworkTypeList)
-                        .forEach(mSingleDataNetworkTypeList::add);
+                Arrays.stream(singleDataNetworkTypeList).forEach(mSingleDataNetworkTypeList::add);
+            }
+
+            int[] singleDataCapabilitiesExemptList = mCarrierConfig.getIntArray(
+                    CarrierConfigManager.KEY_CAPABILITIES_EXEMPT_FROM_SINGLE_DC_CHECK_INT_ARRAY);
+            if (singleDataCapabilitiesExemptList != null) {
+                Arrays.stream(singleDataCapabilitiesExemptList)
+                        .forEach(mCapabilitiesExemptFromSingleDataList::add);
             }
         }
     }
@@ -666,6 +675,14 @@ public class DataConfigManager extends Handler {
      */
     public @NonNull @NetworkType List<Integer> getNetworkTypesOnlySupportSingleDataNetwork() {
         return Collections.unmodifiableList(mSingleDataNetworkTypeList);
+    }
+
+    /**
+     * @return The list of {@link android.net.NetworkCapabilities.NetCapability} that every of which
+     * is exempt from the single PDN check.
+     */
+    public @NonNull @NetCapability Set<Integer> getCapabilitiesExemptFromSingleDataNetwork() {
+        return Collections.unmodifiableSet(mCapabilitiesExemptFromSingleDataList);
     }
 
     /**
@@ -1289,6 +1306,9 @@ public class DataConfigManager extends Handler {
                 .map(ApnSetting::getApnTypeString).collect(Collectors.joining(",")));
         pw.println("Single data network types=" + mSingleDataNetworkTypeList.stream()
                 .map(TelephonyManager::getNetworkTypeName).collect(Collectors.joining(",")));
+        pw.println("Capabilities exempt from single PDN=" + mCapabilitiesExemptFromSingleDataList
+                .stream().map(DataUtils::networkCapabilityToString)
+                .collect(Collectors.joining(",")));
         pw.println("Unmetered network types=" + String.join(",", mUnmeteredNetworkTypes));
         pw.println("Roaming unmetered network types="
                 + String.join(",", mRoamingUnmeteredNetworkTypes));
