@@ -37,6 +37,7 @@ import com.android.telephony.Rlog;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -280,41 +281,61 @@ public class QosCallbackTracker extends Handler {
 
     private boolean matchesByLocalAddress(final @NonNull QosBearerFilter sessionFilter,
             final @NonNull IFilter filter) {
-        if (sessionFilter.getLocalPortRange() == null) return false;
-        for (final LinkAddress qosAddress : sessionFilter.getLocalAddresses()) {
-            return filter.matchesLocalAddress(qosAddress.getAddress(),
-                    sessionFilter.getLocalPortRange().getStart(),
-                    sessionFilter.getLocalPortRange().getEnd());
+        int portStart;
+        int portEnd;
+        if (sessionFilter.getLocalPortRange() == null) {
+            portStart = QosBearerFilter.QOS_MIN_PORT;
+            portEnd = QosBearerFilter.QOS_MAX_PORT;
+        } else if (sessionFilter.getLocalPortRange().isValid()) {
+            portStart = sessionFilter.getLocalPortRange().getStart();
+            portEnd = sessionFilter.getLocalPortRange().getEnd();
+        } else {
+            return false;
+        }
+        if (sessionFilter.getLocalAddresses().isEmpty()) {
+            InetAddress anyAddress;
+            try {
+                anyAddress = InetAddress.getByAddress(new byte[] {0, 0, 0, 0});
+            } catch (UnknownHostException e) {
+                return false;
+            }
+            return filter.matchesLocalAddress(anyAddress, portStart, portEnd);
+        } else {
+            for (final LinkAddress qosAddress : sessionFilter.getLocalAddresses()) {
+                return filter.matchesLocalAddress(qosAddress.getAddress(), portStart, portEnd);
+            }
         }
         return false;
     }
 
     private boolean matchesByRemoteAddress(@NonNull QosBearerFilter sessionFilter,
             final @NonNull IFilter filter) {
-        if (sessionFilter.getRemotePortRange() == null) return false;
-        for (final LinkAddress qosAddress : sessionFilter.getRemoteAddresses()) {
-            return filter.matchesRemoteAddress(qosAddress.getAddress(),
-                    sessionFilter.getRemotePortRange().getStart(),
-                    sessionFilter.getRemotePortRange().getEnd());
+        int portStart;
+        int portEnd;
+        boolean result = false;
+        if (sessionFilter.getRemotePortRange() == null) {
+            portStart = QosBearerFilter.QOS_MIN_PORT;
+            portEnd = QosBearerFilter.QOS_MAX_PORT;
+        } else if (sessionFilter.getRemotePortRange().isValid()) {
+            portStart = sessionFilter.getRemotePortRange().getStart();
+            portEnd = sessionFilter.getRemotePortRange().getEnd();
+        } else {
+            return false;
         }
-        return false;
-    }
-
-    private boolean matchesByRemoteAndLocalAddress(@NonNull QosBearerFilter sessionFilter,
-            final @NonNull IFilter filter) {
-        if (sessionFilter.getLocalPortRange() == null
-                || sessionFilter.getRemotePortRange() == null) return false;
-        for (final LinkAddress remoteAddress : sessionFilter.getRemoteAddresses()) {
-            for (final LinkAddress localAddress : sessionFilter.getLocalAddresses()) {
-                return filter.matchesRemoteAddress(remoteAddress.getAddress(),
-                        sessionFilter.getRemotePortRange().getStart(),
-                        sessionFilter.getRemotePortRange().getEnd())
-                        && filter.matchesLocalAddress(localAddress.getAddress(),
-                              sessionFilter.getLocalPortRange().getStart(),
-                              sessionFilter.getLocalPortRange().getEnd());
+        if (sessionFilter.getRemoteAddresses().isEmpty()) {
+            InetAddress anyAddress;
+            try {
+                anyAddress = InetAddress.getByAddress(new byte[] {0, 0, 0, 0});
+            } catch (UnknownHostException e) {
+                return false;
+            }
+            result = filter.matchesRemoteAddress(anyAddress, portStart, portEnd);
+        } else {
+            for (final LinkAddress qosAddress : sessionFilter.getRemoteAddresses()) {
+                result = filter.matchesRemoteAddress(qosAddress.getAddress(), portStart, portEnd);
             }
         }
-        return false;
+        return result;
     }
 
     private QosBearerFilter getFilterByPrecedence(
@@ -329,27 +350,26 @@ public class QosCallbackTracker extends Handler {
         QosBearerFilter qosFilter = null;
 
         for (final QosBearerFilter sessionFilter : qosBearerSession.getQosBearerFilterList()) {
+            boolean unMatched = false;
+            boolean hasMatchedFilter = false;
             if (!sessionFilter.getLocalAddresses().isEmpty()
-                    && !sessionFilter.getRemoteAddresses().isEmpty()
-                    && sessionFilter.getLocalPortRange() != null
-                    && sessionFilter.getLocalPortRange().isValid()
-                    && sessionFilter.getRemotePortRange() != null
-                    && sessionFilter.getRemotePortRange().isValid()) {
-                if (matchesByRemoteAndLocalAddress(sessionFilter, filter)) {
-                    qosFilter = getFilterByPrecedence(qosFilter, sessionFilter);
+                    || sessionFilter.getLocalPortRange() != null) {
+                if (!matchesByLocalAddress(sessionFilter, filter)) {
+                    unMatched = true;
+                } else {
+                    hasMatchedFilter = true;
                 }
-            } else if (!sessionFilter.getRemoteAddresses().isEmpty()
-                    && sessionFilter.getRemotePortRange() != null
-                    && sessionFilter.getRemotePortRange().isValid()) {
-                if (matchesByRemoteAddress(sessionFilter, filter)) {
-                    qosFilter = getFilterByPrecedence(qosFilter, sessionFilter);
+            }
+            if (!sessionFilter.getRemoteAddresses().isEmpty()
+                    || sessionFilter.getRemotePortRange() != null) {
+                if (!matchesByRemoteAddress(sessionFilter, filter)) {
+                    unMatched = true;
+                } else {
+                    hasMatchedFilter = true;
                 }
-            } else if (!sessionFilter.getLocalAddresses().isEmpty()
-                    && sessionFilter.getLocalPortRange() != null
-                    && sessionFilter.getLocalPortRange().isValid()) {
-                if (matchesByLocalAddress(sessionFilter, filter)) {
-                    qosFilter = getFilterByPrecedence(qosFilter, sessionFilter);
-                }
+            }
+            if (!unMatched && hasMatchedFilter) {
+                qosFilter = getFilterByPrecedence(qosFilter, sessionFilter);
             }
         }
         return qosFilter;
