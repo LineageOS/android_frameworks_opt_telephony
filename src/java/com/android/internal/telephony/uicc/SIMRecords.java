@@ -102,12 +102,12 @@ public class SIMRecords extends IccRecords {
                 + " mVmConfig" + mVmConfig
                 + " callForwardingEnabled=" + mCallForwardingStatus
                 + " spnState=" + mSpnState
-                + " mCphsInfo=" + mCphsInfo
+                + " mCphsInfo=" + IccUtils.bytesToHexString(mCphsInfo)
                 + " mCspPlmnEnabled=" + mCspPlmnEnabled
-                + " efMWIS=" + mEfMWIS
-                + " efCPHS_MWI=" + mEfCPHS_MWI
-                + " mEfCff=" + mEfCff
-                + " mEfCfis=" + mEfCfis
+                + " efMWIS=" + IccUtils.bytesToHexString(mEfMWIS)
+                + " efCPHS_MWI=" + IccUtils.bytesToHexString(mEfCPHS_MWI)
+                + " mEfCff=" + IccUtils.bytesToHexString(mEfCff)
+                + " mEfCfis=" + IccUtils.bytesToHexString(mEfCfis)
                 + " getOperatorNumeric=" + getOperatorNumeric();
     }
 
@@ -1970,7 +1970,7 @@ public class SIMRecords extends IccRecords {
             // Byte 5 and 6 are for lacTacEnd.
             // Byte 7 is for PNN Record Identifier.
             if (data.length != 8) {
-                loge("Invalid length for OPL record " + data);
+                loge("Invalid length for OPL record " + IccUtils.bytesToHexString(data));
                 continue;
             }
 
@@ -2118,14 +2118,14 @@ public class SIMRecords extends IccRecords {
         pw.println(" mVmConfig=" + mVmConfig);
         pw.println(" mCallForwardingStatus=" + mCallForwardingStatus);
         pw.println(" mSpnState=" + mSpnState);
-        pw.println(" mCphsInfo=" + mCphsInfo);
+        pw.println(" mCphsInfo=" + IccUtils.bytesToHexString(mCphsInfo));
         pw.println(" mCspPlmnEnabled=" + mCspPlmnEnabled);
         pw.println(" mEfMWIS[]=" + Arrays.toString(mEfMWIS));
         pw.println(" mEfCPHS_MWI[]=" + Arrays.toString(mEfCPHS_MWI));
         pw.println(" mEfCff[]=" + Arrays.toString(mEfCff));
         pw.println(" mEfCfis[]=" + Arrays.toString(mEfCfis));
         pw.println(" mCarrierNameDisplayCondition=" + mCarrierNameDisplayCondition);
-        pw.println(" mSpdi[]=" + mSpdi);
+        pw.println(" mSpdi[]=" + Arrays.toString(mSpdi));
         pw.println(" mUsimServiceTable=" + mUsimServiceTable);
         pw.println(" mGid1=" + mGid1);
         if (mCarrierTestOverride.isInTestMode()) {
