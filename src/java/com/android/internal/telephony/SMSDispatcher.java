@@ -164,6 +164,7 @@ public abstract class SMSDispatcher extends Handler {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected final TelephonyManager mTelephonyManager;
     protected final LocalLog mLocalLog = new LocalLog(16);
+    protected final LocalLog mSmsOutgoingErrorCodes = new LocalLog(10);
 
     /** Maximum number of times to retry sending a failed SMS. */
     protected static final int MAX_SEND_RETRIES = 3;
@@ -1044,8 +1045,10 @@ public abstract class SMSDispatcher extends Handler {
     }
 
     @SmsManager.Result
-    private static int rilErrorToSmsManagerResult(CommandException.Error rilError,
+    private int rilErrorToSmsManagerResult(CommandException.Error rilError,
             SmsTracker tracker) {
+        mSmsOutgoingErrorCodes.log("rilError: " + rilError
+                + ", MessageId: " + SmsController.formatCrossStackMessageId(tracker.mMessageId));
         switch (rilError) {
             case RADIO_NOT_AVAILABLE:
                 return SmsManager.RESULT_RIL_RADIO_NOT_AVAILABLE;
@@ -2715,10 +2718,17 @@ public abstract class SMSDispatcher extends Handler {
         IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         pw.println(TAG);
         pw.increaseIndent();
+
         pw.println("mLocalLog:");
         pw.increaseIndent();
         mLocalLog.dump(fd, pw, args);
         pw.decreaseIndent();
+
+        pw.println("mSmsOutgoingErrorCodes:");
+        pw.increaseIndent();
+        mSmsOutgoingErrorCodes.dump(fd, pw, args);
+        pw.decreaseIndent();
+
         pw.decreaseIndent();
     }
 }
