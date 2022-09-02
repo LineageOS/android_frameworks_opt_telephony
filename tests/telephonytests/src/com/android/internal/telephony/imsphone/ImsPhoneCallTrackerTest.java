@@ -33,6 +33,7 @@ import static android.telephony.TelephonyManager.SRVCC_STATE_HANDOVER_CANCELED;
 import static android.telephony.TelephonyManager.SRVCC_STATE_HANDOVER_COMPLETED;
 import static android.telephony.TelephonyManager.SRVCC_STATE_HANDOVER_FAILED;
 import static android.telephony.TelephonyManager.SRVCC_STATE_HANDOVER_STARTED;
+import static android.telephony.emergency.EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE;
 import static android.telephony.ims.ImsStreamMediaProfile.DIRECTION_INACTIVE;
 import static android.telephony.ims.ImsStreamMediaProfile.DIRECTION_SEND_RECEIVE;
 
@@ -84,6 +85,7 @@ import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
+import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsCallSession;
 import android.telephony.ims.ImsConferenceState;
@@ -2346,6 +2348,21 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
         verify(mImsPhone, times(1)).updateImsRegistrationInfo(
                 eq(CommandsInterface.IMS_MMTEL_CAPABILITY_SMS));
+    }
+
+    @Test
+    @SmallTest
+    public void testDomainSelectionAlternateService() {
+        startOutgoingCall();
+        ImsPhoneConnection c = mCTUT.mForegroundCall.getFirstConnection();
+        mImsCallProfile.setEmergencyServiceCategories(EMERGENCY_SERVICE_CATEGORY_AMBULANCE);
+        mImsCallListener.onCallStartFailed(mSecondImsCall,
+                new ImsReasonInfo(ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL, -1));
+        processAllMessages();
+        EmergencyNumber emergencyNumber = c.getEmergencyNumberInfo();
+        assertNotNull(emergencyNumber);
+        assertEquals(EMERGENCY_SERVICE_CATEGORY_AMBULANCE,
+                emergencyNumber.getEmergencyServiceCategoryBitmask());
     }
 
     private void sendCarrierConfigChanged() {

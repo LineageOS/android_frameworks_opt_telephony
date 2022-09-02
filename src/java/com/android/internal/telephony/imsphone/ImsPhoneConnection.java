@@ -244,7 +244,8 @@ public class ImsPhoneConnection extends Connection implements
 
     /** This is an MO call, created when dialing */
     public ImsPhoneConnection(Phone phone, String dialString, ImsPhoneCallTracker ct,
-            ImsPhoneCall parent, boolean isEmergency, boolean isWpsCall) {
+            ImsPhoneCall parent, boolean isEmergency, boolean isWpsCall,
+            ImsPhone.ImsDialArgs dialArgs) {
         super(PhoneConstants.PHONE_TYPE_IMS);
         createWakeLock(phone.getContext());
         acquireWakeLock();
@@ -272,6 +273,13 @@ public class ImsPhoneConnection extends Connection implements
         mIsEmergency = isEmergency;
         if (isEmergency) {
             setEmergencyCallInfo(mOwner);
+
+            if (getEmergencyNumberInfo() == null) {
+                // There was no emergency number info found for this call, however it is
+                // still marked as an emergency number. This may happen if it was a redialed
+                // non-detectable emergency call from IMS.
+                setNonDetectableEmergencyCallInfo(dialArgs.eccCategory);
+            }
         }
 
         mIsWpsCall = isWpsCall;
