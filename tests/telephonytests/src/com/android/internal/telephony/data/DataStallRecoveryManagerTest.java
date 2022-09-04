@@ -78,7 +78,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
                 })
                 .when(mDataStallRecoveryManagerCallback)
                 .invokeFromExecutor(any(Runnable.class));
-        doReturn("").when(mSubscriptionController).getDataEnabledOverrideRules(anyInt());
+        doReturn("").when(mSubscriptionController).getEnabledMobileDataPolicies(anyInt());
 
         mDataStallRecoveryManager =
                 new DataStallRecoveryManager(
