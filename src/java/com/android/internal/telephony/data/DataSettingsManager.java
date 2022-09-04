@@ -32,9 +32,11 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyManager.MobileDataPolicy;
 import android.telephony.TelephonyRegistryManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnSetting.ApnType;
+import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.IndentingPrintWriter;
@@ -49,6 +51,7 @@ import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -59,6 +62,9 @@ import java.util.stream.Collectors;
  * data roaming settings, etc...
  */
 public class DataSettingsManager extends Handler {
+    /** Invalid mobile data policy **/
+    private static final int INVALID_MOBILE_DATA_POLICY = -1;
+
     /** Event for call state changed. */
     private static final int EVENT_CALL_STATE_CHANGED = 2;
     /** Event for subscriptions updated. */
@@ -67,10 +73,9 @@ public class DataSettingsManager extends Handler {
     private static final int EVENT_SET_DATA_ENABLED_FOR_REASON = 5;
     /** Event for set data roaming enabled. */
     private static final int EVENT_SET_DATA_ROAMING_ENABLED = 6;
-    /** Event for set always allow MMS data. */
-    private static final int EVENT_SET_ALWAYS_ALLOW_MMS_DATA = 7;
-    /** Event for set allow data during voice call. */
-    private static final int EVENT_SET_ALLOW_DATA_DURING_VOICE_CALL = 8;
+    /** Event for set mobile data policy. */
+    private static final int EVENT_SET_MOBILE_DATA_POLICY = 7;
+
     /** Event for device provisioned changed. */
     private static final int EVENT_PROVISIONED_CHANGED = 9;
     /** Event for provisioning data enabled setting changed. */
@@ -83,8 +88,8 @@ public class DataSettingsManager extends Handler {
     private final SettingsObserver mSettingsObserver;
     private final String mLogTag;
     private final LocalLog mLocalLog = new LocalLog(128);
+    private Set<Integer> mEnabledMobileDataPolicy = new HashSet<>();
     private int mSubId;
-    private DataEnabledOverride mDataEnabledOverride;
 
     /** Data config manager */
     private final @NonNull DataConfigManager mDataConfigManager;
@@ -171,7 +176,7 @@ public class DataSettingsManager extends Handler {
         mResolver = mPhone.getContext().getContentResolver();
         registerCallback(callback);
         mDataConfigManager = dataNetworkController.getDataConfigManager();
-        mDataEnabledOverride = getDataEnabledOverride();
+        refreshEnabledMobileDataPolicy();
         mSettingsObserver = new SettingsObserver(mPhone.getContext(), this);
         mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_POLICY, true);
         mDataEnabledSettings.put(TelephonyManager.DATA_ENABLED_REASON_CARRIER, true);
@@ -191,7 +196,7 @@ public class DataSettingsManager extends Handler {
             }
             case EVENT_SUBSCRIPTIONS_CHANGED: {
                 mSubId = (int) msg.obj;
-                mDataEnabledOverride = getDataEnabledOverride();
+                refreshEnabledMobileDataPolicy();
                 updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_USER);
                 mPhone.notifyUserMobileDataStateChanged(isUserDataEnabled());
                 break;
@@ -225,34 +230,10 @@ public class DataSettingsManager extends Handler {
                 setDataRoamingFromUserAction();
                 break;
             }
-            case EVENT_SET_ALWAYS_ALLOW_MMS_DATA: {
-                boolean alwaysAllow = (boolean) msg.obj;
-                if (alwaysAllow == isMmsAlwaysAllowed()) {
-                    break;
-                }
-                logl("AlwaysAllowMmsData changed to " + alwaysAllow);
-                mDataEnabledOverride.setAlwaysAllowMms(alwaysAllow);
-                if (SubscriptionController.getInstance()
-                        .setDataEnabledOverrideRules(mSubId, mDataEnabledOverride.getRules())) {
-                    updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_OVERRIDE);
-                    notifyDataEnabledOverrideChanged(alwaysAllow,
-                            TelephonyManager.MOBILE_DATA_POLICY_MMS_ALWAYS_ALLOWED);
-                }
-                break;
-            }
-            case EVENT_SET_ALLOW_DATA_DURING_VOICE_CALL: {
-                boolean allow = (boolean) msg.obj;
-                if (allow == isDataAllowedInVoiceCall()) {
-                    break;
-                }
-                logl("AllowDataDuringVoiceCall changed to " + allow);
-                mDataEnabledOverride.setDataAllowedInVoiceCall(allow);
-                if (SubscriptionController.getInstance()
-                        .setDataEnabledOverrideRules(mSubId, mDataEnabledOverride.getRules())) {
-                    updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_OVERRIDE);
-                    notifyDataEnabledOverrideChanged(allow, TelephonyManager
-                            .MOBILE_DATA_POLICY_DATA_ON_NON_DEFAULT_DURING_VOICE_CALL);
-                }
+            case EVENT_SET_MOBILE_DATA_POLICY: {
+                int mobileDataPolicy = msg.arg1;
+                boolean enable = msg.arg2 == 1;
+                onSetMobileDataPolicy(mobileDataPolicy, enable);
                 break;
             }
             case EVENT_PROVISIONED_CHANGED:
@@ -399,9 +380,9 @@ public class DataSettingsManager extends Handler {
             return isProvisioningDataEnabled();
         } else {
             boolean userDataEnabled = isUserDataEnabled();
-            // Check if we should temporarily enable data in certain conditions.
-            boolean isDataEnabledOverridden = mDataEnabledOverride
-                    .shouldOverrideDataEnabledSettings(mPhone, apnType);
+            // Check if we should temporarily enable data based on mobile data policy.
+            boolean isDataEnabledOverridden = isDataEnabledOverriddenForApn(apnType);
+
 
             return ((userDataEnabled || isDataEnabledOverridden)
                     && mDataEnabledSettings.get(TelephonyManager.DATA_ENABLED_REASON_POLICY)
@@ -590,44 +571,56 @@ public class DataSettingsManager extends Handler {
         sp.putBoolean(key, true).commit();
     }
 
-    private @NonNull DataEnabledOverride getDataEnabledOverride() {
-        return new DataEnabledOverride(SubscriptionController.getInstance()
-                .getDataEnabledOverrideRules(mSubId));
+    /** Refresh the enabled mobile data policies from Telephony database */
+    private void refreshEnabledMobileDataPolicy() {
+        mEnabledMobileDataPolicy = getMobileDataPolicyEnabled(SubscriptionController
+                .getInstance().getEnabledMobileDataPolicies(mSubId));
     }
 
     /**
-     * Set whether to always allow the MMS data connection.
-     * @param alwaysAllow {@code true} if MMS data is always allowed and {@code false} otherwise.
+     * @return {@code true} If the mobile data policy is enabled
      */
-    public void setAlwaysAllowMmsData(boolean alwaysAllow) {
-        obtainMessage(EVENT_SET_ALWAYS_ALLOW_MMS_DATA, alwaysAllow).sendToTarget();
+    public boolean isMobileDataPolicyEnabled(@MobileDataPolicy int mobileDataPolicy) {
+        return mEnabledMobileDataPolicy.contains(mobileDataPolicy);
     }
 
     /**
-     * Check whether MMS is always allowed.
-     * @return {@code true} if MMS is always allowed and {@code false} otherwise.
+     * Set mobile data policy enabled status
+     * @param mobileDataPolicy The mobile data policy to set
+     * @param enable {@code true} to enable the policy; {@code false} to disable.
      */
-    public boolean isMmsAlwaysAllowed() {
-        return mDataEnabledOverride.isMmsAlwaysAllowed();
+    public void setMobileDataPolicy(@MobileDataPolicy int mobileDataPolicy, boolean enable) {
+        obtainMessage(EVENT_SET_MOBILE_DATA_POLICY, mobileDataPolicy, enable ? 1 : 0)
+                .sendToTarget();
     }
 
     /**
-     * Set whether to allow mobile data during voice call. This is used for allowing data on the
-     * non-default data SIM. When a voice call is placed on the non-default data SIM on DSDS
-     * devices, users will not be able to use mobile data. By calling this API, data will be
-     * temporarily enabled on the non-default data SIM during the life cycle of the voice call.
-     * @param allow {@code true} if data is allowed during a voice call and {@code false} otherwise.
+     * Store data mobile policy to Telephony database.
+     *
+     * @param mobileDataPolicy The mobile data policy that overrides user data enabled setting.
+     * @param enable {@code true} to enable the policy; {@code false} to remove the policy.
      */
-    public void setAllowDataDuringVoiceCall(boolean allow) {
-        obtainMessage(EVENT_SET_ALLOW_DATA_DURING_VOICE_CALL, allow).sendToTarget();
-    }
+    private void onSetMobileDataPolicy(@MobileDataPolicy int mobileDataPolicy, boolean enable) {
+        if (enable == isMobileDataPolicyEnabled(mobileDataPolicy)) {
+            return;
+        }
+        if (enable) {
+            mEnabledMobileDataPolicy.add(mobileDataPolicy);
+        } else {
+            mEnabledMobileDataPolicy.remove(mobileDataPolicy);
+        }
 
-    /**
-     * Check whether data is allowed during a voice call.
-     * @return {@code true} if data is allowed during voice call and {@code false} otherwise.
-     */
-    public boolean isDataAllowedInVoiceCall() {
-        return mDataEnabledOverride.isDataAllowedInVoiceCall();
+        String enabledMobileDataPolicies = mEnabledMobileDataPolicy.stream().map(String::valueOf)
+                .collect(Collectors.joining(","));
+        if (SubscriptionController.getInstance().setEnabledMobileDataPolicies(
+                mSubId, enabledMobileDataPolicies)) {
+            logl(DataUtils.mobileDataPolicyToString(mobileDataPolicy) + " changed to "
+                    + enable);
+            updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_OVERRIDE);
+            notifyDataEnabledOverrideChanged(enable, mobileDataPolicy);
+        } else {
+            loge("onSetMobileDataPolicy: failed to set " + enabledMobileDataPolicies);
+        }
     }
 
     /**
@@ -653,6 +646,72 @@ public class DataSettingsManager extends Handler {
         logl("notifyDataEnabledOverrideChanged: enabled=" + enabled);
         mDataSettingsManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                 () -> callback.onDataEnabledOverrideChanged(enabled, policy)));
+    }
+
+    /**
+     * Return the parsed mobile data policies.
+     *
+     * @param policies New mobile data policies in String format.
+     * @return A Set of parsed mobile data policies.
+     */
+    public @NonNull @MobileDataPolicy Set<Integer> getMobileDataPolicyEnabled(
+            @NonNull String policies) {
+        Set<Integer> mobileDataPolicies = new HashSet<>();
+        String[] rulesString = policies.trim().split("\\s*,\\s*");
+        for (String rule : rulesString) {
+            if (!TextUtils.isEmpty(rule)) {
+                int parsedDataPolicy = parsePolicyFrom(rule);
+                if (parsedDataPolicy != INVALID_MOBILE_DATA_POLICY) {
+                    mobileDataPolicies.add(parsedDataPolicy);
+                }
+            }
+        }
+        return mobileDataPolicies;
+    }
+
+    /**
+     * Parse a mobile data policy retrieved from Telephony db.
+     * If the policy is in legacy format, convert it into the corresponding mobile data policy.
+     *
+     * @param policy Mobile data policy to be parsed from.
+     * @return Parsed mobile data policy. {@link #INVALID_MOBILE_DATA_POLICY} if string can't be
+     * parsed into a mobile data policy.
+     */
+    private @MobileDataPolicy int parsePolicyFrom(@NonNull String policy) {
+        int dataPolicy;
+        try {
+            // parse as new override policy
+            dataPolicy = Integer.parseInt(policy);
+        } catch (NumberFormatException e) {
+            dataPolicy = INVALID_MOBILE_DATA_POLICY;
+            loge("parsePolicyFrom: invalid mobile data policy format: "  + policy);
+        }
+        return dataPolicy;
+    }
+
+    /**
+     * Check if data enabled is temporarily overridden in certain conditions.
+     *
+     * @param apnType The APN type to check.
+     * @return {@code true} if data enabled should be overridden.
+     */
+    private boolean isDataEnabledOverriddenForApn(@ApnType int apnType) {
+        boolean overridden = false;
+
+        // mobile data policy : MMS always allowed
+        if (isMobileDataPolicyEnabled(TelephonyManager.MOBILE_DATA_POLICY_MMS_ALWAYS_ALLOWED)) {
+            overridden = apnType == ApnSetting.TYPE_MMS;
+        }
+
+        boolean isNonDds = mPhone.getSubId() != SubscriptionController.getInstance()
+                .getDefaultDataSubId();
+
+        // mobile data policy : data during call
+        if (isMobileDataPolicyEnabled(TelephonyManager
+                .MOBILE_DATA_POLICY_DATA_ON_NON_DEFAULT_DURING_VOICE_CALL)) {
+            overridden = isNonDds;
+        }
+        return overridden;
     }
 
     /**
@@ -697,7 +756,8 @@ public class DataSettingsManager extends Handler {
                 + ", isProvisioningDataEnabled=" + isProvisioningDataEnabled()
                 + ", mIsDataEnabled=" + mIsDataEnabled
                 + ", mDataEnabledSettings=" + mDataEnabledSettings
-                + ", mDataEnabledOverride=" + mDataEnabledOverride
+                + ", mEnabledMobileDataPolicy=" + mEnabledMobileDataPolicy.stream()
+                .map(DataUtils::mobileDataPolicyToString).collect(Collectors.joining(","))
                 + "]";
     }
 
@@ -753,7 +813,8 @@ public class DataSettingsManager extends Handler {
                 .map(entry ->
                         dataEnabledChangedReasonToString(entry.getKey()) + "=" + entry.getValue())
                 .collect(Collectors.joining(", ")));
-        pw.println("mDataEnabledOverride=" + mDataEnabledOverride);
+        pw.println("mEnabledMobileDataPolicy=" + mEnabledMobileDataPolicy.stream()
+                .map(DataUtils::mobileDataPolicyToString).collect(Collectors.joining(",")));
         pw.println("Local logs:");
         pw.increaseIndent();
         mLocalLog.dump(fd, pw, args);

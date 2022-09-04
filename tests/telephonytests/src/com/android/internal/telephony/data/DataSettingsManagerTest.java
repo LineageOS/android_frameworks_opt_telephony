@@ -16,10 +16,16 @@
 
 package com.android.internal.telephony.data;
 
+import static com.google.common.truth.Truth.assertThat;
+
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import android.os.Looper;
 import android.os.PersistableBundle;
@@ -33,7 +39,10 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+
+import java.util.Set;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -54,7 +63,9 @@ public class DataSettingsManagerTest extends TelephonyTest {
         mBundle = mContextFixture.getCarrierConfigBundle();
         doReturn(true).when(mDataConfigManager).isConfigCarrierSpecific();
 
-        doReturn("").when(mSubscriptionController).getDataEnabledOverrideRules(anyInt());
+        doReturn("").when(mSubscriptionController).getEnabledMobileDataPolicies(anyInt());
+        doReturn(true).when(mSubscriptionController).setEnabledMobileDataPolicies(
+                anyInt(), anyString());
 
         mDataSettingsManagerUT = new DataSettingsManager(mPhone, mDataNetworkController,
                 Looper.myLooper(), mMockedDataSettingsManagerCallback);
@@ -65,6 +76,38 @@ public class DataSettingsManagerTest extends TelephonyTest {
     public void tearDown() throws Exception {
         logd("tearDown");
         super.tearDown();
+    }
+
+    @Test
+    public void testMobileDataPolicyParsing() {
+        //Valid new data policy
+        Set<Integer> policies = mDataSettingsManagerUT.getMobileDataPolicyEnabled("1, 2");
+        assertThat(policies.size()).isEqualTo(2);
+        Set<Integer> policies2 = mDataSettingsManagerUT.getMobileDataPolicyEnabled(",2");
+        assertThat(policies2.size()).isEqualTo(1);
+        Set<Integer> policies3 = mDataSettingsManagerUT.getMobileDataPolicyEnabled("");
+        assertThat(policies3.size()).isEqualTo(0);
+
+        // Invalid
+        Set<Integer> invalid = mDataSettingsManagerUT.getMobileDataPolicyEnabled(
+                "nonExistent, 1, 2");
+        assertThat(invalid.size()).isEqualTo(2);
+
+        Set<Integer> invalid2 = mDataSettingsManagerUT.getMobileDataPolicyEnabled(
+                "nonExistent ,,");
+        assertThat(invalid2.size()).isEqualTo(0);
+    }
+
+    @Test
+    public void testGetPolicies() {
+        mDataSettingsManagerUT.setMobileDataPolicy(1, true);
+        mDataSettingsManagerUT.setMobileDataPolicy(2, true);
+        processAllMessages();
+
+        ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mSubscriptionController, times(2))
+                .setEnabledMobileDataPolicies(anyInt(), stringArgumentCaptor.capture());
+        assertEquals("1,2", stringArgumentCaptor.getValue());
     }
 
     @Test

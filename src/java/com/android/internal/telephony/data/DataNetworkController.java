@@ -1567,7 +1567,8 @@ public class DataNetworkController extends Handler {
 
             if (!mDataSettingsManager.isDataEnabled()
                     && networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMS)
-                    && mDataSettingsManager.isMmsAlwaysAllowed()) {
+                    && mDataSettingsManager.isMobileDataPolicyEnabled(TelephonyManager
+                    .MOBILE_DATA_POLICY_MMS_ALWAYS_ALLOWED)) {
                 // We reach here when data is disabled, but MMS always-allowed is enabled.
                 // (Note that isDataEnabled(ApnSetting.TYPE_MMS) returns true in this case, so it
                 // would not generate any soft disallowed reason. We need to explicitly handle it.)
