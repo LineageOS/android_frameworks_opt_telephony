@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.os.AsyncResult;
+import android.os.Trace;
 
 import com.android.internal.telephony.uicc.IccSlotStatus;
 import com.android.telephony.Rlog;
@@ -42,7 +43,7 @@ public class RadioConfigIndicationHidl extends
     public void simSlotsStatusChanged(int indicationType,
             ArrayList<android.hardware.radio.config.V1_0.SimSlotStatus> slotStatus) {
         ArrayList<IccSlotStatus> ret = RILUtils.convertHalSlotStatus(slotStatus);
-        logd("[UNSL]< UNSOL_SIM_SLOT_STATUS_CHANGED " + ret.toString());
+        logd("UNSOL_SIM_SLOT_STATUS_CHANGED " + ret.toString());
         if (mRadioConfig.mSimSlotStatusRegistrant != null) {
             mRadioConfig.mSimSlotStatusRegistrant.notifyRegistrant(
                     new AsyncResult(null, ret, null));
@@ -55,7 +56,7 @@ public class RadioConfigIndicationHidl extends
     public void simSlotsStatusChanged_1_2(int indicationType,
             ArrayList<android.hardware.radio.config.V1_2.SimSlotStatus> slotStatus) {
         ArrayList<IccSlotStatus> ret = RILUtils.convertHalSlotStatus(slotStatus);
-        logd("[UNSL]< UNSOL_SIM_SLOT_STATUS_CHANGED " + ret.toString());
+        logd("UNSOL_SIM_SLOT_STATUS_CHANGED " + ret.toString());
         if (mRadioConfig.mSimSlotStatusRegistrant != null) {
             mRadioConfig.mSimSlotStatusRegistrant.notifyRegistrant(
                     new AsyncResult(null, ret, null));
@@ -63,6 +64,7 @@ public class RadioConfigIndicationHidl extends
     }
 
     private static void logd(String log) {
-        Rlog.d(TAG, log);
+        Rlog.d(TAG, "[UNSL]< " + log);
+        Trace.instantForTrack(Trace.TRACE_TAG_NETWORK, "RIL", log);
     }
 }
