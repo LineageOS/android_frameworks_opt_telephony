@@ -65,13 +65,37 @@ public class RadioNetworkProxy extends RadioServiceProxy {
      * Set IRadioNetwork as the AIDL implementation for RadioServiceProxy
      * @param halVersion Radio HAL version
      * @param network IRadioNetwork implementation
+     *
+     * @return updated HAL version
      */
-    public void setAidl(HalVersion halVersion,
+    public HalVersion setAidl(HalVersion halVersion,
             android.hardware.radio.network.IRadioNetwork network) {
         mHalVersion = halVersion;
         mNetworkProxy = network;
         mIsAidl = true;
-        Rlog.d(TAG, "AIDL initialized");
+
+        try {
+            HalVersion newHalVersion;
+            int version = network.getInterfaceVersion();
+            switch(version) {
+                case 2:
+                    newHalVersion = RIL.RADIO_HAL_VERSION_2_1;
+                    break;
+                default:
+                    newHalVersion = RIL.RADIO_HAL_VERSION_2_0;
+                    break;
+            }
+            Rlog.d(TAG, "AIDL version=" + version + ", halVersion=" + newHalVersion);
+
+            if (mHalVersion.less(newHalVersion)) {
+                mHalVersion = newHalVersion;
+            }
+        } catch (RemoteException e) {
+            Rlog.e(TAG, "setAidl: " + e);
+        }
+
+        Rlog.d(TAG, "AIDL initialized mHalVersion=" + mHalVersion);
+        return mHalVersion;
     }
 
     /**
