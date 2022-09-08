@@ -795,6 +795,8 @@ public class DataProfileManagerTest extends TelephonyTest {
                         .setProtocol(ApnSetting.PROTOCOL_IPV4V6)
                         .setRoamingProtocol(ApnSetting.PROTOCOL_IPV4V6)
                         .setCarrierEnabled(true)
+                        .setMvnoMatchData("1")
+                        .setMvnoType(1)
                         .build())
                 .build();
 
@@ -809,6 +811,8 @@ public class DataProfileManagerTest extends TelephonyTest {
                         .setProtocol(ApnSetting.PROTOCOL_IPV4V6)
                         .setRoamingProtocol(ApnSetting.PROTOCOL_IPV4V6)
                         .setCarrierEnabled(true)
+                        .setMvnoMatchData("2")
+                        .setMvnoType(2)
                         .build())
                 .build();
 
