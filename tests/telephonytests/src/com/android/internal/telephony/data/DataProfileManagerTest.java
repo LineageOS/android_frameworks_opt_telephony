@@ -938,10 +938,22 @@ public class DataProfileManagerTest extends TelephonyTest {
         mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
         processAllMessages();
 
-        // preferred APN should set to be the prev preferred
+        // preferred APN should set to be the last data profile that succeeded for internet setup
         assertThat(mDataProfileManagerUT.isAnyPreferredDataProfileExisting()).isTrue();
         assertThat(mDataProfileManagerUT.isDataProfilePreferred(dataProfile)).isTrue();
 
+        // no active internet, expect no preferred APN after reset
+        mDataNetworkControllerCallback.onInternetDataNetworkDisconnected();
+        mPreferredApnId = -1;
+        mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
+        processAllMessages();
+
+        assertThat(mDataProfileManagerUT.isAnyPreferredDataProfileExisting()).isFalse();
+        assertThat(mDataProfileManagerUT.isDataProfilePreferred(dataProfile)).isFalse();
+
+        // setup internet again
+        mDataNetworkControllerCallback.onInternetDataNetworkConnected(List.of(dataProfile));
+        processAllMessages();
         //APN reset and removed GENERAL_PURPOSE_APN(as if user created) from APN DB
         mPreferredApnId = -1;
         mApnSettingContentProvider.removeApnByApnId(1);
