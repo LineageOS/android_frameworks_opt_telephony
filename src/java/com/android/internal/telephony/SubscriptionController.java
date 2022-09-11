@@ -3600,7 +3600,7 @@ public class SubscriptionController extends ISub.Stub {
                 return SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
             }
 
-            return phoneSwitcher.getOpportunisticDataSubscriptionId();
+            return phoneSwitcher.getAutoSelectedDataSubId();
         } finally {
             Binder.restoreCallingIdentity(token);
         }
