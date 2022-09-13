@@ -53,6 +53,7 @@ import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.RemoteException;
+import android.provider.DeviceConfig;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneCapability;
 import android.telephony.PhoneStateListener;
@@ -65,6 +66,7 @@ import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsRegistrationAttributes;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
+import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.LocalLog;
 
@@ -109,6 +111,9 @@ import java.util.concurrent.CompletableFuture;
  */
 public class PhoneSwitcher extends Handler {
     private static final String LOG_TAG = "PhoneSwitcher";
+    /** DeviceConfig key of the time threshold in ms for defining a network status to be stable. **/
+    private static final String KEY_AUTO_DATA_SWITCH_AVAILABILITY_STABILITY_TIME_THRESHOLD =
+            "auto_data_switch_availability_stability_time_threshold";
     protected static final boolean VDBG = false;
 
     private static final int DEFAULT_NETWORK_CHANGE_TIMEOUT_MS = 5000;
@@ -294,6 +299,7 @@ public class PhoneSwitcher extends Handler {
     private static final int EVENT_PROCESS_SIM_STATE_CHANGE       = 119;
     @VisibleForTesting
     public static final int EVENT_IMS_RADIO_TECH_CHANGED          = 120;
+    public static final int EVENT_DEVICE_CONFIG_CHANGED           = 121;
 
     // List of events triggers re-evaluations
     private static final String EVALUATION_REASON_RADIO_ON = "EVENT_RADIO_ON";
@@ -319,6 +325,13 @@ public class PhoneSwitcher extends Handler {
     private int mImsRegistrationTech = REGISTRATION_TECH_NONE;
 
     private List<Set<CommandException.Error>> mCurrentDdsSwitchFailure;
+
+    /**
+     * Time threshold in ms to define a internet connection status to be stable(e.g. out of service,
+     * in service, wifi is the default active network.etc), while -1 indicates auto switch
+     * feature disabled.
+     */
+    private long mAutoDataSwitchAvailabilityStabilityTimeThreshold = -1;
 
     /** Data settings manager callback. Key is the phone id. */
     private final @NonNull Map<Integer, DataSettingsManagerCallback> mDataSettingsManagerCallbacks =
@@ -568,6 +581,17 @@ public class PhoneSwitcher extends Handler {
                 builder.build(), this);
         // we want to see all requests
         networkFactory.registerIgnoringScore();
+
+        // Register for device config update
+        DeviceConfig.addOnPropertiesChangedListener(
+                DeviceConfig.NAMESPACE_TELEPHONY, this::post,
+                properties -> {
+                    if (TextUtils.equals(DeviceConfig.NAMESPACE_TELEPHONY,
+                            properties.getNamespace())) {
+                        sendEmptyMessage(EVENT_DEVICE_CONFIG_CHANGED);
+                    }
+                });
+        updateDeviceConfig();
 
         updateHalCommandToUse();
 
@@ -840,7 +864,21 @@ public class PhoneSwitcher extends Handler {
                 }
                 break;
             }
+            case EVENT_DEVICE_CONFIG_CHANGED: {
+                updateDeviceConfig();
+                break;
+            }
         }
+    }
+
+    /** Update local properties from {@link DeviceConfig} */
+    private void updateDeviceConfig() {
+        DeviceConfig.Properties properties = //read all telephony properties
+                DeviceConfig.getProperties(DeviceConfig.NAMESPACE_TELEPHONY);
+
+        mAutoDataSwitchAvailabilityStabilityTimeThreshold = properties.getInt(
+                KEY_AUTO_DATA_SWITCH_AVAILABILITY_STABILITY_TIME_THRESHOLD, -1);
+
     }
 
     private synchronized void onMultiSimConfigChanged(int activeModemCount) {
@@ -1701,6 +1739,8 @@ public class PhoneSwitcher extends Handler {
         pw.println("mActiveModemCount=" + mActiveModemCount);
         pw.println("mPhoneIdInVoiceCall=" + mPhoneIdInVoiceCall);
         pw.println("mCurrentDdsSwitchFailure=" + mCurrentDdsSwitchFailure);
+        pw.println("mAutoDataSwitchAvailabilityStabilityTimeThreshold="
+                + mAutoDataSwitchAvailabilityStabilityTimeThreshold);
         pw.println("Local logs:");
         pw.increaseIndent();
         mLocalLog.dump(fd, pw, args);
