@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.emergency;
 
+import static android.telephony.TelephonyManager.HAL_SERVICE_VOICE;
+
 import android.annotation.NonNull;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -205,7 +207,8 @@ public class EmergencyNumberTracker extends Handler {
 
             mPhone.getContext().registerReceiver(mIntentReceiver, filter);
 
-            mIsHalVersionLessThan1Dot4 = mPhone.getHalVersion().lessOrEqual(new HalVersion(1, 3));
+            mIsHalVersionLessThan1Dot4 = mPhone.getHalVersion(HAL_SERVICE_VOICE)
+                                                 .lessOrEqual(new HalVersion(1, 3));
         } else {
             loge("mPhone is null.");
         }
@@ -1323,7 +1326,7 @@ public class EmergencyNumberTracker extends Handler {
      */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         final IndentingPrintWriter ipw = new IndentingPrintWriter(pw, "  ");
-        ipw.println(" Hal Version:" + mPhone.getHalVersion());
+        ipw.println(" Hal Version:" + mPhone.getHalVersion(HAL_SERVICE_VOICE));
         ipw.println(" ========================================= ");
 
         ipw.println(" Country Iso:" + getEmergencyCountryIso());

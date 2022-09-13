@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.TelephonyManager.HAL_SERVICE_RADIO;
+
 import static com.android.internal.telephony.PhoneConstants.PHONE_TYPE_CDMA;
 import static com.android.internal.telephony.PhoneConstants.PHONE_TYPE_CDMA_LTE;
 
@@ -181,7 +183,7 @@ public class PhoneFactory {
 
                 if (numPhones > 0) {
                     final RadioConfig radioConfig = RadioConfig.make(context,
-                            sCommandsInterfaces[0].getHalVersion());
+                            sCommandsInterfaces[0].getHalVersion(HAL_SERVICE_RADIO));
                     sRadioHalCapabilities = RadioInterfaceCapabilityController.init(radioConfig,
                             sCommandsInterfaces[0]);
                 } else {
