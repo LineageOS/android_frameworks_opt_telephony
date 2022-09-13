@@ -154,6 +154,7 @@ public class SmsController extends ISmsImplBase {
         if (callingPackage == null) {
             callingPackage = getCallingPackage();
         }
+        Rlog.d(LOG_TAG, "sendDataForSubscriber caller=" + callingPackage);
 
         // Perform FDN check
         if (isNumberBlockedByFDN(subId, destAddr, callingPackage)) {
@@ -199,6 +200,8 @@ public class SmsController extends ISmsImplBase {
         if (callingPackage == null) {
             callingPackage = getCallingPackage();
         }
+        Rlog.d(LOG_TAG, "sendTextForSubscriber caller=" + callingPackage);
+
         if (!getSmsPermissions(subId).checkCallingCanSendText(persistMessageForNonDefaultSmsApp,
                 callingPackage, callingAttributionTag, "Sending SMS message")) {
             sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
@@ -277,6 +280,7 @@ public class SmsController extends ISmsImplBase {
         if (callingPackage == null) {
             callingPackage = getCallingPackage();
         }
+        Rlog.d(LOG_TAG, "sendTextForSubscriberWithOptions caller=" + callingPackage);
 
         // Perform FDN check
         if (isNumberBlockedByFDN(subId, destAddr, callingPackage)) {
@@ -306,6 +310,7 @@ public class SmsController extends ISmsImplBase {
         if (getCallingPackage() != null) {
             callingPackage = getCallingPackage();
         }
+        Rlog.d(LOG_TAG, "sendMultipartTextForSubscriber caller=" + callingPackage);
 
         // Perform FDN check
         if (isNumberBlockedByFDN(subId, destAddr, callingPackage)) {
@@ -333,6 +338,7 @@ public class SmsController extends ISmsImplBase {
         if (callingPackage == null) {
             callingPackage = getCallingPackage();
         }
+        Rlog.d(LOG_TAG, "sendMultipartTextForSubscriberWithOptions caller=" + callingPackage);
 
         // Perform FDN check
         if (isNumberBlockedByFDN(subId, destAddr, callingPackage)) {
@@ -448,7 +454,7 @@ public class SmsController extends ISmsImplBase {
         // Don't show the SMS SIM Pick activity if it is not foreground.
         boolean isCallingProcessForeground = am != null
                 && am.getUidImportance(Binder.getCallingUid())
-                        == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND;
+                == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND;
         if (!isCallingProcessForeground) {
             Rlog.d(LOG_TAG, "isSmsSimPickActivityNeeded: calling process not foreground. "
                     + "Suppressing activity.");
@@ -558,6 +564,8 @@ public class SmsController extends ISmsImplBase {
             throw new SecurityException("sendStoredText: Package " + callingPkg
                     + "does not belong to " + Binder.getCallingUid());
         }
+        Rlog.d(LOG_TAG, "sendStoredText caller=" + callingPkg);
+
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendStoredText(callingPkg, callingAttributionTag, messageUri, scAddress,
                     sentIntent, deliveryIntent);
@@ -576,6 +584,8 @@ public class SmsController extends ISmsImplBase {
             throw new SecurityException("sendStoredMultipartText: Package " + callingPkg
                     + " does not belong to " + Binder.getCallingUid());
         }
+        Rlog.d(LOG_TAG, "sendStoredMultipartText caller=" + callingPkg);
+
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendStoredMultipartText(callingPkg, callingAttributionTag, messageUri,
                     scAddress, sentIntents, deliveryIntents);
@@ -753,10 +763,12 @@ public class SmsController extends ISmsImplBase {
     public void sendVisualVoicemailSmsForSubscriber(String callingPackage,
             String callingAttributionTag, int subId, String number, int port, String text,
             PendingIntent sentIntent) {
+        Rlog.d(LOG_TAG, "sendVisualVoicemailSmsForSubscriber caller=" + callingPackage);
+
         // Do not send non-emergency SMS in ECBM as it forces device to exit ECBM.
         if(getPhone(subId).isInEcm()) {
             Rlog.d(LOG_TAG, "sendVisualVoicemailSmsForSubscriber: Do not send non-emergency "
-                + "SMS in ECBM as it forces device to exit ECBM.");
+                    + "SMS in ECBM as it forces device to exit ECBM.");
             return;
         }
 
@@ -940,7 +952,7 @@ public class SmsController extends ISmsImplBase {
             }
         } else {
             Rlog.e(LOG_TAG, "getSmscAddressFromIccEfForSubscriber iccSmsIntMgr is null"
-                + " for Subscription: " + subId);
+                    + " for Subscription: " + subId);
             return true;
         }
 
