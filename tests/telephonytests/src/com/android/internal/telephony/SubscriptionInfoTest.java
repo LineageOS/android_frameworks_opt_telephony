@@ -15,12 +15,11 @@
  */
 package com.android.internal.telephony;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+import static com.google.common.truth.Truth.assertThat;
 
 import android.os.Parcel;
 import android.telephony.SubscriptionInfo;
-import android.test.suitebuilder.annotation.SmallTest;
+import android.telephony.SubscriptionManager;
 
 import org.junit.After;
 import org.junit.Before;
@@ -38,78 +37,63 @@ public class SubscriptionInfoTest {
 
     @Before
     public void setUp() throws Exception {
-        mSubscriptionInfoUT = new SubscriptionInfo(1, "890126042XXXXXXXXXXX", 0, "T-mobile",
-                "T-mobile", 0, 255, "12345", 0, null, "310", "260", "156", false, null, null);
-        mSubscriptionInfoUT.setAssociatedPlmns(EHPLMNS, HPLMNS);
+        mSubscriptionInfoUT = new SubscriptionInfo.Builder()
+                .setId(1)
+                .setIccId("890126042XXXXXXXXXXX")
+                .setSimSlotIndex(0)
+                .setDisplayName("T-mobile")
+                .setCarrierName("T-mobile")
+                .setNameSource(SubscriptionManager.NAME_SOURCE_CARRIER_ID)
+                .setIconTint(255)
+                .setNumber("12345")
+                .setDataRoaming(SubscriptionManager.DATA_ROAMING_DISABLE)
+                .setMcc("310")
+                .setMnc("260")
+                .setEhplmns(EHPLMNS)
+                .setHplmns(HPLMNS)
+                .setCountryIso("us")
+                .build();
     }
 
     @Test
-    @SmallTest
     public void testSubProperties() {
-        assertEquals(260, mSubscriptionInfoUT.getMnc());
-        assertEquals(310, mSubscriptionInfoUT.getMcc());
-        assertEquals("12345", mSubscriptionInfoUT.getNumber());
-        assertEquals(0, mSubscriptionInfoUT.getDataRoaming());
-        assertEquals("T-mobile", mSubscriptionInfoUT.getDisplayName());
-        assertEquals("T-mobile", mSubscriptionInfoUT.getCarrierName());
-        assertEquals("156", mSubscriptionInfoUT.getCountryIso());
-        assertEquals(255, mSubscriptionInfoUT.getIconTint());
-        assertEquals(0, mSubscriptionInfoUT.getNameSource());
-        assertEquals(1, mSubscriptionInfoUT.getSubscriptionId());
-        assertEquals(0, mSubscriptionInfoUT.getSimSlotIndex());
-        assertEquals("890126042XXXXXXXXXXX", mSubscriptionInfoUT.getIccId());
+        assertThat(mSubscriptionInfoUT.getMcc()).isEqualTo(310);
+        assertThat(mSubscriptionInfoUT.getMccString()).isEqualTo("310");
+        assertThat(mSubscriptionInfoUT.getMnc()).isEqualTo(260);
+        assertThat(mSubscriptionInfoUT.getMncString()).isEqualTo("260");
+        assertThat(mSubscriptionInfoUT.getNumber()).isEqualTo("12345");
+        assertThat(mSubscriptionInfoUT.getDataRoaming()).isEqualTo(0);
+        assertThat(mSubscriptionInfoUT.getDisplayName().toString()).isEqualTo("T-mobile");
+        assertThat(mSubscriptionInfoUT.getCarrierName().toString()).isEqualTo("T-mobile");
+        assertThat(mSubscriptionInfoUT.getCountryIso()).isEqualTo("us");
+        assertThat(mSubscriptionInfoUT.getIconTint()).isEqualTo(255);
+        assertThat(mSubscriptionInfoUT.getNameSource()).isEqualTo(0);
+        assertThat(mSubscriptionInfoUT.getSubscriptionId()).isEqualTo(1);
+        assertThat(mSubscriptionInfoUT.getSimSlotIndex()).isEqualTo(0);
+        assertThat(mSubscriptionInfoUT.getIccId()).isEqualTo("890126042XXXXXXXXXXX");
     }
 
     @Test
-    @SmallTest
-    public void testSetGetCarrierName() {
-        assertEquals("T-mobile", mSubscriptionInfoUT.getCarrierName());
-        mSubscriptionInfoUT.setCarrierName("Verizon");
-        assertEquals("Verizon", mSubscriptionInfoUT.getCarrierName());
-    }
-
-    @Test
-    @SmallTest
-    public void testSetGetDisplayName() {
-        assertEquals("T-mobile", mSubscriptionInfoUT.getDisplayName());
-        mSubscriptionInfoUT.setDisplayName("Verizon");
-        assertEquals("Verizon", mSubscriptionInfoUT.getDisplayName());
-    }
-
-    @Test
-    @SmallTest
-    public void testSetGetIconTint() {
-        assertEquals(255, mSubscriptionInfoUT.getIconTint());
-        mSubscriptionInfoUT.setIconTint(0);
-        assertEquals(0, mSubscriptionInfoUT.getIconTint());
-    }
-
-    @Test
-    @SmallTest
     public void testParcelUnparcel() {
         Parcel p = Parcel.obtain();
         mSubscriptionInfoUT.writeToParcel(p, 0);
         p.setDataPosition(0);
         SubscriptionInfo copy = SubscriptionInfo.CREATOR.createFromParcel(p);
-        assertEquals(mSubscriptionInfoUT, copy);
+        assertThat(mSubscriptionInfoUT).isEqualTo(copy);
     }
 
     @Test
-    @SmallTest
     public void testEquals() {
-        SubscriptionInfo copiedInfo = new SubscriptionInfo(1, "890126042XXXXXXXXXXX", 0,
-                "T-mobile", "T-mobile", 0, 255, "12345", 0, null,
-                "310", "260", "156", false, null, null);
-        copiedInfo.setAssociatedPlmns(EHPLMNS, HPLMNS);
-        SubscriptionInfo differentDisplayName = new SubscriptionInfo(1, "890126042XXXXXXXXXXX", 0,
-                "AT&T", "T-mobile", 0, 255, "12345", 0, null,
-                "310", "260", "156", false, null, null);
-        SubscriptionInfo differentSubId = new SubscriptionInfo(2, "890126042XXXXXXXXXXX", 0,
-                "AT&T", "T-mobile", 0, 255, "12345", 0, null,
-                "310", "260", "156", false, null, null);
+        SubscriptionInfo copiedInfo = new SubscriptionInfo.Builder(mSubscriptionInfoUT).build();
+        SubscriptionInfo differentDisplayName = new SubscriptionInfo.Builder(mSubscriptionInfoUT)
+                .setDisplayName("Different display name")
+                .build();
+        SubscriptionInfo differentSubId = new SubscriptionInfo.Builder(mSubscriptionInfoUT)
+                .setId(1234)
+                .build();
 
-        assertEquals(mSubscriptionInfoUT, copiedInfo);
-        assertNotEquals(mSubscriptionInfoUT, differentDisplayName);
-        assertNotEquals(mSubscriptionInfoUT, differentSubId);
+        assertThat(mSubscriptionInfoUT).isEqualTo(copiedInfo);
+        assertThat(mSubscriptionInfoUT).isNotEqualTo(differentDisplayName);
+        assertThat(mSubscriptionInfoUT).isNotEqualTo(differentSubId);
     }
 }
