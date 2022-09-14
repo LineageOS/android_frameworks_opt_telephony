@@ -28,6 +28,7 @@ import android.os.Message;
 import android.os.SystemProperties;
 import android.provider.Telephony.Sms.Intents;
 
+import com.android.ims.ImsManager;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.Phone;
@@ -153,7 +154,8 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
      * or {@link Activity#RESULT_OK} for delayed acknowledgment to SMSC
      */
     @Override
-    protected int dispatchMessageRadioSpecific(SmsMessageBase smsb, @SmsSource int smsSource) {
+    protected int dispatchMessageRadioSpecific(SmsMessageBase smsb, @SmsSource int smsSource,
+            int token) {
         SmsMessage sms = (SmsMessage) smsb;
 
         if (sms.isTypeZero()) {
@@ -177,7 +179,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
         // Send SMS-PP data download messages to UICC. See 3GPP TS 31.111 section 7.1.1.
         if (sms.isUsimDataDownload()) {
             UsimServiceTable ust = mPhone.getUsimServiceTable();
-            return mDataDownloadHandler.handleUsimDataDownload(ust, sms, smsSource);
+            return mDataDownloadHandler.handleUsimDataDownload(ust, sms, smsSource, token);
         }
 
         boolean handled = false;
@@ -267,5 +269,16 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
         mMetrics.writeIncomingVoiceMailSms(mPhone.getPhoneId(),
                 android.telephony.SmsMessage.FORMAT_3GPP);
         mPhone.getSmsStats().onIncomingSmsVoicemail(false /* is3gpp2 */, smsSource);
+    }
+
+    /**
+     * sets ImsManager object.
+     */
+    public boolean setImsManager(ImsManager imsManager) {
+        if (mDataDownloadHandler != null) {
+            mDataDownloadHandler.setImsManager(imsManager);
+            return true;
+        }
+        return false;
     }
 }
