@@ -79,7 +79,6 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyTest;
-import com.android.internal.telephony.dataconnection.DataEnabledSettings;
 
 import org.junit.After;
 import org.junit.Before;
@@ -104,7 +103,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
     private Phone mPhone2; // mPhone as phone 1 is already defined in TelephonyTest.
     private Phone mImsPhone;
     // TODO: Add logic for DataSettingsManager
-    private DataEnabledSettings mDataEnabledSettings2;
+    private DataSettingsManager mDataSettingsManager2;
     private Handler mActivePhoneSwitchHandler;
     private GsmCdmaCall mActiveCall;
     private GsmCdmaCall mHoldingCall;
@@ -136,7 +135,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         mCommandsInterface1 = mock(CommandsInterface.class);
         mPhone2 = mock(Phone.class); // mPhone as phone 1 is already defined in TelephonyTest.
         mImsPhone = mock(Phone.class);
-        mDataEnabledSettings2 = mock(DataEnabledSettings.class);
+        mDataSettingsManager2 = mock(DataSettingsManager.class);
         mActivePhoneSwitchHandler = mock(Handler.class);
         mActiveCall = mock(GsmCdmaCall.class);
         mHoldingCall = mock(GsmCdmaCall.class);
@@ -648,7 +647,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         // Phone2 has active IMS call on LTE. And data of DEFAULT apn is enabled. This should
         // trigger data switch.
         doReturn(mImsPhone).when(mPhone2).getImsPhone();
-        doReturn(true).when(mDataEnabledSettings2).isDataEnabled(ApnSetting.TYPE_DEFAULT);
+        doReturn(true).when(mDataSettingsManager2).isDataEnabled(ApnSetting.TYPE_DEFAULT);
         mockImsRegTech(1, REGISTRATION_TECH_LTE);
         notifyPhoneAsInCall(mImsPhone);
 
@@ -677,7 +676,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         // Phone2 has active IMS call on LTE. And data of DEFAULT apn is enabled. This should
         // trigger data switch.
         doReturn(mImsPhone).when(mPhone2).getImsPhone();
-        doReturn(true).when(mDataEnabledSettings2).isDataEnabled(ApnSetting.TYPE_DEFAULT);
+        doReturn(true).when(mDataSettingsManager2).isDataEnabled(ApnSetting.TYPE_DEFAULT);
         mockImsRegTech(1, REGISTRATION_TECH_LTE);
         notifyPhoneAsInDial(mImsPhone);
 
@@ -705,7 +704,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         // Phone2 has active IMS call on LTE. And data of DEFAULT apn is enabled. This should
         // trigger data switch.
         doReturn(mImsPhone).when(mPhone2).getImsPhone();
-        doReturn(true).when(mDataEnabledSettings2).isDataEnabled(ApnSetting.TYPE_DEFAULT);
+        doReturn(true).when(mDataSettingsManager2).isDataEnabled(ApnSetting.TYPE_DEFAULT);
         mockImsRegTech(1, REGISTRATION_TECH_LTE);
         notifyPhoneAsInIncomingCall(mImsPhone);
 
@@ -732,7 +731,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
         // Phone2 has active call, but data is turned off. So no data switching should happen.
         doReturn(mImsPhone).when(mPhone2).getImsPhone();
-        doReturn(true).when(mDataEnabledSettings2).isDataEnabled(ApnSetting.TYPE_DEFAULT);
+        doReturn(true).when(mDataSettingsManager2).isDataEnabled(ApnSetting.TYPE_DEFAULT);
         mockImsRegTech(1, REGISTRATION_TECH_IWLAN);
         notifyPhoneAsInCall(mImsPhone);
 
@@ -760,7 +759,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         // Phone 1 has active IMS call on CROSS_SIM. And data of DEFAULT apn is enabled. This should
         // not trigger data switch.
         doReturn(mImsPhone).when(mPhone2).getImsPhone();
-        doReturn(true).when(mDataEnabledSettings2).isDataEnabled(ApnSetting.TYPE_DEFAULT);
+        doReturn(true).when(mDataSettingsManager2).isDataEnabled(ApnSetting.TYPE_DEFAULT);
         mockImsRegTech(1, REGISTRATION_TECH_CROSS_SIM);
         notifyPhoneAsInCall(mImsPhone);
 
@@ -1193,7 +1192,6 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
         verify(mPhone2).registerForEmergencyCallToggle(any(), anyInt(), any());
         verify(mPhone2).registerForPreciseCallStateChanged(any(), anyInt(), any());
-        verify(mDataEnabledSettings2).registerForDataEnabledChanged(any(), anyInt(), any());
 
         clearInvocations(mMockRadioConfig);
         setSlotIndexToSubId(1, 2);
@@ -1375,8 +1373,8 @@ public class PhoneSwitcherTest extends TelephonyTest {
     }
 
     private void notifyDataEnabled(boolean dataEnabled) {
-        doReturn(dataEnabled).when(mDataEnabledSettings).isDataEnabled(anyInt());
-        doReturn(dataEnabled).when(mDataEnabledSettings2).isDataEnabled(anyInt());
+        doReturn(dataEnabled).when(mDataSettingsManager).isDataEnabled(anyInt());
+        doReturn(dataEnabled).when(mDataSettingsManager2).isDataEnabled(anyInt());
         mPhoneSwitcher.sendEmptyMessage(EVENT_DATA_ENABLED_CHANGED);
         processAllMessages();
     }
@@ -1470,7 +1468,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         doReturn(0).when(mPhone).getPhoneId();
         doReturn(1).when(mPhone2).getPhoneId();
         doReturn(true).when(mPhone2).isUserDataEnabled();
-        doReturn(mDataEnabledSettings2).when(mPhone2).getDataEnabledSettings();
+        doReturn(mDataSettingsManager2).when(mPhone2).getDataSettingsManager();
         for (int i = 0; i < supportedModemCount; i++) {
             mSlotIndexToSubId[i] = new int[1];
             mSlotIndexToSubId[i][0] = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
