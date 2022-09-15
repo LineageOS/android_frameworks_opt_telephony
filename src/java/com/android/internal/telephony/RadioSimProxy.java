@@ -576,7 +576,7 @@ public class RadioSimProxy extends RadioServiceProxy {
                 halImsiInfo.base.expirationTime = imsiEncryptionInfo.getExpirationTime().getTime();
             }
             for (byte b : imsiEncryptionInfo.getPublicKey().getEncoded()) {
-                halImsiInfo.base.carrierKey.add(new Byte(b));
+                halImsiInfo.base.carrierKey.add(Byte.valueOf(b));
             }
             halImsiInfo.keyType = (byte) imsiEncryptionInfo.getKeyType();
 
@@ -592,7 +592,7 @@ public class RadioSimProxy extends RadioServiceProxy {
                 halImsiInfo.expirationTime = imsiEncryptionInfo.getExpirationTime().getTime();
             }
             for (byte b : imsiEncryptionInfo.getPublicKey().getEncoded()) {
-                halImsiInfo.carrierKey.add(new Byte(b));
+                halImsiInfo.carrierKey.add(Byte.valueOf(b));
             }
 
             ((android.hardware.radio.V1_1.IRadio) mRadioProxy).setCarrierInfoForImsiEncryption(

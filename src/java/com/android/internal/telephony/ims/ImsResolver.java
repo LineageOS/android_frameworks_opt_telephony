@@ -742,6 +742,15 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     }
 
     /**
+     * Notify ImsService to disable IMS for the framework.
+     * And notify ImsService back to enable IMS for the framework.
+     */
+    public void resetIms(int slotId) {
+        getImsServiceControllers(slotId).forEach(
+                (controller) -> controller.resetIms(slotId, getSubId(slotId)));
+    }
+
+    /**
      * Returns the ImsRegistration structure associated with the slotId and feature specified.
      */
     public @Nullable IImsRegistration getImsRegistration(int slotId, int feature) {

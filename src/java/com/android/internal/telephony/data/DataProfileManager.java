@@ -293,9 +293,27 @@ public class DataProfileManager extends Handler {
             }
         }
 
+        DataProfile dataProfile;
+
+        if (!profiles.isEmpty()) { // APN database has been read successfully after SIM loaded
+            // Check if any of the profile already supports IMS, if not, add the default one.
+            dataProfile = profiles.stream()
+                    .filter(dp -> dp.canSatisfy(NetworkCapabilities.NET_CAPABILITY_IMS))
+                    .findFirst()
+                    .orElse(null);
+            if (dataProfile == null) {
+                profiles.add(new DataProfile.Builder()
+                        .setApnSetting(buildDefaultApnSetting("DEFAULT IMS", "ims",
+                                ApnSetting.TYPE_IMS))
+                        .setTrafficDescriptor(new TrafficDescriptor("ims", null))
+                        .build());
+                log("Added default IMS data profile.");
+            }
+        }
+
         // Check if any of the profile already supports ENTERPRISE, if not, check if DPC has
         // configured one and retrieve the same.
-        DataProfile dataProfile = profiles.stream()
+        dataProfile = profiles.stream()
                 .filter(dp -> dp.canSatisfy(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE))
                 .findFirst()
                 .orElse(null);
@@ -305,20 +323,6 @@ public class DataProfileManager extends Handler {
                 profiles.add(dataProfile);
                 log("Added enterprise profile " + dataProfile);
             }
-        }
-
-        // Check if any of the profile already supports IMS, if not, add the default one.
-        dataProfile = profiles.stream()
-                .filter(dp -> dp.canSatisfy(NetworkCapabilities.NET_CAPABILITY_IMS))
-                .findFirst()
-                .orElse(null);
-        if (dataProfile == null) {
-            profiles.add(new DataProfile.Builder()
-                    .setApnSetting(buildDefaultApnSetting("DEFAULT IMS", "ims",
-                            ApnSetting.TYPE_IMS))
-                    .setTrafficDescriptor(new TrafficDescriptor("ims", null))
-                    .build());
-            log("Added default IMS data profile.");
         }
 
         // Check if any of the profile already supports EIMS, if not, add the default one.
