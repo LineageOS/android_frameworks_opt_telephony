@@ -43,6 +43,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationTerm
 import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.NetworkRequestsV2;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
+import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingShortCodeSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PresenceNotifyEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsAcsProvisioningStats;
@@ -159,6 +160,10 @@ public class PersistAtomsStorage {
     /** Maximum number of GBA Event to store between pulls. */
     private final int mMaxNumGbaEventStats;
 
+
+     /** Maximum number of outgoing short code sms to store between pulls. */
+    private final int mMaxOutgoingShortCodeSms;
+
     /** Stores persist atoms and persist states of the puller. */
     @VisibleForTesting protected PersistAtoms mAtoms;
 
@@ -207,6 +212,7 @@ public class PersistAtomsStorage {
             mMaxNumUceEventStats = 5;
             mMaxNumPresenceNotifyEventStats = 10;
             mMaxNumGbaEventStats = 5;
+            mMaxOutgoingShortCodeSms = 5;
         } else {
             mMaxNumVoiceCallSessions = 50;
             mMaxNumSms = 25;
@@ -229,6 +235,7 @@ public class PersistAtomsStorage {
             mMaxNumUceEventStats = 25;
             mMaxNumPresenceNotifyEventStats = 50;
             mMaxNumGbaEventStats = 10;
+            mMaxOutgoingShortCodeSms = 10;
         }
 
         mAtoms = loadAtomsFromFile();
@@ -653,6 +660,18 @@ public class PersistAtomsStorage {
         if (needToSave) {
             saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
         }
+    }
+
+    /** Adds an outgoing short code sms to the storage. */
+    public synchronized void addOutgoingShortCodeSms(OutgoingShortCodeSms shortCodeSms) {
+        OutgoingShortCodeSms existingOutgoingShortCodeSms = find(shortCodeSms);
+        if (existingOutgoingShortCodeSms != null) {
+            existingOutgoingShortCodeSms.shortCodeSmsCount += 1;
+        } else {
+            mAtoms.outgoingShortCodeSms = insertAtRandomPlace(mAtoms.outgoingShortCodeSms,
+                    shortCodeSms, mMaxOutgoingShortCodeSms);
+        }
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
     }
 
     /**
@@ -1174,6 +1193,24 @@ public class PersistAtomsStorage {
         return bitmask;
     }
 
+    /**
+     * Returns and clears the OutgoingShortCodeSms if last pulled longer than {@code
+     * minIntervalMillis} ago, otherwise returns {@code null}.
+     */
+    @Nullable
+    public synchronized OutgoingShortCodeSms[] getOutgoingShortCodeSms(long minIntervalMillis) {
+        if ((getWallTimeMillis() - mAtoms.outgoingShortCodeSmsPullTimestampMillis)
+                > minIntervalMillis) {
+            mAtoms.outgoingShortCodeSmsPullTimestampMillis = getWallTimeMillis();
+            OutgoingShortCodeSms[] previousOutgoingShortCodeSms = mAtoms.outgoingShortCodeSms;
+            mAtoms.outgoingShortCodeSms = new OutgoingShortCodeSms[0];
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
+            return previousOutgoingShortCodeSms;
+        } else {
+            return null;
+        }
+    }
+
     /** Saves {@link PersistAtoms} to a file in private storage immediately. */
     public synchronized void flushAtoms() {
         saveAtomsToFile(0);
@@ -1309,6 +1346,8 @@ public class PersistAtomsStorage {
                             atoms.unmeteredNetworks,
                             UnmeteredNetworks.class
                     );
+            atoms.outgoingShortCodeSms = sanitizeAtoms(atoms.outgoingShortCodeSms,
+                    OutgoingShortCodeSms.class, mMaxOutgoingShortCodeSms);
 
             // out of caution, sanitize also the timestamps
             atoms.voiceCallRatUsagePullTimestampMillis =
@@ -1357,6 +1396,8 @@ public class PersistAtomsStorage {
                     sanitizeTimestamp(atoms.presenceNotifyEventPullTimestampMillis);
             atoms.gbaEventPullTimestampMillis =
                     sanitizeTimestamp(atoms.gbaEventPullTimestampMillis);
+            atoms.outgoingShortCodeSmsPullTimestampMillis =
+                    sanitizeTimestamp(atoms.outgoingShortCodeSmsPullTimestampMillis);
 
             return atoms;
         } catch (NoSuchFileException e) {
@@ -1725,6 +1766,20 @@ public class PersistAtomsStorage {
     }
 
     /**
+     * Returns OutgoingShortCodeSms atom that has same category, xmlVersion as the given one,
+     * or {@code null} if it does not exist.
+     */
+    private @Nullable OutgoingShortCodeSms find(OutgoingShortCodeSms key) {
+        for (OutgoingShortCodeSms shortCodeSms : mAtoms.outgoingShortCodeSms) {
+            if (shortCodeSms.category == key.category
+                    && shortCodeSms.xmlVersion == key.xmlVersion) {
+                return shortCodeSms;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Inserts a new element in a random position in an array with a maximum size.
      *
      * <p>If the array is full, merge with existing item if possible or replace one item randomly.
@@ -1969,6 +2024,7 @@ public class PersistAtomsStorage {
         atoms.uceEventStatsPullTimestampMillis = currentTime;
         atoms.presenceNotifyEventPullTimestampMillis = currentTime;
         atoms.gbaEventPullTimestampMillis = currentTime;
+        atoms.outgoingShortCodeSmsPullTimestampMillis = currentTime;
 
         Rlog.d(TAG, "created new PersistAtoms");
         return atoms;

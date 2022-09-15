@@ -59,6 +59,7 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
+import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingShortCodeSms;
 import com.android.telephony.Rlog;
 
 import java.util.Objects;
@@ -193,6 +194,15 @@ public class SmsStats {
             }
         }
         mAtomsStorage.addOutgoingSms(proto);
+    }
+
+    /** Create a new atom when user attempted to send an outgoing short code sms. */
+    public void onOutgoingShortCodeSms(int category, int xmlVersion) {
+        OutgoingShortCodeSms proto = new OutgoingShortCodeSms();
+        proto.category = category;
+        proto.xmlVersion = xmlVersion;
+        proto.shortCodeSmsCount = 1;
+        mAtomsStorage.addOutgoingShortCodeSms(proto);
     }
 
     /** Creates a proto for a normal single-part {@code IncomingSms} with default values. */
