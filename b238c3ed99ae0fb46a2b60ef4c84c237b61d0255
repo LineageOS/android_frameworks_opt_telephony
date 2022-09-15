@@ -102,6 +102,23 @@
       "message": "I would rather wrap this into an overlay and avoid touching SDK (and more importantly having to link against to it).",
       "revId": "b238c3ed99ae0fb46a2b60ef4c84c237b61d0255",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cda594ae_2e59e238",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 13648
+      },
+      "writtenOn": "2022-09-15T08:14:35Z",
+      "side": 1,
+      "message": "I mean overlay here in this package.",
+      "revId": "b238c3ed99ae0fb46a2b60ef4c84c237b61d0255",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
