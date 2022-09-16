@@ -389,6 +389,9 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
         mSm = (SubscriptionManager)
                 context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
 
+        // TODO(b/239277548): Disable debug logging after analysing this bug.
+        setDbg(true);
+
         // Unavailable/Available both monitor for package changes and update mSelectedComponent but
         // do not need to adjust the binding.
         mUnavailableState = new UnavailableState();

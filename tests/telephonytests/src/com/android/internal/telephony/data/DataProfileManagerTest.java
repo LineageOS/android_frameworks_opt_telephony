@@ -718,6 +718,7 @@ public class DataProfileManagerTest extends TelephonyTest {
                 tnr, TelephonyManager.NETWORK_TYPE_LTE);
         assertThat(dataProfile).isNull();
 
+        // expect default EIMS when SIM absent
         tnr = new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)
@@ -726,13 +727,14 @@ public class DataProfileManagerTest extends TelephonyTest {
                 tnr, TelephonyManager.NETWORK_TYPE_LTE);
         assertThat(dataProfile.getApnSetting().getApnName()).isEqualTo("sos");
 
+        // expect no default IMS when SIM absent
         tnr = new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
                         .build(), mPhone);
         dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
                 tnr, TelephonyManager.NETWORK_TYPE_LTE);
-        assertThat(dataProfile.getApnSetting().getApnName()).isEqualTo("ims");
+        assertThat(dataProfile).isEqualTo(null);
     }
 
     @Test
