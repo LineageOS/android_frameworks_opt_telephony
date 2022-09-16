@@ -5151,7 +5151,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void updateImsRegistrationInfo(int state,
-            int accessNetworkType, int reason, int capabilities, Message result) {
+            int accessNetworkType, int suggestedAction, int capabilities, Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
         if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
@@ -5167,7 +5167,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     new android.hardware.radio.ims.ImsRegistration();
             registrationInfo.regState = RILUtils.convertImsRegistrationState(state);
             registrationInfo.accessNetworkType = accessNetworkType;
-            registrationInfo.reason = reason;
+            registrationInfo.suggestedAction = suggestedAction;
             registrationInfo.capabilities = RILUtils.convertImsCapability(capabilities);
 
             try {

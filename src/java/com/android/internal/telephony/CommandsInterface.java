@@ -2848,12 +2848,12 @@ public interface CommandsInterface {
      *
      * @param state The current IMS registration state.
      * @param accessNetworkType The type of underlying radio access network used.
-     * @param reason A failure reason for IMS registration.
+     * @param suggestedAction The expected action that modem should perform.
      * @param capabilities IMS capabilities such as VOICE, VIDEO and SMS.
      */
     default void updateImsRegistrationInfo(int state,
             @AccessNetworkConstants.RadioAccessNetworkType int accessNetworkType,
-            int reason, int capabilities, Message result) {}
+            int suggestedAction, int capabilities, Message result) {}
 
     /**
      * Notifies the NAS and RRC layers of the radio the type of upcoming IMS traffic.
