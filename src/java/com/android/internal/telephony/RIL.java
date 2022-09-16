@@ -159,6 +159,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
     /** @hide */
     public static final HalVersion RADIO_HAL_VERSION_2_0 = new HalVersion(2, 0);
 
+    /** @hide */
+    public static final HalVersion RADIO_HAL_VERSION_2_1 = new HalVersion(2, 1);
+
     // IRadio version
     private HalVersion mRadioVersion = RADIO_HAL_VERSION_UNKNOWN;
 
@@ -768,8 +771,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             binder = mMockModem.getServiceBinder(DATA_SERVICE);
                         }
                         if (binder != null) {
-                            mRadioVersion = RADIO_HAL_VERSION_2_0;
-                            ((RadioDataProxy) serviceProxy).setAidl(mRadioVersion,
+                            mRadioVersion = ((RadioDataProxy) serviceProxy).setAidl(mRadioVersion,
                                     android.hardware.radio.data.IRadioData.Stub.asInterface(
                                             binder));
                         }
@@ -783,8 +785,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             binder = mMockModem.getServiceBinder(MESSAGING_SERVICE);
                         }
                         if (binder != null) {
-                            mRadioVersion = RADIO_HAL_VERSION_2_0;
-                            ((RadioMessagingProxy) serviceProxy).setAidl(mRadioVersion,
+                            mRadioVersion = ((RadioMessagingProxy) serviceProxy).setAidl(
+                                    mRadioVersion,
                                     android.hardware.radio.messaging.IRadioMessaging.Stub
                                             .asInterface(binder));
                         }
@@ -798,8 +800,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             binder = mMockModem.getServiceBinder(MODEM_SERVICE);
                         }
                         if (binder != null) {
-                            mRadioVersion = RADIO_HAL_VERSION_2_0;
-                            ((RadioModemProxy) serviceProxy).setAidl(mRadioVersion,
+                            mRadioVersion = ((RadioModemProxy) serviceProxy).setAidl(mRadioVersion,
                                     android.hardware.radio.modem.IRadioModem.Stub
                                             .asInterface(binder));
                         }
@@ -813,8 +814,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             binder = mMockModem.getServiceBinder(NETWORK_SERVICE);
                         }
                         if (binder != null) {
-                            mRadioVersion = RADIO_HAL_VERSION_2_0;
-                            ((RadioNetworkProxy) serviceProxy).setAidl(mRadioVersion,
+                            mRadioVersion = ((RadioNetworkProxy) serviceProxy).setAidl(
+                                    mRadioVersion,
                                     android.hardware.radio.network.IRadioNetwork.Stub
                                             .asInterface(binder));
                         }
@@ -828,8 +829,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             binder = mMockModem.getServiceBinder(SIM_SERVICE);
                         }
                         if (binder != null) {
-                            mRadioVersion = RADIO_HAL_VERSION_2_0;
-                            ((RadioSimProxy) serviceProxy).setAidl(mRadioVersion,
+                            mRadioVersion = ((RadioSimProxy) serviceProxy).setAidl(mRadioVersion,
                                     android.hardware.radio.sim.IRadioSim.Stub
                                             .asInterface(binder));
                         }
@@ -843,8 +843,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             binder = mMockModem.getServiceBinder(VOICE_SERVICE);
                         }
                         if (binder != null) {
-                            mRadioVersion = RADIO_HAL_VERSION_2_0;
-                            ((RadioVoiceProxy) serviceProxy).setAidl(mRadioVersion,
+                            mRadioVersion = ((RadioVoiceProxy) serviceProxy).setAidl(mRadioVersion,
                                     android.hardware.radio.voice.IRadioVoice.Stub
                                             .asInterface(binder));
                         }
