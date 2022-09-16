@@ -119,6 +119,24 @@
       "message": "I mean overlay here in this package.",
       "revId": "b238c3ed99ae0fb46a2b60ef4c84c237b61d0255",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "52df9c0a_6897267b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 28232
+      },
+      "writtenOn": "2022-09-16T05:16:59Z",
+      "side": 1,
+      "message": "Hi Bruno,\nSince this would be a lineage addition or something like a workaround, we thought it would be better to add in our sdk instead of AOSP project directly. What do you think about this?",
+      "parentUuid": "cda594ae_2e59e238",
+      "revId": "b238c3ed99ae0fb46a2b60ef4c84c237b61d0255",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
