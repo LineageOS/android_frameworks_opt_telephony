@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.Nullable;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -28,20 +29,16 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation;
 import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
-import android.telephony.PcoData;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
-import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataCallResponse.LinkStatus;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
-import com.android.internal.telephony.dataconnection.DataConnection;
-import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.util.IState;
 import com.android.internal.util.IndentingPrintWriter;
@@ -99,7 +96,6 @@ public class NetworkTypeController extends StateMachine {
     private static final int EVENT_PREFERRED_NETWORK_MODE_CHANGED = 11;
     private static final int EVENT_INITIALIZE = 12;
     private static final int EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED = 13;
-    private static final int EVENT_PCO_DATA_CHANGED = 14;
     private static final int EVENT_BANDWIDTH_CHANGED = 15;
     private static final int EVENT_UPDATE_NR_ADVANCED_STATE = 16;
     private static final int EVENT_DEVICE_IDLE_MODE_CHANGED = 17;
@@ -121,7 +117,6 @@ public class NetworkTypeController extends StateMachine {
         sEvents[EVENT_PREFERRED_NETWORK_MODE_CHANGED] = "EVENT_PREFERRED_NETWORK_MODE_CHANGED";
         sEvents[EVENT_INITIALIZE] = "EVENT_INITIALIZE";
         sEvents[EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED] = "EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED";
-        sEvents[EVENT_PCO_DATA_CHANGED] = "EVENT_PCO_DATA_CHANGED";
         sEvents[EVENT_BANDWIDTH_CHANGED] = "EVENT_BANDWIDTH_CHANGED";
         sEvents[EVENT_UPDATE_NR_ADVANCED_STATE] = "EVENT_UPDATE_NR_ADVANCED_STATE";
         sEvents[EVENT_DEVICE_IDLE_MODE_CHANGED] = "EVENT_DEVICE_IDLE_MODE_CHANGED";
@@ -168,6 +163,9 @@ public class NetworkTypeController extends StateMachine {
     private boolean mIsUsingUserDataForRrcDetection = false;
     private boolean mEnableNrAdvancedWhileRoaming = true;
     private boolean mIsDeviceIdleMode = false;
+
+    private @Nullable DataNetworkControllerCallback mNrAdvancedCapableByPcoChangedCallback = null;
+    private @Nullable DataNetworkControllerCallback mNrPhysicalLinkStatusChangedCallback = null;
 
     /**
      * NetworkTypeController constructor.
@@ -232,9 +230,6 @@ public class NetworkTypeController extends StateMachine {
         filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         filter.addAction(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED);
         mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
-        if (!mPhone.isUsingNewDataStack()) {
-            mPhone.mCi.registerForPcoData(getHandler(), EVENT_PCO_DATA_CHANGED, null);
-        }
     }
 
     private void unRegisterForAllEvents() {
@@ -246,9 +241,6 @@ public class NetworkTypeController extends StateMachine {
         mPhone.getServiceStateTracker().unregisterForNrFrequencyChanged(getHandler());
         mPhone.getDeviceStateMonitor().unregisterForPhysicalChannelConfigNotifChanged(getHandler());
         mPhone.getContext().unregisterReceiver(mIntentReceiver);
-        if (!mPhone.isUsingNewDataStack()) {
-            mPhone.mCi.unregisterForPcoData(getHandler());
-        }
     }
 
     private void parseCarrierConfigs() {
@@ -306,38 +298,47 @@ public class NetworkTypeController extends StateMachine {
                         CarrierConfigManager.KEY_ADDITIONAL_NR_ADVANCED_BANDS_INT_ARRAY);
                 mNrAdvancedCapablePcoId = b.getInt(
                         CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT);
-                if (mNrAdvancedCapablePcoId > 0 && mPhone.isUsingNewDataStack()) {
-                    mPhone.getDataNetworkController().registerDataNetworkControllerCallback(
+                if (mNrAdvancedCapablePcoId > 0 && mNrAdvancedCapableByPcoChangedCallback == null) {
+                    mNrAdvancedCapableByPcoChangedCallback =
                             new DataNetworkControllerCallback(getHandler()::post) {
-                                @Override
-                                public void onNrAdvancedCapableByPcoChanged(
-                                        boolean nrAdvancedCapable) {
-                                    log("mIsNrAdvancedAllowedByPco=" + nrAdvancedCapable);
-                                    mIsNrAdvancedAllowedByPco = nrAdvancedCapable;
-                                    sendMessage(EVENT_UPDATE_NR_ADVANCED_STATE);
-                                }
-                            });
+                        @Override
+                        public void onNrAdvancedCapableByPcoChanged(
+                                boolean nrAdvancedCapable) {
+                            log("mIsNrAdvancedAllowedByPco=" + nrAdvancedCapable);
+                            mIsNrAdvancedAllowedByPco = nrAdvancedCapable;
+                            sendMessage(EVENT_UPDATE_NR_ADVANCED_STATE);
+                        }
+                    };
+                    mPhone.getDataNetworkController().registerDataNetworkControllerCallback(
+                            mNrAdvancedCapableByPcoChangedCallback);
+                } else if (mNrAdvancedCapablePcoId == 0
+                        && mNrAdvancedCapableByPcoChangedCallback != null) {
+                    mPhone.getDataNetworkController().unregisterDataNetworkControllerCallback(
+                            mNrAdvancedCapableByPcoChangedCallback);
+                    mNrAdvancedCapableByPcoChangedCallback = null;
                 }
                 mEnableNrAdvancedWhileRoaming = b.getBoolean(
                         CarrierConfigManager.KEY_ENABLE_NR_ADVANCED_WHILE_ROAMING_BOOL);
                 mIsUsingUserDataForRrcDetection = b.getBoolean(
                         CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL);
                 if (!mIsPhysicalChannelConfig16Supported || mIsUsingUserDataForRrcDetection) {
-                    if (mPhone.isUsingNewDataStack()) {
-                        mPhone.getDataNetworkController().registerDataNetworkControllerCallback(
+                    if (mNrPhysicalLinkStatusChangedCallback == null) {
+                        mNrPhysicalLinkStatusChangedCallback =
                                 new DataNetworkControllerCallback(getHandler()::post) {
-                                    @Override
-                                    public void onPhysicalLinkStatusChanged(
-                                            @LinkStatus int status) {
-                                        sendMessage(obtainMessage(
-                                                EVENT_PHYSICAL_LINK_STATUS_CHANGED,
-                                                new AsyncResult(null, status, null)));
-                                    }});
-                    } else {
-                        mPhone.getDcTracker(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                                .registerForPhysicalLinkStatusChanged(getHandler(),
-                                        EVENT_PHYSICAL_LINK_STATUS_CHANGED);
+                            @Override
+                            public void onPhysicalLinkStatusChanged(
+                                    @LinkStatus int status) {
+                                sendMessage(obtainMessage(
+                                        EVENT_PHYSICAL_LINK_STATUS_CHANGED,
+                                        new AsyncResult(null, status, null)));
+                            }};
+                        mPhone.getDataNetworkController().registerDataNetworkControllerCallback(
+                                mNrPhysicalLinkStatusChangedCallback);
                     }
+                } else if (mNrPhysicalLinkStatusChangedCallback != null) {
+                    mPhone.getDataNetworkController().unregisterDataNetworkControllerCallback(
+                            mNrPhysicalLinkStatusChangedCallback);
+                    mNrPhysicalLinkStatusChangedCallback = null;
                 }
             }
         }
@@ -555,15 +556,14 @@ public class NetworkTypeController extends StateMachine {
                     break;
                 case EVENT_INITIALIZE:
                     // The reason that we do it here is because some of the works below requires
-                    // other modules (e.g. DcTracker, ServiceStateTracker), which is not created
-                    // yet when NetworkTypeController is created.
+                    // other modules (e.g. DataNetworkController, ServiceStateTracker), which is not
+                    // created yet when NetworkTypeController is created.
                     registerForAllEvents();
                     parseCarrierConfigs();
                     break;
                 case EVENT_DATA_RAT_CHANGED:
                 case EVENT_NR_STATE_CHANGED:
                 case EVENT_NR_FREQUENCY_CHANGED:
-                case EVENT_PCO_DATA_CHANGED:
                 case EVENT_UPDATE_NR_ADVANCED_STATE:
                     // ignored
                     break;
@@ -941,9 +941,6 @@ public class NetworkTypeController extends StateMachine {
                         transitionWithTimerTo(mLegacyState);
                     }
                     break;
-                case EVENT_PCO_DATA_CHANGED:
-                    handlePcoData((AsyncResult) msg.obj);
-                    break;
                 case EVENT_UPDATE_NR_ADVANCED_STATE:
                     updateNrAdvancedState();
                     break;
@@ -980,6 +977,7 @@ public class NetworkTypeController extends StateMachine {
         }
 
         private void updateNrAdvancedState() {
+            log("updateNrAdvancedState");
             if (!isNrConnected()) {
                 log("NR state changed. Sending EVENT_NR_STATE_CHANGED");
                 sendMessage(EVENT_NR_STATE_CHANGED);
@@ -993,33 +991,7 @@ public class NetworkTypeController extends StateMachine {
                 transitionTo(mNrConnectedState);
             }
             mIsNrAdvanced = isNrAdvanced();
-        }
-
-        private void handlePcoData(AsyncResult ar) {
-            if (ar.exception != null) {
-                loge("PCO_DATA exception: " + ar.exception);
-                return;
-            }
-            PcoData pcodata = (PcoData) ar.result;
-            if (pcodata == null) {
-                return;
-            }
-            log("EVENT_PCO_DATA_CHANGED: pco data: " + pcodata);
-            DcTracker dcTracker = mPhone.getDcTracker(
-                    AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-            DataConnection dc =
-                    dcTracker != null ? dcTracker.getDataConnectionByContextId(pcodata.cid) : null;
-            ApnSetting apnSettings = dc != null ? dc.getApnSetting() : null;
-            if (apnSettings != null && apnSettings.canHandleType(ApnSetting.TYPE_DEFAULT)
-                    && mNrAdvancedCapablePcoId > 0
-                    && pcodata.pcoId == mNrAdvancedCapablePcoId
-            ) {
-                log("EVENT_PCO_DATA_CHANGED: NR_ADVANCED is allowed by PCO. length:"
-                        + pcodata.contents.length + ",value: " + Arrays.toString(pcodata.contents));
-                mIsNrAdvancedAllowedByPco = pcodata.contents.length > 0
-                        && pcodata.contents[pcodata.contents.length - 1] == 1;
-                updateNrAdvancedState();
-            }
+            log("mIsNrAdvanced=" + mIsNrAdvanced);
         }
     }
 
