@@ -558,12 +558,13 @@ public class SignalStrengthController extends Handler {
         for (SignalThresholdInfo signalThresholdInfo : signalThresholdInfos) {
             final int ran = signalThresholdInfo.getRadioAccessNetworkType();
             final int measurementType = signalThresholdInfo.getSignalMeasurementType();
-            final boolean isEnabledForSystem = signalThresholdInfo.isEnabled();
+            final boolean isEnabledForSystem =
+                    signalThresholdInfo.isEnabled() && shouldHonorSystemThresholds();
             int[] consolidatedThresholds =
                     getConsolidatedSignalThresholds(
                             ran,
                             measurementType,
-                            isEnabledForSystem && shouldHonorSystemThresholds()
+                            isEnabledForSystem
                                     ? signalThresholdInfo.getThresholds()
                                     : new int[]{},
                             ALIGNMENT_HYSTERESIS_DB);
@@ -737,7 +738,11 @@ public class SignalStrengthController extends Handler {
                         && srr.mRequest.isSystemThresholdReportingRequestedWhileIdle());
     }
 
-    void onDeviceIdleStateChanged(boolean isDeviceIdle) {
+    /**
+     * Get notified when device idle state changed
+     */
+    @VisibleForTesting
+    public void onDeviceIdleStateChanged(boolean isDeviceIdle) {
         sendMessage(obtainMessage(EVENT_ON_DEVICE_IDLE_STATE_CHANGED, isDeviceIdle));
 
         localLog("onDeviceIdleStateChanged isDeviceIdle=" + isDeviceIdle);
