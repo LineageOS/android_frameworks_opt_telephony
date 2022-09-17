@@ -2451,6 +2451,29 @@ public class DataNetwork extends StateMachine {
                 reportAnomaly("Invalid DataCallResponse detected",
                         "1f273e9d-b09c-46eb-ad1c-421d01f61164");
             }
+            if (mDataProfile.getApnSetting() != null && mPhone.getServiceState().getDataRegState()
+                    == ServiceState.STATE_IN_SERVICE) {
+                boolean isRoaming = mPhone.getServiceState().getDataRoamingFromRegistration();
+                int protocol = isRoaming ? mDataProfile.getApnSetting().getRoamingProtocol()
+                        : mDataProfile.getApnSetting().getProtocol();
+                if (protocol == ApnSetting.PROTOCOL_IP) {
+                    if (response.getAddresses().stream().anyMatch(
+                            la -> la.getAddress() instanceof java.net.Inet6Address)) {
+                        loge("Invalid DataCallResponse. Requested IPv4 but got IPv6 address. "
+                                + response);
+                        reportAnomaly("RIL reported mismatched IP type. Requested IPv6 "
+                                + "but got IPv4 address.", "7744f920-fb64-4db0-ba47-de0eae485a7f");
+                    }
+                } else if (protocol == ApnSetting.PROTOCOL_IPV6) {
+                    if (response.getAddresses().stream().anyMatch(
+                            la -> la.getAddress() instanceof java.net.Inet4Address)) {
+                        loge("Invalid DataCallResponse. Requested IPv6 but got IPv4 address. "
+                                + response);
+                        reportAnomaly("RIL reported mismatched IP type. Requested IPv4 "
+                                + "but got IPv6 address.", "7744f920-fb64-4db0-ba47-de0eae485a7f");
+                    }
+                }
+            }
         } else if (!DataFailCause.isFailCauseExisting(failCause)) { // Setup data failed.
             loge("Invalid DataFailCause in " + response);
             reportAnomaly("Invalid DataFailCause: (0x" + Integer.toHexString(failCause)
