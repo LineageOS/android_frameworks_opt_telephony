@@ -1658,10 +1658,23 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
 
     private SubscriptionInfo makeSubscriptionInfo(boolean isOpportunistic, int usageSetting) {
-        return new SubscriptionInfo(
-                 1, "xxxxxxxxx", 1, "Android Test", "Android Test", 0, 0, "8675309", 0,
-                null, "001", "01", "us", true, null, null, 0, isOpportunistic, null, false,
-                1, 1, 0, null, null, true, 0, usageSetting);
+        return new SubscriptionInfo.Builder()
+                .setId(1)
+                .setIccId("xxxxxxxxx")
+                .setSimSlotIndex(1)
+                .setDisplayName("Android Test")
+                .setDisplayName("Android Test")
+                .setNameSource(SubscriptionManager.NAME_SOURCE_CARRIER)
+                .setNumber("8675309")
+                .setMcc("001")
+                .setMnc("01")
+                .setCountryIso("us")
+                .setEmbedded(true)
+                .setOpportunistic(isOpportunistic)
+                .setCarrierId(1)
+                .setProfileClass(SubscriptionManager.PROFILE_CLASS_PROVISIONING)
+                .setUsageSetting(usageSetting)
+                .build();
     }
 
     @Test
