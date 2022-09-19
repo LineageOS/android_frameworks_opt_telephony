@@ -34,6 +34,24 @@
       "parentUuid": "95389692_8dd4588d",
       "revId": "b5d17061fd07733f854e91900a1dcf4f1ccd04bf",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "62cb0896_daee09cf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 13648
+      },
+      "writtenOn": "2022-09-19T16:53:22Z",
+      "side": 1,
+      "message": "Or turn the overlay into a sysprop.",
+      "parentUuid": "95389692_8dd4588d",
+      "revId": "b5d17061fd07733f854e91900a1dcf4f1ccd04bf",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
