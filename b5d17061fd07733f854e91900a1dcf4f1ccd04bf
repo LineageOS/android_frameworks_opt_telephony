@@ -16,6 +16,24 @@
       "message": "I think you misunderstood me. Put the overlay here in this package, not in SDK nor fwb.",
       "revId": "b5d17061fd07733f854e91900a1dcf4f1ccd04bf",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "86a80780_7bdd56f8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 8752
+      },
+      "writtenOn": "2022-09-19T16:53:10Z",
+      "side": 1,
+      "message": "Sorry, can you point me to the correct ressource config for this package?",
+      "parentUuid": "95389692_8dd4588d",
+      "revId": "b5d17061fd07733f854e91900a1dcf4f1ccd04bf",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
