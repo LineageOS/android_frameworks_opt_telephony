@@ -365,18 +365,12 @@ public class AccessNetworksManager extends Handler {
             }
 
             List<QualifiedNetworks> qualifiedNetworksList = new ArrayList<>();
-            // For anomaly report, only track frequent HO between cellular and IWLAN
-            boolean isRequestedNetworkOnIwlan = Arrays.stream(qualifiedNetworkTypes)
-                    .anyMatch(network -> network == AccessNetworkType.IWLAN);
             int satisfiedApnTypes = 0;
             for (int apnType : SUPPORTED_APN_TYPES) {
                 if ((apnTypes & apnType) == apnType) {
                     // skip the APN anomaly detection if not using the T data stack
                     if (mDataConfigManager != null) {
                         satisfiedApnTypes |= apnType;
-                        if (isRequestedNetworkOnIwlan) {
-                            trackFrequentApnTypeChange(apnType);
-                        }
                     }
 
                     if (mAvailableNetworks.get(apnType) != null) {
@@ -425,30 +419,6 @@ public class AccessNetworksManager extends Handler {
                 setPreferredTransports(qualifiedNetworksList);
                 mQualifiedNetworksChangedRegistrants.notifyResult(qualifiedNetworksList);
             }
-        }
-    }
-
-    /**
-     * Called when receiving preferred transport change request for a specific apnType.
-     *
-     * @param apnType The requested apnType.
-     */
-    private void trackFrequentApnTypeChange(@ApnSetting.ApnType int apnType) {
-        DataNetworkController dnc = mPhone.getDataNetworkController();
-        // ignore the report when no existing network request
-        if (!dnc.isCapabilityRequestExisting(DataUtils.apnTypeToNetworkCapability(apnType))) return;
-        SlidingWindowEventCounter counter = mApnTypeToQnsChangeNetworkCounter.get(apnType);
-        if (counter == null) {
-            counter = new SlidingWindowEventCounter(
-                    mDataConfigManager.getAnomalyQnsChangeThreshold().timeWindow,
-                    mDataConfigManager.getAnomalyQnsChangeThreshold().eventNumOccurrence);
-            mApnTypeToQnsChangeNetworkCounter.put(apnType, counter);
-        }
-        if (counter.addOccurrence()) {
-            reportAnomaly("QNS requested network change for "
-                            + ApnSetting.getApnTypeString(apnType) + " "
-                            + counter.getFrequencyString(),
-                    "3e89a3df-3524-45fa-b5f2-b8911abc7d56");
         }
     }
 
