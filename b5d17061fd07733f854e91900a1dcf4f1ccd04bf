@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "95389692_8dd4588d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 13648
+      },
+      "writtenOn": "2022-09-19T16:48:23Z",
+      "side": 1,
+      "message": "I think you misunderstood me. Put the overlay here in this package, not in SDK nor fwb.",
+      "revId": "b5d17061fd07733f854e91900a1dcf4f1ccd04bf",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
