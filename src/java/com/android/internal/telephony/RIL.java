@@ -866,8 +866,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             binder = mMockModem.getServiceBinder(IMS_SERVICE);
                         }
                         if (binder != null) {
-                            mRadioVersion = RADIO_HAL_VERSION_2_1;
-                            ((RadioImsProxy) serviceProxy).setAidl(mRadioVersion,
+                            mRadioVersion = ((RadioImsProxy) serviceProxy).setAidl(mRadioVersion,
                                     android.hardware.radio.ims.IRadioIms.Stub
                                             .asInterface(binder));
                         }
