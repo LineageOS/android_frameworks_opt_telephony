@@ -108,8 +108,6 @@ public class AccessNetworksManagerTest extends TelephonyTest {
         }).when(mMockedCallback).invokeFromExecutor(any(Runnable.class));
 
         mMockedDataConfigManager = Mockito.mock(DataConfigManager.class);
-        doReturn(new DataConfigManager.EventFrequency(0, 2))
-                .when(mMockedDataConfigManager).getAnomalyQnsChangeThreshold();
         mAccessNetworksManager = new AccessNetworksManager(mPhone, Looper.myLooper());
 
         processAllMessages();

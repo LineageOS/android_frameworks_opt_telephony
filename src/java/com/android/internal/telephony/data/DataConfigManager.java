@@ -231,11 +231,6 @@ public class DataConfigManager extends Handler {
     private EventFrequency mNetworkUnwantedAnomalyReportThreshold;
 
     /**
-     * Anomaly report thresholds for frequent APN type change at {@link AccessNetworksManager}
-     */
-    private EventFrequency mQnsFrequentApnTypeChangeAnomalyReportThreshold;
-
-    /**
      * {@code true} if enabled anomaly detection for param when QNS wants to change preferred
      * network at {@link AccessNetworksManager}.
      */
@@ -418,8 +413,6 @@ public class DataConfigManager extends Handler {
                 properties.getString(KEY_ANOMALY_NETWORK_UNWANTED, null), 0, 12);
         mSetupDataCallAnomalyReportThreshold = parseSlidingWindowCounterThreshold(
                 properties.getString(KEY_ANOMALY_SETUP_DATA_CALL_FAILURE, null), 0, 12);
-        mQnsFrequentApnTypeChangeAnomalyReportThreshold = parseSlidingWindowCounterThreshold(
-                properties.getString(KEY_ANOMALY_QNS_CHANGE_NETWORK, null), 0, 5);
         mIsInvalidQnsParamAnomalyReportEnabled = properties.getBoolean(
                 KEY_ANOMALY_QNS_PARAM, false);
         mNetworkConnectingTimeout = properties.getInt(
@@ -866,15 +859,6 @@ public class DataConfigManager extends Handler {
     }
 
     /**
-     * Anomaly report thresholds for frequent QNS change of preferred network
-     * at {@link AccessNetworksManager}
-     * @return EventFrequency to trigger the anomaly report
-     */
-    public @NonNull EventFrequency getAnomalyQnsChangeThreshold() {
-        return mQnsFrequentApnTypeChangeAnomalyReportThreshold;
-    }
-
-    /**
      * @return {@code true} if enabled anomaly report for invalid param when QNS wants to change
      * preferred network at {@link AccessNetworksManager}.
      */
@@ -1288,8 +1272,6 @@ public class DataConfigManager extends Handler {
         pw.println("mSetupDataCallAnomalyReport=" + mSetupDataCallAnomalyReportThreshold);
         pw.println("mNetworkUnwantedAnomalyReport=" + mNetworkUnwantedAnomalyReportThreshold);
         pw.println("mImsReleaseRequestAnomalyReport=" + mImsReleaseRequestAnomalyReportThreshold);
-        pw.println("mQnsFrequentApnTypeChangeAnomalyReportThreshold="
-                + mQnsFrequentApnTypeChangeAnomalyReportThreshold);
         pw.println("mIsInvalidQnsParamAnomalyReportEnabled="
                 + mIsInvalidQnsParamAnomalyReportEnabled);
         pw.println("mNetworkConnectingTimeout=" + mNetworkConnectingTimeout);
