@@ -2104,18 +2104,6 @@ public class DataNetworkController extends Handler {
     }
 
     /**
-     * Check if a request for the capability currently exists. Note this method id not thread safe
-     * so can be only called within the modules in {@link com.android.internal.telephony.data}.
-     *
-     * @param capability Network capability to check
-     * @return {@code true} if the request for the capability exists.
-     */
-    public boolean isCapabilityRequestExisting(@NetCapability int capability) {
-        return mAllNetworkRequestList.stream()
-                .anyMatch(request -> request.hasCapability(capability));
-    }
-
-    /**
      * Check if there are existing networks having the same interface name.
      *
      * @param interfaceName The interface name to check.
@@ -2514,7 +2502,7 @@ public class DataNetworkController extends Handler {
         logl("onDataNetworkSetupDataFailed: " + dataNetwork + ", cause="
                 + DataFailCause.toString(cause) + ", retryDelayMillis=" + retryDelayMillis + "ms.");
         mDataNetworkList.remove(dataNetwork);
-        trackSetupDataCallFailure(dataNetwork.getTransport());
+        trackSetupDataCallFailure(dataNetwork.getTransport(), cause);
         if (mAnyDataNetworkExisting && mDataNetworkList.isEmpty()) {
             mPendingTearDownAllNetworks = false;
             mAnyDataNetworkExisting = false;
@@ -2539,14 +2527,20 @@ public class DataNetworkController extends Handler {
      * {@link AccessNetworkConstants.TransportType} data service.
      *
      * @param transport The transport of the data service.
+     * @param cause The fail cause
      */
-    private void trackSetupDataCallFailure(@TransportType int transport) {
+    private void trackSetupDataCallFailure(@TransportType int transport,
+            @DataFailureCause int cause) {
         switch (transport) {
             case AccessNetworkConstants.TRANSPORT_TYPE_WWAN:
                 // Skip when poor signal strength
                 if (mPhone.getSignalStrength().getLevel()
                         <= CellSignalStrength.SIGNAL_STRENGTH_POOR) {
                     return;
+                }
+                if (cause == DataFailCause.ERROR_UNSPECIFIED || cause == DataFailCause.UNKNOWN) {
+                    reportAnomaly("RIL set up data call fails: unknown/unspecified error",
+                            "ce7d1465-d8e4-404a-b76f-de2c60bee843");
                 }
                 if (mSetupDataCallWwanFailureCounter.addOccurrence()) {
                     reportAnomaly("RIL fails setup data call request "
@@ -2555,6 +2549,10 @@ public class DataNetworkController extends Handler {
                 }
                 break;
             case AccessNetworkConstants.TRANSPORT_TYPE_WLAN:
+                if (cause == DataFailCause.ERROR_UNSPECIFIED || cause == DataFailCause.UNKNOWN) {
+                    reportAnomaly("IWLAN set up data call fails: unknown/unspecified error",
+                            "a16fc15c-815b-4908-b8e6-5f3bc7cbc20b");
+                }
                 if (mSetupDataCallWlanFailureCounter.addOccurrence()) {
                     reportAnomaly("IWLAN data service fails setup data call request "
                                     + mSetupDataCallWlanFailureCounter.getFrequencyString(),
