@@ -1258,16 +1258,10 @@ public class EuiccControllerTest extends TelephonyTest {
 
     private void setHasCarrierPrivilegesOnActiveSubscription(boolean hasPrivileges)
             throws Exception {
-        SubscriptionInfo.Builder builder = new SubscriptionInfo.Builder()
-                .setSimSlotIndex(0)
-                .setNameSource(SubscriptionManager.NAME_SOURCE_CARRIER_ID)
-                .setEmbedded(true);
-        if (hasPrivileges) {
-            builder.setNativeAccessRules(new UiccAccessRule[] { ACCESS_RULE });
-        }
-        builder.setCardId(CARD_ID);
-        SubscriptionInfo subInfo = builder.build();
-
+        SubscriptionInfo subInfo = new SubscriptionInfo(
+                0, "", 0, "", "", 0, 0, "", 0, null, "", "", "", true /* isEmbedded */,
+                hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null, "", CARD_ID,
+                false, null, false, 0, 0, 0, null, null, true, 0);
         when(mSubscriptionManager.canManageSubscription(subInfo, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
         when(mSubscriptionManager.getActiveSubscriptionInfoList(anyBoolean())).thenReturn(
@@ -1293,16 +1287,14 @@ public class EuiccControllerTest extends TelephonyTest {
         cardInfos.add(cardInfo2);
         when(mTelephonyManager.getUiccCardsInfo()).thenReturn(cardInfos);
 
-        SubscriptionInfo subInfo1 = new SubscriptionInfo.Builder()
-                .setNativeAccessRules(hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null)
-                .setEmbedded(true)
-                .setCardId(CARD_ID)
-                .build();
-        SubscriptionInfo subInfo2 = new SubscriptionInfo.Builder()
-                .setNativeAccessRules(hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null)
-                .setEmbedded(true)
-                .setCardId(2)
-                .build();
+        SubscriptionInfo subInfo1 = new SubscriptionInfo(
+                0, "", 0, "", "", 0, 0, "", 0, null, "", "", "", true /* isEmbedded */,
+                hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null, "", CARD_ID,
+                false, null, false, 0, 0, 0, null, null, true, 0);
+        SubscriptionInfo subInfo2 = new SubscriptionInfo(
+                0, "", 0, "", "", 0, 0, "", 0, null, "", "", "", true /* isEmbedded */,
+                hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null, "",
+                1 /* cardId */, false, null, false, 0, 0, 0, null, null, true, 0);
         when(mSubscriptionManager.canManageSubscription(subInfo1, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
         when(mSubscriptionManager.canManageSubscription(subInfo2, PACKAGE_NAME)).thenReturn(
@@ -1312,13 +1304,10 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     private void prepareOperationSubscription(boolean hasPrivileges) throws Exception {
-        SubscriptionInfo subInfo = new SubscriptionInfo.Builder()
-                .setId(SUBSCRIPTION_ID)
-                .setIccId(ICC_ID)
-                .setNativeAccessRules(hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null)
-                .setEmbedded(true)
-                .setCardId(CARD_ID)
-                .build();
+        SubscriptionInfo subInfo = new SubscriptionInfo(
+                SUBSCRIPTION_ID, ICC_ID, 0, "", "", 0, 0, "", 0, null, "0", "0", "",
+                true /* isEmbedded */, hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null,
+                null);
         when(mSubscriptionManager.canManageSubscription(subInfo, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
         when(mSubscriptionManager.getAvailableSubscriptionInfoList()).thenReturn(
