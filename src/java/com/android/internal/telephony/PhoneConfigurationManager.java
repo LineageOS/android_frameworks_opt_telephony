@@ -466,10 +466,6 @@ public class PhoneConfigurationManager {
      * @return true if the modem service is set successfully, false otherwise.
      */
     public boolean setModemService(String serviceName) {
-        if (mRadioConfig == null || mPhones[0] == null) {
-            return false;
-        }
-
         log("setModemService: " + serviceName);
         boolean statusRadioConfig = false;
         boolean statusRil = false;
@@ -479,23 +475,37 @@ public class PhoneConfigurationManager {
 
         // Check for ALLOW_MOCK_MODEM_PROPERTY and BOOT_ALLOW_MOCK_MODEM_PROPERTY on user builds
         if (isAllowed || isAllowedForBoot || DEBUG) {
-            if (serviceName != null) {
+            if (mRadioConfig != null) {
                 statusRadioConfig = mRadioConfig.setModemService(serviceName);
-
-                //TODO: consider multi-sim case (b/210073692)
-                statusRil = mPhones[0].mCi.setModemService(serviceName);
-            } else {
-                statusRadioConfig = mRadioConfig.setModemService(null);
-
-                //TODO: consider multi-sim case
-                statusRil = mPhones[0].mCi.setModemService(null);
             }
 
-            return statusRadioConfig && statusRil;
+            if (!statusRadioConfig) {
+                loge("setModemService: switching modem service for radioconfig fail");
+                return false;
+            }
+
+            for (int i = 0; i < getPhoneCount(); i++) {
+                if (mPhones[i] != null) {
+                    statusRil = mPhones[i].mCi.setModemService(serviceName);
+                }
+
+                if (!statusRil) {
+                    loge("setModemService: switch modem for radio " + i + " fail");
+
+                    // Disconnect the switched service
+                    mRadioConfig.setModemService(null);
+                    for (int t = 0; t < i; t++) {
+                        mPhones[t].mCi.setModemService(null);
+                    }
+                    return false;
+                }
+            }
         } else {
             loge("setModemService is not allowed");
             return false;
         }
+
+        return true;
     }
 
      /**
@@ -503,7 +513,6 @@ public class PhoneConfigurationManager {
      * @return the service name of the connected service.
      */
     public String getModemService() {
-        //TODO: consider multi-sim case
         if (mPhones[0] == null) {
             return "";
         }
