@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8fd6adb7_ea6acf3e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16185
+      },
+      "writtenOn": "2022-09-21T20:55:00Z",
+      "side": 1,
+      "message": "Obligatory \"ew, Verizon\"",
+      "revId": "90bd16421251e369206c1b30df1756fc2a38df34",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
