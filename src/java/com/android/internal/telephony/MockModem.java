@@ -42,7 +42,7 @@ public class MockModem {
     static final int RADIOCONFIG_SERVICE = RIL.MAX_SERVICE_IDX + 1;
 
     static final int BINDER_RETRY_MILLIS = 3 * 100;
-    static final int BINDER_MAX_RETRY = 3;
+    static final int BINDER_MAX_RETRY = 10;
 
     private Context mContext;
     private String mServiceName;
@@ -64,6 +64,7 @@ public class MockModem {
     private ServiceConnection mConfigServiceConnection;
 
     private byte mPhoneId;
+    private String mTag;
 
     MockModem(Context context, String serviceName) {
         this(context, serviceName, 0);
@@ -71,6 +72,7 @@ public class MockModem {
 
     MockModem(Context context, String serviceName, int phoneId) {
         mPhoneId = (byte) phoneId;
+        mTag = TAG + "-" + mPhoneId;
         mContext = context;
         String[] componentInfo = serviceName.split("/", 2);
         mPackageName = componentInfo[0];
@@ -86,7 +88,7 @@ public class MockModem {
 
         @Override
         public void onServiceConnected(ComponentName name, IBinder binder) {
-            Rlog.d(TAG, "IRadio " + getModuleName(mService) + "  - onServiceConnected");
+            Rlog.d(mTag, "IRadio " + getModuleName(mService) + "  - onServiceConnected");
 
             if (mService == RIL.MODEM_SERVICE) {
                 mModemBinder = binder;
@@ -107,7 +109,7 @@ public class MockModem {
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-            Rlog.d(TAG, "IRadio " + getModuleName(mService) + "  - onServiceDisconnected");
+            Rlog.d(mTag, "IRadio " + getModuleName(mService) + "  - onServiceDisconnected");
 
             if (mService == RIL.MODEM_SERVICE) {
                 mModemBinder = null;
@@ -138,7 +140,7 @@ public class MockModem {
 
         Intent intent = new Intent();
         intent.setComponent(new ComponentName(mPackageName, mServiceName));
-        intent.setAction(actionName);
+        intent.setAction(actionName + phoneId);
         intent.putExtra(PHONE_ID, phoneId);
 
         status = mContext.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
@@ -183,11 +185,11 @@ public class MockModem {
                 boolean status =
                         bindModuleToMockModemService(BIND_IRADIOCONFIG, mConfigServiceConnection);
                 if (!status) {
-                    Rlog.d(TAG, "IRadio Config bind fail");
+                    Rlog.d(mTag, "IRadio Config bind fail");
                     mConfigServiceConnection = null;
                 }
             } else {
-                Rlog.d(TAG, "IRadio Config is bound");
+                Rlog.d(mTag, "IRadio Config is bound");
             }
         } else if (service == RIL.MODEM_SERVICE) {
             if (mModemBinder == null) {
@@ -197,11 +199,11 @@ public class MockModem {
                         bindModuleToMockModemService(
                                 mPhoneId, BIND_IRADIOMODEM, mModemServiceConnection);
                 if (!status) {
-                    Rlog.d(TAG, "IRadio Modem bind fail");
+                    Rlog.d(mTag, "IRadio Modem bind fail");
                     mModemServiceConnection = null;
                 }
             } else {
-                Rlog.d(TAG, "IRadio Modem is bound");
+                Rlog.d(mTag, "IRadio Modem is bound");
             }
         } else if (service == RIL.SIM_SERVICE) {
             if (mSimBinder == null) {
@@ -211,11 +213,11 @@ public class MockModem {
                         bindModuleToMockModemService(
                                 mPhoneId, BIND_IRADIOSIM, mSimServiceConnection);
                 if (!status) {
-                    Rlog.d(TAG, "IRadio Sim bind fail");
+                    Rlog.d(mTag, "IRadio Sim bind fail");
                     mSimServiceConnection = null;
                 }
             } else {
-                Rlog.d(TAG, "IRadio Sim is bound");
+                Rlog.d(mTag, "IRadio Sim is bound");
             }
         } else if (service == RIL.MESSAGING_SERVICE) {
             if (mMessagingBinder == null) {
@@ -225,11 +227,11 @@ public class MockModem {
                         bindModuleToMockModemService(
                                 mPhoneId, BIND_IRADIOMESSAGING, mMessagingServiceConnection);
                 if (!status) {
-                    Rlog.d(TAG, "IRadio Messaging bind fail");
+                    Rlog.d(mTag, "IRadio Messaging bind fail");
                     mMessagingServiceConnection = null;
                 }
             } else {
-                Rlog.d(TAG, "IRadio Messaging is bound");
+                Rlog.d(mTag, "IRadio Messaging is bound");
             }
         } else if (service == RIL.DATA_SERVICE) {
             if (mDataBinder == null) {
@@ -239,11 +241,11 @@ public class MockModem {
                         bindModuleToMockModemService(
                                 mPhoneId, BIND_IRADIODATA, mDataServiceConnection);
                 if (!status) {
-                    Rlog.d(TAG, "IRadio Data bind fail");
+                    Rlog.d(mTag, "IRadio Data bind fail");
                     mDataServiceConnection = null;
                 }
             } else {
-                Rlog.d(TAG, "IRadio Data is bound");
+                Rlog.d(mTag, "IRadio Data is bound");
             }
         } else if (service == RIL.NETWORK_SERVICE) {
             if (mNetworkBinder == null) {
@@ -253,11 +255,11 @@ public class MockModem {
                         bindModuleToMockModemService(
                                 mPhoneId, BIND_IRADIONETWORK, mNetworkServiceConnection);
                 if (!status) {
-                    Rlog.d(TAG, "IRadio Network bind fail");
+                    Rlog.d(mTag, "IRadio Network bind fail");
                     mNetworkServiceConnection = null;
                 }
             } else {
-                Rlog.d(TAG, "IRadio Network is bound");
+                Rlog.d(mTag, "IRadio Network is bound");
             }
         } else if (service == RIL.VOICE_SERVICE) {
             if (mVoiceBinder == null) {
@@ -267,11 +269,11 @@ public class MockModem {
                         bindModuleToMockModemService(
                                 mPhoneId, BIND_IRADIOVOICE, mVoiceServiceConnection);
                 if (!status) {
-                    Rlog.d(TAG, "IRadio Voice bind fail");
+                    Rlog.d(mTag, "IRadio Voice bind fail");
                     mVoiceServiceConnection = null;
                 }
             } else {
-                Rlog.d(TAG, "IRadio Voice is bound");
+                Rlog.d(mTag, "IRadio Voice is bound");
             }
         }
     }
@@ -284,49 +286,49 @@ public class MockModem {
                 mContext.unbindService(mConfigServiceConnection);
                 mConfigServiceConnection = null;
                 mConfigBinder = null;
-                Rlog.d(TAG, "unbind IRadio Config");
+                Rlog.d(mTag, "unbind IRadio Config");
             }
         } else if (service == RIL.MODEM_SERVICE) {
             if (mModemServiceConnection != null) {
                 mContext.unbindService(mModemServiceConnection);
                 mModemServiceConnection = null;
                 mModemBinder = null;
-                Rlog.d(TAG, "unbind IRadio Modem");
+                Rlog.d(mTag, "unbind IRadio Modem");
             }
         } else if (service == RIL.SIM_SERVICE) {
             if (mSimServiceConnection != null) {
                 mContext.unbindService(mSimServiceConnection);
                 mSimServiceConnection = null;
                 mSimBinder = null;
-                Rlog.d(TAG, "unbind IRadio Sim");
+                Rlog.d(mTag, "unbind IRadio Sim");
             }
         } else if (service == RIL.MESSAGING_SERVICE) {
             if (mMessagingServiceConnection != null) {
                 mContext.unbindService(mMessagingServiceConnection);
                 mMessagingServiceConnection = null;
                 mMessagingBinder = null;
-                Rlog.d(TAG, "unbind IRadio Messaging");
+                Rlog.d(mTag, "unbind IRadio Messaging");
             }
         } else if (service == RIL.DATA_SERVICE) {
             if (mDataServiceConnection != null) {
                 mContext.unbindService(mDataServiceConnection);
                 mDataServiceConnection = null;
                 mDataBinder = null;
-                Rlog.d(TAG, "unbind IRadio Data");
+                Rlog.d(mTag, "unbind IRadio Data");
             }
         } else if (service == RIL.NETWORK_SERVICE) {
             if (mNetworkServiceConnection != null) {
                 mContext.unbindService(mNetworkServiceConnection);
                 mNetworkServiceConnection = null;
                 mNetworkBinder = null;
-                Rlog.d(TAG, "unbind IRadio Network");
+                Rlog.d(mTag, "unbind IRadio Network");
             }
         } else if (service == RIL.VOICE_SERVICE) {
             if (mVoiceServiceConnection != null) {
                 mContext.unbindService(mVoiceServiceConnection);
                 mVoiceServiceConnection = null;
                 mVoiceBinder = null;
-                Rlog.d(TAG, "unbind IRadio Voice");
+                Rlog.d(mTag, "unbind IRadio Voice");
             }
         }
     }
