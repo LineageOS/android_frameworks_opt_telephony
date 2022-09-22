@@ -73,6 +73,7 @@ import com.android.internal.telephony.uicc.IccUtils;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InOrder;
@@ -549,7 +550,8 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
                 List.of(new Pair<>(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS_SET)));
     }
 
-    @Test
+    // TODO(b/232273884): turn UT case on when grace period is on
+    @Ignore
     public void testSimStateChangedSimStateNotReady() throws Exception {
         // Start with privileges, verify clearing certs clears UIDs
         setupCarrierPrivilegesTrackerWithSimLoadedUids();
@@ -573,7 +575,8 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
                         new Pair<>(Set.of(), Set.of())));
     }
 
-    @Test
+    // TODO(b/232273884): turn UT case on when grace period is on
+    @Ignore
     public void testSimStateChangedSimStateAbsentThenLoadedWithSameRules() throws Exception {
         // Start with privileges
         setupCarrierPrivilegesTrackerWithSimLoadedUids();
@@ -642,7 +645,8 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
                 List.of(new Pair<>(Set.of(), Set.of())));
     }
 
-    @Test
+    // TODO(b/232273884): turn UT case on when grace period is on
+    @Ignore
     public void testSimStateChangedSimStateAbsentThenLoadedWithUpdatedRules() throws Exception {
         // Start with privileges
         setupCarrierPrivilegesTrackerWithSimLoadedUids();
