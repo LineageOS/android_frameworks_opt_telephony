@@ -145,6 +145,7 @@ public class FakeTelephonyProvider extends MockContentProvider {
 
     @Override
     public Uri insert(Uri uri, ContentValues values) {
+        Log.d(TAG, "insert. values=" + values);
         SQLiteDatabase db = mDbHelper.getWritableDatabase();
         long id = db.insert("siminfo", null, values);
         return ContentUris.withAppendedId(Telephony.SimInfo.CONTENT_URI, id);
