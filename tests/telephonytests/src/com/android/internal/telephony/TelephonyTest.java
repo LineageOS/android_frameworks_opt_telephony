@@ -97,7 +97,6 @@ import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.data.AccessNetworksManager;
 import com.android.internal.telephony.data.CellularNetworkValidator;
 import com.android.internal.telephony.data.DataConfigManager;
-import com.android.internal.telephony.data.DataEnabledOverride;
 import com.android.internal.telephony.data.DataNetworkController;
 import com.android.internal.telephony.data.DataProfileManager;
 import com.android.internal.telephony.data.DataRetryManager;
@@ -237,7 +236,6 @@ public abstract class TelephonyTest {
     protected SubscriptionInfoUpdater mSubInfoRecordUpdater;
     protected LocaleTracker mLocaleTracker;
     protected RestrictedState mRestrictedState;
-    protected DataEnabledOverride mDataEnabledOverride;
     protected PhoneConfigurationManager mPhoneConfigurationManager;
     protected CellularNetworkValidator mCellularNetworkValidator;
     protected UiccCard mUiccCard;
@@ -468,7 +466,6 @@ public abstract class TelephonyTest {
         mSubInfoRecordUpdater = Mockito.mock(SubscriptionInfoUpdater.class);
         mLocaleTracker = Mockito.mock(LocaleTracker.class);
         mRestrictedState = Mockito.mock(RestrictedState.class);
-        mDataEnabledOverride = Mockito.mock(DataEnabledOverride.class);
         mPhoneConfigurationManager = Mockito.mock(PhoneConfigurationManager.class);
         mCellularNetworkValidator = Mockito.mock(CellularNetworkValidator.class);
         mUiccCard = Mockito.mock(UiccCard.class);

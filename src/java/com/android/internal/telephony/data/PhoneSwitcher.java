@@ -62,7 +62,6 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
-import android.telephony.data.ApnSetting;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsRegistrationAttributes;
 import android.telephony.ims.RegistrationManager;
@@ -1326,10 +1325,14 @@ public class PhoneSwitcher extends Handler {
     // requests.
     protected void updatePreferredDataPhoneId() {
         Phone voicePhone = findPhoneById(mPhoneIdInVoiceCall);
+        // check user enabled data on the default phone
+        int defaultDataPhoneId = SubscriptionController.getInstance().getPhoneId(mPrimaryDataSubId);
+        Phone defaultDataPhone = findPhoneById(defaultDataPhoneId);
         boolean isDataEnabled = false;
-        if (voicePhone != null) {
-            isDataEnabled = voicePhone.getDataSettingsManager()
-                    .isDataEnabled(ApnSetting.TYPE_DEFAULT);
+        if (voicePhone != null && defaultDataPhone != null
+                && defaultDataPhone.isUserDataEnabled()) {
+            // check voice during call feature is enabled
+            isDataEnabled = voicePhone.getDataSettingsManager().isDataEnabled();
         }
 
         if (mEmergencyOverride != null && findPhoneById(mEmergencyOverride.mPhoneId) != null) {
