@@ -56,6 +56,7 @@ import android.provider.Settings;
 import android.sysprop.TelephonyProperties;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
+import android.telephony.BarringInfo;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellInfo;
 import android.telephony.CellSignalStrengthCdma;
@@ -266,6 +267,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private final RadioProxyDeathRecipient mRadioProxyDeathRecipient;
     final RilHandler mRilHandler;
     private MockModem mMockModem;
+
+    // The last barring information received
+    private BarringInfo mLastBarringInfo = null;
 
     // Thread-safe HashMap to map from RIL_REQUEST_XXX constant to HalVersion.
     // This is for Radio HAL Fallback Compatibility feature. When a RIL request
@@ -6431,6 +6435,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         CellInfo.UNAVAILABLE, CellInfo.UNAVAILABLE),
                 new CellSignalStrengthTdscdma(), new CellSignalStrengthLte(),
                 new CellSignalStrengthNr());
+    }
+
+    void notifyBarringInfoChanged(@NonNull BarringInfo barringInfo) {
+        mLastBarringInfo = barringInfo;
+        mBarringInfoChangedRegistrants.notifyRegistrants(new AsyncResult(null, barringInfo, null));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public @Nullable BarringInfo getLastBarringInfo() {
+        return mLastBarringInfo;
     }
 
     /**

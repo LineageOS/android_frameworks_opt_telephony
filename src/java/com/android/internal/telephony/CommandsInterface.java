@@ -27,6 +27,7 @@ import android.os.Message;
 import android.os.WorkSource;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
+import android.telephony.BarringInfo;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.ClientRequestStats;
 import android.telephony.DomainSelectionService;
@@ -2640,6 +2641,15 @@ public interface CommandsInterface {
      * @param result Message will be sent back to handler and result.obj will be the AsycResult.
      */
     default void getBarringInfo(Message result) {};
+
+    /**
+     * Returns the last barring information received.
+     *
+     * @return the last barring information.
+     */
+    default @Nullable BarringInfo getLastBarringInfo() {
+        return null;
+    };
 
     /**
      * Allocates a pdu session id
