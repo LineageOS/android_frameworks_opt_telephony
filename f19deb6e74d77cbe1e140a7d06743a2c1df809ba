@@ -34,6 +34,23 @@
       "parentUuid": "660dd242_20cb7d51",
       "revId": "f19deb6e74d77cbe1e140a7d06743a2c1df809ba",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b3e09664_28e4d2da",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 13648
+      },
+      "writtenOn": "2022-09-27T21:26:08Z",
+      "side": 1,
+      "message": "Prop is kinda huge, but meh.",
+      "revId": "f19deb6e74d77cbe1e140a7d06743a2c1df809ba",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
