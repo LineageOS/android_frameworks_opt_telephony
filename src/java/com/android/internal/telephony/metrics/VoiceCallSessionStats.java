@@ -442,7 +442,7 @@ public class VoiceCallSessionStats {
         proto.srvccFailureCount = 0L;
         proto.srvccCancellationCount = 0L;
         proto.rttEnabled = false;
-        proto.isEmergency = conn.isEmergencyCall();
+        proto.isEmergency = conn.isEmergencyCall() || conn.isNetworkIdentifiedEmergencyCall();
         proto.isRoaming = serviceState != null ? serviceState.getVoiceRoaming() : false;
         proto.isMultiparty = conn.isMultiparty();
 
