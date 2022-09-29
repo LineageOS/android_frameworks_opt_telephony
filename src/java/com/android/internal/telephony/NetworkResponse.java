@@ -436,6 +436,43 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
         RadioResponse.responseInts(RIL.NETWORK_SERVICE, mRil, responseInfo, usageSetting);
     }
 
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param regState the current registration state of the modem.
+     */
+    public void setEmergencyModeResponse(RadioResponseInfo responseInfo,
+            android.hardware.radio.network.EmergencyRegResult regState) {
+        RILRequest rr = mRil.processResponse(RIL.NETWORK_SERVICE, responseInfo);
+
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                RadioResponse.sendMessageResponse(rr.mResult, regState);
+            }
+            mRil.processResponseDone(rr, responseInfo, regState);
+        }
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void triggerEmergencyNetworkScanResponse(RadioResponseInfo responseInfo) {
+        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void exitEmergencyModeResponse(RadioResponseInfo responseInfo) {
+        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void cancelEmergencyNetworkScanResponse(RadioResponseInfo responseInfo) {
+        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
+    }
+
     @Override
     public String getInterfaceHash() {
         return IRadioNetworkResponse.HASH;

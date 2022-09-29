@@ -114,6 +114,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mBarringInfoChangedRegistrants = new RegistrantList();
     protected RegistrantList mSimPhonebookChangedRegistrants = new RegistrantList();
     protected RegistrantList mSimPhonebookRecordsReceivedRegistrants = new RegistrantList();
+    protected RegistrantList mEmergencyNetworkScanRegistrants = new RegistrantList();
 
     @UnsupportedAppUsage
     protected Registrant mGsmSmsRegistrant;
@@ -1131,5 +1132,27 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void updateSimPhonebookRecord(SimPhonebookRecord phonebookRecord, Message result) {
+    }
+
+    /**
+     * Register for Emergency network scan result.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    @Override
+    public void registerForEmergencyNetworkScan(Handler h, int what, Object obj) {
+        mEmergencyNetworkScanRegistrants.add(h, what, obj);
+    }
+
+    /**
+     * Unregister for Emergency network scan result.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    @Override
+    public void unregisterForEmergencyNetworkScan(Handler h) {
+        mEmergencyNetworkScanRegistrants.remove(h);
     }
 }

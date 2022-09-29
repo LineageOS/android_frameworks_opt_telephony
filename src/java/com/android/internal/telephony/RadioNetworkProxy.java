@@ -852,4 +852,64 @@ public class RadioNetworkProxy extends RadioServiceProxy {
         }
         // Only supported on AIDL.
     }
+
+    /**
+     * Set the Emergency Mode
+     *
+     * @param serial Serial number of the request.
+     * @param emcModeType Defines the radio emergency mode type.
+     * @throws RemoteException
+     */
+    public void setEmergencyMode(int serial, int emcModeType) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.setEmergencyMode(serial, emcModeType);
+        }
+        // Only supported on AIDL.
+    }
+
+    /**
+     * Triggers an Emergency network scan.
+     *
+     * @param serial Serial number of the request.
+     * @param scanRequest Contains the preferred networks and type of service to be scanned.
+     * @throws RemoteException
+     */
+    public void triggerEmergencyNetworkScan(int serial,
+            android.hardware.radio.network.EmergencyNetworkScanTrigger scanRequest)
+            throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.triggerEmergencyNetworkScan(serial, scanRequest);
+        }
+        // Only supported on AIDL.
+    }
+
+    /**
+     * Cancels ongoing Emergency network scan
+     *
+     * @param serial Serial number of the request.
+     * @throws RemoteException
+     */
+    public void cancelEmergencyNetworkScan(int serial) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.cancelEmergencyNetworkScan(serial);
+        }
+        // Only supported on AIDL.
+    }
+
+    /**
+     * Exits ongoing Emergency Mode
+     *
+     * @param serial Serial number of the request.
+     * @throws RemoteException
+     */
+    public void exitEmergencyMode(int serial) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.exitEmergencyMode(serial);
+        }
+        // Only supported on AIDL.
+    }
 }
