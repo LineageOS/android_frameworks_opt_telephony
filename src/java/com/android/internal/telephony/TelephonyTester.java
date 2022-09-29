@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.NonNull;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -200,11 +201,7 @@ public class TelephonyTester {
                     sendTestSuppServiceNotification(intent);
                 } else if (action.equals(ACTION_TEST_SERVICE_STATE)) {
                     log("handle test service state changed intent");
-                    // Trigger the service state update. The replacement will be done in
-                    // overrideServiceState().
-                    mServiceStateTestIntent = intent;
-                    mPhone.getServiceStateTracker().sendEmptyMessage(
-                            ServiceStateTracker.EVENT_NETWORK_STATE_CHANGED);
+                    setServiceStateTestIntent(intent);
                 } else if (action.equals(ACTION_TEST_IMS_E_CALL)) {
                     log("handle test IMS ecall intent");
                     testImsECall();
@@ -388,6 +385,19 @@ public class TelephonyTester {
         }
     }
 
+    /**
+     * Set the service state test intent.
+     *
+     * @param intent The service state test intent.
+     */
+    public void setServiceStateTestIntent(@NonNull Intent intent) {
+        mServiceStateTestIntent = intent;
+        // Trigger the service state update. The replacement will be done in
+        // overrideServiceState().
+        mPhone.getServiceStateTracker().sendEmptyMessage(
+                ServiceStateTracker.EVENT_NETWORK_STATE_CHANGED);
+    }
+
     void overrideServiceState(ServiceState ss) {
         if (mServiceStateTestIntent == null || ss == null) return;
         if (mPhone.getPhoneId() != mServiceStateTestIntent.getIntExtra(
@@ -401,13 +411,36 @@ public class TelephonyTester {
         }
 
         if (mServiceStateTestIntent.hasExtra(EXTRA_VOICE_REG_STATE)) {
+            int state = mServiceStateTestIntent.getIntExtra(EXTRA_DATA_REG_STATE,
+                    ServiceState.STATE_OUT_OF_SERVICE);
             ss.setVoiceRegState(mServiceStateTestIntent.getIntExtra(EXTRA_VOICE_REG_STATE,
                     ServiceState.STATE_OUT_OF_SERVICE));
+            NetworkRegistrationInfo nri = ss.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            NetworkRegistrationInfo.Builder builder = new NetworkRegistrationInfo.Builder(nri);
+            if (state == ServiceState.STATE_IN_SERVICE) {
+                builder.setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+            } else {
+                builder.setRegistrationState(
+                        NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING);
+            }
+            ss.addNetworkRegistrationInfo(builder.build());
             log("Override voice service state with " + ss.getState());
         }
         if (mServiceStateTestIntent.hasExtra(EXTRA_DATA_REG_STATE)) {
-            ss.setDataRegState(mServiceStateTestIntent.getIntExtra(EXTRA_DATA_REG_STATE,
-                    ServiceState.STATE_OUT_OF_SERVICE));
+            int state = mServiceStateTestIntent.getIntExtra(EXTRA_DATA_REG_STATE,
+                    ServiceState.STATE_OUT_OF_SERVICE);
+            ss.setDataRegState(state);
+            NetworkRegistrationInfo nri = ss.getNetworkRegistrationInfo(
+                    NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            NetworkRegistrationInfo.Builder builder = new NetworkRegistrationInfo.Builder(nri);
+            if (state == ServiceState.STATE_IN_SERVICE) {
+                builder.setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+            } else {
+                builder.setRegistrationState(
+                        NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING);
+            }
+            ss.addNetworkRegistrationInfo(builder.build());
             log("Override data service state with " + ss.getDataRegistrationState());
         }
         if (mServiceStateTestIntent.hasExtra(EXTRA_OPERATOR)) {

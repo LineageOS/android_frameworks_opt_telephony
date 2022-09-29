@@ -3400,8 +3400,8 @@ public class ServiceStateTracker extends Handler {
         updateNrFrequencyRangeFromPhysicalChannelConfigs(mLastPhysicalChannelConfigList, mNewSS);
         updateNrStateFromPhysicalChannelConfigs(mLastPhysicalChannelConfigList, mNewSS);
 
-        if (TelephonyUtils.IS_DEBUGGABLE && mPhone.mTelephonyTester != null) {
-            mPhone.mTelephonyTester.overrideServiceState(mNewSS);
+        if (TelephonyUtils.IS_DEBUGGABLE && mPhone.getTelephonyTester() != null) {
+            mPhone.getTelephonyTester().overrideServiceState(mNewSS);
         }
 
         NetworkRegistrationInfo networkRegState = mNewSS.getNetworkRegistrationInfo(

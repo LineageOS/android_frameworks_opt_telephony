@@ -325,7 +325,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected AtomicReference<UiccCardApplication> mUiccApplication =
             new AtomicReference<UiccCardApplication>();
-    TelephonyTester mTelephonyTester;
+    private TelephonyTester mTelephonyTester;
     private String mName;
     private final String mActionDetached;
     private final String mActionAttached;
@@ -4873,6 +4873,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Notifies that the IMS service connected supports the terminal-based call waiting service
      */
     public void setTerminalBasedCallWaitingSupported(boolean supported) {
+    }
+
+    /**
+     * @return Telephony tester instance.
+     */
+    public @Nullable TelephonyTester getTelephonyTester() {
+        return mTelephonyTester;
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

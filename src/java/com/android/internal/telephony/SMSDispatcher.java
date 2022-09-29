@@ -1861,6 +1861,12 @@ public abstract class SMSDispatcher extends Handler {
                                                 trackers[0].mDestAddress, networkCountryIso));
             }
 
+            if (smsCategory != SmsManager.SMS_CATEGORY_NOT_SHORT_CODE) {
+                int xmlVersion = mSmsDispatchersController.getUsageMonitor()
+                        .getShortCodeXmlFileVersion();
+                mPhone.getSmsStats().onOutgoingShortCodeSms(smsCategory, xmlVersion);
+            }
+
             if (smsCategory == SmsManager.SMS_CATEGORY_NOT_SHORT_CODE
                     || smsCategory == SmsManager.SMS_CATEGORY_FREE_SHORT_CODE
                     || smsCategory == SmsManager.SMS_CATEGORY_STANDARD_SHORT_CODE) {
