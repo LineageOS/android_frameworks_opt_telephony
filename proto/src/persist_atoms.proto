@@ -180,6 +180,12 @@ message PersistAtoms {
 
     /* Unmetered networks information. */
     repeated UnmeteredNetworks unmetered_networks = 52;
+
+    /* Outgoing Short Code SMS statistics and information. */
+    repeated OutgoingShortCodeSms outgoing_short_code_sms = 53;
+
+    /* Timestamp of last outgoing_short_code_sms pull. */
+    optional int64 outgoing_short_code_sms_pull_timestamp_millis = 54;
 }
 
 // The canonical versions of the following enums live in:
@@ -515,4 +521,10 @@ message UnmeteredNetworks {
     optional int32 phone_id = 1;
     optional int32 carrier_id = 2;
     optional int64 unmetered_networks_bitmask = 3;
+}
+
+message OutgoingShortCodeSms {
+    optional int32 category = 1;
+    optional int32 xml_version = 2;
+    optional int32 short_code_sms_count = 3;
 }

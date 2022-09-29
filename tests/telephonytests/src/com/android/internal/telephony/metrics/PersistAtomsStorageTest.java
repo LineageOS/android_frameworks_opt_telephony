@@ -44,6 +44,7 @@ import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import android.annotation.Nullable;
 import android.content.Context;
@@ -68,6 +69,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationFeat
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationServiceDescStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationTermination;
+import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingShortCodeSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PresenceNotifyEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsAcsProvisioningStats;
@@ -223,6 +225,10 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     private SipTransportSession mSipTransportSession1;
     private SipTransportSession mSipTransportSession2;
     private SipTransportSession[] mSipTransportSession;
+
+    private OutgoingShortCodeSms mOutgoingShortCodeSms1;
+    private OutgoingShortCodeSms mOutgoingShortCodeSms2;
+    private OutgoingShortCodeSms[] mOutgoingShortCodeSms;
 
     private void makeTestData() {
         // MO call with SRVCC (LTE to UMTS)
@@ -859,6 +865,19 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
         mSipTransportSession =
                 new SipTransportSession[] {mSipTransportSession1, mSipTransportSession2};
+
+        mOutgoingShortCodeSms1 = new OutgoingShortCodeSms();
+        mOutgoingShortCodeSms1.category = 1;
+        mOutgoingShortCodeSms1.xmlVersion = 30;
+        mOutgoingShortCodeSms1.shortCodeSmsCount = 1;
+
+        mOutgoingShortCodeSms2 = new OutgoingShortCodeSms();
+        mOutgoingShortCodeSms2.category = 2;
+        mOutgoingShortCodeSms2.xmlVersion  = 31;
+        mOutgoingShortCodeSms2.shortCodeSmsCount = 1;
+
+        mOutgoingShortCodeSms = new OutgoingShortCodeSms[] {mOutgoingShortCodeSms1,
+                mOutgoingShortCodeSms2};
     }
 
     private static class TestablePersistAtomsStorage extends PersistAtomsStorage {
@@ -997,6 +1016,9 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSipTransportSession1 = null;
         mSipTransportSession2 = null;
         mSipTransportSession = null;
+        mOutgoingShortCodeSms1 = null;
+        mOutgoingShortCodeSms2 = null;
+        mOutgoingShortCodeSms = null;
         super.tearDown();
     }
 
@@ -3399,6 +3421,121 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     }
 
     @Test
+    public void addOutgoingShortCodeSms_emptyProto() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addOutgoingShortCodeSms(mOutgoingShortCodeSms1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // OutgoingShortCodeSms should be added successfully, changes should be saved.
+        verifyCurrentStateSavedToFileOnce();
+        OutgoingShortCodeSms[] expectedList = new OutgoingShortCodeSms[] {mOutgoingShortCodeSms1};
+        assertProtoArrayEquals(expectedList,
+                mPersistAtomsStorage.getOutgoingShortCodeSms(0L));
+    }
+
+    @Test
+    public void addOutgoingShortCodeSms_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addOutgoingShortCodeSms(mOutgoingShortCodeSms1);
+        mPersistAtomsStorage.addOutgoingShortCodeSms(mOutgoingShortCodeSms2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // OutgoingShortCodeSms should be added successfully.
+        verifyCurrentStateSavedToFileOnce();
+        OutgoingShortCodeSms[] expectedList = new OutgoingShortCodeSms[] {mOutgoingShortCodeSms1,
+                mOutgoingShortCodeSms2};
+        assertProtoArrayEqualsIgnoringOrder(expectedList,
+                mPersistAtomsStorage.getOutgoingShortCodeSms(0L));
+    }
+
+    @Test
+    public void addOutgoingShortCodeSms_updateExistingEntries() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        // Add copy of mOutgoingShortCodeSms1.
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addOutgoingShortCodeSms(copyOf(mOutgoingShortCodeSms1));
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // mOutgoingShortCodeSms1's short code sms count should be increased by 1.
+        verifyCurrentStateSavedToFileOnce();
+        OutgoingShortCodeSms newOutgoingShortCodeSms1 = copyOf(mOutgoingShortCodeSms1);
+        newOutgoingShortCodeSms1.shortCodeSmsCount = 2;
+        OutgoingShortCodeSms[] expectedList = new OutgoingShortCodeSms[] {newOutgoingShortCodeSms1,
+                mOutgoingShortCodeSms2};
+        assertProtoArrayEqualsIgnoringOrder(expectedList,
+                mPersistAtomsStorage.getOutgoingShortCodeSms(0L));
+    }
+
+    @Test
+    public void addOutgoingShortCodeSms_tooManyEntries() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        // Store mOutgoingShortCodeSms1 11 times.
+        for (int i = 0; i < 11; i++) {
+            mPersistAtomsStorage.addOutgoingShortCodeSms(mOutgoingShortCodeSms1);
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+        // Store mOutgoingShortCodeSms2 1 time.
+        mPersistAtomsStorage.addOutgoingShortCodeSms(mOutgoingShortCodeSms2);
+
+        verifyCurrentStateSavedToFileOnce();
+        OutgoingShortCodeSms[] result = mPersistAtomsStorage
+                .getOutgoingShortCodeSms(0L);
+        assertHasStatsAndCount(result, mOutgoingShortCodeSms1, 11);
+        assertHasStatsAndCount(result, mOutgoingShortCodeSms2, 1);
+    }
+
+    @Test
+    public void getOutgoingShortCodeSms_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        // Pull interval less than minimum.
+        mPersistAtomsStorage.incTimeMillis(50L);
+        OutgoingShortCodeSms[] outgoingShortCodeSmsList = mPersistAtomsStorage
+                .getOutgoingShortCodeSms(100L);
+        // Should be denied.
+        assertNull(outgoingShortCodeSmsList);
+    }
+
+    @Test
+    public void getOutgoingShortCodeSms_withSavedAtoms() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        OutgoingShortCodeSms[] outgoingShortCodeSmsList1 = mPersistAtomsStorage
+                .getOutgoingShortCodeSms(50L);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        OutgoingShortCodeSms[] outgoingShortCodeSmsList2 = mPersistAtomsStorage
+                .getOutgoingShortCodeSms(50L);
+
+        // First set of results should be equal to file contents.
+        OutgoingShortCodeSms[] expectedOutgoingShortCodeSmsList =
+                new OutgoingShortCodeSms[] {mOutgoingShortCodeSms1, mOutgoingShortCodeSms2};
+        assertProtoArrayEqualsIgnoringOrder(expectedOutgoingShortCodeSmsList,
+                outgoingShortCodeSmsList1);
+        // Second set of results should be empty.
+        assertProtoArrayEquals(new OutgoingShortCodeSms[0], outgoingShortCodeSmsList2);
+        // Corresponding pull timestamp should be updated and saved.
+        assertEquals(START_TIME_MILLIS + 200L, mPersistAtomsStorage
+                .getAtomsProto().outgoingShortCodeSmsPullTimestampMillis);
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+        assertEquals(START_TIME_MILLIS + 100L,
+                getAtomsWritten(inOrder).outgoingShortCodeSmsPullTimestampMillis);
+        assertEquals(START_TIME_MILLIS + 200L,
+                getAtomsWritten(inOrder).outgoingShortCodeSmsPullTimestampMillis);
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
     @SmallTest
     public void clearAtoms() throws Exception {
         createTestFile(START_TIME_MILLIS);
@@ -3469,6 +3606,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         atoms.sipMessageResponse = mSipMessageResponse;
         atoms.sipTransportSessionPullTimestampMillis = lastPullTimeMillis;
         atoms.sipTransportSession = mSipTransportSession;
+        atoms.outgoingShortCodeSms = mOutgoingShortCodeSms;
+        atoms.outgoingShortCodeSmsPullTimestampMillis = lastPullTimeMillis;
         FileOutputStream stream = new FileOutputStream(mTestFile);
         stream.write(PersistAtoms.toByteArray(atoms));
         stream.close();
@@ -3585,6 +3724,11 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     private static SipTransportSession copyOf(SipTransportSession source)
             throws Exception {
         return SipTransportSession.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static OutgoingShortCodeSms copyOf(OutgoingShortCodeSms source)
+            throws Exception {
+        return OutgoingShortCodeSms.parseFrom(MessageNano.toByteArray(source));
     }
 
     private void assertAllPullTimestampEquals(long timestamp) {
@@ -3862,6 +4006,20 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                     && stats.sipMessageDirection == expectedStats.sipMessageDirection
                     && stats.sipResponse == expectedStats.sipResponse) {
                 actualCount = stats.sessionCount;
+            }
+        }
+        assertEquals(expectedCount, actualCount);
+    }
+
+    private static void assertHasStatsAndCount(
+            OutgoingShortCodeSms[] outgoingShortCodeSmsList,
+            @Nullable OutgoingShortCodeSms expectedOutgoingShortCodeSms, int expectedCount) {
+        assertNotNull(outgoingShortCodeSmsList);
+        int actualCount = -1;
+        for (OutgoingShortCodeSms outgoingShortCodeSms : outgoingShortCodeSmsList) {
+            if (outgoingShortCodeSms.category == expectedOutgoingShortCodeSms.category
+                    && outgoingShortCodeSms.xmlVersion == expectedOutgoingShortCodeSms.xmlVersion) {
+                actualCount = outgoingShortCodeSms.shortCodeSmsCount;
             }
         }
         assertEquals(expectedCount, actualCount);
