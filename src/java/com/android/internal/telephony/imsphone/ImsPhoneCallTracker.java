@@ -136,6 +136,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -2802,7 +2803,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @VisibleForTesting
     public void addReasonCodeRemapping(Integer fromCode, String message, Integer toCode) {
         if (message != null) {
-            message = message.toLowerCase();
+            message = message.toLowerCase(Locale.ROOT);
         }
         mImsReasonCodeMap.put(new Pair<>(fromCode, message), toCode);
     }
@@ -2823,7 +2824,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         if (reason == null) {
             reason = "";
         } else {
-            reason = reason.toLowerCase();
+            reason = reason.toLowerCase(Locale.ROOT);
         }
         log("maybeRemapReasonCode : fromCode = " + reasonInfo.getCode() + " ; message = "
                 + reason);

@@ -77,6 +77,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -1393,7 +1394,7 @@ public class UiccProfile extends IccCard {
         Set<String> uninstalledCarrierPackages = new ArraySet<>();
         List<UiccAccessRule> accessRules = rules.getAccessRules();
         for (UiccAccessRule accessRule : accessRules) {
-            String certHexString = accessRule.getCertificateHexString().toUpperCase();
+            String certHexString = accessRule.getCertificateHexString().toUpperCase(Locale.ROOT);
             String pkgName = certPackageMap.get(certHexString);
             if (!TextUtils.isEmpty(pkgName) && !isPackageBundled(mContext, pkgName)) {
                 uninstalledCarrierPackages.add(pkgName);
@@ -1423,7 +1424,7 @@ public class UiccProfile extends IccCard {
             String[] keyValue = keyValueString.split(keyValueDelim);
 
             if (keyValue.length == 2) {
-                map.put(keyValue[0].toUpperCase(), keyValue[1]);
+                map.put(keyValue[0].toUpperCase(Locale.ROOT), keyValue[1]);
             } else {
                 loge("Incorrect length of key-value pair in carrier app allow list map.  "
                         + "Length should be exactly 2");

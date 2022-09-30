@@ -39,6 +39,7 @@ import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.telephony.Rlog;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -337,7 +338,10 @@ public class IccPhoneBookInterfaceManager {
         }
 
         efid = updateEfForIccType(efid);
-        if (DBG) logd("getAdnRecordsInEF: efid=0x" + Integer.toHexString(efid).toUpperCase());
+        if (DBG) {
+            logd("getAdnRecordsInEF: efid=0x" + Integer.toHexString(efid)
+                    .toUpperCase(Locale.ROOT));
+        }
 
         checkThread();
         Request loadRequest = new Request();

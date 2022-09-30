@@ -2383,7 +2383,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         try {
             // Format: "REASON=VALUE,REASON2=VALUE2"
             for (String pair : result.trim().split(",")) {
-                String[] networkTypesValues = (pair.trim().toLowerCase()).split("=");
+                String[] networkTypesValues = (pair.trim().toLowerCase(Locale.ROOT)).split("=");
                 if (networkTypesValues.length != 2) {
                     Rlog.e(LOG_TAG, "Invalid ALLOWED_NETWORK_TYPES from DB, value = " + pair);
                     continue;

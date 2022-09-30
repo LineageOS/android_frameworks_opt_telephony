@@ -67,6 +67,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.zip.GZIPInputStream;
 
 /**
@@ -286,7 +287,7 @@ public class EmergencyNumberTracker extends Handler {
         // If country iso has been cached when listener is set, don't need to cache the initial
         // country iso and initial database.
         if (mCountryIso == null) {
-            String countryForDatabaseCache = getInitialCountryIso().toLowerCase();
+            String countryForDatabaseCache = getInitialCountryIso().toLowerCase(Locale.ROOT);
             updateEmergencyCountryIso(countryForDatabaseCache);
             // Use the last known country to cache the database in APM
             if (TextUtils.isEmpty(countryForDatabaseCache)
@@ -467,7 +468,7 @@ public class EmergencyNumberTracker extends Handler {
             logd(countryIso + " asset emergency database is loaded. Ver: " + assetsDatabaseVersion
                     + " Phone Id: " + mPhone.getPhoneId());
             for (ProtobufEccData.CountryInfo countryEccInfo : allEccMessages.countries) {
-                if (countryEccInfo.isoCode.equals(countryIso.toUpperCase())) {
+                if (countryEccInfo.isoCode.equals(countryIso.toUpperCase(Locale.ROOT))) {
                     for (ProtobufEccData.EccInfo eccInfo : countryEccInfo.eccs) {
                         updatedAssetEmergencyNumberList.add(convertEmergencyNumberFromEccInfo(
                                 eccInfo, countryIso));
@@ -527,7 +528,7 @@ public class EmergencyNumberTracker extends Handler {
             logd(countryIso + " ota emergency database is loaded. Ver: " + otaDatabaseVersion);
             otaDatabaseVersion = allEccMessages.revision;
             for (ProtobufEccData.CountryInfo countryEccInfo : allEccMessages.countries) {
-                if (countryEccInfo.isoCode.equals(countryIso.toUpperCase())) {
+                if (countryEccInfo.isoCode.equals(countryIso.toUpperCase(Locale.ROOT))) {
                     for (ProtobufEccData.EccInfo eccInfo : countryEccInfo.eccs) {
                         updatedOtaEmergencyNumberList.add(convertEmergencyNumberFromEccInfo(
                                 eccInfo, countryIso));
@@ -593,7 +594,7 @@ public class EmergencyNumberTracker extends Handler {
     private void updateEmergencyNumberListDatabaseAndNotify(String countryIso) {
         logd("updateEmergencyNumberListDatabaseAndNotify(): receiving countryIso: "
                 + countryIso);
-        updateEmergencyCountryIso(countryIso.toLowerCase());
+        updateEmergencyCountryIso(countryIso.toLowerCase(Locale.ROOT));
         // Use cached country iso in APM to load emergency number database.
         if (TextUtils.isEmpty(countryIso) && isAirplaneModeEnabled()) {
             countryIso = getCountryIsoForCachingDatabase();
@@ -921,8 +922,8 @@ public class EmergencyNumberTracker extends Handler {
         number = PhoneNumberUtils.stripSeparators(number);
         for (EmergencyNumber num : mEmergencyNumberListFromDatabase) {
             if (num.getNumber().equals(number)) {
-                return new EmergencyNumber(number, getLastKnownEmergencyCountryIso().toLowerCase(),
-                        "", num.getEmergencyServiceCategoryBitmask(),
+                return new EmergencyNumber(number, getLastKnownEmergencyCountryIso()
+                        .toLowerCase(Locale.ROOT), "", num.getEmergencyServiceCategoryBitmask(),
                         new ArrayList<String>(), EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
                         EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
             }
@@ -1023,11 +1024,12 @@ public class EmergencyNumberTracker extends Handler {
             // No ecclist system property, so use our own list.
             if (countryIso != null) {
                 ShortNumberInfo info = ShortNumberInfo.getInstance();
-                if (info.isEmergencyNumber(number, countryIso.toUpperCase())) {
+                if (info.isEmergencyNumber(number, countryIso.toUpperCase(Locale.ROOT))) {
                     return true;
                 } else {
                     for (String prefix : mEmergencyNumberPrefix) {
-                        if (info.isEmergencyNumber(prefix + number, countryIso.toUpperCase())) {
+                        if (info.isEmergencyNumber(prefix + number,
+                                countryIso.toUpperCase(Locale.ROOT))) {
                             return true;
                         }
                     }
