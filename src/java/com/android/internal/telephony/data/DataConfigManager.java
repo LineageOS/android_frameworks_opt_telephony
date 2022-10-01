@@ -60,6 +60,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -473,7 +474,8 @@ public class DataConfigManager extends Handler {
                     CarrierConfigManager.KEY_TELEPHONY_NETWORK_CAPABILITY_PRIORITIES_STRING_ARRAY);
             if (capabilityPriorityStrings != null) {
                 for (String capabilityPriorityString : capabilityPriorityStrings) {
-                    capabilityPriorityString = capabilityPriorityString.trim().toUpperCase();
+                    capabilityPriorityString =
+                            capabilityPriorityString.trim().toUpperCase(Locale.ROOT);
                     String[] tokens = capabilityPriorityString.split(":");
                     if (tokens.length != 2) {
                         loge("Invalid config \"" + capabilityPriorityString + "\"");
