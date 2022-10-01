@@ -1441,8 +1441,9 @@ public class RILUtils {
                     if (ComprehensionTlvTag.TEXT_STRING.value() == ctlv.getTag()) {
                         byte[] target = Arrays.copyOfRange(ctlv.getRawValue(), from,
                                 ctlv.getValueIndex() + ctlv.getLength());
-                        terminalResponse = terminalResponse.toLowerCase().replace(
-                                IccUtils.bytesToHexString(target).toLowerCase(), "********");
+                        terminalResponse = terminalResponse.toLowerCase(Locale.ROOT).replace(
+                                IccUtils.bytesToHexString(target).toLowerCase(Locale.ROOT),
+                                "********");
                     }
                     // The text string tag and the length field should also be hidden.
                     from = ctlv.getValueIndex() + ctlv.getLength();

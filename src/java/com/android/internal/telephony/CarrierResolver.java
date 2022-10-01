@@ -54,6 +54,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * CarrierResolver identifies the subscription carrier and returns a canonical carrier Id
@@ -751,7 +752,8 @@ public class CarrierResolver extends Handler {
         // Ideally we should do full string match. However due to SIM manufacture issues
         // gid from some SIM might has garbage tail.
         private boolean gidMatch(String gidFromSim, String gid) {
-            return (gidFromSim != null) && gidFromSim.toLowerCase().startsWith(gid.toLowerCase());
+            return (gidFromSim != null) && gidFromSim.toLowerCase(Locale.ROOT)
+                    .startsWith(gid.toLowerCase(Locale.ROOT));
         }
 
         private boolean carrierPrivilegeRulesMatch(List<String> certsFromSubscription,

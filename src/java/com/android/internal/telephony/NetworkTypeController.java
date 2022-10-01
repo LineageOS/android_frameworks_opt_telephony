@@ -52,6 +52,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -350,7 +351,7 @@ public class NetworkTypeController extends StateMachine {
         if (!TextUtils.isEmpty(icons)) {
             // Format: "STATE:ICON,STATE2:ICON2"
             for (String pair : icons.trim().split(",")) {
-                String[] kv = (pair.trim().toLowerCase()).split(":");
+                String[] kv = (pair.trim().toLowerCase(Locale.ROOT)).split(":");
                 if (kv.length != 2) {
                     if (DBG) loge("Invalid 5G icon configuration, config = " + pair);
                     continue;
@@ -377,7 +378,7 @@ public class NetworkTypeController extends StateMachine {
         if (!TextUtils.isEmpty(timers)) {
             // Format: "FROM_STATE,TO_STATE,DURATION;FROM_STATE_2,TO_STATE_2,DURATION_2"
             for (String triple : timers.trim().split(";")) {
-                String[] kv = (triple.trim().toLowerCase()).split(",");
+                String[] kv = (triple.trim().toLowerCase(Locale.ROOT)).split(",");
                 if (kv.length != 3) {
                     if (DBG) loge("Invalid 5G icon timer configuration, config = " + triple);
                     continue;
@@ -403,7 +404,7 @@ public class NetworkTypeController extends StateMachine {
         if (!TextUtils.isEmpty(secondaryTimers)) {
             // Format: "PRIMARY_STATE,TO_STATE,DURATION;PRIMARY_STATE_2,TO_STATE_2,DURATION_2"
             for (String triple : secondaryTimers.trim().split(";")) {
-                String[] kv = (triple.trim().toLowerCase()).split(",");
+                String[] kv = (triple.trim().toLowerCase(Locale.ROOT)).split(",");
                 if (kv.length != 3) {
                     if (DBG) {
                         loge("Invalid 5G icon secondary timer configuration, config = " + triple);
