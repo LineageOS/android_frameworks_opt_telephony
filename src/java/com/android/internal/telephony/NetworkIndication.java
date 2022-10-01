@@ -20,6 +20,7 @@ import static android.telephony.TelephonyManager.UNKNOWN_CARRIER_ID;
 
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_PRL_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CELL_INFO_LIST;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_EMERGENCY_NETWORK_SCAN_RESULT;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_LCEDATA_RECV;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NETWORK_SCAN_RESULT;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NITZ_TIME_RECEIVED;
@@ -378,6 +379,23 @@ public class NetworkIndication extends IRadioNetworkIndication.Stub {
 
         mRil.mVoiceRadioTechChangedRegistrants.notifyRegistrants(
                 new AsyncResult(null, response, null));
+    }
+
+    /**
+     * Emergency Scan Results.
+     * @param indicationType Type of radio indication
+     * @param result the result of the Emergency Network Scan
+     */
+    public void emergencyNetworkScanResult(int indicationType,
+            android.hardware.radio.network.EmergencyRegResult result) {
+        mRil.processIndication(RIL.NETWORK_SERVICE, indicationType);
+
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(RIL_UNSOL_EMERGENCY_NETWORK_SCAN_RESULT, result);
+        }
+
+        mRil.mEmergencyNetworkScanRegistrants.notifyRegistrants(
+                new AsyncResult(null, result, null));
     }
 
     @Override
