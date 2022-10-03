@@ -81,19 +81,6 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
-     * @param callingPackage The package making the call.
-     * @param callingFeatureId The feature in the package
-     *
-     * @return the count of all subscriptions in the database, this includes all subscriptions that
-     * have been seen.
-     */
-    @Override
-    public int getAllSubInfoCount(@NonNull String callingPackage,
-            @NonNull String callingFeatureId) {
-        return 0;
-    }
-
-    /**
      * Get the active {@link SubscriptionInfo} with the subscription id key.
      *
      * @param subId The unique {@link SubscriptionInfo} key in database
