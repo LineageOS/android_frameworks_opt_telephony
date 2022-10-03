@@ -378,6 +378,10 @@ public class VoiceCallSessionStats {
                     VoiceCallSession proto = mCallProtos.get(id);
                     proto.srvccCompleted = true;
                     proto.bearerAtEnd = VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS;
+                    // Call RAT may have changed (e.g. IWLAN -> UMTS) due to bearer change
+                    proto.ratAtEnd =
+                            ServiceStateStats.getVoiceRat(
+                                    mPhone, mPhone.getServiceState(), proto.bearerAtEnd);
                 }
                 break;
             case TelephonyManager.SRVCC_STATE_HANDOVER_FAILED:
@@ -432,7 +436,7 @@ public class VoiceCallSessionStats {
         }
         int bearer = getBearer(conn);
         ServiceState serviceState = getServiceState();
-        @NetworkType int rat = ServiceStateStats.getVoiceRat(mPhone, serviceState);
+        @NetworkType int rat = ServiceStateStats.getVoiceRat(mPhone, serviceState, bearer);
 
         VoiceCallSession proto = new VoiceCallSession();
 
@@ -570,7 +574,8 @@ public class VoiceCallSessionStats {
             proto.setupFailed = false;
             // Track RAT when voice call is connected.
             ServiceState serviceState = getServiceState();
-            proto.ratAtConnected = ServiceStateStats.getVoiceRat(mPhone, serviceState);
+            proto.ratAtConnected =
+                    ServiceStateStats.getVoiceRat(mPhone, serviceState, proto.bearerAtEnd);
             // Reset list of codecs with the last codec at the present time. In this way, we
             // track codec quality only after call is connected and not while ringing.
             resetCodecList(conn);
@@ -578,18 +583,22 @@ public class VoiceCallSessionStats {
     }
 
     private void updateRatTracker(ServiceState state) {
+        // RAT usage is not broken down by bearer. In case a CS call is made while there is IMS
+        // voice registration, this may be inaccurate (i.e. there could be multiple RAT in use, but
+        // we only pick the most feasible one).
         @NetworkType int rat = ServiceStateStats.getVoiceRat(mPhone, state);
-        int band =
-                (rat == TelephonyManager.NETWORK_TYPE_IWLAN) ? 0 : ServiceStateStats.getBand(state);
-
         mRatUsage.add(mPhone.getCarrierId(), rat, getTimeMillis(), getConnectionIds());
+
         for (int i = 0; i < mCallProtos.size(); i++) {
             VoiceCallSession proto = mCallProtos.valueAt(i);
+            rat = ServiceStateStats.getVoiceRat(mPhone, state, proto.bearerAtEnd);
             if (proto.ratAtEnd != rat) {
                 proto.ratSwitchCount++;
                 proto.ratAtEnd = rat;
             }
-            proto.bandAtEnd = band;
+            proto.bandAtEnd = (rat == TelephonyManager.NETWORK_TYPE_IWLAN)
+                            ? 0
+                            : ServiceStateStats.getBand(state);
             // assuming that SIM carrier ID does not change during the call
         }
     }

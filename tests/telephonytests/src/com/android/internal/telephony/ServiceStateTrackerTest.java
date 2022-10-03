@@ -2348,6 +2348,73 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN, sst.mSS.getRilDataRadioTechnology());
     }
 
+    private void changeRegStateWithIwlanOperatorNumeric(int psState, int psRat, int wlanState,
+            String[] opNamesResult, boolean passCellId) {
+        LteVopsSupportInfo lteVopsSupportInfo =
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
+                        LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
+        CellIdentityLte cellIdentity =
+                new CellIdentityLte(1, 1, 5, 1, new int[] {1, 2}, 5000, "001", "01", "test",
+                        "tst", Collections.emptyList(), null);
+        if (!passCellId) {
+            cellIdentity = null;
+        }
+        sst.mPollingContext[0] = 3;
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_OPERATOR,
+                new AsyncResult(sst.mPollingContext, opNamesResult, null)));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+
+        // PS WWAN
+        NetworkRegistrationInfo dataResult = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                psState, psRat, 0, false, null, cellIdentity,
+                getPlmnFromCellIdentity(cellIdentity),
+                1, false, false, false, lteVopsSupportInfo);
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, dataResult, null)));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        // PS WLAN
+        NetworkRegistrationInfo dataIwlanResult = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
+                wlanState, TelephonyManager.NETWORK_TYPE_IWLAN, 0, false,
+                null, null, "", 1, false, false, false, lteVopsSupportInfo);
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_PS_IWLAN_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, dataIwlanResult, null)));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        assertEquals(opNamesResult[0], sst.getServiceState().getOperatorAlpha());
+        assertEquals(opNamesResult[2], sst.getServiceState().getOperatorNumeric());
+        verify(mLocaleTracker).updateOperatorNumeric(eq(opNamesResult[2]));
+    }
+
+    /**
+     * Ensure that LocaleTracker is not updated with mcc when only IWLAN is in service
+     */
+    @Test
+    public void testLocaleTrackerUpdateWithIWLANInService() {
+        // Start state: Cell data only LTE + IWLAN
+        final String[] OpNamesResult = new String[] { "carrier long", "carrier", "310310" };
+        changeRegStateWithIwlanOperatorNumeric(NetworkRegistrationInfo.REGISTRATION_STATE_HOME,
+                TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, OpNamesResult, true);
+        verify(mLocaleTracker).updateOperatorNumeric(eq(OpNamesResult[2]));
+        changeRegStateWithIwlanOperatorNumeric(
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING,
+                TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, OpNamesResult, true);
+        /* cellId based mccmnc */
+        verify(mLocaleTracker).updateOperatorNumeric(eq("00101"));
+        changeRegStateWithIwlanOperatorNumeric(
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING,
+                TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, OpNamesResult, false);
+        verify(mLocaleTracker).updateOperatorNumeric(eq(""));
+    }
+
     @Test
     public void testGetServiceProviderNameWithBrandOverride() {
         String brandOverride = "spn from brand override";
@@ -2758,6 +2825,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // wifi-calling is enabled
         doReturn(true).when(mPhone).isWifiCallingEnabled();
+        doReturn(true).when(mPhone).isImsRegistered();
 
         // update the spn
         sst.updateSpnDisplay();
@@ -2790,6 +2858,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // wifi-calling is enabled
         doReturn(true).when(mPhone).isWifiCallingEnabled();
+        doReturn(true).when(mPhone).isImsRegistered();
 
         // update the spn
         sst.updateSpnDisplay();

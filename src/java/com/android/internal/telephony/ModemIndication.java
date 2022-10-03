@@ -48,7 +48,7 @@ public class ModemIndication extends IRadioModemIndication.Stub {
 
         ArrayList<HardwareConfig> response = RILUtils.convertHalHardwareConfigList(configs);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_HARDWARE_CONFIG_CHANGED, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_HARDWARE_CONFIG_CHANGED, response);
 
         mRil.mHardwareConfigChangeRegistrants.notifyRegistrants(
                 new AsyncResult(null, response, null));
@@ -64,7 +64,7 @@ public class ModemIndication extends IRadioModemIndication.Stub {
     public void modemReset(int indicationType, String reason) {
         mRil.processIndication(RIL.MODEM_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_MODEM_RESTART, reason);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_MODEM_RESTART, reason);
 
         mRil.writeMetricsModemRestartEvent(reason);
         mRil.mModemResetRegistrants.notifyRegistrants(new AsyncResult(null, reason, null));
@@ -82,7 +82,7 @@ public class ModemIndication extends IRadioModemIndication.Stub {
 
         RadioCapability response = RILUtils.convertHalRadioCapability(radioCapability, mRil);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_RADIO_CAPABILITY, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_RADIO_CAPABILITY, response);
 
         mRil.mPhoneRadioCapabilityChangedRegistrants.notifyRegistrants(
                 new AsyncResult(null, response, null));
@@ -97,9 +97,9 @@ public class ModemIndication extends IRadioModemIndication.Stub {
         mRil.processIndication(RIL.MODEM_SERVICE, indicationType);
 
         int state = RILUtils.convertHalRadioState(radioState);
-        if (RIL.RILJ_LOGD) {
-            mRil.unsljLogMore(RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED, "radioStateChanged: "
-                    + state);
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogMore(
+                    RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED, "radioStateChanged: " + state);
         }
 
         mRil.setRadioState(state, false /* forceNotifyRegistrants */);
@@ -112,7 +112,7 @@ public class ModemIndication extends IRadioModemIndication.Stub {
     public void rilConnected(int indicationType) {
         mRil.processIndication(RIL.MODEM_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RIL_CONNECTED);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RIL_CONNECTED);
 
         // Initial conditions
         mRil.setRadioPower(false, null);

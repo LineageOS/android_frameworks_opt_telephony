@@ -36,6 +36,7 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.Trace;
 import android.os.WorkSource;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccSlotMapping;
@@ -44,7 +45,6 @@ import android.util.SparseArray;
 import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -342,6 +342,9 @@ public class RadioConfig extends Handler {
 
     private RILRequest obtainRequest(int request, Message result, WorkSource workSource) {
         RILRequest rr = RILRequest.obtain(request, result, workSource);
+        Trace.asyncTraceForTrackBegin(
+                Trace.TRACE_TAG_NETWORK, "RIL", RILUtils.requestToString(rr.mRequest), rr.mSerial);
+
         synchronized (mRequestList) {
             mRequestList.append(rr.mSerial, rr);
         }
@@ -352,7 +355,10 @@ public class RadioConfig extends Handler {
         RILRequest rr;
         synchronized (mRequestList) {
             rr = mRequestList.get(serial);
+
             if (rr != null) {
+                Trace.asyncTraceForTrackEnd(
+                        Trace.TRACE_TAG_NETWORK, "RIL", "" /* unused */, rr.mSerial);
                 mRequestList.remove(serial);
             }
         }
