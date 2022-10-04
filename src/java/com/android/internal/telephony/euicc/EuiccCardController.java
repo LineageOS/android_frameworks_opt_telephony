@@ -413,7 +413,7 @@ public class EuiccCardController extends IEuiccCardController.Stub {
         // if there is no iccid enabled on this port, return null.
         if (TextUtils.isEmpty(iccId)) {
             try {
-                callback.onComplete(EuiccCardManager.RESULT_PROFILE_NOT_FOUND, null);
+                callback.onComplete(EuiccCardManager.RESULT_PROFILE_DOES_NOT_EXIST, null);
             } catch (RemoteException exception) {
                 loge("getEnabledProfile callback failure.", exception);
             }
