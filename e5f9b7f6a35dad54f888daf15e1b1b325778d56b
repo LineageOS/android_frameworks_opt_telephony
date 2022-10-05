@@ -16,6 +16,23 @@
       "message": "Fixes ringback tone for IMS calls (like on 19.1).",
       "revId": "e5f9b7f6a35dad54f888daf15e1b1b325778d56b",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "26123284_3e152d3f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 13648
+      },
+      "writtenOn": "2022-10-05T15:17:53Z",
+      "side": 1,
+      "message": "What device is going to need this?",
+      "revId": "e5f9b7f6a35dad54f888daf15e1b1b325778d56b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
