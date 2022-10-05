@@ -33,6 +33,23 @@
       "message": "What device is going to need this?",
       "revId": "e5f9b7f6a35dad54f888daf15e1b1b325778d56b",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "bf9c488f_78dead84",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 17649
+      },
+      "writtenOn": "2022-10-05T15:24:23Z",
+      "side": 1,
+      "message": "Sony msm8998 with kanged R radio/ims blobs in our case. I would assume at least FP3 will need this as well.",
+      "revId": "e5f9b7f6a35dad54f888daf15e1b1b325778d56b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
