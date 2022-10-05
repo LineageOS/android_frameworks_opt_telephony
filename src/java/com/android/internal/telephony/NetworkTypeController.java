@@ -980,17 +980,20 @@ public class NetworkTypeController extends StateMachine {
         }
 
         private void updateNrAdvancedState() {
-            if (!isNrConnected()) {
+            if (!isNrConnected() && getDataNetworkType() != TelephonyManager.NETWORK_TYPE_NR) {
                 log("NR state changed. Sending EVENT_NR_STATE_CHANGED");
                 sendMessage(EVENT_NR_STATE_CHANGED);
                 return;
             }
-            if (!isNrAdvanced()) {
-                if (DBG) log("updateNrAdvancedState: CONNECTED_NR_ADVANCED -> CONNECTED");
-                transitionWithTimerTo(mNrConnectedState);
-            } else {
-                if (DBG) log("updateNrAdvancedState: CONNECTED -> CONNECTED_NR_ADVANCED");
-                transitionTo(mNrConnectedState);
+            boolean isNrAdvanced = isNrAdvanced();
+            if (isNrAdvanced != mIsNrAdvanced) {
+                if (!isNrAdvanced) {
+                    if (DBG) log("updateNrAdvancedState: CONNECTED_NR_ADVANCED -> CONNECTED");
+                    transitionWithTimerTo(mNrConnectedState);
+                } else {
+                    if (DBG) log("updateNrAdvancedState: CONNECTED -> CONNECTED_NR_ADVANCED");
+                    transitionTo(mNrConnectedState);
+                }
             }
             mIsNrAdvanced = isNrAdvanced();
         }
