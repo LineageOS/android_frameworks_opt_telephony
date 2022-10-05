@@ -32,8 +32,9 @@ import com.android.internal.util.StateMachine;
 /**
  * Class used for queuing raw ril messages, decoding them into CommanParams
  * objects and sending the result back to the CAT Service.
+ * @hide
  */
-class RilMessageDecoder extends StateMachine {
+public class RilMessageDecoder extends StateMachine {
 
     // constants
     private static final int CMD_START = 1;

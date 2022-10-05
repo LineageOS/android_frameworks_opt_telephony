@@ -50,7 +50,7 @@ public class ComprehensionTlv {
      * @param data Byte array containing the value
      * @param valueIndex Index in data at which the value starts
      */
-    protected ComprehensionTlv(int tag, boolean cr, int length, byte[] data,
+    public ComprehensionTlv(int tag, boolean cr, int length, byte[] data,
             int valueIndex) {
         mTag = tag;
         mCr = cr;
