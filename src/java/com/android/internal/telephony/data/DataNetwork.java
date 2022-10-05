@@ -3219,7 +3219,7 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
-     * Called when receiving PCO (Protocol Configuration Options) data from the cellular network.
+     * Called when PCO data changes.
      *
      * @param pcoData The PCO data.
      */
