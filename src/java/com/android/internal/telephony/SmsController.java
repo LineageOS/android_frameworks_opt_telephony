@@ -197,6 +197,35 @@ public class SmsController extends ISmsImplBase {
             String callingAttributionTag, String destAddr, String scAddr, String text,
             PendingIntent sentIntent, PendingIntent deliveryIntent,
             boolean persistMessageForNonDefaultSmsApp, long messageId) {
+        sendTextForSubscriber(subId, callingPackage, callingAttributionTag, destAddr, scAddr,
+                text, sentIntent, deliveryIntent, persistMessageForNonDefaultSmsApp, messageId,
+                false);
+
+    }
+
+    /**
+     * @param subId Subscription Id
+     * @param callingAttributionTag the attribution tag of the caller
+     * @param destAddr the address to send the message to
+     * @param scAddr is the service center address or null to use
+     *  the current default SMSC
+     * @param text the body of the message to send
+     * @param sentIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is successfully sent, or failed.
+     *  The result code will be <code>Activity.RESULT_OK</code> for success, or relevant errors
+     *  the sentIntent may include the extra "errorCode" containing a radio technology specific
+     *  value, generally only useful for troubleshooting.
+     * @param deliveryIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is delivered to the recipient.  The
+     *  raw pdu of the status report is in the extended data ("pdu").
+     * @param skipFdnCheck if set to true, FDN check must be skipped .This is set in case of STK sms
+     *
+     * @hide
+     */
+    public void sendTextForSubscriber(int subId, String callingPackage,
+            String callingAttributionTag, String destAddr, String scAddr, String text,
+            PendingIntent sentIntent, PendingIntent deliveryIntent,
+            boolean persistMessageForNonDefaultSmsApp, long messageId, boolean skipFdnCheck) {
         if (callingPackage == null) {
             callingPackage = getCallingPackage();
         }
@@ -209,7 +238,7 @@ public class SmsController extends ISmsImplBase {
         }
 
         // Perform FDN check
-        if (isNumberBlockedByFDN(subId, destAddr, callingPackage)) {
+        if (!skipFdnCheck && isNumberBlockedByFDN(subId, destAddr, callingPackage)) {
             sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE);
             return;
         }

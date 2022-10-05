@@ -20,24 +20,34 @@ import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListCon
 import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants.LANGUAGE_SELECTION_EVENT;
 import static com.android.internal.telephony.cat.CatCmdMessage.SetupEventListConstants.USER_ACTIVITY_EVENT;
 
+import android.app.Activity;
 import android.app.ActivityManager;
+import android.app.PendingIntent;
 import android.app.backup.BackupManager;
 import android.compat.annotation.UnsupportedAppUsage;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.Resources.NotFoundException;
 import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.LocaleList;
+import android.os.Looper;
 import android.os.Message;
 import android.os.RemoteException;
+import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.ProxyController;
+import com.android.internal.telephony.SmsController;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccFileHandler;
@@ -138,12 +148,21 @@ public class CatService extends Handler implements AppInterface {
 
     static final String STK_DEFAULT = "Default Message";
 
+    private static final String SMS_DELIVERY_ACTION =
+            "com.android.internal.telephony.cat.SMS_DELIVERY_ACTION";
+    private static final String SMS_SENT_ACTION =
+            "com.android.internal.telephony.cat.SMS_SENT_ACTION";
+
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private int mSlotId;
+    private static HandlerThread sCatServiceThread;
 
     /* For multisim catservice should not be singleton */
     private CatService(CommandsInterface ci, UiccCardApplication ca, IccRecords ir,
-            Context context, IccFileHandler fh, UiccProfile uiccProfile, int slotId) {
+            Context context, IccFileHandler fh, UiccProfile uiccProfile, int slotId,
+            Looper looper) {
+        //creating new thread to avoid deadlock conditions with the framework thread.
+        super(looper);
         if (ci == null || ca == null || ir == null || context == null || fh == null
                 || uiccProfile == null) {
             throw new NullPointerException(
@@ -187,6 +206,10 @@ public class CatService extends Handler implements AppInterface {
 
         CatLog.d(this, "Running CAT service on Slotid: " + mSlotId +
                 ". STK app installed:" + mStkAppInstalled);
+
+        SmsBroadcastReceiver smsBroadcastReceiver = new SmsBroadcastReceiver();
+        mContext.registerReceiver(smsBroadcastReceiver, new IntentFilter(SMS_DELIVERY_ACTION));
+        mContext.registerReceiver(smsBroadcastReceiver, new IntentFilter(SMS_SENT_ACTION));
     }
 
     /**
@@ -200,6 +223,10 @@ public class CatService extends Handler implements AppInterface {
      */
     public static CatService getInstance(CommandsInterface ci,
             Context context, UiccProfile uiccProfile, int slotId) {
+        if (sCatServiceThread == null) {
+            sCatServiceThread = new HandlerThread("CatServiceThread");
+            sCatServiceThread.start();
+        }
         UiccCardApplication ca = null;
         IccFileHandler fh = null;
         IccRecords ir = null;
@@ -227,8 +254,8 @@ public class CatService extends Handler implements AppInterface {
                         || uiccProfile == null) {
                     return null;
                 }
-
-                sInstance[slotId] = new CatService(ci, ca, ir, context, fh, uiccProfile, slotId);
+                sInstance[slotId] = new CatService(ci, ca, ir, context, fh, uiccProfile, slotId,
+                        sCatServiceThread.getLooper());
             } else if ((ir != null) && (mIccRecords != ir)) {
                 if (mIccRecords != null) {
                     mIccRecords.unregisterForRecordsLoaded(sInstance[slotId]);
@@ -447,8 +474,49 @@ public class CatService extends Handler implements AppInterface {
                     ((DisplayTextParams)cmdParams).mTextMsg.text = null;
                 }
                 break;
-            case SEND_DTMF:
             case SEND_SMS:
+                /* If cmdParams  is an instanceof SendSMSParams , then it means config value
+                 * config_stk_sms_send_support is true and the SMS should be sent by framework
+                 */
+                if (cmdParams instanceof SendSMSParams) {
+                    String text = null, destAddr = null;
+                    if (((SendSMSParams) cmdParams).mTextSmsMsg != null) {
+                        text = ((SendSMSParams) cmdParams).mTextSmsMsg.text;
+                    }
+                    if (((SendSMSParams) cmdParams).mDestAddress != null) {
+                        destAddr = ((SendSMSParams) cmdParams).mDestAddress.text;
+                    }
+                    if (text != null && destAddr != null) {
+                        ProxyController proxyController = ProxyController.getInstance(mContext);
+                        SubscriptionManager subscriptionManager = (SubscriptionManager)
+                                mContext.getSystemService(
+                                        Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+                        SubscriptionInfo subInfo =
+                                subscriptionManager.getActiveSubscriptionInfoForSimSlotIndex(
+                                        mSlotId);
+                        if (subInfo != null) {
+                            sendStkSms(text, destAddr, subInfo.getSubscriptionId(), cmdParams,
+                                    proxyController);
+                        } else {
+                            sendTerminalResponse(cmdParams.mCmdDet,
+                                    ResultCode.CMD_DATA_NOT_UNDERSTOOD, false, 0x00, null);
+                            CatLog.d(this, "Subscription info is null");
+                        }
+                    } else {
+                        sendTerminalResponse(cmdParams.mCmdDet, ResultCode.CMD_DATA_NOT_UNDERSTOOD,
+                                false, 0x00, null);
+                        CatLog.d(this, "Sms text or Destination Address is null");
+                    }
+                } else {
+                    if ((((DisplayTextParams) cmdParams).mTextMsg.text != null)
+                            && (((DisplayTextParams) cmdParams).mTextMsg.text.equals(
+                            STK_DEFAULT))) {
+                        message = mContext.getText(com.android.internal.R.string.sending);
+                        ((DisplayTextParams) cmdParams).mTextMsg.text = message.toString();
+                    }
+                }
+                break;
+            case SEND_DTMF:
             case SEND_SS:
             case SEND_USSD:
                 if ((((DisplayTextParams)cmdParams).mTextMsg.text != null)
@@ -536,6 +604,61 @@ public class CatService extends Handler implements AppInterface {
         broadcastCatCmdIntent(cmdMsg);
     }
 
+    /**
+     * Used to send STK based sms via CATService
+     * @param text The message body
+     * @param destAddr The destination Address
+     * @param subId Subscription Id
+     * @param cmdParams Send SMS Command Params
+     * @param proxyController ProxyController
+     * @hide
+     */
+    public void sendStkSms(String text, String destAddr, int subId, CommandParams cmdParams,
+            ProxyController proxyController) {
+        PendingIntent sentPendingIntent = PendingIntent.getBroadcast(mContext, 0,
+                new Intent(SMS_SENT_ACTION).putExtra("cmdDetails",
+                        cmdParams.mCmdDet), PendingIntent.FLAG_MUTABLE);
+        PendingIntent deliveryPendingIntent = PendingIntent.getBroadcast(mContext, 0,
+                new Intent(SMS_DELIVERY_ACTION).putExtra("cmdDetails",
+                        cmdParams.mCmdDet), PendingIntent.FLAG_MUTABLE);
+        SmsController smsController = proxyController.getSmsController();
+        smsController.sendTextForSubscriber(subId, mContext.getOpPackageName(),
+                mContext.getAttributionTag(), destAddr, null, text, sentPendingIntent,
+                deliveryPendingIntent, false, 0L, true);
+    }
+
+    private class SmsBroadcastReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            CommandDetails commandDetails = (CommandDetails) intent.getExtra("cmdDetails");
+            if (intent.getAction().equals(SMS_SENT_ACTION)) {
+                int resultCode = getResultCode();
+                switch (resultCode) {
+                    case Activity.RESULT_OK:
+                        break;
+                    default:
+                        //ToDO handle Error cases bug : b/243123292
+                        CatLog.d(this, "Error sending STK SMS : " + resultCode);
+                        sendTerminalResponse(commandDetails, ResultCode.SMS_RP_ERROR, true,
+                                ResultCode.NETWORK_CRNTLY_UNABLE_TO_PROCESS.value(), null);
+                }
+            }
+            if (intent.getAction().equals(SMS_DELIVERY_ACTION)) {
+                int resultCode = getResultCode();
+                switch (resultCode) {
+                    case Activity.RESULT_OK:
+                        sendTerminalResponse(commandDetails, ResultCode.OK, false, 0, null);
+                        break;
+                    default:
+                        //ToDO handle Error cases bug: b/243123292
+                        CatLog.d(this, "Error delivering STK SMS : " + resultCode);
+                        sendTerminalResponse(commandDetails, ResultCode.SMS_RP_ERROR, true,
+                                ResultCode.TERMINAL_CRNTLY_UNABLE_TO_PROCESS.value(), null);
+                }
+            }
+        }
+    }
 
     private void broadcastCatCmdIntent(CatCmdMessage cmdMsg) {
         Intent intent = new Intent(AppInterface.CAT_CMD_ACTION);
