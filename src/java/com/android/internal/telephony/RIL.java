@@ -431,8 +431,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         public void linkToDeath(IBinder service) throws RemoteException {
             if (service != null) {
+                riljLog("Linked to death for service " + serviceToString(mService));
                 mBinder = service;
                 mBinder.linkToDeath(this, (int) mServiceCookies.get(mService).incrementAndGet());
+            } else {
+                riljLoge("Unable to link to death for service " + serviceToString(mService));
             }
         }
 
