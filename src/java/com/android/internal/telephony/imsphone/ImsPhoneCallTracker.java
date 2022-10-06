@@ -2791,6 +2791,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     }
                 }
             }
+        } else {
+            mPhone.getVoiceCallSessionStats().onCallStateChanged(conn.getCall());
         }
 
         if (changed) {
@@ -3171,7 +3173,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         DisconnectCause.NOT_DISCONNECTED, true /*ignore state update*/);
                 mMetrics.writeImsCallState(mPhone.getPhoneId(),
                         imsCall.getCallSession(), conn.getCall().mState);
-                mPhone.getVoiceCallSessionStats().onCallStateChanged(conn.getCall());
             }
         }
 
@@ -3199,6 +3200,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     logHoldSwapState("onCallStartFailed");
                 }
             }
+
+            mPhone.getVoiceCallSessionStats()
+                    .onImsCallStartFailed(
+                            findConnection(imsCall),
+                            new ImsReasonInfo(
+                                    maybeRemapReasonCode(reasonInfo),
+                                    reasonInfo.mExtraCode,
+                                    reasonInfo.mExtraMessage));
 
             if (mPendingMO != null) {
                 // To initiate dialing circuit-switched call

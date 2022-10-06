@@ -295,4 +295,21 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
         connection.update(mDC);
         assertNull(connection.getForwardedNumber());
     }
+
+    /**
+     * Verifies that the mappings for CallFailCause.NO_VALID_SIM,
+     * CallFailCause.LOCAL_NETWORK_NO_SERVICE, and CallFailCause.LOCAL_SERVICE_UNAVAILABLE are as
+     * expected.
+     */
+    @Test @SmallTest
+    public void testNoSimNoServiceMapping() {
+        connection = new GsmCdmaConnection(mPhone, "12345", mCT, null,
+                new DialArgs.Builder().build());
+        assertEquals(DisconnectCause.ICC_ERROR,
+                connection.disconnectCauseFromCode(CallFailCause.NO_VALID_SIM));
+        assertEquals(DisconnectCause.OUT_OF_SERVICE,
+                connection.disconnectCauseFromCode(CallFailCause.LOCAL_NETWORK_NO_SERVICE));
+        assertEquals(DisconnectCause.OUT_OF_SERVICE,
+                connection.disconnectCauseFromCode(CallFailCause.LOCAL_SERVICE_UNAVAILABLE));
+    }
 }

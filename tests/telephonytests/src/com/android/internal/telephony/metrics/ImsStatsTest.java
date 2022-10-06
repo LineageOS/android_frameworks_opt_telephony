@@ -869,4 +869,40 @@ public class ImsStatsTest extends TelephonyTest {
 
         assertEquals(TelephonyManager.NETWORK_TYPE_UNKNOWN, mImsStats.getImsVoiceRadioTech());
     }
+
+    @Test
+    @SmallTest
+    public void getImsVoiceRadioTech_serviceStateChanged() throws Exception {
+        mImsStats.onImsRegistered(TRANSPORT_TYPE_WWAN);
+        mImsStats.onImsCapabilitiesChanged(
+                REGISTRATION_TECH_LTE, new MmTelCapabilities(CAPABILITY_TYPE_VOICE));
+        doReturn(
+                        new NetworkRegistrationInfo.Builder()
+                                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_NR)
+                                .setRegistrationState(
+                                        NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                                .build())
+                .when(mServiceState)
+                .getNetworkRegistrationInfo(DOMAIN_PS, TRANSPORT_TYPE_WWAN);
+        mImsStats.onServiceStateChanged(mServiceState);
+        assertEquals(TelephonyManager.NETWORK_TYPE_NR, mImsStats.getImsVoiceRadioTech());
+    }
+
+    @Test
+    @SmallTest
+    public void getImsVoiceRadioTech_serviceStateChanged_wlan() throws Exception {
+        mImsStats.onImsRegistered(TRANSPORT_TYPE_WWAN);
+        mImsStats.onImsCapabilitiesChanged(
+                REGISTRATION_TECH_IWLAN, new MmTelCapabilities(CAPABILITY_TYPE_VOICE));
+        doReturn(
+                        new NetworkRegistrationInfo.Builder()
+                                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_NR)
+                                .setRegistrationState(
+                                        NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                                .build())
+                .when(mServiceState)
+                .getNetworkRegistrationInfo(DOMAIN_PS, TRANSPORT_TYPE_WWAN);
+        mImsStats.onServiceStateChanged(mServiceState);
+        assertEquals(TelephonyManager.NETWORK_TYPE_IWLAN, mImsStats.getImsVoiceRadioTech());
+    }
 }
