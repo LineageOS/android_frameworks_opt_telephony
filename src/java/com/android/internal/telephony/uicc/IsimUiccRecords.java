@@ -71,7 +71,7 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
         return "IsimUiccRecords: " + super.toString()
                 + (DUMP_RECORDS ? (" mIsimImpi=" + mIsimImpi
                 + " mIsimDomain=" + mIsimDomain
-                + " mIsimImpu=" + mIsimImpu
+                + " mIsimImpu=" + Arrays.toString(mIsimImpu)
                 + " mIsimIst=" + mIsimIst
                 + " mIsimPcscf=" + Arrays.toString(mIsimPcscf)
                 + " mPsiSmsc=" + mPsiSmsc
@@ -494,7 +494,7 @@ public class IsimUiccRecords extends IccRecords implements IsimRecords {
             pw.println(" mIsimImpi=" + mIsimImpi);
             pw.println(" mIsimDomain=" + mIsimDomain);
             pw.println(" mIsimImpu[]=" + Arrays.toString(mIsimImpu));
-            pw.println(" mIsimPcscf" + mIsimPcscf);
+            pw.println(" mIsimPcscf" + Arrays.toString(mIsimPcscf));
             pw.println(" mPsismsc=" + mPsiSmsc);
             pw.println(" mSmss TPMR=" + getSmssTpmrValue());
         }
