@@ -1260,7 +1260,7 @@ public class EuiccControllerTest extends TelephonyTest {
             throws Exception {
         SubscriptionInfo.Builder builder = new SubscriptionInfo.Builder()
                 .setSimSlotIndex(0)
-                .setNameSource(SubscriptionManager.NAME_SOURCE_CARRIER_ID)
+                .setDisplayNameSource(SubscriptionManager.NAME_SOURCE_CARRIER_ID)
                 .setEmbedded(true);
         if (hasPrivileges) {
             builder.setNativeAccessRules(new UiccAccessRule[] { ACCESS_RULE });
