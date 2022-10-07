@@ -222,6 +222,7 @@ message VoiceCallSession {
     optional int32 rat_at_connected = 30;
     optional bool is_multiparty = 31;
     optional int32 call_duration = 32;
+    optional int32 last_known_rat = 33;
     // Internal use only
     optional int64 setup_begin_millis = 10001;
 }
