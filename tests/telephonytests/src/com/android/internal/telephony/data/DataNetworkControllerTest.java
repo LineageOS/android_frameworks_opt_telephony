@@ -1498,8 +1498,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
     @Test
     public void testIsDataEnabledOverriddenForApn_dataDuringCall() throws Exception {
-        // Note: we don't check phone call status in DSMGR as the check should already been done in
-        // PhoneSwitcher when routing requests.
         doReturn(1).when(mPhone).getSubId();
         doReturn(2).when(mSubscriptionController).getDefaultDataSubId();
         // Data disabled
@@ -1511,6 +1509,17 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .MOBILE_DATA_POLICY_DATA_ON_NON_DEFAULT_DURING_VOICE_CALL, true);
         processAllMessages();
 
+        // No active phone call
+        doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        processAllMessages();
+
+        // Verify no internet connection due to no active phone call
+        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+
+        // Phone ringing
+        doReturn(PhoneConstants.State.RINGING).when(mPhone).getState();
         mDataNetworkControllerUT.addNetworkRequest(
                 createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
         processAllMessages();

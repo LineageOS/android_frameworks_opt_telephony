@@ -44,6 +44,7 @@ import android.util.LocalLog;
 
 import com.android.internal.telephony.GlobalSettingsHelper;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SettingsObserver;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
@@ -712,7 +713,7 @@ public class DataSettingsManager extends Handler {
         // mobile data policy : data during call
         if (isMobileDataPolicyEnabled(TelephonyManager
                 .MOBILE_DATA_POLICY_DATA_ON_NON_DEFAULT_DURING_VOICE_CALL)) {
-            overridden = isNonDds;
+            overridden = isNonDds && mPhone.getState() != PhoneConstants.State.IDLE;
         }
         return overridden;
     }
