@@ -139,9 +139,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
@@ -322,10 +319,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         @Override
         public void onIncomingCall(IImsCallSession c, Bundle extras) {
-            // we want to ensure we block this binder thread until incoming call setup completes
-            // as to avoid race conditions where the ImsService tries to update the state of the
-            // call before the listeners have been attached.
-            executeAndWait(()-> processIncomingCall(c, extras));
+            TelephonyUtils.runWithCleanCallingIdentity(()-> processIncomingCall(c, extras),
+                    mExecutor);
         }
 
         @Override
@@ -338,19 +333,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     loge("onVoiceMessageCountUpdate: null phone");
                 }
             }, mExecutor);
-        }
-
-        /**
-         * Schedule the given Runnable on mExecutor and block this thread until it finishes.
-         * @param r The Runnable to run.
-         */
-        private void executeAndWait(Runnable r) {
-            try {
-                CompletableFuture.runAsync(
-                        () -> TelephonyUtils.runWithCleanCallingIdentity(r), mExecutor).join();
-            } catch (CancellationException | CompletionException e) {
-                logw("Binder - exception: " + e.getMessage());
-            }
         }
     }
 
