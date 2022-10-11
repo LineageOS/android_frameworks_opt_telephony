@@ -541,7 +541,7 @@ public class SubscriptionController extends ISub.Stub {
                         SubscriptionManager.DISPLAY_NAME)))
                 .setCarrierName(cursor.getString(cursor.getColumnIndexOrThrow(
                         SubscriptionManager.CARRIER_NAME)))
-                .setNameSource(cursor.getInt(cursor.getColumnIndexOrThrow(
+                .setDisplayNameSource(cursor.getInt(cursor.getColumnIndexOrThrow(
                         SubscriptionManager.NAME_SOURCE)))
                 .setIconTint(cursor.getInt(cursor.getColumnIndexOrThrow(
                         SubscriptionManager.HUE)))
@@ -1908,7 +1908,7 @@ public class SubscriptionController extends ISub.Stub {
 
         String spn;
 
-        switch (subInfo.getNameSource()) {
+        switch (subInfo.getDisplayNameSource()) {
             case SubscriptionManager.NAME_SOURCE_SIM_PNN:
                 String pnn = phone.getPlmn();
                 return !TextUtils.isEmpty(pnn);
@@ -1976,7 +1976,7 @@ public class SubscriptionController extends ISub.Stub {
             // if there is no sub in the db, return 0 since subId does not exist in db
             if (allSubInfo == null || allSubInfo.isEmpty()) return 0;
             for (SubscriptionInfo subInfo : allSubInfo) {
-                int subInfoNameSource = subInfo.getNameSource();
+                int subInfoNameSource = subInfo.getDisplayNameSource();
                 boolean isHigherPriority = (getNameSourcePriority(subInfoNameSource)
                         > getNameSourcePriority(nameSource));
                 boolean isEqualPriorityAndName = (getNameSourcePriority(subInfoNameSource)
