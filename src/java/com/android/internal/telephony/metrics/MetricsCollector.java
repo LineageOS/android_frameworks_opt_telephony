@@ -770,8 +770,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 session.videoEnabled,
                 session.ratAtConnected,
                 session.isMultiparty,
-                session.callDuration,
-                session.lastKnownRat);
+                session.callDuration);
     }
 
     private static StatsEvent buildStatsEvent(IncomingSms sms) {
