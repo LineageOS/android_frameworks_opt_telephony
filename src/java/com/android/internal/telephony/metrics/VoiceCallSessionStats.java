@@ -464,7 +464,7 @@ public class VoiceCallSessionStats {
         proto.isEmergency = conn.isEmergencyCall();
         proto.isRoaming = serviceState != null ? serviceState.getVoiceRoaming() : false;
         proto.isMultiparty = conn.isMultiparty();
-
+        proto.lastKnownRat = rat;
         // internal fields for tracking
         proto.setupBeginMillis = getTimeMillis();
 
@@ -595,6 +595,9 @@ public class VoiceCallSessionStats {
             if (proto.ratAtEnd != rat) {
                 proto.ratSwitchCount++;
                 proto.ratAtEnd = rat;
+                if (rat != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
+                    proto.lastKnownRat = rat;
+                }
             }
             proto.bandAtEnd = (rat == TelephonyManager.NETWORK_TYPE_IWLAN)
                             ? 0
