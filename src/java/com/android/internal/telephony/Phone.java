@@ -4967,6 +4967,18 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Set the UE's ability to accept/reject null ciphered and/or null integrity-protected
+     * connections.
+     *
+     * @param result Callback message.
+     * @param enabled true to allow null ciphered and/or null integrity-protected connections,
+     * false to disallow.
+     */
+    public void setNullCipherAndIntegrityEnabled(@Nullable Message result, boolean enabled) {
+        mCi.setNullCipherAndIntegrityEnabled(result, enabled);
+    }
+
+    /**
      * @return Telephony tester instance.
      */
     public @Nullable TelephonyTester getTelephonyTester() {
