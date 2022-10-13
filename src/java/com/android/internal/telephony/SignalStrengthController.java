@@ -480,6 +480,18 @@ public class SignalStrengthController extends Handler {
                                 AccessNetworkConstants.AccessNetworkType.NGRAN,
                                 (nrMeasurementEnabled & CellSignalStrengthNr.USE_SSSINR) != 0));
             }
+
+            int[] wcdmaEcnoThresholds = mCarrierConfig.getIntArray(
+                    CarrierConfigManager.KEY_WCDMA_ECNO_THRESHOLDS_INT_ARRAY);
+            if (wcdmaEcnoThresholds != null) {
+                signalThresholdInfos.add(
+                        createSignalThresholdsInfo(
+                                SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_ECNO,
+                                wcdmaEcnoThresholds,
+                                AccessNetworkConstants.AccessNetworkType.UTRAN,
+                                false));
+            }
+
         }
 
         consolidatedAndSetReportingCriteria(signalThresholdInfos);
@@ -545,6 +557,12 @@ public class SignalStrengthController extends Handler {
                             SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_SSSINR,
                             AccessNetworkThresholds.NGRAN_SSSINR,
                             AccessNetworkConstants.AccessNetworkType.NGRAN,
+                            false));
+            signalThresholdInfos.add(
+                    createSignalThresholdsInfo(
+                            SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_ECNO,
+                            AccessNetworkThresholds.UTRAN_ECNO,
+                            AccessNetworkConstants.AccessNetworkType.UTRAN,
                             false));
         }
 
@@ -1107,6 +1125,16 @@ public class SignalStrengthController extends Handler {
                 5, /* SIGNAL_STRENGTH_MODERATE */
                 15, /* SIGNAL_STRENGTH_GOOD */
                 30  /* SIGNAL_STRENGTH_GREAT */
+        };
+
+        /**
+         * List of dBm thresholds for UTRAN {@link AccessNetworkConstants.AccessNetworkType} ECNO
+         */
+        public static final int[] UTRAN_ECNO = new int[]{
+                -24, /* SIGNAL_STRENGTH_POOR */
+                -14, /* SIGNAL_STRENGTH_MODERATE */
+                -6, /* SIGNAL_STRENGTH_GOOD */
+                1  /* SIGNAL_STRENGTH_GREAT */
         };
     }
 
