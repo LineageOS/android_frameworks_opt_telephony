@@ -51,7 +51,6 @@ import org.junit.runner.RunWith;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -76,7 +75,7 @@ public class QosCallbackTrackerTest extends TelephonyTest {
                 final int startPort, final int endPort) {
             return startPort <= mLocalAddress.getPort()
                     && endPort >= mLocalAddress.getPort()
-                    && mLocalAddress.getAddress().equals(address);
+                    && (address.isAnyLocalAddress() || mLocalAddress.getAddress().equals(address));
         }
 
         public boolean matchesRemoteAddress(final @NonNull InetAddress address,
@@ -84,7 +83,7 @@ public class QosCallbackTrackerTest extends TelephonyTest {
             return mRemoteAddress != null
                     && startPort <= mRemoteAddress.getPort()
                     && endPort >= mRemoteAddress.getPort()
-                    && mRemoteAddress.getAddress().equals(address);
+                    && (address.isAnyLocalAddress() || mRemoteAddress.getAddress().equals(address));
         }
     }
 
@@ -132,22 +131,32 @@ public class QosCallbackTrackerTest extends TelephonyTest {
 
     public static QosBearerFilter createIpv4QosFilter(String localAddress,
             QosBearerFilter.PortRange localPort, int precedence) {
+        ArrayList<LinkAddress> localAddresses = new ArrayList<>();
+        if (localAddress != null) {
+            localAddresses.add(
+                    new LinkAddress(InetAddresses.parseNumericAddress(localAddress), 32));
+        }
         return new QosBearerFilter(
-                Arrays.asList(
-                        new LinkAddress(InetAddresses.parseNumericAddress(localAddress), 32)),
-                new ArrayList<>(), localPort, null, QosBearerFilter.QOS_PROTOCOL_TCP,
-                7, 987, 678, QosBearerFilter.QOS_FILTER_DIRECTION_BIDIRECTIONAL, precedence);
+                localAddresses, new ArrayList<>(), localPort, null,
+                QosBearerFilter.QOS_PROTOCOL_TCP, 7, 987, 678,
+                QosBearerFilter.QOS_FILTER_DIRECTION_BIDIRECTIONAL, precedence);
     }
 
     private static QosBearerFilter createIpv4QosFilter(String localAddress, String remoteAddress,
             QosBearerFilter.PortRange localPort, QosBearerFilter.PortRange remotePort,
             int precedence) {
+        ArrayList<LinkAddress> localAddresses = new ArrayList<>();
+        if (localAddress != null) {
+            localAddresses.add(
+                    new LinkAddress(InetAddresses.parseNumericAddress(localAddress), 32));
+        }
+        ArrayList<LinkAddress> remoteAddresses = new ArrayList<>();
+        if (localAddress != null) {
+            remoteAddresses.add(
+                    new LinkAddress(InetAddresses.parseNumericAddress(remoteAddress), 32));
+        }
         return new QosBearerFilter(
-                Arrays.asList(
-                        new LinkAddress(InetAddresses.parseNumericAddress(localAddress), 32)),
-                Arrays.asList(
-                        new LinkAddress(InetAddresses.parseNumericAddress(remoteAddress), 32)),
-                localPort, remotePort,
+                localAddresses, remoteAddresses, localPort, remotePort,
                 QosBearerFilter.QOS_PROTOCOL_TCP, 7, 987, 678,
                 QosBearerFilter.QOS_FILTER_DIRECTION_BIDIRECTIONAL, precedence);
     }
@@ -506,6 +515,37 @@ public class QosCallbackTrackerTest extends TelephonyTest {
         verify(mNetworkAgent, never()).notifyQosSessionAvailable(eq(1),
                 eq(1235), any(EpsBearerQosSessionAttributes.class));
 
+    }
+
+    @Test
+    @SmallTest
+    public void testQosSessionFilterPortRangeWithoutAddress() throws Exception {
+        // QosBearerFilter including remote port range without remote address
+        ArrayList<QosBearerFilter> qosFilters1 = new ArrayList<>();
+        qosFilters1.add(createIpv4QosFilter(null, null, null,
+                new QosBearerFilter.PortRange(3200, 3220), 45));
+
+        ArrayList<QosBearerSession> qosSessions = new ArrayList<>();
+        qosSessions.add(new QosBearerSession(1234, createEpsQos(5, 6, 7, 8), qosFilters1));
+
+        mQosCallbackTracker.updateSessions(qosSessions);
+
+        // Add filter after updateSessions
+        Filter filter = new Filter(new InetSocketAddress(
+                InetAddresses.parseNumericAddress("122.22.22.22"), 1357),
+                new InetSocketAddress(InetAddresses.parseNumericAddress("177.77.77.77"), 3202));
+        mQosCallbackTracker.addFilter(1, filter);
+        processAllMessages();
+
+        verify(mNetworkAgent, times(1)).notifyQosSessionAvailable(eq(1),
+                eq(1234), any(EpsBearerQosSessionAttributes.class));
+
+        // Remove the matching QosBearerFilter
+        qosSessions.remove(0);
+        mQosCallbackTracker.updateSessions(qosSessions);
+        processAllMessages();
+
+        verify(mNetworkAgent, times(1)).notifyQosSessionLost(eq(1), eq(1234), eq(1));
     }
 
     @Test
