@@ -2365,6 +2365,58 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 emergencyNumber.getEmergencyServiceCategoryBitmask());
     }
 
+    @Test
+    public void testUpdateImsCallStatusIncoming() throws Exception {
+        // Incoming call
+        ImsPhoneConnection connection = setupRingingConnection();
+
+        verify(mImsPhone, times(1)).updateImsCallStatus(any(), any());
+
+        // Disconnect the call
+        mImsCallListener.onCallTerminated(connection.getImsCall(),
+                new ImsReasonInfo(ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, 0));
+
+        verify(mImsPhone, times(2)).updateImsCallStatus(any(), any());
+    }
+
+    @Test
+    public void testUpdateImsCallStatus() throws Exception {
+        // Dialing
+        ImsPhoneConnection connection = placeCall();
+
+        verify(mImsPhone, times(1)).updateImsCallStatus(any(), any());
+
+        // Alerting
+        ImsCall imsCall = connection.getImsCall();
+        imsCall.getImsCallSessionListenerProxy().callSessionProgressing(imsCall.getSession(),
+                new ImsStreamMediaProfile());
+
+        verify(mImsPhone, times(2)).updateImsCallStatus(any(), any());
+
+        // Active
+        imsCall.getImsCallSessionListenerProxy().callSessionStarted(imsCall.getSession(),
+                new ImsCallProfile());
+
+        verify(mImsPhone, times(3)).updateImsCallStatus(any(), any());
+
+        // Held by remote
+        mCTUT.onCallHoldReceived(imsCall);
+
+        verify(mImsPhone, times(4)).updateImsCallStatus(any(), any());
+
+        // Resumed by remote
+        mImsCallListener.onCallResumeReceived(imsCall);
+
+        verify(mImsPhone, times(5)).updateImsCallStatus(any(), any());
+
+        // Disconnecting and then Disconnected
+        mCTUT.hangup(connection);
+        mImsCallListener.onCallTerminated(imsCall,
+                new ImsReasonInfo(ImsReasonInfo.CODE_USER_TERMINATED, 0));
+
+        verify(mImsPhone, times(7)).updateImsCallStatus(any(), any());
+    }
+
     private void sendCarrierConfigChanged() {
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         intent.putExtra(CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());

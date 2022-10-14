@@ -48,6 +48,7 @@ import android.telephony.ims.stub.ImsRegistrationImplBase;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.emergency.EmergencyConstants;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
+import com.android.internal.telephony.imsphone.ImsCallInfo;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.SimPhonebookRecord;
@@ -2964,4 +2965,12 @@ public interface CommandsInterface {
      * @param result Callback message containing the success or failure status.
      */
     default void setNullCipherAndIntegrityEnabled(boolean enabled, Message result) {}
+
+    /**
+     * Notifies the IMS call status to the modem.
+     *
+     * @param imsCallInfo The list of {@link ImsCallInfo}.
+     * @param result A callback to receive the response.
+     */
+    default void updateImsCallStatus(@NonNull List<ImsCallInfo> imsCallInfo, Message result) {}
 }

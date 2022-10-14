@@ -339,6 +339,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
                 updatePhoneState();
                 mPhone.notifyPreciseCallStateChanged();
+                mImsCallInfoTracker.addImsCallStatus(conn);
             } catch (ImsException | RemoteException e) {
                 loge("processIncomingCall: exception " + e);
                 mOperationLocalLog.log("onIncomingCall: exception processing: "  + e);
@@ -676,6 +677,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private String mLastDialString = null;
     private ImsDialArgs mLastDialArgs = null;
     private Executor mExecutor = Runnable::run;
+
+    private final ImsCallInfoTracker mImsCallInfoTracker;
 
     /**
      * Listeners to changes in the phone state.  Intended for use by other interested IMS components
@@ -1161,6 +1164,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 }, executor);
         // It can take some time for ITelephony to get published, so defer connecting.
         post(mConnectorRunnable);
+
+        mImsCallInfoTracker = new ImsCallInfoTracker(phone);
     }
 
     /**
@@ -1946,6 +1951,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             setVideoCallProvider(conn, imsCall);
             conn.setAllowAddCallDuringVideoCall(mAllowAddCallDuringVideoCall);
             conn.setAllowHoldingVideoCall(mAllowHoldingVideoCall);
+            mImsCallInfoTracker.addImsCallStatus(conn);
         } catch (ImsException e) {
             loge("dialInternal : " + e);
             mOperationLocalLog.log("dialInternal exception: " + e);
@@ -2667,6 +2673,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 + System.identityHashCode(conn));
 
         call.onHangupLocal();
+        mImsCallInfoTracker.updateImsCallStatus(conn);
 
         try {
             if (imsCall != null) {
@@ -2904,6 +2911,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
 
         if (changed) {
+            mImsCallInfoTracker.updateImsCallStatus(conn);
             if (conn.getCall() == mHandoverCall) return;
             updatePhoneState();
             mPhone.notifyPreciseCallStateChanged();
@@ -3332,6 +3340,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         && isForegroundHigherPriority()) {
                     mForegroundCall.detach(mPendingMO);
                     removeConnection(mPendingMO);
+                    mImsCallInfoTracker.updateImsCallStatus(mPendingMO);
                     mPendingMO.finalize();
                     mPendingMO = null;
                     // if we need to perform CSFB of call, hang up any background call
@@ -3363,6 +3372,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 if (conn != null) {
                     mForegroundCall.detach(conn);
                     removeConnection(conn);
+                    mImsCallInfoTracker.updateImsCallStatus(conn);
                 }
                 updatePhoneState();
                 mPhone.initiateSilentRedial(reasonInfo.getExtraCode() ==
@@ -3782,6 +3792,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     mOnHoldToneStarted = false;
                 }
                 conn.onConnectionEvent(android.telecom.Connection.EVENT_CALL_REMOTELY_UNHELD, null);
+                mImsCallInfoTracker.updateImsCallStatus(conn, false, true);
             }
 
             boolean useVideoPauseWorkaround = mPhone.getContext().getResources().getBoolean(
@@ -5490,6 +5501,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 mOnHoldToneId = System.identityHashCode(conn);
             }
             conn.onConnectionEvent(android.telecom.Connection.EVENT_CALL_REMOTELY_HELD, null);
+            mImsCallInfoTracker.updateImsCallStatus(conn, true, false);
 
             boolean useVideoPauseWorkaround = mPhone.getContext().getResources().getBoolean(
                     com.android.internal.R.bool.config_useVideoPauseWorkaround);

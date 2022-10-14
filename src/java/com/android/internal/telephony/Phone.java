@@ -85,6 +85,7 @@ import com.android.internal.telephony.data.DataSettingsManager;
 import com.android.internal.telephony.data.LinkBandwidthEstimator;
 import com.android.internal.telephony.emergency.EmergencyConstants;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
+import com.android.internal.telephony.imsphone.ImsCallInfo;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.metrics.SmsStats;
@@ -5078,6 +5079,16 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * {@see #PREF_NULL_CIPHER_AND_INTEGRITY_ENABLED}
      */
     public void handleNullCipherEnabledChange() {
+    }
+
+    /**
+     * Notifies the IMS call status to the modem.
+     *
+     * @param imsCallInfo The list of {@link ImsCallInfo}.
+     * @param response A callback to receive the response.
+     */
+    public void updateImsCallStatus(@NonNull List<ImsCallInfo> imsCallInfo, Message response) {
+        mCi.updateImsCallStatus(imsCallInfo, response);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
