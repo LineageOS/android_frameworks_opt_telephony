@@ -490,6 +490,7 @@ public class CellularNetworkValidatorTest extends TelephonyTest {
         CarrierConfigManager carrierConfigManager = (CarrierConfigManager)
                 mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
         PersistableBundle bundle = carrierConfigManager.getConfigForSubId(anyInt());
-        bundle.putLong(CarrierConfigManager.KEY_DATA_SWITCH_VALIDATION_MIN_GAP_LONG, ttl);
+        bundle.putLong(CarrierConfigManager.KEY_DATA_SWITCH_VALIDATION_MIN_INTERVAL_MILLIS_LONG,
+                ttl);
     }
 }

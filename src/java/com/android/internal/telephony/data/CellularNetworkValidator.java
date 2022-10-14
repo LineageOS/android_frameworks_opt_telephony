@@ -17,7 +17,7 @@
 package com.android.internal.telephony.data;
 
 import static android.telephony.AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
-import static android.telephony.CarrierConfigManager.KEY_DATA_SWITCH_VALIDATION_MIN_GAP_LONG;
+import static android.telephony.CarrierConfigManager.KEY_DATA_SWITCH_VALIDATION_MIN_INTERVAL_MILLIS_LONG;
 import static android.telephony.NetworkRegistrationInfo.DOMAIN_PS;
 
 import android.content.Context;
@@ -192,7 +192,7 @@ public class CellularNetworkValidator {
             if (configManager != null) {
                 PersistableBundle b = configManager.getConfigForSubId(subId);
                 if (b != null) {
-                    ttl = b.getLong(KEY_DATA_SWITCH_VALIDATION_MIN_GAP_LONG);
+                    ttl = b.getLong(KEY_DATA_SWITCH_VALIDATION_MIN_INTERVAL_MILLIS_LONG);
                 }
             }
             // Ttl can't be bigger than one day for now.
