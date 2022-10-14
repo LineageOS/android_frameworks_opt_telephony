@@ -146,7 +146,9 @@ import com.android.internal.telephony.SrvccConnection;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.d2d.RtpTransport;
 import com.android.internal.telephony.data.DataSettingsManager;
+import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
+import com.android.internal.telephony.emergency.EmergencyStateTracker;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.imsphone.ImsPhone.ImsDialArgs;
 import com.android.internal.telephony.metrics.CallQualityMetrics;
@@ -1730,9 +1732,22 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         addConnection(mPendingMO);
 
         if (!holdBeforeDial) {
+            // In Ecm mode, if another emergency call is dialed, Ecm mode will not exit.
             if ((!isPhoneInEcmMode) || (isPhoneInEcmMode && isEmergencyNumber)) {
                 dialInternal(mPendingMO, clirMode, videoState, dialArgs.retryCallFailCause,
                         dialArgs.retryCallFailNetworkType, dialArgs.intentExtras);
+            } else if (DomainSelectionResolver.getInstance().isDomainSelectionSupported()) {
+                final int finalClirMode = clirMode;
+                final int finalVideoState = videoState;
+                Runnable onComplete = new Runnable() {
+                    @Override
+                    public void run() {
+                        dialInternal(mPendingMO, finalClirMode, finalVideoState,
+                                dialArgs.retryCallFailCause, dialArgs.retryCallFailNetworkType,
+                                dialArgs.intentExtras);
+                    }
+                };
+                EmergencyStateTracker.getInstance().exitEmergencyCallbackMode(onComplete);
             } else {
                 try {
                     getEcbmInterface().exitEmergencyCallbackMode();

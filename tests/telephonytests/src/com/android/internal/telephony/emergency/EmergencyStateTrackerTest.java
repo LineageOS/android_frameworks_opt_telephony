@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.emergency;
 
+import static com.android.internal.telephony.emergency.EmergencyConstants.MODE_EMERGENCY_CALLBACK;
 import static com.android.internal.telephony.emergency.EmergencyConstants.MODE_EMERGENCY_WWAN;
 
 import static org.junit.Assert.assertEquals;
@@ -32,26 +33,33 @@ import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.content.Context;
+import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.UserHandle;
 import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.EmergencyRegResult;
 import android.telephony.ServiceState;
+import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import com.android.internal.telephony.Call;
+import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.data.PhoneSwitcher;
@@ -77,6 +85,7 @@ import java.util.function.Consumer;
 public class EmergencyStateTrackerTest extends TelephonyTest {
 
     private static final String TEST_CALL_ID = "00001";
+    private static final String TEST_CALL_ID_02 = "00002";
 
     @Mock EmergencyStateTracker.PhoneFactoryProxy mPhoneFactoryProxy;
     @Mock EmergencyStateTracker.PhoneSwitcherProxy mPhoneSwitcherProxy;
@@ -429,36 +438,16 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
     }
 
     /**
-     * Test that once EmergencyStateTracker ends call, it exits emergency mode.
-     */
-    @Test
-    @SmallTest
-    public void endCall_exitsEmergencyMode() {
-        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
-                true /* isSuplDdsSwitchRequiredForEmergencyCall */);
-        // Create test Phones
-        Phone testPhone = setupTestPhoneForEmergencyCall(true /* isRoaming */,
-                true /* isRadioOn */);
-        // Call startEmergencyCall() to set testPhone
-        CompletableFuture<Integer> unused = emergencyStateTracker.startEmergencyCall(testPhone,
-                TEST_CALL_ID, false);
-
-        emergencyStateTracker.endCall("testId");
-
-        verify(testPhone).exitEmergencyMode(any());
-    }
-
-    /**
      * Test that onEmergencyTransportChanged sets the new emergency mode.
      */
     @Test
     @SmallTest
     public void onEmergencyTransportChanged_setsEmergencyMode() {
         EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
-                true /* isSuplDdsSwitchRequiredForEmergencyCall */);
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
         // Create test Phones
-        Phone testPhone = setupTestPhoneForEmergencyCall(true /* isRoaming */,
-                true /* isRadioOn */);
+        Phone testPhone = setupTestPhoneForEmergencyCall(/* isRoaming= */ true,
+                /* isRadioOn= */ true );
         // Call startEmergencyCall() to set testPhone
         CompletableFuture<Integer> unused = emergencyStateTracker.startEmergencyCall(testPhone,
                 TEST_CALL_ID, false);
@@ -468,12 +457,146 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         verify(testPhone).setEmergencyMode(eq(MODE_EMERGENCY_WWAN), any());
     }
 
+    /**
+     * Test that after endCall() is called, EmergencyStateTracker will enter ECM if the call was
+     * ACTIVE and send related intents.
+     */
+    @Test
+    @SmallTest
+    public void endCall_callWasActive_enterEcm() {
+        // Setup EmergencyStateTracker
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        // Create test Phone
+        Phone testPhone = setupTestPhoneForEmergencyCall(/* isRoaming= */ true,
+                /* isRadioOn= */ true);
+        // Start emergency call then enter ECM
+        CompletableFuture<Integer> unused = emergencyStateTracker.startEmergencyCall(testPhone,
+                TEST_CALL_ID, false);
+        // Set call to ACTIVE
+        emergencyStateTracker.onEmergencyCallStateChanged(Call.State.ACTIVE, TEST_CALL_ID);
+        // Set ecm as supported
+        CarrierConfigManager cfgManager = (CarrierConfigManager) mContext
+                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        cfgManager.getConfigForSubId(testPhone.getSubId()).putBoolean(
+            CarrierConfigManager.ImsEmergency.KEY_EMERGENCY_CALLBACK_MODE_SUPPORTED_BOOL, true);
+        assertFalse(emergencyStateTracker.isInEcm());
+
+        emergencyStateTracker.endCall(TEST_CALL_ID);
+
+        assertTrue(emergencyStateTracker.isInEcm());
+        // Verify intents are sent that ECM is entered
+        ArgumentCaptor<Intent> ecmStateIntent = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext).sendStickyBroadcastAsUser(ecmStateIntent.capture(), eq(UserHandle.ALL));
+        assertTrue(ecmStateIntent.getValue()
+                .getBooleanExtra(TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, true));
+        // Verify emergency callback mode set on modem
+        verify(testPhone).setEmergencyMode(eq(MODE_EMERGENCY_CALLBACK), any());
+    }
+
+    /**
+     * Test that after endCall() is called, EmergencyStateTracker will not enter ECM if the call was
+     * not ACTIVE.
+     */
+    @Test
+    @SmallTest
+    public void endCall_callNotActive_noEcm() {
+        // Setup EmergencyStateTracker
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        // Create test Phone
+        Phone testPhone = setupTestPhoneForEmergencyCall(/* isRoaming= */ true,
+                /* isRadioOn= */ true);
+        // Start emergency call then enter ECM
+        CompletableFuture<Integer> unused = emergencyStateTracker.startEmergencyCall(testPhone,
+                TEST_CALL_ID, false);
+        // Call does not reach ACTIVE
+        emergencyStateTracker.onEmergencyCallStateChanged(Call.State.IDLE, TEST_CALL_ID);
+        // Set ecm as supported
+        setEcmSupportedConfig(testPhone, /* ecmSupported= */ true);
+
+        emergencyStateTracker.endCall(TEST_CALL_ID);
+
+        assertFalse(emergencyStateTracker.isInEcm());
+    }
+
+    /**
+     * Test that once endCall() is called and we enter ECM, then we exit ECM after the specified
+     * timeout.
+     */
+    @Test
+    @SmallTest
+    public void endCall_entersEcm_thenExitsEcmAfterTimeout() {
+        // Setup EmergencyStateTracker
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        // Create test Phone
+        Phone testPhone = setupTestPhoneForEmergencyCall(/* isRoaming= */ true,
+                /* isRadioOn= */ true);
+        CompletableFuture<Integer> unused = emergencyStateTracker.startEmergencyCall(testPhone,
+                TEST_CALL_ID, false);
+        // Set call to ACTIVE
+        emergencyStateTracker.onEmergencyCallStateChanged(Call.State.ACTIVE, TEST_CALL_ID);
+        // Set ecm as supported
+        setEcmSupportedConfig(testPhone, /* ecmSupported= */ true);
+
+        emergencyStateTracker.endCall(TEST_CALL_ID);
+
+        assertTrue(emergencyStateTracker.isInEcm());
+        // Verify exitEmergencyMode() is called after timeout
+        verify(testPhone, timeout(emergencyStateTracker.defaultEcmExitTimeoutMs + 1000).times(1))
+                .exitEmergencyMode(any());
+    }
+
+    /**
+     * Test that after exitEmergencyCallbackMode() is called, the correct intents are sent and
+     * emergency mode is exited on the modem.
+     */
+    @Test
+    @SmallTest
+    public void exitEmergencyCallbackMode_sendsCorrectIntentsAndExitsEmergencyMode() {
+        // Setup EmergencyStateTracker
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        // Create test Phone
+        Phone testPhone = setupTestPhoneForEmergencyCall(/* isRoaming= */ true,
+                /* isRadioOn= */ true);
+        // Start emergency call then enter ECM
+        CompletableFuture<Integer> unused = emergencyStateTracker.startEmergencyCall(testPhone,
+                TEST_CALL_ID, false);
+        // Set call to ACTIVE
+        emergencyStateTracker.onEmergencyCallStateChanged(Call.State.ACTIVE, TEST_CALL_ID);
+        // Set ecm as supported
+        setEcmSupportedConfig(testPhone, /* ecmSupported= */ true);
+        // End call to enter ECM
+        emergencyStateTracker.endCall(TEST_CALL_ID);
+        assertTrue(emergencyStateTracker.isInEcm());
+
+        emergencyStateTracker.exitEmergencyCallbackMode();
+
+        assertFalse(emergencyStateTracker.isInEcm());
+        // Intents sent for ECM: one for entering ECM and another for exiting
+        ArgumentCaptor<Intent> ecmStateIntent = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, times(2))
+                .sendStickyBroadcastAsUser(ecmStateIntent.capture(), eq(UserHandle.ALL));
+        List<Intent> capturedIntents = ecmStateIntent.getAllValues();
+        assertTrue(capturedIntents.get(0)
+                .getBooleanExtra(TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, false));
+        assertFalse(capturedIntents.get(1)
+                .getBooleanExtra(TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, false));
+        // Verify exitEmergencyMode() is called only once
+        verify(testPhone, timeout(emergencyStateTracker.defaultEcmExitTimeoutMs + 1000).times(1))
+                .exitEmergencyMode(any());
+    }
+
     private EmergencyStateTracker setupEmergencyStateTracker(
             boolean isSuplDdsSwitchRequiredForEmergencyCall) {
         doReturn(mPhoneSwitcher).when(mPhoneSwitcherProxy).getPhoneSwitcher();
-        return new EmergencyStateTracker(mContext, Looper.getMainLooper(),
-                isSuplDdsSwitchRequiredForEmergencyCall, mPhoneFactoryProxy, mPhoneSwitcherProxy,
-                mTelephonyManagerProxy, mRadioOnHelper);
+        EmergencyStateTracker emergencyStateTracker = new EmergencyStateTracker(mContext,
+                Looper.getMainLooper(), isSuplDdsSwitchRequiredForEmergencyCall, mPhoneFactoryProxy,
+                mPhoneSwitcherProxy, mTelephonyManagerProxy, mRadioOnHelper,
+                /* ecmExitTimeoutMs= */ 3000);
+        return emergencyStateTracker;
     }
 
     private Phone setupTestPhoneForEmergencyCall(boolean isRoaming, boolean isRadioOn) {
@@ -494,7 +617,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
     }
 
     private Phone makeTestPhone(int phoneId, int serviceState, boolean isEmergencyOnly) {
-        Phone phone = mock(Phone.class);
+        Phone phone = mock(GsmCdmaPhone.class);
         ServiceState testServiceState = new ServiceState();
         testServiceState.setState(serviceState);
         testServiceState.setEmergencyOnly(isEmergencyOnly);
@@ -503,6 +626,15 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         when(phone.getPhoneId()).thenReturn(phoneId);
         when(phone.getSubId()).thenReturn(0);
         when(phone.getServiceStateTracker()).thenReturn(mSST);
+        when(phone.getUnitTestMode()).thenReturn(true);
         return phone;
+    }
+
+    private void setEcmSupportedConfig(Phone phone, boolean ecmSupported) {
+        CarrierConfigManager cfgManager = (CarrierConfigManager) mContext
+                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        cfgManager.getConfigForSubId(phone.getSubId()).putBoolean(
+                CarrierConfigManager.ImsEmergency.KEY_EMERGENCY_CALLBACK_MODE_SUPPORTED_BOOL,
+                ecmSupported);
     }
 }
