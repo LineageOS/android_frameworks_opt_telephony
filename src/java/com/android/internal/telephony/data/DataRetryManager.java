@@ -46,6 +46,7 @@ import android.util.SparseArray;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataProfileManager.DataProfileManagerCallback;
@@ -70,9 +71,6 @@ import java.util.stream.Collectors;
  */
 public class DataRetryManager extends Handler {
     private static final boolean VDBG = false;
-
-    /** Event for data config updated. */
-    private static final int EVENT_DATA_CONFIG_UPDATED = 1;
 
     /** Event for data setup retry. */
     private static final int EVENT_DATA_SETUP_RETRY = 3;
@@ -930,8 +928,12 @@ public class DataRetryManager extends Handler {
         mDataServiceManagers = dataServiceManagers;
         mDataConfigManager = dataNetworkController.getDataConfigManager();
         mDataProfileManager = dataNetworkController.getDataProfileManager();
-        mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
-
+        mDataConfigManager.registerCallback(new DataConfigManagerCallback(this::post) {
+            @Override
+            public void onCarrierConfigChanged() {
+                DataRetryManager.this.onCarrierConfigUpdated();
+            }
+        });
         mDataServiceManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                 .registerForApnUnthrottled(this, EVENT_DATA_PROFILE_UNTHROTTLED);
         if (!mPhone.getAccessNetworksManager().isInLegacyMode()) {
@@ -964,9 +966,6 @@ public class DataRetryManager extends Handler {
     public void handleMessage(Message msg) {
         AsyncResult ar;
         switch (msg.what) {
-            case EVENT_DATA_CONFIG_UPDATED:
-                onDataConfigUpdated();
-                break;
             case EVENT_DATA_SETUP_RETRY:
                 DataSetupRetryEntry dataSetupRetryEntry = (DataSetupRetryEntry) msg.obj;
                 Objects.requireNonNull(dataSetupRetryEntry);
@@ -1014,9 +1013,9 @@ public class DataRetryManager extends Handler {
     }
 
     /**
-     * Called when data config is updated.
+     * Called when carrier config is updated.
      */
-    private void onDataConfigUpdated() {
+    private void onCarrierConfigUpdated() {
         onReset(RESET_REASON_DATA_CONFIG_CHANGED);
         mDataSetupRetryRuleList = mDataConfigManager.getDataSetupRetryRules();
         mDataHandoverRetryRuleList = mDataConfigManager.getDataHandoverRetryRules();

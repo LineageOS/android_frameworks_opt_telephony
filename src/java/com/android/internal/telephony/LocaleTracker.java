@@ -486,20 +486,12 @@ public class LocaleTracker extends Handler {
         String countryIso = "";
         String countryIsoDebugInfo = "empty as default";
 
-        // For time zone detection we want the best geographical match we can get, which may differ
-        // from the countryIso.
-        String timeZoneCountryIso = null;
-        String timeZoneCountryIsoDebugInfo = null;
-
         if (!TextUtils.isEmpty(mOperatorNumeric)) {
             MccMnc mccMnc = MccMnc.fromOperatorNumeric(mOperatorNumeric);
             if (mccMnc != null) {
-                countryIso = MccTable.countryCodeForMcc(mccMnc.mcc);
+                countryIso = MccTable.geoCountryCodeForMccMnc(mccMnc);
                 countryIsoDebugInfo = "OperatorNumeric(" + mOperatorNumeric
-                        + "): MccTable.countryCodeForMcc(\"" + mccMnc.mcc + "\")";
-                timeZoneCountryIso = MccTable.geoCountryCodeForMccMnc(mccMnc);
-                timeZoneCountryIsoDebugInfo =
-                        "OperatorNumeric: MccTable.geoCountryCodeForMccMnc(" + mccMnc + ")";
+                        + "): MccTable.geoCountryCodeForMccMnc(\"" + mccMnc + "\")";
             } else {
                 loge("updateLocale: Can't get country from operator numeric. mOperatorNumeric = "
                         + mOperatorNumeric);
@@ -509,15 +501,19 @@ public class LocaleTracker extends Handler {
         // If for any reason we can't get country from operator numeric, try to get it from cell
         // info.
         if (TextUtils.isEmpty(countryIso)) {
+            // Find the most prevalent MCC from surrounding cell towers.
             String mcc = getMccFromCellInfo();
             if (mcc != null) {
                 countryIso = MccTable.countryCodeForMcc(mcc);
                 countryIsoDebugInfo = "CellInfo: MccTable.countryCodeForMcc(\"" + mcc + "\")";
 
+                // Some MCC+MNC combinations are known to be used in countries other than those
+                // that the MCC alone would suggest. Do a second pass of nearby cells that match
+                // the most frequently observed MCC to see if this could be one of those cases.
                 MccMnc mccMnc = getMccMncFromCellInfo(mcc);
                 if (mccMnc != null) {
-                    timeZoneCountryIso = MccTable.geoCountryCodeForMccMnc(mccMnc);
-                    timeZoneCountryIsoDebugInfo =
+                    countryIso = MccTable.geoCountryCodeForMccMnc(mccMnc);
+                    countryIsoDebugInfo =
                             "CellInfo: MccTable.geoCountryCodeForMccMnc(" + mccMnc + ")";
                 }
             }
@@ -526,8 +522,6 @@ public class LocaleTracker extends Handler {
         if (mCountryOverride != null) {
             countryIso = mCountryOverride;
             countryIsoDebugInfo = "mCountryOverride = \"" + mCountryOverride + "\"";
-            timeZoneCountryIso = countryIso;
-            timeZoneCountryIsoDebugInfo = countryIsoDebugInfo;
         }
 
         if (!mPhone.isRadioOn()) {
@@ -569,6 +563,8 @@ public class LocaleTracker extends Handler {
 
         // Pass the geographical country information to the telephony time zone detection code.
 
+        String timeZoneCountryIso = countryIso;
+        String timeZoneCountryIsoDebugInfo = countryIsoDebugInfo;
         boolean isTestMcc = false;
         if (!TextUtils.isEmpty(mOperatorNumeric)) {
             // For a test cell (MCC 001), the NitzStateMachine requires handleCountryDetected("") in
@@ -578,11 +574,6 @@ public class LocaleTracker extends Handler {
                 timeZoneCountryIso = "";
                 timeZoneCountryIsoDebugInfo = "Test cell: " + mOperatorNumeric;
             }
-        }
-        if (timeZoneCountryIso == null) {
-            // After this timeZoneCountryIso may still be null.
-            timeZoneCountryIso = countryIso;
-            timeZoneCountryIsoDebugInfo = "Defaulted: " + countryIsoDebugInfo;
         }
         log("updateLocale: timeZoneCountryIso = " + timeZoneCountryIso
                 + ", timeZoneCountryIsoDebugInfo = " + timeZoneCountryIsoDebugInfo);
