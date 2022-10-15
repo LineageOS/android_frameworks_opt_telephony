@@ -290,14 +290,12 @@ public class TelephonyMetrics {
                     break;
                 case "--metricsproto":
                     pw.println(convertProtoToBase64String(buildProto()));
-                    pw.println(RcsStats.getInstance().buildLog());
                     if (reset) {
                         reset();
                     }
                     break;
                 case "--metricsprototext":
                     pw.println(buildProto().toString());
-                    pw.println(RcsStats.getInstance().buildProto().toString());
                     break;
             }
         }
@@ -749,8 +747,6 @@ public class TelephonyMetrics {
                     .setRadioState(mLastRadioState.get(key)).build();
             addTelephonyEvent(event);
         }
-
-        RcsStats.getInstance().reset();
     }
 
     /**

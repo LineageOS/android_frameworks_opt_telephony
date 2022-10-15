@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony.data;
 
-
 import android.annotation.CallbackExecutor;
 import android.annotation.IntDef;
 import android.annotation.NonNull;
@@ -86,6 +85,7 @@ import com.android.internal.telephony.SlidingWindowEventCounter;
 import com.android.internal.telephony.SubscriptionInfoUpdater;
 import com.android.internal.telephony.TelephonyComponentFactory;
 import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksManagerCallback;
+import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
 import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataEvaluation.DataDisallowedReason;
 import com.android.internal.telephony.data.DataEvaluation.DataEvaluationReason;
@@ -133,9 +133,6 @@ import java.util.stream.Collectors;
  */
 public class DataNetworkController extends Handler {
     private static final boolean VDBG = false;
-
-    /** Event for data config updated. */
-    private static final int EVENT_DATA_CONFIG_UPDATED = 1;
 
     /** Event for adding a network request. */
     private static final int EVENT_ADD_NETWORK_REQUEST = 2;
@@ -713,9 +710,9 @@ public class DataNetworkController extends Handler {
                         + "\"" + ruleString + "\"");
             }
 
-            if (source.contains(AccessNetworkType.UNKNOWN)) {
-                throw new IllegalArgumentException("Source access networks contains unknown. "
-                        + "\"" + ruleString + "\"");
+            if (source.contains(AccessNetworkType.UNKNOWN) && type != RULE_TYPE_DISALLOWED) {
+                throw new IllegalArgumentException("Unknown access network can be only specified in"
+                        + " the disallowed rule. \"" + ruleString + "\"");
             }
 
             if (target.contains(AccessNetworkType.UNKNOWN)) {
@@ -962,7 +959,16 @@ public class DataNetworkController extends Handler {
 
         mPhone.getServiceStateTracker().registerForServiceStateChanged(this,
                 EVENT_SERVICE_STATE_CHANGED);
-        mDataConfigManager.registerForConfigUpdate(this, EVENT_DATA_CONFIG_UPDATED);
+        mDataConfigManager.registerCallback(new DataConfigManagerCallback(this::post) {
+            @Override
+            public void onCarrierConfigChanged() {
+                DataNetworkController.this.onCarrierConfigUpdated();
+            }
+            @Override
+            public void onDeviceConfigChanged() {
+                DataNetworkController.this.onDeviceConfigUpdated();
+            }
+        });
         mPhone.getServiceStateTracker().registerForPsRestrictedEnabled(this,
                 EVENT_PS_RESTRICT_ENABLED, null);
         mPhone.getServiceStateTracker().registerForPsRestrictedDisabled(this,
@@ -1013,9 +1019,6 @@ public class DataNetworkController extends Handler {
     @Override
     public void handleMessage(@NonNull Message msg) {
         switch (msg.what) {
-            case EVENT_DATA_CONFIG_UPDATED:
-                onDataConfigUpdated();
-                break;
             case EVENT_REGISTER_ALL_EVENTS:
                 onRegisterAllEvents();
                 break;
@@ -1078,7 +1081,13 @@ public class DataNetworkController extends Handler {
                 onTearDownAllDataNetworks(msg.arg1);
                 break;
             case EVENT_REGISTER_DATA_NETWORK_CONTROLLER_CALLBACK:
-                mDataNetworkControllerCallbacks.add((DataNetworkControllerCallback) msg.obj);
+                DataNetworkControllerCallback callback = (DataNetworkControllerCallback) msg.obj;
+                mDataNetworkControllerCallbacks.add(callback);
+                // Notify upon registering if no data networks currently exist.
+                if (mDataNetworkList.isEmpty()) {
+                    callback.invokeFromExecutor(
+                            () -> callback.onAnyDataNetworkExistingChanged(false));
+                }
                 break;
             case EVENT_UNREGISTER_DATA_NETWORK_CONTROLLER_CALLBACK:
                 mDataNetworkControllerCallbacks.remove((DataNetworkControllerCallback) msg.obj);
@@ -1349,7 +1358,7 @@ public class DataNetworkController extends Handler {
     }
 
     /**
-     * @return {@code true} internet is unmetered.
+     * @return {@code true} if internet is unmetered.
      */
     public boolean isInternetUnmetered() {
         return mDataNetworkList.stream()
@@ -1359,6 +1368,17 @@ public class DataNetworkController extends Handler {
                         .hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
                         || dataNetwork.getNetworkCapabilities()
                         .hasCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED));
+    }
+
+    /**
+     * @return {@code true} if all data networks are disconnected.
+     */
+    public boolean areAllDataDisconnected() {
+        if (!mDataNetworkList.isEmpty()) {
+            log("areAllDataDisconnected false due to: " + mDataNetworkList.stream()
+                    .map(DataNetwork::name).collect(Collectors.joining(", ")));
+        }
+        return mDataNetworkList.isEmpty();
     }
 
     /**
@@ -2239,19 +2259,24 @@ public class DataNetworkController extends Handler {
     }
 
     /**
-     * Called when data config was updated.
+     * Called when carrier config was updated.
      */
-    private void onDataConfigUpdated() {
-        log("onDataConfigUpdated: config is "
+    private void onCarrierConfigUpdated() {
+        log("onCarrierConfigUpdated: config is "
                 + (mDataConfigManager.isConfigCarrierSpecific() ? "" : "not ")
                 + "carrier specific. mSimState="
-                + SubscriptionInfoUpdater.simStateString(mSimState)
-                + ". DeviceConfig updated.");
-
-        updateAnomalySlidingWindowCounters();
+                + SubscriptionInfoUpdater.simStateString(mSimState));
         updateNetworkRequestsPriority();
         sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
                 DataEvaluationReason.DATA_CONFIG_CHANGED));
+    }
+
+    /**
+     * Called when device config was updated.
+     */
+    private void onDeviceConfigUpdated() {
+        log("onDeviceConfigUpdated: DeviceConfig updated.");
+        updateAnomalySlidingWindowCounters();
     }
 
     /**

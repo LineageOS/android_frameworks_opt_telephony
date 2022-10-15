@@ -49,6 +49,7 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.data.DataProfileManager.DataProfileManagerCallback;
 
@@ -87,6 +88,8 @@ public class DataProfileManagerTest extends TelephonyTest {
     private int mPreferredApnId = 0;
 
     private DataNetworkControllerCallback mDataNetworkControllerCallback;
+
+    private DataConfigManagerCallback mDataConfigManagerCallback;
 
     private boolean mSimInserted = true;
 
@@ -440,7 +443,11 @@ public class DataProfileManagerTest extends TelephonyTest {
         verify(mDataNetworkController).registerDataNetworkControllerCallback(
                         dataNetworkControllerCallbackCaptor.capture());
         mDataNetworkControllerCallback = dataNetworkControllerCallbackCaptor.getValue();
-        mDataProfileManagerUT.obtainMessage(1 /*EVENT_DATA_CONFIG_UPDATED*/).sendToTarget();
+        ArgumentCaptor<DataConfigManagerCallback> dataConfigManagerCallbackCaptor =
+                ArgumentCaptor.forClass(DataConfigManagerCallback.class);
+        verify(mDataConfigManager).registerCallback(dataConfigManagerCallbackCaptor.capture());
+        mDataConfigManagerCallback = dataConfigManagerCallbackCaptor.getValue();
+        mDataConfigManagerCallback.onCarrierConfigChanged();
         processAllMessages();
 
         logd("DataProfileManagerTest -Setup!");
@@ -450,6 +457,7 @@ public class DataProfileManagerTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mDataProfileManagerUT = null;
         mDataNetworkControllerCallback = null;
+        mDataConfigManagerCallback = null;
         super.tearDown();
     }
 
@@ -629,6 +637,44 @@ public class DataProfileManagerTest extends TelephonyTest {
                 eq(false), eq(null));
         assertThat(dataProfileCaptor.getValue().getApnSetting().getApnName())
                 .isEqualTo(GENERAL_PURPOSE_APN);
+    }
+
+    @Test
+    public void testSetInitialAttachDataProfileMultipleRequests() throws Exception {
+        // Test: Modem Cleared IA, should always send IA to modem
+        // TODO(b/237444788): this case should be removed from U
+        mDataProfileManagerUT.obtainMessage(3 /* EVENT_SIM_REFRESH */).sendToTarget();
+        processAllMessages();
+
+        Field IADPField = DataProfileManager.class.getDeclaredField("mInitialAttachDataProfile");
+        IADPField.setAccessible(true);
+        DataProfile dp = (DataProfile) IADPField.get(mDataProfileManagerUT);
+
+        Mockito.clearInvocations(mMockedWwanDataServiceManager);
+        mDataProfileManagerUT.obtainMessage(3 /* EVENT_SIM_REFRESH */).sendToTarget();
+        processAllMessages();
+        DataProfile dp2 = (DataProfile) IADPField.get(mDataProfileManagerUT);
+
+        assertThat(Objects.equals(dp, dp2)).isTrue();
+        verify(mMockedWwanDataServiceManager)
+                .setInitialAttachApn(any(DataProfile.class), eq(false), eq(null));
+
+        // Test: Modem did NOT clear IA, should not send IA to modem even if IA stays the same
+        mDataProfileManagerUT.obtainMessage(2 /* EVENT_APN_DATABASE_CHANGED */).sendToTarget();
+        processAllMessages();
+
+        IADPField = DataProfileManager.class.getDeclaredField("mInitialAttachDataProfile");
+        IADPField.setAccessible(true);
+        dp = (DataProfile) IADPField.get(mDataProfileManagerUT);
+        Mockito.clearInvocations(mMockedWwanDataServiceManager);
+
+        mDataProfileManagerUT.obtainMessage(2 /* EVENT_APN_DATABASE_CHANGED */).sendToTarget();
+        processAllMessages();
+        dp2 = (DataProfile) IADPField.get(mDataProfileManagerUT);
+
+        assertThat(Objects.equals(dp, dp2)).isTrue();
+        verify(mMockedWwanDataServiceManager, Mockito.never())
+                .setInitialAttachApn(any(DataProfile.class), eq(false), eq(null));
     }
 
     @Test
