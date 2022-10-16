@@ -42,7 +42,6 @@ import org.junit.runner.RunWith;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -581,28 +580,20 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
 
         // Read binary - since params are identical across files, we need to keep track of which
         // file was selected most recently and give back that content.
-        Map<String, String> binaryContent =
-                new HashMap<>() {
-                    {
-                        // ODF
-                        put("5031", "A706300404025207");
-                        // DODF
-                        put(
-                                "5207",
-                                "A1293000300F0C0D4750205345204163632043746CA1143012060A2A864886FC6B"
-                                        + "81480101300404024200");
-                        // ACMF
-                        put("4200", "301004080102030405060708300404024300");
-                        // ACRF
-                        put("4300", "3010A0080406FFFFFFFFFFFF300404024310");
-                        // ACCF
-                        put(
-                                "4310",
-                                "30220420B9CFCE1C47A6AC713442718F15EF55B00B3A6D1A6D48CB46249FA8EB51"
-                                        + "465350302204204C36AF4A5BDAD97C1F3D8B283416D244496C2AC5EA"
-                                        + "FE8226079EF6F676FD1859");
-                    }
-                };
+        Map<String, String> binaryContent = Map.of(
+                // ODF
+                "5031", "A706300404025207",
+                // DODF
+                "5207", "A1293000300F0C0D4750205345204163632043746CA1143012060A2A864886FC6B"
+                        + "81480101300404024200",
+                // ACMF
+                "4200", "301004080102030405060708300404024300",
+                // ACRF
+                "4300", "3010A0080406FFFFFFFFFFFF300404024310",
+                // ACCF
+                "4310", "30220420B9CFCE1C47A6AC713442718F15EF55B00B3A6D1A6D48CB46249FA8EB51"
+                        + "465350302204204C36AF4A5BDAD97C1F3D8B283416D244496C2AC5EA"
+                        + "FE8226079EF6F676FD1859");
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
@@ -687,21 +678,15 @@ public class UiccCarrierPrivilegeRulesTest extends TelephonyTest {
 
         // Read binary - since params are identical across files, we need to keep track of which
         // file was selected most recently and give back that content.
-        Map<String, String> binaryContent =
-                new HashMap<>() {
-                    {
-                        // ODF fails
-                        put("5031", "");
-                        // ACRF
-                        put("4300", "3010A0080406FFFFFFFFFFFF300404024310");
-                        // ACCF
-                        put(
-                                "4310",
-                                "30220420B9CFCE1C47A6AC713442718F15EF55B00B3A6D1A6D48CB46249FA8EB51"
-                                        + "465350302204204C36AF4A5BDAD97C1F3D8B283416D244496C2AC5EA"
-                                        + "FE8226079EF6F676FD1859");
-                    }
-                };
+        Map<String, String> binaryContent = Map.of(
+                // ODF fails
+                "5031", "",
+                // ACRF
+                "4300", "3010A0080406FFFFFFFFFFFF300404024310",
+                // ACCF
+                "4310", "30220420B9CFCE1C47A6AC713442718F15EF55B00B3A6D1A6D48CB46249FA8EB51"
+                        + "465350302204204C36AF4A5BDAD97C1F3D8B283416D244496C2AC5EA"
+                        + "FE8226079EF6F676FD1859");
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
