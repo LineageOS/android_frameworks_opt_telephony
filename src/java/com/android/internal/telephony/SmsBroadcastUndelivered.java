@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import static java.util.Map.entry;
+
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
@@ -72,19 +74,18 @@ public class SmsBroadcastUndelivered {
 
     /** Mapping from DB COLUMN to PDU_PENDING_MESSAGE_PROJECTION index */
     static final Map<Integer, Integer> PDU_PENDING_MESSAGE_PROJECTION_INDEX_MAPPING =
-            new HashMap<Integer, Integer>() {{
-                put(InboundSmsHandler.PDU_COLUMN, 0);
-                put(InboundSmsHandler.SEQUENCE_COLUMN, 1);
-                put(InboundSmsHandler.DESTINATION_PORT_COLUMN, 2);
-                put(InboundSmsHandler.DATE_COLUMN, 3);
-                put(InboundSmsHandler.REFERENCE_NUMBER_COLUMN, 4);
-                put(InboundSmsHandler.COUNT_COLUMN, 5);
-                put(InboundSmsHandler.ADDRESS_COLUMN, 6);
-                put(InboundSmsHandler.ID_COLUMN, 7);
-                put(InboundSmsHandler.MESSAGE_BODY_COLUMN, 8);
-                put(InboundSmsHandler.DISPLAY_ADDRESS_COLUMN, 9);
-                put(InboundSmsHandler.SUBID_COLUMN, 10);
-            }};
+            Map.ofEntries(
+                entry(InboundSmsHandler.PDU_COLUMN, 0),
+                entry(InboundSmsHandler.SEQUENCE_COLUMN, 1),
+                entry(InboundSmsHandler.DESTINATION_PORT_COLUMN, 2),
+                entry(InboundSmsHandler.DATE_COLUMN, 3),
+                entry(InboundSmsHandler.REFERENCE_NUMBER_COLUMN, 4),
+                entry(InboundSmsHandler.COUNT_COLUMN, 5),
+                entry(InboundSmsHandler.ADDRESS_COLUMN, 6),
+                entry(InboundSmsHandler.ID_COLUMN, 7),
+                entry(InboundSmsHandler.MESSAGE_BODY_COLUMN, 8),
+                entry(InboundSmsHandler.DISPLAY_ADDRESS_COLUMN, 9),
+                entry(InboundSmsHandler.SUBID_COLUMN, 10));
 
 
     private static SmsBroadcastUndelivered instance;
