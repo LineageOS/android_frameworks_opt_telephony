@@ -42,7 +42,6 @@ public class SimSmsTest extends TestCase {
         List<SmsRawData> records = sms.getAllMessagesFromIccEfForSubscriber(
                 preferredSmsSubscription, ActivityThread.currentPackageName());
         assertNotNull(records);
-        assertTrue(records.size() >= 0);
 
         int firstNullIndex = -1;
         int firstValidIndex = -1;
