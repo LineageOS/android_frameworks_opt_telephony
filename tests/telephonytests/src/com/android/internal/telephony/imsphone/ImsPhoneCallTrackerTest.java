@@ -1006,7 +1006,9 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         PersistableBundle bundle = new PersistableBundle();
         String[] mappings = new String[]{
                 "1014|call completed elsewhere|1014",
+                "1014|Call Rejected By User|510",
                 "1014|*|510",
+                "510|Call completed elsewhere|1014",
                 };
         bundle.putStringArray(CarrierConfigManager.KEY_IMS_REASONINFO_MAPPING_STRING_ARRAY,
                 mappings);
@@ -1024,6 +1026,9 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 new ImsReasonInfo(1014, 200, "Call Rejected By User"))); // 1014 -> 510
         assertEquals(ImsReasonInfo.CODE_ANSWERED_ELSEWHERE, mCTUT.maybeRemapReasonCode(
                 new ImsReasonInfo(1014, 200, "Call completed elsewhere"))); // 1014 -> 1014
+        assertEquals(ImsReasonInfo.CODE_ANSWERED_ELSEWHERE, mCTUT.maybeRemapReasonCode(
+                new ImsReasonInfo(510, 200,
+                        "Call completed elsewhere by instance urn:gsma:imei:xxx"))); // 510 -> 1014
 
         // Simulate that after SIM swap the new carrier config doesn't have the mapping for 1014
         loadReasonCodeRemapCarrierConfig();
