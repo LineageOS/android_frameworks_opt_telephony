@@ -1142,8 +1142,7 @@ public class LinkBandwidthEstimator extends Handler {
             StringBuilder sb = new StringBuilder();
             sb.append("Plmn").append(mPlmn)
                     .append("Rat").append(mDataRat)
-                    .append("Tac").append(mTac)
-                    .toString();
+                    .append("Tac").append(mTac);
             return sb.toString();
         }
     }
