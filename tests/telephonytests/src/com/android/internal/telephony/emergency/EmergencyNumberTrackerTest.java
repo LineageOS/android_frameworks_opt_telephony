@@ -26,6 +26,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import android.content.Context;
+import android.content.res.AssetManager;
 import android.os.AsyncResult;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
@@ -115,6 +117,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
 
     private File mLocalDownloadDirectory;
     private ShortNumberInfo mShortNumberInfo;
+    private Context mMockContext;
 
     @Before
     public void setUp() throws Exception {
@@ -124,14 +127,17 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         mSubControllerMock = mock(SubscriptionController.class);
         mPhone2 = mock(Phone.class);
         mContext = InstrumentationRegistry.getTargetContext();
+        mMockContext = mock(Context.class);
 
         doReturn(mContext).when(mPhone).getContext();
         doReturn(0).when(mPhone).getPhoneId();
         doReturn(SUB_ID_PHONE_1).when(mPhone).getSubId();
+        doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion();
 
         doReturn(mContext).when(mPhone2).getContext();
         doReturn(1).when(mPhone2).getPhoneId();
         doReturn(SUB_ID_PHONE_2).when(mPhone2).getSubId();
+        doReturn(new HalVersion(1, 4)).when(mPhone2).getHalVersion();
 
         initializeEmergencyNumberListTestSamples();
         mEmergencyNumberTrackerMock = new EmergencyNumberTracker(mPhone, mSimulatedCommands);
@@ -141,6 +147,9 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
 
         // Copy an OTA file to the test directory to similate the OTA mechanism
         simulateOtaEmergencyNumberDb(mPhone);
+
+        AssetManager am = new AssetManager.Builder().build();
+        doReturn(am).when(mMockContext).getAssets();
 
         processAllMessages();
         logd("EmergencyNumberTrackerTest -Setup!");
@@ -481,13 +490,16 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     @Test
     public void testUsingEmergencyNumberDatabaseWheneverHal_1_3() {
         doReturn(new HalVersion(1, 3)).when(mPhone).getHalVersion();
+        doReturn(mMockContext).when(mPhone).getContext();
+        EmergencyNumberTracker emergencyNumberTracker = new EmergencyNumberTracker(
+                mPhone, mSimulatedCommands);
 
-        sendEmergencyNumberPrefix(mEmergencyNumberTrackerMock);
-        mEmergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("us");
+        sendEmergencyNumberPrefix(emergencyNumberTracker);
+        emergencyNumberTracker.updateEmergencyCountryIsoAllPhones("us");
         processAllMessages();
 
         boolean hasDatabaseNumber = false;
-        for (EmergencyNumber number : mEmergencyNumberTrackerMock.getEmergencyNumberList()) {
+        for (EmergencyNumber number : emergencyNumberTracker.getEmergencyNumberList()) {
             if (number.isFromSources(EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE)) {
                 hasDatabaseNumber = true;
                 break;
