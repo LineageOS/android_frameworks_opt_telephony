@@ -277,6 +277,8 @@ message OutgoingSms {
     optional int32 retry_id = 13;
     optional int64 interval_millis = 14;
     optional int32 count = 15;
+    optional int32 send_error_code = 16;
+    optional int32 network_error_code = 17;
 
     // Internal use only
     optional int32 hashCode = 10001;

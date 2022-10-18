@@ -193,6 +193,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         SmsConstants.FORMAT_3GPP2.equals(getFormat()),
                         status == ImsSmsImplBase.SEND_STATUS_ERROR_FALLBACK,
                         reason,
+                        networkReasonCode,
                         tracker.mMessageId,
                         tracker.isFromDefaultSmsApplication(mContext),
                         tracker.getInterval());
