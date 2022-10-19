@@ -48,7 +48,6 @@ import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -102,26 +101,24 @@ public class CarrierSignalAgent extends Handler {
     /**
      * This is a list of supported signals from CarrierSignalAgent
      */
-    private static final Set<String> VALID_CARRIER_SIGNAL_ACTIONS = new HashSet<>(Arrays.asList(
+    private static final Set<String> VALID_CARRIER_SIGNAL_ACTIONS = Set.of(
             TelephonyManager.ACTION_CARRIER_SIGNAL_PCO_VALUE,
             TelephonyManager.ACTION_CARRIER_SIGNAL_REDIRECTED,
             TelephonyManager.ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED,
             TelephonyManager.ACTION_CARRIER_SIGNAL_RESET,
-            TelephonyManager.ACTION_CARRIER_SIGNAL_DEFAULT_NETWORK_AVAILABLE));
+            TelephonyManager.ACTION_CARRIER_SIGNAL_DEFAULT_NETWORK_AVAILABLE);
 
-    private static final Map<String, String> NEW_ACTION_TO_COMPAT_MAP =
-            new HashMap<String, String>() {{
-                put(TelephonyManager.ACTION_CARRIER_SIGNAL_PCO_VALUE,
-                        TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE);
-                put(TelephonyManager.ACTION_CARRIER_SIGNAL_REDIRECTED,
-                        TelephonyIntents.ACTION_CARRIER_SIGNAL_REDIRECTED);
-                put(TelephonyManager.ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED,
-                        TelephonyIntents.ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED);
-                put(TelephonyManager.ACTION_CARRIER_SIGNAL_RESET,
-                        TelephonyIntents.ACTION_CARRIER_SIGNAL_RESET);
-                put(TelephonyManager.ACTION_CARRIER_SIGNAL_DEFAULT_NETWORK_AVAILABLE,
-                        TelephonyIntents.ACTION_CARRIER_SIGNAL_DEFAULT_NETWORK_AVAILABLE);
-            }};
+    private static final Map<String, String> NEW_ACTION_TO_COMPAT_MAP = Map.of(
+            TelephonyManager.ACTION_CARRIER_SIGNAL_PCO_VALUE,
+                    TelephonyIntents.ACTION_CARRIER_SIGNAL_PCO_VALUE,
+            TelephonyManager.ACTION_CARRIER_SIGNAL_REDIRECTED,
+                    TelephonyIntents.ACTION_CARRIER_SIGNAL_REDIRECTED,
+            TelephonyManager.ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED,
+                    TelephonyIntents.ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED,
+            TelephonyManager.ACTION_CARRIER_SIGNAL_RESET,
+                    TelephonyIntents.ACTION_CARRIER_SIGNAL_RESET,
+            TelephonyManager.ACTION_CARRIER_SIGNAL_DEFAULT_NETWORK_AVAILABLE,
+                    TelephonyIntents.ACTION_CARRIER_SIGNAL_DEFAULT_NETWORK_AVAILABLE);
 
     private static final Map<String, String> COMPAT_ACTION_TO_NEW_MAP = NEW_ACTION_TO_COMPAT_MAP
             .entrySet().stream().collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));

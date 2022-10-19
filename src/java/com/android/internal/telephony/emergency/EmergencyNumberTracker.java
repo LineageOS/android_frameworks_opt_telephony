@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.emergency;
 
+import android.annotation.NonNull;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -100,6 +101,7 @@ public class EmergencyNumberTracker extends Handler {
     private String mCountryIso;
     private String mLastKnownEmergencyCountryIso = "";
     private int mCurrentDatabaseVersion = INVALID_DATABASE_VERSION;
+    private boolean mIsHalVersionLessThan1Dot4 = false;
     /**
      * Indicates if the country iso is set by another subscription.
      * @hide
@@ -188,6 +190,8 @@ public class EmergencyNumberTracker extends Handler {
             filter.addAction(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED);
 
             mPhone.getContext().registerReceiver(mIntentReceiver, filter);
+
+            mIsHalVersionLessThan1Dot4 = mPhone.getHalVersion().lessOrEqual(new HalVersion(1, 3));
         } else {
             loge("mPhone is null.");
         }
@@ -841,22 +845,11 @@ public class EmergencyNumberTracker extends Handler {
      */
     private List<EmergencyNumber> getEmergencyNumberListFromEccList() {
         List<EmergencyNumber> emergencyNumberList = new ArrayList<>();
-        int slotId = SubscriptionController.getInstance().getSlotIndex(mPhone.getSubId());
 
-        String ecclist = (slotId <= 0) ? "ril.ecclist" : ("ril.ecclist" + slotId);
-        String emergencyNumbers = SystemProperties.get(ecclist, "");
-        if (TextUtils.isEmpty(emergencyNumbers)) {
-            // then read-only ecclist property since old RIL only uses this
-            emergencyNumbers = SystemProperties.get("ro.ril.ecclist");
+        if (mIsHalVersionLessThan1Dot4) {
+            emergencyNumberList.addAll(getEmergencyNumberListFromEccListForHalv1_3());
         }
-        if (!TextUtils.isEmpty(emergencyNumbers)) {
-            // searches through the comma-separated list for a match,
-            // return true if one is found.
-            for (String emergencyNum : emergencyNumbers.split(",")) {
-                emergencyNumberList.add(getLabeledEmergencyNumberForEcclist(emergencyNum));
-            }
-        }
-        emergencyNumbers = ((isSimAbsent()) ? "112,911,000,08,110,118,119,999" : "112,911");
+        String emergencyNumbers = ((isSimAbsent()) ? "112,911,000,08,110,118,119,999" : "112,911");
         for (String emergencyNum : emergencyNumbers.split(",")) {
             emergencyNumberList.add(getLabeledEmergencyNumberForEcclist(emergencyNum));
         }
@@ -864,6 +857,32 @@ public class EmergencyNumberTracker extends Handler {
             emergencyNumberList.addAll(getEmergencyNumberListWithPrefix(emergencyNumberList));
         }
         EmergencyNumber.mergeSameNumbersInEmergencyNumberList(emergencyNumberList);
+        return emergencyNumberList;
+    }
+
+    private String getEmergencyNumberListForHalv1_3() {
+        int slotId = SubscriptionController.getInstance().getSlotIndex(mPhone.getSubId());
+
+        String ecclist = (slotId <= 0) ? "ril.ecclist" : ("ril.ecclist" + slotId);
+        String emergencyNumbers = SystemProperties.get(ecclist, "");
+
+        if (TextUtils.isEmpty(emergencyNumbers)) {
+            // then read-only ecclist property since old RIL only uses this
+            emergencyNumbers = SystemProperties.get("ro.ril.ecclist");
+        }
+        logd(ecclist + " emergencyNumbers: " + emergencyNumbers);
+        return emergencyNumbers;
+    }
+
+    private List<EmergencyNumber> getEmergencyNumberListFromEccListForHalv1_3() {
+        List<EmergencyNumber> emergencyNumberList = new ArrayList<>();
+        String emergencyNumbers = getEmergencyNumberListForHalv1_3();
+
+        if (!TextUtils.isEmpty(emergencyNumbers)) {
+            for (String emergencyNum : emergencyNumbers.split(",")) {
+                emergencyNumberList.add(getLabeledEmergencyNumberForEcclist(emergencyNum));
+            }
+        }
         return emergencyNumberList;
     }
 
@@ -899,7 +918,7 @@ public class EmergencyNumberTracker extends Handler {
     }
 
     private boolean isEmergencyNumberFromDatabase(String number) {
-        if (!mPhone.getHalVersion().greaterOrEqual(new HalVersion(1, 4))) {
+        if (mEmergencyNumberListFromDatabase.isEmpty()) {
             return false;
         }
         number = PhoneNumberUtils.stripSeparators(number);
@@ -962,42 +981,14 @@ public class EmergencyNumberTracker extends Handler {
         /// @}
 
         String emergencyNumbers = "";
-        int slotId = SubscriptionController.getInstance().getSlotIndex(mPhone.getSubId());
-
-        String ecclist = null;
         String countryIso = getLastKnownEmergencyCountryIso();
+        logd("country:" + countryIso);
 
-        if (!mPhone.getHalVersion().greaterOrEqual(new HalVersion(1, 4))) {
-            //only use ril ecc list for older devices with HAL < 1.4
-            // check read-write ecclist property first
-            ecclist = (slotId <= 0) ? "ril.ecclist" : ("ril.ecclist" + slotId);
-            emergencyNumbers = SystemProperties.get(ecclist, "");
-
-            logd("slotId:" + slotId + " country:" + countryIso + " emergencyNumbers: "
-                + emergencyNumbers);
-
-            if (TextUtils.isEmpty(emergencyNumbers)) {
-                // then read-only ecclist property since old RIL only uses this
-                emergencyNumbers = SystemProperties.get("ro.ril.ecclist");
-            }
+        if (mIsHalVersionLessThan1Dot4) {
+            emergencyNumbers = getEmergencyNumberListForHalv1_3();
 
             if (!TextUtils.isEmpty(emergencyNumbers)) {
-                // searches through the comma-separated list for a match,
-                // return true if one is found.
-                for (String emergencyNum : emergencyNumbers.split(",")) {
-                    if (number.equals(emergencyNum)) {
-                        return true;
-                    } else {
-                        for (String prefix : mEmergencyNumberPrefix) {
-                            if (number.equals(prefix + emergencyNum)) {
-                                return true;
-                            }
-                        }
-                    }
-
-                }
-                // no matches found against the list!
-                return false;
+                return isEmergencyNumberFromEccListForHalv1_3(number, emergencyNumbers);
             }
         }
 
@@ -1041,6 +1032,25 @@ public class EmergencyNumberTracker extends Handler {
         return false;
     }
 
+    private boolean isEmergencyNumberFromEccListForHalv1_3(@NonNull String number,
+            @NonNull String emergencyNumbers) {
+        // searches through the comma-separated list for a match,
+        // return true if one is found.
+        for (String emergencyNum : emergencyNumbers.split(",")) {
+            if (number.equals(emergencyNum)) {
+                return true;
+            } else {
+                for (String prefix : mEmergencyNumberPrefix) {
+                    if (number.equals(prefix + emergencyNum)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        // no matches found against the list!
+        return false;
+    }
+
     /**
      * Execute command for updating emergency number for test mode.
      */
@@ -1080,7 +1090,7 @@ public class EmergencyNumberTracker extends Handler {
 
     private List<EmergencyNumber> getEmergencyNumberListFromEccListDatabaseAndTest() {
         List<EmergencyNumber> mergedEmergencyNumberList = getEmergencyNumberListFromEccList();
-        if (mPhone.getHalVersion().greaterOrEqual(new HalVersion(1, 4))) {
+        if (!mEmergencyNumberListFromDatabase.isEmpty()) {
             loge("getEmergencyNumberListFromEccListDatabaseAndTest: radio indication is"
                     + " unavailable in 1.4 HAL.");
             mergedEmergencyNumberList.addAll(mEmergencyNumberListFromDatabase);
@@ -1175,10 +1185,10 @@ public class EmergencyNumberTracker extends Handler {
         ipw.decreaseIndent();
         ipw.println(" ========================================= ");
 
-        int slotId = SubscriptionController.getInstance().getSlotIndex(mPhone.getSubId());
-        String ecclist = (slotId <= 0) ? "ril.ecclist" : ("ril.ecclist" + slotId);
-        ipw.println(" ril.ecclist: " + SystemProperties.get(ecclist, ""));
-        ipw.println(" ========================================= ");
+        if (mIsHalVersionLessThan1Dot4) {
+            getEmergencyNumberListForHalv1_3();
+            ipw.println(" ========================================= ");
+        }
 
         ipw.println("Emergency Number List for Phone" + "(" + mPhone.getPhoneId() + ")");
         ipw.increaseIndent();
