@@ -86,7 +86,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -113,38 +112,6 @@ public abstract class InboundSmsHandler extends StateMachine {
     protected static final boolean DBG = true;
     protected static final boolean VDBG = false; // STOPSHIP if true, logs user data
 
-    /** Query projection for checking for duplicate message segments. */
-    private static final String[] PDU_DELETED_FLAG_PROJECTION = {
-            "pdu",
-            "deleted"
-    };
-
-    /** Mapping from DB COLUMN to PDU_SEQUENCE_PORT PROJECTION index */
-    private static final Map<Integer, Integer> PDU_DELETED_FLAG_PROJECTION_INDEX_MAPPING =
-            new HashMap<Integer, Integer>() {{
-            put(PDU_COLUMN, 0);
-            put(DELETED_FLAG_COLUMN, 1);
-            }};
-
-    /** Query projection for combining concatenated message segments. */
-    private static final String[] PDU_SEQUENCE_PORT_PROJECTION = {
-            "pdu",
-            "sequence",
-            "destination_port",
-            "display_originating_addr",
-            "date"
-    };
-
-    /** Mapping from DB COLUMN to PDU_SEQUENCE_PORT PROJECTION index */
-    private static final Map<Integer, Integer> PDU_SEQUENCE_PORT_PROJECTION_INDEX_MAPPING =
-            new HashMap<Integer, Integer>() {{
-                put(PDU_COLUMN, 0);
-                put(SEQUENCE_COLUMN, 1);
-                put(DESTINATION_PORT_COLUMN, 2);
-                put(DISPLAY_ADDRESS_COLUMN, 3);
-                put(DATE_COLUMN, 4);
-    }};
-
     public static final int PDU_COLUMN = 0;
     public static final int SEQUENCE_COLUMN = 1;
     public static final int DESTINATION_PORT_COLUMN = 2;
@@ -157,6 +124,34 @@ public abstract class InboundSmsHandler extends StateMachine {
     public static final int DISPLAY_ADDRESS_COLUMN = 9;
     public static final int DELETED_FLAG_COLUMN = 10;
     public static final int SUBID_COLUMN = 11;
+
+    /** Query projection for checking for duplicate message segments. */
+    private static final String[] PDU_DELETED_FLAG_PROJECTION = {
+            "pdu",
+            "deleted"
+    };
+
+    /** Mapping from DB COLUMN to PDU_SEQUENCE_PORT PROJECTION index */
+    private static final Map<Integer, Integer> PDU_DELETED_FLAG_PROJECTION_INDEX_MAPPING = Map.of(
+            PDU_COLUMN, 0,
+            DELETED_FLAG_COLUMN, 1);
+
+    /** Query projection for combining concatenated message segments. */
+    private static final String[] PDU_SEQUENCE_PORT_PROJECTION = {
+            "pdu",
+            "sequence",
+            "destination_port",
+            "display_originating_addr",
+            "date"
+    };
+
+    /** Mapping from DB COLUMN to PDU_SEQUENCE_PORT PROJECTION index */
+    private static final Map<Integer, Integer> PDU_SEQUENCE_PORT_PROJECTION_INDEX_MAPPING = Map.of(
+            PDU_COLUMN, 0,
+            SEQUENCE_COLUMN, 1,
+            DESTINATION_PORT_COLUMN, 2,
+            DISPLAY_ADDRESS_COLUMN, 3,
+            DATE_COLUMN, 4);
 
     public static final String SELECT_BY_ID = "_id=?";
 
