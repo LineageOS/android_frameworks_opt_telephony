@@ -138,6 +138,27 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testConfigureAndGetMaxActiveVoiceSubscriptions() throws Exception {
+        init(2);
+        assertEquals(1, mPcm.getStaticPhoneCapability().getMaxActiveVoiceSubscriptions());
+
+        PhoneCapability dualActiveVoiceSubCapability = new PhoneCapability.Builder(
+                PhoneCapability.DEFAULT_DSDS_CAPABILITY)
+                .setMaxActiveVoiceSubscriptions(2)
+                .build();
+
+        ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
+        verify(mMockRadioConfig).getPhoneCapability(captor.capture());
+        Message msg = captor.getValue();
+        AsyncResult.forMessage(msg, dualActiveVoiceSubCapability, null);
+        msg.sendToTarget();
+        processAllMessages();
+
+        assertEquals(2, mPcm.getStaticPhoneCapability().getMaxActiveVoiceSubscriptions());
+    }
+
+    @Test
+    @SmallTest
     public void testSwitchMultiSimConfig_notDsdsCapable_shouldFail() throws Exception {
         init(1);
         assertEquals(PhoneCapability.DEFAULT_SSSS_CAPABILITY, mPcm.getStaticPhoneCapability());
