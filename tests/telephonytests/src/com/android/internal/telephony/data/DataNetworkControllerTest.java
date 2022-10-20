@@ -75,7 +75,6 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionPlan;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
-import android.telephony.TelephonyProtoEnums;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataCallResponse.LinkStatus;
@@ -492,6 +491,20 @@ public class DataNetworkControllerTest extends TelephonyTest {
     private void serviceStateChanged(@NetworkType int networkType,
             @RegistrationState int dataRegState, @RegistrationState int voiceRegState,
             @RegistrationState int iwlanRegState, DataSpecificRegistrationInfo dsri) {
+        ServiceState ss = createSS(networkType, networkType, dataRegState, voiceRegState,
+                iwlanRegState, dsri);
+
+        doReturn(ss).when(mSST).getServiceState();
+        doReturn(ss).when(mPhone).getServiceState();
+
+        mDataNetworkControllerUT.obtainMessage(17/*EVENT_SERVICE_STATE_CHANGED*/).sendToTarget();
+        processAllMessages();
+    }
+
+    private ServiceState createSS(@NetworkType int dataNetworkType,
+            @NetworkType int voiceNetworkType,
+            @RegistrationState int dataRegState, @RegistrationState int voiceRegState,
+            @RegistrationState int iwlanRegState, DataSpecificRegistrationInfo dsri) {
         if (dsri == null) {
             dsri = new DataSpecificRegistrationInfo(8, false, true, true,
                     new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_SUPPORTED,
@@ -502,7 +515,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
                 .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                .setAccessNetworkTechnology(networkType)
+                .setAccessNetworkTechnology(dataNetworkType)
                 .setRegistrationState(dataRegState)
                 .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
                 .setDataSpecificInfo(dsri)
@@ -517,19 +530,15 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
                 .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                .setAccessNetworkTechnology(networkType)
+                .setAccessNetworkTechnology(voiceNetworkType)
                 .setRegistrationState(voiceRegState)
                 .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
                 .build());
+
         ss.setDataRoamingFromRegistration(dataRegState
                 == NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
         processServiceStateRegStateForTest(ss);
-
-        doReturn(ss).when(mSST).getServiceState();
-        doReturn(ss).when(mPhone).getServiceState();
-
-        mDataNetworkControllerUT.obtainMessage(17/*EVENT_SERVICE_STATE_CHANGED*/).sendToTarget();
-        processAllMessages();
+        return ss;
     }
 
     // set SS reg state base on SST impl, where WLAN overrides WWAN's data reg.
@@ -3542,7 +3551,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         mDataNetworkControllerUT.addNetworkRequest(request);
         processAllMessages();
 
-        // Now DDS temporarily switched to phone 1
+        // this slot is 0, modem preferred on slot 1
         doReturn(1).when(mMockedPhoneSwitcher).getPreferredDataPhoneId();
 
         // Simulate telephony network factory remove request due to switch.
@@ -3555,13 +3564,13 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
     @Test
     public void testSetupDataOnNonDds() throws Exception {
-        // Now DDS switched to phone 1
+        // this slot is 0, modem preferred on slot 1
         doReturn(1).when(mMockedPhoneSwitcher).getPreferredDataPhoneId();
         TelephonyNetworkRequest request = createNetworkRequest(
                 NetworkCapabilities.NET_CAPABILITY_MMS);
 
         // Test Don't allow setup if both data and voice OOS
-        serviceStateChanged(TelephonyProtoEnums.NETWORK_TYPE_1XRTT,
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_1xRTT,
                 // data, voice, Iwlan reg state
                 NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING,
                 NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING,
@@ -3572,18 +3581,24 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verifyAllDataDisconnected();
 
         // Test Don't allow setup if CS is in service, but current RAT is already PS(e.g. LTE)
-        serviceStateChanged(TelephonyProtoEnums.NETWORK_TYPE_LTE,
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME,
                 NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING, null);
 
         verifyAllDataDisconnected();
 
-        // Test Allow if voice is in service if RAT is 2g/3g
-        serviceStateChanged(TelephonyProtoEnums.NETWORK_TYPE_1XRTT,
-                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING,
+        // Test Allow if voice is in service if RAT is 2g/3g, use voice RAT to select data profile
+        ServiceState ss = createSS(TelephonyManager.NETWORK_TYPE_UNKNOWN /* data RAT */,
+                TelephonyManager.NETWORK_TYPE_1xRTT /* voice RAT */,
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING ,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME,
                 NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING, null);
+        doReturn(ss).when(mSST).getServiceState();
+        mDataNetworkControllerUT.obtainMessage(17/*EVENT_SERVICE_STATE_CHANGED*/).sendToTarget();
+        mDataNetworkControllerUT.removeNetworkRequest(request);
+        mDataNetworkControllerUT.addNetworkRequest(request);
+        processAllMessages();
 
         verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_MMS);
     }
