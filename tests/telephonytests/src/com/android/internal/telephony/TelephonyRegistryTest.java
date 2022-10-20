@@ -43,8 +43,10 @@ import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation;
+import android.telephony.BarringInfo;
 import android.telephony.CellIdentity;
 import android.telephony.CellIdentityGsm;
+import android.telephony.CellIdentityLte;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoLte;
 import android.telephony.CellLocation;
@@ -64,6 +66,7 @@ import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 import android.text.TextUtils;
+import android.util.SparseArray;
 
 import androidx.annotation.NonNull;
 
@@ -104,6 +107,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
     private List<PhysicalChannelConfig> mPhysicalChannelConfigs;
     private CellLocation mCellLocation;
     private List<CellInfo> mCellInfo;
+    private BarringInfo mBarringInfo = null;
 
     // All events contribute to TelephonyRegistry#isPhoneStatePermissionRequired
     private static final Set<Integer> READ_PHONE_STATE_EVENTS;
@@ -171,7 +175,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
             TelephonyCallback.PhysicalChannelConfigListener,
             TelephonyCallback.CellLocationListener,
             TelephonyCallback.ServiceStateListener,
-            TelephonyCallback.CellInfoListener {
+            TelephonyCallback.CellInfoListener,
+            TelephonyCallback.BarringInfoListener {
         // This class isn't mockable to get invocation counts because the IBinder is null and
         // crashes the TelephonyRegistry. Make a cheesy verify(times()) alternative.
         public AtomicInteger invocationCount = new AtomicInteger(0);
@@ -238,6 +243,12 @@ public class TelephonyRegistryTest extends TelephonyTest {
         public void onCellInfoChanged(List<CellInfo> cellInfo) {
             invocationCount.incrementAndGet();
             mCellInfo = cellInfo;
+        }
+
+        @Override
+        public void onBarringInfoChanged(BarringInfo barringInfo) {
+            invocationCount.incrementAndGet();
+            mBarringInfo = barringInfo;
         }
     }
 
@@ -883,6 +894,43 @@ public class TelephonyRegistryTest extends TelephonyTest {
 
         assertNotNull(mPhysicalChannelConfigs);
         assertEquals(PHYSICAL_CELL_ID_UNKNOWN, mPhysicalChannelConfigs.get(0).getPhysicalCellId());
+    }
+
+    @Test
+    public void testBarringInfoChanged() {
+        // Return a slotIndex / phoneId of 0 for all sub ids given.
+        doReturn(mMockSubInfo).when(mSubscriptionManager).getActiveSubscriptionInfo(anyInt());
+        doReturn(0/*slotIndex*/).when(mMockSubInfo).getSimSlotIndex();
+        doReturn(true).when(mLocationManager).isLocationEnabledForUser(any(UserHandle.class));
+
+        final int subId = 1;
+        int[] events = {TelephonyCallback.EVENT_BARRING_INFO_CHANGED};
+        SparseArray<BarringInfo.BarringServiceInfo> bsi = new SparseArray(1);
+        bsi.set(BarringInfo.BARRING_SERVICE_TYPE_MO_DATA,
+                new BarringInfo.BarringServiceInfo(
+                        BarringInfo.BarringServiceInfo.BARRING_TYPE_CONDITIONAL,
+                        false /*isConditionallyBarred*/,
+                        30 /*conditionalBarringFactor*/,
+                        10 /*conditionalBarringTimeSeconds*/));
+        BarringInfo info = new BarringInfo(new CellIdentityLte(), bsi);
+
+        // Registering for info causes Barring Info to be sent to caller
+        mTelephonyRegistry.listenWithEventList(false, false, subId, mContext.getOpPackageName(),
+                mContext.getAttributionTag(), mTelephonyCallback.callback, events, true);
+        processAllMessages();
+        assertEquals(1, mTelephonyCallback.invocationCount.get());
+        assertNotNull(mBarringInfo);
+
+        // Updating the barring info causes Barring Info to be updated
+        mTelephonyRegistry.notifyBarringInfoChanged(0, subId, info);
+        processAllMessages();
+        assertEquals(2, mTelephonyCallback.invocationCount.get());
+        assertEquals(mBarringInfo, info);
+
+        // Duplicate BarringInfo notifications do not trigger callback
+        mTelephonyRegistry.notifyBarringInfoChanged(0, subId, info);
+        processAllMessages();
+        assertEquals(2, mTelephonyCallback.invocationCount.get());
     }
 
     /**
