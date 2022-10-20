@@ -21,6 +21,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Environment;
 import android.os.Handler;
@@ -102,6 +103,8 @@ public class EmergencyNumberTracker extends Handler {
     private String mLastKnownEmergencyCountryIso = "";
     private int mCurrentDatabaseVersion = INVALID_DATABASE_VERSION;
     private boolean mIsHalVersionLessThan1Dot4 = false;
+    private Resources mResources = null;
+
     /**
      * Indicates if the country iso is set by another subscription.
      * @hide
@@ -168,6 +171,7 @@ public class EmergencyNumberTracker extends Handler {
     public EmergencyNumberTracker(Phone phone, CommandsInterface ci) {
         mPhone = phone;
         mCi = ci;
+        mResources = mPhone.getContext().getResources();
 
         if (mPhone != null) {
             mPhoneId = phone.getPhoneId();
@@ -1135,6 +1139,28 @@ public class EmergencyNumberTracker extends Handler {
             TelephonyMetrics.getInstance().writeEmergencyNumberUpdateEvent(
                     mPhone.getPhoneId(), num, getEmergencyNumberDbVersion());
         }
+    }
+
+    /**
+     * @return {@code true} if emergency numbers sourced from modem/config should be ignored.
+     * {@code false} if emergency numbers sourced from modem/config should not be ignored.
+     */
+    @VisibleForTesting
+    public boolean shouldModemConfigEmergencyNumbersBeIgnored() {
+        return mResources.getBoolean(com.android.internal.R.bool
+                .ignore_modem_config_emergency_numbers);
+    }
+
+    /**
+     * @return {@code true} if emergency number routing from the android emergency number
+     * database should be ignored.
+     * {@code false} if emergency number routing from the android emergency number database
+     * should not be ignored.
+     */
+    @VisibleForTesting
+    public boolean shouldEmergencyNumberRoutingFromDbBeIgnored() {
+        return mResources.getBoolean(com.android.internal.R.bool
+                .ignore_emergency_number_routing_from_db);
     }
 
     /**
