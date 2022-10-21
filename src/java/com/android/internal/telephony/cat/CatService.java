@@ -624,7 +624,7 @@ public class CatService extends Handler implements AppInterface {
         SmsController smsController = proxyController.getSmsController();
         smsController.sendTextForSubscriber(subId, mContext.getOpPackageName(),
                 mContext.getAttributionTag(), destAddr, null, text, sentPendingIntent,
-                deliveryPendingIntent, false, 0L, true);
+                deliveryPendingIntent, false, 0L, true, true);
     }
 
     private class SmsBroadcastReceiver extends BroadcastReceiver {
