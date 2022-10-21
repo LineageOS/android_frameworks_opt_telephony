@@ -33,6 +33,23 @@
       "message": "stuck on H+ though / also sans IMS",
       "revId": "e24b9ac01984c4544e758683ef6204e9c899e0b9",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "28316c58_ea78aaa4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3917
+      },
+      "writtenOn": "2022-10-21T19:40:38Z",
+      "side": 1,
+      "message": "LTE enabled by https://review.lineageos.org/c/LineageOS/android_frameworks_opt_telephony/+/342242",
+      "revId": "e24b9ac01984c4544e758683ef6204e9c899e0b9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
