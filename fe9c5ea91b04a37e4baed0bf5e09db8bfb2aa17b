@@ -33,6 +33,24 @@
       "message": "And bonito. Likely all sdm845 or older",
       "revId": "fe9c5ea91b04a37e4baed0bf5e09db8bfb2aa17b",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a471ec53_8b1ec55b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2022-10-21T20:16:58Z",
+      "side": 1,
+      "message": "And FTR, just in case, commit is fine on bluejay as well (HAL 1.6)\n\nbonito is 1.3",
+      "parentUuid": "58b743db_6ae9e33e",
+      "revId": "fe9c5ea91b04a37e4baed0bf5e09db8bfb2aa17b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
