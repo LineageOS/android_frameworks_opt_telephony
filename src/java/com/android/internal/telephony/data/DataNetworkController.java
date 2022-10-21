@@ -551,6 +551,15 @@ public class DataNetworkController extends Handler {
          */
         public void onInternetDataNetworkConnected(@NonNull List<DataProfile> dataProfiles) {}
 
+        /**
+         * Called when data network is connected.
+         *
+         * @param transport Transport for the connected network.
+         * @param dataProfile The data profile of the connected data network.
+         */
+        public void onDataNetworkConnected(@TransportType int transport,
+                @NonNull DataProfile dataProfile) {}
+
         /** Called when internet data network is disconnected. */
         public void onInternetDataNetworkDisconnected() {}
 
@@ -1426,7 +1435,7 @@ public class DataNetworkController extends Handler {
         if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)) {
             evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_REQUEST);
             evaluation.setCandidateDataProfile(mDataProfileManager.getDataProfileForNetworkRequest(
-                    networkRequest, getDataNetworkType(transport)));
+                    networkRequest, getDataNetworkType(transport), true));
             networkRequest.setEvaluation(evaluation);
             log(evaluation.toString());
             return evaluation;
@@ -1575,7 +1584,10 @@ public class DataNetworkController extends Handler {
             networkType = mServiceState.getVoiceNetworkType();
         }
         DataProfile dataProfile = mDataProfileManager
-                .getDataProfileForNetworkRequest(networkRequest, networkType);
+                .getDataProfileForNetworkRequest(networkRequest, networkType,
+                        // If the evaluation is due to environmental changes, then we should ignore
+                        // the permanent failure reached earlier.
+                        reason.isConditionBased());
         if (dataProfile == null) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.NO_SUITABLE_DATA_PROFILE);
         } else if (reason == DataEvaluationReason.NEW_REQUEST
@@ -2604,6 +2616,11 @@ public class DataNetworkController extends Handler {
      */
     private void onDataNetworkConnected(@NonNull DataNetwork dataNetwork) {
         logl("onDataNetworkConnected: " + dataNetwork);
+
+        mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                () -> callback.onDataNetworkConnected(dataNetwork.getTransport(),
+                        dataNetwork.getDataProfile())));
+
         mPreviousConnectedDataNetworkList.add(0, dataNetwork);
         // Preserve the connected data networks for debugging purposes.
         if (mPreviousConnectedDataNetworkList.size() > MAX_HISTORICAL_CONNECTED_DATA_NETWORKS) {
