@@ -68,6 +68,24 @@
       "message": "LTE works with this.\n\nIMS incoming calls are broken here. Outgoing is fine. Could be unrelated as well / need a different fix. \n\nJust for reference: https://android.googlesource.com/platform/frameworks/opt/telephony/+/17e6624c40fbbbda2ba1220bccab3d0c761417f5%5E%21/#F0",
       "revId": "fe9c5ea91b04a37e4baed0bf5e09db8bfb2aa17b",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3472b588_8f4af670",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10067
+      },
+      "writtenOn": "2022-10-21T22:43:32Z",
+      "side": 1,
+      "message": "99.99% unrelated.",
+      "parentUuid": "4aa12d2f_867bea58",
+      "revId": "fe9c5ea91b04a37e4baed0bf5e09db8bfb2aa17b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
