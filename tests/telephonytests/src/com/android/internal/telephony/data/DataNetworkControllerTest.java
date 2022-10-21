@@ -181,6 +181,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                     .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
                     .setCarrierEnabled(true)
                     .setNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_LTE
+                            | TelephonyManager.NETWORK_TYPE_BITMASK_NR
                             | TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN
                             | TelephonyManager.NETWORK_TYPE_BITMASK_1xRTT))
                     .setLingeringNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_LTE
@@ -629,8 +630,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 CarrierConfigManager.KEY_TELEPHONY_DATA_SETUP_RETRY_RULES_STRING_ARRAY,
                 new String[]{
                         "capabilities=eims, retry_interval=1000, maximum_retries=20",
-                        "fail_causes=8|27|28|29|30|32|33|35|50|51|111|-5|-6|65537|65538|-3|2253|"
-                                + "2254, maximum_retries=0", // No retry for those causes
+                        "permanent_fail_causes=8|27|28|29|30|32|33|35|50|51|111|-5|-6|65537|65538|"
+                                + "-3|65543|65547|2252|2253|2254, retry_interval=2500",
                         "capabilities=mms|supl|cbs, retry_interval=2000",
                         "capabilities=internet|enterprise|dun|ims|fota, retry_interval=2500|3000|"
                                 + "5000|10000|15000|20000|40000|60000|120000|240000|"
@@ -793,8 +794,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 linkBandwidthEstimatorCallbackCaptor.capture());
         mLinkBandwidthEstimatorCallback = linkBandwidthEstimatorCallbackCaptor.getValue();
 
-        List<DataProfile> profiles = List.of(mGeneralPurposeDataProfile,
-                mImsCellularDataProfile,
+        List<DataProfile> profiles = List.of(mGeneralPurposeDataProfile, mImsCellularDataProfile,
                 mImsIwlanDataProfile, mEmergencyDataProfile, mFotaDataProfile,
                 mTetheringDataProfile);
 
@@ -827,12 +827,15 @@ public class DataNetworkControllerTest extends TelephonyTest {
             TelephonyNetworkRequest networkRequest =
                     (TelephonyNetworkRequest) invocation.getArguments()[0];
             int networkType = (int) invocation.getArguments()[1];
+            boolean ignorePermanentFailure = (boolean) invocation.getArguments()[2];
 
             for (DataProfile dataProfile : profiles) {
                 if (dataProfile.canSatisfy(networkRequest.getCapabilities())
                         && (dataProfile.getApnSetting().getNetworkTypeBitmask() == 0
                         || (dataProfile.getApnSetting().getNetworkTypeBitmask()
-                        & ServiceState.getBitmaskForTech(networkType)) != 0)) {
+                        & ServiceState.getBitmaskForTech(networkType)) != 0)
+                        && (ignorePermanentFailure || (dataProfile.getApnSetting() != null
+                        && !dataProfile.getApnSetting().getPermanentFailed()))) {
                     return dataProfile;
                 }
             }
@@ -840,7 +843,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                     + TelephonyManager.getNetworkTypeName(networkType));
             return null;
         }).when(mDataProfileManager).getDataProfileForNetworkRequest(
-                any(TelephonyNetworkRequest.class), anyInt());
+                any(TelephonyNetworkRequest.class), anyInt(), anyBoolean());
 
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
                 .getPreferredTransportByNetworkCapability(anyInt());
@@ -1123,7 +1126,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                     + TelephonyManager.getNetworkTypeName(networkType));
             return null;
         }).when(mDataProfileManager).getDataProfileForNetworkRequest(
-                any(TelephonyNetworkRequest.class), anyInt());
+                any(TelephonyNetworkRequest.class), anyInt(), anyBoolean());
 
         // verify the network still connects
         verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkConnected(any());
@@ -1167,7 +1170,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager,
                 createDataCallResponse(1, DataCallResponse.LINK_STATUS_ACTIVE, tdList));
         doReturn(mEnterpriseDataProfile).when(mDataProfileManager)
-                .getDataProfileForNetworkRequest(any(TelephonyNetworkRequest.class), anyInt());
+                .getDataProfileForNetworkRequest(any(TelephonyNetworkRequest.class), anyInt(),
+                        anyBoolean());
 
         mDataNetworkControllerUT.addNetworkRequest(
                 createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE));
@@ -1358,7 +1362,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Now RAT changes from UMTS to GSM
         doReturn(null).when(mDataProfileManager).getDataProfileForNetworkRequest(
-                any(TelephonyNetworkRequest.class), eq(TelephonyManager.NETWORK_TYPE_GSM));
+                any(TelephonyNetworkRequest.class), eq(TelephonyManager.NETWORK_TYPE_GSM),
+                anyBoolean());
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_GSM,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         verifyAllDataDisconnected();
@@ -1369,13 +1374,15 @@ public class DataNetworkControllerTest extends TelephonyTest {
         Mockito.clearInvocations(mMockedDataNetworkControllerCallback);
         // Now RAT changes from GSM to UMTS
         doReturn(null).when(mDataProfileManager).getDataProfileForNetworkRequest(
-                any(TelephonyNetworkRequest.class), eq(TelephonyManager.NETWORK_TYPE_UMTS));
+                any(TelephonyNetworkRequest.class), eq(TelephonyManager.NETWORK_TYPE_UMTS),
+                anyBoolean());
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_UMTS,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
 
         doReturn(mGeneralPurposeDataProfile).when(mDataProfileManager)
-                .getDataProfileForNetworkRequest(any(TelephonyNetworkRequest.class), anyInt());
+                .getDataProfileForNetworkRequest(any(TelephonyNetworkRequest.class), anyInt(),
+                        anyBoolean());
         // Now RAT changes from UMTS to LTE
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
@@ -2592,6 +2599,34 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verify(mMockedWwanDataServiceManager, times(1)).setupDataCall(anyInt(),
                 any(DataProfile.class), anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(),
                 any(), any(), anyBoolean(), any(Message.class));
+
+        Mockito.clearInvocations(mMockedWwanDataServiceManager);
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        processAllFutureMessages();
+
+        // Even receiving a new network request, setup data call should not be sent.
+        verify(mMockedWwanDataServiceManager, never()).setupDataCall(anyInt(),
+                any(DataProfile.class), anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(),
+                any(), any(), anyBoolean(), any(Message.class));
+        // APN should be marked as permanent failure.
+        assertThat(mGeneralPurposeDataProfile.getApnSetting().getPermanentFailed()).isTrue();
+    }
+
+    @Test
+    public void testSetupDataNetworkConditionChangesAfterPermanentFailure() throws Exception {
+        testSetupDataNetworkPermanentFailure();
+
+        setSuccessfulSetupDataResponse(mMockedDataServiceManagers
+                .get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN), 1);
+
+        // From LTE to NR
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_NR,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+
+        // condition change should trigger setup data, even though previously the APN has been
+        // marked as permanent failure.
+        verifyInternetConnected();
     }
 
     @Test

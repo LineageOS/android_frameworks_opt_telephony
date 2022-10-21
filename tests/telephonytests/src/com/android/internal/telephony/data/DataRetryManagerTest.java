@@ -43,6 +43,7 @@ import android.util.SparseArray;
 
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
+import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.data.DataRetryManager.DataHandoverRetryRule;
 import com.android.internal.telephony.data.DataRetryManager.DataRetryManagerCallback;
 import com.android.internal.telephony.data.DataRetryManager.DataSetupRetryRule;
@@ -124,15 +125,14 @@ public class DataRetryManagerTest extends TelephonyTest {
             .setPreferred(false)
             .build();
 
-    private final List<DataProfile> mAllDataProfileList = List.of(mDataProfile1, mDataProfile2,
-            mDataProfile3);
-
     // Mocked classes
     private DataRetryManagerCallback mDataRetryManagerCallbackMock;
 
     private DataRetryManager mDataRetryManagerUT;
 
     private DataConfigManagerCallback mDataConfigManagerCallback;
+
+    private DataNetworkControllerCallback mDataNetworkControllerCallback;
 
     @Before
     public void setUp() throws Exception {
@@ -155,6 +155,12 @@ public class DataRetryManagerTest extends TelephonyTest {
                 ArgumentCaptor.forClass(DataConfigManagerCallback.class);
         verify(mDataConfigManager).registerCallback(dataConfigManagerCallbackCaptor.capture());
         mDataConfigManagerCallback = dataConfigManagerCallbackCaptor.getValue();
+
+        ArgumentCaptor<DataNetworkControllerCallback> dataNetworkControllerCallbackCaptor =
+                ArgumentCaptor.forClass(DataNetworkControllerCallback.class);
+        verify(mDataNetworkController).registerDataNetworkControllerCallback(
+                dataNetworkControllerCallbackCaptor.capture());
+        mDataNetworkControllerCallback = dataNetworkControllerCallbackCaptor.getValue();
 
         logd("DataRetryManagerTest -Setup!");
     }
@@ -183,7 +189,6 @@ public class DataRetryManagerTest extends TelephonyTest {
         assertThat(rule.getMaxRetries()).isEqualTo(0);
         assertThat(rule.getFailCauses()).containsExactly(8, 27, 28, 29, 30, 32, 33, 35, 50,
                 51, 111, -5, -6, 65537, 65538, -3, 2253, 2254);
-        assertThat(rule.getRetryIntervalsMillis()).isEmpty();
 
         ruleString = "capabilities=internet|enterprise|dun|ims|fota, retry_interval=2500|  3000|"
                 + "    5000|  10000 | 15000|        20000|40000|60000|  120000|240000  |"
@@ -393,15 +398,15 @@ public class DataRetryManagerTest extends TelephonyTest {
     @Test
     public void testDataSetupRetryPermanentFailure() {
         DataSetupRetryRule retryRule = new DataSetupRetryRule(
-                "fail_causes=8|27|28|29|30|32|33|35|50|51|111|-5|-6|65537|65538|-3|2253|"
-                        + "2254, maximum_retries=0");
+                "permanent_fail_causes=8|27|28|29|30|32|33|35|50|51|111|-5|-6|65537|65538|-3|65543|"
+                        + "65547|2252|2253|2254, retry_interval=2500");
         doReturn(Collections.singletonList(retryRule)).when(mDataConfigManager)
                 .getDataSetupRetryRules();
         mDataConfigManagerCallback.onCarrierConfigChanged();
         processAllMessages();
 
-
         NetworkRequest request = new NetworkRequest.Builder()
+
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build();
         TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
@@ -412,8 +417,17 @@ public class DataRetryManagerTest extends TelephonyTest {
                 DataCallResponse.RETRY_DURATION_UNDEFINED);
         processAllFutureMessages();
 
-        verify(mDataRetryManagerCallbackMock, never())
+        // Permanent failure is only applicable to the failed APN. Retry should still happen if
+        // there are other APNs.
+        verify(mDataRetryManagerCallbackMock)
                 .onDataNetworkSetupRetry(any(DataSetupRetryEntry.class));
+        assertThat(mDataProfile1.getApnSetting().getPermanentFailed()).isTrue();
+
+        // When condition changes, data will still be retried. As soon as data network is connected,
+        // we should clear the previous permanent failure.
+        mDataNetworkControllerCallback.onDataNetworkConnected(
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, mDataProfile1);
+        assertThat(mDataProfile1.getApnSetting().getPermanentFailed()).isFalse();
     }
 
     @Test
@@ -607,7 +621,6 @@ public class DataRetryManagerTest extends TelephonyTest {
         assertThat(rule.getMaxRetries()).isEqualTo(0);
         assertThat(rule.getFailCauses()).containsExactly(8, 27, 28, 29, 30, 32, 33, 35, 50,
                 51, 111, -5, -6, 65537, 65538, -3, 2253, 2254);
-        assertThat(rule.getRetryIntervalsMillis()).isEmpty();
 
         ruleString = "retry_interval=1000|2000|4000|8000|16000, maximum_retries=5";
         rule = new DataHandoverRetryRule(ruleString);
