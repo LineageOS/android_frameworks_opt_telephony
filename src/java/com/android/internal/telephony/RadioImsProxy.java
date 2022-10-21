@@ -132,13 +132,16 @@ public class RadioImsProxy extends RadioServiceProxy {
      * @param token A nonce to identify the request.
      * @param trafficType IMS traffic type like registration, voice, video, SMS, emergency, and etc.
      * @param accessNetworkType The type of underlying radio access network used.
+     * @param trafficDirection Indicates whether traffic is originated by mobile originated or
+     *        mobile terminated use case eg. MO/MT call/SMS etc.
      * @throws RemoteException.
      */
-    public void startImsTraffic(int serial, int token, int trafficType, int accessNetworkType)
-            throws RemoteException {
+    public void startImsTraffic(int serial, int token, int trafficType, int accessNetworkType,
+            int trafficDirection) throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mImsProxy.startImsTraffic(serial, token, trafficType, accessNetworkType);
+            mImsProxy.startImsTraffic(serial,
+                    token, trafficType, accessNetworkType, trafficDirection);
         }
     }
 
@@ -183,6 +186,20 @@ public class RadioImsProxy extends RadioServiceProxy {
         if (isEmpty()) return;
         if (isAidl()) {
             mImsProxy.sendAnbrQuery(serial, mediaType, direction, bitsPerSecond);
+        }
+    }
+
+    /**
+     * Call IRadioIms#updateImsCallStatus
+     * @param serial Serial number of request.
+     * @param imsCalls The list of call status information.
+     * @throws RemoteException.
+     */
+    public void updateImsCallStatus(int serial,
+            android.hardware.radio.ims.ImsCall[] imsCalls) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mImsProxy.updateImsCallStatus(serial, imsCalls);
         }
     }
 }
