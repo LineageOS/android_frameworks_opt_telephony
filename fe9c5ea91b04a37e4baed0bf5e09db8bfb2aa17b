@@ -16,6 +16,23 @@
       "message": "Makes LTE work on whaoo",
       "revId": "fe9c5ea91b04a37e4baed0bf5e09db8bfb2aa17b",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "58b743db_6ae9e33e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2022-10-21T19:46:45Z",
+      "side": 1,
+      "message": "And bonito. Likely all sdm845 or older",
+      "revId": "fe9c5ea91b04a37e4baed0bf5e09db8bfb2aa17b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
