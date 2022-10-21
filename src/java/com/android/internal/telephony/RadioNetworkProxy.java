@@ -379,16 +379,17 @@ public class RadioNetworkProxy extends RadioServiceProxy {
      * Call IRadioNetwork#setPreferredNetworkTypeBitmap
      * @param serial Serial number of request
      * @param networkTypesBitmask Preferred network types bitmask to set
+     * @param networkType Preferred network type to set for RIL version < 1.4
      * @throws RemoteException
      */
-    public void setPreferredNetworkTypeBitmap(int serial, int networkTypesBitmask)
+    public void setPreferredNetworkTypeBitmap(int serial, int networkTypesBitmask, int networkType)
             throws RemoteException {
         if (isEmpty() || mHalVersion.greaterOrEqual(RIL.RADIO_HAL_VERSION_1_6)) return;
         if (mHalVersion.greaterOrEqual(RIL.RADIO_HAL_VERSION_1_4)) {
             ((android.hardware.radio.V1_4.IRadio) mRadioProxy).setPreferredNetworkTypeBitmap(serial,
                     RILUtils.convertToHalRadioAccessFamily(networkTypesBitmask));
         } else {
-            mRadioProxy.setPreferredNetworkType(serial, networkTypesBitmask);
+            mRadioProxy.setPreferredNetworkType(serial, networkType);
         }
     }
 
