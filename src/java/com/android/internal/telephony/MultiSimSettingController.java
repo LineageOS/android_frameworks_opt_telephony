@@ -44,6 +44,8 @@ import android.os.Message;
 import android.os.ParcelUuid;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
+import android.telecom.PhoneAccountHandle;
+import android.telecom.TelecomManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -122,8 +124,9 @@ public class MultiSimSettingController extends Handler {
 
     protected final Context mContext;
     protected final SubscriptionController mSubController;
+    protected boolean mIsAllSubscriptionsLoaded;
     // Keep a record of active primary (non-opportunistic) subscription list.
-    @NonNull private List<Integer> mPrimarySubList = new ArrayList<>();
+    @NonNull protected List<Integer> mPrimarySubList = new ArrayList<>();
 
     /** The singleton instance. */
     protected static MultiSimSettingController sInstance = null;
@@ -356,6 +359,10 @@ public class MultiSimSettingController extends Handler {
         if (DBG) log("onUserDataEnabled");
         // Make sure MOBILE_DATA of subscriptions in same group are synced.
         setUserDataEnabledForGroup(subId, enable);
+
+        //Skip setting DDS if this config is set
+        if (mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_voice_data_sms_auto_fallback)) return;
 
         // If user is enabling a non-default non-opportunistic subscription, make it default.
         if (mSubController.getDefaultDataSubId() != subId && !mSubController.isOpportunistic(subId)
@@ -828,7 +835,8 @@ public class MultiSimSettingController extends Handler {
     }
 
     protected void disableDataForNonDefaultNonOpportunisticSubscriptions() {
-        if (!isReadyToReevaluate()) return;
+        if (!isReadyToReevaluate() || mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_voice_data_sms_auto_fallback)) return;
 
         int defaultDataSub = mSubController.getDefaultDataSubId();
 
@@ -1020,15 +1028,35 @@ public class MultiSimSettingController extends Handler {
 
         if ((primarySubList.size() == 1) && !voiceSelected) {
             mSubController.setDefaultVoiceSubId(autoDefaultSubId);
+        } else if (!voiceSelected) {
+            final int defVoiceSubId = mSubController.getDefaultVoiceSubId();
+            TelecomManager telecomManager = mContext.getSystemService(TelecomManager.class);
+            TelephonyManager telephonyManager =
+                    mContext.getSystemService(TelephonyManager.class);
+            PhoneAccountHandle currentHandle =
+                    telecomManager.getUserSelectedOutgoingPhoneAccount();
+            int currentVoiceSubId = telephonyManager.getSubscriptionId(currentHandle);
+            if (DBG) log("defalutVoiceSubId = " + defVoiceSubId
+                    + " currentVoiceSubId = " + currentVoiceSubId);
+            if (defVoiceSubId != currentVoiceSubId) {
+                if (primarySubList.contains(currentVoiceSubId)) {
+                    mSubController.setDefaultVoiceSubId(currentVoiceSubId);
+                } else {
+                    mSubController.setDefaultVoiceSubId(defVoiceSubId);
+                }
+            }
         }
 
         int userPrefDataSubId = getUserPrefDataSubIdFromDB();
+        final boolean isSmartDdsEnabled = Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.SMART_DDS_SWITCH, 0) != 0;
 
         if (DBG) log("User pref subId = " + userPrefDataSubId + " current dds " + defaultDataSubId
-                 + " next active subId " + autoDefaultSubId);
+                 + " next active subId " + autoDefaultSubId + " smart dds enabled "
+                 + isSmartDdsEnabled);
 
         // If earlier user selected DDS is now available, set that as DDS subId.
-        if (primarySubList.contains(userPrefDataSubId) &&
+        if (!isSmartDdsEnabled && primarySubList.contains(userPrefDataSubId) &&
                 SubscriptionManager.isValidSubscriptionId(userPrefDataSubId) &&
                 (defaultDataSubId != userPrefDataSubId)) {
             mSubController.setDefaultDataSubId(userPrefDataSubId);
@@ -1071,11 +1099,11 @@ public class MultiSimSettingController extends Handler {
         mCallbacksCount = phones.length;
     }
 
-    private void log(String msg) {
+    protected void log(String msg) {
         Log.d(LOG_TAG, msg);
     }
 
-    private void loge(String msg) {
+    protected void loge(String msg) {
         Log.e(LOG_TAG, msg);
     }
 }

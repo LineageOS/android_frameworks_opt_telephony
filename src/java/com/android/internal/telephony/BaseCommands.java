@@ -1132,4 +1132,8 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void updateSimPhonebookRecord(SimPhonebookRecord phonebookRecord, Message result) {
     }
+
+    @Override
+    public void getEnhancedRadioCapability(Message result) {
+    }
 }

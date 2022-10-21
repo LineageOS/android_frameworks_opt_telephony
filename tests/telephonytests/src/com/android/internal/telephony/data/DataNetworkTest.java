@@ -470,6 +470,31 @@ public class DataNetworkTest extends TelephonyTest {
     }
 
     @Test
+    public void testRilCrash() throws Exception {
+        NetworkRequestList networkRequestList = new NetworkRequestList();
+        networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build(), mPhone));
+        setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
+
+        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
+                mInternetDataProfile, networkRequestList,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                DataAllowedReason.NORMAL, mDataNetworkCallback);
+        processAllMessages();
+
+        // verify connected
+        verify(mDataNetworkCallback).onConnected(eq(mDataNetworkUT));
+
+        // RIL crash
+        mDataNetworkUT.sendMessage(4/*EVENT_RADIO_NOT_AVAILABLE*/);
+        processAllMessages();
+
+        verify(mDataNetworkCallback).onDisconnected(eq(mDataNetworkUT),
+                eq(DataFailCause.RADIO_NOT_AVAILABLE));
+    }
+
+    @Test
     public void testCreateImsDataNetwork() throws Exception {
         NetworkRequestList networkRequestList = new NetworkRequestList();
         networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()

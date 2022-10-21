@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/*
+ * Changes from Qualcomm Innovation Center are provided under the following license:
+ *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
+
 package com.android.internal.telephony.imsphone;
 
 import android.content.Context;
@@ -32,6 +39,7 @@ import android.telephony.emergency.EmergencyNumber;
 
 import com.android.internal.telephony.BaseCommands;
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.OperatorInfo;
 import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
@@ -351,6 +359,10 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
 
     @Override
     public void setNetworkSelectionModeManual(String operatorNumeric, int ran, Message response) {
+    }
+
+    @Override
+    public void setNetworkSelectionModeManual(OperatorInfo network, Message result) {
     }
 
     @Override

@@ -144,8 +144,8 @@ import java.util.function.Consumer;
  * as the coordinator has members which are used without synchronization.
  */
 public class DataConnection extends StateMachine {
-    private static final boolean DBG = true;
-    private static final boolean VDBG = true;
+    protected static final boolean DBG = true;
+    protected static final boolean VDBG = true;
 
     private static final String NETWORK_TYPE = "MOBILE";
 
@@ -209,7 +209,7 @@ public class DataConnection extends StateMachine {
     // Whether or not the data connection should allocate its own pdu session id
     private boolean mDoAllocatePduSessionId;
 
-    private static AtomicInteger mInstanceNumber = new AtomicInteger(0);
+    protected static AtomicInteger mInstanceNumber = new AtomicInteger(0);
     private AsyncChannel mAc;
 
     // The DCT that's talking to us, we only support one!
@@ -344,7 +344,7 @@ public class DataConnection extends StateMachine {
 
     private int mDisabledApnTypeBitMask = 0;
 
-    int mTag;
+    protected int mTag;
 
     /** Data connection id assigned by the modem. This is unique across transports */
     public int mCid;
@@ -357,6 +357,9 @@ public class DataConnection extends StateMachine {
     /** Class used to track VCN-defined Network policies for this DcNetworkAgent. */
     private final VcnNetworkPolicyChangeListener mVcnPolicyChangeListener =
             new DataConnectionVcnNetworkPolicyChangeListener();
+
+    private boolean mRegistered = false;
+
 
     // ***** Event codes for driving the state machine, package visible for Dcc
     static final int BASE = Protocol.BASE_DATA_CONNECTION;
@@ -486,7 +489,7 @@ public class DataConnection extends StateMachine {
         return dc;
     }
 
-    void dispose() {
+    private void dispose() {
         log("dispose: call quiteNow()");
         quitNow();
     }
@@ -512,12 +515,17 @@ public class DataConnection extends StateMachine {
         return getCurrentState() == mInactiveState;
     }
 
-    boolean isActivating() {
+    @VisibleForTesting
+    public boolean isActivating() {
         return getCurrentState() == mActivatingState;
     }
 
     boolean hasBeenTransferred() {
         return mHandoverState == HANDOVER_STATE_COMPLETED;
+    }
+
+    boolean isBeingTransferred() {
+        return mHandoverState == HANDOVER_STATE_BEING_TRANSFERRED;
     }
 
     int getCid() {
@@ -764,8 +772,21 @@ public class DataConnection extends StateMachine {
         }
     }
 
+    private boolean isApnTypeDefault() {
+        final String[] types = ApnSetting.getApnTypesStringFromBitmask(
+            mApnSetting.getApnTypeBitmask()).split(",");
+        for (String type : types) {
+            if (type.equals(PhoneConstants.APN_TYPE_DEFAULT)) {
+                return true;
+            } else {
+                continue;
+            }
+        }
+        return false;
+    }
+
     //***** Constructor (NOTE: uses dcc.getHandler() as its Handler)
-    private DataConnection(Phone phone, String tagSuffix, int id,
+    protected DataConnection(Phone phone, String tagSuffix, int id,
                            DcTracker dct, DataServiceManager dataServiceManager,
                            DcTesterFailBringUpAll failBringUpAll, DcController dcc) {
         super("DC-" + tagSuffix, dcc);
@@ -2599,8 +2620,8 @@ public class DataConnection extends StateMachine {
                     return HANDLED;
                 case EVENT_CONNECT:
                     if (DBG) log("DcInactiveState: mag.what=EVENT_CONNECT");
-                    ConnectionParams cp = (ConnectionParams) msg.obj;
 
+                    ConnectionParams cp = (ConnectionParams) msg.obj;
                     if (!initConnection(cp)) {
                         log("DcInactiveState: msg.what=EVENT_CONNECT initConnection failed");
                         notifyConnectCompleted(cp, DataFailCause.UNACCEPTABLE_NETWORK_PARAMETER,
@@ -2691,6 +2712,10 @@ public class DataConnection extends StateMachine {
                     DataCallResponse dataCallResponse =
                             msg.getData().getParcelable(DataServiceManager.DATA_CALL_RESPONSE);
                     SetupResult result = onSetupConnectionCompleted(msg.arg1, dataCallResponse, cp);
+                    if (result != null) {
+                        log("EVENT_SETUP_DATA_CONNECTION_DONE, result: " + result
+                                + ", mFailCause: " + result.mFailCause);
+                    }
                     if (result != SetupResult.ERROR_STALE) {
                         if (mConnectionParams != cp) {
                             loge("DcActivatingState: WEIRD mConnectionsParams:"+ mConnectionParams
@@ -2902,13 +2927,8 @@ public class DataConnection extends StateMachine {
                 DcTracker dcTracker = mPhone.getDcTracker(getHandoverSourceTransport());
                 DataConnection dc = dcTracker.getDataConnectionByApnType(
                         mConnectionParams.mApnContext.getApnType());
-                // It's possible that the source data connection has been disconnected by the modem
-                // already. If not, set its handover state to completed.
-                if (dc != null) {
-                    // Transfer network agent from the original data connection as soon as the
-                    // new handover data connection is connected.
-                    dc.setHandoverState(HANDOVER_STATE_COMPLETED);
-                }
+                // Don't move the handover state of the source transport to COMPLETED immediately
+                // because of ensuring to send deactivating data call for source transport.
 
                 if (mHandoverSourceNetworkAgent != null) {
                     String logStr = "Transfer network agent " + mHandoverSourceNetworkAgent.getTag()
@@ -3000,6 +3020,7 @@ public class DataConnection extends StateMachine {
             if (mNetworkAgent != null) {
                 syncQosToNetworkAgent();
                 if (mHandoverState == HANDOVER_STATE_IDLE) {
+                    mNetworkAgent.reset();
                     mNetworkAgent.unregister(DataConnection.this);
                 }
                 mNetworkAgent.releaseOwnership(DataConnection.this);
@@ -4085,4 +4106,3 @@ public class DataConnection extends StateMachine {
         }
     }
 }
-

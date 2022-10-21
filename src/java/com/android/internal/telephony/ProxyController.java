@@ -511,7 +511,7 @@ public class ProxyController {
      */
     void onFinishRadioCapabilityResponse(Message msg) {
         RadioCapability rc = (RadioCapability) ((AsyncResult) msg.obj).result;
-        if ((rc == null) || (rc.getSession() != mRadioCapabilitySessionId)) {
+        if ((rc != null) && (rc.getSession() != mRadioCapabilitySessionId)) {
             logd("onFinishRadioCapabilityResponse: Ignore session=" + mRadioCapabilitySessionId
                     + " rc=" + rc);
             return;

@@ -238,7 +238,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
     /**
      * Returns true if the carrier privilege rules have finished loading.
      */
-    public boolean areCarrierPriviligeRulesLoaded() {
+    public boolean areCarrierPrivilegeRulesLoaded() {
         return mState.get() != STATE_LOADING;
     }
 

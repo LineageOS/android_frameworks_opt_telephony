@@ -143,7 +143,7 @@ public class ServiceStateTracker extends Handler {
     private static final String PROP_FORCE_ROAMING = "telephony.test.forceRoaming";
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    private CommandsInterface mCi;
+    protected CommandsInterface mCi;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private UiccController mUiccController = null;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
@@ -346,6 +346,7 @@ public class ServiceStateTracker extends Handler {
     private int mPrevSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
     private boolean mImsRegistered = false;
+    private boolean mCarrierConfigLoaded = false;
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private SubscriptionManager mSubscriptionManager;
@@ -614,7 +615,7 @@ public class ServiceStateTracker extends Handler {
     private String mCurrentCarrier = null;
 
     private final AccessNetworksManager mAccessNetworksManager;
-    private final SparseArray<NetworkRegistrationManager> mRegStateManagers = new SparseArray<>();
+    protected final SparseArray<NetworkRegistrationManager> mRegStateManagers = new SparseArray<>();
 
     /* Last known TAC/LAC */
     private int mLastKnownAreaCode = CellInfo.UNAVAILABLE;
@@ -771,6 +772,7 @@ public class ServiceStateTracker extends Handler {
         mNewSS = new ServiceState();
         mNewSS.setOutOfService(mAccessNetworksManager.isInLegacyMode(), false);
         mLastCellInfoReqTime = 0;
+        mNewSS.setStateOutOfService();
         mLastCellInfoList = null;
         mStartedGprsRegCheck = false;
         mReportedGprsNoReg = false;
@@ -1336,8 +1338,15 @@ public class ServiceStateTracker extends Handler {
                 }
                 // This will do nothing in the 'radio not available' case
                 setPowerStateToDesired();
-                // These events are modem triggered, so pollState() needs to be forced
-                pollStateInternal(true);
+                // If SIM isn't powered down, need to trigger poll done immediately
+                // when radio is off to avoid skipping the stale OOS state.
+                if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF) {
+                    pollStateInternal(false);
+                } else {
+                    // These events are modem triggered, so pollState() needs to
+                    // be forced.
+                    pollStateInternal(true);
+                }
                 break;
 
             case EVENT_NETWORK_STATE_CHANGED:
@@ -1837,7 +1846,7 @@ public class ServiceStateTracker extends Handler {
                 .getSystemService(Context.TELEPHONY_SERVICE))
                 .getSimOperatorNumericForPhone(mPhone.getPhoneId());
 
-        if (!TextUtils.isEmpty(operatorNumeric) && getCdmaMin() != null) {
+        if (!TextUtils.isEmpty(operatorNumeric) && !TextUtils.isEmpty(getCdmaMin())) {
             return (operatorNumeric + getCdmaMin());
         } else {
             return null;
@@ -2621,8 +2630,11 @@ public class ServiceStateTracker extends Handler {
         }
 
         for (PhysicalChannelConfig pcc : pccs) {
+            boolean isNetworkTypeMatched = pcc.getNetworkType() == networkType ||
+                    (networkType == TelephonyManager.NETWORK_TYPE_LTE &&
+                    pcc.getNetworkType() == TelephonyManager.NETWORK_TYPE_LTE_CA);
             if (pcc.getConnectionStatus() == PhysicalChannelConfig.CONNECTION_PRIMARY_SERVING
-                    && pcc.getNetworkType() == networkType && pcc.getPhysicalCellId() == pci) {
+                    && isNetworkTypeMatched && pcc.getPhysicalCellId() == pci) {
                 return pcc;
             }
         }
@@ -2685,7 +2697,12 @@ public class ServiceStateTracker extends Handler {
              * The test for the operators is to handle special roaming
              * agreements and MVNO's.
              */
-            boolean roaming = (mGsmVoiceRoaming || mGsmDataRoaming);
+            boolean roaming = (mGsmVoiceRoaming || mGsmDataRoaming) && mCarrierConfigLoaded;
+
+            // for IWLAN case, data is home. Only check voice roaming.
+            if (mNewSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
+                roaming = mGsmVoiceRoaming;
+            }
 
             if (roaming && !isOperatorConsideredRoaming(mNewSS)
                     && (isSameNamedOperators(mNewSS) || isOperatorConsideredNonRoaming(mNewSS))) {
@@ -3389,36 +3406,40 @@ public class ServiceStateTracker extends Handler {
                 }
 
             default:
-                // Issue all poll-related commands at once then count down the responses, which
-                // are allowed to arrive out-of-order
-                mPollingContext[0]++;
-                mCi.getOperator(obtainMessage(EVENT_POLL_STATE_OPERATOR, mPollingContext));
+                issuePollCommands();
+                break;
+        }
+    }
 
-                mPollingContext[0]++;
-                mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                        .requestNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
-                                obtainMessage(EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
-                                        mPollingContext));
+    protected void issuePollCommands() {
+        log("issuePollCommands");
+        // Issue all poll-related commands at once then count down the responses, which
+        // are allowed to arrive out-of-order
+        mPollingContext[0]++;
+        mCi.getOperator(obtainMessage(EVENT_POLL_STATE_OPERATOR, mPollingContext));
 
-                mPollingContext[0]++;
-                mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                        .requestNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_CS,
+        mPollingContext[0]++;
+        mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .requestNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
+                        obtainMessage(EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION, mPollingContext));
+
+        mPollingContext[0]++;
+        mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .requestNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_CS,
                         obtainMessage(EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION, mPollingContext));
 
-                if (mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN) != null) {
-                    mPollingContext[0]++;
-                    mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
-                            .requestNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
-                                    obtainMessage(EVENT_POLL_STATE_PS_IWLAN_REGISTRATION,
-                                            mPollingContext));
-                }
+        if (mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN) != null) {
+            mPollingContext[0]++;
+            mRegStateManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
+                    .requestNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
+                            obtainMessage(EVENT_POLL_STATE_PS_IWLAN_REGISTRATION,
+                                    mPollingContext));
+        }
 
-                if (mPhone.isPhoneTypeGsm()) {
-                    mPollingContext[0]++;
-                    mCi.getNetworkSelectionMode(obtainMessage(
-                            EVENT_POLL_STATE_NETWORK_SELECTION_MODE, mPollingContext));
-                }
-                break;
+        if (mPhone.isPhoneTypeGsm()) {
+            mPollingContext[0]++;
+            mCi.getNetworkSelectionMode(obtainMessage(
+                    EVENT_POLL_STATE_NETWORK_SELECTION_MODE, mPollingContext));
         }
     }
 
@@ -3973,7 +3994,7 @@ public class ServiceStateTracker extends Handler {
                     && (mEriManager != null && mEriManager.isEriFileLoaded())
                     && (!ServiceState.isPsOnlyTech(mSS.getRilVoiceRadioTechnology())
                     || mPhone.getContext().getResources().getBoolean(com.android.internal.R
-                    .bool.config_LTE_eri_for_network_name))) {
+                    .bool.config_LTE_eri_for_network_name)) && (!mIsSubscriptionFromRuim)) {
                 // Only when CDMA is in service, ERI will take effect
                 eriText = mSS.getOperatorAlpha();
                 // Now the Phone sees the new ServiceState so it can get the new ERI text
@@ -5136,6 +5157,9 @@ public class ServiceStateTracker extends Handler {
             mEriManager.loadEriFile();
             mCdnr.updateEfForEri(getOperatorNameFromEri());
         }
+
+        mCarrierConfigLoaded = true;
+        pollState();
 
         updateOperatorNamePattern(config);
         mCdnr.updateEfFromCarrierConfig(config);

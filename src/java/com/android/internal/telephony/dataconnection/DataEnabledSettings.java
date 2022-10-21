@@ -27,6 +27,7 @@ import android.os.Handler;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.provider.Settings;
+import android.provider.Settings.SettingNotFoundException;
 import android.sysprop.TelephonyProperties;
 import android.telephony.Annotation.CallState;
 import android.telephony.CarrierConfigManager;
@@ -281,6 +282,42 @@ public class DataEnabledSettings {
 
         return GlobalSettingsHelper.getBoolean(mPhone.getContext(),
                 Settings.Global.MOBILE_DATA, mPhone.getSubId(), defaultVal);
+    }
+
+    // TODO(b/129717543) function was deleted upstream, but still used below.  Need to confirm
+    // functionality is still valid
+    private String getMobileDataSettingName() {
+        // For single SIM phones, this is a per phone property. Or if it's invalid subId, we
+        // read default setting.
+        int subId = mPhone.getSubId();
+        if (TelephonyManager.getDefault().getSimCount() == 1
+                || !SubscriptionManager.isValidSubscriptionId(subId)) {
+            return Settings.Global.MOBILE_DATA;
+        } else {
+            return Settings.Global.MOBILE_DATA + mPhone.getSubId();
+        }
+    }
+
+    /**
+     * Set default value for {@link android.provider.Settings.Global#MOBILE_DATA}
+     */
+    public void setDefaultMobileDataEnabled() {
+        // For single SIM phones, this is a per phone property.
+        String setting = getMobileDataSettingName();
+        boolean useDefaultValue = false;
+        try {
+            Settings.Global.getInt(mResolver, setting);
+        } catch (SettingNotFoundException ex) {
+            //Update to carrier default if uninitialized.
+            useDefaultValue = true;
+        }
+
+        if (useDefaultValue) {
+            boolean defaultVal = "true".equalsIgnoreCase(SystemProperties.get(
+                   "ro.com.android.mobiledata", "true"));
+            log("etDefaultMobileDataEnabled " + setting + "default value: " + defaultVal);
+            Settings.Global.putInt(mResolver, setting, defaultVal ? 1 : 0);
+        }
     }
 
     /**

@@ -225,8 +225,11 @@ public class IccProvider extends ContentProvider {
         String number = initialValues.getAsString(STR_NUMBER);
         String emails = initialValues.getAsString(STR_EMAILS);
         String anrs = initialValues.getAsString(STR_ANRS);
-
         ContentValues values = new ContentValues();
+        values.put(STR_TAG,"");
+        values.put(STR_NUMBER,"");
+        values.put(STR_EMAILS,"");
+        values.put(STR_ANRS,"");
         values.put(STR_NEW_TAG, tag);
         values.put(STR_NEW_NUMBER, number);
         values.put(STR_NEW_EMAILS, emails);
@@ -362,6 +365,10 @@ public class IccProvider extends ContentProvider {
         values.put(STR_NUMBER, number);
         values.put(STR_EMAILS, emails);
         values.put(STR_ANRS, anrs);
+        values.put(STR_NEW_TAG,"");
+        values.put(STR_NEW_NUMBER,"");
+        values.put(STR_NEW_EMAILS,"");
+        values.put(STR_NEW_ANRS,"");
         if ((efType == FDN) && TextUtils.isEmpty(pin2)) {
             return 0;
         }
@@ -446,7 +453,7 @@ public class IccProvider extends ContentProvider {
             // Load the results
             final int N = adnRecords.size();
             final MatrixCursor cursor = new MatrixCursor(ADDRESS_BOOK_COLUMN_NAMES, N);
-            if (DBG) log("adnRecords.size=" + N);
+            log("adnRecords.size=" + N);
             for (int i = 0; i < N ; i++) {
                 loadRecord(adnRecords.get(i), cursor, i);
             }
@@ -495,7 +502,6 @@ public class IccProvider extends ContentProvider {
             Object[] contact = new Object[5];
             String alphaTag = record.getAlphaTag();
             String number = record.getNumber();
-
             if (DBG) log("loadRecord: " + alphaTag + ", " + Rlog.pii(TAG, number));
             contact[0] = alphaTag;
             contact[1] = number;

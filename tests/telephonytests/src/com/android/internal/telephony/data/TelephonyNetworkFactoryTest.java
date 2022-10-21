@@ -195,7 +195,8 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
     private void createMockedTelephonyComponents() throws Exception {
         replaceInstance(PhoneSwitcher.class, "sPhoneSwitcher", null, mPhoneSwitcher);
 
-        mTelephonyNetworkFactoryUT = new TelephonyNetworkFactory(Looper.myLooper(), mPhone);
+        mTelephonyNetworkFactoryUT = new TelephonyNetworkFactory(Looper.myLooper(), mPhone,
+                mPhoneSwitcher);
         final ArgumentCaptor<NetworkProvider> providerCaptor =
                 ArgumentCaptor.forClass(NetworkProvider.class);
         verify(mConnectivityManager).registerNetworkProvider(providerCaptor.capture());

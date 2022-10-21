@@ -264,6 +264,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UICC_APPLICA
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UNTHROTTLE_APN;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_VOICE_RADIO_TECH_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_ENHANCED_RADIO_CAPABILITY;
 
 import android.annotation.Nullable;
 import android.net.InetAddresses;
@@ -1309,7 +1310,9 @@ public class RILUtils {
             case AccessNetworkConstants.AccessNetworkType.UTRAN:
                 rasInHalFormat.utranBands = bands;
                 break;
-            case AccessNetworkConstants.AccessNetworkType.EUTRAN:
+            case AccessNetworkConstants.AccessNetworkType.EUTRAN: // fallthrough
+            case AccessNetworkConstants.AccessNetworkType.NGRAN:
+                rasInHalFormat.radioAccessNetwork = AccessNetworkConstants.AccessNetworkType.EUTRAN;
                 rasInHalFormat.eutranBands = bands;
                 break;
             default:
@@ -5033,6 +5036,8 @@ public class RILUtils {
                 return "GET_ALLOWED_NETWORK_TYPES_BITMAP";
             case RIL_REQUEST_GET_SLICING_CONFIG:
                 return "GET_SLICING_CONFIG";
+            case RIL_REQUEST_GET_ENHANCED_RADIO_CAPABILITY:
+                return "RIL_REQUEST_GET_ENHANCED_RADIO_CAPABILITY";
             case RIL_REQUEST_ENABLE_VONR:
                 return "ENABLE_VONR";
             case RIL_REQUEST_IS_VONR_ENABLED:

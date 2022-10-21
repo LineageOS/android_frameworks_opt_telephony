@@ -71,15 +71,18 @@ import android.util.LocalLog;
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.ISetOpportunisticDataCallback;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConfigurationManager;
+import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RadioConfig;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.SubscriptionController.WatchedInt;
+import com.android.internal.telephony.SubscriptionInfoUpdater;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
@@ -111,11 +114,11 @@ import java.util.concurrent.CompletableFuture;
  * the active phones.  Note we don't wait for data attach (which may not happen anyway).
  */
 public class PhoneSwitcher extends Handler {
-    private static final String LOG_TAG = "PhoneSwitcher";
+    protected static final String LOG_TAG = "PhoneSwitcher";
     protected static final boolean VDBG = false;
 
     private static final int DEFAULT_NETWORK_CHANGE_TIMEOUT_MS = 5000;
-    private static final int MODEM_COMMAND_RETRY_PERIOD_MS     = 5000;
+    protected static final int MODEM_COMMAND_RETRY_PERIOD_MS     = 5000;
     // After the emergency call ends, wait for a few seconds to see if we enter ECBM before starting
     // the countdown to remove the emergency DDS override.
     @VisibleForTesting
@@ -135,7 +138,7 @@ public class PhoneSwitcher extends Handler {
      * call to allow for carrier specific operations, such as provide SUPL updates during or after
      * the emergency call, since some modems do not support these operations on the non DDS.
      */
-    private static final class EmergencyOverrideRequest {
+    protected static final class EmergencyOverrideRequest {
         /* The Phone ID that the DDS should be set to. */
         int mPhoneId = INVALID_PHONE_INDEX;
         /* The time after the emergency call ends that the DDS should be overridden for. */
@@ -166,7 +169,7 @@ public class PhoneSwitcher extends Handler {
         /**
          * Send the override complete callback the result of setting the DDS to the new value.
          */
-        void sendOverrideCompleteCallbackResultAndClear(boolean result) {
+        public void sendOverrideCompleteCallbackResultAndClear(boolean result) {
             if (isCallbackAvailable()) {
                 mOverrideCompleteFuture.complete(result);
                 mOverrideCompleteFuture = null;
@@ -256,11 +259,11 @@ public class PhoneSwitcher extends Handler {
     // If non-null, An emergency call is about to be started, is ongoing, or has just ended and we
     // are overriding the DDS.
     // Internal state, should ONLY be accessed/modified inside of the handler.
-    private EmergencyOverrideRequest mEmergencyOverride;
+    protected EmergencyOverrideRequest mEmergencyOverride;
 
     private ISetOpportunisticDataCallback mSetOpptSubCallback;
 
-    private static final int EVENT_PRIMARY_DATA_SUB_CHANGED       = 101;
+    protected static final int EVENT_PRIMARY_DATA_SUB_CHANGED       = 101;
     protected static final int EVENT_SUBSCRIPTION_CHANGED           = 102;
     private static final int EVENT_REQUEST_NETWORK                = 103;
     private static final int EVENT_RELEASE_NETWORK                = 104;
@@ -271,7 +274,7 @@ public class PhoneSwitcher extends Handler {
     private static final int EVENT_EMERGENCY_TOGGLE               = 105;
     private static final int EVENT_RADIO_CAPABILITY_CHANGED       = 106;
     private static final int EVENT_OPPT_DATA_SUB_CHANGED          = 107;
-    private static final int EVENT_RADIO_ON                       = 108;
+    protected static final int EVENT_RADIO_ON                       = 108;
     // A call has either started or ended. If an emergency ended and DDS is overridden using
     // mEmergencyOverride, start the countdown to remove the override using the message
     // EVENT_REMOVE_DDS_EMERGENCY_OVERRIDE. The only exception to this is if the device moves to
@@ -280,8 +283,8 @@ public class PhoneSwitcher extends Handler {
     public static final int EVENT_PRECISE_CALL_STATE_CHANGED      = 109;
     private static final int EVENT_NETWORK_VALIDATION_DONE        = 110;
     private static final int EVENT_REMOVE_DEFAULT_NETWORK_CHANGE_CALLBACK = 111;
-    private static final int EVENT_MODEM_COMMAND_DONE             = 112;
-    private static final int EVENT_MODEM_COMMAND_RETRY            = 113;
+    protected static final int EVENT_MODEM_COMMAND_DONE             = 112;
+    protected static final int EVENT_MODEM_COMMAND_RETRY            = 113;
     @VisibleForTesting
     public static final int EVENT_DATA_ENABLED_CHANGED            = 114;
     // An emergency call is about to be originated and requires the DDS to be overridden.
@@ -298,6 +301,12 @@ public class PhoneSwitcher extends Handler {
     private static final int EVENT_PROCESS_SIM_STATE_CHANGE       = 119;
     @VisibleForTesting
     public static final int EVENT_IMS_RADIO_TECH_CHANGED          = 120;
+    protected final static int EVENT_VOICE_CALL_ENDED             = 121;
+    protected static final int EVENT_UNSOL_MAX_DATA_ALLOWED_CHANGED = 122;
+    protected static final int EVENT_OEM_HOOK_SERVICE_READY       = 123;
+    protected static final int EVENT_SUB_INFO_READY               = 124;
+    protected static final int EVENT_RECONNECT_EXT_TELEPHONY_SERVICE = 125;
+    protected static final int EVENT_DATA_ENABLED_OVERRIDE_RULE_CHANGED = 126;
 
     // List of events triggers re-evaluations
     private static final String EVALUATION_REASON_RADIO_ON = "EVENT_RADIO_ON";
@@ -322,7 +331,7 @@ public class PhoneSwitcher extends Handler {
     private ConnectivityManager mConnectivityManager;
     private int mImsRegistrationTech = REGISTRATION_TECH_NONE;
 
-    private List<Set<CommandException.Error>> mCurrentDdsSwitchFailure;
+    protected List<Set<CommandException.Error>> mCurrentDdsSwitchFailure;
 
     /** Data settings manager callback. Key is the phone id. */
     private final @NonNull Map<Integer, DataSettingsManagerCallback> mDataSettingsManagerCallbacks =
@@ -435,6 +444,7 @@ public class PhoneSwitcher extends Handler {
                 break;
             }
         }
+        log("isPhoneInVoiceCallChanged: mPhoneIdInVoiceCall=" + mPhoneIdInVoiceCall);
 
         if (mPhoneIdInVoiceCall != oldPhoneIdInVoiceCall) {
             log("isPhoneInVoiceCallChanged from phoneId " + oldPhoneIdInVoiceCall
@@ -465,6 +475,11 @@ public class PhoneSwitcher extends Handler {
     }
 
     private void evaluateIfDataSwitchIsNeeded(String reason) {
+        if (isReevaluatedAfterCall()) {
+            log(reason + " reevaluate after call");
+            return;
+        }
+
         if (onEvaluate(REQUESTS_UNCHANGED, reason)) {
             logDataSwitchEvent(mPreferredDataSubId.get(),
                     TelephonyEvent.EventState.EVENT_STATE_START,
@@ -511,16 +526,34 @@ public class PhoneSwitcher extends Handler {
                     mDataSettingsManagerCallbacks.computeIfAbsent(phone.getPhoneId(),
                             v -> new DataSettingsManagerCallback(this::post) {
                                 @Override
+                                public void onDataDuringCallChanged(boolean enabled) {
+                                    evaluateIfDataSwitchIsNeeded(
+                                            "EVENT_DATA_DURING_CALL_ENABLED_CHANGED");
+                                }
+
+                                @Override
                                 public void onDataEnabledChanged(boolean enabled,
                                         @TelephonyManager.DataEnabledChangedReason int reason,
                                         @NonNull String callingPackage) {
                                     evaluateIfDataSwitchIsNeeded("EVENT_DATA_ENABLED_CHANGED");
+                                }
+
+                                @Override
+                                public void onDataRoamingEnabledChanged(boolean enabled) {
+                                    log("onDataRoamingEnabledChanged: enabled: " + enabled);
+                                    evaluateIfDataSwitchIsNeeded(
+                                            "EVENT_DATA_ROAMING_ENABLED_CHANGED");
                                 }});
                     phone.getDataSettingsManager().registerCallback(
                             mDataSettingsManagerCallbacks.get(phone.getPhoneId()));
                 } else {
                     phone.getDataEnabledSettings().registerForDataEnabledChanged(
                             this, EVENT_DATA_ENABLED_CHANGED, null);
+                    // When call is ongoing, need to evaluate it after "data during call" option
+                    // is turned on.
+                    // Because when data is on, EVENT_DATA_ENABLED_CHANGED can't cover this case.
+                    phone.getDataEnabledSettings().registerForDataEnabledOverrideChanged(this,
+                            EVENT_DATA_ENABLED_OVERRIDE_RULE_CHANGED);
                 }
 
                 registerForImsRadioTechChange(context, i);
@@ -607,7 +640,7 @@ public class PhoneSwitcher extends Handler {
         }
     };
 
-    private boolean isSimApplicationReady(int slotIndex) {
+    protected boolean isSimApplicationReady(int slotIndex) {
         if (!SubscriptionManager.isValidSlotIndex(slotIndex)) {
             return false;
         }
@@ -639,10 +672,18 @@ public class PhoneSwitcher extends Handler {
     public void handleMessage(Message msg) {
         switch (msg.what) {
             case EVENT_SUBSCRIPTION_CHANGED: {
+                if (isReevaluatedAfterCall()) {
+                    log("EVENT_SUBSCRIPTION_CHANGED reevaluate after call");
+                    break;
+                }
                 onEvaluate(REQUESTS_UNCHANGED, "subChanged");
                 break;
             }
             case EVENT_PRIMARY_DATA_SUB_CHANGED: {
+                if (isReevaluatedAfterCall()) {
+                    log("EVENT_PRIMARY_DATA_SUB_CHANGED reevaluate after call");
+                    break;
+                }
                 if (onEvaluate(REQUESTS_UNCHANGED, "primary data subId changed")) {
                     logDataSwitchEvent(mPreferredDataSubId.get(),
                             TelephonyEvent.EventState.EVENT_STATE_START,
@@ -699,6 +740,10 @@ public class PhoneSwitcher extends Handler {
                 // register for radio tech change to listen to radio tech handover in case previous
                 // attempt was not successful
                 registerForImsRadioTechChange();
+                if (isReevaluatedAfterCall()) {
+                    log("EVENT_IMS_RADIO_TECH_CHANGED reevaluate after call");
+                    break;
+                }
                 // If the phoneId in voice call didn't change, do nothing.
                 if (!isPhoneInVoiceCallChanged()) {
                     break;
@@ -710,10 +755,20 @@ public class PhoneSwitcher extends Handler {
                 // register for radio tech change to listen to radio tech handover in case previous
                 // attempt was not successful
                 registerForImsRadioTechChange();
-
-                // If the phoneId in voice call didn't change, do nothing.
-                if (!isPhoneInVoiceCallChanged()) {
+                boolean shouldEvaluateAfterCallStateChange = isTelephonyTempDdsSwitchEnabled();
+                // When smart temp dds is enabled, need to identify whether emergency override is
+                // taking effective, otherwise, if the phoneId in voice call didn't change,
+                // do nothing.
+                if (shouldEvaluateAfterCallStateChange && !isPhoneInVoiceCallChanged()) {
                     break;
+                } else if (isNddsPhoneIdle() && isPhoneInVoiceCallChanged()) {
+                    // When smart temp dds is enabled & DDS sub is PIN-1 enabled, modem would not
+                    // send recommendation on voice call end if DDS sub is hot-swapped and PIN-1
+                    // is not entered while call was active.  Re-evaluate voice call phoneid once
+                    // voice call ends.
+                    log("EVENT_PRECISE_CALL_STATE_CHANGED: Enforce evaluating once");
+                    // Always evaluating once after call ends.
+                    shouldEvaluateAfterCallStateChange = true;
                 }
 
                 if (!isAnyVoiceCallActiveOnDevice()) {
@@ -741,10 +796,15 @@ public class PhoneSwitcher extends Handler {
                         mEmergencyOverride.mPendingOriginatingCall = false;
                     }
                 }
-                evaluateIfDataSwitchIsNeeded("EVENT_PRECISE_CALL_STATE_CHANGED");
+                if (shouldEvaluateAfterCallStateChange) {
+                    evaluateIfDataSwitchIsNeeded("EVENT_PRECISE_CALL_STATE_CHANGED");
+                }
                 break;
             }
 
+            case EVENT_DATA_ENABLED_OVERRIDE_RULE_CHANGED:
+                evaluateIfDataSwitchIsNeeded("EVENT_DATA_ENABLED_OVERRIDE_RULE_CHANGED");
+                break;
             case EVENT_DATA_ENABLED_CHANGED:
                 evaluateIfDataSwitchIsNeeded("EVENT_DATA_ENABLED_CHANGED");
                 break;
@@ -850,10 +910,15 @@ public class PhoneSwitcher extends Handler {
                 }
                 break;
             }
+            case EVENT_SUB_INFO_READY: {
+                log("Sub info is ready");
+                onEvaluate(REQUESTS_UNCHANGED, "sub_info_ready");
+                break;
+            }
         }
     }
 
-    private synchronized void onMultiSimConfigChanged(int activeModemCount) {
+    protected synchronized void onMultiSimConfigChanged(int activeModemCount) {
         // No change.
         if (mActiveModemCount == activeModemCount) return;
         int oldActiveModemCount = mActiveModemCount;
@@ -953,6 +1018,12 @@ public class PhoneSwitcher extends Handler {
         }
         final DcRequest dcRequest =
                 DcRequest.create(networkRequest, createApnRepository(networkRequest));
+        //        if (networkRequest.type != NetworkRequest.Type.REQUEST &&
+        //                networkRequest.type != NetworkRequest.Type.BACKGROUND_REQUEST) {
+        //           log("Skip non REQUEST/BACKGROUND_REQUEST type request: " + networkRequest);
+        //           return;
+        //        }
+
         if (dcRequest != null) {
             if (!mPrioritizedDcRequests.contains(dcRequest)) {
                 collectRequestNetworkMetrics(networkRequest);
@@ -977,7 +1048,8 @@ public class PhoneSwitcher extends Handler {
         final DcRequest dcRequest =
                 DcRequest.create(networkRequest, createApnRepository(networkRequest));
         if (dcRequest != null) {
-            if (mPrioritizedDcRequests.remove(dcRequest)) {
+            if (mPrioritizedDcRequests.contains(dcRequest) &&
+                    mPrioritizedDcRequests.remove(dcRequest)) {
                 onEvaluate(REQUESTS_CHANGED, "netReleased");
                 collectReleaseNetworkMetrics(networkRequest);
                 if (VDBG) log("Removed DcRequest, size: " + mPrioritizedDcRequests.size());
@@ -1057,6 +1129,10 @@ public class PhoneSwitcher extends Handler {
      * @return {@code True} if the default data subscription need to be changed.
      */
     protected boolean onEvaluate(boolean requestsChanged, String reason) {
+        if (!SubscriptionInfoUpdater.isSubInfoInitialized()) {
+            log("subscription info isn't initialized yet");
+            return false;
+        }
         StringBuilder sb = new StringBuilder(reason);
 
         // If we use HAL_COMMAND_PREFERRED_DATA,
@@ -1263,6 +1339,27 @@ public class PhoneSwitcher extends Handler {
         msg.sendToTarget();
     }
 
+    /**
+     * Returns if telephony temp DDS switch is enabled/disabled during voice call based
+     * on smart DDS switch supported by modem.
+     * If telephony temp DDS switch is disabled, DDS switch during voice call is
+     * performed based on modem recommendations.
+     */
+    private boolean isTelephonyTempDdsSwitchEnabled() {
+        for (int i = 0; i < mActiveModemCount; i++) {
+            Phone phone = PhoneFactory.getPhone(i);
+            if(phone == null) {
+                continue;
+            }
+            int subId = phone.getSubId();
+            if(subId != INVALID_SUBSCRIPTION_ID
+                    && subId != mPrimaryDataSubId && !phone.getTelephonyTempDdsSwitch()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     protected void sendRilCommands(int phoneId) {
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {
             log("sendRilCommands: skip dds switch due to invalid phoneId=" + phoneId);
@@ -1276,7 +1373,7 @@ public class PhoneSwitcher extends Handler {
                 PhoneFactory.getPhone(phoneId).mCi.setDataAllowed(isPhoneActive(phoneId), message);
             }
         } else if (phoneId == mPreferredDataPhoneId) {
-            // Only setPreferredDataModem if the phoneId equals to current mPreferredDataPhoneId
+            // Only setPreferredDataModem if the phoneId equals to current mPreferredDataPhoneId,
             log("sendRilCommands: setPreferredDataModem - phoneId: " + phoneId);
             mRadioConfig.setPreferredDataModem(mPreferredDataPhoneId, message);
         }
@@ -1298,7 +1395,7 @@ public class PhoneSwitcher extends Handler {
         return phoneIdForRequest(networkRequest.getNativeNetworkRequest());
     }
 
-    private int phoneIdForRequest(NetworkRequest netRequest) {
+    protected int phoneIdForRequest(NetworkRequest netRequest) {
         int subId = getSubIdFromNetworkSpecifier(netRequest.getNetworkSpecifier());
 
         if (subId == DEFAULT_SUBSCRIPTION_ID) return mPreferredDataPhoneId;
@@ -1353,18 +1450,65 @@ public class PhoneSwitcher extends Handler {
     // This updates mPreferredDataPhoneId which decides which phone should handle default network
     // requests.
     protected void updatePreferredDataPhoneId() {
+        log("updatePreferredDataPhoneId+");
         Phone voicePhone = findPhoneById(mPhoneIdInVoiceCall);
-        boolean isDataEnabled = false;
+        boolean isDataAllowedOnVoiceCallSub = false;
+
         if (voicePhone != null) {
             if (voicePhone.isUsingNewDataStack()) {
-                isDataEnabled = voicePhone.getDataSettingsManager()
+                isDataAllowedOnVoiceCallSub = voicePhone
+                        .getDataSettingsManager()
                         .isDataEnabled(ApnSetting.TYPE_DEFAULT);
             } else {
-                isDataEnabled = voicePhone.getDataEnabledSettings()
+                isDataAllowedOnVoiceCallSub = voicePhone
+                        .getDataEnabledSettings()
                         .isDataEnabled(ApnSetting.TYPE_DEFAULT);
             }
+            log("data enabled on voice sub: " + isDataAllowedOnVoiceCallSub);
         }
 
+        if (mPhoneIdInVoiceCall != mPreferredDataPhoneId) {
+            Phone preferredDataPhone = findPhoneById(mPreferredDataPhoneId);
+            if (preferredDataPhone != null) {
+
+                // when DDS mobile data setting is turned off, do not trigger temp DDS switch
+                if (preferredDataPhone.isUsingNewDataStack()) {
+                    isDataAllowedOnVoiceCallSub = isDataAllowedOnVoiceCallSub
+                            && preferredDataPhone.getDataSettingsManager().isDataEnabled();
+                } else {
+                    isDataAllowedOnVoiceCallSub = isDataAllowedOnVoiceCallSub
+                            && preferredDataPhone.getDataEnabledSettings().isDataEnabled();
+                }
+                log("data enabled on DDS: " + isDataAllowedOnVoiceCallSub);
+
+                // when DDS is in roaming, and data roaming for DDS is turned off,
+                // do not trigger temp DDS switch
+                try {
+                    if (preferredDataPhone.getServiceState().getDataRoaming()) {
+                        isDataAllowedOnVoiceCallSub = isDataAllowedOnVoiceCallSub
+                                && preferredDataPhone.getDataRoamingEnabled();
+                    }
+                } catch (NullPointerException e) {
+                    Rlog.e(LOG_TAG, "Exception while checking roaming state for DDS", e);
+                }
+            }
+            // As per customizations, the data of nDDS SUB is no longer disabled, so the API
+            // isDataEnabled(apn) can't control "data during call" individually.
+            // Here it is not intended to change the logic for the API, but only consider the
+            // option "data during call" separately once again, and when data is off, data still
+            // works as long as the "data during call" is enabled in case of nDDS voice call.
+            if (voicePhone != null) {
+                if (voicePhone.isUsingNewDataStack()) {
+                    isDataAllowedOnVoiceCallSub = isDataAllowedOnVoiceCallSub
+                            && voicePhone.getDataSettingsManager().isDataAllowedInVoiceCall();
+                } else {
+                    isDataAllowedOnVoiceCallSub = isDataAllowedOnVoiceCallSub
+                            && voicePhone.getDataEnabledSettings().isDataAllowedInVoiceCall();
+                }
+            }
+        }
+        log("updatePreferredDataPhoneId isDataAllowedOnVoiceCallSub: "
+                + isDataAllowedOnVoiceCallSub);
         if (mEmergencyOverride != null && findPhoneById(mEmergencyOverride.mPhoneId) != null) {
             // Override DDS for emergency even if user data is not enabled, since it is an
             // emergency.
@@ -1373,7 +1517,7 @@ public class PhoneSwitcher extends Handler {
             log("updatePreferredDataPhoneId: preferred data overridden for emergency."
                     + " phoneId = " + mEmergencyOverride.mPhoneId);
             mPreferredDataPhoneId = mEmergencyOverride.mPhoneId;
-        } else if (isDataEnabled) {
+        } else if (isDataAllowedOnVoiceCallSub) {
             // If a phone is in call and user enabled its mobile data, we
             // should switch internet connection to it. Because the other modem
             // will lose data connection anyway.
@@ -1646,6 +1790,10 @@ public class PhoneSwitcher extends Handler {
                 subId, needValidation ? 1 : 0, callback).sendToTarget();
     }
 
+    public void notifySubInfoReady() {
+        PhoneSwitcher.this.obtainMessage(EVENT_SUB_INFO_READY).sendToTarget();
+    }
+
     protected boolean isPhoneInVoiceCall(Phone phone) {
         if (phone == null) {
             return false;
@@ -1653,7 +1801,10 @@ public class PhoneSwitcher extends Handler {
 
         // A phone in voice call might trigger data being switched to it.
         return (!phone.getBackgroundCall().isIdle()
-                || !phone.getForegroundCall().isIdle());
+                || !phone.getForegroundCall().isIdle()
+                || phone.getForegroundCall().getState() == Call.State.DISCONNECTING
+                || phone.getRingingCall().isRinging()
+                || phone.getRingingCall().getState() == Call.State.DISCONNECTING);
     }
 
     private void updateHalCommandToUse() {
@@ -1784,13 +1935,13 @@ public class PhoneSwitcher extends Handler {
         pw.decreaseIndent();
     }
 
-    private boolean isAnyVoiceCallActiveOnDevice() {
+    protected boolean isAnyVoiceCallActiveOnDevice() {
         boolean ret = mPhoneIdInVoiceCall != SubscriptionManager.INVALID_PHONE_INDEX;
         if (VDBG) log("isAnyVoiceCallActiveOnDevice: " + ret);
         return ret;
     }
 
-    private void onDdsSwitchResponse(AsyncResult ar) {
+    protected void onDdsSwitchResponse(AsyncResult ar) {
         boolean commandSuccess = ar != null && ar.exception == null;
         int phoneId = (int) ar.userObj;
         if (mEmergencyOverride != null) {
@@ -1853,6 +2004,47 @@ public class PhoneSwitcher extends Handler {
                         }
                     }
                 }
+            }
+        }
+        return false;
+    }
+
+    /*
+     * Check if phone usage of DDS is reevaluated after call
+     *
+     * When emergency override is present, allow to evaluate phone usage immediately,
+     * otherise, only evaluate phone usage after call ends when smart DDS feature is
+     * enabled.
+     *
+     * @return true if the current evaluation isn't needed.
+     */
+    private boolean isReevaluatedAfterCall() {
+        // Emergency override is prior to any recommendations.
+        if (mEmergencyOverride != null) {
+            return false;
+        }
+
+        if(!isTelephonyTempDdsSwitchEnabled()) {
+            for (Phone phone : PhoneFactory.getPhones()) {
+                if ((phone != null) && (phone.getSubId() != mPrimaryDataSubId)
+                         && (isInCall(phone) || isInCall(phone.getImsPhone()))) {
+                     return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isInCall(Phone phone) {
+        if ((phone != null) && (phone.getState() != PhoneConstants.State.IDLE)) return true;
+        return false;
+    }
+
+    private boolean isNddsPhoneIdle() {
+        for (Phone phone : PhoneFactory.getPhones()) {
+            if ((phone != null) && (phone.getSubId() != mPrimaryDataSubId)
+                        && (!isInCall(phone) || !isInCall(phone.getImsPhone()))) {
+                return true;
             }
         }
         return false;

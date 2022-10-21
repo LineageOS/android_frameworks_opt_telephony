@@ -129,6 +129,20 @@ public class IccCardApplicationStatus {
         PERSOSUBSTATE_SIM_NS_SP,
         PERSOSUBSTATE_SIM_NS_SP_PUK;
 
+        private int State;
+
+        PersoSubState(int state) {
+            this.State = state;
+        }
+
+        PersoSubState() {
+            this.State = this.ordinal();
+        }
+
+        public int getState() {
+            return this.State;
+        }
+
         boolean isPersoSubStateUnknown() {
             return this == PERSOSUBSTATE_UNKNOWN;
         }

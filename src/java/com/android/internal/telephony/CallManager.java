@@ -27,6 +27,7 @@ import android.os.RegistrantList;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
+import android.telephony.TelephonyManager;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.imsphone.ImsPhoneConnection;
@@ -35,6 +36,7 @@ import com.android.telephony.Rlog;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 /**
@@ -596,7 +598,7 @@ public class CallManager {
         phone.registerForCdmaOtaStatusChange(handler, EVENT_CDMA_OTA_STATUS_CHANGE, null);
         phone.registerForSubscriptionInfoReady(handler, EVENT_SUBSCRIPTION_INFO_READY, null);
         phone.registerForCallWaiting(handler, EVENT_CALL_WAITING, null);
-        phone.registerForEcmTimerReset(handler, EVENT_ECM_TIMER_RESET, null);
+        EcbmHandler.getInstance().registerForEcmTimerReset(handler, EVENT_ECM_TIMER_RESET, null);
 
         // for events supported only by IMS phone
         phone.registerForOnHoldTone(handler, EVENT_ONHOLD_TONE, null);
@@ -640,7 +642,7 @@ public class CallManager {
         phone.unregisterForCdmaOtaStatusChange(handler);
         phone.unregisterForSubscriptionInfoReady(handler);
         phone.unregisterForCallWaiting(handler);
-        phone.unregisterForEcmTimerReset(handler);
+        EcbmHandler.getInstance().unregisterForEcmTimerReset(handler);
 
         // for events supported only by IMS phone
         phone.unregisterForOnHoldTone(handler);
@@ -784,6 +786,14 @@ public class CallManager {
                 throw new CallStateException("cannot dial in current state");
             }
         }
+        if (TelephonyManager.isConcurrentCallsPossible()) {
+            for (Phone p : mPhones) {
+                int otherSubId = p.getSubId();
+                if (subId != otherSubId) {
+                    hangupAllCalls(otherSubId);
+                }
+            }
+        }
 
         if ( hasActiveFgCall(subId) ) {
             Phone activePhone = getActiveFgCall(subId).getPhone();
@@ -862,13 +872,19 @@ public class CallManager {
      * Phone can make a call only if ALL of the following are true:
      *        - Phone is not powered off
      *        - There's no incoming or waiting call
-     *        - The foreground call is ACTIVE or IDLE or DISCONNECTED.
-     *          (We mainly need to make sure it *isn't* DIALING or ALERTING.)
+     *        - The foreground call is ACTIVE/HOLDING or IDLE or DISCONNECTED.
+     *        - There is no active emergency call
+     *          (We mainly need to make sure it *isn't* DIALING.)
      * @param phone
      * @return true if the phone can make a new call
      */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean canDial(Phone phone) {
+        for (Phone p: mPhones) {
+            if (p.isInEmergencyCall()) {
+                return false;
+            }
+        }
         int serviceState = phone.getServiceState().getState();
         int subId = phone.getSubId();
         boolean hasRingingCall = hasActiveRingingCall();
@@ -877,6 +893,7 @@ public class CallManager {
         boolean result = (serviceState != ServiceState.STATE_POWER_OFF
                 && !hasRingingCall
                 && ((fgCallState == Call.State.ACTIVE)
+                    || (fgCallState == Call.State.HOLDING)
                     || (fgCallState == Call.State.IDLE)
                     || (fgCallState == Call.State.DISCONNECTED)
                     /*As per 3GPP TS 51.010-1 section 31.13.1.4
@@ -890,6 +907,26 @@ public class CallManager {
                             + " fgCallState=" + fgCallState);
         }
         return result;
+    }
+
+    /*
+     * Hangs up all calls on a specific sub
+     */
+    private void hangupAllCalls(int subId) throws CallStateException {
+        Call activeFg = getActiveFgCall(subId);
+        if (activeFg != null) {
+            Rlog.d(LOG_TAG, "Hangup active call on other sub");
+            activeFg.hangup();
+        }
+        if (hasActiveBgCall(subId)) {
+            List<Call> backgroundCalls = getBackgroundCalls();
+            for (Call c: backgroundCalls) {
+                if (c.getPhone().getSubId() == subId && !c.isIdle()) {
+                    Rlog.d(LOG_TAG, "Hangup background call(s) on other sub: " + c);
+                    c.hangup();
+                }
+            }
+        }
     }
 
     /**
@@ -2003,6 +2040,26 @@ public class CallManager {
         return null;
     }
 
+    /**
+     * @return true if more than maximum allowed ringing calls exist.
+     * Maximum ringing calls in case of SS/DSDS is one and two in case of
+     * DSDA (one per active sub).
+     */
+    private boolean hasMoreThanMaxRingingCalls() {
+        int count = 0;
+        int maxAllowedRingingCalls = TelephonyManager.isConcurrentCallsPossible()
+                ? 2 /* DSDA */: 1 /* SS/DSDS */;
+        HashSet<Integer> ringingSubs = new HashSet<Integer>();
+        for (Call call : mRingingCalls) {
+            if (call.getState().isRinging()) {
+                int subId = call.getPhone().getSubId();
+                //check if subId is present in ringingSubs or max ringing calls limit is reached.
+                if (!ringingSubs.add(subId) || ++count > maxAllowedRingingCalls) return true;
+            }
+        }
+        return false;
+    }
+
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private boolean hasMoreThanOneRingingCall() {
         int count = 0;
@@ -2069,7 +2126,7 @@ public class CallManager {
                             && ((ImsPhoneConnection) c).isIncomingCallAutoRejected()) {
                         incomingRejected = true;
                     }
-                    if ((getActiveFgCallState(subId).isDialing() || hasMoreThanOneRingingCall())
+                    if ((getActiveFgCallState(subId).isDialing() || hasMoreThanMaxRingingCalls())
                             && (!incomingRejected)) {
                         try {
                             Rlog.d(LOG_TAG, "silently drop incoming call: " + c.getCall());

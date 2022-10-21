@@ -28,8 +28,10 @@ import android.net.NetworkProvider;
 import android.net.QosFilter;
 import android.net.QosSessionAttributes;
 import android.net.SocketKeepalive;
+import android.net.NetworkScore;
 import android.net.Uri;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
@@ -47,8 +49,10 @@ import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.SlidingWindowEventCounter;
+import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.data.KeepaliveStatus;
 import com.android.internal.telephony.data.NotifyQosSessionInterface;
+import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.data.QosCallbackTracker;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.util.IndentingPrintWriter;
@@ -100,9 +104,19 @@ public class DcNetworkAgent extends NetworkAgent implements NotifyQosSessionInte
 
     private final LocalLog mNetCapsLocalLog = new LocalLog(32);
 
+    private PhoneSwitcher mPhoneSwitcher;
+    private final Handler mInternalHandler;
+    private int mScore;
+
     // For interface duplicate detection. Key is the net id, value is the interface name in string.
     private static Map<Integer, String> sInterfaceNames = new ConcurrentHashMap<>();
 
+    private final long NETWORK_LINGER_TIME_NON_DDS = 2000;      // In milliseconds
+    private final int TEARDOWN_DELAY_TIMEOUT_NON_DDS = 3000;    // In milliseconds
+    private final long NETWORK_LINGER_TIME_DDS = 30000;         // In milliseconds
+    private final int TEARDOWN_DELAY_TIMEOUT_DDS = 0;           // In milliseconds
+
+    private static final int EVENT_ACTIVE_PHONE_SWITCH = 1;
     private static final long NETWORK_UNWANTED_ANOMALY_WINDOW_MS = TimeUnit.MINUTES.toMillis(5);
     private static final int NETWORK_UNWANTED_ANOMALY_NUM_OCCURRENCES =  12;
 
@@ -118,6 +132,7 @@ public class DcNetworkAgent extends NetworkAgent implements NotifyQosSessionInte
         mId = getNetwork().getNetId();
         mTag = "DcNetworkAgent" + "-" + mId;
         mPhone = phone;
+        mScore = score;
         mHandler = new Handler(dc.getHandler().getLooper()) {
             @Override
             public void handleMessage(Message msg) {
@@ -140,7 +155,51 @@ public class DcNetworkAgent extends NetworkAgent implements NotifyQosSessionInte
         } else {
             loge("The connection does not have a valid link properties.");
         }
+        mPhoneSwitcher = PhoneSwitcher.getInstance();
+        mInternalHandler = new InternalHandler(dc.getHandler().getLooper());
+        mPhoneSwitcher.registerForActivePhoneSwitch(mInternalHandler, EVENT_ACTIVE_PHONE_SWITCH,
+                null);
         mQosCallbackTracker = new QosCallbackTracker(this, mPhone);
+    }
+
+    private class InternalHandler extends Handler {
+        public InternalHandler(Looper looper) {
+            super(looper);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case EVENT_ACTIVE_PHONE_SWITCH:
+                    if (mNetworkCapabilities.hasCapability(
+                                NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                        onActivePhoneSwitch();
+                    }
+                    break;
+                default:
+                    loge("Unknown message = " + msg.what);
+            }
+        }
+    }
+
+    private void onActivePhoneSwitch() {
+        long lingerTimer;
+        int timeoutDelay;
+        boolean isPrimary = false;
+        if (mPhone.getSubId() == SubscriptionController.getInstance()
+                .getActiveDataSubscriptionId()) {
+            lingerTimer = NETWORK_LINGER_TIME_DDS;
+            timeoutDelay = TEARDOWN_DELAY_TIMEOUT_DDS;
+            isPrimary = true;
+        } else {
+            lingerTimer = NETWORK_LINGER_TIME_NON_DDS;
+            timeoutDelay = TEARDOWN_DELAY_TIMEOUT_NON_DDS;
+        }
+        logd("onActivePhoneSwitch: setTransportPrimary=" + isPrimary);
+        setLingerDuration(Duration.ofMillis(lingerTimer));
+        setTeardownDelayMillis(timeoutDelay);
+        sendNetworkScore(new NetworkScore.Builder().setLegacyInt(mScore)
+                .setTransportPrimary(isPrimary).build());
     }
 
     private @NetworkType int getNetworkType() {
@@ -224,13 +283,21 @@ public class DcNetworkAgent extends NetworkAgent implements NotifyQosSessionInte
     public synchronized void onNetworkUnwanted() {
         mHandler.sendEmptyMessageDelayed(EVENT_UNWANTED_TIMEOUT, TimeUnit.SECONDS.toMillis(30));
         trackNetworkUnwanted();
+    }
+
+    @Override
+    public synchronized void onNetworkDestroyed() {
         if (mDataConnection == null) {
-            loge("onNetworkUnwanted found called on no-owner DcNetworkAgent!");
+            loge("onNetworkDestroyed found called on no-owner DcNetworkAgent!");
             return;
         }
 
-        logd("onNetworkUnwanted called. Now tear down the data connection "
+        logd("onNetworkDestroyed called. Now tear down the data connection "
                 + mDataConnection.getName());
+
+        // Unregister the broadcast receiver
+        mPhoneSwitcher.unregisterForActivePhoneSwitch(mInternalHandler);
+
         mDataConnection.tearDownAll(Phone.REASON_RELEASED_BY_CONNECTIVITY_SERVICE,
                 DcTracker.RELEASE_TYPE_DETACH, null);
     }
@@ -380,6 +447,15 @@ public class DcNetworkAgent extends NetworkAgent implements NotifyQosSessionInte
         logd("Unregister from connectivity service. " + sInterfaceNames.get(mId) + " removed.");
         sInterfaceNames.remove(mId);
         super.unregister();
+    }
+
+    /**
+     * Reset the network agent
+     * Currently, only reset teardown delay time.
+     */
+
+    public synchronized void reset() {
+        setTeardownDelayMillis(0);
     }
 
     @Override

@@ -123,6 +123,7 @@ public class UiccController extends Handler {
     private static final String LOG_TAG = "UiccController";
 
     public static final int INVALID_SLOT_ID = -1;
+    public static final int INVALID_PHONE_ID = -1;
 
     public static final int APP_FAM_3GPP =  1;
     public static final int APP_FAM_3GPP2 = 2;
@@ -590,6 +591,13 @@ public class UiccController extends Handler {
                     UiccSlot uiccSlot = getUiccSlotForPhone(phoneId);
                     if (uiccSlot != null) {
                         uiccSlot.onRadioStateUnavailable(phoneId);
+                    } else if (!isValidPhoneIndex(phoneId) && mUiccSlots.length >= phoneId) {
+                        //DSDS -> SS config change, PhoneId 1 is not valid.
+                        //If UiccCard is Still Present Corresponding phone Id 1,
+                        //Dispose UiccCard.
+                        if (DBG) log("Uicc Slot is NULL for Phone ID " + phoneId);
+                        uiccSlot = mUiccSlots[phoneId];
+                        uiccSlot.onRadioStateUnavailable(INVALID_PHONE_ID);
                     }
                     mIccChangedRegistrants.notifyRegistrants(new AsyncResult(null, phoneId, null));
                     break;

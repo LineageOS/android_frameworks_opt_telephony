@@ -317,6 +317,12 @@ public final class MccTable {
         FALLBACKS.put(Locale.ENGLISH, Locale.US);
     }
 
+    private static boolean isInvalidOperatorNumeric(String operatorNumeric) {
+        return operatorNumeric == null
+                || operatorNumeric.length() < 5
+                || operatorNumeric.startsWith("000");
+    }
+
     static {
         sTable = new ArrayList<MccEntry>(240);
 

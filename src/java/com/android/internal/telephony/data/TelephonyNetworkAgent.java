@@ -47,24 +47,24 @@ import java.util.concurrent.Executor;
  * has an associated parent {@link DataNetwork}.
  */
 public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSessionInterface {
-    private final String mLogTag;
-    private final Phone mPhone;
+    protected String mLogTag;
+    protected final Phone mPhone;
     private final LocalLog mLocalLog = new LocalLog(128);
 
     /** The parent data network. */
-    private final @NonNull DataNetwork mDataNetwork;
+    protected final @NonNull DataNetwork mDataNetwork;
 
     /** Network agent config. For unit test use only. */
     private final @NonNull NetworkAgentConfig mNetworkAgentConfig;
 
     /** This is the id from {@link NetworkAgent#register()}. */
-    private final int mId;
+    protected final int mId;
 
     /**
      * Indicates if this network agent is abandoned. if {@code true}, it ignores the
      * @link NetworkAgent#onNetworkUnwanted()} calls from connectivity service.
      */
-    private boolean mAbandoned = false;
+    protected boolean mAbandoned = false;
 
     /**
      * The callbacks that are used to pass information to {@link DataNetwork} and
@@ -361,7 +361,7 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
      * Log error messages.
      * @param s error messages
      */
-    private void loge(@NonNull String s) {
+    protected void loge(@NonNull String s) {
         Rlog.e(mLogTag, s);
     }
 

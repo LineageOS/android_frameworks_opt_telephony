@@ -48,9 +48,11 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * The locale tracker keeps tracking the current locale of the phone.
@@ -130,6 +132,22 @@ public class LocaleTracker extends Handler {
             "last_known_country_iso";
 
     private String mTag;
+
+    /** MCCs used in test environments */
+    public static final Set<String> TEST_MCCS = new HashSet<String>() {{
+        add("001");
+        add("002");
+        add("003");
+        add("004");
+        add("005");
+        add("006");
+        add("007");
+        add("008");
+        add("009");
+        add("010");
+        add("011");
+        add("012");
+    }};
 
     private final Phone mPhone;
 
@@ -569,7 +587,8 @@ public class LocaleTracker extends Handler {
         if (!TextUtils.isEmpty(mOperatorNumeric)) {
             // For a test cell (MCC 001), the NitzStateMachine requires handleCountryDetected("") in
             // order to pass compliance tests. http://b/142840879
-            if (mOperatorNumeric.startsWith("001")) {
+            MccMnc mccMnc = MccMnc.fromOperatorNumeric(mOperatorNumeric);
+            if (mccMnc != null && TEST_MCCS.contains(mccMnc.mcc)) {
                 isTestMcc = true;
                 timeZoneCountryIso = "";
                 timeZoneCountryIsoDebugInfo = "Test cell: " + mOperatorNumeric;

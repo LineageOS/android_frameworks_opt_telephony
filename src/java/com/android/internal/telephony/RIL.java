@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+/*
+ * Changes from Qualcomm Innovation Center are provided under the following license:
+ *
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
+
 package com.android.internal.telephony;
 
 import static com.android.internal.telephony.RILConstants.*;
@@ -75,6 +82,7 @@ import android.text.TextUtils;
 import android.util.SparseArray;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.OperatorInfo;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
@@ -199,7 +207,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     private static final String PROPERTY_IS_VONR_ENABLED = "persist.radio.is_vonr_enabled_";
 
-    static final int RADIO_SERVICE = 0;
+    public static final int RADIO_SERVICE = 0;
     static final int DATA_SERVICE = 1;
     static final int MESSAGING_SERVICE = 2;
     static final int MODEM_SERVICE = 3;
@@ -218,17 +226,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private final SparseArray<Set<Integer>> mDisabledRadioServices = new SparseArray<>();
 
     /* default work source which will blame phone process */
-    private WorkSource mRILDefaultWorkSource;
+    protected WorkSource mRILDefaultWorkSource;
 
     /* Worksource containing all applications causing wakelock to be held */
     private WorkSource mActiveWakelockWorkSource;
 
     /** Telephony metrics instance for logging metrics event */
-    private TelephonyMetrics mMetrics = TelephonyMetrics.getInstance();
+    protected TelephonyMetrics mMetrics = TelephonyMetrics.getInstance();
     /** Radio bug detector instance */
     private RadioBugDetector mRadioBugDetector = null;
 
-    private boolean mIsCellularSupported;
+    protected boolean mIsCellularSupported;
     private RadioResponse mRadioResponse;
     private RadioIndication mRadioIndication;
     private volatile IRadio mRadioProxy = null;
@@ -448,6 +456,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     0 /* ignored arg2 */, mServiceCookies.get(mService)));
             unlinkToDeath();
         }
+    }
+
+    protected synchronized void resetProxyAndRequestList() {
+        resetProxyAndRequestList(RADIO_SERVICE);
     }
 
     private synchronized void resetProxyAndRequestList(int service) {
@@ -1058,7 +1070,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         TelephonyManager tm = (TelephonyManager) context.getSystemService(
                 Context.TELEPHONY_SERVICE);
-        mIsCellularSupported = tm.isVoiceCapable() || tm.isSmsCapable() || tm.isDataCapable();
+        boolean noRil = SystemProperties.getBoolean("ro.radio.noril", false);
+        mIsCellularSupported = !noRil &&
+                (tm.isVoiceCapable() || tm.isSmsCapable() || tm.isDataCapable());
 
         mRadioResponse = new RadioResponse(this);
         mRadioIndication = new RadioIndication(this);
@@ -1173,7 +1187,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
-    private RILRequest obtainRequest(int request, Message result, WorkSource workSource) {
+    protected RILRequest obtainRequest(int request, Message result, WorkSource workSource) {
         RILRequest rr = RILRequest.obtain(request, result, workSource);
         addRequest(rr);
         return rr;
@@ -1186,7 +1200,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return rr;
     }
 
-    private void handleRadioProxyExceptionForRR(int service, String caller, Exception e) {
+    protected int obtainRequestSerial(int request, Message result, WorkSource workSource) {
+        RILRequest rr = RILRequest.obtain(request, result, workSource);
+        addRequest(rr);
+        return rr.mSerial;
+    }
+
+    protected void handleRadioProxyExceptionForRR(int service, String caller, Exception e) {
         riljLoge(caller + ": " + e);
         e.printStackTrace();
         mIsRadioProxyInitialized = false;
@@ -2429,6 +2449,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 handleRadioProxyExceptionForRR(NETWORK_SERVICE, "setNetworkSelectionModeManual", e);
             }
         }
+    }
+
+    @Override
+    public void setNetworkSelectionModeManual(OperatorInfo network, Message result) {
+        riljLog("setNetworkSelectionModeManual request not supoorted");
     }
 
     @Override
@@ -5263,6 +5288,15 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return rr;
     }
 
+    protected Message getMessageFromRequest(Object request) {
+        RILRequest rr = (RILRequest)request;
+        Message result = null;
+        if (rr != null) {
+                result = rr.mResult;
+        }
+        return result;
+    }
+
     /**
      * This is a helper function to be called at the end of all RadioResponse callbacks.
      * It takes care of sending error response, logging, decrementing wakelock if needed, and
@@ -5349,6 +5383,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
             rr.release();
         }
+    }
+
+    protected void processResponseDone(Object request, RadioResponseInfo responseInfo, Object ret) {
+        RILRequest rr = (RILRequest)request;
+        processResponseDone(rr, responseInfo, ret);
     }
 
     /**

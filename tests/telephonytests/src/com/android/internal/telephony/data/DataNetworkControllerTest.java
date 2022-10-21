@@ -130,7 +130,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
-import java.util.stream.Collectors;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -764,6 +763,20 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 mTetheringDataProfile);
 
         doAnswer(invocation -> {
+            DataProfile dp = (DataProfile) invocation.getArguments()[0];
+
+            if (dp.getApnSetting() == null) return true;
+
+            for (DataProfile dataProfile : profiles) {
+                if (dataProfile.getApnSetting() != null
+                        && dataProfile.getApnSetting().equals(dp.getApnSetting(), false)) {
+                    return true;
+                }
+            }
+            return null;
+        }).when(mDataProfileManager).isDataProfileCompatible(any(DataProfile.class));
+
+        doAnswer(invocation -> {
             TelephonyNetworkRequest networkRequest =
                     (TelephonyNetworkRequest) invocation.getArguments()[0];
             int networkType = (int) invocation.getArguments()[1];
@@ -785,27 +798,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
                 .getPreferredTransportByNetworkCapability(anyInt());
         doReturn(true).when(mDataProfileManager).isDataProfilePreferred(any(DataProfile.class));
-        doAnswer(invocation -> {
-            String apnName = (String) invocation.getArguments()[0];
-            TrafficDescriptor td = (TrafficDescriptor) invocation.getArguments()[1];
-
-            List<DataProfile> dps = profiles;
-
-            if (td != null) {
-                dps = dps.stream()
-                        .filter(dp -> td.equals(dp.getTrafficDescriptor()))
-                        .collect(Collectors.toList());
-            }
-
-            if (apnName != null) {
-                dps = dps.stream()
-                        .filter(dp -> dp.getApnSetting() != null)
-                        .filter(dp -> apnName.equals(dp.getApnSetting().getApnName()))
-                        .collect(Collectors.toList());
-            }
-
-            return dps.isEmpty() ? null : dps.get(0);
-        }).when(mDataProfileManager).getDataProfile(anyString(), any());
 
         doAnswer(invocation -> {
             ((Runnable) invocation.getArguments()[0]).run();
@@ -3318,6 +3310,11 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Simulate telephony network factory remove request due to switch.
         mDataNetworkControllerUT.removeNetworkRequest(request);
+        processAllMessages();
+
+        // Simulate Connectivity releases network.
+        List<DataNetwork> dataNetworks = getDataNetworks();
+        dataNetworks.get(0).tearDown(DataNetwork.TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED);
         processAllMessages();
 
         // Data should be torn down on this non-preferred sub.

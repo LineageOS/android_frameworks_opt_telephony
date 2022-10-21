@@ -210,6 +210,17 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public void startActivity(Intent intent) {
+            logd("startActivity called for " + intent);
+        }
+
+        @Override
+        public ComponentName startService(Intent intent) {
+            logd("startService for intent " + intent);
+            return null;
+        }
+
+        @Override
         public boolean bindService(
                 Intent serviceIntent,
                 ServiceConnection connection,
@@ -658,9 +669,6 @@ public class ContextFixture implements TestFixture<Context> {
         public Context getApplicationContext() {
             return null;
         }
-
-        @Override
-        public void startActivity(Intent intent) {}
     }
 
     private final Multimap<String, ComponentName> mComponentNamesByAction =

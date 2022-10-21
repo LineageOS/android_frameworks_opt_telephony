@@ -254,6 +254,15 @@ public class AdnRecord implements Parcelable {
         mAdditionalNumbers = additionalNumbers;
     }
 
+    public int getRecordNumber() {
+        return mRecordNumber;
+    }
+
+    public void setRecordNumber(int recNumber) {
+        mRecordNumber = recNumber;
+    }
+
+
     @Override
     public String toString() {
         return "ADN Record '" + mAlphaTag + "' '" + Rlog.pii(LOG_TAG, mNumber) + " "
@@ -310,6 +319,7 @@ public class AdnRecord implements Parcelable {
                 arrayCompareNullEqualsEmpty(mEmails, adn.mEmails) &&
                 arrayCompareNullEqualsEmpty(mAdditionalNumbers, adn.mAdditionalNumbers));
     }
+
     //***** Parcelable Implementation
 
     @Override

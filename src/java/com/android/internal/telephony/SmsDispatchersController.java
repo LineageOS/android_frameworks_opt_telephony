@@ -453,7 +453,8 @@ public class SmsDispatchersController extends Handler {
         String oldFormat = tracker.mFormat;
         boolean retryUsingImsService = false;
 
-        if (!tracker.mUsesImsServiceForIms && mImsSmsDispatcher.isAvailable()) {
+        if (!tracker.mUsesImsServiceForIms && mImsSmsDispatcher.isAvailable()
+                && !tracker.mIsFallBackRetry) {
             // If this tracker has not been handled by ImsSmsDispatcher yet and IMS Service is
             // available now, retry this failed tracker using IMS Service.
             retryUsingImsService = true;
@@ -909,7 +910,7 @@ public class SmsDispatchersController extends Handler {
             ArrayList<PendingIntent> deliveryIntents, Uri messageUri, String callingPkg,
             boolean persistMessage, int priority, boolean expectMore, int validityPeriod,
             long messageId) {
-        if (mImsSmsDispatcher.isAvailable()) {
+        if (mImsSmsDispatcher.isAvailable() || mImsSmsDispatcher.isEmergencySmsSupport(destAddr)) {
             mImsSmsDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents,
                     deliveryIntents, messageUri, callingPkg, persistMessage, priority,
                     false /*expectMore*/, validityPeriod, messageId);

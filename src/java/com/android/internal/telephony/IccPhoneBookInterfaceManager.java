@@ -21,6 +21,7 @@ import android.content.ContentValues;
 import android.content.pm.PackageManager;
 import android.os.AsyncResult;
 import android.os.Build;
+import android.os.HandlerThread;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -60,9 +61,9 @@ public class IccPhoneBookInterfaceManager {
     protected static final int EVENT_LOAD_DONE = 2;
     protected static final int EVENT_UPDATE_DONE = 3;
 
-    private static final class Request {
+    public static final class Request {
         AtomicBoolean mStatus = new AtomicBoolean(false);
-        Object mResult = null;
+        public Object mResult = null;
     }
 
     @UnsupportedAppUsage
@@ -236,6 +237,67 @@ public class IccPhoneBookInterfaceManager {
     }
 
     /**
+     * Replace oldAdn with newAdn in ADN-like record in EF
+     *
+     * getAdnRecordsInEf must be called at least once before this function,
+     * otherwise an error will be returned.
+     * throws SecurityException if no WRITE_CONTACTS permission
+     *
+     * @param efid must be one among EF_ADN, EF_FDN, and EF_SDN
+     * @param values old adn tag,  phone number, email and anr to be replaced
+     *        new adn tag,  phone number, email and anr to be stored
+     * @param newPhoneNumber adn number ot be stored
+     * @param oldPhoneNumber adn number to be replaced
+     *        Set both oldTag, oldPhoneNubmer, oldEmail and oldAnr to ""
+     *        means to replace an empty record, aka, insert new record
+     *        Set both newTag, newPhoneNubmer, newEmail and newAnr ""
+     *        means to replace the old record with empty one, aka, delete old record
+     * @param pin2 required to update EF_FDN, otherwise must be null
+     * @return true for success
+     */
+    public boolean updateAdnRecordsWithContentValuesInEfBySearch(int efid, ContentValues values,
+            String pin2) {
+
+        if (mPhone.getContext().checkCallingOrSelfPermission(
+                android.Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            throw new SecurityException("Requires android.permission.WRITE_CONTACTS permission");
+        }
+
+        String oldTag = values.getAsString(IccProvider.STR_TAG);
+        String newTag = values.getAsString(IccProvider.STR_NEW_TAG);
+        String oldPhoneNumber = values.getAsString(IccProvider.STR_NUMBER);
+        String newPhoneNumber = values.getAsString(IccProvider.STR_NEW_NUMBER);
+        String oldEmail = values.getAsString(IccProvider.STR_EMAILS);
+        String newEmail = values.getAsString(IccProvider.STR_NEW_EMAILS);
+        String oldAnr = values.getAsString(IccProvider.STR_ANRS);
+        String newAnr = values.getAsString(IccProvider.STR_NEW_ANRS);
+        String[] oldEmailArray = TextUtils.isEmpty(oldEmail) ? null : getStringArray(oldEmail);
+        String[] newEmailArray = TextUtils.isEmpty(newEmail) ? null : getStringArray(newEmail);
+        String[] oldAnrArray = TextUtils.isEmpty(oldAnr) ? null : getAnrStringArray(oldAnr);
+        String[] newAnrArray = TextUtils.isEmpty(newAnr) ? null : getAnrStringArray(newAnr);
+        efid = updateEfForIccType(efid);
+
+        if (DBG)
+            logd("updateAdnRecordsWithContentValuesInEfBySearch: efid=" + efid + ", values = " +
+                values + ", pin2=" + pin2);
+
+        checkThread();
+        Request updateRequest = new Request();
+        synchronized (updateRequest) {
+            Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, updateRequest);
+            AdnRecord oldAdn = new AdnRecord(oldTag, oldPhoneNumber, oldEmailArray, oldAnrArray);
+            AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber, newEmailArray, newAnrArray);
+            if (mAdnCache != null) {
+                mAdnCache.updateAdnBySearch(efid, oldAdn, newAdn, pin2, response);
+                waitForResult(updateRequest);
+            } else {
+                loge("Failure while trying to update by search due to uninitialised adncache");
+            }
+        }
+        return (boolean) updateRequest.mResult;
+    }
+
+    /**
      * Update an ADN-like EF record by record index
      *
      * This is useful for iteration the whole ADN file, such as write the whole
@@ -384,7 +446,7 @@ public class IccPhoneBookInterfaceManager {
     }
 
     @UnsupportedAppUsage
-    private int updateEfForIccType(int efid) {
+    protected int updateEfForIccType(int efid) {
         // Check if we are trying to read ADN records
         if (efid == IccConstants.EF_ADN) {
             if (mPhone.getCurrentUiccAppType() == AppType.APPTYPE_USIM) {
@@ -394,11 +456,18 @@ public class IccPhoneBookInterfaceManager {
         return efid;
     }
 
+    protected String[] getStringArray(String str) {
+        if (str != null) {
+            return str.split(",");
+        }
+        return null;
+    }
+
     private String[] getEmailStringArray(String str) {
         return str != null ? str.split(",") : null;
     }
 
-    private String[] getAnrStringArray(String str) {
+    protected String[] getAnrStringArray(String str) {
         return str != null ? str.split(":") : null;
     }
 

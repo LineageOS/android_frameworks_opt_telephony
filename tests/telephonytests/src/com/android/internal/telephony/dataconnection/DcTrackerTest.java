@@ -703,6 +703,7 @@ public class DcTrackerTest extends TelephonyTest {
         mHandler = Mockito.mock(Handler.class);
         mNetworkPolicyManager = Mockito.mock(NetworkPolicyManager.class);
 
+        doReturn(mSimRecords).when(mPhone).getIccRecords();
         doReturn("fake.action_detached").when(mPhone).getActionDetached();
         doReturn("fake.action_attached").when(mPhone).getActionAttached();
         doReturn(false).when(mPhone).isUsingNewDataStack();
@@ -732,6 +733,7 @@ public class DcTrackerTest extends TelephonyTest {
 
         doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).when(mAccessNetworksManager)
                 .getPreferredTransport(anyInt());
+        doReturn(true).when(mSubscriptionManager).isActiveSubId(anyInt());
         doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
         doReturn(true).when(mSST).getDesiredPowerState();
         doReturn(true).when(mSST).getPowerStateFromCarrier();
@@ -928,6 +930,8 @@ public class DcTrackerTest extends TelephonyTest {
     @Test
     @MediumTest
     public void testDataSetup() throws Exception {
+        doReturn(true).when(mSubscriptionManager).isActiveSubId(anyInt());
+
         DataConnectionReasons dataConnectionReasons = new DataConnectionReasons();
         boolean allowed = mDct.isDataAllowed(dataConnectionReasons);
         assertFalse(dataConnectionReasons.toString(), allowed);

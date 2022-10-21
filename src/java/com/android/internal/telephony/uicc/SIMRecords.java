@@ -645,6 +645,7 @@ public class SIMRecords extends IccRecords {
                 /* IO events */
                 case EVENT_GET_IMSI_DONE:
                     isRecordLoadResponse = true;
+                    mEssentialRecordsToLoad -= 1;
                     ar = (AsyncResult) msg.obj;
 
                     if (ar.exception != null) {
@@ -751,6 +752,7 @@ public class SIMRecords extends IccRecords {
 
                 case EVENT_GET_MSISDN_DONE:
                     isRecordLoadResponse = true;
+                    mEssentialRecordsToLoad -= 1;
 
                     ar = (AsyncResult) msg.obj;
 
@@ -825,6 +827,7 @@ public class SIMRecords extends IccRecords {
 
                 case EVENT_GET_ICCID_DONE:
                     isRecordLoadResponse = true;
+                    mEssentialRecordsToLoad -= 1;
 
                     ar = (AsyncResult) msg.obj;
                     data = (byte[]) ar.result;
@@ -841,6 +844,8 @@ public class SIMRecords extends IccRecords {
 
                 case EVENT_GET_AD_DONE:
                     isRecordLoadResponse = true;
+                    mEssentialRecordsToLoad -= 1;
+
                     mMncLength = UNKNOWN;
                     try {
                         if (!mCarrierTestOverride.isInTestMode()) {
@@ -877,6 +882,7 @@ public class SIMRecords extends IccRecords {
 
                 case EVENT_GET_SPN_DONE:
                     isRecordLoadResponse = true;
+                    mEssentialRecordsToLoad -= 1;
                     ar = (AsyncResult) msg.obj;
                     getSpnFsm(false, ar);
                     break;
@@ -1117,6 +1123,7 @@ public class SIMRecords extends IccRecords {
 
                 case EVENT_GET_GID1_DONE:
                     isRecordLoadResponse = true;
+                    mEssentialRecordsToLoad -= 1;
 
                     ar = (AsyncResult) msg.obj;
                     data = (byte[]) ar.result;
@@ -1135,6 +1142,7 @@ public class SIMRecords extends IccRecords {
 
                 case EVENT_GET_GID2_DONE:
                     isRecordLoadResponse = true;
+                    mEssentialRecordsToLoad -= 1;
                     ar = (AsyncResult) msg.obj;
                     data = (byte[]) ar.result;
 
@@ -1311,6 +1319,10 @@ public class SIMRecords extends IccRecords {
         }
 
         public void onRecordLoaded(AsyncResult ar) {
+            if (ar.exception != null) {
+                loge("Record Load Exception: " + ar.exception);
+                return;
+            }
             mEfPl = (byte[]) ar.result;
             if (DBG) log("EF_PL=" + IccUtils.bytesToHexString(mEfPl));
         }
@@ -1322,6 +1334,10 @@ public class SIMRecords extends IccRecords {
         }
 
         public void onRecordLoaded(AsyncResult ar) {
+            if (ar.exception != null) {
+                loge("Record Load Exception: " + ar.exception);
+                return;
+            }
             mEfLi = (byte[]) ar.result;
             if (DBG) log("EF_LI=" + IccUtils.bytesToHexString(mEfLi));
         }
@@ -1353,6 +1369,7 @@ public class SIMRecords extends IccRecords {
                 break;
             case EF_MSISDN:
                 mRecordsToLoad++;
+                mEssentialRecordsToLoad++;
                 log("SIM Refresh called for EF_MSISDN");
                 new AdnRecordLoader(mFh).loadFromEF(EF_MSISDN, getExtFromEf(EF_MSISDN), 1,
                         obtainMessage(EVENT_GET_MSISDN_DONE));
@@ -1435,13 +1452,18 @@ public class SIMRecords extends IccRecords {
         mRecordsToLoad -= 1;
         if (DBG) log("onRecordLoaded " + mRecordsToLoad + " requested: " + mRecordsRequested);
 
+        if (getEssentialRecordsLoaded() && !mEssentialRecordsListenerNotified) {
+            onAllEssentialRecordsLoaded();
+        }
+
         if (getRecordsLoaded()) {
             onAllRecordsLoaded();
         } else if (getLockedRecordsLoaded() || getNetworkLockedRecordsLoaded()) {
             onLockedAllRecordsLoaded();
-        } else if (mRecordsToLoad < 0) {
+        }else if (mRecordsToLoad < 0 || mEssentialRecordsToLoad < 0) {
             loge("recordsToLoad <0, programmer error suspected");
             mRecordsToLoad = 0;
+            mEssentialRecordsToLoad = 0;
         }
     }
 
@@ -1485,35 +1507,41 @@ public class SIMRecords extends IccRecords {
     }
 
     @Override
+    protected void onAllEssentialRecordsLoaded() {
+        if (DBG) log("Essential record load complete");
+
+        String operator = getOperatorNumeric();
+        if (!TextUtils.isEmpty(operator)) {
+            log("onAllEssentialRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
+                    operator + "'");
+            mTelephonyManager.setSimOperatorNumericForPhone(
+                    mParentApp.getPhoneId(), operator);
+        } else {
+            log("onAllEssentialRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
+        }
+
+        String imsi = getIMSI();
+
+        if (!TextUtils.isEmpty(imsi) && imsi.length() >= 3) {
+            log("onEssentialAllRecordsLoaded set mcc imsi" + (VDBG ? ("=" + imsi) : ""));
+            mTelephonyManager.setSimCountryIsoForPhone(
+                    mParentApp.getPhoneId(), MccTable.countryCodeForMcc(imsi.substring(0, 3)));
+        } else {
+            log("onEssentialAllRecordsLoaded empty imsi skipping setting mcc");
+        }
+
+        setVoiceMailByCountry(operator);
+        mEssentialRecordsListenerNotified = true;
+        mEssentialRecordsLoadedRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
+    }
+
+    @Override
     protected void onAllRecordsLoaded() {
         if (DBG) log("record load complete");
 
         setSimLanguageFromEF();
         setVoiceCallForwardingFlagFromSimRecords();
 
-        // Some fields require more than one SIM record to set
-
-        String operator = getOperatorNumeric();
-        if (!TextUtils.isEmpty(operator)) {
-            log("onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
-                    operator + "'");
-            mTelephonyManager.setSimOperatorNumericForPhone(
-                    mParentApp.getPhoneId(), operator);
-        } else {
-            log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
-        }
-
-        String imsi = getIMSI();
-
-        if (!TextUtils.isEmpty(imsi) && imsi.length() >= 3) {
-            log("onAllRecordsLoaded set mcc imsi" + (VDBG ? ("=" + imsi) : ""));
-            mTelephonyManager.setSimCountryIsoForPhone(
-                    mParentApp.getPhoneId(), MccTable.countryCodeForMcc(imsi.substring(0, 3)));
-        } else {
-            log("onAllRecordsLoaded empty imsi skipping setting mcc");
-        }
-
-        setVoiceMailByCountry(operator);
         mLoaded.set(true);
         mRecordsLoadedRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
     }
@@ -1569,6 +1597,7 @@ public class SIMRecords extends IccRecords {
 
         mFh.loadEFTransparent(EF_ICCID, obtainMessage(EVENT_GET_ICCID_DONE));
         mRecordsToLoad++;
+        mEssentialRecordsToLoad++;
     }
 
     private void loadEfLiAndEfPl() {
@@ -1591,29 +1620,53 @@ public class SIMRecords extends IccRecords {
         mRecordsToLoad++;
     }
 
-    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    protected void fetchSimRecords() {
-        mRecordsRequested = true;
-
-        if (DBG) log("fetchSimRecords " + mRecordsToLoad);
+    private void fetchEssentialSimRecords() {
+        if (DBG) log("fetchEssentialSimRecords: mRecordsToLoad = " + mRecordsToLoad
+                + " mEssentialRecordsToLoad = " + mEssentialRecordsToLoad);
+        mEssentialRecordsListenerNotified = false;
 
         mCi.getIMSIForApp(mParentApp.getAid(), obtainMessage(EVENT_GET_IMSI_DONE));
         mRecordsToLoad++;
+        mEssentialRecordsToLoad++;
 
         mFh.loadEFTransparent(EF_ICCID, obtainMessage(EVENT_GET_ICCID_DONE));
         mRecordsToLoad++;
+        mEssentialRecordsToLoad++;
 
         // FIXME should examine EF[MSISDN]'s capability configuration
         // to determine which is the voice/data/fax line
         new AdnRecordLoader(mFh).loadFromEF(EF_MSISDN, getExtFromEf(EF_MSISDN), 1,
                     obtainMessage(EVENT_GET_MSISDN_DONE));
         mRecordsToLoad++;
+        mEssentialRecordsToLoad++;
+
+        mFh.loadEFTransparent(EF_GID1, obtainMessage(EVENT_GET_GID1_DONE));
+        mRecordsToLoad++;
+        mEssentialRecordsToLoad++;
+
+        mFh.loadEFTransparent(EF_GID2, obtainMessage(EVENT_GET_GID2_DONE));
+        mRecordsToLoad++;
+        mEssentialRecordsToLoad++;
+
+        mFh.loadEFTransparent(EF_AD, obtainMessage(EVENT_GET_AD_DONE));
+        mRecordsToLoad++;
+        mEssentialRecordsToLoad++;
+
+        getSpnFsm(true, null);
+        if (DBG) log("fetchEssentialSimRecords " + mRecordsToLoad +
+                " requested: " + mRecordsRequested);
+    }
+
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
+    protected void fetchSimRecords() {
+        mRecordsRequested = true;
+
+        fetchEssentialSimRecords();
+
+        if (DBG) log("fetchSimRecords " + mRecordsToLoad);
 
         // Record number is subscriber profile
         mFh.loadEFLinearFixed(EF_MBI, 1, obtainMessage(EVENT_GET_MBI_DONE));
-        mRecordsToLoad++;
-
-        mFh.loadEFTransparent(EF_AD, obtainMessage(EVENT_GET_AD_DONE));
         mRecordsToLoad++;
 
         // Record number is subscriber profile
@@ -1634,8 +1687,6 @@ public class SIMRecords extends IccRecords {
         // EF[CFIS] and CPHS-EF, with EF[CFIS] preferred.
         loadCallForwardingRecords();
 
-        getSpnFsm(true, null);
-
         mFh.loadEFTransparent(EF_SPDI, obtainMessage(EVENT_GET_SPDI_DONE));
         mRecordsToLoad++;
 
@@ -1654,11 +1705,6 @@ public class SIMRecords extends IccRecords {
         mFh.loadEFTransparent(EF_CSP_CPHS,obtainMessage(EVENT_GET_CSP_CPHS_DONE));
         mRecordsToLoad++;
 
-        mFh.loadEFTransparent(EF_GID1, obtainMessage(EVENT_GET_GID1_DONE));
-        mRecordsToLoad++;
-
-        mFh.loadEFTransparent(EF_GID2, obtainMessage(EVENT_GET_GID2_DONE));
-        mRecordsToLoad++;
 
         mFh.loadEFTransparent(EF_PLMN_W_ACT, obtainMessage(EVENT_GET_PLMN_W_ACT_DONE));
         mRecordsToLoad++;
@@ -1768,6 +1814,7 @@ public class SIMRecords extends IccRecords {
                 mFh.loadEFTransparent(EF_SPN,
                         obtainMessage(EVENT_GET_SPN_DONE));
                 mRecordsToLoad++;
+                mEssentialRecordsToLoad++;
 
                 mSpnState = GetSpnFsmState.READ_SPN_3GPP;
                 break;
@@ -1804,6 +1851,7 @@ public class SIMRecords extends IccRecords {
                     mFh.loadEFTransparent( EF_SPN_CPHS,
                             obtainMessage(EVENT_GET_SPN_DONE));
                     mRecordsToLoad++;
+                    mEssentialRecordsToLoad++;
 
                     mCarrierNameDisplayCondition = DEFAULT_CARRIER_NAME_DISPLAY_CONDITION;
                 }
@@ -1838,6 +1886,7 @@ public class SIMRecords extends IccRecords {
                     mFh.loadEFTransparent(
                             EF_SPN_SHORT_CPHS, obtainMessage(EVENT_GET_SPN_DONE));
                     mRecordsToLoad++;
+                    mEssentialRecordsToLoad++;
                 }
                 break;
             case READ_SPN_SHORT_CPHS:

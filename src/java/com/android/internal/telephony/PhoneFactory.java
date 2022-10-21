@@ -152,6 +152,8 @@ public class PhoneFactory {
                 sMetricsCollector = new MetricsCollector(context);
 
                 sPhoneNotifier = new DefaultPhoneNotifier(context);
+                TelephonyComponentFactory telephonyComponentFactory
+                        = TelephonyComponentFactory.getInstance();
 
                 int cdmaSubscription = CdmaSubscriptionSourceManager.getDefault(context);
                 Rlog.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
@@ -172,9 +174,10 @@ public class PhoneFactory {
                     networkModes[i] = RILConstants.PREFERRED_NETWORK_MODE;
 
                     Rlog.i(LOG_TAG, "Network Mode set to " + Integer.toString(networkModes[i]));
-                    sCommandsInterfaces[i] = new RIL(context,
-                            RadioAccessFamily.getRafFromNetworkType(networkModes[i]),
-                            cdmaSubscription, i);
+                    sCommandsInterfaces[i] = telephonyComponentFactory.inject(RIL.class.getName()).
+                            makeRIL(context,
+                                    RadioAccessFamily.getRafFromNetworkType(networkModes[i]),
+                                    cdmaSubscription, i);
                 }
 
                 if (numPhones > 0) {
@@ -208,7 +211,24 @@ public class PhoneFactory {
                 }
 
                 for (int i = 0; i < numPhones; i++) {
-                    sPhones[i] = createPhone(context, i);
+                    Phone phone = null;
+                    int phoneType = TelephonyManager.getPhoneType(networkModes[i]);
+                    TelephonyComponentFactory injectedComponentFactory =
+                            telephonyComponentFactory.inject(GsmCdmaPhone.class.getName());
+                    if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {
+                        phone = injectedComponentFactory.makePhone(context,
+                                sCommandsInterfaces[i], sPhoneNotifier, i,
+                                PhoneConstants.PHONE_TYPE_GSM,
+                                TelephonyComponentFactory.getInstance());
+                    } else if (phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
+                        phone = injectedComponentFactory.makePhone(context,
+                                sCommandsInterfaces[i], sPhoneNotifier, i,
+                                PhoneConstants.PHONE_TYPE_CDMA_LTE,
+                                TelephonyComponentFactory.getInstance());
+                    }
+                    Rlog.i(LOG_TAG, "Creating Phone with type = " + phoneType + " sub = " + i);
+
+                    sPhones[i] = phone;
                 }
 
                 // Set the default phone in base class.
@@ -271,8 +291,10 @@ public class PhoneFactory {
 
                 for (int i = 0; i < numPhones; i++) {
                     sTelephonyNetworkFactories[i] = new TelephonyNetworkFactory(
-                            Looper.myLooper(), sPhones[i]);
+                            Looper.myLooper(), sPhones[i], sPhoneSwitcher);
                 }
+                telephonyComponentFactory.inject(TelephonyComponentFactory.class.getName()).
+                        makeExtTelephonyClasses(context, sPhones, sCommandsInterfaces);
             }
         }
     }
@@ -299,7 +321,9 @@ public class PhoneFactory {
 
             int cdmaSubscription = CdmaSubscriptionSourceManager.getDefault(context);
             for (int i = prevActiveModemCount; i < activeModemCount; i++) {
-                sCommandsInterfaces[i] = new RIL(context, RadioAccessFamily.getRafFromNetworkType(
+                sCommandsInterfaces[i] = TelephonyComponentFactory.getInstance().inject(
+                        RIL.class.getName()).
+                        makeRIL(context, RadioAccessFamily.getRafFromNetworkType(
                         RILConstants.PREFERRED_NETWORK_MODE),
                         cdmaSubscription, i);
                 sPhones[i] = createPhone(context, i);
@@ -308,7 +332,7 @@ public class PhoneFactory {
                     sPhones[i].createImsPhone();
                 }
                 sTelephonyNetworkFactories[i] = new TelephonyNetworkFactory(
-                        Looper.myLooper(), sPhones[i]);
+                        Looper.myLooper(), sPhones[i], sPhoneSwitcher);
             }
         }
     }

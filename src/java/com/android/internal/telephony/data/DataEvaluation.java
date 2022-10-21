@@ -239,6 +239,8 @@ public class DataEvaluation {
         EXTERNAL_QUERY,
         /** Tracking area code changed. */
         TAC_CHANGED,
+        /** Secure Mode state changed. */
+        SECURE_MODE_STATE_CHANGED,
     }
 
     /** Disallowed reasons. There could be multiple reasons if it is not allowed. */
@@ -295,7 +297,9 @@ public class DataEvaluation {
         /** Only one data network is allowed at one time. */
         ONLY_ALLOWED_SINGLE_NETWORK(true),
         /** Data enabled settings are not ready. */
-        DATA_SETTINGS_NOT_READY(true);
+        DATA_SETTINGS_NOT_READY(true),
+        /** Device is in Secure Mode. */
+        DATA_RESTRICTED_BY_SECURE_MODE(true);
 
         private final boolean mIsHardReason;
 

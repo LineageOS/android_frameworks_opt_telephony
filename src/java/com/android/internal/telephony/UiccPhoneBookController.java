@@ -19,6 +19,7 @@
 package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.content.ContentValues;
 import android.os.Build;
 import android.os.TelephonyServiceManager.ServiceRegisterer;
 import android.telephony.TelephonyFrameworkInitializer;
@@ -112,6 +113,11 @@ public class UiccPhoneBookController extends IIccPhoneBook.Stub {
     }
 
     @Override
+    public AdnCapacity getAdnRecordsCapacity() throws android.os.RemoteException {
+        return getAdnRecordsCapacityForSubscriber(getDefaultSubscription());
+    }
+
+    @Override
     public AdnCapacity getAdnRecordsCapacityForSubscriber(int subId)
            throws android.os.RemoteException {
         IccPhoneBookInterfaceManager iccPbkIntMgr = getIccPhoneBookInterfaceManager(subId);
@@ -121,6 +127,13 @@ public class UiccPhoneBookController extends IIccPhoneBook.Stub {
             Rlog.e(TAG, "getAdnRecordsCapacity iccPbkIntMgr is null for Subscription:" + subId);
             return null;
         }
+    }
+
+    public boolean
+    updateAdnRecordsWithContentValuesInEfBySearch(int efid, ContentValues values,
+        String pin2) throws android.os.RemoteException {
+            return updateAdnRecordsInEfBySearchForSubscriber(
+                getDefaultSubscription(), efid, values, pin2);
     }
 
     @Override

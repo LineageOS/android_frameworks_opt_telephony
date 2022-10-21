@@ -83,15 +83,19 @@ public class DataProfileManager extends Handler {
     private final boolean ONLY_UPDATE_IA_IF_CHANGED = false;
 
     /** Data network controller. */
-    private final @NonNull DataNetworkController mDataNetworkController;
+    protected final @NonNull DataNetworkController mDataNetworkController;
 
     /** Data config manager. */
-    private final @NonNull DataConfigManager mDataConfigManager;
+    protected final @NonNull DataConfigManager mDataConfigManager;
 
     /** Cellular data service. */
     private final @NonNull DataServiceManager mWwanDataServiceManager;
 
-    /** All data profiles for the current carrier. */
+    /**
+     * All data profiles for the current carrier. Note only data profiles loaded from the APN
+     * database will be stored here. The on-demand data profiles (generated dynamically, for
+     * example, enterprise data profiles with differentiator) are not stored here.
+     */
     private final @NonNull List<DataProfile> mAllDataProfiles = new ArrayList<>();
 
     /** The data profile used for initial attach. */
@@ -241,7 +245,13 @@ public class DataProfileManager extends Handler {
      *
      * @param forceUpdateIa If {@code true}, we should always send IA again to modem.
      */
+<<<<<<< HEAD
     private void updateDataProfiles(boolean forceUpdateIa) {
+=======
+    private void updateDataProfiles() {
+        /** All APN settings applicable to the current carrier */
+        ArrayList<ApnSetting> allApnSettings = new ArrayList<>();
+>>>>>>> 655df6c777c016bacb548def0ef1b6a9fcd82579
         List<DataProfile> profiles = new ArrayList<>();
         if (mDataConfigManager.isConfigCarrierSpecific()) {
             Cursor cursor = mPhone.getContext().getContentResolver().query(
@@ -255,16 +265,25 @@ public class DataProfileManager extends Handler {
             while (cursor.moveToNext()) {
                 ApnSetting apn = ApnSetting.makeApnSetting(cursor);
                 if (apn != null) {
-                    DataProfile dataProfile = new DataProfile.Builder()
-                            .setApnSetting(apn)
-                            .setTrafficDescriptor(new TrafficDescriptor(apn.getApnName(), null))
-                            .setPreferred(false)
-                            .build();
-                    profiles.add(dataProfile);
-                    log("Added " + dataProfile);
+                    allApnSettings.add(apn);
                 }
             }
             cursor.close();
+
+            if (!allApnSettings.isEmpty()) {
+                filterApnSettingsWithRadioCapability(allApnSettings);
+            }
+
+            for (ApnSetting apn : allApnSettings) {
+                DataProfile dataProfile = new DataProfile.Builder()
+                        .setApnSetting(apn)
+                        // TODO: Support TD correctly once ENTERPRISE becomes an APN type.
+                        .setTrafficDescriptor(new TrafficDescriptor(apn.getApnName(), null))
+                        .setPreferred(false)
+                        .build();
+                profiles.add(dataProfile);
+                log("Added " + dataProfile);
+            }
         }
 
         // Check if any of the profile already supports ENTERPRISE, if not, check if DPC has
@@ -341,6 +360,13 @@ public class DataProfileManager extends Handler {
     }
 
     /**
+     * Filters out multiple APNs based on radio capability if the APN's GID value is listed in
+     * CarrierConfigManager#KEY_MULTI_APN_ARRAY_FOR_SAME_GID as per the operator requirement.
+     */
+    protected void filterApnSettingsWithRadioCapability(ArrayList<ApnSetting> allApnSettings) {
+    }
+
+    /**
      * @return The preferred data profile set id.
      */
     private int getPreferredDataProfileSetId() {
@@ -377,9 +403,6 @@ public class DataProfileManager extends Handler {
      * @param dataProfiles The connected internet data networks' profiles.
      */
     private void onInternetDataNetworkConnected(@NonNull List<DataProfile> dataProfiles) {
-        // If there is already a preferred data profile set, then we don't need to do anything.
-        if (mPreferredDataProfile != null) return;
-
         // If there is no preferred data profile, then we should use one of the data profiles,
         // which is good for internet, as the preferred data profile.
 
@@ -388,6 +411,10 @@ public class DataProfileManager extends Handler {
         DataProfile dataProfile = dataProfiles.stream()
                 .max(Comparator.comparingLong(DataProfile::getLastSetupTimestamp).reversed())
                 .orElse(null);
+
+        // If the preferred profile is one chosen for internet already, we don't need to do
+        // anything.
+        if (mPreferredDataProfile != null && mPreferredDataProfile.equals(dataProfile)) return;
         // Save the preferred data profile into database.
         setPreferredDataProfile(dataProfile);
         updateDataProfiles(ONLY_UPDATE_IA_IF_CHANGED);
@@ -846,39 +873,29 @@ public class DataProfileManager extends Handler {
     }
 
     /**
-     * Get data profile by APN name and/or traffic descriptor.
+     * Check if the provided data profile is still compatible with the current environment. Note
+     * this method ignores APN id check and traffic descriptor check. A data profile with traffic
+     * descriptor only can always be used in any condition.
      *
-     * @param apnName APN name.
-     * @param trafficDescriptor Traffic descriptor.
-     *
-     * @return Data profile by APN name and/or traffic descriptor. Either one of APN name or
-     * traffic descriptor should be provided. {@code null} if data profile is not found.
+     * @param dataProfile The data profile to check.
+     * @return {@code true} if the provided data profile can be still used in current environment.
      */
-    public @Nullable DataProfile getDataProfile(@Nullable String apnName,
-            @Nullable TrafficDescriptor trafficDescriptor) {
-        if (apnName == null && trafficDescriptor == null) return null;
-
-        List<DataProfile> dataProfiles = mAllDataProfiles;
-
-        // Check if any existing data profile has the same traffic descriptor.
-        if (trafficDescriptor != null) {
-            dataProfiles = mAllDataProfiles.stream()
-                    .filter(dp -> trafficDescriptor.equals(dp.getTrafficDescriptor()))
-                    .collect(Collectors.toList());
+    public boolean isDataProfileCompatible(@NonNull DataProfile dataProfile) {
+        if (dataProfile == null) {
+            return false;
         }
 
-        // Check if any existing data profile has the same APN name.
-        if (apnName != null) {
-            dataProfiles = dataProfiles.stream()
-                    .filter(dp -> dp.getApnSetting() != null
-                            && (dp.getApnSetting().getApnSetId()
-                            == Telephony.Carriers.MATCH_ALL_APN_SET_ID
-                            || dp.getApnSetting().getApnSetId() == mPreferredDataProfileSetId))
-                    .filter(dp -> apnName.equals(dp.getApnSetting().getApnName()))
-                    .collect(Collectors.toList());
+        if (dataProfile.getApnSetting() == null && dataProfile.getTrafficDescriptor() != null) {
+            // A traffic descriptor only data profile can be always used. Traffic descriptors are
+            // always generated on the fly instead loaded from the database.
+            return true;
         }
 
-        return dataProfiles.isEmpty() ? null : dataProfiles.get(0);
+        // Only check the APN from the profile is compatible or not.
+        return mAllDataProfiles.stream()
+                .filter(dp -> dp.getApnSetting() != null)
+                .anyMatch(dp -> dp.getApnSetting().equals(dataProfile.getApnSetting(),
+                        mPhone.getServiceState().getDataRoamingFromRegistration()));
     }
 
     /**
@@ -903,7 +920,7 @@ public class DataProfileManager extends Handler {
      * Log debug messages.
      * @param s debug messages
      */
-    private void log(@NonNull String s) {
+    protected void log(@NonNull String s) {
         Rlog.d(mLogTag, s);
     }
 
@@ -911,7 +928,7 @@ public class DataProfileManager extends Handler {
      * Log error messages.
      * @param s error messages
      */
-    private void loge(@NonNull String s) {
+    protected void loge(@NonNull String s) {
         Rlog.e(mLogTag, s);
     }
 
@@ -927,7 +944,7 @@ public class DataProfileManager extends Handler {
      * Log debug messages and also log into the local log.
      * @param s debug messages
      */
-    private void logl(@NonNull String s) {
+    protected void logl(@NonNull String s) {
         log(s);
         mLocalLog.log(s);
     }

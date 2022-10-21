@@ -26,6 +26,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.IBinder;
@@ -36,6 +37,7 @@ import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.os.SystemProperties;
 import android.os.UserHandle;
+import android.preference.PreferenceManager;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.RadioAccessNetworkType;
@@ -83,6 +85,7 @@ import java.util.stream.Collectors;
  */
 public class AccessNetworksManager extends Handler {
     private static final boolean DBG = false;
+    private static final String APN_TRANSPORT = "apn_transport-%d-%d";
     public static final String SYSTEM_PROPERTIES_IWLAN_OPERATION_MODE =
             "ro.telephony.iwlan_operation_mode";
 
@@ -732,8 +735,17 @@ public class AccessNetworksManager extends Handler {
         }
 
         // If we can't find the corresponding transport, always route to cellular.
-        return mCurrentTransports.get(apnType) == null
-                ? AccessNetworkConstants.TRANSPORT_TYPE_WWAN : mCurrentTransports.get(apnType);
+        if (!mCurrentTransports.containsKey(apnType)) {
+            final SharedPreferences sp
+                    = PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
+            final String key = String.format(APN_TRANSPORT, apnType, mPhone.getPhoneId());
+            final int transport = sp.getInt(key, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+            mCurrentTransports.put(apnType, transport);
+            logl("getCurrentTransport: apnType=" + ApnSetting.getApnTypeString(apnType)
+                    + ", transport=" + AccessNetworkConstants.transportTypeToString(transport));
+            return transport;
+        }
+        return mCurrentTransports.get(apnType);
     }
 
     /**
@@ -760,6 +772,13 @@ public class AccessNetworksManager extends Handler {
             logl("setCurrentTransport: apnType=" + ApnSetting.getApnTypeString(apnType)
                     + ", transport=" + AccessNetworkConstants.transportTypeToString(transport));
         }
+        final SharedPreferences sp
+                = PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
+        final SharedPreferences.Editor editor = sp.edit();
+        final String key = String.format(APN_TRANSPORT, apnType, mPhone.getPhoneId());
+        editor.putInt(key, transport);
+        boolean result = editor.commit();
+        logl("setCurrentTransport: key=" + key + ", result=" + result);
     }
 
     private static @TransportType int getTransportFromAccessNetwork(int accessNetwork) {

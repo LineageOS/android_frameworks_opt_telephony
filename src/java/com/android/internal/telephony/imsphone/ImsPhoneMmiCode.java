@@ -1235,12 +1235,22 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 ar = (AsyncResult) (msg.obj);
 
                 /*
-                * msg.arg1 = 1 means to set unconditional voice call forwarding
-                * msg.arg2 = 1 means to enable voice call forwarding
+                * msg.arg1 = 1 means to set unconditional voice/video call forwarding
+                * msg.arg2 = 1 means to enable voice/video call forwarding
                 */
                 if ((ar.exception == null) && (msg.arg1 == 1)) {
                     boolean cffEnabled = (msg.arg2 == 1);
-                    if (mIccRecords != null) {
+                    /*
+                    * As per 3GPP TS 29002 MAP Specification : Section 17.7.10,
+                    * the BearerServiceCode for "allDataCircuitAsynchronous" is '01010000'.
+                    * Hence, SERVICE_CLASS_DATA_SYNC (1<<4) and SERVICE_CLASS_PACKET (1<<6)
+                    * together make video service class.
+                    */
+                    if(siToServiceClass(mSib) == (SERVICE_CLASS_PACKET
+                                + SERVICE_CLASS_DATA_SYNC)) {
+                        mPhone.setVideoCallForwardingPreference(cffEnabled);
+                        mPhone.notifyCallForwardingIndicator();
+                    } else if (mIccRecords != null) {
                         mPhone.setVoiceCallForwardingFlag(mIccRecords,
                                 1, cffEnabled, mDialingNumber);
                     }
@@ -1266,7 +1276,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                     mState = State.FAILED;
                     mMessage = getErrorMessage(ar);
 
-                    mPhone.onMMIDone(this);
+                    mPhone.onUssdComplete(this, (CommandException) ar.exception);
                 }
 
                 // Note that unlike most everything else, the USSD complete
@@ -1949,7 +1959,15 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                         Rlog.d(LOG_TAG, "setVoiceCallForwardingFlag done from SS Info.");
                         //Only CF status is set here as part of activation/registration,
                         //number is not available until interrogation.
-                        mPhone.setVoiceCallForwardingFlag(1, cffEnabled, null);
+                        if (ssData.serviceClass == (SERVICE_CLASS_PACKET
+                                    + SERVICE_CLASS_DATA_SYNC)) {
+                            Rlog.d(LOG_TAG, "setVideoCallForwardingFlag done from SS Info.");
+                            mPhone.setVideoCallForwardingPreference(cffEnabled);
+                            mPhone.notifyCallForwardingIndicator();
+                        } else {
+                            Rlog.d(LOG_TAG, "setVoiceCallForwardingFlag done from SS Info.");
+                            mPhone.setVoiceCallForwardingFlag(1, cffEnabled, null);
+                        }
                     } else {
                         Rlog.e(LOG_TAG, "setCallForwardingFlag aborted. sim records is null.");
                     }

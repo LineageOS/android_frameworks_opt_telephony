@@ -16,6 +16,10 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.SmsManager.RESULT_ERROR_GENERIC_FAILURE;
+
+import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
+
 import android.content.Context;
 import android.os.Binder;
 import android.os.Message;
@@ -322,6 +326,12 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         getImsManager().onSmsReady();
     }
 
+    private boolean isNrFullService() {
+        return ((mPhone.getServiceState().getRilDataRadioTechnology() ==
+                ServiceState.RIL_RADIO_TECHNOLOGY_NR) && (mPhone.getServiceState().
+                getDataRegistrationState() == ServiceState.STATE_IN_SERVICE));
+    }
+
     private boolean isLteService() {
         return ((mPhone.getServiceState().getRilDataRadioTechnology() ==
             ServiceState.RIL_RADIO_TECHNOLOGY_LTE) && (mPhone.getServiceState().
@@ -333,8 +343,8 @@ public class ImsSmsDispatcher extends SMSDispatcher {
             ServiceState.RIL_RADIO_TECHNOLOGY_LTE) && mPhone.getServiceState().isEmergencyOnly());
     }
 
-    private boolean isEmergencySmsPossible() {
-        return isLteService() || isLimitedLteService();
+    private boolean allowEmergencySms() {
+        return isLteService() || isLimitedLteService() || isNrFullService();
     }
 
     public boolean isEmergencySmsSupport(String destAddr) {
@@ -360,13 +370,13 @@ public class ImsSmsDispatcher extends SMSDispatcher {
             }
             eSmsCarrierSupport = b.getBoolean(
                     CarrierConfigManager.KEY_SUPPORT_EMERGENCY_SMS_OVER_IMS_BOOL);
-            boolean lteOrLimitedLte = isEmergencySmsPossible();
+            boolean lteOrLimitedLteOrNr = allowEmergencySms();
             logi("isEmergencySmsSupport emergencySmsCarrierSupport: "
                     + eSmsCarrierSupport + " destAddr: " + Rlog.pii(TAG, destAddr)
-                    + " mIsImsServiceUp: " + mIsImsServiceUp + " lteOrLimitedLte: "
-                    + lteOrLimitedLte);
+                    + " mIsImsServiceUp: " + mIsImsServiceUp + " lteOrLimitedLteOrNr: "
+                    + lteOrLimitedLteOrNr);
 
-            return eSmsCarrierSupport && mIsImsServiceUp && lteOrLimitedLte;
+            return eSmsCarrierSupport && mIsImsServiceUp && lteOrLimitedLteOrNr;
         } finally {
             Binder.restoreCallingIdentity(identity);
         }

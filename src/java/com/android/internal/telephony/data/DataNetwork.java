@@ -89,6 +89,7 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
 import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
+import com.android.internal.telephony.TelephonyComponentFactory;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataRetryManager.DataHandoverRetryEntry;
 import com.android.internal.telephony.data.DataRetryManager.DataRetryEntry;
@@ -165,6 +166,9 @@ public class DataNetwork extends StateMachine {
 
     /** Event for detaching a network request. */
     private static final int EVENT_DETACH_NETWORK_REQUEST = 3;
+
+    /** Event when detect radio not available. */
+    private static final int  EVENT_RADIO_NOT_AVAILABLE = 4;
 
     /** Event for allocating PDU session id response. */
     private static final int EVENT_ALLOCATE_PDU_SESSION_ID_RESPONSE = 5;
@@ -979,7 +983,9 @@ public class DataNetwork extends StateMachine {
         final NetworkProvider provider = (null == factory) ? null : factory.getProvider();
 
         mNetworkScore = getNetworkScore();
-        return new TelephonyNetworkAgent(mPhone, getHandler().getLooper(), this,
+        return TelephonyComponentFactory.getInstance().inject(
+                TelephonyNetworkAgent.class.getName()).makeTelephonyNetworkAgent(
+                mPhone, getHandler().getLooper(), this,
                 new NetworkScore.Builder().setLegacyInt(mNetworkScore).build(),
                 configBuilder.build(), provider,
                 new TelephonyNetworkAgentCallback(getHandler()::post) {
@@ -1134,6 +1140,11 @@ public class DataNetwork extends StateMachine {
                 case EVENT_NOTIFY_HANDOVER_STARTED:
                     log("Ignore the handover to " + AccessNetworkConstants
                             .transportTypeToString(msg.arg1) + " request.");
+                    break;
+                case EVENT_RADIO_NOT_AVAILABLE:
+                    mFailCause = DataFailCause.RADIO_NOT_AVAILABLE;
+                    loge(eventToString(msg.what) + ": transition to disconnected state");
+                    transitionTo(mDisconnectedState);
                     break;
                 default:
                     loge("Unhandled event " + eventToString(msg.what));
@@ -1598,6 +1609,11 @@ public class DataNetwork extends StateMachine {
     private void registerForWwanEvents() {
         registerForBandwidthUpdate();
         mKeepaliveTracker.registerForKeepaliveStatus();
+<<<<<<< HEAD
+=======
+        mRil.registerForPcoData(this.getHandler(), EVENT_PCO_DATA_RECEIVED, null);
+        mRil.registerForNotAvailable(this.getHandler(), EVENT_RADIO_NOT_AVAILABLE, null);
+>>>>>>> 655df6c777c016bacb548def0ef1b6a9fcd82579
     }
 
     /**
@@ -1606,6 +1622,11 @@ public class DataNetwork extends StateMachine {
     private void unregisterForWwanEvents() {
         unregisterForBandwidthUpdate();
         mKeepaliveTracker.unregisterForKeepaliveStatus();
+<<<<<<< HEAD
+=======
+        mRil.unregisterForPcoData(this.getHandler());
+        mRil.unregisterForNotAvailable(this.getHandler());
+>>>>>>> 655df6c777c016bacb548def0ef1b6a9fcd82579
     }
 
     @Override
@@ -1688,7 +1709,9 @@ public class DataNetwork extends StateMachine {
             int preferredDataPhoneId = PhoneSwitcher.getInstance().getPreferredDataPhoneId();
             if (preferredDataPhoneId != SubscriptionManager.INVALID_PHONE_INDEX
                     && preferredDataPhoneId != mPhone.getPhoneId()) {
-                tearDown(TEAR_DOWN_REASON_PREFERRED_DATA_SWITCHED);
+                // Let Connectivity release this immediately after linger time expires.
+                log("Unregistering TNA-" + mNetworkAgent.getId());
+                mNetworkAgent.unregister();
             }
         }
     }
@@ -2311,11 +2334,7 @@ public class DataNetwork extends StateMachine {
         mTrafficDescriptors.clear();
         mTrafficDescriptors.addAll(response.getTrafficDescriptors());
 
-        mQosBearerSessions.clear();
-        mQosBearerSessions.addAll(response.getQosBearerSessions());
-        if (mQosCallbackTracker != null) {
-            mQosCallbackTracker.updateSessions(mQosBearerSessions);
-        }
+        updateQosBearerSessions(response.getQosBearerSessions());
 
         if (!linkProperties.equals(mLinkProperties)) {
             // If the new link properties is not compatible (e.g. IP changes, interface changes),
@@ -2343,6 +2362,20 @@ public class DataNetwork extends StateMachine {
         }
 
         updateNetworkCapabilities();
+    }
+
+    /**
+     * Update QoS bearer sessions based on the latest list of {@link QosBearerSession}.
+     *
+     * @param qosBearerSessions The list of QoS bearer sessions from data service.
+     */
+    public void updateQosBearerSessions(@NonNull List<QosBearerSession> qosBearerSessions) {
+        log("updateQosBearerSessions: " + qosBearerSessions);
+        mQosBearerSessions.clear();
+        mQosBearerSessions.addAll(qosBearerSessions);
+        if (mQosCallbackTracker != null) {
+            mQosCallbackTracker.updateSessions(mQosBearerSessions);
+        }
     }
 
     /**
@@ -2581,7 +2614,10 @@ public class DataNetwork extends StateMachine {
                 validateDataCallResponse(response);
                 mDataCallResponse = response;
                 if (response.getLinkStatus() != DataCallResponse.LINK_STATUS_INACTIVE) {
-                    updateDataNetwork(response);
+                    DataCallResponse dataCallResponse = mDataServiceManagers.get(mTransport)
+                            .appendQosParamsToDataCallResponseIfNeeded(
+                            mCid.get(mTransport), mDataProfile, response);
+                    updateDataNetwork(dataCallResponse);
                 } else {
                     log("onDataStateChanged: PDN inactive reported by "
                             + AccessNetworkConstants.transportTypeToString(mTransport)
@@ -3116,13 +3152,7 @@ public class DataNetwork extends StateMachine {
             TelephonyNetworkRequest networkRequest = mAttachedNetworkRequestList.get(0);
             DataProfile dataProfile = mDataNetworkController.getDataProfileManager()
                     .getDataProfileForNetworkRequest(networkRequest, targetNetworkType);
-            // Some carriers have different profiles between cellular and IWLAN. We need to
-            // dynamically switch profile, but only when those profiles have same APN name.
-            if (dataProfile != null && dataProfile.getApnSetting() != null
-                    && mDataProfile.getApnSetting() != null
-                    && TextUtils.equals(dataProfile.getApnSetting().getApnName(),
-                    mDataProfile.getApnSetting().getApnName())
-                    && !dataProfile.equals(mDataProfile)) {
+            if (dataProfile != null) {
                 mHandoverDataProfile = dataProfile;
                 log("Used different data profile for handover. " + mDataProfile);
             }
@@ -3351,6 +3381,8 @@ public class DataNetwork extends StateMachine {
                 return "EVENT_ATTACH_NETWORK_REQUEST";
             case EVENT_DETACH_NETWORK_REQUEST:
                 return "EVENT_DETACH_NETWORK_REQUEST";
+            case EVENT_RADIO_NOT_AVAILABLE:
+                return "EVENT_RADIO_NOT_AVAILABLE";
             case EVENT_ALLOCATE_PDU_SESSION_ID_RESPONSE:
                 return "EVENT_ALLOCATE_PDU_SESSION_ID_RESPONSE";
             case EVENT_SETUP_DATA_NETWORK_RESPONSE:

@@ -204,6 +204,10 @@ public class NetworkRegistrationManager extends Handler {
                 // Remote exception means that the binder already died.
                 logd("RemoteException " + exception);
             }
+            // After service is connected, need to info network changed.
+            // In general, it is used to fix some corner cases, e.g. IWLAN can't be queried
+            // after phone restarted under APM-ON.
+            mRegStateChangeRegistrants.notifyRegistrants();
         }
 
         @Override

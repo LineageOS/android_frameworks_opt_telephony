@@ -86,6 +86,8 @@ public class TransportManager extends Handler {
     // preference back to the original transport to avoid another handover request.
     private static final long FALL_BACK_REEVALUATE_DELAY_MILLIS = TimeUnit.SECONDS.toMillis(3);
 
+    private static final String APN_TRANSPORT = "apn_transport-%d-%d";
+
     private final Phone mPhone;
 
     private final LocalLog mLocalLog = new LocalLog(64);

@@ -124,6 +124,10 @@ public class ImsRttTextHandler extends Handler {
                     return;
                 }
                 mRttTextStream = (Connection.RttTextStream) msg.obj;
+                if (mRttTextStream == null) {
+                    Rlog.e(LOG_TAG, "RTT text stream is null");
+                    return;
+                }
                 mReaderThread = new InCallReaderThread(mRttTextStream);
                 mReaderThread.start();
                 break;

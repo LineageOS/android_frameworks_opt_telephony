@@ -130,6 +130,13 @@ interface IIccPhoneBook {
     /**
      * Get the capacity of ADN records
      *
+     * @return AdnCapacity
+     */
+    AdnCapacity getAdnRecordsCapacity();
+
+    /**
+     * Get the capacity of ADN records
+     *
      * @param subId user preferred subId
      * @return AdnCapacity
      */
