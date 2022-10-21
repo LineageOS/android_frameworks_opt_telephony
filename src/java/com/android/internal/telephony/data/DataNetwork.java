@@ -1886,7 +1886,8 @@ public class DataNetwork extends StateMachine {
                         DataSpecificRegistrationInfo dsri = nri.getDataSpecificInfo();
                         // Check if the network is non-VoPS.
                         if (dsri != null && dsri.getVopsSupportInfo() != null
-                                && !dsri.getVopsSupportInfo().isVopsSupported()) {
+                                && !dsri.getVopsSupportInfo().isVopsSupported()
+                                && !mDataConfigManager.shouldKeepNetworkUpInNonVops()) {
                             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL);
                         }
                         log("updateNetworkCapabilities: dsri=" + dsri);
