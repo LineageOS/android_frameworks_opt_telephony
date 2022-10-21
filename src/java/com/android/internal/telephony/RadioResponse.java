@@ -1879,6 +1879,8 @@ public class RadioResponse extends IRadioResponse.Stub {
 
         if (rr != null) {
             IccCardStatus iccCardStatus = RILUtils.convertHalCardStatus(cardStatus);
+            IccSlotPortMapping slotPortMapping = new IccSlotPortMapping();
+            iccCardStatus.mSlotPortMapping = slotPortMapping;
             mRil.riljLog("responseIccCardStatus: from HIDL: " + iccCardStatus);
             if (responseInfo.error == RadioError.NONE) {
                 sendMessageResponse(rr.mResult, iccCardStatus);
