@@ -1310,7 +1310,7 @@ public class DataNetworkController extends Handler {
         if (nriRegState == NetworkRegistrationInfo.REGISTRATION_STATE_HOME
                 || nriRegState == NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING) return true;
 
-        // If data is OOS on the non-DDS,
+        // If data is OOS as this device slot is not modem preferred(i.e. not active for internet),
         // attempt to attach PS on 2G/3G if CS connection is available.
         return ss.getVoiceRegState() == ServiceState.STATE_IN_SERVICE
                 && mPhone.getPhoneId() != PhoneSwitcher.getInstance().getPreferredDataPhoneId()
@@ -1567,8 +1567,15 @@ public class DataNetworkController extends Handler {
         }
 
         // Check if there is any compatible data profile
+        int networkType = getDataNetworkType(transport);
+        if (networkType == TelephonyManager.NETWORK_TYPE_UNKNOWN
+                && transport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
+            // reach here when data is OOS but serviceStateAllowsPSAttach == true, so we adopt the
+            // voice RAT to select data profile
+            networkType = mServiceState.getVoiceNetworkType();
+        }
         DataProfile dataProfile = mDataProfileManager
-                .getDataProfileForNetworkRequest(networkRequest, getDataNetworkType(transport));
+                .getDataProfileForNetworkRequest(networkRequest, networkType);
         if (dataProfile == null) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.NO_SUITABLE_DATA_PROFILE);
         } else if (reason == DataEvaluationReason.NEW_REQUEST
