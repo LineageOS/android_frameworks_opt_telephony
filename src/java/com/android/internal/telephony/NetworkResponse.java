@@ -473,22 +473,6 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
         RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
     }
 
-    /**
-     * @param responseInfo Response info struct containing response type, serial no. and error
-     * @param regResponse Current registration response as defined by RegStateResult
-     */
-    public void getRegistrationStateResponse(RadioResponseInfo responseInfo,
-            android.hardware.radio.network.RegStateResult regResponse) {
-        RILRequest rr = mRil.processResponse(RIL.NETWORK_SERVICE, responseInfo);
-
-        if (rr != null) {
-            if (responseInfo.error == RadioError.NONE) {
-                RadioResponse.sendMessageResponse(rr.mResult, regResponse);
-            }
-            mRil.processResponseDone(rr, responseInfo, regResponse);
-        }
-    }
-
     @Override
     public String getInterfaceHash() {
         return IRadioNetworkResponse.HASH;
