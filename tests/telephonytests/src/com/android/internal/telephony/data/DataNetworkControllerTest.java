@@ -2074,8 +2074,25 @@ public class DataNetworkControllerTest extends TelephonyTest {
         assertThat(dataNetwork.getTransport()).isEqualTo(
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
 
+        // Set target transport OOS
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_UNKNOWN,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, /* data */
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, /* voice */
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING, /* iwlan */
+                null);
         setSuccessfulSetupDataResponse(mMockedWlanDataServiceManager, 1);
 
+        processAllFutureMessages();
+        // Verify that data network is still on cellular
+        assertThat(dataNetwork.getTransport()).isEqualTo(
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+
+        // Set target transport back to service
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_UNKNOWN,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, /* data */
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, /* voice */
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, /* iwlan */
+                null);
         processAllFutureMessages();
 
         dataNetwork = getDataNetworks().get(0);

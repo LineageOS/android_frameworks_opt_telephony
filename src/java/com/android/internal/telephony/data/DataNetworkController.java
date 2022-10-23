@@ -1858,11 +1858,6 @@ public class DataNetworkController extends Handler {
             return dataEvaluation;
         }
 
-        if (mDataRetryManager.isAnyHandoverRetryScheduled(dataNetwork)) {
-            dataEvaluation.addDataDisallowedReason(DataDisallowedReason.RETRY_SCHEDULED);
-            return dataEvaluation;
-        }
-
         // If enhanced handover check is enabled, perform extra checks.
         if (mDataConfigManager.isEnhancedIwlanHandoverCheckEnabled()) {
             int targetTransport = DataUtils.getTargetTransport(dataNetwork.getTransport());
@@ -2687,7 +2682,7 @@ public class DataNetworkController extends Handler {
         logl("onDataNetworkHandoverRetry: Start handover " + dataNetwork + " to "
                 + AccessNetworkConstants.transportTypeToString(preferredTransport)
                 + ", " + dataHandoverRetryEntry);
-        dataNetwork.startHandover(preferredTransport, dataHandoverRetryEntry);
+        tryHandoverDataNetwork(dataNetwork, preferredTransport, dataHandoverRetryEntry);
     }
 
     /**
@@ -2964,30 +2959,50 @@ public class DataNetworkController extends Handler {
                     continue;
                 }
 
-                DataEvaluation dataEvaluation = evaluateDataNetworkHandover(dataNetwork);
-                log("onEvaluatePreferredTransport: " + dataEvaluation + ", " + dataNetwork);
-                if (!dataEvaluation.containsDisallowedReasons()) {
-                    logl("Start handover " + dataNetwork + " to "
-                            + AccessNetworkConstants.transportTypeToString(preferredTransport));
-                    dataNetwork.startHandover(preferredTransport, null);
-                } else if (dataEvaluation.containsAny(DataDisallowedReason.NOT_ALLOWED_BY_POLICY,
-                        DataDisallowedReason.NOT_IN_SERVICE,
-                        DataDisallowedReason.VOPS_NOT_SUPPORTED)) {
-                    logl("onEvaluatePreferredTransport: Handover not allowed. Tear "
-                            + "down " + dataNetwork + " so a new network can be setup on "
-                            + AccessNetworkConstants.transportTypeToString(preferredTransport)
-                            + ".");
-                    tearDownGracefully(dataNetwork,
-                            DataNetwork.TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED);
-                } else if (dataEvaluation.containsAny(DataDisallowedReason.ILLEGAL_STATE,
-                        DataDisallowedReason.RETRY_SCHEDULED)) {
-                    logl("onEvaluatePreferredTransport: Handover not allowed. " + dataNetwork
-                            + " will remain on " + AccessNetworkConstants.transportTypeToString(
-                                    dataNetwork.getTransport()));
-                } else {
-                    loge("onEvaluatePreferredTransport: Unexpected handover evaluation result.");
-                }
+                tryHandoverDataNetwork(dataNetwork, preferredTransport, null/*handoverRetryEntry*/);
             }
+        }
+    }
+
+    /**
+     * Perform data network handover if condition allows, otherwise tear down the network to allow
+     * new network setup on the target transport.
+     *
+     * @param dataNetwork The network on which the handover occurs
+     * @param targetTransport The target transport of the handover
+     * @param dataHandoverRetryEntry {@code null} if the handover attempt is not due to scheduled
+     *                                           retry
+     */
+    private void tryHandoverDataNetwork(@NonNull DataNetwork dataNetwork,
+            @TransportType int targetTransport,
+            @Nullable DataHandoverRetryEntry dataHandoverRetryEntry) {
+        if (dataHandoverRetryEntry == null // This handover is a new request
+                && mDataRetryManager.isAnyHandoverRetryScheduled(dataNetwork)) {
+            log("tryHandoverDataNetwork: retry scheduled for" + dataNetwork
+                    + ", ignore this attempt");
+            return;
+        }
+        DataEvaluation dataEvaluation = evaluateDataNetworkHandover(dataNetwork);
+        log("tryHandoverDataNetwork: " + dataEvaluation + ", " + dataNetwork);
+        if (!dataEvaluation.containsDisallowedReasons()) {
+            logl("Start handover " + dataNetwork + " to "
+                    + AccessNetworkConstants.transportTypeToString(targetTransport));
+            dataNetwork.startHandover(targetTransport, dataHandoverRetryEntry);
+        } else if (dataEvaluation.containsAny(DataDisallowedReason.NOT_ALLOWED_BY_POLICY,
+                DataDisallowedReason.NOT_IN_SERVICE,
+                DataDisallowedReason.VOPS_NOT_SUPPORTED)) {
+            logl("tryHandoverDataNetwork: Handover not allowed. Tear down"
+                    + dataNetwork + " so a new network can be setup on "
+                    + AccessNetworkConstants.transportTypeToString(targetTransport));
+            tearDownGracefully(dataNetwork,
+                    DataNetwork.TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED);
+        } else if (dataEvaluation.containsAny(DataDisallowedReason.ILLEGAL_STATE,
+                DataDisallowedReason.RETRY_SCHEDULED)) {
+            logl("tryHandoverDataNetwork: Handover not allowed. " + dataNetwork
+                    + " will remain on " + AccessNetworkConstants.transportTypeToString(
+                    dataNetwork.getTransport()));
+        } else {
+            loge("tryHandoverDataNetwork: Unexpected handover evaluation result.");
         }
     }
 
