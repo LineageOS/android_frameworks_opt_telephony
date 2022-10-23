@@ -32,6 +32,10 @@ import java.util.Map;
 
 public class ImsRegistrationCompatAdapter extends ImsRegistrationImplBase {
 
+    public ImsRegistrationCompatAdapter() {
+        super(Runnable::run);
+    }
+
     // Maps "RAT" based radio technologies to ImsRegistrationImplBase definitions.
     private static final Map<Integer, Integer> RADIO_TECH_MAPPER = new ArrayMap<>(2);
     static {
