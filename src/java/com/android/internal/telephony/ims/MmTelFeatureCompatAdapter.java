@@ -287,6 +287,7 @@ public class MmTelFeatureCompatAdapter extends MmTelFeature {
 
     public MmTelFeatureCompatAdapter(Context context, int slotId,
             MmTelInterfaceAdapter compatFeature) {
+        super(Runnable::run);
         initialize(context, slotId);
         mCompatFeature = compatFeature;
     }
