@@ -123,6 +123,21 @@ public class PhoneConfigurationManager {
         }
     }
 
+    // If virtual DSDA is enabled for this UE, then updates maxActiveVoiceSubscriptions to 2.
+    private PhoneCapability maybeUpdateMaxActiveVoiceSubscriptions(
+            final PhoneCapability staticCapability) {
+        boolean enableVirtualDsda = mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_enable_virtual_dsda);
+
+        if (staticCapability.getLogicalModemList().size() > 1 && enableVirtualDsda) {
+            return new PhoneCapability.Builder(staticCapability)
+                    .setMaxActiveVoiceSubscriptions(2)
+                    .build();
+        } else {
+            return staticCapability;
+        }
+    }
+
     /**
      * Static method to get instance.
      */
@@ -181,6 +196,8 @@ public class PhoneConfigurationManager {
                     ar = (AsyncResult) msg.obj;
                     if (ar != null && ar.exception == null) {
                         mStaticCapability = (PhoneCapability) ar.result;
+                        mStaticCapability =
+                                maybeUpdateMaxActiveVoiceSubscriptions(mStaticCapability);
                         notifyCapabilityChanged();
                     } else {
                         log(msg.what + " failure. Not getting phone capability." + ar.exception);
