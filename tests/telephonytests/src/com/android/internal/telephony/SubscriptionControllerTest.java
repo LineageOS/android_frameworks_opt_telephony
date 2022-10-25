@@ -2111,7 +2111,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     }
 
     @Test
-    public void setUserHandle_withoutPermission() {
+    public void setSubscriptionUserHandle_withoutPermission() {
         testInsertSim();
         /* Get SUB ID */
         int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
@@ -2120,48 +2120,49 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
 
         assertThrows(SecurityException.class,
-                () -> mSubscriptionControllerUT.setUserHandle(UserHandle.of(UserHandle.USER_SYSTEM),
-                        subId, mCallingPackage));
+                () -> mSubscriptionControllerUT.setSubscriptionUserHandle(
+                        UserHandle.of(UserHandle.USER_SYSTEM), subId));
     }
 
     @Test
-    public void setGetUserHandle_userHandleNull() {
+    public void setGetSubscriptionUserHandle_userHandleNull() {
         testInsertSim();
         /* Get SUB ID */
         int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
         assertTrue(subIds != null && subIds.length != 0);
         final int subId = subIds[0];
 
-        mSubscriptionControllerUT.setUserHandle(null, subId, mCallingPackage);
+        mSubscriptionControllerUT.setSubscriptionUserHandle(null, subId);
 
-        assertThat(mSubscriptionControllerUT.getUserHandle(subId, mCallingPackage))
+        assertThat(mSubscriptionControllerUT.getSubscriptionUserHandle(subId))
                 .isEqualTo(null);
     }
 
     @Test
-    public void setUserHandle_invalidSubId() {
+    public void setSubscriptionUserHandle_invalidSubId() {
         assertThrows(IllegalArgumentException.class,
-                () -> mSubscriptionControllerUT.setUserHandle(UserHandle.of(UserHandle.USER_SYSTEM),
-                        SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, mCallingPackage));
+                () -> mSubscriptionControllerUT.setSubscriptionUserHandle(
+                        UserHandle.of(UserHandle.USER_SYSTEM),
+                        SubscriptionManager.DEFAULT_SUBSCRIPTION_ID));
     }
 
     @Test
-    public void setGetUserHandle_withValidUserHandleAndSubId() {
+    public void setGetSubscriptionUserHandle_withValidUserHandleAndSubId() {
         testInsertSim();
         /* Get SUB ID */
         int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
         assertTrue(subIds != null && subIds.length != 0);
         final int subId = subIds[0];
 
-        mSubscriptionControllerUT.setUserHandle(UserHandle.of(UserHandle.USER_SYSTEM), subId,
-                mCallingPackage);
+        mSubscriptionControllerUT.setSubscriptionUserHandle(
+                UserHandle.of(UserHandle.USER_SYSTEM), subId);
 
-        assertThat(mSubscriptionControllerUT.getUserHandle(subId, mCallingPackage))
+        assertThat(mSubscriptionControllerUT.getSubscriptionUserHandle(subId))
                 .isEqualTo(UserHandle.of(UserHandle.USER_SYSTEM));
     }
 
     @Test
-    public void getUserHandle_withoutPermission() {
+    public void getSubscriptionUserHandle_withoutPermission() {
         testInsertSim();
         /* Get SUB ID */
         int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
@@ -2170,13 +2171,13 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
 
         assertThrows(SecurityException.class,
-                () -> mSubscriptionControllerUT.getUserHandle(subId, mCallingPackage));
+                () -> mSubscriptionControllerUT.getSubscriptionUserHandle(subId));
     }
 
     @Test
-    public void getUserHandle_invalidSubId() {
+    public void getSubscriptionUserHandle_invalidSubId() {
         assertThrows(IllegalArgumentException.class,
-                () -> mSubscriptionControllerUT.getUserHandle(
-                        SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, mCallingPackage));
+                () -> mSubscriptionControllerUT.getSubscriptionUserHandle(
+                        SubscriptionManager.DEFAULT_SUBSCRIPTION_ID));
     }
 }
