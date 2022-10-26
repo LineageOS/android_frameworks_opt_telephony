@@ -16,6 +16,23 @@
       "message": "Someone who knows more should review, but makes phone startup with IMS on wahoo (I cannot test IMS itself).",
       "revId": "76a787ed5e8bbd5885d4981dc876b1276baf5328",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1d30684a_b4ed8d87",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2022-10-26T18:40:27Z",
+      "side": 1,
+      "message": "Doesn\u0027t help with anything on bonito AFAICT.\n\nIMS outgoing was working before this.\n\nincoming was broken and still is\n\n342314: Conditionally revert \"Block Binder thread until incoming call process completes\" | https://review.lineageos.org/c/LineageOS/android_frameworks_opt_telephony/+/342314 works, however.",
+      "revId": "76a787ed5e8bbd5885d4981dc876b1276baf5328",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
