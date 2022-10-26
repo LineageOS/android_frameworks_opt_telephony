@@ -33,6 +33,23 @@
       "message": "Doesn\u0027t help with anything on bonito AFAICT.\n\nIMS outgoing was working before this.\n\nincoming was broken and still is\n\n342314: Conditionally revert \"Block Binder thread until incoming call process completes\" | https://review.lineageos.org/c/LineageOS/android_frameworks_opt_telephony/+/342314 works, however.",
       "revId": "76a787ed5e8bbd5885d4981dc876b1276baf5328",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "013248cf_3a4c95b7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3917
+      },
+      "writtenOn": "2022-10-26T18:52:18Z",
+      "side": 1,
+      "message": "This fixes a series of NPE on walleye when registering callbacks.",
+      "revId": "76a787ed5e8bbd5885d4981dc876b1276baf5328",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
