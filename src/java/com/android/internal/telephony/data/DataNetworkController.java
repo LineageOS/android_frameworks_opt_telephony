@@ -2389,9 +2389,12 @@ public class DataNetworkController extends Handler {
                 + dataSetupRetryEntry + ", allowed reason=" + allowedReason + ", service state="
                 + mServiceState);
         for (DataNetwork dataNetwork : mDataNetworkList) {
-            if (dataNetwork.getDataProfile().equals(dataProfile)) {
+            DataProfile currentDataProfile = dataNetwork.getDataProfile();
+            if (dataProfile.equals(currentDataProfile)
+                    || mDataProfileManager.areDataProfilesSharingApn(
+                            dataProfile, currentDataProfile)) {
                 log("onSetupDataNetwork: Found existing data network " + dataNetwork
-                        + " has the same data profile.");
+                        + " using the same or a similar data profile.");
                 if (dataSetupRetryEntry != null) {
                     dataSetupRetryEntry.setState(DataRetryEntry.RETRY_STATE_CANCELLED);
                 }
