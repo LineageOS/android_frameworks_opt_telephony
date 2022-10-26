@@ -33,6 +33,24 @@
       "message": "This should be conditional with a legacy ril property",
       "revId": "c498639a36c207496f273c89c02e53a1e07626e2",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e9a9363d_31b619e3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 13648
+      },
+      "writtenOn": "2022-10-26T08:49:11Z",
+      "side": 1,
+      "message": "Done.",
+      "parentUuid": "15ae66e4_934e132c",
+      "revId": "c498639a36c207496f273c89c02e53a1e07626e2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
