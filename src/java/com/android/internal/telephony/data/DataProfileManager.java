@@ -518,7 +518,7 @@ public class DataProfileManager extends Handler {
                     setPreferredDataProfile(preferredDataProfile);
                 } else {
                     preferredDataProfile = mAllDataProfiles.stream()
-                            .filter(dp -> areDataProfileSharingApn(dp, mLastInternetDataProfile))
+                            .filter(dp -> areDataProfilesSharingApn(dp, mLastInternetDataProfile))
                             .findFirst()
                             .orElse(null);
                     if (preferredDataProfile != null) {
@@ -751,7 +751,7 @@ public class DataProfileManager extends Handler {
      * @return {@code true} if the data profile is essentially the preferred data profile.
      */
     public boolean isDataProfilePreferred(@NonNull DataProfile dataProfile) {
-        return areDataProfileSharingApn(dataProfile, mPreferredDataProfile);
+        return areDataProfilesSharingApn(dataProfile, mPreferredDataProfile);
     }
 
     /**
@@ -989,14 +989,14 @@ public class DataProfileManager extends Handler {
                         && (dp.getApnSetting().getApnSetId()
                         == Telephony.Carriers.MATCH_ALL_APN_SET_ID
                         || dp.getApnSetting().getApnSetId() == mPreferredDataProfileSetId))
-                .anyMatch(dp -> areDataProfileSharingApn(dataProfile, dp));
+                .anyMatch(dp -> areDataProfilesSharingApn(dataProfile, dp));
     }
 
     /**
      * @return {@code true} if both data profiles' APN setting are non-null and essentially the same
      * (non-essential elements include e.g.APN Id).
      */
-    private boolean areDataProfileSharingApn(@Nullable DataProfile a, @Nullable DataProfile b) {
+    public boolean areDataProfilesSharingApn(@Nullable DataProfile a, @Nullable DataProfile b) {
         return a != null
                 && b != null
                 && a.getApnSetting() != null
