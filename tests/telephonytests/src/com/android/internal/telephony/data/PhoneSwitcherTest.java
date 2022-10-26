@@ -46,7 +46,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
@@ -122,7 +121,6 @@ public class PhoneSwitcherTest extends TelephonyTest {
     private ISetOpportunisticDataCallback mSetOpptDataCallback2;
     PhoneSwitcher.ImsRegTechProvider mMockImsRegTechProvider;
     private SubscriptionInfo mSubscriptionInfo;
-    private NotificationManager mNotificationManager;
 
     private PhoneSwitcher mPhoneSwitcherUT;
     private SubscriptionManager.OnSubscriptionsChangedListener mSubChangedListener;
@@ -158,7 +156,6 @@ public class PhoneSwitcherTest extends TelephonyTest {
         mSetOpptDataCallback2 = mock(ISetOpportunisticDataCallback.class);
         mMockImsRegTechProvider = mock(PhoneSwitcher.ImsRegTechProvider.class);
         mSubscriptionInfo = mock(SubscriptionInfo.class);
-        mNotificationManager = mock(NotificationManager.class);
 
         PhoneCapability phoneCapability = new PhoneCapability(1, 1, null, false, new int[0]);
         doReturn(phoneCapability).when(mPhoneConfigurationManager).getCurrentPhoneCapability();
@@ -587,7 +584,6 @@ public class PhoneSwitcherTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testAutoDataSwitchSetNotification() throws Exception {
-        clearInvocations(mNotificationManager);
         SubscriptionInfo mockedInfo = mock(SubscriptionInfo.class);
         doReturn(false).when(mockedInfo).isOpportunistic();
         doReturn(mockedInfo).when(mSubscriptionController).getSubscriptionInfo(anyInt());
@@ -599,23 +595,23 @@ public class PhoneSwitcherTest extends TelephonyTest {
         setDefaultDataSubId(1);
 
         testAutoSwitchToSecondarySucceed();
+        clearInvocations(mSubscriptionController);
         Message.obtain(mPhoneSwitcherUT, EVENT_MODEM_COMMAND_DONE, new AsyncResult(1, null,  null))
                 .sendToTarget();
         processAllMessages();
-        verify(mNotificationManager).notify(eq(null), eq(AUTO_DATA_SWITCH_NOTIFICATION), any());
+        verify(mSubscriptionController).getSubscriptionInfo(2);
 
         // switch back to primary
+        clearInvocations(mSubscriptionController);
         Message.obtain(mPhoneSwitcherUT, EVENT_MODEM_COMMAND_DONE, new AsyncResult(0, null,  null))
                 .sendToTarget();
         processAllMessages();
-        verify(mNotificationManager).cancel(eq(null), eq(AUTO_DATA_SWITCH_NOTIFICATION));
+        verify(mSubscriptionController, never()).getSubscriptionInfo(1);
 
-        clearInvocations(mNotificationManager);
         Message.obtain(mPhoneSwitcherUT, EVENT_MODEM_COMMAND_DONE, new AsyncResult(1, null,  null))
                 .sendToTarget();
         processAllMessages();
-        verify(mNotificationManager, never())
-                .notify(eq(null), eq(AUTO_DATA_SWITCH_NOTIFICATION), any());
+        verify(mSubscriptionController, never()).getSubscriptionInfo(2);
     }
 
     /**
@@ -1879,8 +1875,6 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
         mPhoneSwitcherUT = new PhoneSwitcher(mMaxDataAttachModemCount, mContext, Looper.myLooper());
         processAllMessages();
-        replaceInstance(PhoneSwitcher.class, "mNotificationManager",
-                mPhoneSwitcherUT, mNotificationManager);
 
         Field field = PhoneSwitcher.class.getDeclaredField("mDataSettingsManagerCallbacks");
         field.setAccessible(true);

@@ -2154,7 +2154,7 @@ public class DataNetworkController extends Handler {
      * @return The data network if found.
      */
     @Nullable
-    DataNetwork getDataNetworkByInterface(@NonNull String interfaceName) {
+    public DataNetwork getDataNetworkByInterface(@NonNull String interfaceName) {
         return mDataNetworkList.stream()
                 .filter(dataNetwork -> !dataNetwork.isDisconnecting())
                 .filter(dataNetwork -> interfaceName.equals(
