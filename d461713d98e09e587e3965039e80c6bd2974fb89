@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2f7f6966_4a60eecc",
+        "filename": "src/java/com/android/internal/telephony/imsphone/ImsPhoneCallTracker.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 326,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2022-10-26T18:39:43Z",
+      "side": 1,
+      "message": "I was lazy and tested by setting this to false, but it works on bonito, fixes incoming calls.",
+      "revId": "d461713d98e09e587e3965039e80c6bd2974fb89",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
