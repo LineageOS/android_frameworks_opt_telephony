@@ -2873,6 +2873,16 @@ public class DataNetworkController extends Handler {
         } else if (handoverFailureMode == DataCallResponse
                 .HANDOVER_FAILURE_MODE_NO_FALLBACK_RETRY_SETUP_NORMAL || handoverFailureMode
                 == DataCallResponse.HANDOVER_FAILURE_MODE_LEGACY) {
+            int preferredTransport = mAccessNetworksManager
+                    .getPreferredTransportByNetworkCapability(
+                            dataNetwork.getApnTypeNetworkCapability());
+            if (dataNetwork.getTransport() == preferredTransport) {
+                log("onDataNetworkHandoverFailed: Already on preferred transport "
+                        + AccessNetworkConstants.transportTypeToString(preferredTransport)
+                        + ". No further actions needed.");
+                return;
+            }
+
             int targetTransport = DataUtils.getTargetTransport(dataNetwork.getTransport());
             mDataRetryManager.evaluateDataSetupRetry(dataNetwork.getDataProfile(), targetTransport,
                     dataNetwork.getAttachedNetworkRequestList(), cause, retryDelayMillis);
