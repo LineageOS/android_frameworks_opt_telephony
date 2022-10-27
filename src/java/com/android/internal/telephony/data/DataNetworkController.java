@@ -1716,7 +1716,8 @@ public class DataNetworkController extends Handler {
                     if (nri != null) {
                         DataSpecificRegistrationInfo dsri = nri.getDataSpecificInfo();
                         if (dsri != null && dsri.getVopsSupportInfo() != null
-                                && !dsri.getVopsSupportInfo().isVopsSupported()) {
+                                && !dsri.getVopsSupportInfo().isVopsSupported()
+                                && !mDataConfigManager.shouldKeepNetworkUpInNonVops()) {
                             evaluation.addDataDisallowedReason(
                                     DataDisallowedReason.VOPS_NOT_SUPPORTED);
                         }
@@ -1882,7 +1883,8 @@ public class DataNetworkController extends Handler {
                     DataSpecificRegistrationInfo dsri = nri.getDataSpecificInfo();
                     // Check if the network is non-VoPS.
                     if (dsri != null && dsri.getVopsSupportInfo() != null
-                            && !dsri.getVopsSupportInfo().isVopsSupported()) {
+                            && !dsri.getVopsSupportInfo().isVopsSupported()
+                            && !mDataConfigManager.shouldKeepNetworkUpInNonVops()) {
                         dataEvaluation.addDataDisallowedReason(
                                 DataDisallowedReason.VOPS_NOT_SUPPORTED);
                     }
@@ -2368,9 +2370,12 @@ public class DataNetworkController extends Handler {
                 + dataSetupRetryEntry + ", allowed reason=" + allowedReason + ", service state="
                 + mServiceState);
         for (DataNetwork dataNetwork : mDataNetworkList) {
-            if (dataNetwork.getDataProfile().equals(dataProfile)) {
+            DataProfile currentDataProfile = dataNetwork.getDataProfile();
+            if (dataProfile.equals(currentDataProfile)
+                    || mDataProfileManager.areDataProfilesSharingApn(
+                            dataProfile, currentDataProfile)) {
                 log("onSetupDataNetwork: Found existing data network " + dataNetwork
-                        + " has the same data profile.");
+                        + " using the same or a similar data profile.");
                 if (dataSetupRetryEntry != null) {
                     dataSetupRetryEntry.setState(DataRetryEntry.RETRY_STATE_CANCELLED);
                 }
