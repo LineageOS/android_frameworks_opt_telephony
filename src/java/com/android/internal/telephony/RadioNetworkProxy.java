@@ -889,12 +889,16 @@ public class RadioNetworkProxy extends RadioServiceProxy {
      * Cancels ongoing Emergency network scan
      *
      * @param serial Serial number of the request.
+     * @param resetScan Indicates how the next {@link #triggerEmergencyNetworkScan} should work.
+     *        If {@code true}, then the modem shall start the new scan from the beginning,
+     *        otherwise the modem shall resume from the last search.
+     *
      * @throws RemoteException
      */
-    public void cancelEmergencyNetworkScan(int serial) throws RemoteException {
+    public void cancelEmergencyNetworkScan(int serial, boolean resetScan) throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mNetworkProxy.cancelEmergencyNetworkScan(serial);
+            mNetworkProxy.cancelEmergencyNetworkScan(serial, resetScan);
         }
         // Only supported on AIDL.
     }
