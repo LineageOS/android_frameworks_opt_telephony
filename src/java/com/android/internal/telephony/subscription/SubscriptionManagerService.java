@@ -559,15 +559,13 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @param userHandle the userHandle associated with the subscription
      * Pass {@code null} user handle to clear the association
      * @param subId the unique SubscriptionInfo index in database
-     * @param callingPackage the package making the IPC
      * @return the number of records updated.
      *
      * @throws SecurityException if doesn't have required permission.
      * @throws IllegalArgumentException if subId is invalid.
      */
     @Override
-    public int setUserHandle(@Nullable UserHandle userHandle, int subId,
-            @NonNull String callingPackage) {
+    public int setSubscriptionUserHandle(@Nullable UserHandle userHandle, int subId) {
         return 0;
     }
 
@@ -575,7 +573,6 @@ public class SubscriptionManagerService extends ISub.Stub {
      * Get UserHandle of this subscription.
      *
      * @param subId the unique SubscriptionInfo index in database
-     * @param callingPackage the package making the IPC
      * @return userHandle associated with this subscription
      * or {@code null} if subscription is not associated with any user.
      *
@@ -583,7 +580,7 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @throws IllegalArgumentException if subId is invalid.
      */
     @Override
-    public UserHandle getUserHandle(int subId, @NonNull String callingPackage) {
+    public UserHandle getSubscriptionUserHandle(int subId) {
         return null;
     }
 
