@@ -1483,7 +1483,9 @@ public class SubscriptionController extends ISub.Stub {
                             // Set the default sub if not set or if single sim device
                             if (!isSubscriptionForRemoteSim(subscriptionType)) {
                                 if (!SubscriptionManager.isValidSubscriptionId(defaultSubId)
-                                        || subIdCountMax == 1) {
+                                        || subIdCountMax == 1
+                                        || mDefaultFallbackSubId.get() ==
+                                        SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
                                     logdl("setting default fallback subid to " + subId);
                                     setDefaultFallbackSubId(subId, subscriptionType);
                                 }
@@ -1702,7 +1704,26 @@ public class SubscriptionController extends ISub.Stub {
         // Refresh the Cache of Active Subscription Info List
         refreshCachedActiveSubscriptionInfoList();
 
+        boolean isFallBackRefreshRequired = false;
+        if (mDefaultFallbackSubId.get() > SubscriptionManager.INVALID_SUBSCRIPTION_ID &&
+                mSlotIndexToSubIds.getCopy(slotIndex) != null &&
+                mSlotIndexToSubIds.getCopy(slotIndex).contains(mDefaultFallbackSubId.get())) {
+            isFallBackRefreshRequired = true;
+        }
         mSlotIndexToSubIds.remove(slotIndex);
+        // set mDefaultFallbackSubId to invalid in case mSlotIndexToSubIds do not have any entries
+        if (mSlotIndexToSubIds.size() ==0 ) {
+            mDefaultFallbackSubId.set(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        } else if (isFallBackRefreshRequired) {
+            // set mDefaultFallbackSubId to valid subId from mSlotIndexToSubIds
+            for (int index = 0; index < getActiveSubIdArrayList().size(); index ++) {
+                int subId = getActiveSubIdArrayList().get(index);
+                if (subId > SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                    mDefaultFallbackSubId.set(subId);
+                    break;
+                }
+            }
+        }
     }
 
     /**
