@@ -4811,16 +4811,14 @@ public class SubscriptionController extends ISub.Stub {
      * @param userHandle the userHandle associated with the subscription
      * Pass {@code null} user handle to clear the association
      * @param subId the unique SubscriptionInfo index in database
-     * @param callingPackage the package making the IPC
      * @return the number of records updated.
      *
      * @throws SecurityException if doesn't have required permission.
      * @throws IllegalArgumentException if subId is invalid.
      */
     @Override
-    public int setUserHandle(@Nullable UserHandle userHandle, int subId,
-            @NonNull String callingPackage) {
-        enforceManageSubscriptionUserAssociation("setUserHandle");
+    public int setSubscriptionUserHandle(@Nullable UserHandle userHandle, int subId) {
+        enforceManageSubscriptionUserAssociation("setSubscriptionUserHandle");
 
         if (userHandle == null) {
             userHandle = UserHandle.of(UserHandle.USER_NULL);
@@ -4834,7 +4832,8 @@ public class SubscriptionController extends ISub.Stub {
             if (ret != 0) {
                 notifySubscriptionInfoChanged();
             } else {
-                throw new IllegalArgumentException("[setUserHandle]: Invalid subId: " + subId);
+                throw new IllegalArgumentException("[setSubscriptionUserHandle]: Invalid subId: "
+                        + subId);
             }
             return ret;
         } finally {
@@ -4846,7 +4845,6 @@ public class SubscriptionController extends ISub.Stub {
      * Get UserHandle of this subscription.
      *
      * @param subId the unique SubscriptionInfo index in database
-     * @param callingPackage the package making the IPC
      * @return userHandle associated with this subscription
      * or {@code null} if subscription is not associated with any user.
      *
@@ -4854,14 +4852,15 @@ public class SubscriptionController extends ISub.Stub {
      * @throws IllegalArgumentException if subId is invalid.
      */
     @Override
-    public UserHandle getUserHandle(int subId, @NonNull String callingPackage) {
-        enforceManageSubscriptionUserAssociation("getUserHandle");
+    public UserHandle getSubscriptionUserHandle(int subId) {
+        enforceManageSubscriptionUserAssociation("getSubscriptionUserHandle");
 
         long token = Binder.clearCallingIdentity();
         try {
             String userHandleStr = getSubscriptionProperty(subId, SubscriptionManager.USER_HANDLE);
             if (userHandleStr == null) {
-                throw new IllegalArgumentException("[getUserHandle]: Invalid subId: " + subId);
+                throw new IllegalArgumentException("[getSubscriptionUserHandle]: Invalid subId: "
+                        + subId);
             }
             UserHandle userHandle = UserHandle.of(Integer.parseInt(userHandleStr));
             if (userHandle.getIdentifier() == UserHandle.USER_NULL) {
