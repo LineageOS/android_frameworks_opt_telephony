@@ -172,7 +172,7 @@ public class ImsEnablementTracker {
         @VisibleForTesting
         public int mSubId;
 
-        ImsEnablementTrackerStateMachine(String name, Looper looper) {
+        ImsEnablementTrackerStateMachine(String name, Looper looper, int state) {
             super(name, looper);
             mDefault = new Default();
             mEnabled = new Enabled();
@@ -189,7 +189,8 @@ public class ImsEnablementTracker {
             addState(mEnabling);
             addState(mResetting);
             addState(mDisconnected);
-            setInitialState(mDisconnected);
+
+            setInitialState(getState(state));
         }
 
         public void clearAllMessage() {
@@ -213,23 +214,6 @@ public class ImsEnablementTracker {
         }
 
         @VisibleForTesting
-        public void setState(int state) {
-            if (state == mDefault.mStateNo) {
-                mEnablementStateMachine.transitionTo(mDefault);
-            } else if (state == mEnabled.mStateNo) {
-                mEnablementStateMachine.transitionTo(mEnabled);
-            } else if (state == mDisabling.mStateNo) {
-                mEnablementStateMachine.transitionTo(mDisabling);
-            } else if (state == mDisabled.mStateNo) {
-                mEnablementStateMachine.transitionTo(mDisabled);
-            } else if (state == mEnabling.mStateNo) {
-                mEnablementStateMachine.transitionTo(mEnabling);
-            } else if (state == mResetting.mStateNo) {
-                mEnablementStateMachine.transitionTo(mResetting);
-            }
-        }
-
-        @VisibleForTesting
         public boolean isState(int state) {
             if (state == mDefault.mStateNo) {
                 return (mEnablementStateMachine.getCurrentState() == mDefault) ? true : false;
@@ -247,6 +231,24 @@ public class ImsEnablementTracker {
             return false;
         }
 
+        private State getState(int state) {
+            switch (state) {
+                case ImsEnablementTracker.STATE_IMS_DEFAULT:
+                    return mDefault;
+                case ImsEnablementTracker.STATE_IMS_ENABLED:
+                    return mEnabled;
+                case ImsEnablementTracker.STATE_IMS_DISABLING:
+                    return mDisabling;
+                case ImsEnablementTracker.STATE_IMS_DISABLED:
+                    return mDisabled;
+                case ImsEnablementTracker.STATE_IMS_ENABLING:
+                    return mEnabling;
+                case ImsEnablementTracker.STATE_IMS_RESETTING:
+                    return mResetting;
+                default:
+                    return mDisconnected;
+            }
+        }
 
         class Default extends State {
             public int mStateNo = STATE_IMS_DEFAULT;
@@ -520,15 +522,25 @@ public class ImsEnablementTracker {
     public ImsEnablementTracker(Looper looper) {
         mIImsServiceController = null;
         mEnablementStateMachine = new ImsEnablementTrackerStateMachine("ImsEnablementTracker",
-                looper);
+                looper, ImsEnablementTracker.STATE_IMS_DISCONNECTED);
         mEnablementStateMachine.start();
     }
 
     @VisibleForTesting
-    public ImsEnablementTracker(Looper looper, IImsServiceController controller) {
+    public ImsEnablementTracker(Looper looper, IImsServiceController controller, int state) {
         mIImsServiceController = controller;
         mEnablementStateMachine = new ImsEnablementTrackerStateMachine("ImsEnablementTracker",
-                looper);
+                looper, state);
+    }
+
+    /**
+     * This API is for testing purposes only and is used to start a state machine.
+     */
+    @VisibleForTesting
+    public void startStateMachineAsConnected() {
+        if (mEnablementStateMachine == null) {
+            return;
+        }
         mEnablementStateMachine.start();
         mEnablementStateMachine.sendMessage(COMMAND_CONNECTED_MSG);
     }
@@ -536,15 +548,6 @@ public class ImsEnablementTracker {
     @VisibleForTesting
     public Handler getHandler() {
         return mEnablementStateMachine.getHandler();
-    }
-
-    /**
-     * Set the current state as an input state.
-     * @param state input state.
-     */
-    @VisibleForTesting
-    public void setState(int state) {
-        mEnablementStateMachine.setState(state);
     }
 
     /**
