@@ -47,6 +47,7 @@ import com.android.telephony.Rlog;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -723,6 +724,7 @@ public class SIMRecordsTest extends TelephonyTest {
     }
 
     @Test
+    @Ignore("b/256282468")
     public void testSetVoiceMailNumber() throws InterruptedException {
 
         String voiceMailNumber = "1234567890";
@@ -776,6 +778,7 @@ public class SIMRecordsTest extends TelephonyTest {
     }
 
     @Test
+    @Ignore("b/256282468")
     public void testSetVoiceMailNumberBigAlphatag() throws InterruptedException {
 
         String voiceMailNumber = "1234567890";
@@ -830,6 +833,7 @@ public class SIMRecordsTest extends TelephonyTest {
     }
 
     @Test
+    @Ignore("b/256282468")
     public void testSetVoiceMailNumberUtf16Alphatag() throws InterruptedException {
 
         String voiceMailNumber = "1234567890";
@@ -883,8 +887,8 @@ public class SIMRecordsTest extends TelephonyTest {
         assertEquals(null, mSIMRecordsUT.getVoiceMailAlphaTag());
     }
 
-
     @Test
+    @Ignore("b/256282468")
     public void testSetVoiceMailNullNumber() throws InterruptedException {
 
         String voiceMailNumber = null;

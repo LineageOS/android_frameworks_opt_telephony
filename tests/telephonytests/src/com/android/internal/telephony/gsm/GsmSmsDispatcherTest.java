@@ -376,6 +376,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    @Ignore("b/256282780")
     public void testSendSmsByCarrierApp() throws Exception {
         mockCarrierApp();
         mockCarrierAppStubResults(CarrierMessagingService.SEND_STATUS_OK,
@@ -450,6 +451,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    @Ignore("b/256282780")
     public void testSendMultipartSmsByCarrierApp() throws Exception {
         mockCarrierApp();
         mockCarrierAppStubResults(CarrierMessagingService.SEND_STATUS_OK,
