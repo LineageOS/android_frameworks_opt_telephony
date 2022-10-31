@@ -2622,6 +2622,11 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public void triggerEpsFallback(int reason, Message response) {
+        mDefaultPhone.triggerEpsFallback(reason, response);
+    }
+
+    @Override
     public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
         IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         pw.println("ImsPhone extends:");
