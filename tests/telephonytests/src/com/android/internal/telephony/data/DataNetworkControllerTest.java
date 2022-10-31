@@ -24,6 +24,7 @@ import static com.google.common.truth.Truth.assertWithMessage;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -1952,7 +1953,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
         updateTransport(NetworkCapabilities.NET_CAPABILITY_IMS,
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
 
-
         // Before setup data call response, change the preference back to IWLAN.
         updateTransport(NetworkCapabilities.NET_CAPABILITY_IMS,
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
@@ -1971,6 +1971,46 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verify(mMockedWlanDataServiceManager, times(1)).setupDataCall(anyInt(),
                 any(DataProfile.class), anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(),
                 any(), any(), anyBoolean(), messageCaptor.capture());
+    }
+
+    @Test
+    public void testHandoverDataNetworkBackToBackPreferenceChangedHandoverFail() throws Exception {
+        testSetupImsDataNetwork();
+        DataNetwork dataNetwork = getDataNetworks().get(0);
+
+        Mockito.reset(mMockedWlanDataServiceManager);
+        updateTransport(NetworkCapabilities.NET_CAPABILITY_IMS,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+
+        // Capture the message for setup data call response. We want to delay it.
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mMockedWlanDataServiceManager).setupDataCall(anyInt(), any(DataProfile.class),
+                anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(), any(), any(), anyBoolean(),
+                messageCaptor.capture());
+
+        // Before setup data call response, change the preference back to cellular.
+        updateTransport(NetworkCapabilities.NET_CAPABILITY_IMS,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+
+        // Finally handover is completed.
+        Message msg = messageCaptor.getValue();
+        DataCallResponse response = new DataCallResponse.Builder()
+                .setCause(DataFailCause.ERROR_UNSPECIFIED)
+                .setRetryDurationMillis(123)
+                .setHandoverFailureMode(
+                        DataCallResponse.HANDOVER_FAILURE_MODE_NO_FALLBACK_RETRY_SETUP_NORMAL)
+                .build();
+        msg.getData().putParcelable("data_call_response", response);
+        msg.arg1 = DataServiceCallback.RESULT_ERROR_UNSUPPORTED;
+        msg.sendToTarget();
+        processAllMessages();
+
+        // Make sure handover request is only sent once.
+        verify(mMockedWlanDataServiceManager, times(1)).setupDataCall(anyInt(),
+                any(DataProfile.class), anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(),
+                any(), any(), anyBoolean(), messageCaptor.capture());
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS);
+        assertSame(dataNetwork, getDataNetworks().get(0));
     }
 
     @Test
