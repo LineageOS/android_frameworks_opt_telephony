@@ -33,6 +33,7 @@ import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.os.UserManager;
 import android.provider.Telephony.Sms;
@@ -331,6 +332,14 @@ public class SmsDispatchersController extends Handler {
 
     public SmsDispatchersController(Phone phone, SmsStorageMonitor storageMonitor,
             SmsUsageMonitor usageMonitor) {
+        this(phone, storageMonitor, usageMonitor, phone.getLooper());
+    }
+
+    @VisibleForTesting
+    public SmsDispatchersController(Phone phone, SmsStorageMonitor storageMonitor,
+            SmsUsageMonitor usageMonitor, Looper looper) {
+        super(looper);
+
         Rlog.d(TAG, "SmsDispatchersController created");
 
         mContext = phone.getContext();
@@ -343,9 +352,9 @@ public class SmsDispatchersController extends Handler {
         mImsSmsDispatcher = new ImsSmsDispatcher(phone, this, ImsManager::getConnector);
         mCdmaDispatcher = new CdmaSMSDispatcher(phone, this);
         mGsmInboundSmsHandler = GsmInboundSmsHandler.makeInboundSmsHandler(phone.getContext(),
-                storageMonitor, phone);
+                storageMonitor, phone, looper);
         mCdmaInboundSmsHandler = CdmaInboundSmsHandler.makeInboundSmsHandler(phone.getContext(),
-                storageMonitor, phone, (CdmaSMSDispatcher) mCdmaDispatcher);
+                storageMonitor, phone, (CdmaSMSDispatcher) mCdmaDispatcher, looper);
         mGsmDispatcher = new GsmSMSDispatcher(phone, this, mGsmInboundSmsHandler);
         SmsBroadcastUndelivered.initialize(phone.getContext(),
                 mGsmInboundSmsHandler, mCdmaInboundSmsHandler);
