@@ -34,6 +34,7 @@ public class MockModem {
     private static final String BIND_IRADIODATA = "android.telephony.mockmodem.iradiodata";
     private static final String BIND_IRADIONETWORK = "android.telephony.mockmodem.iradionetwork";
     private static final String BIND_IRADIOVOICE = "android.telephony.mockmodem.iradiovoice";
+    private static final String BIND_IRADIOIMS = "android.telephony.mockmodem.iradioims";
     private static final String BIND_IRADIOCONFIG = "android.telephony.mockmodem.iradioconfig";
     private static final String PHONE_ID = "phone_id";
 
@@ -54,6 +55,7 @@ public class MockModem {
     private IBinder mDataBinder;
     private IBinder mNetworkBinder;
     private IBinder mVoiceBinder;
+    private IBinder mImsBinder;
     private IBinder mConfigBinder;
     private ServiceConnection mModemServiceConnection;
     private ServiceConnection mSimServiceConnection;
@@ -61,6 +63,7 @@ public class MockModem {
     private ServiceConnection mDataServiceConnection;
     private ServiceConnection mNetworkServiceConnection;
     private ServiceConnection mVoiceServiceConnection;
+    private ServiceConnection mImsServiceConnection;
     private ServiceConnection mConfigServiceConnection;
 
     private byte mPhoneId;
@@ -102,6 +105,8 @@ public class MockModem {
                 mNetworkBinder = binder;
             } else if (mService == RIL.VOICE_SERVICE) {
                 mVoiceBinder = binder;
+            } else if (mService == RIL.IMS_SERVICE) {
+                mImsBinder = binder;
             } else if (mService == RADIOCONFIG_SERVICE) {
                 mConfigBinder = binder;
             }
@@ -123,6 +128,8 @@ public class MockModem {
                 mNetworkBinder = null;
             } else if (mService == RIL.VOICE_SERVICE) {
                 mVoiceBinder = null;
+            } else if (mService == RIL.IMS_SERVICE) {
+                mImsBinder = null;
             } else if (mService == RADIOCONFIG_SERVICE) {
                 mConfigBinder = null;
             }
@@ -162,6 +169,8 @@ public class MockModem {
                 return mNetworkBinder;
             case RIL.VOICE_SERVICE:
                 return mVoiceBinder;
+            case RIL.IMS_SERVICE:
+                return mImsBinder;
             case RADIOCONFIG_SERVICE:
                 return mConfigBinder;
             default:
@@ -275,6 +284,20 @@ public class MockModem {
             } else {
                 Rlog.d(mTag, "IRadio Voice is bound");
             }
+        } else if (service == RIL.IMS_SERVICE) {
+            if (mImsBinder == null) {
+                mImsServiceConnection = new MockModemConnection(RIL.IMS_SERVICE);
+
+                boolean status =
+                        bindModuleToMockModemService(
+                                mPhoneId, BIND_IRADIOIMS, mImsServiceConnection);
+                if (!status) {
+                    Rlog.d(TAG, "IRadio Ims bind fail");
+                    mImsServiceConnection = null;
+                }
+            } else {
+                Rlog.d(TAG, "IRadio Ims is bound");
+            }
         }
     }
 
@@ -330,6 +353,13 @@ public class MockModem {
                 mVoiceBinder = null;
                 Rlog.d(mTag, "unbind IRadio Voice");
             }
+        } else if (service == RIL.IMS_SERVICE) {
+            if (mImsServiceConnection != null) {
+                mContext.unbindService(mImsServiceConnection);
+                mImsServiceConnection = null;
+                mImsBinder = null;
+                Rlog.d(TAG, "unbind IRadio Ims");
+            }
         }
     }
 
@@ -351,6 +381,8 @@ public class MockModem {
                 return "network";
             case RIL.VOICE_SERVICE:
                 return "voice";
+            case RIL.IMS_SERVICE:
+                return "ims";
             case RADIOCONFIG_SERVICE:
                 return "config";
             default:

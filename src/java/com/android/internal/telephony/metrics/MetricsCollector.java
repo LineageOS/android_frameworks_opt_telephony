@@ -29,8 +29,8 @@ import static com.android.internal.telephony.TelephonyStatsLog.IMS_REGISTRATION_
 import static com.android.internal.telephony.TelephonyStatsLog.IMS_REGISTRATION_STATS;
 import static com.android.internal.telephony.TelephonyStatsLog.IMS_REGISTRATION_TERMINATION;
 import static com.android.internal.telephony.TelephonyStatsLog.INCOMING_SMS;
-import static com.android.internal.telephony.TelephonyStatsLog.OUTGOING_SMS;
 import static com.android.internal.telephony.TelephonyStatsLog.OUTGOING_SHORT_CODE_SMS;
+import static com.android.internal.telephony.TelephonyStatsLog.OUTGOING_SMS;
 import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS;
 import static com.android.internal.telephony.TelephonyStatsLog.PRESENCE_NOTIFY_EVENT;
 import static com.android.internal.telephony.TelephonyStatsLog.RCS_ACS_PROVISIONING_STATS;
@@ -69,8 +69,8 @@ import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationStat
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationTermination;
 import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.NetworkRequestsV2;
-import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingShortCodeSms;
+import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PresenceNotifyEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsAcsProvisioningStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsClientProvisioningStats;
@@ -829,7 +829,9 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 sms.messageId,
                 sms.retryId,
                 sms.intervalMillis,
-                sms.count);
+                sms.count,
+                sms.sendErrorCode,
+                sms.networkErrorCode);
     }
 
     private static StatsEvent buildStatsEvent(DataCallSession dataCallSession) {

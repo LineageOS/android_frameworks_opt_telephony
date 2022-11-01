@@ -208,8 +208,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
     static final int NETWORK_SERVICE = 4;
     static final int SIM_SERVICE = 5;
     static final int VOICE_SERVICE = 6;
+    static final int IMS_SERVICE = 7;
     static final int MIN_SERVICE_IDX = RADIO_SERVICE;
-    static final int MAX_SERVICE_IDX = VOICE_SERVICE;
+    static final int MAX_SERVICE_IDX = IMS_SERVICE;
 
     /**
      * An array of sets that records if services are disabled in the HAL for a specific phone ID
@@ -236,6 +237,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private volatile IRadio mRadioProxy = null;
     private DataResponse mDataResponse;
     private DataIndication mDataIndication;
+    private ImsResponse mImsResponse;
+    private ImsIndication mImsIndication;
     private MessagingResponse mMessagingResponse;
     private MessagingIndication mMessagingIndication;
     private ModemResponse mModemResponse;
@@ -707,8 +710,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     /**
      * Returns a {@link RadioDataProxy}, {@link RadioMessagingProxy}, {@link RadioModemProxy},
-     * {@link RadioNetworkProxy}, {@link RadioSimProxy}, {@link RadioVoiceProxy}, or an empty {@link RadioServiceProxy}
-     * if the service is not available.
+     * {@link RadioNetworkProxy}, {@link RadioSimProxy}, {@link RadioVoiceProxy},
+     * {@link RadioImsProxy}, or null if the service is not available.
      */
     @NonNull
     public <T extends RadioServiceProxy> T getRadioServiceProxy(Class<T> serviceClass,
@@ -730,6 +733,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
         if (serviceClass == RadioVoiceProxy.class) {
             return (T) getRadioServiceProxy(VOICE_SERVICE, result);
+        }
+        if (serviceClass == RadioImsProxy.class) {
+            return (T) getRadioServiceProxy(IMS_SERVICE, result);
         }
         riljLoge("getRadioServiceProxy: unrecognized " + serviceClass);
         return null;
@@ -759,7 +765,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
 
         try {
-            if (mDisabledRadioServices.get(service).contains(mPhoneId)) {
+            if (mMockModem == null && mDisabledRadioServices.get(service).contains(mPhoneId)) {
                 riljLoge("getRadioServiceProxy: " + serviceToString(service) + " for "
                         + HIDL_SERVICE_NAME[mPhoneId] + " is disabled");
             } else {
@@ -848,6 +854,20 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         if (binder != null) {
                             mRadioVersion = ((RadioVoiceProxy) serviceProxy).setAidl(mRadioVersion,
                                     android.hardware.radio.voice.IRadioVoice.Stub
+                                            .asInterface(binder));
+                        }
+                        break;
+                    case IMS_SERVICE:
+                        if (mMockModem == null) {
+                            binder = ServiceManager.waitForDeclaredService(
+                                    android.hardware.radio.ims.IRadioIms.DESCRIPTOR + "/"
+                                            + HIDL_SERVICE_NAME[mPhoneId]);
+                        } else {
+                            binder = mMockModem.getServiceBinder(IMS_SERVICE);
+                        }
+                        if (binder != null) {
+                            mRadioVersion = ((RadioImsProxy) serviceProxy).setAidl(mRadioVersion,
+                                    android.hardware.radio.ims.IRadioIms.Stub
                                             .asInterface(binder));
                         }
                         break;
@@ -962,6 +982,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
                                 ((RadioVoiceProxy) serviceProxy).getAidl().setResponseFunctions(
                                         mVoiceResponse, mVoiceIndication);
                                 break;
+                            case IMS_SERVICE:
+                                mDeathRecipients.get(service).linkToDeath(
+                                        ((RadioImsProxy) serviceProxy).getAidl().asBinder());
+                                ((RadioImsProxy) serviceProxy).getAidl().setResponseFunctions(
+                                        mImsResponse, mImsIndication);
+                                break;
                         }
                     } else {
                         if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
@@ -1062,6 +1088,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         mRadioIndication = new RadioIndication(this);
         mDataResponse = new DataResponse(this);
         mDataIndication = new DataIndication(this);
+        mImsResponse = new ImsResponse(this);
+        mImsIndication = new ImsIndication(this);
         mMessagingResponse = new MessagingResponse(this);
         mMessagingIndication = new MessagingIndication(this);
         mModemResponse = new ModemResponse(this);
@@ -1088,6 +1116,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             mServiceProxies.put(NETWORK_SERVICE, new RadioNetworkProxy());
             mServiceProxies.put(SIM_SERVICE, new RadioSimProxy());
             mServiceProxies.put(VOICE_SERVICE, new RadioVoiceProxy());
+            mServiceProxies.put(IMS_SERVICE, new RadioImsProxy());
         } else {
             mServiceProxies = proxies;
         }
@@ -5089,6 +5118,194 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    @Override
+    public void setSrvccCallInfo(SrvccConnection[] srvccConnections, Message result) {
+        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
+        if (imsProxy.isEmpty()) return;
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_SET_SRVCC_CALL_INFO, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                // Do not log function arg for privacy
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                imsProxy.setSrvccCallInfo(rr.mSerial,
+                        RILUtils.convertToHalSrvccCall(srvccConnections));
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(IMS_SERVICE, "setSrvccCallInfo", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "setSrvccCallInfo: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    @Override
+    public void updateImsRegistrationInfo(int state,
+            int accessNetworkType, int suggestedAction, int capabilities, Message result) {
+        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
+        if (imsProxy.isEmpty()) return;
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_UPDATE_IMS_REGISTRATION_INFO, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                // Do not log function arg for privacy
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            android.hardware.radio.ims.ImsRegistration registrationInfo =
+                    new android.hardware.radio.ims.ImsRegistration();
+            registrationInfo.regState = RILUtils.convertImsRegistrationState(state);
+            registrationInfo.accessNetworkType = accessNetworkType;
+            registrationInfo.suggestedAction = suggestedAction;
+            registrationInfo.capabilities = RILUtils.convertImsCapability(capabilities);
+
+            try {
+                imsProxy.updateImsRegistrationInfo(rr.mSerial, registrationInfo);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(IMS_SERVICE, "updateImsRegistrationInfo", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "updateImsRegistrationInfo: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    @Override
+    public void startImsTraffic(String token,
+            int trafficType, int accessNetworkType, Message result) {
+        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
+        if (imsProxy.isEmpty()) return;
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_START_IMS_TRAFFIC, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                imsProxy.startImsTraffic(rr.mSerial, token, trafficType, accessNetworkType);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(IMS_SERVICE, "startImsTraffic", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "startImsTraffic: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    @Override
+    public void stopImsTraffic(String token, Message result) {
+        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
+        if (imsProxy.isEmpty()) return;
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_STOP_IMS_TRAFFIC, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                imsProxy.stopImsTraffic(rr.mSerial, token);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(IMS_SERVICE, "stopImsTraffic", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "stopImsTraffic: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    @Override
+    public void triggerEpsFallback(int reason, Message result) {
+        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
+        if (imsProxy.isEmpty()) return;
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_TRIGGER_EPS_FALLBACK, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
+                        + " reason=" + reason);
+            }
+
+            try {
+                imsProxy.triggerEpsFallback(rr.mSerial, reason);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(IMS_SERVICE, "triggerEpsFallback", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "triggerEpsFallback: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    @Override
+    public void sendAnbrQuery(int mediaType, int direction, int bitsPerSecond,
+            Message result) {
+        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
+        if (imsProxy.isEmpty()) return;
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_SEND_ANBR_QUERY, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                imsProxy.sendAnbrQuery(rr.mSerial, mediaType, direction, bitsPerSecond);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(IMS_SERVICE, "sendAnbrQuery", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "sendAnbrQuery: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
     //***** Private Methods
     /**
      * This is a helper function to be called when an indication callback is called for any radio
@@ -5957,6 +6174,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "SIM";
             case VOICE_SERVICE:
                 return "VOICE";
+            case IMS_SERVICE:
+                return "IMS";
             default:
                 return "UNKNOWN:" + service;
         }

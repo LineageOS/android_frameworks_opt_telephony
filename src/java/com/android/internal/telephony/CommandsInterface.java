@@ -25,6 +25,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.WorkSource;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.ClientRequestStats;
@@ -123,6 +124,15 @@ public interface CommandsInterface {
     static final int CDMA_SMS_FAIL_CAUSE_RESOURCE_SHORTAGE          = 35;
     static final int CDMA_SMS_FAIL_CAUSE_OTHER_TERMINAL_PROBLEM     = 39;
     static final int CDMA_SMS_FAIL_CAUSE_ENCODING_PROBLEM           = 96;
+
+    /** IMS voice capability */
+    int IMS_MMTEL_CAPABILITY_VOICE = 1 << 0;
+    /** IMS video capability */
+    int IMS_MMTEL_CAPABILITY_VIDEO = 1 << 1;
+    /** IMS SMS capability */
+    int IMS_MMTEL_CAPABILITY_SMS = 1 << 2;
+    /** IMS RCS capabilities */
+    int IMS_RCS_CAPABILITIES = 1 << 3;
 
     //***** Methods
 
@@ -2747,6 +2757,54 @@ public interface CommandsInterface {
      public void unregisterForSimPhonebookRecordsReceived(Handler h);
 
     /**
+     * Registers for notifications when connection setup fails.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForConnectionSetupFailure(Handler h, int what, Object obj) {}
+
+    /**
+     * Unregisters for notifications when connection setup fails.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForConnectionSetupFailure(Handler h) {}
+
+    /**
+     * Registers for notifications when ANBR is received form the network.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForNotifyAnbr(Handler h, int what, Object obj) {}
+
+    /**
+     * Unregisters for notifications when ANBR is received form the network.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForNotifyAnbr(Handler h) {}
+
+    /**
+     * Registers for IMS deregistration trigger from modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForTriggerImsDeregistration(Handler h, int what, Object obj) {}
+
+    /**
+     * Unregisters for IMS deregistration trigger from modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForTriggerImsDeregistration(Handler h) {}
+
+    /**
      * Set the UE's usage setting.
      *
      * @param result Callback message containing the success or failure status.
@@ -2777,4 +2835,57 @@ public interface CommandsInterface {
      * @param h Handler to be removed from the registrant list.
      */
     default void unregisterForEmergencyNetworkScan(Handler h) {}
+
+    /**
+     * Provides a list of SRVCC call information to radio
+     *
+     * @param srvccConnections the list of connections.
+     */
+    default void setSrvccCallInfo(SrvccConnection[] srvccConnections, Message result) {}
+
+    /**
+     * Updates the IMS registration information to the radio.
+     *
+     * @param state The current IMS registration state.
+     * @param accessNetworkType The type of underlying radio access network used.
+     * @param suggestedAction The expected action that modem should perform.
+     * @param capabilities IMS capabilities such as VOICE, VIDEO and SMS.
+     */
+    default void updateImsRegistrationInfo(int state,
+            @AccessNetworkConstants.RadioAccessNetworkType int accessNetworkType,
+            int suggestedAction, int capabilities, Message result) {}
+
+    /**
+     * Notifies the NAS and RRC layers of the radio the type of upcoming IMS traffic.
+     *
+     * @param token A nonce to identify the request.
+     * @param trafficType IMS traffic type like registration, voice, video, SMS, emergency, and etc.
+     * @param accessNetworkType The type of underlying radio access network used.
+     */
+    default void startImsTraffic(String token, int trafficType,
+            @AccessNetworkConstants.RadioAccessNetworkType int accessNetworkType,
+            Message result) {}
+
+    /**
+     * Notifies IMS traffic has been stopped.
+     *
+     * @param token The token assigned by startImsTraffic.
+     */
+    default void stopImsTraffic(String token, Message result) {}
+
+    /**
+     * Triggers the UE initiated EPS fallback procedure.
+     *
+     * @param reason Specifies the reason for EPS fallback.
+     */
+    default void triggerEpsFallback(int reason, Message result) {}
+
+    /**
+     * Triggers radio to send ANBRQ message to the network.
+     *
+     * @param mediaType Media type is used to identify media stream such as audio or video.
+     * @param direction Direction of this packet stream (e.g. uplink or downlink).
+     * @param bitsPerSecond The bit rate requested by the opponent UE.
+     */
+    default void sendAnbrQuery(int mediaType, int direction, int bitsPerSecond, Message result) {}
 }
