@@ -194,6 +194,36 @@ public class DataNetworkControllerTest extends TelephonyTest {
             .setPreferred(false)
             .build();
 
+    // The same data profile but with different auto generated ID, should be considered the same as
+    // mGeneralPurposeDataProfile
+    private final DataProfile mDuplicatedGeneralPurposeDataProfile = new DataProfile.Builder()
+            .setApnSetting(new ApnSetting.Builder()
+                    .setId(3612)
+                    .setOperatorNumeric("12345")
+                    .setEntryName("internet_supl_mms_apn")
+                    .setApnName("internet_supl_mms_apn")
+                    .setUser("user")
+                    .setPassword("passwd")
+                    .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL
+                            | ApnSetting.TYPE_MMS)
+                    .setProtocol(ApnSetting.PROTOCOL_IPV6)
+                    .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
+                    .setCarrierEnabled(true)
+                    .setNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_LTE
+                            | TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN
+                            | TelephonyManager.NETWORK_TYPE_BITMASK_1xRTT))
+                    .setLingeringNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_LTE
+                            | TelephonyManager.NETWORK_TYPE_BITMASK_1xRTT
+                            | TelephonyManager.NETWORK_TYPE_BITMASK_UMTS
+                            | TelephonyManager.NETWORK_TYPE_BITMASK_NR))
+                    .setProfileId(1234)
+                    .setMaxConns(321)
+                    .setWaitTime(456)
+                    .setMaxConnsTime(789)
+                    .build())
+            .setPreferred(false)
+            .build();
+
     private final DataProfile mImsCellularDataProfile = new DataProfile.Builder()
             .setApnSetting(new ApnSetting.Builder()
                     .setId(2164)
@@ -792,6 +822,17 @@ public class DataNetworkControllerTest extends TelephonyTest {
         }).when(mDataProfileManager).isDataProfileCompatible(any(DataProfile.class));
 
         doAnswer(invocation -> {
+            DataProfile a = (DataProfile) invocation.getArguments()[0];
+            DataProfile b = (DataProfile) invocation.getArguments()[1];
+            return a != null
+                    && b != null
+                    && a.getApnSetting() != null
+                    && a.getApnSetting().equals(b.getApnSetting(),
+                    mPhone.getServiceState().getDataRoamingFromRegistration());
+        }).when(mDataProfileManager).areDataProfilesSharingApn(any(DataProfile.class),
+                any(DataProfile.class));
+
+        doAnswer(invocation -> {
             TelephonyNetworkRequest networkRequest =
                     (TelephonyNetworkRequest) invocation.getArguments()[0];
             int networkType = (int) invocation.getArguments()[1];
@@ -1040,6 +1081,75 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 InetAddresses.parseNumericAddress(IPV6_ADDRESS));
 
         verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkConnected(any());
+    }
+
+    @Test
+    public void testSetupDataNetworkWithSimilarDataProfile() throws Exception {
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        processAllMessages();
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        verifyConnectedNetworkHasDataProfile(mGeneralPurposeDataProfile);
+
+        List<DataNetwork> dataNetworkList = getDataNetworks();
+        assertThat(dataNetworkList).hasSize(1);
+        DataNetwork dataNetwork = dataNetworkList.get(0);
+        assertThat(dataNetworkList.get(0).getLinkProperties().getAddresses()).containsExactly(
+                InetAddresses.parseNumericAddress(IPV4_ADDRESS),
+                InetAddresses.parseNumericAddress(IPV6_ADDRESS));
+
+        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkConnected(any());
+
+        // database updated/reloaded, causing data profile id change
+        List<DataProfile> profiles = List.of(mDuplicatedGeneralPurposeDataProfile);
+        doAnswer(invocation -> {
+            DataProfile dp = (DataProfile) invocation.getArguments()[0];
+
+            if (dp.getApnSetting() == null) return true;
+
+            for (DataProfile dataProfile : profiles) {
+                if (dataProfile.getApnSetting() != null
+                        && dataProfile.getApnSetting().equals(dp.getApnSetting(), false)) {
+                    return true;
+                }
+            }
+            return null;
+        }).when(mDataProfileManager).isDataProfileCompatible(any(DataProfile.class));
+        doAnswer(invocation -> {
+            TelephonyNetworkRequest networkRequest =
+                    (TelephonyNetworkRequest) invocation.getArguments()[0];
+            int networkType = (int) invocation.getArguments()[1];
+
+            for (DataProfile dataProfile : profiles) {
+                if (dataProfile.canSatisfy(networkRequest.getCapabilities())
+                        && (dataProfile.getApnSetting().getNetworkTypeBitmask() == 0
+                        || (dataProfile.getApnSetting().getNetworkTypeBitmask()
+                        & ServiceState.getBitmaskForTech(networkType)) != 0)) {
+                    return dataProfile;
+                }
+            }
+            logd("Cannot find data profile to satisfy " + networkRequest + ", network type="
+                    + TelephonyManager.getNetworkTypeName(networkType));
+            return null;
+        }).when(mDataProfileManager).getDataProfileForNetworkRequest(
+                any(TelephonyNetworkRequest.class), anyInt());
+
+        // verify the network still connects
+        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkConnected(any());
+
+        // A NOT_VCN_MANAGED request cannot be satisfied by the existing network, but will adopt the
+        // same data profile
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET,
+                        NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED));
+
+        processAllMessages();
+
+        // verify the network still connects
+        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkConnected(any());
+        // verify we don't try to setup a separate network for the not_vcn_managed request
+        dataNetworkList = getDataNetworks();
+        assertThat(dataNetworkList).hasSize(1);
     }
 
     @Test
