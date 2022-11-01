@@ -2862,7 +2862,7 @@ public interface CommandsInterface {
      * @param trafficType IMS traffic type like registration, voice, video, SMS, emergency, and etc.
      * @param accessNetworkType The type of underlying radio access network used.
      */
-    default void startImsTraffic(String token, int trafficType,
+    default void startImsTraffic(int token, int trafficType,
             @AccessNetworkConstants.RadioAccessNetworkType int accessNetworkType,
             Message result) {}
 
@@ -2871,7 +2871,7 @@ public interface CommandsInterface {
      *
      * @param token The token assigned by startImsTraffic.
      */
-    default void stopImsTraffic(String token, Message result) {}
+    default void stopImsTraffic(int token, Message result) {}
 
     /**
      * Triggers the UE initiated EPS fallback procedure.

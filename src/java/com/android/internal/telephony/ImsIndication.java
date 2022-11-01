@@ -51,7 +51,7 @@ public class ImsIndication extends IRadioImsIndication.Stub {
      * @param token The token provided by {@link #startImsTraffic}.
      * @param failureInfo Connection failure information.
      */
-    public void onConnectionSetupFailure(int indicationType, String token,
+    public void onConnectionSetupFailure(int indicationType, int token,
             android.hardware.radio.ims.ConnectionFailureInfo failureInfo) {
         mRil.processIndication(RIL.IMS_SERVICE, indicationType);
 
