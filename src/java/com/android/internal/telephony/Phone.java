@@ -4886,6 +4886,16 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Triggers the UE initiated EPS fallback procedure.
+     *
+     * @param reason specifies the reason for EPS fallback.
+     * @param response is callback message.
+     */
+    public void triggerEpsFallback(int reason, Message response) {
+        mCi.triggerEpsFallback(reason, response);
+    }
+
+    /**
      * @return Telephony tester instance.
      */
     public @Nullable TelephonyTester getTelephonyTester() {

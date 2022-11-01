@@ -27,6 +27,9 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
+import android.app.compat.CompatChanges;
+import android.compat.annotation.ChangeId;
+import android.compat.annotation.EnabledSince;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
@@ -152,6 +155,17 @@ public abstract class SMSDispatcher extends Handler {
 
     /** Handle SIM loaded  */
     private static final int EVENT_SIM_LOADED = 18;
+
+    /**
+     * When this change is enabled, more specific values of SMS sending error code
+     * {@link SmsManager#Result} will be returned to the SMS Apps.
+     *
+     * Refer to {@link SMSDispatcher#rilErrorToSmsManagerResult} fore more details of the new values
+     * of SMS sending error code that will be returned.
+     */
+    @ChangeId
+    @EnabledSince(targetSdkVersion = Build.VERSION_CODES.TIRAMISU)
+    static final long ADD_MORE_SMS_SENDING_ERROR_CODES = 250017070L;
 
     @UnsupportedAppUsage
     protected Phone mPhone;
@@ -1049,6 +1063,27 @@ public abstract class SMSDispatcher extends Handler {
             SmsTracker tracker) {
         mSmsOutgoingErrorCodes.log("rilError: " + rilError
                 + ", MessageId: " + SmsController.formatCrossStackMessageId(tracker.mMessageId));
+
+        ApplicationInfo appInfo = tracker.getAppInfo();
+        if (appInfo == null
+                || !CompatChanges.isChangeEnabled(ADD_MORE_SMS_SENDING_ERROR_CODES, appInfo.uid)) {
+            if (rilError == CommandException.Error.INVALID_RESPONSE
+                    || rilError == CommandException.Error.SIM_PIN2
+                    || rilError == CommandException.Error.SIM_PUK2
+                    || rilError == CommandException.Error.SUBSCRIPTION_NOT_AVAILABLE
+                    || rilError == CommandException.Error.SIM_ERR
+                    || rilError == CommandException.Error.INVALID_SIM_STATE
+                    || rilError == CommandException.Error.NO_SMS_TO_ACK
+                    || rilError == CommandException.Error.SIM_BUSY
+                    || rilError == CommandException.Error.SIM_FULL
+                    || rilError == CommandException.Error.NO_SUBSCRIPTION
+                    || rilError == CommandException.Error.NO_NETWORK_FOUND
+                    || rilError == CommandException.Error.DEVICE_IN_USE
+                    || rilError == CommandException.Error.ABORTED) {
+                return SmsManager.RESULT_ERROR_GENERIC_FAILURE;
+            }
+        }
+
         switch (rilError) {
             case RADIO_NOT_AVAILABLE:
                 return SmsManager.RESULT_RIL_RADIO_NOT_AVAILABLE;
@@ -1098,6 +1133,34 @@ public abstract class SMSDispatcher extends Handler {
                 return SmsManager.RESULT_RIL_ACCESS_BARRED;
             case BLOCKED_DUE_TO_CALL:
                 return SmsManager.RESULT_RIL_BLOCKED_DUE_TO_CALL;
+            case INVALID_SMSC_ADDRESS:
+                return SmsManager.RESULT_INVALID_SMSC_ADDRESS;
+            case INVALID_RESPONSE:
+                return SmsManager.RESULT_RIL_INVALID_RESPONSE;
+            case SIM_PIN2:
+                return SmsManager.RESULT_RIL_SIM_PIN2;
+            case SIM_PUK2:
+                return SmsManager.RESULT_RIL_SIM_PUK2;
+            case SUBSCRIPTION_NOT_AVAILABLE:
+                return SmsManager.RESULT_RIL_SUBSCRIPTION_NOT_AVAILABLE;
+            case SIM_ERR:
+                return SmsManager.RESULT_RIL_SIM_ERROR;
+            case INVALID_SIM_STATE:
+                return SmsManager.RESULT_RIL_INVALID_SIM_STATE;
+            case NO_SMS_TO_ACK:
+                return SmsManager.RESULT_RIL_NO_SMS_TO_ACK;
+            case SIM_BUSY:
+                return SmsManager.RESULT_RIL_SIM_BUSY;
+            case SIM_FULL:
+                return SmsManager.RESULT_RIL_SIM_FULL;
+            case NO_SUBSCRIPTION:
+                return SmsManager.RESULT_RIL_NO_SUBSCRIPTION;
+            case NO_NETWORK_FOUND:
+                return SmsManager.RESULT_RIL_NO_NETWORK_FOUND;
+            case DEVICE_IN_USE:
+                return SmsManager.RESULT_RIL_DEVICE_IN_USE;
+            case ABORTED:
+                return SmsManager.RESULT_RIL_ABORTED;
             default:
                 Rlog.d(TAG, "rilErrorToSmsManagerResult: " + rilError + " "
                         + SmsController.formatCrossStackMessageId(tracker.mMessageId));
@@ -2212,6 +2275,14 @@ public abstract class SMSDispatcher extends Handler {
          */
         public String getAppPackageName() {
             return mAppInfo != null ? mAppInfo.packageName : null;
+        }
+
+        /**
+         * Get the calling Application Info
+         * @return Application Info
+         */
+        public ApplicationInfo getAppInfo() {
+            return mAppInfo == null ? null : mAppInfo.applicationInfo;
         }
 
         /** Return if the SMS was originated from the default SMS application. */

@@ -115,6 +115,9 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mSimPhonebookChangedRegistrants = new RegistrantList();
     protected RegistrantList mSimPhonebookRecordsReceivedRegistrants = new RegistrantList();
     protected RegistrantList mEmergencyNetworkScanRegistrants = new RegistrantList();
+    protected RegistrantList mConnectionSetupFailureRegistrants = new RegistrantList();
+    protected RegistrantList mNotifyAnbrRegistrants = new RegistrantList();
+    protected RegistrantList mTriggerImsDeregistrationRegistrants = new RegistrantList();
 
     @UnsupportedAppUsage
     protected Registrant mGsmSmsRegistrant;
@@ -1154,5 +1157,35 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void unregisterForEmergencyNetworkScan(Handler h) {
         mEmergencyNetworkScanRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForConnectionSetupFailure(Handler h, int what, Object obj) {
+        mConnectionSetupFailureRegistrants.addUnique(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForConnectionSetupFailure(Handler h) {
+        mConnectionSetupFailureRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForNotifyAnbr(Handler h, int what, Object obj) {
+        mNotifyAnbrRegistrants.addUnique(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForNotifyAnbr(Handler h) {
+        mNotifyAnbrRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForTriggerImsDeregistration(Handler h, int what, Object obj) {
+        mTriggerImsDeregistrationRegistrants.add(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForTriggerImsDeregistration(Handler h) {
+        mTriggerImsDeregistrationRegistrants.remove(h);
     }
 }
