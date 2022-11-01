@@ -518,7 +518,7 @@ public class DataProfileManager extends Handler {
                     setPreferredDataProfile(preferredDataProfile);
                 } else {
                     preferredDataProfile = mAllDataProfiles.stream()
-                            .filter(dp -> areDataProfileSharingApn(dp, mLastInternetDataProfile))
+                            .filter(dp -> areDataProfilesSharingApn(dp, mLastInternetDataProfile))
                             .findFirst()
                             .orElse(null);
                     if (preferredDataProfile != null) {
@@ -621,14 +621,18 @@ public class DataProfileManager extends Handler {
      *
      * @param networkRequest The network request.
      * @param networkType The current data network type.
+     * @param ignorePermanentFailure {@code true} to ignore {@link ApnSetting#getPermanentFailed()}.
+     * This should be set to true for condition-based retry/setup.
      * @return The data profile. {@code null} if can't find any satisfiable data profile.
      */
     public @Nullable DataProfile getDataProfileForNetworkRequest(
-            @NonNull TelephonyNetworkRequest networkRequest, @NetworkType int networkType) {
+            @NonNull TelephonyNetworkRequest networkRequest, @NetworkType int networkType,
+            boolean ignorePermanentFailure) {
         ApnSetting apnSetting = null;
         if (networkRequest.hasAttribute(TelephonyNetworkRequest
                 .CAPABILITY_ATTRIBUTE_APN_SETTING)) {
-            apnSetting = getApnSettingForNetworkRequest(networkRequest, networkType);
+            apnSetting = getApnSettingForNetworkRequest(networkRequest, networkType,
+                    ignorePermanentFailure);
         }
 
         TrafficDescriptor.Builder trafficDescriptorBuilder = new TrafficDescriptor.Builder();
@@ -687,10 +691,13 @@ public class DataProfileManager extends Handler {
      *
      * @param networkRequest The network request.
      * @param networkType The current data network type.
+     * @param ignorePermanentFailure {@code true} to ignore {@link ApnSetting#getPermanentFailed()}.
+     * This should be set to true for condition-based retry/setup.
      * @return The APN setting. {@code null} if can't find any satisfiable data profile.
      */
     private @Nullable ApnSetting getApnSettingForNetworkRequest(
-            @NonNull TelephonyNetworkRequest networkRequest, @NetworkType int networkType) {
+            @NonNull TelephonyNetworkRequest networkRequest, @NetworkType int networkType,
+            boolean ignorePermanentFailure) {
         if (!networkRequest.hasAttribute(
                 TelephonyNetworkRequest.CAPABILITY_ATTRIBUTE_APN_SETTING)) {
             loge("Network request does not have APN setting attribute.");
@@ -733,10 +740,20 @@ public class DataProfileManager extends Handler {
                         && (dp.getApnSetting().getApnSetId()
                         == Telephony.Carriers.MATCH_ALL_APN_SET_ID
                         || dp.getApnSetting().getApnSetId() == mPreferredDataProfileSetId))
+                .filter(dp -> ignorePermanentFailure || !dp.getApnSetting().getPermanentFailed())
                 .collect(Collectors.toList());
         if (dataProfiles.size() == 0) {
             log("Can't find any data profile has APN set id matched. mPreferredDataProfileSetId="
                     + mPreferredDataProfileSetId);
+            return null;
+        }
+
+        // Check if data profiles are permanently failed.
+        dataProfiles = dataProfiles.stream()
+                .filter(dp -> ignorePermanentFailure || !dp.getApnSetting().getPermanentFailed())
+                .collect(Collectors.toList());
+        if (dataProfiles.size() == 0) {
+            log("The suitable data profiles are all in permanent failed state.");
             return null;
         }
 
@@ -751,7 +768,7 @@ public class DataProfileManager extends Handler {
      * @return {@code true} if the data profile is essentially the preferred data profile.
      */
     public boolean isDataProfilePreferred(@NonNull DataProfile dataProfile) {
-        return areDataProfileSharingApn(dataProfile, mPreferredDataProfile);
+        return areDataProfilesSharingApn(dataProfile, mPreferredDataProfile);
     }
 
     /**
@@ -772,7 +789,7 @@ public class DataProfileManager extends Handler {
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_DUN)
                         .build(), mPhone);
-        return getDataProfileForNetworkRequest(networkRequest, networkType) != null;
+        return getDataProfileForNetworkRequest(networkRequest, networkType, true) != null;
     }
 
      /**
@@ -989,14 +1006,14 @@ public class DataProfileManager extends Handler {
                         && (dp.getApnSetting().getApnSetId()
                         == Telephony.Carriers.MATCH_ALL_APN_SET_ID
                         || dp.getApnSetting().getApnSetId() == mPreferredDataProfileSetId))
-                .anyMatch(dp -> areDataProfileSharingApn(dataProfile, dp));
+                .anyMatch(dp -> areDataProfilesSharingApn(dataProfile, dp));
     }
 
     /**
      * @return {@code true} if both data profiles' APN setting are non-null and essentially the same
      * (non-essential elements include e.g.APN Id).
      */
-    private boolean areDataProfileSharingApn(@Nullable DataProfile a, @Nullable DataProfile b) {
+    public boolean areDataProfilesSharingApn(@Nullable DataProfile a, @Nullable DataProfile b) {
         return a != null
                 && b != null
                 && a.getApnSetting() != null
@@ -1094,6 +1111,12 @@ public class DataProfileManager extends Handler {
         pw.println("Initial attach data profile=" + mInitialAttachDataProfile);
         pw.println("isTetheringDataProfileExisting=" + isTetheringDataProfileExisting(
                 TelephonyManager.NETWORK_TYPE_LTE));
+        pw.println("Permanent failed profiles=");
+        pw.increaseIndent();
+        mAllDataProfiles.stream()
+                .filter(dp -> dp.getApnSetting() != null && dp.getApnSetting().getPermanentFailed())
+                .forEach(pw::println);
+        pw.decreaseIndent();
 
         pw.println("Local logs:");
         pw.increaseIndent();
