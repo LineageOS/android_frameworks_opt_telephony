@@ -5188,8 +5188,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void startImsTraffic(String token,
-            int trafficType, int accessNetworkType, Message result) {
+    public void startImsTraffic(int token, int trafficType, int accessNetworkType, Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
         if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
@@ -5218,7 +5217,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void stopImsTraffic(String token, Message result) {
+    public void stopImsTraffic(int token, Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
         if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
