@@ -59,8 +59,8 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
 
     private static class TestableImsEnablementTracker extends ImsEnablementTracker {
         private long mLastImsOperationTimeMs = 0L;
-        TestableImsEnablementTracker(Looper looper, IImsServiceController controller) {
-            super(looper, controller);
+        TestableImsEnablementTracker(Looper looper, IImsServiceController controller, int state) {
+            super(looper, controller, state);
         }
 
         @Override
@@ -93,10 +93,11 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testEnableCommandInDefaultState() throws RemoteException {
         // Verify that when the enable command is received in the Default state and enableIms
         // is called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_DEFAULT);
+        mImsEnablementTracker.startStateMachineAsConnected();
         mHandler = mImsEnablementTracker.getHandler();
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_DEFAULT);
-        // Wait for a while for the state machine to be ready.
+         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
         mImsEnablementTracker.enableIms(SLOT_1, SUB_1);
@@ -110,9 +111,10 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testDisableCommandInDefaultState() throws RemoteException {
         // Verify that when the disable command is received in the Default state and disableIms
         // is called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_DEFAULT);
+        mImsEnablementTracker.startStateMachineAsConnected();
         mHandler = mImsEnablementTracker.getHandler();
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_DEFAULT);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
@@ -126,9 +128,10 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     @Test
     public void testResetCommandInDefaultState() throws RemoteException {
         // Verify that when reset command is received in the Default state, it should be ignored.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_DEFAULT);
+        mImsEnablementTracker.startStateMachineAsConnected();
         mHandler = mImsEnablementTracker.getHandler();
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_DEFAULT);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
@@ -142,9 +145,10 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     @Test
     public void testEnableCommandInEnabledState() throws RemoteException {
         // Verify that received the enable command is not handle in the Enabled state,
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_ENABLED);
+        mImsEnablementTracker.startStateMachineAsConnected();
         mHandler = mImsEnablementTracker.getHandler();
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_ENABLED);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
@@ -160,9 +164,10 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testDisableCommandInEnabledState() throws RemoteException {
         // Verify that when the disable command is received in the Enabled state and disableIms
         // is called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_ENABLED);
+        mImsEnablementTracker.startStateMachineAsConnected();
         mHandler = mImsEnablementTracker.getHandler();
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_ENABLED);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
@@ -177,9 +182,10 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testResetCommandInEnabledState() throws RemoteException {
         // Verify that when the reset command is received in the Enabled state and disableIms
         // and enableIms are called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_ENABLED);
+        mImsEnablementTracker.startStateMachineAsConnected();
         mHandler = mImsEnablementTracker.getHandler();
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_ENABLED);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
@@ -198,9 +204,10 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     @Test
     public void testDisableCommandInDisabledState() throws RemoteException {
         // Verify that when disable command is received in the Disabled state, it should be ignored.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_DISABLED);
+        mImsEnablementTracker.startStateMachineAsConnected();
         mHandler = mImsEnablementTracker.getHandler();
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_DISABLED);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
@@ -215,9 +222,10 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testEnableCommandInDisabledState() throws RemoteException {
         // Verify that when the enable command is received in the Disabled state and enableIms
         // is called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_DISABLED);
+        mImsEnablementTracker.startStateMachineAsConnected();
         mHandler = mImsEnablementTracker.getHandler();
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_DISABLED);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
@@ -232,9 +240,10 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testEnableCommandWithoutTimeoutInDisableState() throws RemoteException {
         // Verify that when the enable command is received in the Disabled state. After throttle
         // time expired, the enableIms is called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_DISABLED);
+        mImsEnablementTracker.startStateMachineAsConnected();
         mHandler = mImsEnablementTracker.getHandler();
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_DISABLED);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
         // Set the last operation time to current to verify the message with delay.
@@ -251,9 +260,10 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     @Test
     public void testResetCommandInDisabledState() throws RemoteException {
         // Verify that the reset command is received in the Disabled state and it`s not handled.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_DISABLED);
+        mImsEnablementTracker.startStateMachineAsConnected();
         mHandler = mImsEnablementTracker.getHandler();
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_DISABLED);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
@@ -267,11 +277,12 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     @Test
     public void testEnableCommandInDisablingState() throws RemoteException {
         // Verify that when enable command is received in the Disabling state, it should be ignored.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_DISABLING);
         mHandler = mImsEnablementTracker.getHandler();
-        // Set the last operation time to current so that the throttle time does not expire.
+        // Set the last operation time to current to verify the message with delay.
         mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_DISABLING);
+        mImsEnablementTracker.startStateMachineAsConnected();
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
@@ -286,11 +297,12 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testDisablingMessageInDisablingState() throws RemoteException {
         // Verify that when the internal disable message is received in the Disabling state and
         // disableIms is called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_DISABLING);
         mHandler = mImsEnablementTracker.getHandler();
         // Set the last operation time to current to verify the message with delay.
         mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_DISABLING);
+        mImsEnablementTracker.startStateMachineAsConnected();
 
         waitForHandlerActionDelayed(mHandler, mImsEnablementTracker.getRemainThrottleTime(),
                 mImsEnablementTracker.getRemainThrottleTime() + 100);
@@ -303,11 +315,12 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testResetCommandInDisablingState() throws RemoteException {
         // Verify when the reset command is received in the Disabling state the disableIms and
         // enableIms are called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_DISABLING);
         mHandler = mImsEnablementTracker.getHandler();
         // Set the last operation time to current to verify the message with delay.
         mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_DISABLING);
+        mImsEnablementTracker.startStateMachineAsConnected();
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
@@ -328,9 +341,10 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testEnablingMessageInEnablingState() throws RemoteException {
         // Verify that when the internal enable message is received in the Enabling state and
         // enableIms is called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_ENABLING);
+        mImsEnablementTracker.startStateMachineAsConnected();
         mHandler = mImsEnablementTracker.getHandler();
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_ENABLING);
 
         waitForHandlerActionDelayed(mHandler, 100, 150);
         verify(mMockServiceControllerBinder).enableIms(anyInt(), anyInt());
@@ -342,11 +356,12 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testDisableCommandInEnablingState() throws RemoteException {
         // Verify that when the disable command is received in the Enabling state and
         // clear pending message and disableIms is not called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_ENABLING);
         mHandler = mImsEnablementTracker.getHandler();
         // Set the last operation time to current to verify the message with delay.
         mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_ENABLING);
+        mImsEnablementTracker.startStateMachineAsConnected();
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
@@ -360,11 +375,12 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     @Test
     public void testResetCommandWithEnablingState() throws RemoteException {
         // Verify that when reset command is received in the Enabling state, it should be ignored.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_ENABLING);
         mHandler = mImsEnablementTracker.getHandler();
         // Set the last operation time to current to verify the message with delay.
         mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_ENABLING);
+        mImsEnablementTracker.startStateMachineAsConnected();
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
@@ -379,11 +395,12 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testEnableCommandInResettingState() throws RemoteException {
         // Verify that when the enable command is received in the Resetting state and
         // enableIms is not called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_RESETTING);
         mHandler = mImsEnablementTracker.getHandler();
         // Set the last operation time to current to verify the message with delay.
         mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_RESETTING);
+        mImsEnablementTracker.startStateMachineAsConnected();
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
@@ -398,11 +415,12 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testDisableCommandInResettingState() throws RemoteException {
         // Verify that when the disable command is received in the Resetting state and
         // disableIms is called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_RESETTING);
         mHandler = mImsEnablementTracker.getHandler();
         // Set the last operation time to current to verify the message with delay.
         mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_RESETTING);
+        mImsEnablementTracker.startStateMachineAsConnected();
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
@@ -418,9 +436,10 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testResettingMessageInResettingState() throws RemoteException {
         // Verify that when the internal reset message is received in the Resetting state and
         // disableIms and enableIms are called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_RESETTING);
+        mImsEnablementTracker.startStateMachineAsConnected();
         mHandler = mImsEnablementTracker.getHandler();
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_RESETTING);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
@@ -436,9 +455,10 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     @SmallTest
     @Test
     public void testConsecutiveCommandInEnabledState() throws RemoteException {
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_ENABLED);
+        mImsEnablementTracker.startStateMachineAsConnected();
         mHandler = mImsEnablementTracker.getHandler();
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_ENABLED);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
@@ -469,9 +489,10 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     @SmallTest
     @Test
     public void testConsecutiveCommandInDisabledState() throws RemoteException {
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder);
+        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
+                mImsEnablementTracker.STATE_IMS_DISABLED);
+        mImsEnablementTracker.startStateMachineAsConnected();
         mHandler = mImsEnablementTracker.getHandler();
-        mImsEnablementTracker.setState(mImsEnablementTracker.STATE_IMS_DISABLED);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
@@ -500,9 +521,9 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
         assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_ENABLED));
     }
 
-    private TestableImsEnablementTracker createTracker(IImsServiceController binder) {
+    private TestableImsEnablementTracker createTracker(IImsServiceController binder, int state) {
         TestableImsEnablementTracker tracker = new TestableImsEnablementTracker(
-                Looper.getMainLooper(), binder);
+                Looper.getMainLooper(), binder, state);
         return tracker;
     }
 }

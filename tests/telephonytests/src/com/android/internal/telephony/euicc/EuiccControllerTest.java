@@ -75,7 +75,6 @@ import libcore.junit.util.compat.CoreCompatChangeRule.EnableCompatChanges;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -612,7 +611,6 @@ public class EuiccControllerTest extends TelephonyTest {
         assertFalse(mController.mCalledRefreshSubscriptionsAndSendResult);
     }
 
-    @Ignore("b/255697307")
     @Test
     @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_noPrivileges_hasCarrierPrivileges_multiSim()
@@ -889,7 +887,6 @@ public class EuiccControllerTest extends TelephonyTest {
                 anyBoolean(), any(), anyBoolean());
     }
 
-    @Ignore("b/255697307")
     @Test
     @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testSwitchToSubscription_emptySubscription_success() throws Exception {
@@ -1263,6 +1260,7 @@ public class EuiccControllerTest extends TelephonyTest {
             throws Exception {
         SubscriptionInfo.Builder builder = new SubscriptionInfo.Builder()
                 .setSimSlotIndex(0)
+                .setPortIndex(mTelephonyManager.DEFAULT_PORT_INDEX)
                 .setDisplayNameSource(SubscriptionManager.NAME_SOURCE_CARRIER_ID)
                 .setEmbedded(true);
         if (hasPrivileges) {
@@ -1300,11 +1298,13 @@ public class EuiccControllerTest extends TelephonyTest {
                 .setNativeAccessRules(hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null)
                 .setEmbedded(true)
                 .setCardId(CARD_ID)
+                .setPortIndex(mTelephonyManager.DEFAULT_PORT_INDEX)
                 .build();
         SubscriptionInfo subInfo2 = new SubscriptionInfo.Builder()
                 .setNativeAccessRules(hasPrivileges ? new UiccAccessRule[] { ACCESS_RULE } : null)
                 .setEmbedded(true)
                 .setCardId(2)
+                .setPortIndex(TelephonyManager.DEFAULT_PORT_INDEX)
                 .build();
         when(mSubscriptionManager.canManageSubscription(subInfo1, PACKAGE_NAME)).thenReturn(
                 hasPrivileges);
