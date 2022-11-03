@@ -195,50 +195,74 @@ public class DataEvaluation {
     @VisibleForTesting
     public enum DataEvaluationReason {
         /** New request from the apps. */
-        NEW_REQUEST,
+        NEW_REQUEST(false),
         /** Data config changed. */
-        DATA_CONFIG_CHANGED,
+        DATA_CONFIG_CHANGED(true),
         /** SIM is loaded. */
-        SIM_LOADED,
+        SIM_LOADED(true),
         /** SIM is removed. */
-        SIM_REMOVAL,
+        SIM_REMOVAL(true),
         /** Data profiles changed. */
-        DATA_PROFILES_CHANGED,
+        DATA_PROFILES_CHANGED(true),
         /** When service state changes.(For now only considering data RAT and data registration). */
-        DATA_SERVICE_STATE_CHANGED,
+        DATA_SERVICE_STATE_CHANGED(true),
         /** When data is enabled or disabled (by user, carrier, thermal, etc...) */
-        DATA_ENABLED_CHANGED,
+        DATA_ENABLED_CHANGED(true),
         /** When data enabled overrides are changed (MMS always allowed, data on non-DDS sub). */
-        DATA_ENABLED_OVERRIDE_CHANGED,
+        DATA_ENABLED_OVERRIDE_CHANGED(true),
         /** When data roaming is enabled or disabled. */
-        ROAMING_ENABLED_CHANGED,
+        ROAMING_ENABLED_CHANGED(true),
         /** When voice call ended (for concurrent voice/data not supported RAT). */
-        VOICE_CALL_ENDED,
+        VOICE_CALL_ENDED(true),
         /** When network restricts or no longer restricts mobile data. */
-        DATA_RESTRICTED_CHANGED,
+        DATA_RESTRICTED_CHANGED(true),
         /** Network capabilities changed. The unsatisfied requests might have chances to attach. */
-        DATA_NETWORK_CAPABILITIES_CHANGED,
+        DATA_NETWORK_CAPABILITIES_CHANGED(true),
         /** When emergency call started or ended. */
-        EMERGENCY_CALL_CHANGED,
+        EMERGENCY_CALL_CHANGED(true),
         /** When data disconnected, re-evaluate later to see if data could be brought up again. */
-        RETRY_AFTER_DISCONNECTED,
+        RETRY_AFTER_DISCONNECTED(true),
         /** Data setup retry. */
-        DATA_RETRY,
+        DATA_RETRY(false),
         /** For handover evaluation, or for network tearing down after handover succeeds/fails. */
-        DATA_HANDOVER,
+        DATA_HANDOVER(true),
         /** Preferred transport changed. */
-        PREFERRED_TRANSPORT_CHANGED,
+        PREFERRED_TRANSPORT_CHANGED(true),
         /** Slice config changed. */
-        SLICE_CONFIG_CHANGED,
+        SLICE_CONFIG_CHANGED(true),
         /**
          * Single data network arbitration. On certain RATs, only one data network is allowed at the
          * same time.
          */
-        SINGLE_DATA_NETWORK_ARBITRATION,
+        SINGLE_DATA_NETWORK_ARBITRATION(true),
         /** Query from {@link TelephonyManager#isDataConnectivityPossible()}. */
-        EXTERNAL_QUERY,
+        EXTERNAL_QUERY(false),
         /** Tracking area code changed. */
-        TAC_CHANGED,
+        TAC_CHANGED(true);
+
+        /**
+         * {@code true} if the evaluation is due to environmental changes (i.e. SIM removal,
+         * registration state changes, etc....
+         */
+        private final boolean mIsConditionBased;
+
+        /**
+         * @return {@code true} if the evaluation is due to environmental changes (i.e. SIM removal,
+         * registration state changes, etc....
+         */
+        public boolean isConditionBased() {
+            return mIsConditionBased;
+        }
+
+        /**
+         * Constructor
+         *
+         * @param isConditionBased {@code true} if the evaluation is due to environmental changes
+         * (i.e. SIM removal, registration state changes, etc....)
+         */
+        DataEvaluationReason(boolean isConditionBased) {
+            mIsConditionBased = isConditionBased;
+        }
     }
 
     /** Disallowed reasons. There could be multiple reasons if it is not allowed. */

@@ -134,7 +134,7 @@ public class RadioImsProxy extends RadioServiceProxy {
      * @param accessNetworkType The type of underlying radio access network used.
      * @throws RemoteException.
      */
-    public void startImsTraffic(int serial, String token, int trafficType, int accessNetworkType)
+    public void startImsTraffic(int serial, int token, int trafficType, int accessNetworkType)
             throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
@@ -148,7 +148,7 @@ public class RadioImsProxy extends RadioServiceProxy {
      * @param token The token assigned by startImsTraffic.
      * @throws RemoteException.
      */
-    public void stopImsTraffic(int serial, String token)
+    public void stopImsTraffic(int serial, int token)
             throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
