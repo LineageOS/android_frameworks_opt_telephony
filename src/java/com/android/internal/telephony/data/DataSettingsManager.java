@@ -49,6 +49,7 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SettingsObserver;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
+import com.android.internal.telephony.metrics.DeviceTelephonyPropertiesStats;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
@@ -610,6 +611,8 @@ public class DataSettingsManager extends Handler {
         if (enable == isMobileDataPolicyEnabled(mobileDataPolicy)) {
             return;
         }
+        metricsRecordSetMobileDataPolicy(mobileDataPolicy);
+
         if (enable) {
             mEnabledMobileDataPolicy.add(mobileDataPolicy);
         } else {
@@ -626,6 +629,16 @@ public class DataSettingsManager extends Handler {
             notifyDataEnabledOverrideChanged(enable, mobileDataPolicy);
         } else {
             loge("onSetMobileDataPolicy: failed to set " + enabledMobileDataPolicies);
+        }
+    }
+
+    /**
+     * Record the number of times a mobile data policy is toggled to metrics.
+     * @param mobileDataPolicy The mobile data policy that's toggled
+     */
+    private void metricsRecordSetMobileDataPolicy(@MobileDataPolicy int mobileDataPolicy) {
+        if (mobileDataPolicy == TelephonyManager.MOBILE_DATA_POLICY_AUTO_DATA_SWITCH) {
+            DeviceTelephonyPropertiesStats.recordAutoDataSwitchFeatureToggle();
         }
     }
 
