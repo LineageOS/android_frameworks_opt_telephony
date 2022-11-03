@@ -29,6 +29,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ALLOCATE_P
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ALLOW_DATA;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ANSWER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_BASEBAND_VERSION;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CANCEL_EMERGENCY_NETWORK_SCAN;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CANCEL_HANDOVER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CANCEL_USSD;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CDMA_BROADCAST_ACTIVATION;
@@ -74,6 +75,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENTER_SIM_
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENTER_SIM_PUK;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENTER_SIM_PUK2;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_EXIT_EMERGENCY_CALLBACK_MODE;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_EXIT_EMERGENCY_MODE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_EXPLICIT_CALL_TRANSFER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_ACTIVITY_INFO;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_ALLOWED_CARRIERS;
@@ -155,6 +157,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_CLIR;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_DATA_PROFILE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_DATA_THROTTLING;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_DC_RT_INFO_RATE;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_EMERGENCY_MODE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_FACILITY_LOCK;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_INITIAL_ATTACH_APN;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_LINK_CAPACITY_REPORTING_CRITERIA;
@@ -203,6 +206,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STOP_LCE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STOP_NETWORK_SCAN;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SWITCH_DUAL_SIM_CONFIG;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SWITCH_WAITING_OR_HOLDING_AND_ACTIVE;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_TRIGGER_EMERGENCY_NETWORK_SCAN;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_TRIGGER_EPS_FALLBACK;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_UDUB;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_UPDATE_IMS_REGISTRATION_INFO;
@@ -223,6 +227,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CELL_INFO_LI
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CONNECTION_SETUP_FAILURE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_DATA_CALL_LIST_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_DC_RT_INFO_CHANGED;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_EMERGENCY_NETWORK_SCAN_RESULT;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_EMERGENCY_NUMBER_LIST;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ENTER_EMERGENCY_CALLBACK_MODE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE;
@@ -274,6 +279,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UICC_SUBSCRI
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_UNTHROTTLE_APN;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_VOICE_RADIO_TECH_CHANGED;
 
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.net.InetAddresses;
 import android.net.LinkAddress;
@@ -307,8 +313,11 @@ import android.telephony.CellSignalStrengthNr;
 import android.telephony.CellSignalStrengthTdscdma;
 import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.ClosedSubscriberGroupInfo;
+import android.telephony.DomainSelectionService;
+import android.telephony.EmergencyRegResult;
 import android.telephony.LinkCapacityEstimate;
 import android.telephony.ModemInfo;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhoneCapability;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.PhysicalChannelConfig;
@@ -4601,6 +4610,102 @@ public class RILUtils {
                 validationBeforeSwitchSupported, deviceNrCapabilities);
     }
 
+    /**
+     * Convert network scan type
+     * @param scanType The network scan type
+     * @return The converted EmergencyScanType
+     */
+    public static int convertEmergencyScanType(int scanType) {
+        switch (scanType) {
+            case DomainSelectionService.SCAN_TYPE_LIMITED_SERVICE:
+                return android.hardware.radio.network.EmergencyScanType.LIMITED_SERVICE;
+            case DomainSelectionService.SCAN_TYPE_FULL_SERVICE:
+                return android.hardware.radio.network.EmergencyScanType.FULL_SERVICE;
+            default:
+                return android.hardware.radio.network.EmergencyScanType.NO_PREFERENCE;
+        }
+    }
+
+    /**
+     * Convert to EmergencyNetworkScanTrigger
+     * @param accessNetwork The list of access network types
+     * @param scanType The network scan type
+     * @return The converted EmergencyNetworkScanTrigger
+     */
+    public static android.hardware.radio.network.EmergencyNetworkScanTrigger
+            convertEmergencyNetworkScanTrigger(@NonNull int[] accessNetwork, int scanType) {
+        int[] halAccessNetwork = new int[accessNetwork.length];
+        for (int i = 0; i < accessNetwork.length; i++) {
+            halAccessNetwork[i] = convertToHalAccessNetworkAidl(accessNetwork[i]);
+        }
+
+        android.hardware.radio.network.EmergencyNetworkScanTrigger scanRequest =
+                new android.hardware.radio.network.EmergencyNetworkScanTrigger();
+
+        scanRequest.accessNetwork = halAccessNetwork;
+        scanRequest.scanType = convertEmergencyScanType(scanType);
+        return scanRequest;
+    }
+
+    /**
+     * Convert EmergencyRegResult.aidl to EmergencyRegResult.
+     * @param halResult EmergencyRegResult.aidl in HAL.
+     * @return Converted EmergencyRegResult.
+     */
+    public static EmergencyRegResult convertHalEmergencyRegResult(
+            android.hardware.radio.network.EmergencyRegResult halResult) {
+        return new EmergencyRegResult(
+                halResult.accessNetwork,
+                convertHalRegState(halResult.regState),
+                halResult.emcDomain,
+                halResult.isVopsSupported,
+                halResult.isEmcBearerSupported,
+                halResult.nwProvidedEmc,
+                halResult.nwProvidedEmf,
+                halResult.mcc,
+                halResult.mnc,
+                getCountryCodeForMccMnc(halResult.mcc, halResult.mnc));
+    }
+
+    private static @NonNull String getCountryCodeForMccMnc(
+            @NonNull String mcc, @NonNull String mnc) {
+        if (TextUtils.isEmpty(mcc)) return "";
+        if (TextUtils.isEmpty(mnc)) mnc = "000";
+        String operatorNumeric = TextUtils.concat(mcc, mnc).toString();
+
+        MccTable.MccMnc mccMnc = MccTable.MccMnc.fromOperatorNumeric(operatorNumeric);
+        return MccTable.geoCountryCodeForMccMnc(mccMnc);
+    }
+
+    /**
+     * Convert RegResult.aidl to RegistrationState.
+     * @param halRegState RegResult in HAL.
+     * @return Converted RegistrationState.
+     */
+    public static @NetworkRegistrationInfo.RegistrationState int convertHalRegState(
+            int halRegState) {
+        switch (halRegState) {
+            case android.hardware.radio.network.RegState.NOT_REG_MT_NOT_SEARCHING_OP:
+            case android.hardware.radio.network.RegState.NOT_REG_MT_NOT_SEARCHING_OP_EM:
+                return NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING;
+            case android.hardware.radio.network.RegState.REG_HOME:
+                return NetworkRegistrationInfo.REGISTRATION_STATE_HOME;
+            case android.hardware.radio.network.RegState.NOT_REG_MT_SEARCHING_OP:
+            case android.hardware.radio.network.RegState.NOT_REG_MT_SEARCHING_OP_EM:
+                return NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_SEARCHING;
+            case android.hardware.radio.network.RegState.REG_DENIED:
+            case android.hardware.radio.network.RegState.REG_DENIED_EM:
+                return NetworkRegistrationInfo.REGISTRATION_STATE_DENIED;
+            case android.hardware.radio.network.RegState.UNKNOWN:
+            case android.hardware.radio.network.RegState.UNKNOWN_EM:
+                return NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN;
+            case android.hardware.radio.network.RegState.REG_ROAMING:
+                return NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING;
+            default:
+                return NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING;
+        }
+    }
+
     /** Append the data to the end of an ArrayList */
     public static void appendPrimitiveArrayToArrayList(byte[] src, ArrayList<Byte> dst) {
         for (byte b : src) {
@@ -5052,6 +5157,14 @@ public class RILUtils {
                 return "SET_USAGE_SETTING";
             case RIL_REQUEST_GET_USAGE_SETTING:
                 return "GET_USAGE_SETTING";
+            case RIL_REQUEST_SET_EMERGENCY_MODE:
+                return "SET_EMERGENCY_MODE";
+            case RIL_REQUEST_TRIGGER_EMERGENCY_NETWORK_SCAN:
+                return "TRIGGER_EMERGENCY_NETWORK_SCAN";
+            case RIL_REQUEST_CANCEL_EMERGENCY_NETWORK_SCAN:
+                return "CANCEL_EMERGENCY_NETWORK_SCAN";
+            case RIL_REQUEST_EXIT_EMERGENCY_MODE:
+                return "EXIT_EMERGENCY_MODE";
             case RIL_REQUEST_SET_SRVCC_CALL_INFO:
                 return "SET_SRVCC_CALL_INFO";
             case RIL_REQUEST_UPDATE_IMS_REGISTRATION_INFO:
@@ -5196,6 +5309,8 @@ public class RILUtils {
                 return "UNSOL_REGISTRATION_FAILED";
             case RIL_UNSOL_BARRING_INFO_CHANGED:
                 return "UNSOL_BARRING_INFO_CHANGED";
+            case RIL_UNSOL_EMERGENCY_NETWORK_SCAN_RESULT:
+                return "UNSOL_EMERGENCY_NETWORK_SCAN_RESULT";
             case RIL_UNSOL_CONNECTION_SETUP_FAILURE:
                 return "UNSOL_CONNECTION_SETUP_FAILURE";
             case RIL_UNSOL_NOTIFY_ANBR:

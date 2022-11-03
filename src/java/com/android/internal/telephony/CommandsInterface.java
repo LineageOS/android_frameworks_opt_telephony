@@ -29,6 +29,7 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.ClientRequestStats;
+import android.telephony.DomainSelectionService;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.NetworkScanRequest;
 import android.telephony.RadioAccessSpecifier;
@@ -41,6 +42,7 @@ import android.telephony.data.TrafficDescriptor;
 import android.telephony.emergency.EmergencyNumber;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
+import com.android.internal.telephony.emergency.EmergencyConstants;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccCardStatus;
@@ -2821,20 +2823,60 @@ public interface CommandsInterface {
     default void getUsageSetting(Message result) {}
 
     /**
-     * Register for Emergency network scan result.
+     * Sets the emergency mode.
+     *
+     * @param emcMode Defines the radio emergency mode type.
+     * @param result Callback message containing the success or failure status.
+     */
+    default void setEmergencyMode(@EmergencyConstants.EmergencyMode int emcMode,
+            @Nullable Message result) {}
+
+    /**
+     * Triggers an emergency network scan.
+     *
+     * @param accessNetwork Contains the list of access network types to be prioritized
+     *        during emergency scan. The 1st entry has the highest priority.
+     * @param scanType Indicates the type of scans to be performed i.e. limited scan,
+     *        full service scan or both.
+     * @param result Callback message containing the success or failure status.
+     */
+    default void triggerEmergencyNetworkScan(
+            @NonNull @AccessNetworkConstants.RadioAccessNetworkType int[] accessNetwork,
+            @DomainSelectionService.EmergencyScanType int scanType, @Nullable Message result) {}
+
+    /**
+     * Cancels ongoing emergency network scan.
+     *
+     * @param resetScan Indicates how the next {@link #triggerEmergencyNetworkScan} should work.
+     *        If {@code true}, then the modem shall start the new scan from the beginning,
+     *        otherwise the modem shall resume from the last search.
+     * @param result Callback message containing the success or failure status.
+     */
+    default void cancelEmergencyNetworkScan(boolean resetScan, @Nullable Message result) {}
+
+    /**
+     * Exits ongoing emergency mode.
+     *
+     * @param result Callback message containing the success or failure status.
+     */
+    default void exitEmergencyMode(@Nullable Message result) {}
+
+    /**
+     * Registers for emergency network scan result.
      *
      * @param h Handler for notification message.
      * @param what User-defined message code.
      * @param obj User object.
      */
-    default void registerForEmergencyNetworkScan(Handler h, int what, Object obj) {}
+    default void registerForEmergencyNetworkScan(@NonNull Handler h,
+            int what, @Nullable Object obj) {}
 
     /**
-     * Unregister for Emergency network scan result.
+     * Unregisters for emergency network scan result.
      *
      * @param h Handler to be removed from the registrant list.
      */
-    default void unregisterForEmergencyNetworkScan(Handler h) {}
+    default void unregisterForEmergencyNetworkScan(@NonNull Handler h) {}
 
     /**
      * Provides a list of SRVCC call information to radio

@@ -22,6 +22,7 @@ import android.hardware.radio.network.IRadioNetworkResponse;
 import android.os.AsyncResult;
 import android.telephony.BarringInfo;
 import android.telephony.CellInfo;
+import android.telephony.EmergencyRegResult;
 import android.telephony.LinkCapacityEstimate;
 import android.telephony.RadioAccessSpecifier;
 import android.telephony.SignalStrength;
@@ -445,10 +446,11 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
         RILRequest rr = mRil.processResponse(RIL.NETWORK_SERVICE, responseInfo);
 
         if (rr != null) {
+            EmergencyRegResult response = RILUtils.convertHalEmergencyRegResult(regState);
             if (responseInfo.error == RadioError.NONE) {
-                RadioResponse.sendMessageResponse(rr.mResult, regState);
+                RadioResponse.sendMessageResponse(rr.mResult, response);
             }
-            mRil.processResponseDone(rr, responseInfo, regState);
+            mRil.processResponseDone(rr, responseInfo, response);
         }
     }
 

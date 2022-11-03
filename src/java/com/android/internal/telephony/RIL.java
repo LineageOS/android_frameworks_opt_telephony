@@ -45,6 +45,7 @@ import android.os.Trace;
 import android.os.WorkSource;
 import android.provider.Settings;
 import android.sysprop.TelephonyProperties;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellInfo;
@@ -55,6 +56,7 @@ import android.telephony.CellSignalStrengthNr;
 import android.telephony.CellSignalStrengthTdscdma;
 import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.ClientRequestStats;
+import android.telephony.DomainSelectionService;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.ModemActivityInfo;
 import android.telephony.NeighboringCellInfo;
@@ -78,6 +80,7 @@ import android.util.SparseArray;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
+import com.android.internal.telephony.emergency.EmergencyConstants;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.metrics.ModemRestartStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
@@ -5296,6 +5299,139 @@ public class RIL extends BaseCommands implements CommandsInterface {
         } else {
             if (RILJ_LOGD) {
                 Rlog.d(RILJ_LOG_TAG, "sendAnbrQuery: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setEmergencyMode(int emcMode, Message result) {
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        if (networkProxy.isEmpty()) return;
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_SET_EMERGENCY_MODE, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
+                        + " mode=" + EmergencyConstants.emergencyModeToString(emcMode));
+            }
+
+            try {
+                networkProxy.setEmergencyMode(rr.mSerial, emcMode);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(NETWORK_SERVICE, "setEmergencyMode", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "setEmergencyMode: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void triggerEmergencyNetworkScan(
+            @NonNull @AccessNetworkConstants.RadioAccessNetworkType int[] accessNetwork,
+            @DomainSelectionService.EmergencyScanType int scanType, Message result) {
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        if (networkProxy.isEmpty()) return;
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_TRIGGER_EMERGENCY_NETWORK_SCAN, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                networkProxy.triggerEmergencyNetworkScan(rr.mSerial,
+                        RILUtils.convertEmergencyNetworkScanTrigger(accessNetwork, scanType));
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(NETWORK_SERVICE, "triggerEmergencyNetworkScan", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "triggerEmergencyNetworkScan: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void cancelEmergencyNetworkScan(boolean resetScan, Message result) {
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        if (networkProxy.isEmpty()) return;
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_CANCEL_EMERGENCY_NETWORK_SCAN, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
+                        + " resetScan=" + resetScan);
+            }
+
+            try {
+                networkProxy.cancelEmergencyNetworkScan(rr.mSerial, resetScan);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(NETWORK_SERVICE, "cancelEmergencyNetworkScan", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "cancelEmergencyNetworkScan: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void exitEmergencyMode(Message result) {
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        if (networkProxy.isEmpty()) return;
+        if (mRadioVersion.greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_EXIT_EMERGENCY_MODE, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                networkProxy.exitEmergencyMode(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(NETWORK_SERVICE, "exitEmergencyMode", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "exitEmergencyMode: REQUEST_NOT_SUPPORTED");
             }
             if (result != null) {
                 AsyncResult.forMessage(result, null,
