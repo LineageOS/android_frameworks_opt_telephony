@@ -340,7 +340,8 @@ public class UiccProfile extends IccCard {
 
         IntentFilter intentfilter = new IntentFilter();
         intentfilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        c.registerReceiver(mCarrierConfigChangedReceiver, intentfilter);
+        c.registerReceiver(mCarrierConfigChangedReceiver, intentfilter,
+                Context.RECEIVER_EXPORTED_UNAUDITED);
     }
 
     /**

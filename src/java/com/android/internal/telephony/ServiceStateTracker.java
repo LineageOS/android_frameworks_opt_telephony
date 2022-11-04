@@ -696,7 +696,7 @@ public class ServiceStateTracker extends Handler {
         filter.addAction(Intent.ACTION_LOCALE_CHANGED);
         filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         filter.addAction(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED);
-        context.registerReceiver(mIntentReceiver, filter);
+        context.registerReceiver(mIntentReceiver, filter, Context.RECEIVER_EXPORTED_UNAUDITED);
 
         mPhone.notifyOtaspChanged(TelephonyManager.OTASP_UNINITIALIZED);
 
