@@ -651,8 +651,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
         appChangedFilter.addDataScheme("package");
         mReceiverContext.registerReceiver(mAppChangedReceiver, appChangedFilter);
         mReceiverContext.registerReceiver(mConfigChangedReceiver, new IntentFilter(
-                CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED),
-                Context.RECEIVER_EXPORTED_UNAUDITED);
+                CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
 
         UserManager userManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
         if (userManager.isUserUnlocked()) {

@@ -377,8 +377,7 @@ public class CarrierPrivilegesTracker extends Handler {
         certFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         certFilter.addAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED);
         certFilter.addAction(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
-        mContext.registerReceiver(mIntentReceiver, certFilter,
-                Context.RECEIVER_EXPORTED_UNAUDITED);
+        mContext.registerReceiver(mIntentReceiver, certFilter);
 
         IntentFilter packageFilter = new IntentFilter();
         packageFilter.addAction(Intent.ACTION_PACKAGE_ADDED);

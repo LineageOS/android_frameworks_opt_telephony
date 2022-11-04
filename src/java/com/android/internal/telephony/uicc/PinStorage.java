@@ -193,8 +193,7 @@ public class PinStorage extends Handler {
         intentFilter.addAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED);
         intentFilter.addAction(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
         intentFilter.addAction(Intent.ACTION_USER_UNLOCKED);
-        mContext.registerReceiver(mCarrierConfigChangedReceiver, intentFilter,
-                Context.RECEIVER_EXPORTED_UNAUDITED);
+        mContext.registerReceiver(mCarrierConfigChangedReceiver, intentFilter);
 
         // Initialize the long term secret key. This needs to be present in all cases:
         //  - if the device is not secure or is locked: key does not require user authentication
