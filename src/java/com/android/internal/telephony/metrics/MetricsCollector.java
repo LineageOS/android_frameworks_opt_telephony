@@ -50,6 +50,8 @@ import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSIO
 import android.annotation.Nullable;
 import android.app.StatsManager;
 import android.content.Context;
+import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.util.StatsEvent;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -482,13 +484,22 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         }
     }
 
-    private static int pullDeviceTelephonyProperties(List<StatsEvent> data) {
+    private int pullDeviceTelephonyProperties(List<StatsEvent> data) {
         Phone[] phones = getPhonesIfAny();
         if (phones.length == 0) {
             return StatsManager.PULL_SKIP;
         }
-
-        data.add(TelephonyStatsLog.buildStatsEvent(DEVICE_TELEPHONY_PROPERTIES, true));
+        boolean isAutoDataSwitchOn = false;
+        for (Phone phone : phones) {
+            // only applies to non-DDS
+            if (phone.getSubId() != SubscriptionManager.getDefaultDataSubscriptionId()) {
+                isAutoDataSwitchOn = phone.getDataSettingsManager().isMobileDataPolicyEnabled(
+                        TelephonyManager.MOBILE_DATA_POLICY_AUTO_DATA_SWITCH);
+                break;
+            }
+        }
+        data.add(TelephonyStatsLog.buildStatsEvent(DEVICE_TELEPHONY_PROPERTIES, true,
+                isAutoDataSwitchOn, mStorage.getAutoDataSwitchToggleCount()));
         return StatsManager.PULL_SUCCESS;
     }
 

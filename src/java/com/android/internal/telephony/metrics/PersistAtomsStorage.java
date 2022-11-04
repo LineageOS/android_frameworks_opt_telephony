@@ -42,8 +42,8 @@ import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationStat
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationTermination;
 import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.NetworkRequestsV2;
-import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingShortCodeSms;
+import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PresenceNotifyEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsAcsProvisioningStats;
@@ -436,6 +436,14 @@ public class PersistAtomsStorage {
         } else {
             return false;
         }
+    }
+
+    /**
+     * Store the number of times auto data switch feature is toggled.
+     */
+    public synchronized void recordToggledAutoDataSwitch() {
+        mAtoms.autoDataSwitchToggleCount++;
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
     }
 
     /** Adds a new {@link NetworkRequestsV2} to the storage. */
@@ -882,6 +890,16 @@ public class PersistAtomsStorage {
         } else {
             return null;
         }
+    }
+
+    /** @return the number of times auto data switch mobile data policy is toggled. */
+    public synchronized int getAutoDataSwitchToggleCount() {
+        int count = mAtoms.autoDataSwitchToggleCount;
+        if (count > 0) {
+            mAtoms.autoDataSwitchToggleCount = 0;
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
+        }
+        return count;
     }
 
     /**
