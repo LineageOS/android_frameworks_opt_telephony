@@ -16,8 +16,19 @@
 
 package com.android.internal.telephony.imsphone;
 
+import static android.telephony.CarrierConfigManager.ImsVoice.ALERTING_SRVCC_SUPPORT;
+import static android.telephony.CarrierConfigManager.ImsVoice.BASIC_SRVCC_SUPPORT;
+import static android.telephony.CarrierConfigManager.ImsVoice.MIDCALL_SRVCC_SUPPORT;
+import static android.telephony.CarrierConfigManager.ImsVoice.PREALERTING_SRVCC_SUPPORT;
 import static android.telephony.CarrierConfigManager.USSD_OVER_CS_PREFERRED;
 import static android.telephony.CarrierConfigManager.USSD_OVER_IMS_ONLY;
+import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_ACTIVE;
+import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_ALERTING;
+import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_DIALING;
+import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_HOLDING;
+import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_INCOMING;
+import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_INCOMING_SETUP;
+import static android.telephony.PreciseCallState.PRECISE_CALL_STATE_WAITING;
 import static android.telephony.ims.ImsService.CAPABILITY_TERMINAL_BASED_CALL_WAITING;
 
 import static com.android.internal.annotations.VisibleForTesting.Visibility.PRIVATE;
@@ -81,6 +92,8 @@ import android.telephony.ims.ImsSuppServiceNotification;
 import android.telephony.ims.ProvisioningManager;
 import android.telephony.ims.RtpHeaderExtension;
 import android.telephony.ims.RtpHeaderExtensionType;
+import android.telephony.ims.SrvccCall;
+import android.telephony.ims.aidl.ISrvccStartedCallback;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
@@ -118,6 +131,7 @@ import com.android.internal.telephony.LocaleTracker;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.ServiceStateTracker;
+import com.android.internal.telephony.SrvccConnection;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.d2d.RtpTransport;
 import com.android.internal.telephony.data.DataSettingsManager;
@@ -135,6 +149,7 @@ import com.android.telephony.Rlog;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -153,6 +168,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * {@hide}
@@ -558,6 +574,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
     }
 
+    private class SrvccStartedCallback extends ISrvccStartedCallback.Stub {
+        @Override
+        public void onSrvccCallNotified(List<SrvccCall> profiles) {
+            handleSrvccConnectionInfo(profiles);
+        }
+    }
+
     private volatile NetworkStats mVtDataUsageSnapshot = null;
     private volatile NetworkStats mVtDataUsageUidSnapshot = null;
     private final VtDataUsageProvider mVtDataUsageProvider = new VtDataUsageProvider();
@@ -612,6 +635,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private boolean mSupportCepOnPeer = true;
     private boolean mSupportD2DUsingRtp = false;
     private boolean mSupportSdpForRtpHeaderExtensions = false;
+    private final List<Integer> mSrvccTypeSupported = new ArrayList<>();
+    private final SrvccStartedCallback mSrvccStartedCallback = new SrvccStartedCallback();
     // Tracks the state of our background/foreground calls while a call hold/swap operation is
     // in progress. Values listed above.
     private HoldSwapState mHoldSwitchingState = HoldSwapState.INACTIVE;
@@ -1747,6 +1772,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
         } else {
             log("No carrier ImsReasonInfo mappings defined.");
+        }
+
+        mSrvccTypeSupported.clear();
+        int[] srvccType =
+                carrierConfig.getIntArray(CarrierConfigManager.ImsVoice.KEY_SRVCC_TYPE_INT_ARRAY);
+        if (srvccType != null && srvccType.length > 0) {
+            mSrvccTypeSupported.addAll(
+                    Arrays.stream(srvccType).boxed().collect(Collectors.toList()));
         }
     }
 
@@ -4327,21 +4360,55 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * Notify of a change to SRVCC state
      * @param state the new SRVCC state.
      */
-    public void notifySrvccState(Call.SrvccState state) {
+    public void notifySrvccState(int state) {
         if (DBG) log("notifySrvccState state=" + state);
 
-        mSrvccState = state;
+        switch(state) {
+            case TelephonyManager.SRVCC_STATE_HANDOVER_STARTED:
+                mSrvccState = Call.SrvccState.STARTED;
+                break;
 
-        if (mSrvccState == Call.SrvccState.COMPLETED) {
-            // If the dialing call had ringback, ensure it stops now, otherwise it'll keep playing
-            // afer the SRVCC completes.
-            mForegroundCall.maybeStopRingback();
+            case TelephonyManager.SRVCC_STATE_HANDOVER_COMPLETED:
+                mSrvccState = Call.SrvccState.COMPLETED;
 
-            resetState();
-            transferHandoverConnections(mForegroundCall);
-            transferHandoverConnections(mBackgroundCall);
-            transferHandoverConnections(mRingingCall);
-            updatePhoneState();
+                // If the dialing call had ringback, ensure it stops now,
+                // otherwise it'll keep playing afer the SRVCC completes.
+                mForegroundCall.maybeStopRingback();
+
+                resetState();
+                transferHandoverConnections(mForegroundCall);
+                transferHandoverConnections(mBackgroundCall);
+                transferHandoverConnections(mRingingCall);
+                updatePhoneState();
+                break;
+
+            case TelephonyManager.SRVCC_STATE_HANDOVER_FAILED:
+                mSrvccState = Call.SrvccState.FAILED;
+                break;
+
+            case TelephonyManager.SRVCC_STATE_HANDOVER_CANCELED:
+                mSrvccState = Call.SrvccState.CANCELED;
+                break;
+
+            default:
+                //ignore invalid state
+                return;
+        }
+
+        if (mImsManager != null) {
+            try {
+                if (mSrvccState == Call.SrvccState.STARTED) {
+                    mImsManager.notifySrvccStarted(mSrvccStartedCallback);
+                } else if (mSrvccState == Call.SrvccState.COMPLETED) {
+                    mImsManager.notifySrvccCompleted();
+                } else if (mSrvccState == Call.SrvccState.FAILED) {
+                    mImsManager.notifySrvccFailed();
+                } else if (mSrvccState == Call.SrvccState.CANCELED) {
+                    mImsManager.notifySrvccCanceled();
+                }
+            } catch (ImsException e) {
+                loge("notifySrvccState : exception " + e);
+            }
         }
     }
 
@@ -4728,6 +4795,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         + mSupportSdpForRtpHeaderExtensions);
             }
         }
+        pw.println(" mSrvccTypeSupported=" + mSrvccTypeSupported);
         pw.println(" Event Log:");
         pw.increaseIndent();
         mOperationLocalLog.dump(pw);
@@ -5532,5 +5600,125 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 loge("setTerminalBasedCallWaitingStatus : exception " + e);
             }
         }
+    }
+
+    /** Send the list of SrvccConnection instances to the radio */
+    public void handleSrvccConnectionInfo(List<SrvccCall> profileList) {
+        mPhone.getDefaultPhone().mCi.setSrvccCallInfo(
+                convertToSrvccConnectionInfo(profileList), null);
+    }
+
+    /** Converts SrvccCall to SrvccConnection. */
+    @VisibleForTesting
+    public SrvccConnection[] convertToSrvccConnectionInfo(List<SrvccCall> profileList) {
+        if (mSrvccTypeSupported.isEmpty() || profileList == null || profileList.isEmpty()) {
+            return null;
+        }
+
+        List<SrvccConnection> connList = new ArrayList<>();
+        for (SrvccCall profile : profileList) {
+            if (isCallProfileSupported(profile)) {
+                addConnection(connList,
+                        profile, findConnection(profile.getCallId()));
+            }
+        }
+
+        if (connList.isEmpty()) return null;
+        return connList.toArray(new SrvccConnection[0]);
+    }
+
+    private boolean isCallProfileSupported(SrvccCall profile) {
+        if (profile == null) return false;
+
+        switch(profile.getPreciseCallState()) {
+            case PRECISE_CALL_STATE_ACTIVE:
+                return mSrvccTypeSupported.contains(BASIC_SRVCC_SUPPORT);
+            case PRECISE_CALL_STATE_HOLDING:
+                return mSrvccTypeSupported.contains(MIDCALL_SRVCC_SUPPORT);
+            case PRECISE_CALL_STATE_DIALING:
+                return mSrvccTypeSupported.contains(PREALERTING_SRVCC_SUPPORT);
+            case PRECISE_CALL_STATE_ALERTING:
+                return mSrvccTypeSupported.contains(ALERTING_SRVCC_SUPPORT);
+            case PRECISE_CALL_STATE_INCOMING:
+                return mSrvccTypeSupported.contains(ALERTING_SRVCC_SUPPORT);
+            case PRECISE_CALL_STATE_WAITING:
+                return mSrvccTypeSupported.contains(ALERTING_SRVCC_SUPPORT);
+            case PRECISE_CALL_STATE_INCOMING_SETUP:
+                return mSrvccTypeSupported.contains(PREALERTING_SRVCC_SUPPORT);
+            default:
+                break;
+        }
+        return false;
+    }
+
+    private synchronized ImsPhoneConnection findConnection(String callId) {
+        for (ImsPhoneConnection c : mConnections) {
+            ImsCall imsCall = c.getImsCall();
+            if (imsCall == null) continue;
+            ImsCallSession session = imsCall.getCallSession();
+            if (session == null) continue;
+
+            if (TextUtils.equals(session.getCallId(), callId)) {
+                return c;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Update the list of SrvccConnection with the given SrvccCall and ImsPhoneconnection.
+     *
+     * @param destList the list of SrvccConnection the new connection will be added
+     * @param profile the SrvccCall of the connection to be added
+     * @param c the ImsPhoneConnection of the connection to be added
+     */
+    private void addConnection(
+            List<SrvccConnection> destList, SrvccCall profile, ImsPhoneConnection c) {
+        if (destList == null) return;
+        if (profile == null) return;
+
+        int preciseCallState = profile.getPreciseCallState();
+        if (!isAlive(preciseCallState)) return;
+
+        List<ConferenceParticipant> participants = getConferenceParticipants(c);
+        if (participants != null) {
+            for (ConferenceParticipant cp : participants) {
+                if (cp.getState() == android.telecom.Connection.STATE_DISCONNECTED) {
+                    Rlog.i(LOG_TAG, "addConnection participant is disconnected");
+                    continue;
+                }
+                SrvccConnection srvccConnection = new SrvccConnection(cp, preciseCallState);
+                destList.add(srvccConnection);
+            }
+        } else {
+            SrvccConnection srvccConnection =
+                    new SrvccConnection(profile.getImsCallProfile(), c, preciseCallState);
+            destList.add(srvccConnection);
+        }
+    }
+
+    private List<ConferenceParticipant> getConferenceParticipants(ImsPhoneConnection c) {
+        if (!mSrvccTypeSupported.contains(MIDCALL_SRVCC_SUPPORT)) return null;
+
+        ImsCall imsCall = c.getImsCall();
+        if (imsCall == null) return null;
+
+        List<ConferenceParticipant> participants = imsCall.getConferenceParticipants();
+        if (participants == null || participants.isEmpty()) return null;
+        return participants;
+    }
+
+    private static boolean isAlive(int preciseCallState) {
+        switch (preciseCallState) {
+            case PRECISE_CALL_STATE_ACTIVE: return true;
+            case PRECISE_CALL_STATE_HOLDING: return true;
+            case PRECISE_CALL_STATE_DIALING: return true;
+            case PRECISE_CALL_STATE_ALERTING: return true;
+            case PRECISE_CALL_STATE_INCOMING: return true;
+            case PRECISE_CALL_STATE_WAITING: return true;
+            case PRECISE_CALL_STATE_INCOMING_SETUP: return true;
+            default:
+        }
+        return false;
     }
 }
