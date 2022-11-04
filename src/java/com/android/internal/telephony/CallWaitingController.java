@@ -145,8 +145,7 @@ public class CallWaitingController extends Handler {
 
     private void initialize() {
         mContext.registerReceiver(mReceiver, new IntentFilter(
-                CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED),
-                Context.RECEIVER_EXPORTED_UNAUDITED);
+                CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
 
         int phoneId = mPhone.getPhoneId();
         int subId = mPhone.getSubId();

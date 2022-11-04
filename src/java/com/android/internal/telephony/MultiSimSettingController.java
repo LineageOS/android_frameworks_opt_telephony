@@ -246,8 +246,7 @@ public class MultiSimSettingController extends Handler {
         mIsAskEverytimeSupportedForSms = mContext.getResources()
                 .getBoolean(com.android.internal.R.bool.config_sms_ask_every_time_support);
         context.registerReceiver(mIntentReceiver, new IntentFilter(
-                CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED),
-                Context.RECEIVER_EXPORTED_UNAUDITED);
+                CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
     }
 
     /**
