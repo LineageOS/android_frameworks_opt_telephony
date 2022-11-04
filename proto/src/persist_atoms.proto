@@ -186,6 +186,9 @@ message PersistAtoms {
 
     /* Timestamp of last outgoing_short_code_sms pull. */
     optional int64 outgoing_short_code_sms_pull_timestamp_millis = 54;
+
+    /* Number of time the user toggled the data switch feature since the last collection. */
+    optional int32 auto_data_switch_toggle_count = 55;
 }
 
 // The canonical versions of the following enums live in:
