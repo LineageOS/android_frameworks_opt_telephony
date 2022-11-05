@@ -16,12 +16,16 @@
 
 package com.android.internal.telephony.metrics;
 
+import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation.NetworkType;
+import android.telephony.CellSignalStrength;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyStatsLog;
@@ -74,6 +78,25 @@ public class DataStallRecoveryStats {
             recoveryAction = RECOVERY_ACTION_RESET_MODEM_MAPPING;
         }
 
+        // collect info of the other device in case of DSDS
+        int otherSignalStrength = CellSignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN;
+        // the number returned here matches the NetworkRegistrationState enum we have
+        int otherNetworkRegState = NetworkRegistrationInfo
+                .REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING;
+        for (Phone otherPhone : PhoneFactory.getPhones()) {
+            if (otherPhone.getPhoneId() == phone.getPhoneId()) continue;
+            if (!getIsOpportunistic(otherPhone)) {
+                otherSignalStrength = otherPhone.getSignalStrength().getLevel();
+                NetworkRegistrationInfo regInfo = otherPhone.getServiceState()
+                        .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
+                                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+                if (regInfo != null) {
+                    otherNetworkRegState = regInfo.getRegistrationState();
+                }
+                break;
+            }
+        }
+
         TelephonyStatsLog.write(
                 TelephonyStatsLog.DATA_STALL_RECOVERY_REPORTED,
                 carrierId,
@@ -85,7 +108,9 @@ public class DataStallRecoveryStats {
                 band,
                 isRecovered,
                 durationMillis,
-                reason);
+                reason,
+                otherSignalStrength,
+                otherNetworkRegState);
     }
 
     /** Returns the RAT used for data (including IWLAN). */
