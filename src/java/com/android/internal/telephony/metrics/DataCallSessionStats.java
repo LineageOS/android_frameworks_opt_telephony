@@ -29,7 +29,9 @@ import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.DataFailCause;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
+import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnSetting.ProtocolType;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataService;
@@ -257,6 +259,16 @@ public class DataCallSessionStats {
     private void endDataCallSession() {
         mDataCallSession.oosAtEnd = getIsOos();
         mDataCallSession.ongoing = false;
+        // set if this data call is established for internet on the non-Dds
+        SubscriptionInfo subInfo = SubscriptionController.getInstance()
+                .getSubscriptionInfo(mPhone.getSubId());
+        if (mPhone.getSubId() != SubscriptionController.getInstance().getDefaultDataSubId()
+                && ((mDataCallSession.apnTypeBitmask & ApnSetting.TYPE_DEFAULT)
+                == ApnSetting.TYPE_DEFAULT)
+                && subInfo != null && !subInfo.isOpportunistic()) {
+            mDataCallSession.isNonDds = true;
+        }
+
         // store for the data call list event, after DataCall is disconnected and entered into
         // inactive mode
         PhoneFactory.getMetricsCollector().unregisterOngoingDataCallStat(this);
@@ -292,6 +304,7 @@ public class DataCallSessionStats {
                 call.handoverFailureCauses.length);
         copy.handoverFailureRat = Arrays.copyOf(call.handoverFailureRat,
                 call.handoverFailureRat.length);
+        copy.isNonDds = call.isNonDds;
         return copy;
     }
 
@@ -316,6 +329,7 @@ public class DataCallSessionStats {
         proto.ongoing = true;
         proto.handoverFailureCauses = new int[0];
         proto.handoverFailureRat = new int[0];
+        proto.isNonDds = false;
         return proto;
     }
 

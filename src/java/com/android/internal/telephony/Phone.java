@@ -40,6 +40,7 @@ import android.preference.PreferenceManager;
 import android.sysprop.TelephonyProperties;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
+import android.telephony.Annotation.SrvccState;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellIdentity;
@@ -852,7 +853,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return null;
     }
 
-    public void notifySrvccState(Call.SrvccState state) {
+    /**
+     * Notifies the change of the SRVCC state.
+     * @param state the new SRVCC state.
+     */
+    public void notifySrvccState(@SrvccState int state) {
     }
 
     public void registerForSilentRedial(Handler h, int what, Object obj) {
@@ -875,6 +880,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         Call.SrvccState srvccState = Call.SrvccState.NONE;
         if (ret != null && ret.length != 0) {
             int state = ret[0];
+            if (imsPhone != null) {
+                imsPhone.notifySrvccState(state);
+            }
             switch(state) {
                 case TelephonyManager.SRVCC_STATE_HANDOVER_STARTED:
                     srvccState = Call.SrvccState.STARTED;
@@ -887,11 +895,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                     break;
                 case TelephonyManager.SRVCC_STATE_HANDOVER_COMPLETED:
                     srvccState = Call.SrvccState.COMPLETED;
-                    if (imsPhone != null) {
-                        imsPhone.notifySrvccState(srvccState);
-                    } else {
-                        Rlog.d(LOG_TAG, "HANDOVER_COMPLETED: mImsPhone null");
-                    }
                     break;
                 case TelephonyManager.SRVCC_STATE_HANDOVER_FAILED:
                 case TelephonyManager.SRVCC_STATE_HANDOVER_CANCELED:
