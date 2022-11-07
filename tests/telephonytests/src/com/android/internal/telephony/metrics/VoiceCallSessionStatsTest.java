@@ -81,7 +81,6 @@ import com.android.internal.telephony.uicc.UiccSlot;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -909,7 +908,6 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    @Ignore("b/256234604")
     public void singleImsCall_ratSwitchToUnknown() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
         doReturn(true).when(mImsConnection0).isIncoming();
@@ -923,6 +921,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
                         VOICE_CALL_SESSION__DIRECTION__CALL_DIRECTION_MT,
                         TelephonyManager.NETWORK_TYPE_LTE,
                         ImsReasonInfo.CODE_USER_TERMINATED);
+        expectedCall.setupDuration = 1;
         expectedCall.setupDurationMillis = 80;
         expectedCall.setupFailed = false;
         expectedCall.codecBitmask = 1L << AudioCodec.AUDIO_CODEC_AMR;
