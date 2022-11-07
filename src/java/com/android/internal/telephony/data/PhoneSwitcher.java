@@ -1254,6 +1254,7 @@ public class PhoneSwitcher extends Handler {
                 // the alternative phone must have HOME availability
                 if (mPhoneStates[phoneId].dataRegState
                         == NetworkRegistrationInfo.REGISTRATION_STATE_HOME) {
+                    log("getAutoSwitchTargetSubId: found phone " + phoneId + " in HOME service");
                     Phone secondaryDataPhone = findPhoneById(phoneId);
                     if (secondaryDataPhone != null && // check auto switch feature enabled
                             secondaryDataPhone.isDataAllowed()) {
@@ -2069,6 +2070,7 @@ public class PhoneSwitcher extends Handler {
         pw.println("mAutoDataSwitchAvailabilityStabilityTimeThreshold="
                 + mAutoDataSwitchAvailabilityStabilityTimeThreshold);
         pw.println("mAutoDataSwitchValidationMaxRetry=" + mAutoDataSwitchValidationMaxRetry);
+        pw.println("mDisplayedAutoSwitchNotification=" + mDisplayedAutoSwitchNotification);
         pw.println("Local logs:");
         pw.increaseIndent();
         mLocalLog.dump(fd, pw, args);
@@ -2128,20 +2130,16 @@ public class PhoneSwitcher extends Handler {
 
         if (mDisplayedAutoSwitchNotification) {
             // cancel posted notification if any exist
-            if (VDBG) {
-                log("displayAutoDataSwitchNotification: canceling any notifications for subId "
-                        + mAutoSelectedDataSubId);
-            }
+            log("displayAutoDataSwitchNotification: canceling any notifications for subId "
+                    + mAutoSelectedDataSubId);
             notificationManager.cancel(AUTO_DATA_SWITCH_NOTIFICATION_TAG,
                     AUTO_DATA_SWITCH_NOTIFICATION_ID);
             return;
         }
         // proceed only the first time auto data switch occurs
         if (mLastAutoSelectedSwitchReason != DataSwitch.Reason.DATA_SWITCH_REASON_AUTO) {
-            if (VDBG) {
-                log("displayAutoDataSwitchNotification: Ignore DDS switch due to "
-                        + switchReasonToString(mLastAutoSelectedSwitchReason));
-            }
+            log("displayAutoDataSwitchNotification: Ignore DDS switch due to "
+                    + switchReasonToString(mLastAutoSelectedSwitchReason));
             return;
         }
         SubscriptionInfo subInfo = mSubscriptionController.getSubscriptionInfo(
@@ -2150,13 +2148,13 @@ public class PhoneSwitcher extends Handler {
             loge("displayAutoDataSwitchNotification: unexpected " + subInfo);
             return;
         }
-        log("displayAutoDataSwitchNotification: displaying for subId=" + mAutoSelectedDataSubId);
+        logl("displayAutoDataSwitchNotification: display for subId=" + mAutoSelectedDataSubId);
         // "Mobile network settings" screen / dialog
         Intent intent = new Intent(Settings.ACTION_NETWORK_OPERATOR_SETTINGS);
         final Bundle fragmentArgs = new Bundle();
         // Special contract for Settings to highlight permission row
         fragmentArgs.putString(SETTINGS_EXTRA_FRAGMENT_ARG_KEY, AUTO_DATA_SWITCH_SETTING_R_ID);
-        fragmentArgs.putInt(Settings.EXTRA_SUB_ID, mAutoSelectedDataSubId);
+        intent.putExtra(Settings.EXTRA_SUB_ID, mAutoSelectedDataSubId);
         intent.putExtra(SETTINGS_EXTRA_SHOW_FRAGMENT_ARGUMENTS, fragmentArgs);
         PendingIntent contentIntent = PendingIntent.getActivity(
                 mContext, mAutoSelectedDataSubId, intent, PendingIntent.FLAG_IMMUTABLE);
