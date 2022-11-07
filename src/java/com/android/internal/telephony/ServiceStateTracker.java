@@ -3239,7 +3239,6 @@ public class ServiceStateTracker extends Handler {
                 + " mImsRegistrationOnOff=" + mImsRegistrationOnOff
                 + "}");
 
-
         if (mImsRegistrationOnOff && !registered) {
             // moving to deregistered, only send this event if we need to re-evaluate
             if (getRadioPowerOffDelayTimeoutForImsRegistration() > 0) {
@@ -3252,6 +3251,9 @@ public class ServiceStateTracker extends Handler {
             }
         }
         mImsRegistrationOnOff = registered;
+
+        // It's possible ServiceState changes did not trigger SPN display update; we update it here.
+        updateSpnDisplay();
     }
 
     public void onImsCapabilityChanged() {
