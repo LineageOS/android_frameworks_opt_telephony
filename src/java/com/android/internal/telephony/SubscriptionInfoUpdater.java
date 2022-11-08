@@ -1195,8 +1195,7 @@ public class SubscriptionInfoUpdater extends Handler {
             loge("Cannot manage subId=" + currentSubId + ", carrierPackage=" + configPackageName);
         } else {
             boolean isOpportunistic = config.getBoolean(
-                    CarrierConfigManager.KEY_IS_OPPORTUNISTIC_SUBSCRIPTION_BOOL,
-                    currentSubInfo.isOpportunistic());
+                    CarrierConfigManager.KEY_IS_OPPORTUNISTIC_SUBSCRIPTION_BOOL, false);
             if (currentSubInfo.isOpportunistic() != isOpportunistic) {
                 if (DBG) logd("Set SubId=" + currentSubId + " isOpportunistic=" + isOpportunistic);
                 cv.put(SubscriptionManager.IS_OPPORTUNISTIC, isOpportunistic ? "1" : "0");

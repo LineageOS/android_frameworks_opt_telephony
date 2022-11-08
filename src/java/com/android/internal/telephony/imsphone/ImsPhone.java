@@ -1583,7 +1583,7 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
-    public void notifySrvccState(int state) {
+    public void notifySrvccState(Call.SrvccState state) {
         mCT.notifySrvccState(state);
     }
 

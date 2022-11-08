@@ -5203,8 +5203,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
 
             try {
-                // TODO(ag/20335448): replace 0 with actual trafficDirection
-                imsProxy.startImsTraffic(rr.mSerial, token, trafficType, accessNetworkType, 0);
+                imsProxy.startImsTraffic(rr.mSerial, token, trafficType, accessNetworkType);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(IMS_SERVICE, "startImsTraffic", e);
             }

@@ -316,7 +316,6 @@ message DataCallSession {
     optional int32 band_at_end = 19;
     repeated int32 handover_failure_causes = 20;
     repeated int32 handover_failure_rat = 21;
-    optional bool is_non_dds = 22;
 }
 
 message CellularServiceState {
