@@ -167,6 +167,21 @@ public class ImsRegistrationTests {
 
     @SmallTest
     @Test
+    public void testRegistrationCallbackOnDeregisteredWithRegistrationAttributes()
+            throws RemoteException {
+        ImsReasonInfo info = new ImsReasonInfo();
+        SipDetails details = new SipDetails.Builder(SipDetails.METHOD_REGISTER)
+                .setCSeq(1).setSipResponseCode(200, "OK")
+                .setSipResponseReasonHeader(10, "reasonText")
+                .setCallId("testCallId").build();
+
+        mRegistration.onDeregistered(info, details);
+
+        verify(mCallback).onDeregisteredWithDetails(eq(info), anyInt(), anyInt(), eq(details));
+    }
+
+    @SmallTest
+    @Test
     public void testRegistrationCallbackOnTechChangeFailed() throws RemoteException {
         ImsReasonInfo info = new ImsReasonInfo();
         mRegistration.onTechnologyChangeFailed(ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN,
