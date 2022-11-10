@@ -195,9 +195,9 @@ public class SmsControllerTest extends TelephonyTest {
     @Test
     public void sendsendTextForSubscriberTest() {
         mSmsControllerUT.sendTextForSubscriber(1, mCallingPackage, null, "1234",
-                null, "text", null, null, false, 0L, true);
+                null, "text", null, null, false, 0L, true, true);
         verify(mIccSmsInterfaceManager, Mockito.times(1))
-                .sendText(mCallingPackage, "1234", null, "text", null, null, false, 0L);
+                .sendText(mCallingPackage, "1234", null, "text", null, null, false, 0L, true);
     }
 
 }

@@ -457,11 +457,11 @@ public class IccSmsInterfaceManager {
      */
     public void sendText(String callingPackage, String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
-            boolean persistMessageForNonDefaultSmsApp, long messageId) {
+            boolean persistMessageForNonDefaultSmsApp, long messageId, boolean skipShortCodeCheck) {
         sendTextInternal(callingPackage, destAddr, scAddr, text, sentIntent, deliveryIntent,
                 persistMessageForNonDefaultSmsApp, SMS_MESSAGE_PRIORITY_NOT_SPECIFIED,
                 false /* expectMore */, SMS_MESSAGE_PERIOD_NOT_SPECIFIED, false /* isForVvm */,
-                messageId);
+                messageId, skipShortCodeCheck);
     }
 
     /**
@@ -479,6 +479,16 @@ public class IccSmsInterfaceManager {
         sendTextInternal(callingPackage, destAddr, scAddr, text, sentIntent, deliveryIntent,
                 persistMessage, SMS_MESSAGE_PRIORITY_NOT_SPECIFIED, false /* expectMore */,
                 SMS_MESSAGE_PERIOD_NOT_SPECIFIED, isForVvm, 0L /* messageId */);
+    }
+
+
+    private void sendTextInternal(String callingPackage, String destAddr, String scAddr,
+            String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
+            boolean persistMessageForNonDefaultSmsApp, int priority, boolean expectMore,
+            int validityPeriod, boolean isForVvm, long messageId) {
+        sendTextInternal(callingPackage, destAddr, scAddr, text, sentIntent, deliveryIntent,
+                persistMessageForNonDefaultSmsApp, priority, expectMore, validityPeriod, isForVvm,
+                messageId, false);
     }
 
     /**
@@ -527,12 +537,13 @@ public class IccSmsInterfaceManager {
      *  Any Other values including negative considered as Invalid Validity Period of the message.
      * @param messageId An id that uniquely identifies the message requested to be sent.
      *                 Used for logging and diagnostics purposes. The id may be 0.
+     * @param skipShortCodeCheck Skip check for short code type destination address.
      */
 
     private void sendTextInternal(String callingPackage, String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
             boolean persistMessageForNonDefaultSmsApp, int priority, boolean expectMore,
-            int validityPeriod, boolean isForVvm, long messageId) {
+            int validityPeriod, boolean isForVvm, long messageId, boolean skipShortCodeCheck) {
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             log("sendText: destAddr=" + destAddr + " scAddr=" + scAddr
                     + " text='" + text + "' sentIntent=" + sentIntent + " deliveryIntent="
@@ -544,7 +555,7 @@ public class IccSmsInterfaceManager {
         destAddr = filterDestAddress(destAddr);
         mDispatchersController.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
                 null/*messageUri*/, callingPackage, persistMessageForNonDefaultSmsApp,
-                priority, expectMore, validityPeriod, isForVvm, messageId);
+                priority, expectMore, validityPeriod, isForVvm, messageId, skipShortCodeCheck);
     }
 
     /**

@@ -26,6 +26,7 @@ import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.BaseBundle;
 import android.os.Binder;
@@ -199,7 +200,7 @@ public class SmsController extends ISmsImplBase {
             boolean persistMessageForNonDefaultSmsApp, long messageId) {
         sendTextForSubscriber(subId, callingPackage, callingAttributionTag, destAddr, scAddr,
                 text, sentIntent, deliveryIntent, persistMessageForNonDefaultSmsApp, messageId,
-                false);
+                false, false);
 
     }
 
@@ -225,12 +226,20 @@ public class SmsController extends ISmsImplBase {
     public void sendTextForSubscriber(int subId, String callingPackage,
             String callingAttributionTag, String destAddr, String scAddr, String text,
             PendingIntent sentIntent, PendingIntent deliveryIntent,
-            boolean persistMessageForNonDefaultSmsApp, long messageId, boolean skipFdnCheck) {
+            boolean persistMessageForNonDefaultSmsApp, long messageId, boolean skipFdnCheck,
+            boolean skipShortCodeCheck) {
         if (callingPackage == null) {
             callingPackage = getCallingPackage();
         }
         Rlog.d(LOG_TAG, "sendTextForSubscriber caller=" + callingPackage);
 
+        if (skipFdnCheck || skipShortCodeCheck) {
+            if (mContext.checkCallingOrSelfPermission(
+                    android.Manifest.permission.MODIFY_PHONE_STATE)
+                    != PackageManager.PERMISSION_GRANTED) {
+                throw new SecurityException("Requires MODIFY_PHONE_STATE permission.");
+            }
+        }
         if (!getSmsPermissions(subId).checkCallingCanSendText(persistMessageForNonDefaultSmsApp,
                 callingPackage, callingAttributionTag, "Sending SMS message")) {
             sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
@@ -255,7 +264,7 @@ public class SmsController extends ISmsImplBase {
             sendBluetoothText(info, destAddr, text, sentIntent, deliveryIntent);
         } else {
             sendIccText(subId, callingPackage, destAddr, scAddr, text, sentIntent, deliveryIntent,
-                    persistMessageForNonDefaultSmsApp, messageId);
+                    persistMessageForNonDefaultSmsApp, messageId, skipShortCodeCheck);
         }
     }
 
@@ -272,13 +281,14 @@ public class SmsController extends ISmsImplBase {
 
     private void sendIccText(int subId, String callingPackage, String destAddr,
             String scAddr, String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
-            boolean persistMessageForNonDefaultSmsApp, long messageId) {
+            boolean persistMessageForNonDefaultSmsApp, long messageId, boolean skipShortCodeCheck) {
         Rlog.d(LOG_TAG, "sendTextForSubscriber iccSmsIntMgr"
                 + " Subscription: " + subId + " " + formatCrossStackMessageId(messageId));
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendText(callingPackage, destAddr, scAddr, text, sentIntent,
-                    deliveryIntent, persistMessageForNonDefaultSmsApp, messageId);
+                    deliveryIntent, persistMessageForNonDefaultSmsApp, messageId,
+                    skipShortCodeCheck);
         } else {
             Rlog.e(LOG_TAG, "sendTextForSubscriber iccSmsIntMgr is null for"
                     + " Subscription: " + subId + " " + formatCrossStackMessageId(messageId));
