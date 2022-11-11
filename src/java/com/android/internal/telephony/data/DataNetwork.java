@@ -3152,7 +3152,7 @@ public class DataNetwork extends StateMachine {
                 && !mAttachedNetworkRequestList.isEmpty()) {
             TelephonyNetworkRequest networkRequest = mAttachedNetworkRequestList.get(0);
             DataProfile dataProfile = mDataNetworkController.getDataProfileManager()
-                    .getDataProfileForNetworkRequest(networkRequest, targetNetworkType);
+                    .getDataProfileForNetworkRequest(networkRequest, targetNetworkType, true);
             // Some carriers have different profiles between cellular and IWLAN. We need to
             // dynamically switch profile, but only when those profiles have same APN name.
             if (dataProfile != null && dataProfile.getApnSetting() != null
