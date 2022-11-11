@@ -1331,6 +1331,8 @@ public class RILUtils {
             case AccessNetworkConstants.AccessNetworkType.EUTRAN:
                 rasInHalFormat.eutranBands = bands;
                 break;
+            default:
+                return null;
         }
 
         if (ras.getChannels() != null) {
@@ -1374,6 +1376,8 @@ public class RILUtils {
             case AccessNetworkConstants.AccessNetworkType.NGRAN:
                 bandsInHalFormat.ngranBands(bands);
                 break;
+            default:
+                return null;
         }
         rasInHalFormat.bands = bandsInHalFormat;
 
@@ -1420,6 +1424,8 @@ public class RILUtils {
             case AccessNetworkConstants.AccessNetworkType.NGRAN:
                 bandsInHalFormat.setNgranBands(bands);
                 break;
+            default:
+                return null;
         }
         rasInHalFormat.bands = bandsInHalFormat;
 
