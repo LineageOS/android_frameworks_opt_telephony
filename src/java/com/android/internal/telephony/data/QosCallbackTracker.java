@@ -80,12 +80,20 @@ public class QosCallbackTracker extends Handler {
         /**
          * Filter using the remote address.
          *
-         * @param address The local address.
+         * @param address The remote address.
          * @param startPort Starting port.
          * @param endPort Ending port.
          * @return {@code true} if matches, {@code false} otherwise.
          */
         boolean matchesRemoteAddress(InetAddress address, int startPort, int endPort);
+
+        /**
+         * Filter using the protocol
+         *
+         * @param protocol ID
+         * @return {@code true} if matches, {@code false} otherwise.
+         */
+        boolean matchesProtocol(int protocol);
     }
 
     /**
@@ -123,6 +131,11 @@ public class QosCallbackTracker extends Handler {
                                             int endPort) {
                                         return filter.matchesRemoteAddress(address, startPort,
                                                 endPort);
+                                    }
+
+                                    @Override
+                                    public boolean matchesProtocol(int protocol) {
+                                        return filter.matchesProtocol(protocol);
                                     }
                                 });
                     }
@@ -332,6 +345,21 @@ public class QosCallbackTracker extends Handler {
         return result;
     }
 
+    private boolean matchesByProtocol(@NonNull QosBearerFilter sessionFilter,
+            final @NonNull IFilter filter, boolean hasMatchedFilter) {
+        boolean result = false;
+        int protocol = sessionFilter.getProtocol();
+        if (protocol == QosBearerFilter.QOS_PROTOCOL_TCP
+                || protocol == QosBearerFilter.QOS_PROTOCOL_UDP) {
+            result = filter.matchesProtocol(protocol);
+        } else {
+            // FWK currently doesn't support filtering based on protocol ID ESP & AH. We will follow
+            // match results of other filters.
+            result = hasMatchedFilter;
+        }
+        return result;
+    }
+
     private QosBearerFilter getFilterByPrecedence(
             @Nullable QosBearerFilter qosFilter, QosBearerFilter sessionFilter) {
         // Find for the highest precedence filter, lower the value is the higher the precedence
@@ -362,6 +390,15 @@ public class QosCallbackTracker extends Handler {
                     hasMatchedFilter = true;
                 }
             }
+
+            if (sessionFilter.getProtocol() != QosBearerFilter.QOS_PROTOCOL_UNSPECIFIED) {
+                if (!matchesByProtocol(sessionFilter, filter, hasMatchedFilter)) {
+                    unMatched = true;
+                } else {
+                    hasMatchedFilter = true;
+                }
+            }
+
             if (!unMatched && hasMatchedFilter) {
                 qosFilter = getFilterByPrecedence(qosFilter, sessionFilter);
             }
