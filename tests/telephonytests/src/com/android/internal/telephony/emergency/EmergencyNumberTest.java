@@ -379,7 +379,36 @@ public class EmergencyNumberTest extends TestCase {
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
 
-        assertFalse(EmergencyNumber.areSameEmergencyNumbers(num1, num2));
+        /* case 1: Check routing is not checked when comparing the same numbers. As routing will
+        be unknown for all numbers apart from DB. Check merge when both are not from DB then
+        routing value is merged from first number. */
+        assertTrue(EmergencyNumber.areSameEmergencyNumbers(num1, num2));
+        assertEquals(num1, EmergencyNumber.mergeSameEmergencyNumbers(num1, num2));
+
+        num2 = new EmergencyNumber(
+                "911",
+                "jp",
+                "30",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
+                new ArrayList<String>(),
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
+
+        /* case 1: Check routing is not checked when comparing the same numbers. Check merge when
+        one of the number is from DB then routing value is merged from DB number. Along with
+        source value is masked with both*/
+        assertTrue(EmergencyNumber.areSameEmergencyNumbers(num1, num2));
+
+        num2 = new EmergencyNumber(
+                "911",
+                "jp",
+                "30",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
+                new ArrayList<String>(),
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING
+                | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
+        assertEquals(num2, EmergencyNumber.mergeSameEmergencyNumbers(num1, num2));
     }
 
     public void testSameEmergencyNumberDifferentSource() throws Exception {
