@@ -5091,6 +5091,24 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mCi.updateImsCallStatus(imsCallInfo, response);
     }
 
+    /**
+     * Enables or disables N1 mode (access to 5G core network) in accordance with
+     * 3GPP TS 24.501 4.9.
+     * @param enable {@code true} to enable N1 mode, {@code false} to disable N1 mode.
+     * @param result Callback message to receive the result.
+     */
+    public void setN1ModeEnabled(boolean enable, Message result) {
+        mCi.setN1ModeEnabled(enable, result);
+    }
+
+    /**
+     * Check whether N1 mode (access to 5G core network) is enabled or not.
+     * @param result Callback message to receive the result.
+     */
+    public void isN1ModeEnabled(Message result) {
+        mCi.isN1ModeEnabled(result);
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Phone: subId=" + getSubId());
         pw.println(" mPhoneId=" + mPhoneId);

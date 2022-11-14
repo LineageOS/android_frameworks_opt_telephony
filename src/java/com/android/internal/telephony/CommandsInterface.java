@@ -2973,4 +2973,18 @@ public interface CommandsInterface {
      * @param result A callback to receive the response.
      */
     default void updateImsCallStatus(@NonNull List<ImsCallInfo> imsCallInfo, Message result) {}
+
+    /**
+     * Enables or disables N1 mode (access to 5G core network) in accordance with
+     * 3GPP TS 24.501 4.9.
+     * @param enable {@code true} to enable N1 mode, {@code false} to disable N1 mode.
+     * @param result Callback message to receive the result.
+     */
+    default void setN1ModeEnabled(boolean enable, Message result) {}
+
+    /**
+     * Check whether N1 mode (access to 5G core network) is enabled or not.
+     * @param result Callback message to receive the result.
+     */
+    default void isN1ModeEnabled(Message result) {}
 }
