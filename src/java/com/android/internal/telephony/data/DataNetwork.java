@@ -2489,7 +2489,7 @@ public class DataNetwork extends StateMachine {
             NetworkRegistrationInfo nri = getNetworkRegistrationInfo();
             if (isSetupResponse
                     && mDataProfile.getApnSetting() != null && nri != null && nri.isInService()) {
-                boolean isRoaming = nri.getInitialRegistrationState()
+                boolean isRoaming = nri.getNetworkRegistrationState()
                         == NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING;
                 int protocol = isRoaming ? mDataProfile.getApnSetting().getRoamingProtocol()
                         : mDataProfile.getApnSetting().getProtocol();
