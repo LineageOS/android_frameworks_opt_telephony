@@ -478,14 +478,25 @@ public class EmergencyNumberTracker extends Handler {
      */
     private int getRoutingInfoFromDB(EccInfo eccInfo,
             Map<String, Set<String>> normalRoutedNumbers) {
-        int emergencyCallRouting = EmergencyNumber.EMERGENCY_CALL_ROUTING_EMERGENCY;
+        int emergencyCallRouting;
+        switch(eccInfo.routing)
+        {
+            case EccInfo.Routing.NORMAL :
+                emergencyCallRouting = EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL;
+                break;
+            case EccInfo.Routing.EMERGENCY :
+                emergencyCallRouting = EmergencyNumber.EMERGENCY_CALL_ROUTING_EMERGENCY;
+                break;
+            default:
+                emergencyCallRouting = EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN;
+        }
         String phoneNumber = eccInfo.phoneNumber.trim();
         if (phoneNumber.isEmpty()) {
             loge("EccInfo has empty phone number.");
             return emergencyCallRouting;
         }
 
-        if (eccInfo.isNormalRouted) {
+        if (eccInfo.routing == EccInfo.Routing.NORMAL) {
             emergencyCallRouting = EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL;
 
             if (((eccInfo.normalRoutingMncs).length != 0)

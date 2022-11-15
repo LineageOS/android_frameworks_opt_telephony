@@ -10,7 +10,7 @@ countries {
     types: MOUNTAIN_RESCUE
     types: MIEC
     types: AIEC
-    is_normal_routed: true
+    routing: NORMAL
     normal_routing_mncs: "05"
   }
   eccs {
@@ -22,7 +22,7 @@ countries {
     types: MOUNTAIN_RESCUE
     types: MIEC
     types: AIEC
-    is_normal_routed: true
+    routing: NORMAL
     normal_routing_mncs: "45"
     normal_routing_mncs: "47"
     normal_routing_mncs: "05"
@@ -36,7 +36,7 @@ countries {
     types: MOUNTAIN_RESCUE
     types: MIEC
     types: AIEC
-    is_normal_routed: false
+    routing: EMERGENCY
     normal_routing_mncs: ""
   }
   eccs {
@@ -48,7 +48,7 @@ countries {
     types: MOUNTAIN_RESCUE
     types: MIEC
     types: AIEC
-    is_normal_routed: true
+    routing: NORMAL
     normal_routing_mncs: ""
   }
   eccs {
@@ -60,7 +60,7 @@ countries {
     types: MOUNTAIN_RESCUE
     types: MIEC
     types: AIEC
-    is_normal_routed: true
+    routing: NORMAL
   }
   ecc_fallback: "911"
 }
