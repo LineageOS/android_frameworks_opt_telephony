@@ -3589,7 +3589,7 @@ public class SubscriptionController extends ISub.Stub {
             if (phoneSwitcher == null) {
                 logd("Set preferred data sub: phoneSwitcher is null.");
                 AnomalyReporter.reportAnomaly(
-                        UUID.fromString("a3ab0b9d-f2aa-4baf-911d-7096c0d4645a"),
+                        UUID.fromString("a73fe57f-4178-4bc3-a7ae-9d7354939274"),
                         "Set preferred data sub: phoneSwitcher is null.");
                 if (callback != null) {
                     try {
@@ -3616,7 +3616,7 @@ public class SubscriptionController extends ISub.Stub {
             PhoneSwitcher phoneSwitcher = PhoneSwitcher.getInstance();
             if (phoneSwitcher == null) {
                 AnomalyReporter.reportAnomaly(
-                        UUID.fromString("a3ab0b9d-f2aa-4baf-911d-7096c0d4645a"),
+                        UUID.fromString("e72747ab-d0aa-4b0e-9dd5-cb99365c6d58"),
                         "Get preferred data sub: phoneSwitcher is null.");
                 return SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
             }
