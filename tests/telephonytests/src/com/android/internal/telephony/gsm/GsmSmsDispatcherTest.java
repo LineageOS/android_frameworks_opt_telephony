@@ -231,7 +231,8 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         restoreInstance(Singleton.class, "mInstance", mIActivityManagerSingleton);
         restoreInstance(ActivityManager.class, "IActivityManagerSingleton", null);
         Context realContext = TestApplication.getAppContext();
-        realContext.registerReceiver(mTestReceiver, new IntentFilter(TEST_INTENT));
+        realContext.registerReceiver(mTestReceiver, new IntentFilter(TEST_INTENT),
+                Context.RECEIVER_EXPORTED);
     }
 
     @Test
