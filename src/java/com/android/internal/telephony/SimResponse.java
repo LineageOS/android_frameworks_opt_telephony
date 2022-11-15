@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.TelephonyManager.HAL_SERVICE_SIM;
+
 import android.hardware.radio.RadioError;
 import android.hardware.radio.RadioResponseInfo;
 import android.hardware.radio.sim.IRadioSimResponse;
@@ -41,7 +43,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
 
     private void responseIccIo(RadioResponseInfo responseInfo,
             android.hardware.radio.sim.IccIoResult result) {
-        RILRequest rr = mRil.processResponse(RIL.SIM_SERVICE, responseInfo);
+        RILRequest rr = mRil.processResponse(HAL_SERVICE_SIM, responseInfo);
 
         if (rr != null) {
             IccIoResult ret = new IccIoResult(result.sw1, result.sw2, result.simResponse);
@@ -68,7 +70,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
      */
     public void areUiccApplicationsEnabledResponse(RadioResponseInfo responseInfo,
             boolean enabled) {
-        RILRequest rr = mRil.processResponse(RIL.SIM_SERVICE, responseInfo);
+        RILRequest rr = mRil.processResponse(HAL_SERVICE_SIM, responseInfo);
 
         if (rr != null) {
             if (responseInfo.error == RadioError.NONE) {
@@ -83,7 +85,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
      * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
      */
     public void changeIccPin2ForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
-        RadioResponse.responseInts(RIL.SIM_SERVICE, mRil, responseInfo, remainingAttempts);
+        RadioResponse.responseInts(HAL_SERVICE_SIM, mRil, responseInfo, remainingAttempts);
     }
 
     /**
@@ -91,14 +93,14 @@ public class SimResponse extends IRadioSimResponse.Stub {
      * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
      */
     public void changeIccPinForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
-        RadioResponse.responseInts(RIL.SIM_SERVICE, mRil, responseInfo, remainingAttempts);
+        RadioResponse.responseInts(HAL_SERVICE_SIM, mRil, responseInfo, remainingAttempts);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error.
      */
     public void enableUiccApplicationsResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.SIM_SERVICE, mRil, responseInfo);
+        RadioResponse.responseVoid(HAL_SERVICE_SIM, mRil, responseInfo);
     }
 
     /**
@@ -109,7 +111,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
     public void getAllowedCarriersResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.sim.CarrierRestrictions carrierRestrictions,
             int multiSimPolicy) {
-        RILRequest rr = mRil.processResponse(RIL.SIM_SERVICE, responseInfo);
+        RILRequest rr = mRil.processResponse(HAL_SERVICE_SIM, responseInfo);
         if (rr == null) {
             return;
         }
@@ -154,7 +156,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
     public void getCdmaSubscriptionResponse(RadioResponseInfo responseInfo, String mdn,
             String hSid, String hNid, String min, String prl) {
         RadioResponse.responseStrings(
-                RIL.SIM_SERVICE, mRil, responseInfo, mdn, hSid, hNid, min, prl);
+                HAL_SERVICE_SIM, mRil, responseInfo, mdn, hSid, hNid, min, prl);
     }
 
     /**
@@ -162,7 +164,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
      * @param source CDMA subscription source
      */
     public void getCdmaSubscriptionSourceResponse(RadioResponseInfo responseInfo, int source) {
-        RadioResponse.responseInts(RIL.SIM_SERVICE, mRil, responseInfo, source);
+        RadioResponse.responseInts(HAL_SERVICE_SIM, mRil, responseInfo, source);
     }
 
     /**
@@ -171,7 +173,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
      *        specified barring facility is active. "0" means "disabled for all"
      */
     public void getFacilityLockForAppResponse(RadioResponseInfo responseInfo, int response) {
-        RadioResponse.responseInts(RIL.SIM_SERVICE, mRil, responseInfo, response);
+        RadioResponse.responseInts(HAL_SERVICE_SIM, mRil, responseInfo, response);
     }
 
     /**
@@ -180,7 +182,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
      */
     public void getIccCardStatusResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.sim.CardStatus cardStatus) {
-        RILRequest rr = mRil.processResponse(RIL.SIM_SERVICE, responseInfo);
+        RILRequest rr = mRil.processResponse(HAL_SERVICE_SIM, responseInfo);
 
         if (rr != null) {
             IccCardStatus iccCardStatus = RILUtils.convertHalCardStatus(cardStatus);
@@ -197,7 +199,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
      * @param imsi String containing the IMSI
      */
     public void getImsiForAppResponse(RadioResponseInfo responseInfo, String imsi) {
-        RadioResponse.responseString(RIL.SIM_SERVICE, mRil, responseInfo, imsi);
+        RadioResponse.responseString(HAL_SERVICE_SIM, mRil, responseInfo, imsi);
     }
 
     /**
@@ -207,7 +209,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
     public void getSimPhonebookCapacityResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.sim.PhonebookCapacity pbCapacity) {
         AdnCapacity capacity = RILUtils.convertHalPhonebookCapacity(pbCapacity);
-        RILRequest rr = mRil.processResponse(RIL.SIM_SERVICE, responseInfo);
+        RILRequest rr = mRil.processResponse(HAL_SERVICE_SIM, responseInfo);
         if (rr != null) {
             if (responseInfo.error == RadioError.NONE) {
                 RadioResponse.sendMessageResponse(rr.mResult, capacity);
@@ -220,14 +222,14 @@ public class SimResponse extends IRadioSimResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error.
      */
     public void getSimPhonebookRecordsResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.SIM_SERVICE, mRil, responseInfo);
+        RadioResponse.responseVoid(HAL_SERVICE_SIM, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void iccCloseLogicalChannelResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.SIM_SERVICE, mRil, responseInfo);
+        RadioResponse.responseVoid(HAL_SERVICE_SIM, mRil, responseInfo);
     }
 
     /**
@@ -252,7 +254,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
         for (int i = 0; i < selectResponse.length; i++) {
             arr.add((int) selectResponse[i]);
         }
-        RadioResponse.responseIntArrayList(RIL.SIM_SERVICE, mRil, responseInfo, arr);
+        RadioResponse.responseIntArrayList(HAL_SERVICE_SIM, mRil, responseInfo, arr);
     }
 
     /**
@@ -277,7 +279,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void reportStkServiceIsRunningResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.SIM_SERVICE, mRil, responseInfo);
+        RadioResponse.responseVoid(HAL_SERVICE_SIM, mRil, responseInfo);
     }
 
     /**
@@ -286,7 +288,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
      */
     public void requestIccSimAuthenticationResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.sim.IccIoResult iccIo) {
-        RILRequest rr = mRil.processResponse(RIL.SIM_SERVICE, responseInfo);
+        RILRequest rr = mRil.processResponse(HAL_SERVICE_SIM, responseInfo);
 
         if (rr != null) {
             IccIoResult ret = new IccIoResult(iccIo.sw1, iccIo.sw2,
@@ -315,7 +317,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
      *        string starting with first byte of response
      */
     public void sendEnvelopeResponse(RadioResponseInfo responseInfo, String commandResponse) {
-        RadioResponse.responseString(RIL.SIM_SERVICE, mRil, responseInfo, commandResponse);
+        RadioResponse.responseString(HAL_SERVICE_SIM, mRil, responseInfo, commandResponse);
     }
 
     /**
@@ -331,7 +333,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void sendTerminalResponseToSimResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.SIM_SERVICE, mRil, responseInfo);
+        RadioResponse.responseVoid(HAL_SERVICE_SIM, mRil, responseInfo);
     }
 
     /**
@@ -339,7 +341,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
      */
     public void setAllowedCarriersResponse(RadioResponseInfo responseInfo) {
         int ret = TelephonyManager.SET_CARRIER_RESTRICTION_ERROR;
-        RILRequest rr = mRil.processResponse(RIL.SIM_SERVICE, responseInfo);
+        RILRequest rr = mRil.processResponse(HAL_SERVICE_SIM, responseInfo);
         if (rr != null) {
             mRil.riljLog("setAllowedCarriersResponse - error = " + responseInfo.error);
 
@@ -355,14 +357,14 @@ public class SimResponse extends IRadioSimResponse.Stub {
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setCarrierInfoForImsiEncryptionResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.SIM_SERVICE, mRil, responseInfo);
+        RadioResponse.responseVoid(HAL_SERVICE_SIM, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setCdmaSubscriptionSourceResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.SIM_SERVICE, mRil, responseInfo);
+        RadioResponse.responseVoid(HAL_SERVICE_SIM, mRil, responseInfo);
     }
 
     /**
@@ -370,21 +372,21 @@ public class SimResponse extends IRadioSimResponse.Stub {
      * @param retry 0 is the number of retries remaining, or -1 if unknown
      */
     public void setFacilityLockForAppResponse(RadioResponseInfo responseInfo, int retry) {
-        RadioResponse.responseInts(RIL.SIM_SERVICE, mRil, responseInfo, retry);
+        RadioResponse.responseInts(HAL_SERVICE_SIM, mRil, responseInfo, retry);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setSimCardPowerResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.SIM_SERVICE, mRil, responseInfo);
+        RadioResponse.responseVoid(HAL_SERVICE_SIM, mRil, responseInfo);
     }
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      */
     public void setUiccSubscriptionResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.SIM_SERVICE, mRil, responseInfo);
+        RadioResponse.responseVoid(HAL_SERVICE_SIM, mRil, responseInfo);
     }
 
     /**
@@ -392,7 +394,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
      * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
      */
     public void supplyIccPin2ForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
-        RadioResponse.responseInts(RIL.SIM_SERVICE, mRil, responseInfo, remainingAttempts);
+        RadioResponse.responseInts(HAL_SERVICE_SIM, mRil, responseInfo, remainingAttempts);
     }
 
     /**
@@ -400,7 +402,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
      * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
      */
     public void supplyIccPinForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
-        RadioResponse.responseInts(RIL.SIM_SERVICE, mRil, responseInfo, remainingAttempts);
+        RadioResponse.responseInts(HAL_SERVICE_SIM, mRil, responseInfo, remainingAttempts);
     }
 
     /**
@@ -408,7 +410,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
      * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
      */
     public void supplyIccPuk2ForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
-        RadioResponse.responseInts(RIL.SIM_SERVICE, mRil, responseInfo, remainingAttempts);
+        RadioResponse.responseInts(HAL_SERVICE_SIM, mRil, responseInfo, remainingAttempts);
     }
 
     /**
@@ -416,7 +418,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
      * @param remainingAttempts Number of retries remaining, must be equal to -1 if unknown.
      */
     public void supplyIccPukForAppResponse(RadioResponseInfo responseInfo, int remainingAttempts) {
-        RadioResponse.responseInts(RIL.SIM_SERVICE, mRil, responseInfo, remainingAttempts);
+        RadioResponse.responseInts(HAL_SERVICE_SIM, mRil, responseInfo, remainingAttempts);
     }
 
     /**
@@ -428,7 +430,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
     public void supplySimDepersonalizationResponse(RadioResponseInfo responseInfo, int persoType,
             int remainingRetries) {
         RadioResponse.responseInts(
-                RIL.SIM_SERVICE, mRil, responseInfo, persoType, remainingRetries);
+                HAL_SERVICE_SIM, mRil, responseInfo, persoType, remainingRetries);
     }
 
     /**
@@ -437,7 +439,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
      */
     public void updateSimPhonebookRecordsResponse(RadioResponseInfo responseInfo,
             int updatedRecordIndex) {
-        RadioResponse.responseInts(RIL.SIM_SERVICE, mRil, responseInfo, updatedRecordIndex);
+        RadioResponse.responseInts(HAL_SERVICE_SIM, mRil, responseInfo, updatedRecordIndex);
     }
 
     @Override

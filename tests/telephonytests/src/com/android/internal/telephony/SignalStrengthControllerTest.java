@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import static android.telephony.SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSRP;
 import static android.telephony.SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI;
 import static android.telephony.SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_SSSINR;
+import static android.telephony.TelephonyManager.HAL_SERVICE_NETWORK;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -741,7 +742,7 @@ public class SignalStrengthControllerTest extends TelephonyTest {
             }
         }
         // Only check on RADIO hal 1.5 and above to make it less flaky
-        if (mPhone.getHalVersion().greaterOrEqual(RIL.RADIO_HAL_VERSION_1_5)) {
+        if (mPhone.getHalVersion(HAL_SERVICE_NETWORK).greaterOrEqual(RIL.RADIO_HAL_VERSION_1_5)) {
             assertThat(expectedNonEmptyThreshold).isEqualTo(actualNonEmptyThreshold);
         }
     }

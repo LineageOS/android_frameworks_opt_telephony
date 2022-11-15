@@ -16,6 +16,11 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.TelephonyManager.HAL_SERVICE_DATA;
+import static android.telephony.TelephonyManager.HAL_SERVICE_NETWORK;
+import static android.telephony.TelephonyManager.HAL_SERVICE_RADIO;
+import static android.telephony.TelephonyManager.HAL_SERVICE_SIM;
+
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ALLOW_DATA;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CDMA_GET_SUBSCRIPTION_SOURCE;
@@ -183,8 +188,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -206,13 +213,13 @@ public class RILTest extends TelephonyTest {
     private RadioNetworkProxy mNetworkProxy;
     private RadioSimProxy mSimProxy;
 
-    private HalVersion mRadioVersionV10 = new HalVersion(1, 0);
-    private HalVersion mRadioVersionV11 = new HalVersion(1, 1);
-    private HalVersion mRadioVersionV12 = new HalVersion(1, 2);
-    private HalVersion mRadioVersionV13 = new HalVersion(1, 3);
-    private HalVersion mRadioVersionV14 = new HalVersion(1, 4);
-    private HalVersion mRadioVersionV15 = new HalVersion(1, 5);
-    private HalVersion mRadioVersionV16 = new HalVersion(1, 6);
+    private Map<Integer, HalVersion> mHalVersionV10 = new HashMap<>();
+    private Map<Integer, HalVersion> mHalVersionV11 = new HashMap<>();
+    private Map<Integer, HalVersion> mHalVersionV12 = new HashMap<>();
+    private Map<Integer, HalVersion> mHalVersionV13 = new HashMap<>();
+    private Map<Integer, HalVersion> mHalVersionV14 = new HashMap<>();
+    private Map<Integer, HalVersion> mHalVersionV15 = new HashMap<>();
+    private Map<Integer, HalVersion> mHalVersionV16 = new HashMap<>();
 
     private RIL mRILInstance;
     private RIL mRILUnderTest;
@@ -316,10 +323,10 @@ public class RILTest extends TelephonyTest {
         doReturn(powerManager).when(context).getSystemService(Context.POWER_SERVICE);
         doReturn(new ApplicationInfo()).when(context).getApplicationInfo();
         SparseArray<RadioServiceProxy> proxies = new SparseArray<>();
-        proxies.put(RIL.RADIO_SERVICE, null);
-        proxies.put(RIL.DATA_SERVICE, mDataProxy);
-        proxies.put(RIL.NETWORK_SERVICE, mNetworkProxy);
-        proxies.put(RIL.SIM_SERVICE, mSimProxy);
+        proxies.put(HAL_SERVICE_RADIO, null);
+        proxies.put(HAL_SERVICE_DATA, mDataProxy);
+        proxies.put(HAL_SERVICE_NETWORK, mNetworkProxy);
+        proxies.put(HAL_SERVICE_SIM, mSimProxy);
         mRILInstance = new RIL(context,
                 RadioAccessFamily.getRafFromNetworkType(RILConstants.PREFERRED_NETWORK_MODE),
                 Phone.PREFERRED_CDMA_SUBSCRIPTION, 0, proxies);
@@ -335,7 +342,16 @@ public class RILTest extends TelephonyTest {
         doReturn(false).when(mNetworkProxy).isEmpty();
         doReturn(false).when(mSimProxy).isEmpty();
         try {
-            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV10);
+            for (int service = RIL.MIN_SERVICE_IDX; service <= RIL.MAX_SERVICE_IDX; service++) {
+                mHalVersionV10.put(service, new HalVersion(1, 0));
+                mHalVersionV11.put(service, new HalVersion(1, 1));
+                mHalVersionV12.put(service, new HalVersion(1, 2));
+                mHalVersionV13.put(service, new HalVersion(1, 3));
+                mHalVersionV14.put(service, new HalVersion(1, 4));
+                mHalVersionV15.put(service, new HalVersion(1, 5));
+                mHalVersionV16.put(service, new HalVersion(1, 6));
+            }
+            replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV10);
         } catch (Exception e) {
         }
     }
@@ -493,7 +509,7 @@ public class RILTest extends TelephonyTest {
 
         // Make radio version 1.5 to support the operation.
         try {
-            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV15);
+            replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV15);
         } catch (Exception e) {
         }
 
@@ -531,7 +547,7 @@ public class RILTest extends TelephonyTest {
 
         // Make radio version 1.5 to support the operation.
         try {
-            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV15);
+            replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV15);
         } catch (Exception e) {
         }
 
@@ -711,7 +727,7 @@ public class RILTest extends TelephonyTest {
     public void testStartNetworkScanWithUnsupportedResponse() throws Exception {
         // Use Radio HAL v1.5
         try {
-            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV15);
+            replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV15);
         } catch (Exception e) {
         }
         NetworkScanRequest nsr = getNetworkScanRequestForTesting();
@@ -738,7 +754,7 @@ public class RILTest extends TelephonyTest {
     public void testGetVoiceRegistrationStateWithUnsupportedResponse() throws Exception {
         // Use Radio HAL v1.5
         try {
-            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV15);
+            replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV15);
         } catch (Exception e) {
         }
         mRILUnderTest.getVoiceRegistrationState(obtainMessage());
@@ -773,7 +789,7 @@ public class RILTest extends TelephonyTest {
     public void testGetDataRegistrationStateWithUnsupportedResponse() throws Exception {
         // Use Radio HAL v1.5
         try {
-            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV15);
+            replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV15);
         } catch (Exception e) {
         }
 
@@ -818,7 +834,7 @@ public class RILTest extends TelephonyTest {
 
         // Use Radio HAL v1.6
         try {
-            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV16);
+            replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV16);
         } catch (Exception e) {
         }
 
@@ -861,7 +877,7 @@ public class RILTest extends TelephonyTest {
     public void testSendSMS_1_6() throws Exception {
         // Use Radio HAL v1.6
         try {
-            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV16);
+            replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV16);
         } catch (Exception e) {
         }
         String smscPdu = "smscPdu";
@@ -893,7 +909,7 @@ public class RILTest extends TelephonyTest {
     public void testSendSMSExpectMore_1_6() throws Exception {
         // Use Radio HAL v1.6
         try {
-            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV16);
+            replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV16);
         } catch (Exception e) {
         }
         String smscPdu = "smscPdu";
@@ -912,7 +928,7 @@ public class RILTest extends TelephonyTest {
     public void testSendCdmaSMS_1_6() throws Exception {
         // Use Radio HAL v1.6
         try {
-            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV16);
+            replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV16);
         } catch (Exception e) {
         }
         byte[] pdu = "000010020000000000000000000000000000000000".getBytes();
@@ -928,7 +944,7 @@ public class RILTest extends TelephonyTest {
     public void testSendCdmaSMSExpectMore_1_6() throws Exception {
         // Use Radio HAL v1.6
         try {
-            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV16);
+            replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV16);
         } catch (Exception e) {
         }
         byte[] pdu = "000010020000000000000000000000000000000000".getBytes();
@@ -1475,7 +1491,7 @@ public class RILTest extends TelephonyTest {
 
         // Make radio version 1.5 to support the operation.
         try {
-            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV15);
+            replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV15);
         } catch (Exception e) {
         }
         mRILUnderTest.getBarringInfo(obtainMessage());
@@ -2838,7 +2854,7 @@ public class RILTest extends TelephonyTest {
 
         // Make radio version 1.5 to support the operation.
         try {
-            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV15);
+            replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV15);
         } catch (Exception e) {
         }
         mRILUnderTest.enableUiccApplications(false, obtainMessage());
@@ -2855,7 +2871,7 @@ public class RILTest extends TelephonyTest {
 
         // Make radio version 1.5 to support the operation.
         try {
-            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV15);
+            replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV15);
         } catch (Exception e) {
         }
         mRILUnderTest.areUiccApplicationsEnabled(obtainMessage());
@@ -2902,7 +2918,7 @@ public class RILTest extends TelephonyTest {
     public void testGetSlicingConfig() throws Exception {
         // Use Radio HAL v1.6
         try {
-            replaceInstance(RIL.class, "mRadioVersion", mRILUnderTest, mRadioVersionV16);
+            replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV16);
         } catch (Exception e) {
         }
         mRILUnderTest.getSlicingConfig(obtainMessage());
