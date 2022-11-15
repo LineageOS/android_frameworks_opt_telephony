@@ -166,7 +166,6 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_LOGICA
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_MUTE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_NETWORK_SELECTION_AUTOMATIC;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_NETWORK_SELECTION_MANUAL;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_NULL_CIPHER_AND_INTEGRITY_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_PREFERRED_DATA_MODEM;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_RADIO_CAPABILITY;
@@ -5178,8 +5177,6 @@ public class RILUtils {
                 return "SEND_ANBR_QUERY";
             case RIL_REQUEST_TRIGGER_EPS_FALLBACK:
                 return "TRIGGER_EPS_FALLBACK";
-            case RIL_REQUEST_SET_NULL_CIPHER_AND_INTEGRITY_ENABLED:
-                return "SET_NULL_CIPHER_AND_INTEGRITY_ENABLED";
             default:
                 return "<unknown request " + request + ">";
         }

@@ -2930,14 +2930,4 @@ public interface CommandsInterface {
      * @param bitsPerSecond The bit rate requested by the opponent UE.
      */
     default void sendAnbrQuery(int mediaType, int direction, int bitsPerSecond, Message result) {}
-
-    /**
-     * Set the UE's ability to accept/reject null ciphered and/or null integrity-protected
-     * connections.
-     *
-     * @param result Callback message containing the success or failure status.
-     * @param enabled true to allow null ciphered and/or null integrity-protected connections,
-     * false to disallow.
-     */
-    default void setNullCipherAndIntegrityEnabled(Message result, boolean enabled) {}
 }

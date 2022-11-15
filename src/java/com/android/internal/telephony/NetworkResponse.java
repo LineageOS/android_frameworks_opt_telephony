@@ -484,12 +484,4 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
     public int getInterfaceVersion() {
         return IRadioNetworkResponse.VERSION;
     }
-
-    /**
-     * @param responseInfo Response info struct containing response type, serial no. and error
-     */
-    public void setNullCipherAndIntegrityEnabledResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(RIL.NETWORK_SERVICE, mRil, responseInfo);
-    }
-
 }
