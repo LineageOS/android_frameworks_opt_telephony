@@ -908,7 +908,7 @@ public class ServiceStateTracker extends Handler {
         if (nrs != null) {
             int rat = ServiceState.networkTypeToRilRadioTechnology(
                     nrs.getAccessNetworkTechnology());
-            int drs = regCodeToServiceState(nrs.getInitialRegistrationState());
+            int drs = regCodeToServiceState(nrs.getNetworkRegistrationState());
             return new Pair<>(drs, rat);
         }
         return null;
@@ -2161,14 +2161,14 @@ public class ServiceStateTracker extends Handler {
         if (wlanPsRegState != null
                 && wlanPsRegState.getAccessNetworkTechnology()
                 == TelephonyManager.NETWORK_TYPE_IWLAN
-                && wlanPsRegState.getInitialRegistrationState()
+                && wlanPsRegState.getNetworkRegistrationState()
                 == NetworkRegistrationInfo.REGISTRATION_STATE_HOME
                 && isIwlanPreferred) {
             serviceState.setDataRegState(ServiceState.STATE_IN_SERVICE);
         } else if (wwanPsRegState != null) {
             // If the device is not camped on IWLAN, then we use cellular PS registration state
             // to compute reg state and rat.
-            int regState = wwanPsRegState.getInitialRegistrationState();
+            int regState = wwanPsRegState.getNetworkRegistrationState();
             serviceState.setDataRegState(regCodeToServiceState(regState));
         }
         if (DBG) {
@@ -2184,7 +2184,7 @@ public class ServiceStateTracker extends Handler {
                 VoiceSpecificRegistrationInfo voiceSpecificStates =
                         networkRegState.getVoiceSpecificInfo();
 
-                int registrationState = networkRegState.getInitialRegistrationState();
+                int registrationState = networkRegState.getNetworkRegistrationState();
                 int cssIndicator = voiceSpecificStates.cssSupported ? 1 : 0;
                 mNewSS.setVoiceRegState(regCodeToServiceState(registrationState));
                 mNewSS.setCssIndicator(cssIndicator);
@@ -2264,7 +2264,7 @@ public class ServiceStateTracker extends Handler {
                 mNewSS.addNetworkRegistrationInfo(networkRegState);
                 DataSpecificRegistrationInfo dataSpecificStates =
                         networkRegState.getDataSpecificInfo();
-                int registrationState = networkRegState.getInitialRegistrationState();
+                int registrationState = networkRegState.getNetworkRegistrationState();
                 int serviceState = regCodeToServiceState(registrationState);
                 int newDataRat = ServiceState.networkTypeToRilRadioTechnology(
                         networkRegState.getAccessNetworkTechnology());
@@ -3485,9 +3485,9 @@ public class ServiceStateTracker extends Handler {
                 anyDataRatChanged = true;
             }
 
-            int oldRegState = oldNrs != null ? oldNrs.getInitialRegistrationState()
+            int oldRegState = oldNrs != null ? oldNrs.getNetworkRegistrationState()
                     : NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN;
-            int newRegState = newNrs != null ? newNrs.getInitialRegistrationState()
+            int newRegState = newNrs != null ? newNrs.getNetworkRegistrationState()
                     : NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN;
             hasDataRegStateChanged.put(transport, oldRegState != newRegState);
             if (oldRegState != newRegState) {
