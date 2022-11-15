@@ -344,9 +344,9 @@ public class VoiceCallSessionStats {
     public synchronized void onRilSrvccStateChanged(int state) {
         List<Connection> handoverConnections = null;
         if (mPhone.getImsPhone() != null) {
-            loge("onRilSrvccStateChanged: ImsPhone is null");
-        } else {
             handoverConnections = mPhone.getImsPhone().getHandoverConnection();
+        } else {
+            loge("onRilSrvccStateChanged: ImsPhone is null");
         }
         List<Integer> imsConnIds;
         if (handoverConnections == null) {
