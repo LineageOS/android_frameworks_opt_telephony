@@ -23,6 +23,7 @@ import static android.telephony.TelephonyManager.APPTYPE_USIM;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.anyString;
@@ -1166,5 +1167,49 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         mContextFixture.addCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE);
         assertEquals(refSst, mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt()));
+    }
+
+    @Test
+    public void getPrivateUserIdentity() {
+        String refImpi = "1234567890@example.com";
+        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
+        doReturn(refImpi).when(mIsimUiccRecords).getIsimImpi();
+
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOpNoThrow(
+                eq(AppOpsManager.OPSTR_USE_ICC_AUTH_WITH_DEVICE_IDENTIFIER), anyInt(), eq(TAG),
+                eq(FEATURE_ID), nullable(String.class));
+
+        String impi = mPhoneSubInfoControllerUT.getImsPrivateUserIdentity(0, TAG, FEATURE_ID);
+        assertEquals(refImpi, impi);
+    }
+
+    @Test
+    public void getPrivateUserIdentity_NoPermission() {
+        String refImpi = "1234567890@example.com";
+        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
+        doReturn(refImpi).when(mIsimUiccRecords).getIsimImpi();
+
+        try {
+            mPhoneSubInfoControllerUT.getImsPrivateUserIdentity(0, TAG, FEATURE_ID);
+            fail();
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("No permissions to the caller"));
+        }
+    }
+
+    @Test
+    public void getPrivateUserIdentity_InValidSubIdCheck() {
+        String refImpi = "1234567890@example.com";
+        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
+        doReturn(refImpi).when(mIsimUiccRecords).getIsimImpi();
+
+        try {
+            mPhoneSubInfoControllerUT.getImsPrivateUserIdentity(-1, TAG, FEATURE_ID);
+            fail();
+        } catch (Exception ex) {
+            assertTrue(ex instanceof IllegalArgumentException);
+            assertTrue(ex.getMessage().contains("Invalid SubscriptionID"));
+        }
     }
 }

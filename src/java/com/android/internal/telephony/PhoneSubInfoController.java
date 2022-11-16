@@ -353,6 +353,34 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     }
 
     /**
+     * Fetches the IMS private user identity (EF_IMPI) based on subscriptionId.
+     *
+     * @param subId subscriptionId
+     * @return IMPI (IMS private user identity) of type string.
+     * @throws IllegalArgumentException if the subscriptionId is not valid
+     * @throws IllegalStateException in case the ISIM hasn’t been loaded.
+     * @throws SecurityException if the caller does not have the required permission
+     */
+    public String getImsPrivateUserIdentity(int subId, String callingPackage,
+            String callingFeatureId) {
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+            throw new IllegalArgumentException("Invalid SubscriptionID  = " + subId);
+        }
+        if (!TelephonyPermissions.checkCallingOrSelfUseIccAuthWithDeviceIdentifier(mContext,
+                callingPackage, callingFeatureId, "getImsPrivateUserIdentity")) {
+            throw (new SecurityException("No permissions to the caller"));
+        }
+        Phone phone = getPhone(subId);
+        assert phone != null;
+        IsimRecords isim = phone.getIsimRecords();
+        if (isim != null) {
+            return isim.getIsimImpi();
+        } else {
+            throw new IllegalStateException("ISIM is not loaded");
+        }
+    }
+
+    /**
     * get the Isim Domain based on subId
     */
     public String getIsimDomain(int subId) {
