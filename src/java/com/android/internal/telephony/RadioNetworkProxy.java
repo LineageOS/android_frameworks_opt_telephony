@@ -916,4 +916,20 @@ public class RadioNetworkProxy extends RadioServiceProxy {
         }
         // Only supported on AIDL.
     }
+
+    /**
+     * Set if null ciphering / null integrity is permitted.
+     *
+     * @param serial Serial number of the request.
+     * @param enabled true if null modes are allowed, false otherwise
+     * @throws RemoteException
+     */
+    public void setNullCipherAndIntegrityEnabled(int serial,
+            boolean enabled) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.setNullCipherAndIntegrityEnabled(serial, enabled);
+        }
+        // Only supported on AIDL.
+    }
 }

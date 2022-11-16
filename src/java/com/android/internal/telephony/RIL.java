@@ -5544,6 +5544,42 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    /**
+     * Set if null ciphering / null integrity modes are permitted.
+     *
+     * @param result Callback message containing the success or failure status.
+     * @param enabled true if null ciphering / null integrity modes are permitted, false otherwise
+     */
+    @Override
+    public void setNullCipherAndIntegrityEnabled(Message result, boolean enabled) {
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        if (networkProxy.isEmpty()) return;
+        if (mHalVersion.get(HAL_SERVICE_NETWORK).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_SET_NULL_CIPHER_AND_INTEGRITY_ENABLED, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                networkProxy.setNullCipherAndIntegrityEnabled(rr.mSerial, enabled);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(
+                        HAL_SERVICE_NETWORK, "setNullCipherAndIntegrityEnabled", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "setNullCipherAndIntegrityEnabled: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
     //***** Private Methods
     /**
      * This is a helper function to be called when an indication callback is called for any radio
