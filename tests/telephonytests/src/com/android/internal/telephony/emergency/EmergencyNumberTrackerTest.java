@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.emergency;
 
+import static android.telephony.TelephonyManager.HAL_SERVICE_VOICE;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -136,12 +138,12 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         doReturn(mContext).when(mPhone).getContext();
         doReturn(0).when(mPhone).getPhoneId();
         doReturn(SUB_ID_PHONE_1).when(mPhone).getSubId();
-        doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion();
+        doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion(HAL_SERVICE_VOICE);
 
         doReturn(mContext).when(mPhone2).getContext();
         doReturn(1).when(mPhone2).getPhoneId();
         doReturn(SUB_ID_PHONE_2).when(mPhone2).getSubId();
-        doReturn(new HalVersion(1, 4)).when(mPhone2).getHalVersion();
+        doReturn(new HalVersion(1, 4)).when(mPhone2).getHalVersion(HAL_SERVICE_VOICE);
 
         initializeEmergencyNumberListTestSamples();
         mEmergencyNumberTrackerMock = new EmergencyNumberTracker(mPhone, mSimulatedCommands);
@@ -394,8 +396,8 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     @Test
     public void testIsEmergencyNumber_FallbackToShortNumberXml_NoSims() throws Exception {
         // Set up the Hal version as 1.4
-        doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion();
-        doReturn(new HalVersion(1, 4)).when(mPhone2).getHalVersion();
+        doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion(HAL_SERVICE_VOICE);
+        doReturn(new HalVersion(1, 4)).when(mPhone2).getHalVersion(HAL_SERVICE_VOICE);
 
         setDsdsPhones();
         replaceInstance(SubscriptionController.class, "sInstance", null, mSubControllerMock);
@@ -432,8 +434,8 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
 
     private void testIsEmergencyNumber_NoFallbackToShortNumberXml(int numSims) throws Exception {
         // Set up the Hal version as 1.4
-        doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion();
-        doReturn(new HalVersion(1, 4)).when(mPhone2).getHalVersion();
+        doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion(HAL_SERVICE_VOICE);
+        doReturn(new HalVersion(1, 4)).when(mPhone2).getHalVersion(HAL_SERVICE_VOICE);
 
         assertTrue((numSims > 0 && numSims < 3));
         setDsdsPhones();
@@ -506,7 +508,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
      */
     @Test
     public void testUsingEmergencyNumberDatabaseWheneverHal_1_3() {
-        doReturn(new HalVersion(1, 3)).when(mPhone).getHalVersion();
+        doReturn(new HalVersion(1, 3)).when(mPhone).getHalVersion(HAL_SERVICE_VOICE);
         doReturn(mMockContext).when(mPhone).getContext();
         doReturn(mResources).when(mMockContext).getResources();
         doReturn(true).when(mResources).getBoolean(
@@ -715,7 +717,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     @Test
     public void testOtaEmergencyNumberDatabase() {
         // Set up the Hal version as 1.4 to apply emergency number database
-        doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion();
+        doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion(HAL_SERVICE_VOICE);
 
         sendEmergencyNumberPrefix(mEmergencyNumberTrackerMock);
         mEmergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("");

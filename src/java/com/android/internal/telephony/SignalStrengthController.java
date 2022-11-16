@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.TelephonyManager.HAL_SERVICE_NETWORK;
+
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.BroadcastReceiver;
@@ -423,7 +425,7 @@ public class SignalStrengthController extends Handler {
                             (lteMeasurementEnabled & CellSignalStrengthLte.USE_RSRP) != 0));
         }
 
-        if (mPhone.getHalVersion().greaterOrEqual(RIL.RADIO_HAL_VERSION_1_5)) {
+        if (mPhone.getHalVersion(HAL_SERVICE_NETWORK).greaterOrEqual(RIL.RADIO_HAL_VERSION_1_5)) {
             int[] lteRsrqThresholds = mCarrierConfig.getIntArray(
                     CarrierConfigManager.KEY_LTE_RSRQ_THRESHOLDS_INT_ARRAY);
             if (lteRsrqThresholds != null) {
@@ -525,7 +527,7 @@ public class SignalStrengthController extends Handler {
                         AccessNetworkConstants.AccessNetworkType.CDMA2000,
                         true));
 
-        if (mPhone.getHalVersion().greaterOrEqual(RIL.RADIO_HAL_VERSION_1_5)) {
+        if (mPhone.getHalVersion(HAL_SERVICE_NETWORK).greaterOrEqual(RIL.RADIO_HAL_VERSION_1_5)) {
             signalThresholdInfos.add(
                     createSignalThresholdsInfo(
                             SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSRQ,

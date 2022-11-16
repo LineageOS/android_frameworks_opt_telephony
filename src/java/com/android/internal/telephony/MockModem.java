@@ -16,6 +16,14 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.TelephonyManager.HAL_SERVICE_DATA;
+import static android.telephony.TelephonyManager.HAL_SERVICE_IMS;
+import static android.telephony.TelephonyManager.HAL_SERVICE_MESSAGING;
+import static android.telephony.TelephonyManager.HAL_SERVICE_MODEM;
+import static android.telephony.TelephonyManager.HAL_SERVICE_NETWORK;
+import static android.telephony.TelephonyManager.HAL_SERVICE_SIM;
+import static android.telephony.TelephonyManager.HAL_SERVICE_VOICE;
+
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -93,19 +101,19 @@ public class MockModem {
         public void onServiceConnected(ComponentName name, IBinder binder) {
             Rlog.d(mTag, "IRadio " + getModuleName(mService) + "  - onServiceConnected");
 
-            if (mService == RIL.MODEM_SERVICE) {
+            if (mService == HAL_SERVICE_MODEM) {
                 mModemBinder = binder;
-            } else if (mService == RIL.SIM_SERVICE) {
+            } else if (mService == HAL_SERVICE_SIM) {
                 mSimBinder = binder;
-            } else if (mService == RIL.MESSAGING_SERVICE) {
+            } else if (mService == HAL_SERVICE_MESSAGING) {
                 mMessagingBinder = binder;
-            } else if (mService == RIL.DATA_SERVICE) {
+            } else if (mService == HAL_SERVICE_DATA) {
                 mDataBinder = binder;
-            } else if (mService == RIL.NETWORK_SERVICE) {
+            } else if (mService == HAL_SERVICE_NETWORK) {
                 mNetworkBinder = binder;
-            } else if (mService == RIL.VOICE_SERVICE) {
+            } else if (mService == HAL_SERVICE_VOICE) {
                 mVoiceBinder = binder;
-            } else if (mService == RIL.IMS_SERVICE) {
+            } else if (mService == HAL_SERVICE_IMS) {
                 mImsBinder = binder;
             } else if (mService == RADIOCONFIG_SERVICE) {
                 mConfigBinder = binder;
@@ -116,19 +124,19 @@ public class MockModem {
         public void onServiceDisconnected(ComponentName name) {
             Rlog.d(mTag, "IRadio " + getModuleName(mService) + "  - onServiceDisconnected");
 
-            if (mService == RIL.MODEM_SERVICE) {
+            if (mService == HAL_SERVICE_MODEM) {
                 mModemBinder = null;
-            } else if (mService == RIL.SIM_SERVICE) {
+            } else if (mService == HAL_SERVICE_SIM) {
                 mSimBinder = null;
-            } else if (mService == RIL.MESSAGING_SERVICE) {
+            } else if (mService == HAL_SERVICE_MESSAGING) {
                 mMessagingBinder = null;
-            } else if (mService == RIL.DATA_SERVICE) {
+            } else if (mService == HAL_SERVICE_DATA) {
                 mDataBinder = null;
-            } else if (mService == RIL.NETWORK_SERVICE) {
+            } else if (mService == HAL_SERVICE_NETWORK) {
                 mNetworkBinder = null;
-            } else if (mService == RIL.VOICE_SERVICE) {
+            } else if (mService == HAL_SERVICE_VOICE) {
                 mVoiceBinder = null;
-            } else if (mService == RIL.IMS_SERVICE) {
+            } else if (mService == HAL_SERVICE_IMS) {
                 mImsBinder = null;
             } else if (mService == RADIOCONFIG_SERVICE) {
                 mConfigBinder = null;
@@ -157,19 +165,19 @@ public class MockModem {
     /** waitForBinder */
     public IBinder getServiceBinder(int service) {
         switch (service) {
-            case RIL.MODEM_SERVICE:
+            case HAL_SERVICE_MODEM:
                 return mModemBinder;
-            case RIL.SIM_SERVICE:
+            case HAL_SERVICE_SIM:
                 return mSimBinder;
-            case RIL.MESSAGING_SERVICE:
+            case HAL_SERVICE_MESSAGING:
                 return mMessagingBinder;
-            case RIL.DATA_SERVICE:
+            case HAL_SERVICE_DATA:
                 return mDataBinder;
-            case RIL.NETWORK_SERVICE:
+            case HAL_SERVICE_NETWORK:
                 return mNetworkBinder;
-            case RIL.VOICE_SERVICE:
+            case HAL_SERVICE_VOICE:
                 return mVoiceBinder;
-            case RIL.IMS_SERVICE:
+            case HAL_SERVICE_IMS:
                 return mImsBinder;
             case RADIOCONFIG_SERVICE:
                 return mConfigBinder;
@@ -200,9 +208,9 @@ public class MockModem {
             } else {
                 Rlog.d(mTag, "IRadio Config is bound");
             }
-        } else if (service == RIL.MODEM_SERVICE) {
+        } else if (service == HAL_SERVICE_MODEM) {
             if (mModemBinder == null) {
-                mModemServiceConnection = new MockModemConnection(RIL.MODEM_SERVICE);
+                mModemServiceConnection = new MockModemConnection(HAL_SERVICE_MODEM);
 
                 boolean status =
                         bindModuleToMockModemService(
@@ -214,9 +222,9 @@ public class MockModem {
             } else {
                 Rlog.d(mTag, "IRadio Modem is bound");
             }
-        } else if (service == RIL.SIM_SERVICE) {
+        } else if (service == HAL_SERVICE_SIM) {
             if (mSimBinder == null) {
-                mSimServiceConnection = new MockModemConnection(RIL.SIM_SERVICE);
+                mSimServiceConnection = new MockModemConnection(HAL_SERVICE_SIM);
 
                 boolean status =
                         bindModuleToMockModemService(
@@ -228,9 +236,9 @@ public class MockModem {
             } else {
                 Rlog.d(mTag, "IRadio Sim is bound");
             }
-        } else if (service == RIL.MESSAGING_SERVICE) {
+        } else if (service == HAL_SERVICE_MESSAGING) {
             if (mMessagingBinder == null) {
-                mMessagingServiceConnection = new MockModemConnection(RIL.MESSAGING_SERVICE);
+                mMessagingServiceConnection = new MockModemConnection(HAL_SERVICE_MESSAGING);
 
                 boolean status =
                         bindModuleToMockModemService(
@@ -242,9 +250,9 @@ public class MockModem {
             } else {
                 Rlog.d(mTag, "IRadio Messaging is bound");
             }
-        } else if (service == RIL.DATA_SERVICE) {
+        } else if (service == HAL_SERVICE_DATA) {
             if (mDataBinder == null) {
-                mDataServiceConnection = new MockModemConnection(RIL.DATA_SERVICE);
+                mDataServiceConnection = new MockModemConnection(HAL_SERVICE_DATA);
 
                 boolean status =
                         bindModuleToMockModemService(
@@ -256,9 +264,9 @@ public class MockModem {
             } else {
                 Rlog.d(mTag, "IRadio Data is bound");
             }
-        } else if (service == RIL.NETWORK_SERVICE) {
+        } else if (service == HAL_SERVICE_NETWORK) {
             if (mNetworkBinder == null) {
-                mNetworkServiceConnection = new MockModemConnection(RIL.NETWORK_SERVICE);
+                mNetworkServiceConnection = new MockModemConnection(HAL_SERVICE_NETWORK);
 
                 boolean status =
                         bindModuleToMockModemService(
@@ -270,9 +278,9 @@ public class MockModem {
             } else {
                 Rlog.d(mTag, "IRadio Network is bound");
             }
-        } else if (service == RIL.VOICE_SERVICE) {
+        } else if (service == HAL_SERVICE_VOICE) {
             if (mVoiceBinder == null) {
-                mVoiceServiceConnection = new MockModemConnection(RIL.VOICE_SERVICE);
+                mVoiceServiceConnection = new MockModemConnection(HAL_SERVICE_VOICE);
 
                 boolean status =
                         bindModuleToMockModemService(
@@ -284,9 +292,9 @@ public class MockModem {
             } else {
                 Rlog.d(mTag, "IRadio Voice is bound");
             }
-        } else if (service == RIL.IMS_SERVICE) {
+        } else if (service == HAL_SERVICE_IMS) {
             if (mImsBinder == null) {
-                mImsServiceConnection = new MockModemConnection(RIL.IMS_SERVICE);
+                mImsServiceConnection = new MockModemConnection(HAL_SERVICE_IMS);
 
                 boolean status =
                         bindModuleToMockModemService(
@@ -311,49 +319,49 @@ public class MockModem {
                 mConfigBinder = null;
                 Rlog.d(mTag, "unbind IRadio Config");
             }
-        } else if (service == RIL.MODEM_SERVICE) {
+        } else if (service == HAL_SERVICE_MODEM) {
             if (mModemServiceConnection != null) {
                 mContext.unbindService(mModemServiceConnection);
                 mModemServiceConnection = null;
                 mModemBinder = null;
                 Rlog.d(mTag, "unbind IRadio Modem");
             }
-        } else if (service == RIL.SIM_SERVICE) {
+        } else if (service == HAL_SERVICE_SIM) {
             if (mSimServiceConnection != null) {
                 mContext.unbindService(mSimServiceConnection);
                 mSimServiceConnection = null;
                 mSimBinder = null;
                 Rlog.d(mTag, "unbind IRadio Sim");
             }
-        } else if (service == RIL.MESSAGING_SERVICE) {
+        } else if (service == HAL_SERVICE_MESSAGING) {
             if (mMessagingServiceConnection != null) {
                 mContext.unbindService(mMessagingServiceConnection);
                 mMessagingServiceConnection = null;
                 mMessagingBinder = null;
                 Rlog.d(mTag, "unbind IRadio Messaging");
             }
-        } else if (service == RIL.DATA_SERVICE) {
+        } else if (service == HAL_SERVICE_DATA) {
             if (mDataServiceConnection != null) {
                 mContext.unbindService(mDataServiceConnection);
                 mDataServiceConnection = null;
                 mDataBinder = null;
                 Rlog.d(mTag, "unbind IRadio Data");
             }
-        } else if (service == RIL.NETWORK_SERVICE) {
+        } else if (service == HAL_SERVICE_NETWORK) {
             if (mNetworkServiceConnection != null) {
                 mContext.unbindService(mNetworkServiceConnection);
                 mNetworkServiceConnection = null;
                 mNetworkBinder = null;
                 Rlog.d(mTag, "unbind IRadio Network");
             }
-        } else if (service == RIL.VOICE_SERVICE) {
+        } else if (service == HAL_SERVICE_VOICE) {
             if (mVoiceServiceConnection != null) {
                 mContext.unbindService(mVoiceServiceConnection);
                 mVoiceServiceConnection = null;
                 mVoiceBinder = null;
                 Rlog.d(mTag, "unbind IRadio Voice");
             }
-        } else if (service == RIL.IMS_SERVICE) {
+        } else if (service == HAL_SERVICE_IMS) {
             if (mImsServiceConnection != null) {
                 mContext.unbindService(mImsServiceConnection);
                 mImsServiceConnection = null;
@@ -369,19 +377,19 @@ public class MockModem {
 
     private String getModuleName(int service) {
         switch (service) {
-            case RIL.MODEM_SERVICE:
+            case HAL_SERVICE_MODEM:
                 return "modem";
-            case RIL.SIM_SERVICE:
+            case HAL_SERVICE_SIM:
                 return "sim";
-            case RIL.MESSAGING_SERVICE:
+            case HAL_SERVICE_MESSAGING:
                 return "messaging";
-            case RIL.DATA_SERVICE:
+            case HAL_SERVICE_DATA:
                 return "data";
-            case RIL.NETWORK_SERVICE:
+            case HAL_SERVICE_NETWORK:
                 return "network";
-            case RIL.VOICE_SERVICE:
+            case HAL_SERVICE_VOICE:
                 return "voice";
-            case RIL.IMS_SERVICE:
+            case HAL_SERVICE_IMS:
                 return "ims";
             case RADIOCONFIG_SERVICE:
                 return "config";

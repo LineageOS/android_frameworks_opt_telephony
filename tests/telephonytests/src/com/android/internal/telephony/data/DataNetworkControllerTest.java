@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.data;
 
+import static android.telephony.TelephonyManager.HAL_SERVICE_DATA;
+
 import static com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import static com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 
@@ -3839,7 +3841,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         }).when(mMockedWwanDataServiceManager).deactivateDataCall(
                 anyInt(), anyInt(), any(Message.class));
         // Simulate old devices
-        doReturn(RIL.RADIO_HAL_VERSION_1_6).when(mPhone).getHalVersion();
+        doReturn(RIL.RADIO_HAL_VERSION_1_6).when(mPhone).getHalVersion(HAL_SERVICE_DATA);
 
         testSetupDataNetwork();
 

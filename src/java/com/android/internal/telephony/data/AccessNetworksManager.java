@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.data;
 
+import static android.telephony.TelephonyManager.HAL_SERVICE_DATA;
+
 import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -582,7 +584,7 @@ public class AccessNetworksManager extends Handler {
             return true;
         }
 
-        return mPhone.getHalVersion().less(RIL.RADIO_HAL_VERSION_1_4);
+        return mPhone.getHalVersion(HAL_SERVICE_DATA).less(RIL.RADIO_HAL_VERSION_1_4);
     }
 
     /**

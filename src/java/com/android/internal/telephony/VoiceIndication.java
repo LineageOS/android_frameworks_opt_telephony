@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.TelephonyManager.HAL_SERVICE_VOICE;
+
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CALL_RING;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_CALL_WAITING;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CDMA_INFO_REC;
@@ -63,7 +65,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
      */
     public void callRing(int indicationType, boolean isGsm,
             android.hardware.radio.voice.CdmaSignalInfoRecord record) {
-        mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
+        mRil.processIndication(HAL_SERVICE_VOICE, indicationType);
 
         char[] response = null;
 
@@ -90,7 +92,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
      * @param indicationType Type of radio indication
      */
     public void callStateChanged(int indicationType) {
-        mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
+        mRil.processIndication(HAL_SERVICE_VOICE, indicationType);
 
         if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED);
 
@@ -104,7 +106,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
      */
     public void cdmaCallWaiting(int indicationType,
             android.hardware.radio.voice.CdmaCallWaiting callWaitingRecord) {
-        mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
+        mRil.processIndication(HAL_SERVICE_VOICE, indicationType);
 
         // TODO: create a CdmaCallWaitingNotification constructor that takes in these fields to make
         // sure no fields are missing
@@ -134,7 +136,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
      */
     public void cdmaInfoRec(int indicationType,
             android.hardware.radio.voice.CdmaInformationRecord[] records) {
-        mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
+        mRil.processIndication(HAL_SERVICE_VOICE, indicationType);
 
         for (int i = 0; i < records.length; i++) {
             android.hardware.radio.voice.CdmaInformationRecord record = records[i];
@@ -233,7 +235,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
      * @param status CDMA OTA provision status
      */
     public void cdmaOtaProvisionStatus(int indicationType, int status) {
-        mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
+        mRil.processIndication(HAL_SERVICE_VOICE, indicationType);
 
         int[] response = new int[] {status};
 
@@ -252,7 +254,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
      */
     public void currentEmergencyNumberList(int indicationType,
             android.hardware.radio.voice.EmergencyNumber[] emergencyNumberList) {
-        mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
+        mRil.processIndication(HAL_SERVICE_VOICE, indicationType);
 
         List<EmergencyNumber> response = new ArrayList<>(emergencyNumberList.length);
         for (android.hardware.radio.voice.EmergencyNumber enHal : emergencyNumberList) {
@@ -279,7 +281,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
      * @param indicationType Type of radio indication
      */
     public void enterEmergencyCallbackMode(int indicationType) {
-        mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
+        mRil.processIndication(HAL_SERVICE_VOICE, indicationType);
 
         if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_ENTER_EMERGENCY_CALLBACK_MODE);
 
@@ -294,7 +296,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
      * @param indicationType Type of radio indication
      */
     public void exitEmergencyCallbackMode(int indicationType) {
-        mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
+        mRil.processIndication(HAL_SERVICE_VOICE, indicationType);
 
         if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE);
 
@@ -307,7 +309,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
      * @param start true = start play ringback tone, false = stop playing ringback tone
      */
     public void indicateRingbackTone(int indicationType, boolean start) {
-        mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
+        mRil.processIndication(HAL_SERVICE_VOICE, indicationType);
 
         if (mRil.isLogOrTrace()) mRil.unsljLogvRet(RIL_UNSOL_RINGBACK_TONE, start);
 
@@ -322,7 +324,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
      */
     public void onSupplementaryServiceIndication(int indicationType,
             android.hardware.radio.voice.StkCcUnsolSsResult ss) {
-        mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
+        mRil.processIndication(HAL_SERVICE_VOICE, indicationType);
 
         int num;
         SsData ssData = new SsData();
@@ -374,7 +376,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
      * @param msg Message string in UTF-8, if applicable
      */
     public void onUssd(int indicationType, int ussdModeType, String msg) {
-        mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
+        mRil.processIndication(HAL_SERVICE_VOICE, indicationType);
 
         if (mRil.isLogOrTrace()) mRil.unsljLogMore(RIL_UNSOL_ON_USSD, "" + ussdModeType);
 
@@ -390,7 +392,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
      * @param indicationType Type of radio indication
      */
     public void resendIncallMute(int indicationType) {
-        mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
+        mRil.processIndication(HAL_SERVICE_VOICE, indicationType);
 
         if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RESEND_INCALL_MUTE);
 
@@ -403,7 +405,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
      * @param state New SRVCC State
      */
     public void srvccStateNotify(int indicationType, int state) {
-        mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
+        mRil.processIndication(HAL_SERVICE_VOICE, indicationType);
 
         int[] response = new int[] {state};
 
@@ -419,7 +421,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
      * @param alpha ALPHA string from UICC in UTF-8 format
      */
     public void stkCallControlAlphaNotify(int indicationType, String alpha) {
-        mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
+        mRil.processIndication(HAL_SERVICE_VOICE, indicationType);
 
         if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_STK_CC_ALPHA_NOTIFY, alpha);
 
@@ -434,7 +436,7 @@ public class VoiceIndication extends IRadioVoiceIndication.Stub {
      * @param timeout Timeout value in milliseconds for setting up voice call
      */
     public void stkCallSetup(int indicationType, long timeout) {
-        mRil.processIndication(RIL.VOICE_SERVICE, indicationType);
+        mRil.processIndication(HAL_SERVICE_VOICE, indicationType);
 
         if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_STK_CALL_SETUP, timeout);
 
