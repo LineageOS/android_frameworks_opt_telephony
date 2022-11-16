@@ -35,6 +35,7 @@ import android.telephony.NetworkScanRequest;
 import android.telephony.RadioAccessSpecifier;
 import android.telephony.SignalThresholdInfo;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyManager.HalService;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.NetworkSliceInfo;
@@ -2198,8 +2199,18 @@ public interface CommandsInterface {
 
     /**
      * @return the radio hal version
+     * @deprecated use {@link #getHalVersion(int)}
      */
+    @Deprecated
     default HalVersion getHalVersion() {
+        return HalVersion.UNKNOWN;
+    }
+
+    /**
+     * @param service indicate the service id to query.
+     * @return the hal version of a specific service
+     */
+    default HalVersion getHalVersion(@HalService int service) {
         return HalVersion.UNKNOWN;
     }
 

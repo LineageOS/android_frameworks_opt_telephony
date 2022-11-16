@@ -25,6 +25,9 @@ import java.util.Objects;
  */
 public class HalVersion implements Comparable<HalVersion> {
 
+    /** The HAL Version indicating that the version is unsupported */
+    public static final HalVersion UNSUPPORTED = new HalVersion(-2, -2);
+
     /** The HAL Version indicating that the version is unknown or invalid */
     public static final HalVersion UNKNOWN = new HalVersion(-1, -1);
 

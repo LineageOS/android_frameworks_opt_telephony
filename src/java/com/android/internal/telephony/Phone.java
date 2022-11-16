@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.TelephonyManager.HAL_SERVICE_RADIO;
+
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.BroadcastOptions;
@@ -61,6 +63,7 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyManager.HalService;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
@@ -4713,10 +4716,24 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Get the HAL version.
      *
      * @return the current HalVersion
+     *
+     * @deprecated Use {@link #getHalVersion(int service)} instead.
      */
+    @Deprecated
     public HalVersion getHalVersion() {
+        return getHalVersion(HAL_SERVICE_RADIO);
+    }
+
+    /**
+     * Get the HAL version with a specific service.
+     *
+     * @param service the service id to query
+     * @return the current HalVersion for a specific service
+     *
+     */
+    public HalVersion getHalVersion(@HalService int service) {
         if (mCi != null && mCi instanceof RIL) {
-            return ((RIL) mCi).getHalVersion();
+            return ((RIL) mCi).getHalVersion(service);
         }
         return RIL.RADIO_HAL_VERSION_UNKNOWN;
     }

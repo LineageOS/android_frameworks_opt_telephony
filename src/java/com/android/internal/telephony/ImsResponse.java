@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.TelephonyManager.HAL_SERVICE_IMS;
+
 import android.hardware.radio.RadioError;
 import android.hardware.radio.RadioResponseInfo;
 import android.hardware.radio.ims.IRadioImsResponse;
@@ -44,14 +46,14 @@ public class ImsResponse extends IRadioImsResponse.Stub {
      * @param info Response info struct containing response type, serial no. and error.
      */
     public void setSrvccCallInfoResponse(RadioResponseInfo info) {
-        RadioResponse.responseVoid(RIL.IMS_SERVICE, mRil, info);
+        RadioResponse.responseVoid(HAL_SERVICE_IMS, mRil, info);
     }
 
     /**
      * @param info Response info struct containing response type, serial no. and error.
      */
     public void updateImsRegistrationInfoResponse(RadioResponseInfo info) {
-        RadioResponse.responseVoid(RIL.IMS_SERVICE, mRil, info);
+        RadioResponse.responseVoid(HAL_SERVICE_IMS, mRil, info);
     }
 
     /**
@@ -60,7 +62,7 @@ public class ImsResponse extends IRadioImsResponse.Stub {
      */
     public void startImsTrafficResponse(RadioResponseInfo responseInfo,
             android.hardware.radio.ims.ConnectionFailureInfo failureInfo) {
-        RILRequest rr = mRil.processResponse(RIL.IMS_SERVICE, responseInfo);
+        RILRequest rr = mRil.processResponse(HAL_SERVICE_IMS, responseInfo);
 
         if (rr != null) {
             Object[] response = { "", null };
@@ -84,27 +86,27 @@ public class ImsResponse extends IRadioImsResponse.Stub {
      * @param info Response info struct containing response type, serial no. and error.
      */
     public void stopImsTrafficResponse(RadioResponseInfo info) {
-        RadioResponse.responseVoid(RIL.IMS_SERVICE, mRil, info);
+        RadioResponse.responseVoid(HAL_SERVICE_IMS, mRil, info);
     }
 
     /**
      * @param info Response info struct containing response type, serial no. and error.
      */
     public void triggerEpsFallbackResponse(RadioResponseInfo info) {
-        RadioResponse.responseVoid(RIL.IMS_SERVICE, mRil, info);
+        RadioResponse.responseVoid(HAL_SERVICE_IMS, mRil, info);
     }
 
     /**
      * @param info Response info struct containing response type, serial no. and error.
      */
     public void sendAnbrQueryResponse(RadioResponseInfo info) {
-        RadioResponse.responseVoid(RIL.IMS_SERVICE, mRil, info);
+        RadioResponse.responseVoid(HAL_SERVICE_IMS, mRil, info);
     }
 
     /**
      * @param info Response info struct containing response type, serial no. and error.
      */
     public void updateImsCallStatusResponse(RadioResponseInfo info) {
-        RadioResponse.responseVoid(RIL.IMS_SERVICE, mRil, info);
+        RadioResponse.responseVoid(HAL_SERVICE_IMS, mRil, info);
     }
 }

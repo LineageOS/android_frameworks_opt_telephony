@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.TelephonyManager.HAL_SERVICE_IMS;
+
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CONNECTION_SETUP_FAILURE;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NOTIFY_ANBR;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_TRIGGER_IMS_DEREGISTRATION;
@@ -53,7 +55,7 @@ public class ImsIndication extends IRadioImsIndication.Stub {
      */
     public void onConnectionSetupFailure(int indicationType, int token,
             android.hardware.radio.ims.ConnectionFailureInfo failureInfo) {
-        mRil.processIndication(RIL.IMS_SERVICE, indicationType);
+        mRil.processIndication(HAL_SERVICE_IMS, indicationType);
 
         int[] info = new int[3];
         info[0] = failureInfo.failureReason;
@@ -81,7 +83,7 @@ public class ImsIndication extends IRadioImsIndication.Stub {
      */
     public void notifyAnbr(int indicationType, int qosSessionId, int imsdirection,
             int bitsPerSecond) {
-        mRil.processIndication(RIL.IMS_SERVICE, indicationType);
+        mRil.processIndication(HAL_SERVICE_IMS, indicationType);
 
         int[] response = new int[3];
         response[0] = qosSessionId;
@@ -104,7 +106,7 @@ public class ImsIndication extends IRadioImsIndication.Stub {
      * @param reason the reason why the deregistration is triggered.
      */
     public void triggerImsDeregistration(int indicationType, int reason) {
-        mRil.processIndication(RIL.IMS_SERVICE, indicationType);
+        mRil.processIndication(HAL_SERVICE_IMS, indicationType);
 
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_TRIGGER_IMS_DEREGISTRATION, reason);
 
