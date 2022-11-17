@@ -5225,7 +5225,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void setSrvccCallInfo(SrvccConnection[] srvccConnections, Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
-        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SET_SRVCC_CALL_INFO, result,
                     mRILDefaultWorkSource);
 
@@ -5257,7 +5257,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             int accessNetworkType, int suggestedAction, int capabilities, Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
-        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_UPDATE_IMS_REGISTRATION_INFO, result,
                     mRILDefaultWorkSource);
 
@@ -5294,7 +5294,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void startImsTraffic(int token, int trafficType, int accessNetworkType, Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
-        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_START_IMS_TRAFFIC, result,
                     mRILDefaultWorkSource);
 
@@ -5324,7 +5324,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void stopImsTraffic(int token, Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
-        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_STOP_IMS_TRAFFIC, result,
                     mRILDefaultWorkSource);
 
@@ -5353,7 +5353,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void triggerEpsFallback(int reason, Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
-        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_TRIGGER_EPS_FALLBACK, result,
                     mRILDefaultWorkSource);
 
@@ -5384,7 +5384,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
-        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SEND_ANBR_QUERY, result,
                     mRILDefaultWorkSource);
 
