@@ -932,4 +932,33 @@ public class RadioNetworkProxy extends RadioServiceProxy {
         }
         // Only supported on AIDL.
     }
+
+    /**
+     * Checks whether N1 mode is enabled.
+     *
+     * @param serial Serial number of the request.
+     * @throws RemoteException
+     */
+    public void isN1ModeEnabled(int serial) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.isN1ModeEnabled(serial);
+        }
+        // Only supported on AIDL.
+    }
+
+    /**
+     * Enables or disables N1 mode.
+     *
+     * @param serial Serial number of request.
+     * @param enable Indicates whether to enable N1 mode or not.
+     * @throws RemoteException
+     */
+    public void setN1ModeEnabled(int serial, boolean enable) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mNetworkProxy.setN1ModeEnabled(serial, enable);
+        }
+        // Only supported on AIDL.
+    }
 }
