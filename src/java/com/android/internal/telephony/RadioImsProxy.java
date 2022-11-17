@@ -44,7 +44,7 @@ public class RadioImsProxy extends RadioServiceProxy {
             int version = ims.getInterfaceVersion();
             switch(version) {
                 default:
-                    newHalVersion = RIL.RADIO_HAL_VERSION_2_1;
+                    newHalVersion = RIL.RADIO_HAL_VERSION_2_0;
                     break;
             }
             Rlog.d(TAG, "AIDL version=" + version + ", halVersion=" + newHalVersion);
