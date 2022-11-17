@@ -37,6 +37,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemClock;
 import android.os.SystemProperties;
+import android.os.UserHandle;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.sysprop.TelephonyProperties;
@@ -5008,6 +5009,17 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public boolean isSubscriptionManagerServiceEnabled() {
         return mIsSubscriptionManagerServiceEnabled;
+    }
+
+    /**
+     * @return UserHandle from phone sub id, or null if subscription is invalid.
+     */
+    public UserHandle getUserHandle() {
+        SubscriptionManager subManager = mContext.getSystemService(SubscriptionManager.class);
+        int subId = getSubId();
+        return subManager.isValidSubscriptionId(subId)
+                ? subManager.getSubscriptionUserHandle(subId)
+                : null;
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
