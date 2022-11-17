@@ -785,7 +785,11 @@ public class EmergencyNumberTracker extends Handler {
         }
         mergedEmergencyNumberList.addAll(mEmergencyNumberListWithPrefix);
         mergedEmergencyNumberList.addAll(mEmergencyNumberListFromTestMode);
-        EmergencyNumber.mergeSameNumbersInEmergencyNumberList(mergedEmergencyNumberList);
+        if (shouldDeterminingOfUrnsAndCategoriesWhileMergingIgnored()) {
+            EmergencyNumber.mergeSameNumbersInEmergencyNumberList(mergedEmergencyNumberList);
+        } else {
+            EmergencyNumber.mergeSameNumbersInEmergencyNumberList(mergedEmergencyNumberList, true);
+        }
         mEmergencyNumberList = mergedEmergencyNumberList;
     }
 
@@ -1278,7 +1282,12 @@ public class EmergencyNumberTracker extends Handler {
                     mEmergencyNumberListFromDatabase));
         }
         mergedEmergencyNumberList.addAll(getEmergencyNumberListTestMode());
-        EmergencyNumber.mergeSameNumbersInEmergencyNumberList(mergedEmergencyNumberList);
+
+        if (shouldDeterminingOfUrnsAndCategoriesWhileMergingIgnored()) {
+            EmergencyNumber.mergeSameNumbersInEmergencyNumberList(mergedEmergencyNumberList);
+        } else {
+            EmergencyNumber.mergeSameNumbersInEmergencyNumberList(mergedEmergencyNumberList, true);
+        }
         return mergedEmergencyNumberList;
     }
 
@@ -1337,6 +1346,19 @@ public class EmergencyNumberTracker extends Handler {
     public boolean shouldEmergencyNumberRoutingFromDbBeIgnored() {
         return mResources.getBoolean(com.android.internal.R.bool
                 .ignore_emergency_number_routing_from_db);
+    }
+
+
+    /**
+     * @return {@code true} if determining of Urns & Service Categories while merging duplicate
+     * numbers should be ignored.
+     * {@code false} if determining of Urns & Service Categories while merging duplicate
+     * numbers should not be ignored.
+     */
+    @VisibleForTesting
+    public boolean shouldDeterminingOfUrnsAndCategoriesWhileMergingIgnored() {
+        // TODO: Device config
+        return false;
     }
 
     /**
