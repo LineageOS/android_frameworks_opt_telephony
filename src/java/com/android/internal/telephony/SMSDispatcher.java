@@ -2707,7 +2707,7 @@ public abstract class SMSDispatcher extends Handler {
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected int getSubId() {
-        return SubscriptionController.getInstance().getSubIdUsingPhoneId(mPhone.getPhoneId());
+        return SubscriptionController.getInstance().getSubId(mPhone.getPhoneId());
     }
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)

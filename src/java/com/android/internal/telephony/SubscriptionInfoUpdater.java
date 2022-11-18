@@ -1166,7 +1166,7 @@ public class SubscriptionInfoUpdater extends Handler {
             return;
         }
 
-        int currentSubId = mSubscriptionController.getSubIdUsingPhoneId(phoneId);
+        int currentSubId = mSubscriptionController.getSubId(phoneId);
         if (!SubscriptionManager.isValidSubscriptionId(currentSubId)
                 || currentSubId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
             if (DBG) logd("No subscription is active for phone being updated");
