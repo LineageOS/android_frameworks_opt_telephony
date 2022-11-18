@@ -50,6 +50,9 @@ public class TelephonyNetworkAgent extends NetworkAgent {
     private final String mLogTag;
     private final LocalLog mLocalLog = new LocalLog(128);
 
+    /** Max unregister network agent delay. */
+    private static final int NETWORK_AGENT_TEARDOWN_DELAY_MS = 5_000;
+
     /** The parent data network. */
     private final @NonNull DataNetwork mDataNetwork;
 
@@ -296,14 +299,15 @@ public class TelephonyNetworkAgent extends NetworkAgent {
 
     /**
      * Abandon the network agent. This is used for telephony to re-create the network agent when
-     * immutable capabilities got changed, where telephony calls {@link NetworkAgent#unregister()}
-     * and then create another network agent with new capabilities. Abandon this network agent
-     * allowing it ignore the subsequent {@link #onNetworkUnwanted()} invocation caused by
-     * {@link NetworkAgent#unregister()}.
+     * immutable capabilities got changed, where telephony calls
+     * {@link NetworkAgent#unregisterAfterReplacement} and then create another network agent with
+     * new capabilities. Abandon this network agent allowing it ignore the subsequent
+     * {@link #onNetworkUnwanted()} invocation caused by
+     * {@link NetworkAgent#unregisterAfterReplacement}.
      */
     public void abandon() {
         mAbandoned = true;
-        unregister();
+        unregisterAfterReplacement(NETWORK_AGENT_TEARDOWN_DELAY_MS);
     }
 
     /**
