@@ -1147,7 +1147,8 @@ public class EuiccController extends IEuiccController.Stub {
      * Returns the resolved portIndex or {@link TelephonyManager#INVALID_PORT_INDEX} if calling
      * cannot manage any active subscription.
      */
-    private int getResolvedPortIndexForDisableSubscription(int cardId, String callingPackage,
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public int getResolvedPortIndexForDisableSubscription(int cardId, String callingPackage,
             boolean callerCanWriteEmbeddedSubscriptions) {
         List<SubscriptionInfo> subInfoList = mSubscriptionManager
                 .getActiveSubscriptionInfoList(/* userVisibleOnly */false);
@@ -1175,7 +1176,8 @@ public class EuiccController extends IEuiccController.Stub {
      * Returns the resolved portIndex or {@link TelephonyManager#INVALID_PORT_INDEX} if no port
      * is available without user consent.
      */
-    private int getResolvedPortIndexForSubscriptionSwitch(int cardId) {
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public int getResolvedPortIndexForSubscriptionSwitch(int cardId) {
         int slotIndex = getSlotIndexFromCardId(cardId);
         // Euicc Slot
         UiccSlot slot = UiccController.getInstance().getUiccSlot(slotIndex);
