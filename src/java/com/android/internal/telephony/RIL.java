@@ -5225,7 +5225,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void setSrvccCallInfo(SrvccConnection[] srvccConnections, Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
-        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SET_SRVCC_CALL_INFO, result,
                     mRILDefaultWorkSource);
 
@@ -5257,7 +5257,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             int accessNetworkType, int suggestedAction, int capabilities, Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
-        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_UPDATE_IMS_REGISTRATION_INFO, result,
                     mRILDefaultWorkSource);
 
@@ -5294,7 +5294,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void startImsTraffic(int token, int trafficType, int accessNetworkType, Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
-        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_START_IMS_TRAFFIC, result,
                     mRILDefaultWorkSource);
 
@@ -5324,7 +5324,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void stopImsTraffic(int token, Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
-        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_STOP_IMS_TRAFFIC, result,
                     mRILDefaultWorkSource);
 
@@ -5353,7 +5353,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void triggerEpsFallback(int reason, Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
-        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_TRIGGER_EPS_FALLBACK, result,
                     mRILDefaultWorkSource);
 
@@ -5384,7 +5384,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
-        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SEND_ANBR_QUERY, result,
                     mRILDefaultWorkSource);
 
@@ -5416,7 +5416,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void setEmergencyMode(int emcMode, Message result) {
         RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
         if (networkProxy.isEmpty()) return;
-        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+        if (mHalVersion.get(HAL_SERVICE_NETWORK).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SET_EMERGENCY_MODE, result,
                     mRILDefaultWorkSource);
 
@@ -5451,7 +5451,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             @DomainSelectionService.EmergencyScanType int scanType, Message result) {
         RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
         if (networkProxy.isEmpty()) return;
-        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+        if (mHalVersion.get(HAL_SERVICE_NETWORK).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_TRIGGER_EMERGENCY_NETWORK_SCAN, result,
                     mRILDefaultWorkSource);
 
@@ -5485,7 +5485,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void cancelEmergencyNetworkScan(boolean resetScan, Message result) {
         RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
         if (networkProxy.isEmpty()) return;
-        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+        if (mHalVersion.get(HAL_SERVICE_NETWORK).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_CANCEL_EMERGENCY_NETWORK_SCAN, result,
                     mRILDefaultWorkSource);
 
@@ -5519,7 +5519,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void exitEmergencyMode(Message result) {
         RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
         if (networkProxy.isEmpty()) return;
-        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+        if (mHalVersion.get(HAL_SERVICE_NETWORK).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_EXIT_EMERGENCY_MODE, result,
                     mRILDefaultWorkSource);
 
