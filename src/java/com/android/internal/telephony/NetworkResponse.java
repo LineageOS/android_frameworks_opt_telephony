@@ -477,6 +477,28 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
         RadioResponse.responseVoid(HAL_SERVICE_NETWORK, mRil, responseInfo);
     }
 
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error.
+     * @param isEnabled Indicates whether N1 mode is enabled or not.
+     */
+    public void isN1ModeEnabledResponse(RadioResponseInfo responseInfo, boolean isEnabled) {
+        RILRequest rr = mRil.processResponse(HAL_SERVICE_NETWORK, responseInfo);
+
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                RadioResponse.sendMessageResponse(rr.mResult, isEnabled);
+            }
+            mRil.processResponseDone(rr, responseInfo, isEnabled);
+        }
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error.
+     */
+    public void setN1ModeEnabledResponse(RadioResponseInfo responseInfo) {
+        RadioResponse.responseVoid(HAL_SERVICE_NETWORK, mRil, responseInfo);
+    }
+
     @Override
     public String getInterfaceHash() {
         return IRadioNetworkResponse.HASH;
