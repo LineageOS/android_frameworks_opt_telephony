@@ -433,7 +433,7 @@ public class UiccProfile extends IccCard {
      */
     private void handleCarrierNameOverride() {
         SubscriptionController subCon = SubscriptionController.getInstance();
-        final int subId = subCon.getSubIdUsingPhoneId(mPhoneId);
+        final int subId = subCon.getSubId(mPhoneId);
         if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
             loge("subId not valid for Phone " + mPhoneId);
             return;
@@ -498,7 +498,7 @@ public class UiccProfile extends IccCard {
      */
     private void handleSimCountryIsoOverride() {
         SubscriptionController subCon = SubscriptionController.getInstance();
-        final int subId = subCon.getSubIdUsingPhoneId(mPhoneId);
+        final int subId = subCon.getSubId(mPhoneId);
         if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
             loge("subId not valid for Phone " + mPhoneId);
             return;
