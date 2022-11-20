@@ -19,7 +19,9 @@ package com.android.internal.telephony.subscription;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
+import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.ParcelUuid;
 import android.os.TelephonyServiceManager;
 import android.os.UserHandle;
@@ -28,11 +30,14 @@ import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.SubscriptionManager.SubscriptionType;
 import android.telephony.TelephonyFrameworkInitializer;
+import android.telephony.TelephonyRegistryManager;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
 import com.android.internal.telephony.ISetOpportunisticDataCallback;
 import com.android.internal.telephony.ISub;
+import com.android.internal.telephony.MultiSimSettingController;
+import com.android.internal.telephony.subscription.SubscriptionDatabaseManager.SubscriptionDatabaseManagerCallback;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -55,6 +60,9 @@ public class SubscriptionManagerService extends ISub.Stub {
 
     /** The context */
     private final Context mContext;
+
+    /** The main handler of subscription manager service. */
+    private final Handler mHandler;
 
     /** Local log for most important debug messages. */
     private final LocalLog mLocalLog = new LocalLog(128);
@@ -140,9 +148,11 @@ public class SubscriptionManagerService extends ISub.Stub {
      * The constructor
      *
      * @param context The context
+     * @param looper The looper for the handler.
      */
-    public SubscriptionManagerService(@NonNull Context context) {
+    public SubscriptionManagerService(@NonNull Context context, @NonNull Looper looper) {
         mContext = context;
+        mHandler = new Handler(looper);
         TelephonyServiceManager.ServiceRegisterer subscriptionServiceRegisterer =
                 TelephonyFrameworkInitializer
                         .getTelephonyServiceManager()
@@ -154,7 +164,33 @@ public class SubscriptionManagerService extends ISub.Stub {
         HandlerThread handlerThread = new HandlerThread(LOG_TAG);
         handlerThread.start();
         mSubscriptionDatabaseManager = new SubscriptionDatabaseManager(context,
-                handlerThread.getLooper());
+                handlerThread.getLooper(), new SubscriptionDatabaseManagerCallback(mHandler::post) {
+                    /**
+                     * Called when subscription changed.
+                     *
+                     * @param subId The subscription id.
+                     */
+                    @Override
+                    public void onSubscriptionChanged(int subId) {
+                        MultiSimSettingController.getInstance().notifySubscriptionInfoChanged();
+
+                        TelephonyRegistryManager telephonyRegistryManager =
+                                mContext.getSystemService(TelephonyRegistryManager.class);
+                        if (telephonyRegistryManager != null) {
+                            telephonyRegistryManager.notifySubscriptionInfoChanged();
+                        }
+
+                        SubscriptionInfoInternal subInfo =
+                                mSubscriptionDatabaseManager.getSubscriptionInfoInternal(subId);
+                        if (subInfo != null && subInfo.isOpportunistic()
+                                && telephonyRegistryManager != null) {
+                            telephonyRegistryManager.notifyOpportunisticSubscriptionInfoChanged();
+                        }
+
+                        // TODO: Call TelephonyMetrics.updateActiveSubscriptionInfoList when active
+                        //  subscription changes.
+                    }
+                });
     }
 
     /**
