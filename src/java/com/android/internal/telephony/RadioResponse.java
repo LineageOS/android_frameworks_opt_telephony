@@ -2532,10 +2532,9 @@ public class RadioResponse extends IRadioResponse.Stub {
             ArrayList<NeighboringCellInfo> ret = new ArrayList<NeighboringCellInfo>();
             NeighboringCellInfo cell;
 
-            int[] subId = SubscriptionManager.getSubId(mRil.mPhoneId);
-            int radioType =
-                    ((TelephonyManager) mRil.mContext.getSystemService(
-                            Context.TELEPHONY_SERVICE)).getDataNetworkType(subId[0]);
+            int radioType = ((TelephonyManager) mRil.mContext.getSystemService(
+                    Context.TELEPHONY_SERVICE)).getDataNetworkType(
+                            SubscriptionManager.getSubscriptionId(mRil.mPhoneId));
 
             if (radioType != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
                 for (int i = 0; i < cells.size(); i++) {
