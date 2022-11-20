@@ -39,6 +39,9 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The subscription manager service is the backend service of {@link SubscriptionManager}.
@@ -58,6 +61,80 @@ public class SubscriptionManagerService extends ISub.Stub {
 
     /** The subscription database manager. */
     private final SubscriptionDatabaseManager mSubscriptionDatabaseManager;
+
+    /**
+     * Watched slot index to sub id map.
+     */
+    private static class WatchedSlotIndexToSubId {
+        private final Map<Integer, Integer> mSlotIndexToSubId =
+                new ConcurrentHashMap<>();
+
+        public void clear() {
+            mSlotIndexToSubId.clear();
+            SubscriptionManager.invalidateDefaultSubIdCaches();
+            SubscriptionManager.invalidateSlotIndexCaches();
+        }
+
+        public Set<Map.Entry<Integer, Integer>> entrySet() {
+            return mSlotIndexToSubId.entrySet();
+        }
+
+        // Force all updates to data structure through wrapper.
+        public int get(int slotIndex) {
+            return mSlotIndexToSubId.getOrDefault(slotIndex,
+                    SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        }
+
+        public void put(int slotIndex, int value) {
+            mSlotIndexToSubId.put(slotIndex, value);
+            SubscriptionManager.invalidateDefaultSubIdCaches();
+            SubscriptionManager.invalidateSlotIndexCaches();
+        }
+
+        public void remove(int slotIndex) {
+            mSlotIndexToSubId.remove(slotIndex);
+            SubscriptionManager.invalidateDefaultSubIdCaches();
+            SubscriptionManager.invalidateSlotIndexCaches();
+        }
+
+        public int size() {
+            return mSlotIndexToSubId.size();
+        }
+    }
+
+    /**
+     * Watched integer.
+     */
+    public static class WatchedInt {
+        private int mValue;
+
+        /**
+         * Constructor.
+         *
+         * @param initialValue The initial value.
+         */
+        public WatchedInt(int initialValue) {
+            mValue = initialValue;
+        }
+
+        /**
+         * @return The value.
+         */
+        public int get() {
+            return mValue;
+        }
+
+        /**
+         * Set the value.
+         *
+         * @param newValue The new value.
+         */
+        public void set(int newValue) {
+            mValue = newValue;
+        }
+    }
+
+    private final WatchedSlotIndexToSubId mSlotIndexToSubId = new WatchedSlotIndexToSubId();
 
     /**
      * The constructor
@@ -402,8 +479,24 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     @Override
+    public int getSubId(int slotIndex) {
+        if (slotIndex == SubscriptionManager.DEFAULT_SIM_SLOT_INDEX) {
+            slotIndex = getSlotIndex(getDefaultSubId());
+        }
+
+        // Check that we have a valid slotIndex or the slotIndex is for a remote SIM (remote SIM
+        // uses special slot index that may be invalid otherwise)
+        if (!SubscriptionManager.isValidSlotIndex(slotIndex)
+                && slotIndex != SubscriptionManager.SLOT_INDEX_FOR_REMOTE_SIM_SUB) {
+            return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        }
+
+        return mSlotIndexToSubId.get(slotIndex);
+    }
+
+    @Override
     public int[] getSubIds(int slotIndex) {
-        return null;
+        return new int[]{getSubId(slotIndex)};
     }
 
     @Override
