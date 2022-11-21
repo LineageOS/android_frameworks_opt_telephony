@@ -148,40 +148,40 @@ public class SubscriptionDatabaseManager extends Handler {
                             SubscriptionInfoInternal::getDataRoaming),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_MCC_STRING,
-                            SubscriptionInfoInternal::getMccString),
+                            SubscriptionInfoInternal::getMcc),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_MNC_STRING,
-                            SubscriptionInfoInternal::getMncString),
+                            SubscriptionInfoInternal::getMnc),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_EHPLMNS,
                             SubscriptionInfoInternal::getEhplmns),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_HPLMNS,
-                            SubscriptionInfoInternal::getHplmnsRaw),
+                            SubscriptionInfoInternal::getHplmns),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_IS_EMBEDDED,
-                            SubscriptionInfoInternal::isEmbeddedRaw),
+                            SubscriptionInfoInternal::getEmbedded),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_CARD_ID,
                             SubscriptionInfoInternal::getCardString),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_ACCESS_RULES,
-                            SubscriptionInfoInternal::getNativeAccessRulesRaw),
+                            SubscriptionInfoInternal::getNativeAccessRules),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_ACCESS_RULES_FROM_CARRIER_CONFIGS,
-                            SubscriptionInfoInternal::getCarrierConfigAccessRulesRaw),
+                            SubscriptionInfoInternal::getCarrierConfigAccessRules),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_IS_REMOVABLE,
-                            SubscriptionInfoInternal::isRemovableEmbeddedRaw),
+                            SubscriptionInfoInternal::getRemovableEmbedded),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_ENHANCED_4G_MODE_ENABLED,
-                            SubscriptionInfoInternal::isEnhanced4GModeEnabledRaw),
+                            SubscriptionInfoInternal::getEnhanced4GModeEnabled),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_VT_IMS_ENABLED,
-                            SubscriptionInfoInternal::isVideoTelephonyEnabledRaw),
+                            SubscriptionInfoInternal::getVideoTelephonyEnabled),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_WFC_IMS_ENABLED,
-                            SubscriptionInfoInternal::isWifiCallingEnabledRaw),
+                            SubscriptionInfoInternal::getWifiCallingEnabled),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_WFC_IMS_MODE,
                             SubscriptionInfoInternal::getWifiCallingMode),
@@ -190,13 +190,13 @@ public class SubscriptionDatabaseManager extends Handler {
                             SubscriptionInfoInternal::getWifiCallingModeForRoaming),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_WFC_IMS_ROAMING_ENABLED,
-                            SubscriptionInfoInternal::isWifiCallingEnabledForRoamingRaw),
+                            SubscriptionInfoInternal::getWifiCallingEnabledForRoaming),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_IS_OPPORTUNISTIC,
-                            SubscriptionInfoInternal::isOpportunisticRaw),
+                            SubscriptionInfoInternal::getOpportunistic),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_GROUP_UUID,
-                            SubscriptionInfoInternal::getGroupUuidRaw),
+                            SubscriptionInfoInternal::getGroupUuid),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_ISO_COUNTRY_CODE,
                             SubscriptionInfoInternal::getCountryIso),
@@ -214,19 +214,19 @@ public class SubscriptionDatabaseManager extends Handler {
                             SubscriptionInfoInternal::getGroupOwner),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_ENABLED_MOBILE_DATA_POLICIES,
-                            SubscriptionInfoInternal::getEnabledMobileDataPoliciesRaw),
+                            SubscriptionInfoInternal::getEnabledMobileDataPolicies),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_IMSI,
                             SubscriptionInfoInternal::getImsi),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_UICC_APPLICATIONS_ENABLED,
-                            SubscriptionInfoInternal::areUiccApplicationsEnabledRaw),
+                            SubscriptionInfoInternal::getUiccApplicationsEnabled),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_IMS_RCS_UCE_ENABLED,
-                            SubscriptionInfoInternal::isRcsUceEnabledRaw),
+                            SubscriptionInfoInternal::getRcsUceEnabled),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_CROSS_SIM_CALLING_ENABLED,
-                            SubscriptionInfoInternal::isCrossSimCallingEnabledRaw),
+                            SubscriptionInfoInternal::getCrossSimCallingEnabled),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_RCS_CONFIG,
                             SubscriptionInfoInternal::getRcsConfig),
@@ -238,13 +238,13 @@ public class SubscriptionDatabaseManager extends Handler {
                             SubscriptionInfoInternal::getDeviceToDeviceStatusSharingPreference),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_VOIMS_OPT_IN_STATUS,
-                            SubscriptionInfoInternal::isVoImsOptInEnabledRaw),
+                            SubscriptionInfoInternal::getVoImsOptInEnabled),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_D2D_STATUS_SHARING_SELECTED_CONTACTS,
                             SubscriptionInfoInternal::getDeviceToDeviceStatusSharingContacts),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED,
-                            SubscriptionInfoInternal::isNrAdvancedCallingEnabledRaw),
+                            SubscriptionInfoInternal::getNrAdvancedCallingEnabled),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_PHONE_NUMBER_SOURCE_CARRIER,
                             SubscriptionInfoInternal::getNumberFromCarrier),
