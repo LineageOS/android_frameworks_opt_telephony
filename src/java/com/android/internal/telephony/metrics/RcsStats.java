@@ -1576,12 +1576,7 @@ public class RcsStats {
 
     @VisibleForTesting
     protected int getSubId(int slotId) {
-        final int[] subIds = SubscriptionManager.getSubId(slotId);
-        int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-        if (subIds != null && subIds.length >= 1) {
-            subId = subIds[0];
-        }
-        return subId;
+        return SubscriptionManager.getSubscriptionId(slotId);
     }
 
     /** Get a enum value from pre-defined feature tag name list */

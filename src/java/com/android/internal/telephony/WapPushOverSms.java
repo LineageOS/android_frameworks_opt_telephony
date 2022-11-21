@@ -245,9 +245,10 @@ public class WapPushOverSms implements ServiceConnection {
                 System.arraycopy(pdu, dataIndex, intentData, 0, intentData.length);
             }
 
-            int[] subIds = SubscriptionManager.getSubId(phoneId);
-            int subId = (subIds != null) && (subIds.length > 0) ? subIds[0]
-                    : SmsManager.getDefaultSmsSubscriptionId();
+            int subId = SubscriptionManager.getSubscriptionId(phoneId);
+            if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+                subId = SmsManager.getDefaultSmsSubscriptionId();
+            }
 
             // Continue if PDU parsing fails: the default messaging app may successfully parse the
             // same PDU.

@@ -19,7 +19,9 @@ package com.android.internal.telephony.subscription;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
+import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.ParcelUuid;
 import android.os.TelephonyServiceManager;
 import android.os.UserHandle;
@@ -28,17 +30,23 @@ import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.SubscriptionManager.SubscriptionType;
 import android.telephony.TelephonyFrameworkInitializer;
+import android.telephony.TelephonyRegistryManager;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
 import com.android.internal.telephony.ISetOpportunisticDataCallback;
 import com.android.internal.telephony.ISub;
+import com.android.internal.telephony.MultiSimSettingController;
+import com.android.internal.telephony.subscription.SubscriptionDatabaseManager.SubscriptionDatabaseManagerCallback;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The subscription manager service is the backend service of {@link SubscriptionManager}.
@@ -53,6 +61,9 @@ public class SubscriptionManagerService extends ISub.Stub {
     /** The context */
     private final Context mContext;
 
+    /** The main handler of subscription manager service. */
+    private final Handler mHandler;
+
     /** Local log for most important debug messages. */
     private final LocalLog mLocalLog = new LocalLog(128);
 
@@ -60,12 +71,88 @@ public class SubscriptionManagerService extends ISub.Stub {
     private final SubscriptionDatabaseManager mSubscriptionDatabaseManager;
 
     /**
+     * Watched slot index to sub id map.
+     */
+    private static class WatchedSlotIndexToSubId {
+        private final Map<Integer, Integer> mSlotIndexToSubId =
+                new ConcurrentHashMap<>();
+
+        public void clear() {
+            mSlotIndexToSubId.clear();
+            SubscriptionManager.invalidateDefaultSubIdCaches();
+            SubscriptionManager.invalidateSlotIndexCaches();
+        }
+
+        public Set<Map.Entry<Integer, Integer>> entrySet() {
+            return mSlotIndexToSubId.entrySet();
+        }
+
+        // Force all updates to data structure through wrapper.
+        public int get(int slotIndex) {
+            return mSlotIndexToSubId.getOrDefault(slotIndex,
+                    SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        }
+
+        public void put(int slotIndex, int value) {
+            mSlotIndexToSubId.put(slotIndex, value);
+            SubscriptionManager.invalidateDefaultSubIdCaches();
+            SubscriptionManager.invalidateSlotIndexCaches();
+        }
+
+        public void remove(int slotIndex) {
+            mSlotIndexToSubId.remove(slotIndex);
+            SubscriptionManager.invalidateDefaultSubIdCaches();
+            SubscriptionManager.invalidateSlotIndexCaches();
+        }
+
+        public int size() {
+            return mSlotIndexToSubId.size();
+        }
+    }
+
+    /**
+     * Watched integer.
+     */
+    public static class WatchedInt {
+        private int mValue;
+
+        /**
+         * Constructor.
+         *
+         * @param initialValue The initial value.
+         */
+        public WatchedInt(int initialValue) {
+            mValue = initialValue;
+        }
+
+        /**
+         * @return The value.
+         */
+        public int get() {
+            return mValue;
+        }
+
+        /**
+         * Set the value.
+         *
+         * @param newValue The new value.
+         */
+        public void set(int newValue) {
+            mValue = newValue;
+        }
+    }
+
+    private final WatchedSlotIndexToSubId mSlotIndexToSubId = new WatchedSlotIndexToSubId();
+
+    /**
      * The constructor
      *
      * @param context The context
+     * @param looper The looper for the handler.
      */
-    public SubscriptionManagerService(@NonNull Context context) {
+    public SubscriptionManagerService(@NonNull Context context, @NonNull Looper looper) {
         mContext = context;
+        mHandler = new Handler(looper);
         TelephonyServiceManager.ServiceRegisterer subscriptionServiceRegisterer =
                 TelephonyFrameworkInitializer
                         .getTelephonyServiceManager()
@@ -77,7 +164,33 @@ public class SubscriptionManagerService extends ISub.Stub {
         HandlerThread handlerThread = new HandlerThread(LOG_TAG);
         handlerThread.start();
         mSubscriptionDatabaseManager = new SubscriptionDatabaseManager(context,
-                handlerThread.getLooper());
+                handlerThread.getLooper(), new SubscriptionDatabaseManagerCallback(mHandler::post) {
+                    /**
+                     * Called when subscription changed.
+                     *
+                     * @param subId The subscription id.
+                     */
+                    @Override
+                    public void onSubscriptionChanged(int subId) {
+                        MultiSimSettingController.getInstance().notifySubscriptionInfoChanged();
+
+                        TelephonyRegistryManager telephonyRegistryManager =
+                                mContext.getSystemService(TelephonyRegistryManager.class);
+                        if (telephonyRegistryManager != null) {
+                            telephonyRegistryManager.notifySubscriptionInfoChanged();
+                        }
+
+                        SubscriptionInfoInternal subInfo =
+                                mSubscriptionDatabaseManager.getSubscriptionInfoInternal(subId);
+                        if (subInfo != null && subInfo.isOpportunistic()
+                                && telephonyRegistryManager != null) {
+                            telephonyRegistryManager.notifyOpportunisticSubscriptionInfoChanged();
+                        }
+
+                        // TODO: Call TelephonyMetrics.updateActiveSubscriptionInfoList when active
+                        //  subscription changes.
+                    }
+                });
     }
 
     /**
@@ -389,8 +502,24 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     @Override
+    public int getSubId(int slotIndex) {
+        if (slotIndex == SubscriptionManager.DEFAULT_SIM_SLOT_INDEX) {
+            slotIndex = getSlotIndex(getDefaultSubId());
+        }
+
+        // Check that we have a valid slotIndex or the slotIndex is for a remote SIM (remote SIM
+        // uses special slot index that may be invalid otherwise)
+        if (!SubscriptionManager.isValidSlotIndex(slotIndex)
+                && slotIndex != SubscriptionManager.SLOT_INDEX_FOR_REMOTE_SIM_SUB) {
+            return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        }
+
+        return mSlotIndexToSubId.get(slotIndex);
+    }
+
+    @Override
     public int[] getSubIds(int slotIndex) {
-        return null;
+        return new int[]{getSubId(slotIndex)};
     }
 
     @Override
