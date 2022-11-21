@@ -404,6 +404,18 @@ public class DataProfileManagerTest extends TelephonyTest {
         public void restoreApnSettings() {
             mDeletedApns.clear();
         }
+
+        public void setPreferredApn(String apnName) {
+            for (Object apnSetting : mAllApnSettings) {
+                if (apnName == ((Object[]) apnSetting)[3]) {
+                    mPreferredApnId = (int) ((Object[]) apnSetting)[0];
+                    mPreferredApnSet = (int) ((Object[]) apnSetting)[28];
+                    logd("mPreferredApnId=" + mPreferredApnId + " ,mPreferredApnSet="
+                            + mPreferredApnSet);
+                    break;
+                }
+            }
+        }
     }
 
     /**
@@ -1068,5 +1080,48 @@ public class DataProfileManagerTest extends TelephonyTest {
                 .build();
 
         assertThat(mDataProfileManagerUT.isDataProfileCompatible(dataProfile1)).isTrue();
+    }
+
+    @Test
+    public void testPermanentFailureWithNoPreferredDataProfile() {
+        // No preferred APN is set
+
+        NetworkRequest request = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build();
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+        DataProfile dp = mDataProfileManagerUT.getDataProfileForNetworkRequest(tnr,
+                TelephonyManager.NETWORK_TYPE_LTE, false);
+
+        // Mark the APN as permanent failed.
+        dp.getApnSetting().setPermanentFailed(true);
+
+        // Data profile manager should return a different data profile for setup as the previous
+        // data profile has been marked as permanent failed.
+        assertThat(mDataProfileManagerUT.getDataProfileForNetworkRequest(tnr,
+                TelephonyManager.NETWORK_TYPE_LTE, false)).isNotEqualTo(dp);
+    }
+
+    @Test
+    public void testPermanentFailureWithPreferredDataProfile() {
+        // Set the preferred APN
+        mApnSettingContentProvider.setPreferredApn(GENERAL_PURPOSE_APN);
+        mDataProfileManagerUT.obtainMessage(2 /* EVENT_APN_DATABASE_CHANGED */).sendToTarget();
+        processAllMessages();
+
+        NetworkRequest request = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build();
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(request, mPhone);
+        DataProfile dp = mDataProfileManagerUT.getDataProfileForNetworkRequest(tnr,
+                TelephonyManager.NETWORK_TYPE_LTE, false);
+
+        // Mark the APN as permanent failed.
+        dp.getApnSetting().setPermanentFailed(true);
+
+        // Since preferred APN is already set, and that data profile was marked as permanent failed,
+        // so this should result in getting nothing.
+        assertThat(mDataProfileManagerUT.getDataProfileForNetworkRequest(tnr,
+                TelephonyManager.NETWORK_TYPE_LTE, false)).isNull();
     }
 }
