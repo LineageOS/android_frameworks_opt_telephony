@@ -19,6 +19,7 @@ import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_REMOTE_SE
 
 import static com.android.internal.telephony.SubscriptionController.REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID;
 import static com.android.internal.telephony.uicc.IccCardStatus.CardState.CARDSTATE_PRESENT;
+
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertEquals;
@@ -196,7 +197,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         int slotID = 0;
         //insert one Subscription Info
-        mSubscriptionControllerUT.addSubInfoRecord("test", slotID);
+        mSubscriptionControllerUT.addSubInfo("test", null, slotID,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
 
         //verify there is one sim
         assertEquals(1, mSubscriptionControllerUT.getAllSubInfoCount(mCallingPackage,
@@ -760,7 +762,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
                 .notifyOpportunisticSubscriptionInfoChanged();
 
         testInsertSim();
-        mSubscriptionControllerUT.addSubInfoRecord("test2", 0);
+        mSubscriptionControllerUT.addSubInfo("test2", null, 0,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
 
         // Neither sub1 or sub2 are opportunistic. So getOpportunisticSubscriptions
         // should return empty list and no callback triggered.
@@ -965,7 +968,9 @@ public class SubscriptionControllerTest extends TelephonyTest {
     @SmallTest
     public void testSetSubscriptionGroupWithModifyPermission() throws Exception {
         testInsertSim();
-        mSubscriptionControllerUT.addSubInfoRecord("test2", 0);
+        mSubscriptionControllerUT.addSubInfo("test2", null, 0,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
 
@@ -1028,7 +1033,9 @@ public class SubscriptionControllerTest extends TelephonyTest {
         testInsertSim();
         // Adding a second profile and mark as embedded.
         // TODO b/123300875 slot index 1 is not expected to be valid
-        mSubscriptionControllerUT.addSubInfoRecord("test2", 1);
+        mSubscriptionControllerUT.addSubInfo("test2", null, 1,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+
         ContentValues values = new ContentValues();
         values.put(SubscriptionManager.IS_EMBEDDED, 1);
         mFakeTelephonyProvider.update(SubscriptionManager.CONTENT_URI, values,
@@ -1070,7 +1077,9 @@ public class SubscriptionControllerTest extends TelephonyTest {
         mContextFixture.addCallingOrSelfPermission(
                 android.Manifest.permission.MODIFY_PHONE_STATE);
         // TODO b/123300875 slot index 1 is not expected to be valid
-        mSubscriptionControllerUT.addSubInfoRecord("test3", 1);
+        mSubscriptionControllerUT.addSubInfo("test3", null, 1,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+
         mContextFixture.removeCallingOrSelfPermission(
                 android.Manifest.permission.MODIFY_PHONE_STATE);
         // As sub2 is inactive, it will checks carrier privilege against access rules in the db.
@@ -1090,7 +1099,9 @@ public class SubscriptionControllerTest extends TelephonyTest {
         testInsertSim();
         // Adding a second profile and mark as embedded.
         // TODO b/123300875 slot index 1 is not expected to be valid
-        mSubscriptionControllerUT.addSubInfoRecord("test2", 1);
+        mSubscriptionControllerUT.addSubInfo("test2", null, 1,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+
         ContentValues values = new ContentValues();
         values.put(SubscriptionManager.IS_EMBEDDED, 1);
         mFakeTelephonyProvider.update(SubscriptionManager.CONTENT_URI, values,
@@ -1143,7 +1154,9 @@ public class SubscriptionControllerTest extends TelephonyTest {
         testInsertSim();
         // Adding a second profile and mark as embedded.
         // TODO b/123300875 slot index 1 is not expected to be valid
-        mSubscriptionControllerUT.addSubInfoRecord("test2", 1);
+        mSubscriptionControllerUT.addSubInfo("test2", null, 1,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+
         ContentValues values = new ContentValues();
         values.put(SubscriptionManager.IS_EMBEDDED, 1);
         mFakeTelephonyProvider.update(SubscriptionManager.CONTENT_URI, values,
@@ -1214,7 +1227,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
         testInsertSim();
         // Adding a second profile and mark as embedded.
-        mSubscriptionControllerUT.addSubInfoRecord("test2", 0);
+        mSubscriptionControllerUT.addSubInfo("test2", null, 0,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
 
         ContentValues values = new ContentValues();
         values.put(SubscriptionManager.IS_EMBEDDED, 1);
@@ -1265,7 +1279,9 @@ public class SubscriptionControllerTest extends TelephonyTest {
     public void testSetSubscriptionGroup() throws Exception {
         testInsertSim();
         // Adding a second profile and mark as embedded.
-        mSubscriptionControllerUT.addSubInfoRecord("test2", 1);
+        mSubscriptionControllerUT.addSubInfo("test2", null, 1,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+
         ContentValues values = new ContentValues();
         values.put(SubscriptionManager.IS_EMBEDDED, 1);
         mFakeTelephonyProvider.update(SubscriptionManager.CONTENT_URI, values,
@@ -1353,8 +1369,10 @@ public class SubscriptionControllerTest extends TelephonyTest {
     @SmallTest
     public void testGetActiveSubIdList() throws Exception {
         // TODO b/123300875 slot index 1 is not expected to be valid
-        mSubscriptionControllerUT.addSubInfoRecord("123", 1);   // sub 1
-        mSubscriptionControllerUT.addSubInfoRecord("456", 0);   // sub 2
+        mSubscriptionControllerUT.addSubInfo("123", null, 1,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM); // sub 1
+        mSubscriptionControllerUT.addSubInfo("456", null, 0,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM); // sub 2
 
         int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
         // Make sure the return sub ids are sorted by slot index
@@ -1617,7 +1635,9 @@ public class SubscriptionControllerTest extends TelephonyTest {
         // the ICC ID and phone number.
         testInsertSim();
         doReturn(2).when(mTelephonyManager).getPhoneCount();
-        mSubscriptionControllerUT.addSubInfoRecord("test2", 1);
+        mSubscriptionControllerUT.addSubInfo("test2", null, 1,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+
         int firstSubId = getFirstSubId();
         int secondSubId = getSubIdAtIndex(1);
         mSubscriptionControllerUT.setDisplayNumber(DISPLAY_NUMBER, secondSubId);
@@ -1644,7 +1664,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
         // the ICC ID and phone number.
         testInsertSim();
         doReturn(2).when(mTelephonyManager).getPhoneCount();
-        mSubscriptionControllerUT.addSubInfoRecord("test2", 1);
+        mSubscriptionControllerUT.addSubInfo("test2", null, 1,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
         int firstSubId = getFirstSubId();
         int secondSubId = getSubIdAtIndex(1);
         setupIdentifierCarrierPrivilegesTest();
@@ -1971,8 +1992,10 @@ public class SubscriptionControllerTest extends TelephonyTest {
     @SmallTest
     public void testGetAvailableSubscriptionList() throws Exception {
         // TODO b/123300875 slot index 1 is not expected to be valid
-        mSubscriptionControllerUT.addSubInfoRecord("123", 1);   // sub 1
-        mSubscriptionControllerUT.addSubInfoRecord("456", 0);   // sub 2
+        mSubscriptionControllerUT.addSubInfo("123", null, 1,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM); // sub 1
+        mSubscriptionControllerUT.addSubInfo("456", null, 0,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM); // sub 2
 
         List<SubscriptionInfo> infoList = mSubscriptionControllerUT
                 .getAvailableSubscriptionInfoList(mCallingPackage, mCallingFeature);
@@ -2006,8 +2029,10 @@ public class SubscriptionControllerTest extends TelephonyTest {
     @SmallTest
     public void testGetAvailableSubscriptionList_withTrailingF() throws Exception {
         // TODO b/123300875 slot index 1 is not expected to be valid
-        mSubscriptionControllerUT.addSubInfoRecord("123", 1);   // sub 1
-        mSubscriptionControllerUT.addSubInfoRecord("456", 0);   // sub 2
+        mSubscriptionControllerUT.addSubInfo("123", null, 1,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM); // sub 1
+        mSubscriptionControllerUT.addSubInfo("456", null, 0,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM); // sub 2
 
         // Remove "123" from active sim list but have it inserted.
         UiccSlot[] uiccSlots = {mUiccSlot};
@@ -2054,7 +2079,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
     @Test
     public void testSetSubscriptionEnabled_disableActivePsim_cardIdWithTrailingF() {
         String iccId = "123F";
-        mSubscriptionControllerUT.addSubInfoRecord(iccId, 0);
+        mSubscriptionControllerUT.addSubInfo(iccId, null, 0,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
         mSubscriptionControllerUT.registerForUiccAppsEnabled(mHandler, 0, null, false);
         UiccSlotInfo slot = getFakeUiccSlotInfo(true, 0, iccId + "FF", iccId);
         UiccSlotInfo[] uiccSlotInfos = {slot};
@@ -2092,8 +2118,9 @@ public class SubscriptionControllerTest extends TelephonyTest {
             fail("Unexpected exception: " + e);
         }
 
-        mSubscriptionControllerUT.addSubInfoRecord("test3",
-                SubscriptionManager.INVALID_SIM_SLOT_INDEX);
+        mSubscriptionControllerUT.addSubInfo("test3", null,
+                SubscriptionManager.INVALID_SIM_SLOT_INDEX,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
 
         assertTrue(mSubscriptionControllerUT.checkPhoneIdAndIccIdMatch(0, "test"));
         assertTrue(mSubscriptionControllerUT.checkPhoneIdAndIccIdMatch(0, "test2"));

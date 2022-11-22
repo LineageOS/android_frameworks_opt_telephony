@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.subscription;
 
+import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.ContentValues;
@@ -41,6 +42,7 @@ import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
 import com.android.internal.annotations.GuardedBy;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.telephony.Rlog;
 
@@ -50,6 +52,7 @@ import java.util.AbstractMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Executor;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiFunction;
@@ -77,6 +80,10 @@ public class SubscriptionDatabaseManager extends Handler {
     /** The context */
     @NonNull
     private final Context mContext;
+
+    /** The callback used for passing events back to {@link SubscriptionManagerService}. */
+    @NonNull
+    private final SubscriptionDatabaseManagerCallback mCallback;
 
     /** Telephony manager */
     private final TelephonyManager mTelephonyManager;
@@ -141,40 +148,40 @@ public class SubscriptionDatabaseManager extends Handler {
                             SubscriptionInfoInternal::getDataRoaming),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_MCC_STRING,
-                            SubscriptionInfoInternal::getMccString),
+                            SubscriptionInfoInternal::getMcc),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_MNC_STRING,
-                            SubscriptionInfoInternal::getMncString),
+                            SubscriptionInfoInternal::getMnc),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_EHPLMNS,
                             SubscriptionInfoInternal::getEhplmns),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_HPLMNS,
-                            SubscriptionInfoInternal::getHplmnsRaw),
+                            SubscriptionInfoInternal::getHplmns),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_IS_EMBEDDED,
-                            SubscriptionInfoInternal::isEmbeddedRaw),
+                            SubscriptionInfoInternal::getEmbedded),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_CARD_ID,
                             SubscriptionInfoInternal::getCardString),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_ACCESS_RULES,
-                            SubscriptionInfoInternal::getNativeAccessRulesRaw),
+                            SubscriptionInfoInternal::getNativeAccessRules),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_ACCESS_RULES_FROM_CARRIER_CONFIGS,
-                            SubscriptionInfoInternal::getCarrierConfigAccessRulesRaw),
+                            SubscriptionInfoInternal::getCarrierConfigAccessRules),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_IS_REMOVABLE,
-                            SubscriptionInfoInternal::isRemovableEmbeddedRaw),
+                            SubscriptionInfoInternal::getRemovableEmbedded),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_ENHANCED_4G_MODE_ENABLED,
-                            SubscriptionInfoInternal::isEnhanced4GModeEnabledRaw),
+                            SubscriptionInfoInternal::getEnhanced4GModeEnabled),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_VT_IMS_ENABLED,
-                            SubscriptionInfoInternal::isVideoTelephonyEnabledRaw),
+                            SubscriptionInfoInternal::getVideoTelephonyEnabled),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_WFC_IMS_ENABLED,
-                            SubscriptionInfoInternal::isWifiCallingEnabledRaw),
+                            SubscriptionInfoInternal::getWifiCallingEnabled),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_WFC_IMS_MODE,
                             SubscriptionInfoInternal::getWifiCallingMode),
@@ -183,13 +190,13 @@ public class SubscriptionDatabaseManager extends Handler {
                             SubscriptionInfoInternal::getWifiCallingModeForRoaming),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_WFC_IMS_ROAMING_ENABLED,
-                            SubscriptionInfoInternal::isWifiCallingEnabledForRoamingRaw),
+                            SubscriptionInfoInternal::getWifiCallingEnabledForRoaming),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_IS_OPPORTUNISTIC,
-                            SubscriptionInfoInternal::isOpportunisticRaw),
+                            SubscriptionInfoInternal::getOpportunistic),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_GROUP_UUID,
-                            SubscriptionInfoInternal::getGroupUuidRaw),
+                            SubscriptionInfoInternal::getGroupUuid),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_ISO_COUNTRY_CODE,
                             SubscriptionInfoInternal::getCountryIso),
@@ -207,19 +214,19 @@ public class SubscriptionDatabaseManager extends Handler {
                             SubscriptionInfoInternal::getGroupOwner),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_ENABLED_MOBILE_DATA_POLICIES,
-                            SubscriptionInfoInternal::getEnabledMobileDataPoliciesRaw),
+                            SubscriptionInfoInternal::getEnabledMobileDataPolicies),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_IMSI,
                             SubscriptionInfoInternal::getImsi),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_UICC_APPLICATIONS_ENABLED,
-                            SubscriptionInfoInternal::areUiccApplicationsEnabledRaw),
+                            SubscriptionInfoInternal::getUiccApplicationsEnabled),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_IMS_RCS_UCE_ENABLED,
-                            SubscriptionInfoInternal::isRcsUceEnabledRaw),
+                            SubscriptionInfoInternal::getRcsUceEnabled),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_CROSS_SIM_CALLING_ENABLED,
-                            SubscriptionInfoInternal::isCrossSimCallingEnabledRaw),
+                            SubscriptionInfoInternal::getCrossSimCallingEnabled),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_RCS_CONFIG,
                             SubscriptionInfoInternal::getRcsConfig),
@@ -231,13 +238,13 @@ public class SubscriptionDatabaseManager extends Handler {
                             SubscriptionInfoInternal::getDeviceToDeviceStatusSharingPreference),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_VOIMS_OPT_IN_STATUS,
-                            SubscriptionInfoInternal::isVoImsOptInEnabledRaw),
+                            SubscriptionInfoInternal::getVoImsOptInEnabled),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_D2D_STATUS_SHARING_SELECTED_CONTACTS,
                             SubscriptionInfoInternal::getDeviceToDeviceStatusSharingContacts),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED,
-                            SubscriptionInfoInternal::isNrAdvancedCallingEnabledRaw),
+                            SubscriptionInfoInternal::getNrAdvancedCallingEnabled),
                     new AbstractMap.SimpleImmutableEntry<>(
                             SimInfo.COLUMN_PHONE_NUMBER_SOURCE_CARRIER,
                             SubscriptionInfoInternal::getNumberFromCarrier),
@@ -259,14 +266,58 @@ public class SubscriptionDatabaseManager extends Handler {
                     );
 
     /**
+     * This is the callback used for listening events from {@link SubscriptionDatabaseManager}.
+     */
+    public abstract static class SubscriptionDatabaseManagerCallback {
+        /** The executor of the callback. */
+        private final @NonNull Executor mExecutor;
+
+        /**
+         * Constructor
+         *
+         * @param executor The executor of the callback.
+         */
+        public SubscriptionDatabaseManagerCallback(@NonNull @CallbackExecutor Executor executor) {
+            mExecutor = executor;
+        }
+
+        /**
+         * @return The executor of the callback.
+         */
+        @VisibleForTesting
+        public @NonNull Executor getExecutor() {
+            return mExecutor;
+        }
+
+        /**
+         * Invoke the callback from executor.
+         *
+         * @param runnable The callback method to invoke.
+         */
+        public void invokeFromExecutor(@NonNull Runnable runnable) {
+            mExecutor.execute(runnable);
+        }
+
+        /**
+         * Called when subscription changed.
+         *
+         * @param subId The subscription id.
+         */
+        public abstract void onSubscriptionChanged(int subId);
+    }
+
+    /**
      * The constructor.
      *
      * @param context The context.
      * @param looper Looper for the handler.
+     * @param callback Subscription database callback.
      */
-    public SubscriptionDatabaseManager(@NonNull Context context, @NonNull Looper looper) {
+    public SubscriptionDatabaseManager(@NonNull Context context, @NonNull Looper looper,
+            @NonNull SubscriptionDatabaseManagerCallback callback) {
         super(looper);
         mContext = context;
+        mCallback = callback;
         mTelephonyManager = mContext.getSystemService(TelephonyManager.class);
         mUiccController = UiccController.getInstance();
         loadFromDatabase();
@@ -382,6 +433,8 @@ public class SubscriptionDatabaseManager extends Handler {
         } finally {
             mReadWriteLock.writeLock().unlock();
         }
+
+        mCallback.invokeFromExecutor(() -> mCallback.onSubscriptionChanged(subId));
         return subId;
     }
 
@@ -425,20 +478,20 @@ public class SubscriptionDatabaseManager extends Handler {
             BiFunction<SubscriptionInfoInternal.Builder, T, SubscriptionInfoInternal.Builder>
                     builderSetMethod) {
         ContentValues contentValues = new ContentValues();
-        SubscriptionInfoInternal subInfoCache;
+        SubscriptionInfoInternal oldSubInfo;
 
         // Grab the write lock so no other threads can read or write the cache.
         mReadWriteLock.writeLock().lock();
         try {
-            subInfoCache = mAllSubscriptionInfoInternalCache.get(subId);
-            if (subInfoCache != null) {
+            oldSubInfo = mAllSubscriptionInfoInternalCache.get(subId);
+            if (oldSubInfo != null) {
                 // Check if the new value is different from the old value in the cache.
-                if (!Objects.equals(getSubscriptionInfoFieldByColumnName(subInfoCache, columnName),
+                if (!Objects.equals(getSubscriptionInfoFieldByColumnName(oldSubInfo, columnName),
                         newValue)) {
                     // If the value is different, then we need to update the cache. Since all fields
                     // in SubscriptionInfo is final, so we need to create a new SubscriptionInfo.
                     SubscriptionInfoInternal.Builder builder = new SubscriptionInfoInternal
-                            .Builder(subInfoCache);
+                            .Builder(oldSubInfo);
 
                     // Apply the new value to the builder. This line is equivalent to
                     // builder.setXxxxxx(newValue);
@@ -446,6 +499,7 @@ public class SubscriptionDatabaseManager extends Handler {
 
                     // Update the subscription database cache.
                     mAllSubscriptionInfoInternalCache.put(subId, builder.build());
+                    mCallback.invokeFromExecutor(() -> mCallback.onSubscriptionChanged(subId));
 
                     // Prepare the content value for update.
                     contentValues.putObject(columnName, newValue);
@@ -461,26 +515,28 @@ public class SubscriptionDatabaseManager extends Handler {
     }
 
     /**
-     * Update the database with the {@link SubscriptionInfo}, and also update the cache.
+     * Update the database with the {@link SubscriptionInfoInternal}, and also update the cache.
      *
-     * @param subInfo The new {@link SubscriptionInfo}.
+     * @param newSubInfo The new {@link SubscriptionInfoInternal}.
      */
-    public void updateSubscription(@NonNull SubscriptionInfoInternal subInfo) {
-        Objects.requireNonNull(subInfo);
+    public void updateSubscription(@NonNull SubscriptionInfoInternal newSubInfo) {
+        Objects.requireNonNull(newSubInfo);
 
         // Grab the write lock so no other threads can read or write the cache.
         mReadWriteLock.writeLock().lock();
         try {
-            int subId = subInfo.getSubscriptionId();
-            SubscriptionInfoInternal subInfoCache = mAllSubscriptionInfoInternalCache.get(
-                    subInfo.getSubscriptionId());
-            if (subInfoCache == null) {
+            int subId = newSubInfo.getSubscriptionId();
+            SubscriptionInfoInternal oldSubInfo = mAllSubscriptionInfoInternalCache.get(
+                    newSubInfo.getSubscriptionId());
+            if (oldSubInfo == null) {
                 throw new RuntimeException("updateSubscription: subscription does not exist. subId="
                         + subId);
             }
-            mAllSubscriptionInfoInternalCache.put(subId, subInfo);
+            if (oldSubInfo.equals(newSubInfo)) return;
+            mAllSubscriptionInfoInternalCache.put(subId, newSubInfo);
+            mCallback.invokeFromExecutor(() -> mCallback.onSubscriptionChanged(subId));
             // Writing into the database is slow. So do this asynchronously.
-            updateDatabaseAsync(subId, createDeltaContentValues(subInfoCache, subInfo));
+            updateDatabaseAsync(subId, createDeltaContentValues(oldSubInfo, newSubInfo));
         } finally {
             mReadWriteLock.writeLock().unlock();
         }
