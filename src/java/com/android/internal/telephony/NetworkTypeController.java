@@ -513,7 +513,8 @@ public class NetworkTypeController extends StateMachine {
         int value = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
         if ((getDataNetworkType() == TelephonyManager.NETWORK_TYPE_LTE_CA
                 || mServiceState.isUsingCarrierAggregation())
-                && getBandwidth() > mLtePlusThresholdBandwidth) {
+                && IntStream.of(mServiceState.getCellBandwidths()).sum()
+                > mLtePlusThresholdBandwidth) {
             value = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA;
         }
         if (isLteEnhancedAvailable()) {
@@ -1275,9 +1276,15 @@ public class NetworkTypeController extends StateMachine {
             return false;
         }
 
+        int bandwidths = mPhone.getServiceStateTracker().getPhysicalChannelConfigList()
+                .stream()
+                .filter(config -> config.getNetworkType() == TelephonyManager.NETWORK_TYPE_NR)
+                .map(PhysicalChannelConfig::getCellBandwidthDownlinkKhz)
+                .mapToInt(Integer::intValue)
+                .sum();
         // Check if meeting minimum bandwidth requirement. For most carriers, there is no minimum
         // bandwidth requirement and mNrAdvancedThresholdBandwidth is 0.
-        if (mNrAdvancedThresholdBandwidth > 0 && getBandwidth() < mNrAdvancedThresholdBandwidth) {
+        if (mNrAdvancedThresholdBandwidth > 0 && bandwidths < mNrAdvancedThresholdBandwidth) {
             return false;
         }
 
@@ -1323,10 +1330,6 @@ public class NetworkTypeController extends StateMachine {
                 NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
         return nri == null ? TelephonyManager.NETWORK_TYPE_UNKNOWN
                 : nri.getAccessNetworkTechnology();
-    }
-
-    private int getBandwidth() {
-        return IntStream.of(mServiceState.getCellBandwidths()).sum();
     }
 
     private String getEventName(int event) {
