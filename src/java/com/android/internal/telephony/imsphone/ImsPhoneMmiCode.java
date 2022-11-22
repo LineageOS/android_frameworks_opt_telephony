@@ -1330,7 +1330,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 mContext.getText(com.android.internal.R.string.mmiError);
     }
 
-    private CharSequence getMmiErrorMessage(AsyncResult ar) {
+    @VisibleForTesting
+    public CharSequence getMmiErrorMessage(AsyncResult ar) {
         if (ar.exception instanceof ImsException) {
             switch (((ImsException) ar.exception).getCode()) {
                 case ImsReasonInfo.CODE_FDN_BLOCKED:
@@ -1360,6 +1361,12 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_dial_video);
             } else if (err.getCommandError() == CommandException.Error.INTERNAL_ERR) {
                 return mContext.getText(com.android.internal.R.string.mmiError);
+            } else if (err.getCommandError() == CommandException.Error.REQUEST_NOT_SUPPORTED
+                    || err.getCommandError() == CommandException.Error.OPERATION_NOT_ALLOWED) {
+                // getResources().getText() is the same as getText(), however getText() is final and
+                // cannot be mocked in tests.
+                return mContext.getResources().getText(
+                        com.android.internal.R.string.mmiErrorNotSupported);
             }
         }
         return null;
