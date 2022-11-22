@@ -45,22 +45,24 @@ import org.mockito.Mock;
 @RunWith(AndroidJUnit4.class)
 public class ImsEnablementTrackerTest extends ImsTestBase {
 
-    private static final int SLOT_1 = 1;
+    private static final int SLOT_1 = 0;
     private static final int SUB_1 = 11;
 
+    private static final int SLOT_2 = 1;
+    private static final int SUB_2 = 22;
     private static final long TEST_REQUEST_THROTTLE_TIME_MS = 1000L;
     // Mocked classes
     @Mock
     IImsServiceController mMockServiceControllerBinder;
 
-    private TestableImsEnablementTracker mImsEnablementTracker;
+    private TestableImsEnablementTracker mTracker;
     private Handler mHandler;
-
 
     private static class TestableImsEnablementTracker extends ImsEnablementTracker {
         private long mLastImsOperationTimeMs = 0L;
-        TestableImsEnablementTracker(Looper looper, IImsServiceController controller, int state) {
-            super(looper, controller, state);
+        TestableImsEnablementTracker(Looper looper, IImsServiceController controller, int state,
+                int numSlots) {
+            super(looper, controller, state, numSlots);
         }
 
         @Override
@@ -84,7 +86,7 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void tearDown() throws Exception {
         // Make sure the handler is empty before finishing the test.
         waitForHandlerAction(mHandler, TEST_REQUEST_THROTTLE_TIME_MS);
-        mImsEnablementTracker = null;
+        mTracker = null;
         super.tearDown();
     }
 
@@ -93,17 +95,16 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testEnableCommandInDefaultState() throws RemoteException {
         // Verify that when the enable command is received in the Default state and enableIms
         // is called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_DEFAULT);
-        mImsEnablementTracker.startStateMachineAsConnected();
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_DEFAULT);
+        mTracker.startStateMachineAsConnected(SLOT_1);
+        mHandler = mTracker.getHandler(SLOT_1);
          // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
-        mImsEnablementTracker.enableIms(SLOT_1, SUB_1);
+        mTracker.enableIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
         verify(mMockServiceControllerBinder).enableIms(eq(SLOT_1), eq(SUB_1));
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_ENABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_ENABLED));
     }
 
     @SmallTest
@@ -111,52 +112,49 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testDisableCommandInDefaultState() throws RemoteException {
         // Verify that when the disable command is received in the Default state and disableIms
         // is called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_DEFAULT);
-        mImsEnablementTracker.startStateMachineAsConnected();
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_DEFAULT);
+        mTracker.startStateMachineAsConnected(SLOT_1);
+        mHandler = mTracker.getHandler(SLOT_1);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
-        mImsEnablementTracker.disableIms(SLOT_1, SUB_1);
+        mTracker.disableIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
         verify(mMockServiceControllerBinder).disableIms(eq(SLOT_1), eq(SUB_1));
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_DISABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_DISABLED));
     }
 
     @SmallTest
     @Test
     public void testResetCommandInDefaultState() throws RemoteException {
         // Verify that when reset command is received in the Default state, it should be ignored.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_DEFAULT);
-        mImsEnablementTracker.startStateMachineAsConnected();
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_DEFAULT);
+        mTracker.startStateMachineAsConnected(SLOT_1);
+        mHandler = mTracker.getHandler(SLOT_1);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
-        mImsEnablementTracker.resetIms(SLOT_1, SUB_1);
+        mTracker.resetIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
         verifyZeroInteractions(mMockServiceControllerBinder);
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_DEFAULT));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_DEFAULT));
     }
 
     @SmallTest
     @Test
     public void testEnableCommandInEnabledState() throws RemoteException {
         // Verify that received the enable command is not handle in the Enabled state,
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_ENABLED);
-        mImsEnablementTracker.startStateMachineAsConnected();
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_ENABLED);
+        mTracker.startStateMachineAsConnected(SLOT_1);
+        mHandler = mTracker.getHandler(SLOT_1);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
-        mImsEnablementTracker.enableIms(SLOT_1, SUB_1);
-        waitForHandlerActionDelayed(mHandler, mImsEnablementTracker.getRemainThrottleTime(),
-                mImsEnablementTracker.getRemainThrottleTime() + 100);
+        mTracker.enableIms(SLOT_1, SUB_1);
+        waitForHandlerActionDelayed(mHandler, mTracker.getRemainThrottleTime(),
+                mTracker.getRemainThrottleTime() + 100);
         verify(mMockServiceControllerBinder, never()).enableIms(eq(SLOT_1), eq(SUB_1));
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_ENABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_ENABLED));
     }
 
     @SmallTest
@@ -164,17 +162,16 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testDisableCommandInEnabledState() throws RemoteException {
         // Verify that when the disable command is received in the Enabled state and disableIms
         // is called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_ENABLED);
-        mImsEnablementTracker.startStateMachineAsConnected();
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_ENABLED);
+        mTracker.startStateMachineAsConnected(SLOT_1);
+        mHandler = mTracker.getHandler(SLOT_1);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
-        mImsEnablementTracker.disableIms(SLOT_1, SUB_1);
+        mTracker.disableIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
         verify(mMockServiceControllerBinder).disableIms(eq(SLOT_1), eq(SUB_1));
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_DISABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_DISABLED));
     }
 
     @SmallTest
@@ -182,39 +179,37 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testResetCommandInEnabledState() throws RemoteException {
         // Verify that when the reset command is received in the Enabled state and disableIms
         // and enableIms are called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_ENABLED);
-        mImsEnablementTracker.startStateMachineAsConnected();
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_ENABLED);
+        mTracker.startStateMachineAsConnected(SLOT_1);
+        mHandler = mTracker.getHandler(SLOT_1);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
-        mImsEnablementTracker.resetIms(SLOT_1, SUB_1);
+        mTracker.resetIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
         verify(mMockServiceControllerBinder).disableIms(eq(SLOT_1), eq(SUB_1));
         // The disableIms was called. So set the last operation time to current.
-        mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
+        mTracker.setLastOperationTimeMillis(System.currentTimeMillis());
         waitForHandlerActionDelayed(mHandler, TEST_REQUEST_THROTTLE_TIME_MS,
                 TEST_REQUEST_THROTTLE_TIME_MS + 100);
         verify(mMockServiceControllerBinder).enableIms(eq(SLOT_1), eq(SUB_1));
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_ENABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_ENABLED));
     }
 
     @SmallTest
     @Test
     public void testDisableCommandInDisabledState() throws RemoteException {
         // Verify that when disable command is received in the Disabled state, it should be ignored.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_DISABLED);
-        mImsEnablementTracker.startStateMachineAsConnected();
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_DISABLED);
+        mTracker.startStateMachineAsConnected(SLOT_1);
+        mHandler = mTracker.getHandler(SLOT_1);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
-        mImsEnablementTracker.disableIms(SLOT_1, SUB_1);
+        mTracker.disableIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
         verifyZeroInteractions(mMockServiceControllerBinder);
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_DISABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_DISABLED));
     }
 
     @SmallTest
@@ -222,17 +217,16 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testEnableCommandInDisabledState() throws RemoteException {
         // Verify that when the enable command is received in the Disabled state and enableIms
         // is called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_DISABLED);
-        mImsEnablementTracker.startStateMachineAsConnected();
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_DISABLED);
+        mTracker.startStateMachineAsConnected(SLOT_1);
+        mHandler = mTracker.getHandler(SLOT_1);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
-        mImsEnablementTracker.enableIms(SLOT_1, SUB_1);
+        mTracker.enableIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
         verify(mMockServiceControllerBinder).enableIms(eq(SLOT_1), eq(SUB_1));
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_ENABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_ENABLED));
     }
 
     @SmallTest
@@ -240,56 +234,54 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testEnableCommandWithoutTimeoutInDisableState() throws RemoteException {
         // Verify that when the enable command is received in the Disabled state. After throttle
         // time expired, the enableIms is called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_DISABLED);
-        mImsEnablementTracker.startStateMachineAsConnected();
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_DISABLED);
+        mTracker.startStateMachineAsConnected(SLOT_1);
+        mHandler = mTracker.getHandler(SLOT_1);
+
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
         // Set the last operation time to current to verify the message with delay.
-        mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
+        mTracker.setLastOperationTimeMillis(System.currentTimeMillis());
 
-        mImsEnablementTracker.enableIms(SLOT_1, SUB_1);
-        waitForHandlerActionDelayed(mHandler, mImsEnablementTracker.getRemainThrottleTime(),
-                mImsEnablementTracker.getRemainThrottleTime() + 100);
+        mTracker.enableIms(SLOT_1, SUB_1);
+        waitForHandlerActionDelayed(mHandler, mTracker.getRemainThrottleTime(),
+                mTracker.getRemainThrottleTime() + 100);
         verify(mMockServiceControllerBinder).enableIms(eq(SLOT_1), eq(SUB_1));
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_ENABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_ENABLED));
     }
 
     @SmallTest
     @Test
     public void testResetCommandInDisabledState() throws RemoteException {
         // Verify that the reset command is received in the Disabled state and it`s not handled.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_DISABLED);
-        mImsEnablementTracker.startStateMachineAsConnected();
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_DISABLED);
+        mTracker.startStateMachineAsConnected(SLOT_1);
+        mHandler = mTracker.getHandler(SLOT_1);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
-        mImsEnablementTracker.resetIms(SLOT_1, SUB_1);
+        mTracker.resetIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
         verifyZeroInteractions(mMockServiceControllerBinder);
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_DISABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_DISABLED));
     }
 
     @SmallTest
     @Test
     public void testEnableCommandInDisablingState() throws RemoteException {
         // Verify that when enable command is received in the Disabling state, it should be ignored.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_DISABLING);
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_DISABLING);
+        mHandler = mTracker.getHandler(SLOT_1);
         // Set the last operation time to current to verify the message with delay.
-        mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
-        mImsEnablementTracker.startStateMachineAsConnected();
+        mTracker.setLastOperationTimeMillis(System.currentTimeMillis());
+        mTracker.startStateMachineAsConnected(SLOT_1);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
-        mImsEnablementTracker.enableIms(SLOT_1, SUB_1);
+        mTracker.enableIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
         verifyZeroInteractions(mMockServiceControllerBinder);
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_ENABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_ENABLED));
     }
 
     @SmallTest
@@ -297,17 +289,16 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testDisablingMessageInDisablingState() throws RemoteException {
         // Verify that when the internal disable message is received in the Disabling state and
         // disableIms is called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_DISABLING);
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_DISABLING);
+        mHandler = mTracker.getHandler(SLOT_1);
         // Set the last operation time to current to verify the message with delay.
-        mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
-        mImsEnablementTracker.startStateMachineAsConnected();
+        mTracker.setLastOperationTimeMillis(System.currentTimeMillis());
+        mTracker.startStateMachineAsConnected(SLOT_1);
 
-        waitForHandlerActionDelayed(mHandler, mImsEnablementTracker.getRemainThrottleTime(),
-                mImsEnablementTracker.getRemainThrottleTime() + 100);
+        waitForHandlerActionDelayed(mHandler, mTracker.getRemainThrottleTime(),
+                mTracker.getRemainThrottleTime() + 100);
         verify(mMockServiceControllerBinder).disableIms(anyInt(), anyInt());
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_DISABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_DISABLED));
     }
 
     @SmallTest
@@ -315,25 +306,24 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testResetCommandInDisablingState() throws RemoteException {
         // Verify when the reset command is received in the Disabling state the disableIms and
         // enableIms are called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_DISABLING);
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_DISABLING);
+        mHandler = mTracker.getHandler(SLOT_1);
         // Set the last operation time to current to verify the message with delay.
-        mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
-        mImsEnablementTracker.startStateMachineAsConnected();
+        mTracker.setLastOperationTimeMillis(System.currentTimeMillis());
+        mTracker.startStateMachineAsConnected(SLOT_1);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
-        mImsEnablementTracker.resetIms(SLOT_1, SUB_1);
-        waitForHandlerActionDelayed(mHandler, mImsEnablementTracker.getRemainThrottleTime(),
-                mImsEnablementTracker.getRemainThrottleTime() + 100);
+        mTracker.resetIms(SLOT_1, SUB_1);
+        waitForHandlerActionDelayed(mHandler, mTracker.getRemainThrottleTime(),
+                mTracker.getRemainThrottleTime() + 100);
         verify(mMockServiceControllerBinder).disableIms(eq(SLOT_1), eq(SUB_1));
         // The disableIms was called. So set the last operation time to current.
-        mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
-        waitForHandlerActionDelayed(mHandler, mImsEnablementTracker.getRemainThrottleTime(),
-                mImsEnablementTracker.getRemainThrottleTime() + 100);
+        mTracker.setLastOperationTimeMillis(System.currentTimeMillis());
+        waitForHandlerActionDelayed(mHandler, mTracker.getRemainThrottleTime(),
+                mTracker.getRemainThrottleTime() + 100);
         verify(mMockServiceControllerBinder).enableIms(eq(SLOT_1), eq(SUB_1));
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_ENABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_ENABLED));
     }
 
     @SmallTest
@@ -341,14 +331,13 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testEnablingMessageInEnablingState() throws RemoteException {
         // Verify that when the internal enable message is received in the Enabling state and
         // enableIms is called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_ENABLING);
-        mImsEnablementTracker.startStateMachineAsConnected();
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_ENABLING);
+        mTracker.startStateMachineAsConnected(SLOT_1);
+        mHandler = mTracker.getHandler(SLOT_1);
 
         waitForHandlerActionDelayed(mHandler, 100, 150);
         verify(mMockServiceControllerBinder).enableIms(anyInt(), anyInt());
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_ENABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_ENABLED));
     }
 
     @SmallTest
@@ -356,38 +345,36 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testDisableCommandInEnablingState() throws RemoteException {
         // Verify that when the disable command is received in the Enabling state and
         // clear pending message and disableIms is not called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_ENABLING);
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_ENABLING);
+        mHandler = mTracker.getHandler(SLOT_1);
         // Set the last operation time to current to verify the message with delay.
-        mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
-        mImsEnablementTracker.startStateMachineAsConnected();
+        mTracker.setLastOperationTimeMillis(System.currentTimeMillis());
+        mTracker.startStateMachineAsConnected(SLOT_1);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
-        mImsEnablementTracker.disableIms(SLOT_1, SUB_1);
+        mTracker.disableIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
         verify(mMockServiceControllerBinder, never()).disableIms(eq(SLOT_1), eq(SUB_1));
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_DISABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_DISABLED));
     }
 
     @SmallTest
     @Test
     public void testResetCommandWithEnablingState() throws RemoteException {
         // Verify that when reset command is received in the Enabling state, it should be ignored.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_ENABLING);
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_ENABLING);
+        mHandler = mTracker.getHandler(SLOT_1);
         // Set the last operation time to current to verify the message with delay.
-        mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
-        mImsEnablementTracker.startStateMachineAsConnected();
+        mTracker.setLastOperationTimeMillis(System.currentTimeMillis());
+        mTracker.startStateMachineAsConnected(SLOT_1);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
-        mImsEnablementTracker.resetIms(SLOT_1, SUB_1);
+        mTracker.resetIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
         verifyZeroInteractions(mMockServiceControllerBinder);
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_ENABLING));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_ENABLING));
     }
 
     @SmallTest
@@ -395,19 +382,18 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testEnableCommandInResettingState() throws RemoteException {
         // Verify that when the enable command is received in the Resetting state and
         // enableIms is not called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_RESETTING);
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_RESETTING);
+        mHandler = mTracker.getHandler(SLOT_1);
         // Set the last operation time to current to verify the message with delay.
-        mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
-        mImsEnablementTracker.startStateMachineAsConnected();
+        mTracker.setLastOperationTimeMillis(System.currentTimeMillis());
+        mTracker.startStateMachineAsConnected(SLOT_1);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
-        mImsEnablementTracker.enableIms(SLOT_1, SUB_1);
+        mTracker.enableIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
         verifyZeroInteractions(mMockServiceControllerBinder);
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_RESETTING));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_RESETTING));
     }
 
     @SmallTest
@@ -415,20 +401,19 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testDisableCommandInResettingState() throws RemoteException {
         // Verify that when the disable command is received in the Resetting state and
         // disableIms is called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_RESETTING);
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_RESETTING);
+        mHandler = mTracker.getHandler(SLOT_1);
         // Set the last operation time to current to verify the message with delay.
-        mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
-        mImsEnablementTracker.startStateMachineAsConnected();
+        mTracker.setLastOperationTimeMillis(System.currentTimeMillis());
+        mTracker.startStateMachineAsConnected(SLOT_1);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
-        mImsEnablementTracker.disableIms(SLOT_1, SUB_1);
-        waitForHandlerActionDelayed(mHandler, mImsEnablementTracker.getRemainThrottleTime(),
-                mImsEnablementTracker.getRemainThrottleTime() + 100);
+        mTracker.disableIms(SLOT_1, SUB_1);
+        waitForHandlerActionDelayed(mHandler, mTracker.getRemainThrottleTime(),
+                mTracker.getRemainThrottleTime() + 100);
         verify(mMockServiceControllerBinder).disableIms(eq(SLOT_1), eq(SUB_1));
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_DISABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_DISABLED));
     }
 
     @SmallTest
@@ -436,94 +421,161 @@ public class ImsEnablementTrackerTest extends ImsTestBase {
     public void testResettingMessageInResettingState() throws RemoteException {
         // Verify that when the internal reset message is received in the Resetting state and
         // disableIms and enableIms are called.
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_RESETTING);
-        mImsEnablementTracker.startStateMachineAsConnected();
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_RESETTING);
+        mTracker.startStateMachineAsConnected(SLOT_1);
+        mHandler = mTracker.getHandler(SLOT_1);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
         verify(mMockServiceControllerBinder).disableIms(anyInt(), anyInt());
         // Set the last operation time to current to verify the message with delay.
-        mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
-        waitForHandlerActionDelayed(mHandler, mImsEnablementTracker.getRemainThrottleTime(),
-                mImsEnablementTracker.getRemainThrottleTime() + 100);
+        mTracker.setLastOperationTimeMillis(System.currentTimeMillis());
+        waitForHandlerActionDelayed(mHandler, mTracker.getRemainThrottleTime(),
+                mTracker.getRemainThrottleTime() + 100);
         verify(mMockServiceControllerBinder).enableIms(anyInt(), anyInt());
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_ENABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_ENABLED));
     }
 
     @SmallTest
     @Test
     public void testConsecutiveCommandInEnabledState() throws RemoteException {
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_ENABLED);
-        mImsEnablementTracker.startStateMachineAsConnected();
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_ENABLED);
+        mTracker.startStateMachineAsConnected(SLOT_1);
+        mHandler = mTracker.getHandler(SLOT_1);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
-        mImsEnablementTracker.enableIms(SLOT_1, SUB_1);
+        mTracker.enableIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_ENABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_ENABLED));
 
         // Set the last operation time to current to verify the message with delay.
-        mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
-        mImsEnablementTracker.disableIms(SLOT_1, SUB_1);
+        mTracker.setLastOperationTimeMillis(System.currentTimeMillis());
+        mTracker.disableIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_DISABLING));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_DISABLING));
 
-        mImsEnablementTracker.enableIms(SLOT_1, SUB_1);
+        mTracker.enableIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_ENABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_ENABLED));
 
-        mImsEnablementTracker.disableIms(SLOT_1, SUB_1);
+        mTracker.disableIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_DISABLING));
-        mImsEnablementTracker.disableIms(SLOT_1, SUB_1);
-        waitForHandlerActionDelayed(mHandler, mImsEnablementTracker.getRemainThrottleTime(),
-                mImsEnablementTracker.getRemainThrottleTime() + 100);
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_DISABLING));
+        mTracker.disableIms(SLOT_1, SUB_1);
+        waitForHandlerActionDelayed(mHandler, mTracker.getRemainThrottleTime(),
+                mTracker.getRemainThrottleTime() + 100);
         verify(mMockServiceControllerBinder, times(1)).disableIms(eq(SLOT_1), eq(SUB_1));
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_DISABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_DISABLED));
     }
 
     @SmallTest
     @Test
     public void testConsecutiveCommandInDisabledState() throws RemoteException {
-        mImsEnablementTracker = createTracker(mMockServiceControllerBinder,
-                mImsEnablementTracker.STATE_IMS_DISABLED);
-        mImsEnablementTracker.startStateMachineAsConnected();
-        mHandler = mImsEnablementTracker.getHandler();
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_DISABLED);
+        mTracker.startStateMachineAsConnected(SLOT_1);
+        mHandler = mTracker.getHandler(SLOT_1);
         // Wait for a while for the state machine to be ready.
         waitForHandlerActionDelayed(mHandler, 100, 150);
 
         // Set the last operation time to current to verify the message with delay.
-        mImsEnablementTracker.setLastOperationTimeMillis(System.currentTimeMillis());
-        mImsEnablementTracker.enableIms(SLOT_1, SUB_1);
+        mTracker.setLastOperationTimeMillis(System.currentTimeMillis());
+        mTracker.enableIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_ENABLING));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_ENABLING));
 
-        mImsEnablementTracker.disableIms(SLOT_1, SUB_1);
+        mTracker.disableIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_DISABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_DISABLED));
 
-        mImsEnablementTracker.resetIms(SLOT_1, SUB_1);
+        mTracker.resetIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_DISABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_DISABLED));
 
-        mImsEnablementTracker.disableIms(SLOT_1, SUB_1);
+        mTracker.disableIms(SLOT_1, SUB_1);
         waitForHandlerActionDelayed(mHandler, 100, 150);
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_DISABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_DISABLED));
 
-        mImsEnablementTracker.enableIms(SLOT_1, SUB_1);
-        waitForHandlerActionDelayed(mHandler, mImsEnablementTracker.getRemainThrottleTime(),
-                mImsEnablementTracker.getRemainThrottleTime() + 100);
+        mTracker.enableIms(SLOT_1, SUB_1);
+        waitForHandlerActionDelayed(mHandler, mTracker.getRemainThrottleTime(),
+                mTracker.getRemainThrottleTime() + 100);
         verify(mMockServiceControllerBinder, times(1)).enableIms(eq(SLOT_1), eq(SUB_1));
-        assertTrue(mImsEnablementTracker.isState(mImsEnablementTracker.STATE_IMS_ENABLED));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_ENABLED));
+    }
+
+    @SmallTest
+    @Test
+    public void testSubIdChangeToInvalidAndEnableCommand() throws RemoteException {
+        // Verify that when the enable command is received in the Default state and enableIms
+        // is called.
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_ENABLED);
+        mTracker.startStateMachineAsConnected(SLOT_1);
+        mHandler = mTracker.getHandler(SLOT_1);
+        // Wait for a while for the state machine to be ready.
+        waitForHandlerActionDelayed(mHandler, 100, 150);
+
+        mTracker.subIdChangedToInvalid(SLOT_1);
+        waitForHandlerActionDelayed(mHandler, 100, 150);
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_DEFAULT));
+
+        mTracker.enableIms(SLOT_1, SUB_1);
+        waitForHandlerActionDelayed(mHandler, 100, 150);
+        verify(mMockServiceControllerBinder).enableIms(eq(SLOT_1), eq(SUB_1));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_ENABLED));
+    }
+
+    @SmallTest
+    @Test
+    public void testEnableCommandWithDifferentSlotId() throws RemoteException {
+        // Verify that when the enable command is received in the Default state and enableIms
+        // is called.
+        mTracker = createTracker(mMockServiceControllerBinder, mTracker.STATE_IMS_DEFAULT, 2);
+        mTracker.startStateMachineAsConnected(SLOT_1);
+        mHandler = mTracker.getHandler(SLOT_1);
+        mTracker.startStateMachineAsConnected(SLOT_2);
+        Handler handlerForSlot2 = mTracker.getHandler(SLOT_2);
+        // Wait for a while for the state machine to be ready.
+        waitForHandlerActionDelayed(mHandler, 100, 150);
+
+        mTracker.enableIms(SLOT_1, SUB_1);
+        waitForHandlerActionDelayed(mHandler, 100, 150);
+        verify(mMockServiceControllerBinder).enableIms(eq(SLOT_1), eq(SUB_1));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_ENABLED));
+        assertTrue(mTracker.isState(SLOT_2, mTracker.STATE_IMS_DEFAULT));
+
+        mTracker.enableIms(SLOT_2, SUB_2);
+        waitForHandlerActionDelayed(handlerForSlot2, 100, 150);
+        verify(mMockServiceControllerBinder).enableIms(eq(SLOT_2), eq(SUB_2));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_ENABLED));
+        assertTrue(mTracker.isState(SLOT_2, mTracker.STATE_IMS_ENABLED));
+
+        mTracker.setNumOfSlots(1);
+        mTracker.setLastOperationTimeMillis(System.currentTimeMillis());
+        mTracker.disableIms(SLOT_1, SUB_1);
+        waitForHandlerActionDelayed(mHandler, mTracker.getRemainThrottleTime(),
+                mTracker.getRemainThrottleTime() + 100);
+        verify(mMockServiceControllerBinder).disableIms(eq(SLOT_1), eq(SUB_1));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_DISABLED));
+
+        mTracker.setNumOfSlots(2);
+        mTracker.setLastOperationTimeMillis(System.currentTimeMillis());
+        mTracker.disableIms(SLOT_2, SUB_2);
+        waitForHandlerActionDelayed(handlerForSlot2, 100, 150);
+        verify(mMockServiceControllerBinder).disableIms(eq(SLOT_2), eq(SUB_2));
+        assertTrue(mTracker.isState(SLOT_1, mTracker.STATE_IMS_DISABLED));
+        assertTrue(mTracker.isState(SLOT_2, mTracker.STATE_IMS_DISABLED));
     }
 
     private TestableImsEnablementTracker createTracker(IImsServiceController binder, int state) {
         TestableImsEnablementTracker tracker = new TestableImsEnablementTracker(
-                Looper.getMainLooper(), binder, state);
+                Looper.getMainLooper(), binder, state, 1);
+        return tracker;
+    }
+
+    private TestableImsEnablementTracker createTracker(IImsServiceController binder, int state,
+            int numSlots) {
+        TestableImsEnablementTracker tracker = new TestableImsEnablementTracker(
+                Looper.getMainLooper(), binder, state, numSlots);
         return tracker;
     }
 }
