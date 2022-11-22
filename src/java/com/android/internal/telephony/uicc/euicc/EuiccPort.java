@@ -979,15 +979,17 @@ public class EuiccPort extends UiccPort {
         }
 
         String devCap = split[0].trim();
-        Integer version;
+        String[] fullVer = (split[1].trim()).split("\\.");
+        Integer version, subVersion = 0;
         try {
-            version = Integer.parseInt(split[1].trim());
+            version = Integer.parseInt(fullVer[0]);
+            if (fullVer.length > 1) subVersion = Integer.parseInt(fullVer[1]);
         } catch (NumberFormatException e) {
             loge("Invalid device capability version number.", e);
             return;
         }
 
-        byte[] versionBytes = new byte[] { version.byteValue(), 0, 0 };
+        byte[] versionBytes = new byte[] { version.byteValue(), subVersion.byteValue(), 0 };
         switch (devCap) {
             case DEV_CAP_GSM:
                 devCapBuilder.addChildAsBytes(Tags.TAG_CTX_0, versionBytes);
