@@ -1165,7 +1165,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
         final int subId = 1;
 
         // Return a slotIndex / phoneId of 0 for subId 1.
-        doReturn(new int[] {subId}).when(mSubscriptionController).getSubIds(phoneId);
+        doReturn(subId).when(mSubscriptionController).getSubId(phoneId);
         doReturn(mMockSubInfo).when(mSubscriptionManager).getActiveSubscriptionInfo(subId);
         doReturn(phoneId).when(mMockSubInfo).getSimSlotIndex();
         mServiceManagerMockedServices.put("isub", mSubscriptionController);

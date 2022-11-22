@@ -848,7 +848,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
 
         // Still notify carrier config without specifying subId2, but this time subController
         // and CarrierConfigManager have subId 2 active and ready.
-        doReturn(new int[] {2}).when(mSubControllerMock).getSubIds(1);
+        doReturn(2).when(mSubControllerMock).getSubId(1);
         CarrierConfigManager cm = (CarrierConfigManager) mContext.getSystemService(
                 mContext.CARRIER_CONFIG_SERVICE);
         doReturn(new PersistableBundle()).when(cm).getConfigForSubId(2);

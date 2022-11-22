@@ -1307,17 +1307,6 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
-     * Add a new SubInfoRecord to subinfo database if needed
-     * @param iccId the IccId of the SIM card
-     * @param slotIndex the slot which the SIM is inserted
-     * @return 0 if success, < 0 on error.
-     */
-    @Override
-    public int addSubInfoRecord(String iccId, int slotIndex) {
-        return addSubInfo(iccId, null, slotIndex, SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
-    }
-
-    /**
      * Add a new subscription info record, if needed.
      * @param uniqueId This is the unique identifier for the subscription within the specific
      *                 subscription type.

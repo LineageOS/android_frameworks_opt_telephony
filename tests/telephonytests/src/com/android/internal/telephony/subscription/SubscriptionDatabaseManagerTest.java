@@ -19,8 +19,12 @@ package com.android.internal.telephony.subscription;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import android.annotation.NonNull;
 import android.content.ContentUris;
@@ -39,11 +43,13 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.subscription.SubscriptionDatabaseManager.SubscriptionDatabaseManagerCallback;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -56,52 +62,52 @@ import java.util.Map;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class SubscriptionDatabaseManagerTest extends TelephonyTest {
-    private static final String FAKE_ICCID1 = "123456";
-    private static final String FAKE_ICCID2 = "456789";
-    private static final String FAKE_PHONE_NUMBER1 = "6502530000";
-    private static final String FAKE_PHONE_NUMBER2 = "4089961010";
-    private static final String FAKE_CARRIER_NAME1 = "A-Mobile";
-    private static final String FAKE_CARRIER_NAME2 = "B-Mobile";
-    private static final int FAKE_COLOR1 = 1;
-    private static final int FAKE_COLOR2 = 3;
-    private static final int FAKE_CARRIER_ID1 = 1234;
-    private static final int FAKE_CARRIER_ID2 = 5678;
-    private static final String FAKE_COUNTRY_CODE1 = "TW";
-    private static final String FAKE_COUNTRY_CODE2 = "US";
-    private static final String FAKE_MCC1 = "466";
-    private static final String FAKE_MCC2 = "310";
-    private static final String FAKE_MNC1 = "01";
-    private static final String FAKE_MNC2 = "410";
-    private static final String FAKE_EHPLMNS1 = "46602,46603";
-    private static final String FAKE_EHPLMNS2 = "310411,310412";
-    private static final String FAKE_HPLMNS1 = "46601,46604";
-    private static final String FAKE_HPLMNS2 = "310410,310413";
-    private static final byte[] FAKE_NATIVE_ACCESS_RULES1 = UiccAccessRule.encodeRules(
+    static final String FAKE_ICCID1 = "123456";
+    static final String FAKE_ICCID2 = "456789";
+    static final String FAKE_PHONE_NUMBER1 = "6502530000";
+    static final String FAKE_PHONE_NUMBER2 = "4089961010";
+    static final String FAKE_CARRIER_NAME1 = "A-Mobile";
+    static final String FAKE_CARRIER_NAME2 = "B-Mobile";
+    static final int FAKE_COLOR1 = 1;
+    static final int FAKE_COLOR2 = 3;
+    static final int FAKE_CARRIER_ID1 = 1234;
+    static final int FAKE_CARRIER_ID2 = 5678;
+    static final String FAKE_COUNTRY_CODE1 = "TW";
+    static final String FAKE_COUNTRY_CODE2 = "US";
+    static final String FAKE_MCC1 = "466";
+    static final String FAKE_MCC2 = "310";
+    static final String FAKE_MNC1 = "01";
+    static final String FAKE_MNC2 = "410";
+    static final String FAKE_EHPLMNS1 = "46602,46603";
+    static final String FAKE_EHPLMNS2 = "310411,310412";
+    static final String FAKE_HPLMNS1 = "46601,46604";
+    static final String FAKE_HPLMNS2 = "310410,310413";
+    static final byte[] FAKE_NATIVE_ACCESS_RULES1 = UiccAccessRule.encodeRules(
             new UiccAccessRule[]{new UiccAccessRule(new byte[] {}, "package1", 12345L)});
-    private static final byte[] FAKE_NATIVE_ACCESS_RULES2 = UiccAccessRule.encodeRules(
+    static final byte[] FAKE_NATIVE_ACCESS_RULES2 = UiccAccessRule.encodeRules(
             new UiccAccessRule[]{new UiccAccessRule(new byte[] {}, "package2", 45678L)});
-    private static final byte[] FAKE_CARRIER_CONFIG_ACCESS_RULES1 = UiccAccessRule.encodeRules(
+    static final byte[] FAKE_CARRIER_CONFIG_ACCESS_RULES1 = UiccAccessRule.encodeRules(
             new UiccAccessRule[]{new UiccAccessRule(new byte[] {}, "package1", 54321L)});
-    private static final byte[] FAKE_CARRIER_CONFIG_ACCESS_RULES2 = UiccAccessRule.encodeRules(
+    static final byte[] FAKE_CARRIER_CONFIG_ACCESS_RULES2 = UiccAccessRule.encodeRules(
             new UiccAccessRule[]{new UiccAccessRule(new byte[] {}, "package2", 84954L)});
-    private static final String FAKE_UUID1 = "a684e31a-5998-4670-abdd-0561252c58a5";
-    private static final String FAKE_UUID2 = "cf6d7a9d-e712-4b3c-a600-7a2d4961b5b9";
-    private static final String FAKE_OWNER1 = "owner1";
-    private static final String FAKE_OWNER2 = "owner2";
-    private static final String FAKE_MOBILE_DATA_POLICY1 = "1,2";
-    private static final String FAKE_MOBILE_DATA_POLICY2 = "1";
-    private static final String FAKE_IMSI1 = "1234";
-    private static final String FAKE_IMSI2 = "5678";
-    private static final byte[] FAKE_RCS_CONFIG1 = new byte[]{0x01, 0x02, 0x03};
-    private static final byte[] FAKE_RCS_CONFIG2 = new byte[]{0x04, 0x05, 0x06};
-    private static final String FAKE_ALLOWED_NETWORK_TYPES_FOR_REASONS1 = "carrier=123456, power=3";
-    private static final String FAKE_ALLOWED_NETWORK_TYPES_FOR_REASONS2 = "user=1256, enable_2g=3";
-    private static final String FAKE_CONTACT1 = "John Smith, Tesla Forrest";
-    private static final String FAKE_CONTACT2 = "Mary Jane, Teresa Mill";
-    private static final int FAKE_TP_MESSAGE_REFERENCE1 = 123;
-    private static final int FAKE_TP_MESSAGE_REFERENCE2 = 456;
-    private static final int FAKE_USER_ID1 = 10;
-    private static final int FAKE_USER_ID2 = 11;
+    static final String FAKE_UUID1 = "a684e31a-5998-4670-abdd-0561252c58a5";
+    static final String FAKE_UUID2 = "cf6d7a9d-e712-4b3c-a600-7a2d4961b5b9";
+    static final String FAKE_OWNER1 = "owner1";
+    static final String FAKE_OWNER2 = "owner2";
+    static final String FAKE_MOBILE_DATA_POLICY1 = "1,2";
+    static final String FAKE_MOBILE_DATA_POLICY2 = "1";
+    static final String FAKE_IMSI1 = "1234";
+    static final String FAKE_IMSI2 = "5678";
+    static final byte[] FAKE_RCS_CONFIG1 = new byte[]{0x01, 0x02, 0x03};
+    static final byte[] FAKE_RCS_CONFIG2 = new byte[]{0x04, 0x05, 0x06};
+    static final String FAKE_ALLOWED_NETWORK_TYPES_FOR_REASONS1 = "carrier=123456, power=3";
+    static final String FAKE_ALLOWED_NETWORK_TYPES_FOR_REASONS2 = "user=1256, enable_2g=3";
+    static final String FAKE_CONTACT1 = "John Smith, Tesla Forrest";
+    static final String FAKE_CONTACT2 = "Mary Jane, Teresa Mill";
+    static final int FAKE_TP_MESSAGE_REFERENCE1 = 123;
+    static final int FAKE_TP_MESSAGE_REFERENCE2 = 456;
+    static final int FAKE_USER_ID1 = 10;
+    static final int FAKE_USER_ID2 = 11;
 
     private static final SubscriptionInfoInternal FAKE_SUBSCRIPTION_INFO1 =
             new SubscriptionInfoInternal.Builder()
@@ -128,7 +134,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                     .setWifiCallingEnabled(1)
                     .setWifiCallingMode(ImsMmTelManager.WIFI_MODE_CELLULAR_PREFERRED)
                     .setWifiCallingModeForRoaming(ImsMmTelManager.WIFI_MODE_WIFI_PREFERRED)
-                    .setWifiCallingModeForRoaming(1)
+                    .setWifiCallingEnabledForRoaming(1)
                     .setOpportunistic(0)
                     .setGroupUuid(FAKE_UUID1)
                     .setCountryIso(FAKE_COUNTRY_CODE1)
@@ -182,7 +188,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                     .setWifiCallingEnabled(0)
                     .setWifiCallingMode(ImsMmTelManager.WIFI_MODE_WIFI_PREFERRED)
                     .setWifiCallingModeForRoaming(ImsMmTelManager.WIFI_MODE_CELLULAR_PREFERRED)
-                    .setWifiCallingModeForRoaming(0)
+                    .setWifiCallingEnabledForRoaming(0)
                     .setOpportunistic(1)
                     .setGroupUuid(FAKE_UUID2)
                     .setCountryIso(FAKE_COUNTRY_CODE2)
@@ -214,6 +220,9 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
     private SubscriptionDatabaseManager mDatabaseManagerUT;
 
     private final SubscriptionProvider mSubscriptionProvider = new SubscriptionProvider();
+
+    //mock
+    private SubscriptionDatabaseManagerCallback mSubscriptionDatabaseManagerCallback;
 
     private static class SubscriptionProvider extends MockContentProvider {
         private final List<ContentValues> mDatabase = new ArrayList<>();
@@ -308,11 +317,19 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("SubscriptionDatabaseManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
+        mSubscriptionDatabaseManagerCallback =
+                Mockito.mock(SubscriptionDatabaseManagerCallback.class);
+        doAnswer(invocation -> {
+            ((Runnable) invocation.getArguments()[0]).run();
+            return null;
+        }).when(mSubscriptionDatabaseManagerCallback).invokeFromExecutor(any(Runnable.class));
+
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
                 Telephony.Carriers.CONTENT_URI.getAuthority(), mSubscriptionProvider);
         doReturn(1).when(mUiccController).convertToPublicCardId(eq(FAKE_ICCID1));
         doReturn(2).when(mUiccController).convertToPublicCardId(eq(FAKE_ICCID2));
-        mDatabaseManagerUT = new SubscriptionDatabaseManager(mContext, Looper.myLooper());
+        mDatabaseManagerUT = new SubscriptionDatabaseManager(mContext, Looper.myLooper(),
+                mSubscriptionDatabaseManagerCallback);
         logd("SubscriptionDatabaseManagerTest -Setup!");
     }
 
@@ -375,8 +392,14 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
     public void testInsertSubscription() throws Exception {
         assertThat(insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1).getSubscriptionId())
                 .isEqualTo(1);
+        processAllMessages();
+        verify(mSubscriptionDatabaseManagerCallback).onSubscriptionChanged(eq(1));
+        Mockito.clearInvocations(mSubscriptionDatabaseManagerCallback);
+
         assertThat(insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO2).getSubscriptionId())
                 .isEqualTo(2);
+        processAllMessages();
+        verify(mSubscriptionDatabaseManagerCallback).onSubscriptionChanged(eq(2));
     }
 
     @Test
@@ -390,6 +413,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         mDatabaseManagerUT.updateSubscription(subInfo);
         processAllMessages();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -400,6 +424,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setIccId(FAKE_ICCID2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -412,6 +437,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setSimSlotIndex(
                 SubscriptionManager.INVALID_SIM_SLOT_INDEX).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -423,6 +449,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setDisplayName(
                 FAKE_CARRIER_NAME2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -434,6 +461,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setCarrierName(
                 FAKE_CARRIER_NAME2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -445,6 +473,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setCarrierName(
                 FAKE_CARRIER_NAME2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -455,6 +484,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setIconTint(FAKE_COLOR2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -466,6 +496,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setNumber(FAKE_PHONE_NUMBER2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -478,6 +509,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setDataRoaming(SubscriptionManager.DATA_ROAMING_DISABLE).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -488,6 +520,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setMcc(FAKE_MCC2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -498,6 +531,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setMnc(FAKE_MNC2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -508,6 +542,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setEhplmns(FAKE_EHPLMNS2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -518,6 +553,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setHplmns(FAKE_HPLMNS2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -528,6 +564,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setEmbedded(0).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -541,6 +578,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setCardId(2)
                 .build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -553,6 +591,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setNativeAccessRules(FAKE_NATIVE_ACCESS_RULES2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -565,6 +604,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setCarrierConfigAccessRules(FAKE_CARRIER_CONFIG_ACCESS_RULES2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -575,6 +615,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setRemovableEmbedded(1).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -585,6 +626,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setEnhanced4GModeEnabled(0).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -595,6 +637,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setVideoTelephonyEnabled(0).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -605,6 +648,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setWifiCallingEnabled(0).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -617,6 +661,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setWifiCallingMode(ImsMmTelManager.WIFI_MODE_WIFI_ONLY).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -629,6 +674,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setWifiCallingModeForRoaming(ImsMmTelManager.WIFI_MODE_WIFI_ONLY).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -640,6 +686,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setWifiCallingEnabledForRoaming(0).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -650,6 +697,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setOpportunistic(1).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -660,6 +708,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setGroupUuid(FAKE_UUID2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -671,6 +720,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setCountryIso(FAKE_COUNTRY_CODE2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -682,6 +732,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setCarrierId(FAKE_CARRIER_ID2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -694,6 +745,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setProfileClass(SubscriptionManager.PROFILE_CLASS_TESTING).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -706,6 +758,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setType(SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -717,6 +770,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setGroupOwner(FAKE_OWNER2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -729,6 +783,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setEnabledMobileDataPolicies(FAKE_MOBILE_DATA_POLICY2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -740,6 +795,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setImsi(FAKE_IMSI2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -751,6 +807,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setUiccApplicationsEnabled(0).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -762,6 +819,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setRcsUceEnabled(0).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -773,6 +831,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setCrossSimCallingEnabled(0).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -784,6 +843,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setRcsConfig(FAKE_RCS_CONFIG2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -796,6 +856,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setAllowedNetworkTypesForReasons(FAKE_ALLOWED_NETWORK_TYPES_FOR_REASONS2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -809,6 +870,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setDeviceToDeviceStatusSharingPreference(
                         SubscriptionManager.D2D_SHARING_DISABLED).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -820,6 +882,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setNrAdvancedCallingEnabled(0).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -831,6 +894,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setNumberFromCarrier(FAKE_PHONE_NUMBER2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -842,6 +906,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setNumberFromIms(FAKE_PHONE_NUMBER2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -853,6 +918,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setPortIndex(1).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -865,6 +931,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setUsageSetting(SubscriptionManager.USAGE_SETTING_VOICE_CENTRIC).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -877,6 +944,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setLastUsedTPMessageReference(FAKE_TP_MESSAGE_REFERENCE2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
@@ -888,5 +956,6 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setUserId(FAKE_USER_ID2).build();
         verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 }
