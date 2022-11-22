@@ -544,42 +544,37 @@ public class DataSettingsManager extends Handler {
      * has not manually set the value. The default value is {@link #isDefaultDataRoamingEnabled()}.
      */
     public void setDefaultDataRoamingEnabled() {
-        // For SSSS, this is a per-phone property from DATA_ROAMING_IS_USER_SETTING_KEY.
-        // For DSDS, this is a per-sub property from Settings.Global.DATA_ROAMING + subId.
         // If the user has not manually set the value, use the default value.
-        boolean useCarrierSpecificDefault = false;
-        if (mPhone.getContext().getSystemService(TelephonyManager.class).getSimCount() != 1) {
-            String setting = Settings.Global.DATA_ROAMING + mPhone.getSubId();
-            try {
-                Settings.Global.getInt(mResolver, setting);
-            } catch (Settings.SettingNotFoundException ex) {
-                // For multi-SIM phones, use the default value if uninitialized.
-                useCarrierSpecificDefault = true;
-            }
-        } else if (!isDataRoamingFromUserAction()) {
-            // For single-SIM phones, use the default value if user action is not set.
-            useCarrierSpecificDefault = true;
-        }
-        log("setDefaultDataRoamingEnabled: useCarrierSpecificDefault=" + useCarrierSpecificDefault);
-        if (useCarrierSpecificDefault) {
-            boolean defaultVal = isDefaultDataRoamingEnabled();
-            setDataRoamingEnabledInternal(defaultVal);
+        if (!isDataRoamingFromUserAction()) {
+            setDataRoamingEnabledInternal(isDefaultDataRoamingEnabled());
         }
     }
 
     /**
-     * Get whether the user has manually enabled or disabled data roaming from settings.
-     * @return {@code true} if the user has enabled data roaming and {@code false} if they have not.
+     * Get whether the user has manually enabled or disabled data roaming from settings for the
+     * current subscription.
+     * @return {@code true} if the user has manually enabled data roaming for the current
+     *         subscription and {@code false} if they have not.
      */
     private boolean isDataRoamingFromUserAction() {
-        final SharedPreferences sp = PreferenceManager
-                .getDefaultSharedPreferences(mPhone.getContext());
-        // Since we don't want to unset user preferences after a system update, default to true if
-        // the preference does not exist and set it to false explicitly from factory reset.
-        if (!sp.contains(Phone.DATA_ROAMING_IS_USER_SETTING_KEY)) {
-            sp.edit().putBoolean(Phone.DATA_ROAMING_IS_USER_SETTING_KEY, false).commit();
+        String key = Phone.DATA_ROAMING_IS_USER_SETTING_KEY + mPhone.getSubId();
+        final SharedPreferences sp =
+                PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
+
+        // Set the default roaming from user action value if the preference doesn't exist
+        if (!sp.contains(key)) {
+            if (sp.contains(Phone.DATA_ROAMING_IS_USER_SETTING_KEY)) {
+                log("Reusing previous roaming from user action value for backwards compatibility.");
+                sp.edit().putBoolean(key, true).commit();
+            } else {
+                log("Clearing roaming from user action value for new or upgrading devices.");
+                sp.edit().putBoolean(key, false).commit();
+            }
         }
-        return sp.getBoolean(Phone.DATA_ROAMING_IS_USER_SETTING_KEY, true);
+
+        boolean isUserSetting = sp.getBoolean(key, true);
+        log("isDataRoamingFromUserAction: key=" + key + ", isUserSetting=" + isUserSetting);
+        return isUserSetting;
     }
 
     /**
@@ -588,9 +583,11 @@ public class DataSettingsManager extends Handler {
      * {@link #isDefaultDataRoamingEnabled()} will continue to be used.
      */
     private void setDataRoamingFromUserAction() {
-        final SharedPreferences.Editor sp = PreferenceManager
-                .getDefaultSharedPreferences(mPhone.getContext()).edit();
-        sp.putBoolean(Phone.DATA_ROAMING_IS_USER_SETTING_KEY, true).commit();
+        String key = Phone.DATA_ROAMING_IS_USER_SETTING_KEY + mPhone.getSubId();
+        log("setDataRoamingFromUserAction: key=" + key);
+        final SharedPreferences.Editor sp =
+                PreferenceManager.getDefaultSharedPreferences(mPhone.getContext()).edit();
+        sp.putBoolean(key, true).commit();
     }
 
     private @NonNull DataEnabledOverride getDataEnabledOverride() {
