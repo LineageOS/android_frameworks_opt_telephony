@@ -465,8 +465,14 @@ public class VoiceCallSessionStats {
         proto.isRoaming = serviceState != null ? serviceState.getVoiceRoaming() : false;
         proto.isMultiparty = conn.isMultiparty();
         proto.lastKnownRat = rat;
+
         // internal fields for tracking
-        proto.setupBeginMillis = getTimeMillis();
+        if (getDirection(conn) == VOICE_CALL_SESSION__DIRECTION__CALL_DIRECTION_MT) {
+            // MT call setup hasn't begun hence set to 0
+            proto.setupBeginMillis = 0L;
+        } else {
+            proto.setupBeginMillis = getTimeMillis();
+        }
 
         // audio codec might have already been set
         int codec = audioQualityToCodec(bearer, conn.getAudioCodec());
@@ -492,6 +498,12 @@ public class VoiceCallSessionStats {
             loge("finishCall: could not find call to be removed, connectionId=%d", connectionId);
             return;
         }
+
+        // Compute time it took to fail setup (except for MT calls that have never been picked up)
+        if (proto.setupFailed && proto.setupBeginMillis != 0L && proto.setupDurationMillis == 0) {
+            proto.setupDurationMillis = (int) (getTimeMillis() - proto.setupBeginMillis);
+        }
+
         mCallProtos.delete(connectionId);
         proto.concurrentCallCountAtEnd = mCallProtos.size();
 
