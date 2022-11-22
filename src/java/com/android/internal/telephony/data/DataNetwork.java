@@ -2382,7 +2382,7 @@ public class DataNetwork extends StateMachine {
                         + dataNetwork + ". Silently tear down now.");
                 // If this is a pre-5G data setup, that means APN database has some problems. For
                 // example, different APN settings have the same APN name.
-                if (response.getTrafficDescriptors().isEmpty()) {
+                if (response.getTrafficDescriptors().isEmpty() && dataNetwork.isConnected()) {
                     reportAnomaly("Duplicate network interface " + response.getInterfaceName()
                             + " detected.", "62f66e7e-8d71-45de-a57b-dc5c78223fd5");
                 }
