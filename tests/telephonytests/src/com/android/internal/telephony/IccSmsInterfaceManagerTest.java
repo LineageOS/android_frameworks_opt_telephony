@@ -29,9 +29,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 
 import org.junit.After;
 import org.junit.Before;
@@ -50,6 +53,9 @@ public class IccSmsInterfaceManagerTest extends TelephonyTest {
 
     // Mocked classes
     private SmsPermissions mMockSmsPermissions;
+    protected GsmCdmaPhone mPhone2;  // mPhone as phone 1 is already defined in TelephonyTest.
+    protected EmergencyNumberTracker mEmergencyNumberTracker2;
+    protected IccSmsInterfaceManager.PhoneFactoryProxy mPhoneFactoryProxy;
 
     @Before
     public void setUp() throws Exception {
@@ -57,6 +63,13 @@ public class IccSmsInterfaceManagerTest extends TelephonyTest {
         mMockSmsPermissions = mock(SmsPermissions.class);
         mIccSmsInterfaceManager = new IccSmsInterfaceManager(mPhone, mContext, mAppOpsManager,
                 mSmsDispatchersController, mMockSmsPermissions);
+
+        mPhoneFactoryProxy = mock(IccSmsInterfaceManager.PhoneFactoryProxy.class);
+        mIccSmsInterfaceManager.setPhoneFactoryProxy(mPhoneFactoryProxy);
+
+        mPhone2 = mock(GsmCdmaPhone.class);
+        mEmergencyNumberTracker2 = mock(EmergencyNumberTracker.class);
+        doReturn(mEmergencyNumberTracker2).when(mPhone2).getEmergencyNumberTracker();
     }
 
     @After
@@ -143,5 +156,23 @@ public class IccSmsInterfaceManagerTest extends TelephonyTest {
         } catch (InterruptedException ie) {
             fail("getSmscLatch.await interrupted");
         }
+    }
+
+    @Test
+    public void testNotifyIfOutgoingEmergencySmsWithDualSim() {
+        //Replicate Dual-SIM:
+        Phone [] phones = {mPhone, mPhone2};
+        when(mPhoneFactoryProxy.getPhones()).thenReturn(phones);
+        doReturn(1).when(mPhone).getPhoneId();
+        doReturn(2).when(mPhone2).getPhoneId();
+
+        //Replicate behavior when a number is an emergency number
+        // on the secondary SIM but not on the default SIM:
+        when(mPhone.getEmergencyNumberTracker().getEmergencyNumber(any())).thenReturn(null);
+        when(mEmergencyNumberTracker2.getEmergencyNumber(any()))
+                .thenReturn(getTestEmergencyNumber());
+
+        mIccSmsInterfaceManager.notifyIfOutgoingEmergencySms("1234");
+        verify(mEmergencyNumberTracker2).getEmergencyNumber("1234");
     }
 }
