@@ -989,7 +989,7 @@ public class NetworkTypeController extends StateMachine {
             if (isNrAdvanced != mIsNrAdvanced) {
                 if (!isNrAdvanced) {
                     if (DBG) log("updateNrAdvancedState: CONNECTED_NR_ADVANCED -> CONNECTED");
-                    transitionWithTimerTo(mNrConnectedState);
+                    transitionWithTimerTo(mNrConnectedState, STATE_CONNECTED);
                 } else {
                     if (DBG) log("updateNrAdvancedState: CONNECTED -> CONNECTED_NR_ADVANCED");
                     transitionTo(mNrConnectedState);
@@ -1029,7 +1029,10 @@ public class NetworkTypeController extends StateMachine {
     private final NrConnectedState mNrConnectedState = new NrConnectedState();
 
     private void transitionWithTimerTo(IState destState) {
-        String destName = destState.getName();
+        transitionWithTimerTo(destState, destState.getName());
+    }
+
+    private void transitionWithTimerTo(IState destState, String destName) {
         if (DBG) log("Transition with primary timer from " + mPreviousState + " to " + destName);
         OverrideTimerRule rule = mOverrideTimerRules.get(mPreviousState);
         if (!mIsDeviceIdleMode && rule != null && rule.getTimer(destName) > 0) {
