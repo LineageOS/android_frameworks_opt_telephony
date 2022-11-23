@@ -43,6 +43,7 @@ import android.util.Log;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.metrics.CarrierIdMatchStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.util.TelephonyUtils;
@@ -548,7 +549,12 @@ public class CarrierResolver extends Handler {
         // subscriptioninfo db to make sure we have correct carrier id set.
         if (SubscriptionManager.isValidSubscriptionId(mPhone.getSubId()) && !isSimOverride) {
             // only persist carrier id to simInfo db when subId is valid.
-            SubscriptionController.getInstance().setCarrierId(mCarrierId, mPhone.getSubId());
+            if (mPhone.isSubscriptionManagerServiceEnabled()) {
+                SubscriptionManagerService.getInstance().setCarrierId(mPhone.getSubId(),
+                        mCarrierId);
+            } else {
+                SubscriptionController.getInstance().setCarrierId(mCarrierId, mPhone.getSubId());
+            }
         }
     }
 
