@@ -215,6 +215,17 @@ public class NetworkTypeController extends StateMachine {
     }
 
     /**
+     * @return The current data network type, used to create TelephonyDisplayInfo in
+     * DisplayInfoController.
+     */
+    public @Annotation.NetworkType int getDataNetworkType() {
+        NetworkRegistrationInfo nri = mServiceState.getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        return nri == null ? TelephonyManager.NETWORK_TYPE_UNKNOWN
+                : nri.getAccessNetworkTechnology();
+    }
+
+    /**
      * @return {@code true} if either the primary or secondary 5G icon timers are active,
      * and {@code false} if neither are.
      */
@@ -1323,13 +1334,6 @@ public class NetworkTypeController extends StateMachine {
     private int getPhysicalLinkStatusFromPhysicalChannelConfig() {
         return (mPhysicalChannelConfigs == null || mPhysicalChannelConfigs.isEmpty())
                 ? DataCallResponse.LINK_STATUS_DORMANT : DataCallResponse.LINK_STATUS_ACTIVE;
-    }
-
-    private int getDataNetworkType() {
-        NetworkRegistrationInfo nri = mServiceState.getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        return nri == null ? TelephonyManager.NETWORK_TYPE_UNKNOWN
-                : nri.getAccessNetworkTechnology();
     }
 
     private String getEventName(int event) {
