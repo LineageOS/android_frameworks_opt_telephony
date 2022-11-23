@@ -333,7 +333,7 @@ public class ImsServiceController {
         mPermissionManager = (LegacyPermissionManager) mContext.getSystemService(
                 Context.LEGACY_PERMISSION_SERVICE);
         mRepo = repo;
-        mImsEnablementTracker = new ImsEnablementTracker(mHandlerThread.getLooper());
+        mImsEnablementTracker = new ImsEnablementTracker(mHandlerThread.getLooper(), componentName);
         mPackageManager = mContext.getPackageManager();
         if (mPackageManager != null) {
             mChangedPackages = mPackageManager.getChangedPackages(mLastSequenceNumber);
@@ -360,7 +360,7 @@ public class ImsServiceController {
                 mRestartImsServiceRunnable);
         mPermissionManager = null;
         mRepo = repo;
-        mImsEnablementTracker = new ImsEnablementTracker(handler.getLooper());
+        mImsEnablementTracker = new ImsEnablementTracker(handler.getLooper(), componentName);
     }
 
     /**
@@ -380,6 +380,8 @@ public class ImsServiceController {
                 sanitizeFeatureConfig(imsFeatureSet);
                 mImsFeatures = imsFeatureSet;
                 mSlotIdToSubIdMap = slotIdToSubIdMap;
+                // Set the number of slots that support the feature
+                mImsEnablementTracker.setNumOfSlots(mSlotIdToSubIdMap.size());
                 grantPermissionsToService();
                 Intent imsServiceIntent = new Intent(getServiceInterface()).setComponent(
                         mComponentName);
@@ -466,6 +468,14 @@ public class ImsServiceController {
                             + newSubId);
                     Log.i(LOG_TAG, "subId changed for slot: " + slotID + ", " + oldSubId + " -> "
                             + newSubId);
+                    if (newSubId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                        /* An INVALID subId can also be set in bind(), however
+                        the ImsEnablementTracker will move into the DEFAULT state, so we only
+                        need to track changes in subId that result in requiring we move
+                        the state machine back to DEFAULT.
+                         */
+                        mImsEnablementTracker.subIdChangedToInvalid(slotID);
+                    }
                 }
             }
             mSlotIdToSubIdMap = slotIdToSubIdMap;

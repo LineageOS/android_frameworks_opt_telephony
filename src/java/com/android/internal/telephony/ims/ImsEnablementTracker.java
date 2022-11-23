@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.ims;
 
+import android.content.ComponentName;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -23,10 +24,14 @@ import android.os.Message;
 import android.os.RemoteException;
 import android.telephony.ims.aidl.IImsServiceController;
 import android.util.Log;
+import android.util.SparseArray;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This class will abstract away all the new enablement logic and take the reset/enable/disable
@@ -58,6 +63,22 @@ public class ImsEnablementTracker {
     private static final int COMMAND_CONNECTED_MSG = 7;
     // The ImsServiceController binder is disconnected.
     private static final int COMMAND_DISCONNECTED_MSG = 8;
+    // The subId is changed to INVALID_SUBSCRIPTION_ID.
+    private static final int COMMAND_INVALID_SUBID_MSG = 9;
+
+    private static final Map<Integer, String> EVENT_DESCRIPTION = new HashMap<>();
+    static {
+        EVENT_DESCRIPTION.put(COMMAND_NONE_MSG, "COMMAND_NONE_MSG");
+        EVENT_DESCRIPTION.put(COMMAND_ENABLE_MSG, "COMMAND_ENABLE_MSG");
+        EVENT_DESCRIPTION.put(COMMAND_DISABLE_MSG, "COMMAND_DISABLE_MSG");
+        EVENT_DESCRIPTION.put(COMMAND_RESET_MSG, "COMMAND_RESET_MSG");
+        EVENT_DESCRIPTION.put(COMMAND_ENABLING_DONE, "COMMAND_ENABLING_DONE");
+        EVENT_DESCRIPTION.put(COMMAND_DISABLING_DONE, "COMMAND_DISABLING_DONE");
+        EVENT_DESCRIPTION.put(COMMAND_RESETTING_DONE, "COMMAND_RESETTING_DONE");
+        EVENT_DESCRIPTION.put(COMMAND_CONNECTED_MSG, "COMMAND_CONNECTED_MSG");
+        EVENT_DESCRIPTION.put(COMMAND_DISCONNECTED_MSG, "COMMAND_DISCONNECTED_MSG");
+        EVENT_DESCRIPTION.put(COMMAND_INVALID_SUBID_MSG, "COMMAND_INVALID_SUBID_MSG");
+    }
 
     @VisibleForTesting
     protected static final int STATE_IMS_DISCONNECTED = 0;
@@ -77,8 +98,11 @@ public class ImsEnablementTracker {
     protected final Object mLock = new Object();
     private IImsServiceController mIImsServiceController;
     private long mLastImsOperationTimeMs = 0L;
+    private final ComponentName mComponentName;
+    private final SparseArray<ImsEnablementTrackerStateMachine> mStateMachines;
 
-    private final ImsEnablementTrackerStateMachine mEnablementStateMachine;
+    private final Looper mLooper;
+    private final int mState;
 
     /**
      * Provides Ims Enablement Tracker State Machine responsible for ims enable/disable command
@@ -172,8 +196,11 @@ public class ImsEnablementTracker {
         @VisibleForTesting
         public int mSubId;
 
-        ImsEnablementTrackerStateMachine(String name, Looper looper, int state) {
+        private final int mPhoneId;
+
+        ImsEnablementTrackerStateMachine(String name, Looper looper, int state, int slotId) {
             super(name, looper);
+            mPhoneId = slotId;
             mDefault = new Default();
             mEnabled = new Enabled();
             mDisabling = new Disabling();
@@ -216,17 +243,17 @@ public class ImsEnablementTracker {
         @VisibleForTesting
         public boolean isState(int state) {
             if (state == mDefault.mStateNo) {
-                return (mEnablementStateMachine.getCurrentState() == mDefault) ? true : false;
+                return (getCurrentState() == mDefault) ? true : false;
             } else if (state == mEnabled.mStateNo) {
-                return (mEnablementStateMachine.getCurrentState() == mEnabled) ? true : false;
+                return (getCurrentState() == mEnabled) ? true : false;
             } else if (state == mDisabling.mStateNo) {
-                return (mEnablementStateMachine.getCurrentState() == mDisabling) ? true : false;
+                return (getCurrentState() == mDisabling) ? true : false;
             } else if (state == mDisabled.mStateNo) {
-                return (mEnablementStateMachine.getCurrentState() == mDisabled) ? true : false;
+                return (getCurrentState() == mDisabled) ? true : false;
             } else if (state == mEnabling.mStateNo) {
-                return (mEnablementStateMachine.getCurrentState() == mEnabling) ? true : false;
+                return (getCurrentState() == mEnabling) ? true : false;
             } else if (state == mResetting.mStateNo) {
-                return (mEnablementStateMachine.getCurrentState() == mResetting) ? true : false;
+                return (getCurrentState() == mResetting) ? true : false;
             }
             return false;
         }
@@ -264,8 +291,9 @@ public class ImsEnablementTracker {
 
             @Override
             public boolean processMessage(Message message) {
-                Log.d(LOG_TAG, "Default state:processMessage. msg.what=" + message.what);
-                switch(message.what) {
+                Log.d(LOG_TAG, "[" + mPhoneId + "]Default state:processMessage. msg.what="
+                        + EVENT_DESCRIPTION.get(message.what) + ",component:" + mComponentName);
+                switch (message.what) {
                     // When enableIms() is called, enableIms of binder is call and the state
                     // change to the enabled state.
                     case COMMAND_ENABLE_MSG:
@@ -301,10 +329,11 @@ public class ImsEnablementTracker {
 
             @Override
             public boolean processMessage(Message message) {
-                Log.d(LOG_TAG, "Enabled state:processMessage. msg.what=" + message.what);
+                Log.d(LOG_TAG, "[" + mPhoneId + "]Enabled state:processMessage. msg.what="
+                        + EVENT_DESCRIPTION.get(message.what) + ",component:" + mComponentName);
                 mSlotId = message.arg1;
                 mSubId = message.arg2;
-                switch(message.what) {
+                switch (message.what) {
                     // the disableIms() is called.
                     case COMMAND_DISABLE_MSG:
                         transitionTo(mDisabling);
@@ -315,6 +344,10 @@ public class ImsEnablementTracker {
                         return HANDLED;
                     case COMMAND_DISCONNECTED_MSG:
                         transitionTo(mDisconnected);
+                        return HANDLED;
+                    case COMMAND_INVALID_SUBID_MSG:
+                        clearAllMessage();
+                        transitionTo(mDefault);
                         return HANDLED;
                     default:
                         return NOT_HANDLED;
@@ -338,10 +371,11 @@ public class ImsEnablementTracker {
 
             @Override
             public boolean processMessage(Message message) {
-                Log.d(LOG_TAG, "Disabling state:processMessage. msg.what=" + message.what);
+                Log.d(LOG_TAG, "[" + mPhoneId + "]Disabling state:processMessage. msg.what="
+                        + EVENT_DESCRIPTION.get(message.what) + ",component:" + mComponentName);
                 mSlotId = message.arg1;
                 mSubId = message.arg2;
-                switch(message.what) {
+                switch (message.what) {
                     // In the enabled state, disableIms() is called, but the throttle timer has
                     // not expired, so a delay_disable message is sent.
                     // At this point enableIms() was called, so it cancels the message and just
@@ -364,6 +398,10 @@ public class ImsEnablementTracker {
                     case COMMAND_DISCONNECTED_MSG:
                         transitionTo(mDisconnected);
                         return HANDLED;
+                    case COMMAND_INVALID_SUBID_MSG:
+                        clearAllMessage();
+                        transitionTo(mDefault);
+                        return HANDLED;
                     default:
                         return NOT_HANDLED;
                 }
@@ -384,15 +422,20 @@ public class ImsEnablementTracker {
 
             @Override
             public boolean processMessage(Message message) {
-                Log.d(LOG_TAG, "Disabled state:processMessage. msg.what=" + message.what);
+                Log.d(LOG_TAG, "[" + mPhoneId + "]Disabled state:processMessage. msg.what="
+                        + EVENT_DESCRIPTION.get(message.what) + ",component:" + mComponentName);
                 mSlotId = message.arg1;
                 mSubId = message.arg2;
-                switch(message.what) {
+                switch (message.what) {
                     case COMMAND_ENABLE_MSG:
                         transitionTo(mEnabling);
                         return HANDLED;
                     case COMMAND_DISCONNECTED_MSG:
                         transitionTo(mDisconnected);
+                        return HANDLED;
+                    case COMMAND_INVALID_SUBID_MSG:
+                        clearAllMessage();
+                        transitionTo(mDefault);
                         return HANDLED;
                     default:
                         return NOT_HANDLED;
@@ -415,10 +458,11 @@ public class ImsEnablementTracker {
 
             @Override
             public boolean processMessage(Message message) {
-                Log.d(LOG_TAG, "Enabling state:processMessage. msg.what=" + message.what);
+                Log.d(LOG_TAG, "[" + mPhoneId + "]Enabling state:processMessage. msg.what="
+                        + EVENT_DESCRIPTION.get(message.what) + ",component:" + mComponentName);
                 mSlotId = message.arg1;
                 mSubId = message.arg2;
-                switch(message.what) {
+                switch (message.what) {
                     case COMMAND_DISABLE_MSG:
                         clearAllMessage();
                         transitionTo(mDisabled);
@@ -427,11 +471,15 @@ public class ImsEnablementTracker {
                         // If the enable command is received before enableIms is processed,
                         // it will be ignored because the enable command processing is in progress.
                         removeMessages(COMMAND_ENABLE_MSG);
-                        sendEnableIms(mSlotId, mSubId);
+                        sendEnableIms(message.arg1, message.arg2);
                         transitionTo(mEnabled);
                         return HANDLED;
                     case COMMAND_DISCONNECTED_MSG:
                         transitionTo(mDisconnected);
+                        return HANDLED;
+                    case COMMAND_INVALID_SUBID_MSG:
+                        clearAllMessage();
+                        transitionTo(mDefault);
                         return HANDLED;
                     default:
                         return NOT_HANDLED;
@@ -455,10 +503,11 @@ public class ImsEnablementTracker {
 
             @Override
             public boolean processMessage(Message message) {
-                Log.d(LOG_TAG, "Resetting state:processMessage. msg.what=" + message.what);
+                Log.d(LOG_TAG, "[" + mPhoneId + "]Resetting state:processMessage. msg.what="
+                        + EVENT_DESCRIPTION.get(message.what) + ",component:" + mComponentName);
                 mSlotId = message.arg1;
                 mSubId = message.arg2;
-                switch(message.what) {
+                switch (message.what) {
                     case COMMAND_DISABLE_MSG:
                         clearAllMessage();
                         transitionTo(mDisabling);
@@ -472,6 +521,10 @@ public class ImsEnablementTracker {
                         return HANDLED;
                     case COMMAND_DISCONNECTED_MSG:
                         transitionTo(mDisconnected);
+                        return HANDLED;
+                    case COMMAND_INVALID_SUBID_MSG:
+                        clearAllMessage();
+                        transitionTo(mDefault);
                         return HANDLED;
                     default:
                         return NOT_HANDLED;
@@ -496,8 +549,9 @@ public class ImsEnablementTracker {
 
             @Override
             public boolean processMessage(Message message) {
-                Log.d(LOG_TAG, "Disconnected state:processMessage. msg.what=" + message.what);
-                switch(message.what) {
+                Log.d(LOG_TAG, "[" + mPhoneId + "]Disconnected state:processMessage. msg.what="
+                        + EVENT_DESCRIPTION.get(message.what) + ",component:" + mComponentName);
+                switch (message.what) {
                     case COMMAND_CONNECTED_MSG:
                         clearAllMessage();
                         transitionTo(mDefault);
@@ -519,35 +573,70 @@ public class ImsEnablementTracker {
         }
     }
 
-    public ImsEnablementTracker(Looper looper) {
+    public ImsEnablementTracker(Looper looper, ComponentName componentName) {
         mIImsServiceController = null;
-        mEnablementStateMachine = new ImsEnablementTrackerStateMachine("ImsEnablementTracker",
-                looper, ImsEnablementTracker.STATE_IMS_DISCONNECTED);
-        mEnablementStateMachine.start();
+        mStateMachines = new SparseArray<>();
+        mLooper = looper;
+        mState = ImsEnablementTracker.STATE_IMS_DISCONNECTED;
+        mComponentName = componentName;
     }
 
     @VisibleForTesting
-    public ImsEnablementTracker(Looper looper, IImsServiceController controller, int state) {
+    public ImsEnablementTracker(Looper looper, IImsServiceController controller, int state,
+            int numSlots) {
         mIImsServiceController = controller;
-        mEnablementStateMachine = new ImsEnablementTrackerStateMachine("ImsEnablementTracker",
-                looper, state);
+        mStateMachines = new SparseArray<>();
+        mLooper = looper;
+        mState = state;
+        mComponentName = null;
+        ImsEnablementTrackerStateMachine enablementStateMachine = null;
+        for (int i = 0; i < numSlots; i++) {
+            enablementStateMachine = new ImsEnablementTrackerStateMachine("ImsEnablementTracker",
+                    mLooper, mState, i);
+            mStateMachines.put(i, enablementStateMachine);
+        }
+    }
+
+    /**
+     * Set the number of SIM slots.
+     * @param numOfSlots the number of SIM slots.
+     */
+    public void setNumOfSlots(int numOfSlots) {
+        int oldNumSlots = mStateMachines.size();
+        Log.d(LOG_TAG, "set the slots: old[" + oldNumSlots + "], new[" + numOfSlots + "],"
+                + "component:" + mComponentName);
+        if (numOfSlots == oldNumSlots) {
+            return;
+        }
+        ImsEnablementTrackerStateMachine enablementStateMachine = null;
+        if (oldNumSlots < numOfSlots) {
+            for (int i = oldNumSlots; i < numOfSlots; i++) {
+                enablementStateMachine = new ImsEnablementTrackerStateMachine(
+                        "ImsEnablementTracker", mLooper, mState, i);
+                enablementStateMachine.start();
+                mStateMachines.put(i, enablementStateMachine);
+            }
+        } else if (oldNumSlots > numOfSlots) {
+            for (int i = (oldNumSlots - 1); i > (numOfSlots - 1); i--) {
+                enablementStateMachine = mStateMachines.get(i);
+                mStateMachines.remove(i);
+                enablementStateMachine.quitNow();
+            }
+        }
     }
 
     /**
      * This API is for testing purposes only and is used to start a state machine.
      */
     @VisibleForTesting
-    public void startStateMachineAsConnected() {
-        if (mEnablementStateMachine == null) {
-            return;
-        }
-        mEnablementStateMachine.start();
-        mEnablementStateMachine.sendMessage(COMMAND_CONNECTED_MSG);
+    public void startStateMachineAsConnected(int slotId) {
+        mStateMachines.get(slotId).start();
+        mStateMachines.get(slotId).sendMessage(COMMAND_CONNECTED_MSG);
     }
 
     @VisibleForTesting
-    public Handler getHandler() {
-        return mEnablementStateMachine.getHandler();
+    public Handler getHandler(int slotId) {
+        return mStateMachines.get(slotId).getHandler();
     }
 
     /**
@@ -556,8 +645,22 @@ public class ImsEnablementTracker {
      * @return true if the current state and input state are the same or false.
      */
     @VisibleForTesting
-    public boolean isState(int state) {
-        return mEnablementStateMachine.isState(state);
+    public boolean isState(int slotId, int state) {
+        return mStateMachines.get(slotId).isState(state);
+    }
+
+    /**
+     * Notify the state machine that the subId has changed to invalid.
+     * @param slotId subscription id
+     */
+    public void subIdChangedToInvalid(int slotId) {
+        Log.d(LOG_TAG, "[" + slotId + "] subId changed to invalid, component:" + mComponentName);
+        ImsEnablementTrackerStateMachine stateMachine = mStateMachines.get(slotId);
+        if (stateMachine != null) {
+            stateMachine.sendMessage(COMMAND_INVALID_SUBID_MSG, slotId);
+        } else {
+            Log.w(LOG_TAG, "There is no state machine associated with this slotId.");
+        }
     }
 
     /**
@@ -567,8 +670,13 @@ public class ImsEnablementTracker {
      * @param subId subscription id
      */
     public void enableIms(int slotId, int subId) {
-        Log.d(LOG_TAG, "enableIms");
-        mEnablementStateMachine.sendMessage(COMMAND_ENABLE_MSG, slotId, subId);
+        Log.d(LOG_TAG, "[" + slotId + "][" + subId + "]enableIms, component:" + mComponentName);
+        ImsEnablementTrackerStateMachine stateMachine = mStateMachines.get(slotId);
+        if (stateMachine != null) {
+            stateMachine.sendMessage(COMMAND_ENABLE_MSG, slotId, subId);
+        } else {
+            Log.w(LOG_TAG, "There is no state machine associated with this slotId.");
+        }
     }
 
     /**
@@ -578,8 +686,13 @@ public class ImsEnablementTracker {
      * @param subId subscription id
      */
     public void disableIms(int slotId, int subId) {
-        Log.d(LOG_TAG, "disableIms");
-        mEnablementStateMachine.sendMessage(COMMAND_DISABLE_MSG, slotId, subId);
+        Log.d(LOG_TAG, "[" + slotId + "][" + subId + "]disableIms, component:" + mComponentName);
+        ImsEnablementTrackerStateMachine stateMachine = mStateMachines.get(slotId);
+        if (stateMachine != null) {
+            stateMachine.sendMessage(COMMAND_DISABLE_MSG, slotId, subId);
+        } else {
+            Log.w(LOG_TAG, "There is no state machine associated with this slotId.");
+        }
     }
 
     /**
@@ -589,8 +702,13 @@ public class ImsEnablementTracker {
      * @param subId subscription id
      */
     public void resetIms(int slotId, int subId) {
-        Log.d(LOG_TAG, "resetIms");
-        mEnablementStateMachine.sendMessage(COMMAND_RESET_MSG, slotId, subId);
+        Log.d(LOG_TAG, "[" + slotId + "][" + subId + "]resetIms, component:" + mComponentName);
+        ImsEnablementTrackerStateMachine stateMachine = mStateMachines.get(slotId);
+        if (stateMachine != null) {
+            stateMachine.sendMessage(COMMAND_RESET_MSG, slotId, subId);
+        } else {
+            Log.w(LOG_TAG, "There is no state machine associated with this slotId.");
+        }
     }
 
     /**
@@ -599,11 +717,21 @@ public class ImsEnablementTracker {
     protected void setServiceController(IBinder serviceController) {
         synchronized (mLock) {
             mIImsServiceController = IImsServiceController.Stub.asInterface(serviceController);
-
-            if (isServiceControllerAvailable()) {
-                mEnablementStateMachine.serviceBinderConnected();
-            } else {
-                mEnablementStateMachine.serviceBinderDisconnected();
+            Log.d(LOG_TAG, "setServiceController with Binder:" + mIImsServiceController
+                    + ", component:" + mComponentName);
+            ImsEnablementTrackerStateMachine stateMachine = null;
+            for (int i = 0; i < mStateMachines.size(); i++) {
+                stateMachine = mStateMachines.get(i);
+                if (stateMachine == null) {
+                    Log.w(LOG_TAG, "There is no state machine associated with"
+                            + "the slotId[" + i + "]");
+                    continue;
+                }
+                if (isServiceControllerAvailable()) {
+                    stateMachine.serviceBinderConnected();
+                } else {
+                    stateMachine.serviceBinderDisconnected();
+                }
             }
         }
     }
@@ -629,26 +757,23 @@ public class ImsEnablementTracker {
     }
 
     /**
-     * Send internal Message for testing.
-     */
-    @VisibleForTesting
-    public void sendInternalMessage(int msg, int slotId, int subId) {
-        mEnablementStateMachine.sendMessage(msg, slotId, subId);
-    }
-
-    /**
      * Check to see if the service controller is available.
      * @return true if available, false otherwise
      */
     private boolean isServiceControllerAvailable() {
-        return mIImsServiceController != null;
+        if (mIImsServiceController != null) {
+            return true;
+        }
+        Log.d(LOG_TAG, "isServiceControllerAvailable : binder is not alive");
+        return false;
     }
 
     private void sendEnableIms(int slotId, int subId) {
-        Log.d(LOG_TAG, "sendEnableIms");
         try {
             synchronized (mLock) {
                 if (isServiceControllerAvailable()) {
+                    Log.d(LOG_TAG, "[" + slotId + "][" + subId + "]sendEnableIms,"
+                            + "componentName[" + mComponentName + "]");
                     mIImsServiceController.enableIms(slotId, subId);
                     mLastImsOperationTimeMs = System.currentTimeMillis();
                 }
@@ -659,10 +784,11 @@ public class ImsEnablementTracker {
     }
 
     private void sendDisableIms(int slotId, int subId) {
-        Log.d(LOG_TAG, "sendDisableIms");
         try {
             synchronized (mLock) {
                 if (isServiceControllerAvailable()) {
+                    Log.d(LOG_TAG, "[" + slotId + "][" + subId + "]sendDisableIms,"
+                            + "componentName[" + mComponentName + "]");
                     mIImsServiceController.disableIms(slotId, subId);
                     mLastImsOperationTimeMs = System.currentTimeMillis();
                 }
