@@ -100,6 +100,7 @@ import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhoneMmiCode;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.metrics.VoiceCallSessionStats;
+import com.android.internal.telephony.subscription.SubscriptionManagerService.SubscriptionManagerServiceCallback;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardStatus;
@@ -340,8 +341,18 @@ public class GsmCdmaPhone extends Phone {
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
         mSST.registerForVoiceRegStateOrRatChanged(this, EVENT_VRS_OR_RAT_CHANGED, null);
 
-        SubscriptionController.getInstance().registerForUiccAppsEnabled(this,
-                EVENT_UICC_APPS_ENABLEMENT_SETTING_CHANGED, null, false);
+        if (isSubscriptionManagerServiceEnabled()) {
+            mSubscriptionManagerService.registerCallback(new SubscriptionManagerServiceCallback(
+                    this::post) {
+                @Override
+                public void onUiccApplicationsEnabled(int subId) {
+                    reapplyUiccAppsEnablementIfNeeded(ENABLE_UICC_APPS_MAX_RETRIES);
+                }
+            });
+        } else {
+            SubscriptionController.getInstance().registerForUiccAppsEnabled(this,
+                    EVENT_UICC_APPS_ENABLEMENT_SETTING_CHANGED, null, false);
+        }
 
         mLinkBandwidthEstimator = mTelephonyComponentFactory
                 .inject(LinkBandwidthEstimator.class.getName())

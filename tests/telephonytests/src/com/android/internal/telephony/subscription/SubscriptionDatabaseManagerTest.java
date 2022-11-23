@@ -109,7 +109,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
     static final int FAKE_USER_ID1 = 10;
     static final int FAKE_USER_ID2 = 11;
 
-    private static final SubscriptionInfoInternal FAKE_SUBSCRIPTION_INFO1 =
+    static final SubscriptionInfoInternal FAKE_SUBSCRIPTION_INFO1 =
             new SubscriptionInfoInternal.Builder()
                     .setIccId(FAKE_ICCID1)
                     .setSimSlotIndex(0)
@@ -163,7 +163,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                     .setGroupDisabled(false)
                     .build();
 
-    private static final SubscriptionInfoInternal FAKE_SUBSCRIPTION_INFO2 =
+    static final SubscriptionInfoInternal FAKE_SUBSCRIPTION_INFO2 =
             new SubscriptionInfoInternal.Builder()
                     .setIccId(FAKE_ICCID2)
                     .setSimSlotIndex(1)
@@ -224,7 +224,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
     //mock
     private SubscriptionDatabaseManagerCallback mSubscriptionDatabaseManagerCallback;
 
-    private static class SubscriptionProvider extends MockContentProvider {
+    static class SubscriptionProvider extends MockContentProvider {
         private final List<ContentValues> mDatabase = new ArrayList<>();
 
         private final List<String> mAllColumns;
