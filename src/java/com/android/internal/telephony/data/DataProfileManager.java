@@ -704,15 +704,28 @@ public class DataProfileManager extends Handler {
             return null;
         }
 
+        // If the preferred data profile can be used, always use it if it can satisfy the network
+        // request with current network type (even though it's been marked as permanent failed.)
+        if (mPreferredDataProfile != null
+                && networkRequest.canBeSatisfiedBy(mPreferredDataProfile)
+                && mPreferredDataProfile.getApnSetting() != null
+                && mPreferredDataProfile.getApnSetting().canSupportNetworkType(networkType)) {
+            if (ignorePermanentFailure || !mPreferredDataProfile.getApnSetting()
+                    .getPermanentFailed()) {
+                return mPreferredDataProfile.getApnSetting();
+            }
+            log("The preferred data profile is permanently failed. Only condition based retry "
+                    + "can happen.");
+            return null;
+        }
+
         // Filter out the data profile that can't satisfy the request.
         // Preferred data profile should be returned in the top of the list.
         List<DataProfile> dataProfiles = mAllDataProfiles.stream()
                 .filter(networkRequest::canBeSatisfiedBy)
-                // Put the preferred data profile at the top of the list, then the longest time
-                // hasn't used data profile will be in the front so all the data profiles can be
-                // tried.
-                .sorted(Comparator.comparing((DataProfile dp) -> !dp.equals(mPreferredDataProfile))
-                        .thenComparingLong(DataProfile::getLastSetupTimestamp))
+                // The longest time hasn't used data profile will be in the front so all the data
+                // profiles can be tried.
+                .sorted(Comparator.comparing(DataProfile::getLastSetupTimestamp))
                 .collect(Collectors.toList());
         for (DataProfile dataProfile : dataProfiles) {
             logv("Satisfied profile: " + dataProfile + ", last setup="
@@ -740,7 +753,6 @@ public class DataProfileManager extends Handler {
                         && (dp.getApnSetting().getApnSetId()
                         == Telephony.Carriers.MATCH_ALL_APN_SET_ID
                         || dp.getApnSetting().getApnSetId() == mPreferredDataProfileSetId))
-                .filter(dp -> ignorePermanentFailure || !dp.getApnSetting().getPermanentFailed())
                 .collect(Collectors.toList());
         if (dataProfiles.size() == 0) {
             log("Can't find any data profile has APN set id matched. mPreferredDataProfileSetId="

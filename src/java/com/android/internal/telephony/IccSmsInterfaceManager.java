@@ -176,6 +176,41 @@ public class IccSmsInterfaceManager {
         mSmsPermissions = smsPermissions;
     }
 
+    /**
+     * PhoneFactory Dependencies for testing.
+     */
+    @VisibleForTesting
+    public interface PhoneFactoryProxy {
+        Phone getPhone(int index);
+        Phone getDefaultPhone();
+        Phone[] getPhones();
+    }
+
+    private PhoneFactoryProxy mPhoneFactoryProxy = new PhoneFactoryProxy() {
+        @Override
+        public Phone getPhone(int index) {
+            return PhoneFactory.getPhone(index);
+        }
+
+        @Override
+        public Phone getDefaultPhone() {
+            return PhoneFactory.getDefaultPhone();
+        }
+
+        @Override
+        public Phone[] getPhones() {
+            return PhoneFactory.getPhones();
+        }
+    };
+
+    /**
+     * Overrides PhoneFactory dependencies for testing.
+     */
+    @VisibleForTesting
+    public void setPhoneFactoryProxy(PhoneFactoryProxy proxy) {
+        mPhoneFactoryProxy = proxy;
+    }
+
     private void enforceNotOnHandlerThread(String methodName) {
         if (Looper.myLooper() == mHandler.getLooper()) {
             throw new RuntimeException("This method " + methodName + " will deadlock if called from"
@@ -1463,11 +1498,27 @@ public class IccSmsInterfaceManager {
         return null;
     }
 
-    private void notifyIfOutgoingEmergencySms(String destAddr) {
+    @VisibleForTesting
+    public void notifyIfOutgoingEmergencySms(String destAddr) {
+        Phone[] allPhones = mPhoneFactoryProxy.getPhones();
         EmergencyNumber emergencyNumber = mPhone.getEmergencyNumberTracker().getEmergencyNumber(
                 destAddr);
         if (emergencyNumber != null) {
             mPhone.notifyOutgoingEmergencySms(emergencyNumber);
+        } else if (allPhones.length > 1) {
+            // If there are multiple active SIMs, check all instances:
+            for (Phone phone : allPhones) {
+                // If the current iteration was already checked, skip:
+                if (phone.getPhoneId() == mPhone.getPhoneId()) {
+                    continue;
+                }
+                emergencyNumber = phone.getEmergencyNumberTracker()
+                        .getEmergencyNumber(destAddr);
+                if (emergencyNumber != null) {
+                    mPhone.notifyOutgoingEmergencySms(emergencyNumber);
+                    break;
+                }
+            }
         }
     }
 
