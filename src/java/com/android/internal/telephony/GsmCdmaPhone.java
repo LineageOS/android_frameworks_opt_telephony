@@ -4854,18 +4854,28 @@ public class GsmCdmaPhone extends Phone {
             return;
         }
 
-        SubscriptionInfo info = SubscriptionController.getInstance().getSubInfoForIccId(
-                IccUtils.stripTrailingFs(iccId));
+        SubscriptionInfo info;
+        if (isSubscriptionManagerServiceEnabled()) {
+            info = mSubscriptionManagerService
+                    .getAllSubInfoList(mContext.getOpPackageName(), mContext.getAttributionTag())
+                    .stream()
+                    .filter(subInfo -> subInfo.getIccId().equals(IccUtils.stripTrailingFs(iccId)))
+                    .findFirst()
+                    .orElse(null);
+        } else {
+            info = SubscriptionController.getInstance().getSubInfoForIccId(
+                    IccUtils.stripTrailingFs(iccId));
+        }
 
         // If info is null, it could be a new subscription. By default we enable it.
-        boolean expectedValue = info == null ? true : info.areUiccApplicationsEnabled();
+        boolean expectedValue = info == null || info.areUiccApplicationsEnabled();
 
         // If for any reason current state is different from configured state, re-apply the
         // configured state.
         if (expectedValue != mUiccApplicationsEnabled) {
             mCi.enableUiccApplications(expectedValue, Message.obtain(
                     this, EVENT_REAPPLY_UICC_APPS_ENABLEMENT_DONE,
-                    new Pair<Boolean, Integer>(expectedValue, retries)));
+                    new Pair<>(expectedValue, retries)));
         }
     }
 
