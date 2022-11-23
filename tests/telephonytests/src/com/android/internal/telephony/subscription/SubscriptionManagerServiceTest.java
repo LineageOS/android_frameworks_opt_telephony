@@ -17,18 +17,21 @@
 package com.android.internal.telephony.subscription;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_CARRIER_ID2;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_CARRIER_NAME1;
+import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_COUNTRY_CODE2;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_ICCID1;
+import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_MCC2;
+import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_MNC2;
 
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import android.content.pm.PackageManager;
 import android.os.Looper;
 import android.provider.Telephony;
 import android.telephony.SubscriptionManager;
@@ -88,12 +91,8 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @Test
     public void testAddSubInfo() {
-        doReturn(true).when(mPackageManager).hasSystemFeature(
-                PackageManager.FEATURE_AUTOMOTIVE);
-
         mSubscriptionManagerServiceUT.addSubInfo(FAKE_ICCID1, FAKE_CARRIER_NAME1,
-                SubscriptionManager.SLOT_INDEX_FOR_REMOTE_SIM_SUB,
-                SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM);
+                0, SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
         processAllMessages();
 
         verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(1));
@@ -102,9 +101,63 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 .getSubscriptionInfoInternal(1);
         assertThat(subInfo.getIccId()).isEqualTo(FAKE_ICCID1);
         assertThat(subInfo.getDisplayName()).isEqualTo(FAKE_CARRIER_NAME1);
-        assertThat(subInfo.getSimSlotIndex()).isEqualTo(
-                SubscriptionManager.SLOT_INDEX_FOR_REMOTE_SIM_SUB);
+        assertThat(subInfo.getSimSlotIndex()).isEqualTo(0);
         assertThat(subInfo.getSubscriptionType()).isEqualTo(
-                SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM);
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+    }
+
+    @Test
+    public void testSetMccMnc() {
+        mSubscriptionManagerServiceUT.addSubInfo(FAKE_ICCID1, FAKE_CARRIER_NAME1,
+                0, SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+        processAllMessages();
+
+        verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(1));
+        Mockito.clearInvocations(mMockedSubscriptionManagerServiceCallback);
+        mSubscriptionManagerServiceUT.setMccMnc(1, FAKE_MCC2 + FAKE_MNC2);
+        processAllMessages();
+
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1);
+        assertThat(subInfo).isNotNull();
+        assertThat(subInfo.getMcc()).isEqualTo(FAKE_MCC2);
+        assertThat(subInfo.getMnc()).isEqualTo(FAKE_MNC2);
+        verify(mMockedSubscriptionManagerServiceCallback, times(2)).onSubscriptionChanged(eq(1));
+    }
+
+    @Test
+    public void testSetCountryIso() {
+        mSubscriptionManagerServiceUT.addSubInfo(FAKE_ICCID1, FAKE_CARRIER_NAME1,
+                0, SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+        processAllMessages();
+
+        verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(1));
+        Mockito.clearInvocations(mMockedSubscriptionManagerServiceCallback);
+        mSubscriptionManagerServiceUT.setCountryIso(1, FAKE_COUNTRY_CODE2);
+        processAllMessages();
+
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1);
+        assertThat(subInfo).isNotNull();
+        assertThat(subInfo.getCountryIso()).isEqualTo(FAKE_COUNTRY_CODE2);
+        verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(1));
+    }
+
+    @Test
+    public void testSetCarrierId() {
+        mSubscriptionManagerServiceUT.addSubInfo(FAKE_ICCID1, FAKE_CARRIER_NAME1,
+                0, SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+        processAllMessages();
+
+        verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(1));
+        Mockito.clearInvocations(mMockedSubscriptionManagerServiceCallback);
+        mSubscriptionManagerServiceUT.setCarrierId(1, FAKE_CARRIER_ID2);
+        processAllMessages();
+
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1);
+        assertThat(subInfo).isNotNull();
+        assertThat(subInfo.getCarrierId()).isEqualTo(FAKE_CARRIER_ID2);
+        verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(1));
     }
 }
