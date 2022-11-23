@@ -444,6 +444,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected final Context mContext;
 
+    protected SubscriptionManagerService mSubscriptionManagerService;
+
     /**
      * PhoneNotifier is an abstraction for all system-wide
      * state change notification. DefaultPhoneNotifier is
@@ -616,6 +618,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
         mIsSubscriptionManagerServiceEnabled = mContext.getResources().getBoolean(
                 com.android.internal.R.bool.config_using_subscription_manager_service);
+        if (isSubscriptionManagerServiceEnabled()) {
+            mSubscriptionManagerService = SubscriptionManagerService.getInstance();
+        }
 
         // Initialize device storage and outgoing SMS usage monitors for SMSDispatchers.
         mTelephonyComponentFactory = telephonyComponentFactory;
