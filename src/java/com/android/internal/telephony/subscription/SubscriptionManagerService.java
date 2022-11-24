@@ -20,10 +20,12 @@ import android.Manifest;
 import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.app.AppOpsManager;
 import android.app.compat.CompatChanges;
 import android.compat.annotation.ChangeId;
 import android.compat.annotation.EnabledSince;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
@@ -40,6 +42,7 @@ import android.telephony.SubscriptionManager.SubscriptionType;
 import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
+import android.telephony.euicc.EuiccManager;
 import android.text.TextUtils;
 import android.util.ArraySet;
 import android.util.EventLog;
@@ -53,10 +56,14 @@ import com.android.internal.telephony.MultiSimSettingController;
 import com.android.internal.telephony.TelephonyPermissions;
 import com.android.internal.telephony.subscription.SubscriptionDatabaseManager.SubscriptionDatabaseManagerCallback;
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -98,6 +105,12 @@ public class SubscriptionManagerService extends ISub.Stub {
 
     /** Subscription manager instance. */
     private final SubscriptionManager mSubscriptionManager;
+
+    /** Euicc manager instance. */
+    private final EuiccManager mEuiccManager;
+
+    /** Uicc controller instance. */
+    private final UiccController mUiccController;
 
     /** The main handler of subscription manager service. */
     @NonNull
@@ -252,6 +265,8 @@ public class SubscriptionManagerService extends ISub.Stub {
         mContext = context;
         mTelephonyManager = context.getSystemService(TelephonyManager.class);
         mSubscriptionManager = context.getSystemService(SubscriptionManager.class);
+        mEuiccManager = context.getSystemService(EuiccManager.class);
+        mUiccController = UiccController.getInstance();
         mHandler = new Handler(looper);
         TelephonyServiceManager.ServiceRegisterer subscriptionServiceRegisterer =
                 TelephonyFrameworkInitializer
@@ -422,6 +437,29 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
+     * @return The list of ICCIDs from the inserted physical SIMs.
+     */
+    @NonNull
+    private List<String> getIccIdsOfInsertedPhysicalSims() {
+        List<String> iccidList = new ArrayList<>();
+        UiccSlot[] uiccSlots = mUiccController.getUiccSlots();
+        if (uiccSlots == null) return iccidList;
+
+        for (UiccSlot uiccSlot : uiccSlots) {
+            if (uiccSlot != null && uiccSlot.getCardState() != null
+                    && uiccSlot.getCardState().isCardPresent() && !uiccSlot.isEuicc()) {
+                // Non euicc slots will have single port, so use default port index.
+                String iccId = uiccSlot.getIccId(TelephonyManager.DEFAULT_PORT_INDEX);
+                if (!TextUtils.isEmpty(iccId)) {
+                    iccidList.add(IccUtils.stripTrailingFs(iccId));
+                }
+            }
+        }
+
+        return iccidList;
+    }
+
+    /**
      * Set the subscription carrier id.
      *
      * @param subId Subscription id.
@@ -477,8 +515,13 @@ public class SubscriptionManagerService extends ISub.Stub {
      *
      */
     @Override
+    @NonNull
     public List<SubscriptionInfo> getAllSubInfoList(@NonNull String callingPackage,
             @Nullable String callingFeatureId) {
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
         // Check if the caller has READ_PHONE_STATE, READ_PRIVILEGED_PHONE_STATE, or carrier
         // privilege on any active subscription. The carrier app will get full subscription infos
         // on the subs it has carrier privilege.
@@ -605,12 +648,41 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
-     * @see SubscriptionManager#getAvailableSubscriptionInfoList
+     * Gets the SubscriptionInfo(s) of all available subscriptions, if any.
+     *
+     * Available subscriptions include active ones (those with a non-negative
+     * {@link SubscriptionInfo#getSimSlotIndex()}) as well as inactive but installed embedded
+     * subscriptions.
      */
     @Override
+    @NonNull
     public List<SubscriptionInfo> getAvailableSubscriptionInfoList(@NonNull String callingPackage,
             @Nullable String callingFeatureId) {
-        return null;
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+        enforcePermissions("getAvailableSubscriptionInfoList",
+                Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+
+        // Now that all security checks pass, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            // Available eSIM profiles are reported by EuiccManager. However for physical SIMs if
+            // they are in inactive slot or programmatically disabled, they are still considered
+            // available. In this case we get their iccid from slot info and include their
+            // subscriptionInfos.
+            List<String> iccIds = getIccIdsOfInsertedPhysicalSims();
+
+            return mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                    .filter(subInfo -> subInfo.isActive() || iccIds.contains(subInfo.getIccId())
+                            || (mEuiccManager.isEnabled() && subInfo.isEmbedded()))
+                    .map(SubscriptionInfoInternal::toSubscriptionInfo)
+                    .sorted(Comparator.comparing(SubscriptionInfo::getSimSlotIndex)
+                            .thenComparing(SubscriptionInfo::getSubscriptionId))
+                    .collect(Collectors.toList());
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     /**
@@ -646,7 +718,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         log("addSubInfo: iccId=" + SubscriptionInfo.givePrintableIccid(iccId) + ", slotIndex="
                 + slotIndex + ", displayName=" + displayName + ", type="
                 + SubscriptionManager.subscriptionTypeToString(subscriptionType));
-        enforceModifyPhoneState("addSubInfo");
+        enforcePermissions("addSubInfo", Manifest.permission.MODIFY_PHONE_STATE);
 
         // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
@@ -1127,33 +1199,22 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
-     * Enforce {@link android.Manifest.permission#MODIFY_PHONE_STATE} permission
+     * Enforce callers have any of the provided permissions.
      *
-     * @param message Error message included in the exception.
-     */
-    private void enforceModifyPhoneState(String message) {
-        mContext.enforceCallingOrSelfPermission(
-                android.Manifest.permission.MODIFY_PHONE_STATE, message);
-    }
-
-    /**
-     * Enforce {@link android.Manifest.permission#READ_PRIVILEGED_PHONE_STATE} permission
+     * @param message Message to include in the exception.
+     * @param permissions The permissions to enforce.
      *
-     * @param message Error message included in the exception.
+     * @throws SecurityException if the caller does not have any permissions.
      */
-    private void enforceReadPrivilegedPhoneState(String message) {
-        mContext.enforceCallingOrSelfPermission(
-                Manifest.permission.READ_PRIVILEGED_PHONE_STATE, message);
-    }
-
-    /**
-     * Enforce {@link android.Manifest.permission#MANAGE_SUBSCRIPTION_USER_ASSOCIATION} permission
-     *
-     * @param message Error message included in the exception.
-     */
-    private void enforceManageSubscriptionUserAssociation(String message) {
-        mContext.enforceCallingOrSelfPermission(
-                Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION, message);
+    private void enforcePermissions(@Nullable String message, @NonNull String ...permissions) {
+        for (String permission : permissions) {
+            if (mContext.checkCallingOrSelfPermission(permission)
+                    == PackageManager.PERMISSION_GRANTED) {
+                return;
+            }
+        }
+        throw new SecurityException(message + ". Does not have any of the following permissions. "
+                + Arrays.toString(permissions));
     }
 
     /**
