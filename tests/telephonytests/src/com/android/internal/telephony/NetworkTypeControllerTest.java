@@ -1240,16 +1240,11 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
-        List<PhysicalChannelConfig> lastPhysicalChannelConfigList = new ArrayList<>();
-        lastPhysicalChannelConfigList.add(new PhysicalChannelConfig.Builder()
-                .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
-                .setCellBandwidthDownlinkKhz(20001)
-                .build());
-        doReturn(lastPhysicalChannelConfigList).when(mSST).getPhysicalChannelConfigList();
+        doReturn(new int[] {20001}).when(mServiceState).getCellBandwidths();
         mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT, 20000);
         broadcastCarrierConfigs();
 
-        mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED */);
+        mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
         assertEquals("connected_mmwave", getCurrentState().getName());
     }
