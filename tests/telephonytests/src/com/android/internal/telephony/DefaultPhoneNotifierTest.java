@@ -16,6 +16,7 @@
 package com.android.internal.telephony;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
@@ -30,7 +31,10 @@ import android.telephony.PreciseCallState;
 import android.telephony.PreciseDisconnectCause;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
+import android.telephony.ims.ImsCallProfile;
 import android.test.suitebuilder.annotation.SmallTest;
+
+import com.android.internal.telephony.imsphone.ImsPhoneCall;
 
 import org.junit.After;
 import org.junit.Before;
@@ -53,6 +57,9 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
     GsmCdmaCall mForeGroundCall;
     GsmCdmaCall mBackGroundCall;
     GsmCdmaCall mRingingCall;
+    ImsPhoneCall mImsForeGroundCall;
+    ImsPhoneCall mImsBackGroundCall;
+    ImsPhoneCall mImsRingingCall;
 
     @Before
     public void setUp() throws Exception {
@@ -62,6 +69,9 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
         mForeGroundCall = mock(GsmCdmaCall.class);
         mBackGroundCall = mock(GsmCdmaCall.class);
         mRingingCall = mock(GsmCdmaCall.class);
+        mImsForeGroundCall = mock(ImsPhoneCall.class);
+        mImsBackGroundCall = mock(ImsPhoneCall.class);
+        mImsRingingCall = mock(ImsPhoneCall.class);
         mDefaultPhoneNotifierUT = new DefaultPhoneNotifier(mContext);
     }
 
@@ -168,61 +178,144 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
 
     @Test @SmallTest
     public void testNotifyPreciseCallState() throws Exception {
-
         //mock forground/background/ringing call and call state
         doReturn(Call.State.IDLE).when(mForeGroundCall).getState();
         doReturn(Call.State.IDLE).when(mBackGroundCall).getState();
         doReturn(Call.State.IDLE).when(mRingingCall).getState();
 
-        mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone);
+        mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone, null, null, null);
         verify(mTelephonyRegistryManager, times(0)).notifyPreciseCallState(
-                anyInt(), anyInt(), anyInt(), anyInt(), anyInt());
+                anyInt(), anyInt(), any(), any(), any(), any());
 
         doReturn(mForeGroundCall).when(mPhone).getForegroundCall();
-        mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone);
+        mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone, null, null, null);
         verify(mTelephonyRegistryManager, times(0)).notifyPreciseCallState(
-                anyInt(), anyInt(), anyInt(), anyInt(), anyInt());
+                anyInt(), anyInt(), any(), any(), any(), any());
 
         doReturn(mBackGroundCall).when(mPhone).getBackgroundCall();
-        mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone);
+        mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone, null, null, null);
         verify(mTelephonyRegistryManager, times(0)).notifyPreciseCallState(
-                anyInt(), anyInt(), anyInt(), anyInt(), anyInt());
+                anyInt(), anyInt(), any(), any(), any(), any());
 
         doReturn(mRingingCall).when(mPhone).getRingingCall();
-        mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone);
-        verify(mTelephonyRegistryManager, times(1)).notifyPreciseCallState(
-                mPhone.getPhoneId(),
-                mPhone.getSubId(),
-                PreciseCallState.PRECISE_CALL_STATE_IDLE,
-                PreciseCallState.PRECISE_CALL_STATE_IDLE,
-                PreciseCallState.PRECISE_CALL_STATE_IDLE);
+        mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone, null, null, null);
+        ArgumentCaptor<int[]> captor = ArgumentCaptor.forClass(int[].class);
+        int phoneId = mPhone.getPhoneId();
+        int subId = mPhone.getSubId();
+        verify(mTelephonyRegistryManager).notifyPreciseCallState(
+                eq(phoneId), eq(subId), captor.capture(), eq(null), eq(null), eq(null));
+        final int[] callStates = captor.getValue();
+        assertEquals(3, callStates.length);
+        assertEquals(PreciseCallState.PRECISE_CALL_STATE_IDLE,
+                callStates[/*ringing call*/ 0]);
+        assertEquals(PreciseCallState.PRECISE_CALL_STATE_IDLE,
+                callStates[/*foreground call*/ 1]);
+        assertEquals(PreciseCallState.PRECISE_CALL_STATE_IDLE,
+                callStates[/*background call*/ 2]);
 
         doReturn(Call.State.ACTIVE).when(mForeGroundCall).getState();
-        mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone);
-        verify(mTelephonyRegistryManager, times(1)).notifyPreciseCallState(
-                mPhone.getPhoneId(),
-                mPhone.getSubId(),
-                PreciseCallState.PRECISE_CALL_STATE_IDLE,
-                PreciseCallState.PRECISE_CALL_STATE_ACTIVE,
-                PreciseCallState.PRECISE_CALL_STATE_IDLE);
+        mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone, null, null, null);
+        ArgumentCaptor<int[]> captor1 = ArgumentCaptor.forClass(int[].class);
+        phoneId = mPhone.getPhoneId();
+        subId = mPhone.getSubId();
+        verify(mTelephonyRegistryManager, times(2)).notifyPreciseCallState(
+                eq(phoneId), eq(subId), captor1.capture(), eq(null), eq(null), eq(null));
+        final int[] callStates1 = captor1.getValue();
+        assertEquals(3, callStates1.length);
+        assertEquals(PreciseCallState.PRECISE_CALL_STATE_IDLE,
+                callStates1[/*ringing call*/ 0]);
+        assertEquals(PreciseCallState.PRECISE_CALL_STATE_ACTIVE,
+                callStates1[/*foreground call*/ 1]);
+        assertEquals(PreciseCallState.PRECISE_CALL_STATE_IDLE,
+                callStates1[/*background call*/ 2]);
 
         doReturn(Call.State.HOLDING).when(mBackGroundCall).getState();
-        mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone);
-        verify(mTelephonyRegistryManager, times(1)).notifyPreciseCallState(
-                mPhone.getPhoneId(),
-                mPhone.getSubId(),
-                PreciseCallState.PRECISE_CALL_STATE_IDLE,
-                PreciseCallState.PRECISE_CALL_STATE_ACTIVE,
-                PreciseCallState.PRECISE_CALL_STATE_HOLDING);
+        mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone, null, null, null);
+        ArgumentCaptor<int[]> captor2 = ArgumentCaptor.forClass(int[].class);
+        verify(mTelephonyRegistryManager, times(3)).notifyPreciseCallState(
+                eq(phoneId), eq(subId), captor2.capture(), eq(null), eq(null), eq(null));
+        final int[] callStates2 = captor2.getValue();
+        assertEquals(3, callStates2.length);
+        assertEquals(PreciseCallState.PRECISE_CALL_STATE_IDLE,
+                callStates2[/*ringing call*/ 0]);
+        assertEquals(PreciseCallState.PRECISE_CALL_STATE_ACTIVE,
+                callStates2[/*foreground call*/ 1]);
+        assertEquals(PreciseCallState.PRECISE_CALL_STATE_HOLDING,
+                callStates2[/*background call*/ 2]);
 
         doReturn(Call.State.ALERTING).when(mRingingCall).getState();
-        mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone);
+        mDefaultPhoneNotifierUT.notifyPreciseCallState(mPhone, null, null, null);
+        ArgumentCaptor<int[]> captor3 = ArgumentCaptor.forClass(int[].class);
+        verify(mTelephonyRegistryManager, times(4)).notifyPreciseCallState(
+                eq(phoneId), eq(subId), captor3.capture(), eq(null), eq(null), eq(null));
+        final int[] callStates3 = captor3.getValue();
+        assertEquals(3, callStates3.length);
+        assertEquals(PreciseCallState.PRECISE_CALL_STATE_ALERTING,
+                callStates3[/*ringing call*/ 0]);
+        assertEquals(PreciseCallState.PRECISE_CALL_STATE_ACTIVE,
+                callStates3[/*foreground call*/ 1]);
+        assertEquals(PreciseCallState.PRECISE_CALL_STATE_HOLDING,
+                callStates3[/*background call*/ 2]);
+    }
+
+    @Test
+    public void testNotifyPreciseCallStateImsCallInfo() throws Exception {
+        //mock forground/background/ringing call and call state
+        doReturn(Call.State.ACTIVE).when(mImsForeGroundCall).getState();
+        doReturn(Call.State.HOLDING).when(mImsBackGroundCall).getState();
+        doReturn(Call.State.IDLE).when(mImsRingingCall).getState();
+
+        doReturn(mImsForeGroundCall).when(mImsPhone).getForegroundCall();
+        doReturn(mImsBackGroundCall).when(mImsPhone).getBackgroundCall();
+        doReturn(mImsRingingCall).when(mImsPhone).getRingingCall();
+
+        String[] imsCallIds = {null, "1", "2"};
+        int[] imsCallServiceTypes = {ImsCallProfile.SERVICE_TYPE_NONE,
+                ImsCallProfile.SERVICE_TYPE_NORMAL, ImsCallProfile.SERVICE_TYPE_NORMAL};
+        int[] imsCallTypes = {ImsCallProfile.CALL_TYPE_NONE,
+                ImsCallProfile.CALL_TYPE_VOICE, ImsCallProfile.CALL_TYPE_VT};
+
+        mDefaultPhoneNotifierUT
+                .notifyPreciseCallState(mImsPhone, imsCallIds, imsCallServiceTypes, imsCallTypes);
+        ArgumentCaptor<int[]> callStateCaptor = ArgumentCaptor.forClass(int[].class);
+        ArgumentCaptor<String[]> callIdCaptor = ArgumentCaptor.forClass(String[].class);
+        ArgumentCaptor<int[]> callServiceTypeCaptor = ArgumentCaptor.forClass(int[].class);
+        ArgumentCaptor<int[]> callTypeCaptor = ArgumentCaptor.forClass(int[].class);
+        int phoneId = mImsPhone.getPhoneId();
+        int subId = mImsPhone.getSubId();
         verify(mTelephonyRegistryManager, times(1)).notifyPreciseCallState(
-                mPhone.getPhoneId(),
-                mPhone.getSubId(),
-                PreciseCallState.PRECISE_CALL_STATE_ALERTING,
-                PreciseCallState.PRECISE_CALL_STATE_ACTIVE,
-                PreciseCallState.PRECISE_CALL_STATE_HOLDING);
+                eq(phoneId), eq(subId), callStateCaptor.capture(), callIdCaptor.capture(),
+                callServiceTypeCaptor.capture(), callTypeCaptor.capture());
+        final int[] callStates = callStateCaptor.getValue();
+        final String[] callIds = callIdCaptor.getValue();
+        final int[] callServiceTypes = callServiceTypeCaptor.getValue();
+        final int[] callTypes = callTypeCaptor.getValue();
+        assertEquals(3, callStates.length);
+        assertEquals(3, callIds.length);
+        assertEquals(3, callServiceTypes.length);
+        assertEquals(3, callServiceTypes.length);
+        assertEquals(PreciseCallState.PRECISE_CALL_STATE_IDLE,
+                callStates[/*ringing call*/ 0]);
+        assertEquals(PreciseCallState.PRECISE_CALL_STATE_ACTIVE,
+                callStates[/*foreground call*/ 1]);
+        assertEquals(PreciseCallState.PRECISE_CALL_STATE_HOLDING,
+                callStates[/*background call*/ 2]);
+
+        assertEquals("1", callIds[/*foreground call*/ 1]);
+        assertEquals("2", callIds[/*background call*/ 2]);
+        assertEquals(null, callIds[/*ringing call*/ 0]);
+        assertEquals(ImsCallProfile.SERVICE_TYPE_NORMAL,
+                callServiceTypes[/*foreground call*/ 1]);
+        assertEquals(ImsCallProfile.SERVICE_TYPE_NORMAL,
+                callServiceTypes[/*background call*/ 2]);
+        assertEquals(ImsCallProfile.SERVICE_TYPE_NONE,
+                callServiceTypes[/*ringing call*/ 0]);
+        assertEquals(ImsCallProfile.CALL_TYPE_VOICE,
+                callTypes[/*foreground call*/ 1]);
+        assertEquals(ImsCallProfile.CALL_TYPE_VT,
+                callTypes[/*background call*/ 2]);
+        assertEquals(ImsCallProfile.SERVICE_TYPE_NONE,
+                callServiceTypes[/*ringing call*/ 0]);
     }
 
     @Test @SmallTest

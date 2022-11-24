@@ -18,6 +18,7 @@ package com.android.internal.telephony.imsphone;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
@@ -27,6 +28,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.telephony.ims.ImsCallProfile;
+import android.telephony.ims.ImsCallSession;
 import android.telephony.ims.ImsStreamMediaProfile;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -254,6 +257,51 @@ public class ImsPhoneCallTest extends TelephonyTest {
 
         ImsCall imsCall = mImsCallUT.getImsCall();
         assertEquals(mImsCall, imsCall);
+    }
+
+    @Test
+    @SmallTest
+    public void testGetCallSessionId() {
+        doReturn(mImsCall).when(mConnection1).getImsCall();
+        ImsCallSession imsForegroundCallSession = mock(ImsCallSession.class);
+        doReturn(imsForegroundCallSession).when(mImsCall).getSession();
+        doReturn("1").when(imsForegroundCallSession).getCallId();
+        mImsCallUT.attach(mConnection1, Call.State.ACTIVE);
+        assertEquals("1", mImsCallUT.getCallSessionId());
+        doReturn(null).when(mImsCall).getSession();
+        assertNull(mImsCallUT.getCallSessionId());
+        doReturn(null).when(mConnection1).getImsCall();
+        assertNull(mImsCallUT.getCallSessionId());
+        mImsCallUT.detach(mConnection1);
+        assertNull(mImsCallUT.getCallSessionId());
+    }
+
+    @Test
+    @SmallTest
+    public void testGetServiceType() {
+        doReturn(mImsCall).when(mConnection1).getImsCall();
+        mImsCallUT.attach(mConnection1, Call.State.ACTIVE);
+        doReturn(false).when(mConnection1).isEmergencyCall();
+        assertEquals(ImsCallProfile.SERVICE_TYPE_NORMAL, mImsCallUT.getServiceType());
+        doReturn(true).when(mConnection1).isEmergencyCall();
+        assertEquals(ImsCallProfile.SERVICE_TYPE_EMERGENCY, mImsCallUT.getServiceType());
+        mImsCallUT.detach(mConnection1);
+        assertEquals(ImsCallProfile.SERVICE_TYPE_NONE, mImsCallUT.getServiceType());
+    }
+
+    @Test
+    @SmallTest
+    public void testGetCallType() {
+        doReturn(mImsCall).when(mConnection1).getImsCall();
+        mImsCallUT.attach(mConnection1, Call.State.ACTIVE);
+        doReturn(false).when(mImsCall).isVideoCall();
+        assertEquals(ImsCallProfile.CALL_TYPE_VOICE, mImsCallUT.getCallType());
+        doReturn(true).when(mImsCall).isVideoCall();
+        assertEquals(ImsCallProfile.CALL_TYPE_VT, mImsCallUT.getCallType());
+        doReturn(null).when(mConnection1).getImsCall();
+        assertEquals(ImsCallProfile.CALL_TYPE_NONE, mImsCallUT.getCallType());
+        mImsCallUT.detach(mConnection1);
+        assertEquals(ImsCallProfile.CALL_TYPE_NONE, mImsCallUT.getCallType());
     }
 
     @Test
