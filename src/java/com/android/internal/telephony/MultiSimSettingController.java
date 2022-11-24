@@ -54,6 +54,7 @@ import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.util.ArrayUtils;
 
 import java.lang.annotation.Retention;
@@ -903,11 +904,16 @@ public class MultiSimSettingController extends Handler {
      * are synced.
      */
     private void setRoamingDataEnabledForGroup(int subId, boolean enable) {
-        SubscriptionController subController = SubscriptionController.getInstance();
-        List<SubscriptionInfo> infoList = subController.getSubscriptionsInGroup(
-                mSubController.getGroupUuid(subId), mContext.getOpPackageName(),
-                mContext.getAttributionTag());
-
+        List<SubscriptionInfo> infoList;
+        if (PhoneFactory.getDefaultPhone().isSubscriptionManagerServiceEnabled()) {
+            infoList = SubscriptionManagerService.getInstance().getSubscriptionsInGroup(
+                    mSubController.getGroupUuid(subId), mContext.getOpPackageName(),
+                    mContext.getAttributionTag());
+        } else {
+            infoList = SubscriptionController.getInstance().getSubscriptionsInGroup(
+                    mSubController.getGroupUuid(subId), mContext.getOpPackageName(),
+                    mContext.getAttributionTag());
+        }
         if (infoList == null) return;
 
         for (SubscriptionInfo info : infoList) {
