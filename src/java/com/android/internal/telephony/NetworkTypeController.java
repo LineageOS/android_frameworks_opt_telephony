@@ -1261,15 +1261,11 @@ public class NetworkTypeController extends StateMachine {
             return false;
         }
 
-        int bandwidths = mPhone.getServiceStateTracker().getPhysicalChannelConfigList()
-                .stream()
-                .filter(config -> config.getNetworkType() == TelephonyManager.NETWORK_TYPE_NR)
-                .map(PhysicalChannelConfig::getCellBandwidthDownlinkKhz)
-                .mapToInt(Integer::intValue)
-                .sum();
         // Check if meeting minimum bandwidth requirement. For most carriers, there is no minimum
         // bandwidth requirement and mNrAdvancedThresholdBandwidth is 0.
-        if (mNrAdvancedThresholdBandwidth > 0 && bandwidths < mNrAdvancedThresholdBandwidth) {
+        if (mNrAdvancedThresholdBandwidth > 0
+                && IntStream.of(mPhone.getServiceState().getCellBandwidths()).sum()
+                < mNrAdvancedThresholdBandwidth) {
             return false;
         }
 
