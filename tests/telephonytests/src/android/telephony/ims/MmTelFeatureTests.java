@@ -25,6 +25,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 import android.net.Uri;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -151,8 +152,22 @@ public class MmTelFeatureTests extends ImsTestBase {
 
         mFeature.incomingCall(session);
         ArgumentCaptor<IImsCallSession> captor = ArgumentCaptor.forClass(IImsCallSession.class);
-        verify(mListener).onIncomingCall(captor.capture(), any());
+        verify(mListener).onIncomingCall(captor.capture(), eq(null), any());
 
+        assertEquals(sessionBinder, captor.getValue());
+    }
+
+    @SmallTest
+    @Test
+    public void testNewIncomingCallReturnListener() throws Exception {
+        IImsCallSession sessionBinder = Mockito.mock(IImsCallSession.class);
+        ImsCallSessionImplBase session = new ImsCallSessionImplBase();
+        session.setServiceImpl(sessionBinder);
+        String callId = "callID";
+        Bundle extra = new Bundle();
+        mFeature.incomingCall(session, callId, extra);
+        ArgumentCaptor<IImsCallSession> captor = ArgumentCaptor.forClass(IImsCallSession.class);
+        verify(mListener).onIncomingCall(captor.capture(), eq(callId), eq(extra));
         assertEquals(sessionBinder, captor.getValue());
     }
 

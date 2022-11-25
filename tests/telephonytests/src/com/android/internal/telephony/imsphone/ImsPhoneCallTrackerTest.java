@@ -556,7 +556,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
         assertFalse(mCTUT.mRingingCall.isRinging());
         // mock a MT call
-        mMmTelListener.onIncomingCall(mock(IImsCallSession.class), Bundle.EMPTY);
+        mMmTelListener.onIncomingCall(mock(IImsCallSession.class), null, Bundle.EMPTY);
         verify(mImsPhone, times(1)).notifyNewRingingConnection((Connection) any());
         verify(mImsPhone, times(1)).notifyIncomingRing();
         assertEquals(PhoneConstants.State.RINGING, mCTUT.getState());
@@ -708,7 +708,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
-        mMmTelListener.onIncomingCall(mock(IImsCallSession.class), Bundle.EMPTY);
+        mMmTelListener.onIncomingCall(mock(IImsCallSession.class), null, Bundle.EMPTY);
 
         verify(mImsPhone, times(2)).notifyNewRingingConnection((Connection) any());
         verify(mImsPhone, times(2)).notifyIncomingRing();
@@ -746,7 +746,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
-        mMmTelListener.onIncomingCall(mock(IImsCallSession.class), Bundle.EMPTY);
+        mMmTelListener.onIncomingCall(mock(IImsCallSession.class), null, Bundle.EMPTY);
 
         verify(mImsPhone, times(2)).notifyNewRingingConnection((Connection) any());
         verify(mImsPhone, times(2)).notifyIncomingRing();
@@ -938,7 +938,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         try {
             doReturn(mSecondImsCall).when(mImsManager).takeCall(any(IImsCallSession.class),
                     any(ImsCall.Listener.class));
-            mMmTelListener.onIncomingCall(mock(IImsCallSession.class), Bundle.EMPTY);
+            mMmTelListener.onIncomingCall(mock(IImsCallSession.class), null, Bundle.EMPTY);
             mCTUT.acceptCall(ImsCallProfile.CALL_TYPE_VOICE);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1756,7 +1756,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
         assertFalse(mCTUT.mRingingCall.isRinging());
         // mock a MT call
-        mMmTelListener.onIncomingCall(mock(IImsCallSession.class), Bundle.EMPTY);
+        mMmTelListener.onIncomingCall(mock(IImsCallSession.class), null, Bundle.EMPTY);
         verify(mImsPhone, times(1)).notifyNewRingingConnection((Connection) any());
         verify(mImsPhone, times(1)).notifyIncomingRing();
         assertEquals(PhoneConstants.State.RINGING, mCTUT.getState());
@@ -1794,7 +1794,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
         assertFalse(mCTUT.mRingingCall.isRinging());
         // mock a MT call
-        mMmTelListener.onIncomingCall(mock(IImsCallSession.class), Bundle.EMPTY);
+        mMmTelListener.onIncomingCall(mock(IImsCallSession.class), null, Bundle.EMPTY);
         verify(mImsPhone, times(1)).notifyNewRingingConnection((Connection) any());
         verify(mImsPhone, times(1)).notifyIncomingRing();
         assertEquals(PhoneConstants.State.RINGING, mCTUT.getState());
