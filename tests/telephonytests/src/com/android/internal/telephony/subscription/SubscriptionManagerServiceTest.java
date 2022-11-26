@@ -50,10 +50,14 @@ import android.annotation.NonNull;
 import android.app.AppOpsManager;
 import android.app.PropertyInvalidatedCache;
 import android.compat.testing.PlatformCompatChangeRule;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Looper;
 import android.os.ParcelUuid;
+import android.os.UserHandle;
+import android.provider.Settings;
 import android.provider.Telephony;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -62,6 +66,7 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import com.android.internal.telephony.ContextFixture;
+import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.SubscriptionProvider;
 import com.android.internal.telephony.subscription.SubscriptionManagerService.SubscriptionManagerServiceCallback;
@@ -74,6 +79,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
@@ -105,6 +111,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         setupMocksForTelephonyPermissions(Build.VERSION_CODES.UPSIDE_DOWN_CAKE);
         PropertyInvalidatedCache.disableForCurrentProcess("cache_key.is_compat_change_enabled");
 
+        doReturn(true).when(mTelephonyManager).isVoiceCapable();
         mMockedSubscriptionManagerServiceCallback = Mockito.mock(
                 SubscriptionManagerServiceCallback.class);
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
@@ -133,11 +140,20 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
         super.tearDown();
     }
 
     /**
-     * Insert the subscrtipion info to the database.
+     * Insert the subscription info to the database.
      *
      * @param subInfo The subscription to be inserted.
      * @return The new sub id.
@@ -441,5 +457,127 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 .getAvailableSubscriptionInfoList(CALLING_PACKAGE, CALLING_FEATURE);
         assertThat(subInfos).hasSize(1);
         assertThat(subInfos.get(0)).isEqualTo(FAKE_SUBSCRIPTION_INFO1.toSubscriptionInfo());
+    }
+
+    @Test
+    public void testSetDefaultVoiceSubId() throws Exception {
+        // Grant MODIFY_PHONE_STATE permission for insertion.
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        insertSubscription(FAKE_SUBSCRIPTION_INFO2);
+        // Remove MODIFY_PHONE_STATE
+        mContextFixture.removeCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        // Should fail without MODIFY_PHONE_STATE
+        assertThrows(SecurityException.class,
+                () -> mSubscriptionManagerServiceUT.setDefaultVoiceSubId(1));
+
+        // Grant MODIFY_PHONE_STATE permission
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        mSubscriptionManagerServiceUT.setDefaultVoiceSubId(1);
+
+        assertThat(Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION)).isEqualTo(1);
+        ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, times(2)).sendStickyBroadcastAsUser(
+                captorIntent.capture(), eq(UserHandle.ALL));
+
+        Intent intent = captorIntent.getAllValues().get(0);
+        assertThat(intent.getAction()).isEqualTo(
+                TelephonyIntents.ACTION_DEFAULT_VOICE_SUBSCRIPTION_CHANGED);
+
+        Bundle b = intent.getExtras();
+
+        assertThat(b.containsKey(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX)).isTrue();
+        assertThat(b.getInt(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX)).isEqualTo(1);
+
+        intent = captorIntent.getAllValues().get(1);
+        assertThat(intent.getAction()).isEqualTo(
+                SubscriptionManager.ACTION_DEFAULT_SUBSCRIPTION_CHANGED);
+
+        b = intent.getExtras();
+
+        assertThat(b.containsKey(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX)).isTrue();
+        assertThat(b.getInt(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX)).isEqualTo(1);
+    }
+
+    @Test
+    public void testSetDefaultDataSubId() throws Exception {
+        doReturn(false).when(mTelephonyManager).isVoiceCapable();
+        // Grant MODIFY_PHONE_STATE permission for insertion.
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        insertSubscription(FAKE_SUBSCRIPTION_INFO2);
+        // Remove MODIFY_PHONE_STATE
+        mContextFixture.removeCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        // Should fail without MODIFY_PHONE_STATE
+        assertThrows(SecurityException.class,
+                () -> mSubscriptionManagerServiceUT.setDefaultDataSubId(1));
+
+        // Grant MODIFY_PHONE_STATE permission
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        mSubscriptionManagerServiceUT.setDefaultDataSubId(1);
+
+        assertThat(Settings.Global.getInt(mContext.getContentResolver(),
+                        Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION)).isEqualTo(1);
+        ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, times(2)).sendStickyBroadcastAsUser(
+                captorIntent.capture(), eq(UserHandle.ALL));
+
+        Intent intent = captorIntent.getAllValues().get(0);
+        assertThat(intent.getAction()).isEqualTo(
+                TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED);
+
+        Bundle b = intent.getExtras();
+
+        assertThat(b.containsKey(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX)).isTrue();
+        assertThat(b.getInt(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX)).isEqualTo(1);
+
+        intent = captorIntent.getAllValues().get(1);
+        assertThat(intent.getAction()).isEqualTo(
+                SubscriptionManager.ACTION_DEFAULT_SUBSCRIPTION_CHANGED);
+
+        b = intent.getExtras();
+
+        assertThat(b.containsKey(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX)).isTrue();
+        assertThat(b.getInt(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX)).isEqualTo(1);
+    }
+
+    @Test
+    public void testSetDefaultSmsSubId() throws Exception {
+        // Grant MODIFY_PHONE_STATE permission for insertion.
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        insertSubscription(FAKE_SUBSCRIPTION_INFO2);
+        // Remove MODIFY_PHONE_STATE
+        mContextFixture.removeCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // Should fail without MODIFY_PHONE_STATE
+        assertThrows(SecurityException.class,
+                () -> mSubscriptionManagerServiceUT.setDefaultSmsSubId(1));
+
+        // Grant MODIFY_PHONE_STATE permission
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        mSubscriptionManagerServiceUT.setDefaultSmsSubId(1);
+
+        assertThat(Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION)).isEqualTo(1);
+        ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext).sendStickyBroadcastAsUser(captorIntent.capture(), eq(UserHandle.ALL));
+
+        Intent intent = captorIntent.getValue();
+        assertThat(intent.getAction()).isEqualTo(
+                SubscriptionManager.ACTION_DEFAULT_SMS_SUBSCRIPTION_CHANGED);
+
+        Bundle b = intent.getExtras();
+
+        assertThat(b.containsKey(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX)).isTrue();
+        assertThat(b.getInt(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX)).isEqualTo(1);
     }
 }
