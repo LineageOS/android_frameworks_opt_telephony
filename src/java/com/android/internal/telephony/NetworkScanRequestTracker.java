@@ -197,7 +197,7 @@ public final class NetworkScanRequestTracker {
     public static Set<String> getAllowedMccMncsForLocationRestrictedScan(Context context) {
         final long token = Binder.clearCallingIdentity();
         try {
-            if (PhoneFactory.getDefaultPhone().isSubscriptionManagerServiceEnabled()) {
+            if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
                 return SubscriptionManagerService.getInstance()
                         .getAvailableSubscriptionInfoList(context.getOpPackageName(),
                                 context.getAttributionTag()).stream()
