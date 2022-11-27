@@ -404,7 +404,7 @@ public class SubscriptionDatabaseManager extends Handler {
                     + uri.getLastPathSegment());
             return Integer.parseInt(uri.getLastPathSegment());
         } else {
-            loge("insertNewRecordIntoDatabaseSync: Failed to insert subscription into database. "
+            logel("insertNewRecordIntoDatabaseSync: Failed to insert subscription into database. "
                     + "contentValues=" + contentValues);
         }
         return INVALID_ROW_INDEX;
@@ -446,7 +446,7 @@ public class SubscriptionDatabaseManager extends Handler {
                         .Builder(subInfo)
                         .setId(subId).build());
             } else {
-                loge("insertSubscriptionInfo: Failed to insert a new subscription. subInfo="
+                logel("insertSubscriptionInfo: Failed to insert a new subscription. subInfo="
                         + subInfo);
             }
         } finally {
@@ -468,8 +468,8 @@ public class SubscriptionDatabaseManager extends Handler {
         // Perform the update in the handler thread asynchronously.
 
         if (!mDatabaseLoaded) {
-            throw new IllegalStateException("Database has not been loaded. Can't update "
-                    + "database at this point. contentValues=" + contentValues);
+            logel("Database has not been loaded. Can't update database at this point. "
+                    + "contentValues=" + contentValues);
         }
 
         post(() -> {
@@ -479,7 +479,7 @@ public class SubscriptionDatabaseManager extends Handler {
                 logv("updateDatabaseAsync: Successfully updated subscription in the database. "
                         + "subId=" + subId + ", contentValues= " + contentValues.getValues());
             } else {
-                loge("updateDatabaseAsync: Unexpected update result. rowsUpdated=" + rowsUpdated
+                logel("updateDatabaseAsync: Unexpected update result. rowsUpdated=" + rowsUpdated
                         + ", contentValues=" + contentValues);
             }
         });
@@ -532,7 +532,7 @@ public class SubscriptionDatabaseManager extends Handler {
                     updateDatabaseAsync(subId, contentValues);
                 }
             } else {
-                loge("Subscription doesn't exist. subId=" + subId);
+                logel("Subscription doesn't exist. subId=" + subId + ", columnName" + columnName);
             }
         } finally {
             mReadWriteLock.writeLock().unlock();
@@ -1414,6 +1414,16 @@ public class SubscriptionDatabaseManager extends Handler {
      */
     private void logv(@NonNull String s) {
         if (VDBG) Rlog.v(LOG_TAG, s);
+    }
+
+    /**
+     * Log error messages and also log into the local log.
+     *
+     * @param s debug messages
+     */
+    private void logel(@NonNull String s) {
+        loge(s);
+        mLocalLog.log(s);
     }
 
     /**

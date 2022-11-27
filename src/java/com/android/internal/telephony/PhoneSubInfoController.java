@@ -36,8 +36,11 @@ import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyFrameworkInitializer;
+import android.text.TextUtils;
 import android.util.EventLog;
 
+import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.IsimRecords;
 import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
@@ -154,8 +157,13 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         long identity = Binder.clearCallingIdentity();
         boolean isActive;
         try {
-            isActive = SubscriptionController.getInstance().isActiveSubId(subId, callingPackage,
-                    callingFeatureId);
+            if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
+                isActive = SubscriptionManagerService.getInstance().isActiveSubId(subId,
+                        callingPackage, callingFeatureId);
+            } else {
+                isActive = SubscriptionController.getInstance().isActiveSubId(subId, callingPackage,
+                        callingFeatureId);
+            }
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
@@ -169,6 +177,14 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
             }
             identity = Binder.clearCallingIdentity();
             try {
+                if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
+                    SubscriptionInfoInternal subInfo = SubscriptionManagerService.getInstance()
+                            .getSubscriptionInfoInternal(subId);
+                    if (subInfo != null && !TextUtils.isEmpty(subInfo.getImsi())) {
+                        return subInfo.getImsi();
+                    }
+                    return null;
+                }
                 return SubscriptionController.getInstance().getImsiPrivileged(subId);
             } finally {
                 Binder.restoreCallingIdentity(identity);
