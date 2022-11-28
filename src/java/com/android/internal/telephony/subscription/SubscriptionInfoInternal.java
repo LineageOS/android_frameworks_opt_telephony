@@ -481,7 +481,7 @@ public class SubscriptionInfoInternal {
      * @see #getCarrierName()
      */
     @NonNull
-    public CharSequence getDisplayName() {
+    public String getDisplayName() {
         return mDisplayName;
     }
 
@@ -492,7 +492,7 @@ public class SubscriptionInfoInternal {
      * @see #getDisplayName()
      */
     @NonNull
-    public CharSequence getCarrierName() {
+    public String getCarrierName() {
         return mCarrierName;
     }
 
