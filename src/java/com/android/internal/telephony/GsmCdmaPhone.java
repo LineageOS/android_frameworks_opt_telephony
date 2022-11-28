@@ -842,10 +842,7 @@ public class GsmCdmaPhone extends Phone {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public void notifyPreciseCallStateChanged() {
         /* we'd love it if this was package-scoped*/
-        AsyncResult ar = new AsyncResult(null, this, null);
-        mPreciseCallStateRegistrants.notifyRegistrants(ar);
-
-        mNotifier.notifyPreciseCallState(this, null, null, null);
+        super.notifyPreciseCallStateChangedP();
     }
 
     public void notifyNewRingingConnection(Connection c) {
