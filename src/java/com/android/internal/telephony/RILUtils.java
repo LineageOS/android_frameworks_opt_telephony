@@ -3855,7 +3855,7 @@ public class RILUtils {
             case android.hardware.radio.data.Qos.nr:
                 android.hardware.radio.data.NrQos nr = qos.getNr();
                 return new NrQos(convertHalQosBandwidth(nr.downlink),
-                        convertHalQosBandwidth(nr.uplink), nr.qfi, nr.fiveQi,
+                        convertHalQosBandwidth(nr.uplink), nr.qosFlowIdentifier, nr.fiveQi,
                         nr.averagingWindowMs);
             default:
                 return null;
