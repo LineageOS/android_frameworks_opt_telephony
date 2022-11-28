@@ -1436,12 +1436,14 @@ public abstract class InboundSmsHandler extends StateMachine {
             intent.putExtra("messageId", messageId);
         }
 
+        UserHandle userHandle = null;
         if (destPort == -1) {
             intent.setAction(Intents.SMS_DELIVER_ACTION);
             // Direct the intent to only the default SMS app. If we can't find a default SMS app
             // then sent it to all broadcast receivers.
-            // We are deliberately delivering to the primary user's default SMS App.
-            ComponentName componentName = SmsApplication.getDefaultSmsApplication(mContext, true);
+            userHandle = TelephonyUtils.getSubscriptionUserHandle(mContext, subId);
+            ComponentName componentName = SmsApplication.getDefaultSmsApplicationAsUser(mContext,
+                    true, userHandle);
             if (componentName != null) {
                 // Deliver SMS message only to this receiver.
                 intent.setComponent(componentName);
@@ -1465,9 +1467,12 @@ public abstract class InboundSmsHandler extends StateMachine {
             intent.setComponent(null);
         }
 
+        if (userHandle == null) {
+            userHandle = UserHandle.SYSTEM;
+        }
         Bundle options = handleSmsWhitelisting(intent.getComponent(), isClass0);
         dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                AppOpsManager.OPSTR_RECEIVE_SMS, options, resultReceiver, UserHandle.SYSTEM, subId);
+                AppOpsManager.OPSTR_RECEIVE_SMS, options, resultReceiver, userHandle, subId);
     }
 
     /**
