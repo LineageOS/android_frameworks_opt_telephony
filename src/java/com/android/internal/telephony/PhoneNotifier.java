@@ -18,7 +18,6 @@ package com.android.internal.telephony;
 
 import android.annotation.NonNull;
 import android.compat.annotation.UnsupportedAppUsage;
-import android.telephony.Annotation;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.Annotation.SrvccState;
 import android.telephony.BarringInfo;
@@ -79,10 +78,7 @@ public interface PhoneNotifier {
 
     void notifyCellInfo(Phone sender, List<CellInfo> cellInfo);
 
-    /** Send a notification that precise call state changed. */
-    void notifyPreciseCallState(Phone sender, String[] imsCallIds,
-            @Annotation.ImsCallServiceType int[] imsCallServiceTypes,
-            @Annotation.ImsCallType int[] imsCallTypes);
+    void notifyPreciseCallState(Phone sender);
 
     void notifyDisconnectCause(Phone sender, int cause, int preciseCause);
 
