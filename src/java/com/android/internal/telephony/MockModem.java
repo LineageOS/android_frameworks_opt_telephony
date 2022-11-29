@@ -21,6 +21,7 @@ import static android.telephony.TelephonyManager.HAL_SERVICE_IMS;
 import static android.telephony.TelephonyManager.HAL_SERVICE_MESSAGING;
 import static android.telephony.TelephonyManager.HAL_SERVICE_MODEM;
 import static android.telephony.TelephonyManager.HAL_SERVICE_NETWORK;
+import static android.telephony.TelephonyManager.HAL_SERVICE_SATELLITE;
 import static android.telephony.TelephonyManager.HAL_SERVICE_SIM;
 import static android.telephony.TelephonyManager.HAL_SERVICE_VOICE;
 
@@ -44,6 +45,8 @@ public class MockModem {
     private static final String BIND_IRADIOVOICE = "android.telephony.mockmodem.iradiovoice";
     private static final String BIND_IRADIOIMS = "android.telephony.mockmodem.iradioims";
     private static final String BIND_IRADIOCONFIG = "android.telephony.mockmodem.iradioconfig";
+    private static final String BIND_IRADIOSATELLITE =
+            "android.telephony.mockmodem.iradiosatellite";
     private static final String PHONE_ID = "phone_id";
 
     private static final byte DEFAULT_PHONE_ID = 0x00;
@@ -65,6 +68,7 @@ public class MockModem {
     private IBinder mVoiceBinder;
     private IBinder mImsBinder;
     private IBinder mConfigBinder;
+    private IBinder mSatelliteBinder;
     private ServiceConnection mModemServiceConnection;
     private ServiceConnection mSimServiceConnection;
     private ServiceConnection mMessagingServiceConnection;
@@ -73,6 +77,7 @@ public class MockModem {
     private ServiceConnection mVoiceServiceConnection;
     private ServiceConnection mImsServiceConnection;
     private ServiceConnection mConfigServiceConnection;
+    private ServiceConnection mSatelliteServiceConnection;
 
     private byte mPhoneId;
     private String mTag;
@@ -115,6 +120,8 @@ public class MockModem {
                 mVoiceBinder = binder;
             } else if (mService == HAL_SERVICE_IMS) {
                 mImsBinder = binder;
+            } else if (mService == HAL_SERVICE_SATELLITE) {
+                mSatelliteBinder = binder;
             } else if (mService == RADIOCONFIG_SERVICE) {
                 mConfigBinder = binder;
             }
@@ -138,6 +145,8 @@ public class MockModem {
                 mVoiceBinder = null;
             } else if (mService == HAL_SERVICE_IMS) {
                 mImsBinder = null;
+            } else if (mService == HAL_SERVICE_SATELLITE) {
+                mSatelliteBinder = null;
             } else if (mService == RADIOCONFIG_SERVICE) {
                 mConfigBinder = null;
             }
@@ -179,6 +188,8 @@ public class MockModem {
                 return mVoiceBinder;
             case HAL_SERVICE_IMS:
                 return mImsBinder;
+            case HAL_SERVICE_SATELLITE:
+                return mSatelliteBinder;
             case RADIOCONFIG_SERVICE:
                 return mConfigBinder;
             default:
@@ -306,6 +317,20 @@ public class MockModem {
             } else {
                 Rlog.d(TAG, "IRadio Ims is bound");
             }
+        } else if (service == HAL_SERVICE_SATELLITE) {
+            if (mSatelliteBinder == null) {
+                mSatelliteServiceConnection = new MockModemConnection(HAL_SERVICE_SATELLITE);
+
+                boolean status =
+                        bindModuleToMockModemService(
+                                mPhoneId, BIND_IRADIOSATELLITE, mSatelliteServiceConnection);
+                if (!status) {
+                    Rlog.d(TAG, "IRadio Satellite bind fail");
+                    mSatelliteServiceConnection = null;
+                }
+            } else {
+                Rlog.d(TAG, "IRadio Satellite is bound");
+            }
         }
     }
 
@@ -368,6 +393,13 @@ public class MockModem {
                 mImsBinder = null;
                 Rlog.d(TAG, "unbind IRadio Ims");
             }
+        } else if (service == HAL_SERVICE_SATELLITE) {
+            if (mSatelliteServiceConnection != null) {
+                mContext.unbindService(mSatelliteServiceConnection);
+                mSatelliteServiceConnection = null;
+                mSatelliteBinder = null;
+                Rlog.d(TAG, "unbind IRadio Satellite");
+            }
         }
     }
 
@@ -391,6 +423,8 @@ public class MockModem {
                 return "voice";
             case HAL_SERVICE_IMS:
                 return "ims";
+            case HAL_SERVICE_SATELLITE:
+                return "satellite";
             case RADIOCONFIG_SERVICE:
                 return "config";
             default:
