@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -26,10 +27,12 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
+import android.os.UserHandle;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.SubscriptionManager;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
 /**
@@ -223,9 +226,14 @@ public class SmsStorageMonitor extends Handler {
      * that SIM storage for SMS messages is full.
      */
     private void handleIccFull() {
+        UserHandle userHandle = TelephonyUtils.getSubscriptionUserHandle(mContext,
+                mPhone.getSubId());
+        ComponentName componentName = SmsApplication.getDefaultSimFullApplicationAsUser(mContext,
+                false, userHandle);
+
         // broadcast SIM_FULL intent
         Intent intent = new Intent(Intents.SIM_FULL_ACTION);
-        intent.setComponent(SmsApplication.getDefaultSimFullApplication(mContext, false));
+        intent.setComponent(componentName);
         mWakeLock.acquire(WAKE_LOCK_TIMEOUT);
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
         mContext.sendBroadcast(intent, android.Manifest.permission.RECEIVE_SMS);

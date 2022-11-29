@@ -628,11 +628,12 @@ public class SubscriptionInfoInternal {
      * @return {@code true} if enhanced 4G mode is enabled by the user or not.
      */
     public boolean isEnhanced4GModeEnabled() {
-        return mIsEnhanced4GModeEnabled != 0;
+        return mIsEnhanced4GModeEnabled == 1;
     }
 
     /**
-     * @return {@code 1} if enhanced 4G mode is enabled by the user or not.
+     * @return {@code 1} if enhanced 4G mode is enabled by the user or not. {@code 0} if disabled.
+     * {@code -1} if the user did not change any setting.
      */
     public int getEnhanced4GModeEnabled() {
         return mIsEnhanced4GModeEnabled;
@@ -657,12 +658,12 @@ public class SubscriptionInfoInternal {
      * roaming.
      */
     public boolean isWifiCallingEnabled() {
-        return mIsWifiCallingEnabled != 0;
+        return mIsWifiCallingEnabled == 1;
     }
 
     /**
      * @return {@code 1} if Wi-Fi calling is enabled by the user or not when the device is not
-     * roaming.
+     * roaming. {@code 0} if disabled. {@code -1} if the user did not change any setting.
      */
     public int getWifiCallingEnabled() {
         return mIsWifiCallingEnabled;
@@ -686,10 +687,10 @@ public class SubscriptionInfoInternal {
 
     /**
      * @return {@code true} if Wi-Fi calling is enabled by the user or not when the device is
-     * roaming.
+     * roaming. {@code 0} if disabled. {@code -1} if the user did not change any setting.
      */
     public boolean isWifiCallingEnabledForRoaming() {
-        return mIsWifiCallingEnabledForRoaming != 0;
+        return mIsWifiCallingEnabledForRoaming == 1;
     }
 
     /**
@@ -894,11 +895,12 @@ public class SubscriptionInfoInternal {
      * @return {@code true} if the user has enabled NR advanced calling.
      */
     public boolean isNrAdvancedCallingEnabled() {
-        return mIsNrAdvancedCallingEnabled != 0;
+        return mIsNrAdvancedCallingEnabled == 1;
     }
 
     /**
-     * @return {@code 1} if the user has enabled NR advanced calling.
+     * @return {@code 1} if the user has enabled NR advanced calling. {code 0} if disabled.
+     * {code -1} if the user did not change any setting.
      */
     public int getNrAdvancedCallingEnabled() {
         return mIsNrAdvancedCallingEnabled;
@@ -1407,7 +1409,7 @@ public class SubscriptionInfoInternal {
         /**
          * Whether the user has enabled NR advanced calling.
          */
-        private int mIsNrAdvancedCallingEnabled = 0;
+        private int mIsNrAdvancedCallingEnabled = -1;
 
         /**
          * The phone number retrieved from carrier.
