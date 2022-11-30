@@ -85,6 +85,8 @@ import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.cdma.sms.UserData;
+import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
@@ -413,7 +415,15 @@ public abstract class SMSDispatcher extends Handler {
                  */
                 mMessageRef = getTpmrValueFromSIM();
                 if (mMessageRef == -1) {
-                    mMessageRef = SubscriptionController.getInstance().getMessageRef(msg.arg1);
+                    if (mPhone.isSubscriptionManagerServiceEnabled()) {
+                        SubscriptionInfoInternal subInfo = SubscriptionManagerService.getInstance()
+                                .getSubscriptionInfoInternal(msg.arg1);
+                        if (subInfo != null) {
+                            mMessageRef = subInfo.getLastUsedTPMessageReference();
+                        }
+                    } else {
+                        mMessageRef = SubscriptionController.getInstance().getMessageRef(msg.arg1);
+                    }
                 }
                 break;
 
@@ -435,7 +445,12 @@ public abstract class SMSDispatcher extends Handler {
         updateSIMLastTPMRValue(mMessageRef);
         final long identity = Binder.clearCallingIdentity();
         try {
-            SubscriptionController.getInstance().updateMessageRef(getSubId(), mMessageRef);
+            if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
+                SubscriptionManagerService.getInstance()
+                        .setLastUsedTPMessageReference(getSubId(), mMessageRef);
+            } else {
+                SubscriptionController.getInstance().updateMessageRef(getSubId(), mMessageRef);
+            }
         } catch (SecurityException e) {
             Rlog.e(TAG, "Security Exception caused on messageRef updation to DB " + e.getMessage());
         } finally {
@@ -2862,6 +2877,9 @@ public abstract class SMSDispatcher extends Handler {
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected int getSubId() {
+        if (mPhone.isSubscriptionManagerServiceEnabled()) {
+            return SubscriptionManagerService.getInstance().getSubId(mPhone.getPhoneId());
+        }
         return SubscriptionController.getInstance().getSubId(mPhone.getPhoneId());
     }
 
