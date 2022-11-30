@@ -4605,6 +4605,7 @@ public class RILUtils {
                 logicalModemList.add(new ModemInfo(modemInfo.modemId));
             }
         }
+        maxActiveVoiceCalls = maxActiveData;
         return new PhoneCapability(maxActiveVoiceCalls, maxActiveData, logicalModemList,
                 validationBeforeSwitchSupported, deviceNrCapabilities);
     }

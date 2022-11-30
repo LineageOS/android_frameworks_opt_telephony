@@ -18,7 +18,6 @@ package com.android.internal.telephony;
 
 import android.annotation.NonNull;
 import android.content.Context;
-import android.telephony.Annotation;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.Annotation.SrvccState;
 import android.telephony.BarringInfo;
@@ -35,7 +34,6 @@ import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager.DataEnabledReason;
 import android.telephony.TelephonyRegistryManager;
 import android.telephony.emergency.EmergencyNumber;
-import android.telephony.ims.ImsCallSession;
 import android.telephony.ims.ImsReasonInfo;
 
 import com.android.telephony.Rlog;
@@ -144,28 +142,15 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         mTelephonyRegistryMgr.notifyCellInfoChanged(subId, cellInfo);
     }
 
-    /**
-     * Notify precise call state of foreground, background and ringing call states.
-     *
-     * @param imsCallIds Array of IMS call session ID{@link ImsCallSession#getCallId} for
-     *                   ringing, foreground & background calls.
-     * @param imsCallServiceTypes Array of IMS call service type for ringing, foreground &
-     *                        background calls.
-     * @param imsCallTypes Array of IMS call type for ringing, foreground & background calls.
-     */
-    public void notifyPreciseCallState(Phone sender, String[] imsCallIds,
-            @Annotation.ImsCallServiceType int[] imsCallServiceTypes,
-            @Annotation.ImsCallType int[] imsCallTypes) {
+    public void notifyPreciseCallState(Phone sender) {
         Call ringingCall = sender.getRingingCall();
         Call foregroundCall = sender.getForegroundCall();
         Call backgroundCall = sender.getBackgroundCall();
-
         if (ringingCall != null && foregroundCall != null && backgroundCall != null) {
-            int[] callStates = {convertPreciseCallState(ringingCall.getState()),
-                    convertPreciseCallState(foregroundCall.getState()),
-                    convertPreciseCallState(backgroundCall.getState())};
             mTelephonyRegistryMgr.notifyPreciseCallState(sender.getPhoneId(), sender.getSubId(),
-                    callStates, imsCallIds, imsCallServiceTypes, imsCallTypes);
+                    convertPreciseCallState(ringingCall.getState()),
+                    convertPreciseCallState(foregroundCall.getState()),
+                    convertPreciseCallState(backgroundCall.getState()));
         }
     }
 
