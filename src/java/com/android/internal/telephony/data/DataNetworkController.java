@@ -111,6 +111,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -1373,8 +1374,26 @@ public class DataNetworkController extends Handler {
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                         .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
                         .build(), mPhone);
+        // If one of the existing networks can satisfy the internet request, then internet is
+        // allowed.
+        if (mDataNetworkList.stream().anyMatch(dataNetwork -> internetRequest.canBeSatisfiedBy(
+                dataNetwork.getNetworkCapabilities()))) {
+            return true;
+        }
+
+        // If no existing network can satisfy the request, then check if we can possibly setup
+        // the internet network.
+
         DataEvaluation evaluation = evaluateNetworkRequest(internetRequest,
                 DataEvaluationReason.EXTERNAL_QUERY);
+        if (evaluation.containsOnly(DataDisallowedReason.ONLY_ALLOWED_SINGLE_NETWORK)) {
+            // If the only failed reason is only single network allowed, then check if the request
+            // can trump the current network.
+            return internetRequest.getPriority() > mDataNetworkList.stream()
+                    .map(DataNetwork::getPriority)
+                    .max(Comparator.comparing(Integer::valueOf))
+                    .orElse(0);
+        }
         return !evaluation.containsDisallowedReasons();
     }
 
