@@ -48,6 +48,7 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.phone.ecc.nano.ProtobufEccData;
 import com.android.phone.ecc.nano.ProtobufEccData.EccInfo;
@@ -269,7 +270,12 @@ public class EmergencyNumberTracker extends Handler {
     @VisibleForTesting
     public boolean isSimAbsent() {
         for (Phone phone: PhoneFactory.getPhones()) {
-            int slotId = SubscriptionController.getInstance().getSlotIndex(phone.getSubId());
+            int slotId;
+            if (phone.isSubscriptionManagerServiceEnabled()) {
+                slotId = SubscriptionManagerService.getInstance().getSlotIndex(phone.getSubId());
+            } else {
+                slotId = SubscriptionController.getInstance().getSlotIndex(phone.getSubId());
+            }
             // If slot id is invalid, it means that there is no sim card.
             if (slotId != SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
                 // If there is at least one sim active, sim is not absent; it returns false

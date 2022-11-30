@@ -766,15 +766,41 @@ public class SubscriptionManagerService extends ISub.Stub {
     /**
      * Get the active {@link SubscriptionInfo} associated with the logical SIM slot index.
      *
-     * @param slotIndex the logical SIM slot index which the subscription is inserted
-     * @param callingPackage The package making the call
-     * @param callingFeatureId The feature in the package
+     * @param slotIndex the logical SIM slot index which the subscription is inserted.
+     * @param callingPackage The package making the call.
+     * @param callingFeatureId The feature in the package.
      *
-     * @return SubscriptionInfo, null for Remote-SIMs or non-active logical SIM slot index.
+     * @return {@link SubscriptionInfo}, null for Remote-SIMs or non-active logical SIM slot index.
      */
     @Override
+    @Nullable
+    @RequiresPermission(anyOf = {
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.READ_PRIVILEGED_PHONE_STATE,
+            "carrier privileges",
+    })
     public SubscriptionInfo getActiveSubscriptionInfoForSimSlotIndex(int slotIndex,
             @NonNull String callingPackage, @Nullable String callingFeatureId) {
+        int subId = mSlotIndexToSubId.getOrDefault(slotIndex,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext, subId,
+                callingPackage, callingFeatureId,
+                "getActiveSubscriptionInfoForSimSlotIndex")) {
+            throw new SecurityException("Requires READ_PHONE_STATE permission.");
+        }
+
+        if (!SubscriptionManager.isValidSlotIndex(slotIndex)) {
+            throw new IllegalArgumentException("Invalid slot index " + slotIndex);
+        }
+
+        SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
+                .getSubscriptionInfoInternal(subId);
+        if (subInfo != null && subInfo.isActive()) {
+            return conditionallyRemoveIdentifiers(subInfo.toSubscriptionInfo(), callingPackage,
+                    callingFeatureId, "getActiveSubscriptionInfoForSimSlotIndex");
+        }
+
         return null;
     }
 
@@ -939,7 +965,11 @@ public class SubscriptionManagerService extends ISub.Stub {
             // Check if the record exists or not.
             if (subInfo == null) {
                 // Record does not exist.
-                mSubscriptionDatabaseManager.insertSubscriptionInfo(
+                if (mSlotIndexToSubId.containsKey(slotIndex)) {
+                    loge("Already a subscription on slot " + slotIndex);
+                    return -1;
+                }
+                int subId = mSubscriptionDatabaseManager.insertSubscriptionInfo(
                         new SubscriptionInfoInternal.Builder()
                                 .setIccId(iccId)
                                 .setSimSlotIndex(slotIndex)
@@ -947,6 +977,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                                 .setType(subscriptionType)
                                 .build()
                 );
+                mSlotIndexToSubId.put(slotIndex, subId);
             } else {
                 // Record already exists.
                 loge("Subscription record already existed.");
