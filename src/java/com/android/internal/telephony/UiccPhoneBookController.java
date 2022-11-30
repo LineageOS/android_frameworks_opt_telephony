@@ -19,11 +19,12 @@
 package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
+import android.content.ContentValues;
 import android.os.Build;
 import android.os.TelephonyServiceManager.ServiceRegisterer;
 import android.telephony.TelephonyFrameworkInitializer;
-import android.content.ContentValues;
 
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.AdnCapacity;
 import com.android.internal.telephony.uicc.AdnRecord;
 import com.android.telephony.Rlog;
@@ -146,7 +147,12 @@ public class UiccPhoneBookController extends IIccPhoneBook.Stub {
     private IccPhoneBookInterfaceManager
             getIccPhoneBookInterfaceManager(int subId) {
 
-        int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
+        int phoneId;
+        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
+            phoneId = SubscriptionManagerService.getInstance().getPhoneId(subId);
+        } else {
+            phoneId = SubscriptionController.getInstance().getPhoneId(subId);
+        }
         try {
             return PhoneFactory.getPhone(phoneId).getIccPhoneBookInterfaceManager();
         } catch (NullPointerException e) {
