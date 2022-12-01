@@ -157,6 +157,7 @@ public class NetworkTypeController extends StateMachine {
     private boolean mIsTimerResetEnabledForLegacyStateRRCIdle;
     private int mLtePlusThresholdBandwidth;
     private int mNrAdvancedThresholdBandwidth;
+    private boolean mIncludeLteForNrAdvancedThresholdBandwidth;
     private @NonNull int[] mAdditionalNrAdvancedBandsList;
     private @NonNull String mPrimaryTimerState;
     private @NonNull String mSecondaryTimerState;
@@ -277,6 +278,9 @@ public class NetworkTypeController extends StateMachine {
                 CarrierConfigManager.KEY_LTE_PLUS_THRESHOLD_BANDWIDTH_KHZ_INT);
         mNrAdvancedThresholdBandwidth = CarrierConfigManager.getDefaultConfig().getInt(
                 CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT);
+        mIncludeLteForNrAdvancedThresholdBandwidth = CarrierConfigManager.getDefaultConfig()
+                .getBoolean(CarrierConfigManager
+                        .KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL);
         mEnableNrAdvancedWhileRoaming = CarrierConfigManager.getDefaultConfig().getBoolean(
                 CarrierConfigManager.KEY_ENABLE_NR_ADVANCED_WHILE_ROAMING_BOOL);
 
@@ -312,6 +316,9 @@ public class NetworkTypeController extends StateMachine {
                 mNrAdvancedThresholdBandwidth = b.getInt(
                         CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT,
                         mNrAdvancedThresholdBandwidth);
+                mIncludeLteForNrAdvancedThresholdBandwidth = b.getBoolean(CarrierConfigManager
+                        .KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL,
+                        mIncludeLteForNrAdvancedThresholdBandwidth);
                 mAdditionalNrAdvancedBandsList = b.getIntArray(
                         CarrierConfigManager.KEY_ADDITIONAL_NR_ADVANCED_BANDS_INT_ARRAY);
                 mNrAdvancedCapablePcoId = b.getInt(
@@ -524,7 +531,8 @@ public class NetworkTypeController extends StateMachine {
         int value = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
         if ((getDataNetworkType() == TelephonyManager.NETWORK_TYPE_LTE_CA
                 || mServiceState.isUsingCarrierAggregation())
-                && getBandwidth() > mLtePlusThresholdBandwidth) {
+                && IntStream.of(mServiceState.getCellBandwidths()).sum()
+                > mLtePlusThresholdBandwidth) {
             value = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA;
         }
         if (isLteEnhancedAvailable()) {
@@ -1286,9 +1294,20 @@ public class NetworkTypeController extends StateMachine {
             return false;
         }
 
+        int bandwidths = 0;
+        if (mPhone.getServiceStateTracker().getPhysicalChannelConfigList() != null) {
+            bandwidths = mPhone.getServiceStateTracker().getPhysicalChannelConfigList()
+                    .stream()
+                    .filter(config -> mIncludeLteForNrAdvancedThresholdBandwidth
+                            || config.getNetworkType() == TelephonyManager.NETWORK_TYPE_NR)
+                    .map(PhysicalChannelConfig::getCellBandwidthDownlinkKhz)
+                    .mapToInt(Integer::intValue)
+                    .sum();
+        }
+
         // Check if meeting minimum bandwidth requirement. For most carriers, there is no minimum
         // bandwidth requirement and mNrAdvancedThresholdBandwidth is 0.
-        if (mNrAdvancedThresholdBandwidth > 0 && getBandwidth() < mNrAdvancedThresholdBandwidth) {
+        if (mNrAdvancedThresholdBandwidth > 0 && bandwidths < mNrAdvancedThresholdBandwidth) {
             return false;
         }
 
@@ -1327,10 +1346,6 @@ public class NetworkTypeController extends StateMachine {
     private int getPhysicalLinkStatusFromPhysicalChannelConfig() {
         return (mPhysicalChannelConfigs == null || mPhysicalChannelConfigs.isEmpty())
                 ? DataCallResponse.LINK_STATUS_DORMANT : DataCallResponse.LINK_STATUS_ACTIVE;
-    }
-
-    private int getBandwidth() {
-        return IntStream.of(mServiceState.getCellBandwidths()).sum();
     }
 
     private String getEventName(int event) {
