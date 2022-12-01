@@ -1765,6 +1765,24 @@ public class SubscriptionInfoInternal {
         }
 
         /**
+         * Set the native access rules for this subscription, if it is embedded and defines any.
+         * This does not include access rules for non-embedded subscriptions.
+         *
+         * @param nativeAccessRules The native access rules for this subscription.
+         *
+         * @return The builder.
+         */
+        @NonNull
+        public Builder setNativeAccessRules(@NonNull List<UiccAccessRule> nativeAccessRules) {
+            Objects.requireNonNull(nativeAccessRules);
+            if (!nativeAccessRules.isEmpty()) {
+                mNativeAccessRules = UiccAccessRule.encodeRules(
+                        nativeAccessRules.toArray(new UiccAccessRule[0]));
+            }
+            return this;
+        }
+
+        /**
          * Set the carrier certificates for this subscription that are saved in carrier configs.
          * This does not include access rules from the Uicc, whether embedded or non-embedded.
          *
