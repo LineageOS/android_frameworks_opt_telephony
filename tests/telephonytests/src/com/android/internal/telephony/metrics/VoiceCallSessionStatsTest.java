@@ -214,6 +214,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleImsCall_moRejected() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         doReturn(false).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(0L).when(mImsConnection0).getDurationMillis();
@@ -267,6 +269,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleImsCall_moFailed() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         doReturn(false).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(0L).when(mImsConnection0).getDurationMillis();
@@ -308,6 +312,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleImsCall_moStartFailed() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         doReturn(false).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(0L).when(mImsConnection0).getDurationMillis();
@@ -349,6 +355,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleImsCall_moAccepted() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         doReturn(false).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(1000L).when(mImsConnection0).getDurationMillis();
@@ -408,6 +416,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleImsCall_mtRejected() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(0L).when(mImsConnection0).getDurationMillis();
@@ -455,6 +465,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleImsCall_mtStartFailed() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(0L).when(mImsConnection0).getDurationMillis();
@@ -502,6 +514,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleImsCall_mtAccepted() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(mImsCall0).when(mImsConnection0).getCall();
@@ -561,6 +575,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         doReturn(mEsimSlot).when(mUiccController).getUiccSlot(eq(1));
         doReturn(mEsimSlot).when(mUiccController).getUiccSlotForPhone(eq(1));
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(mImsCall0).when(mImsConnection0).getCall();
@@ -606,6 +622,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         doReturn(mEsimSlot).when(mUiccController).getUiccSlot(eq(1));
         doReturn(mEsimSlot).when(mUiccController).getUiccSlotForPhone(eq(1));
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(mImsCall0).when(mImsConnection0).getCall();
@@ -651,6 +669,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         doReturn(mEsimSlot).when(mUiccController).getUiccSlot(eq(1));
         doReturn(mEsimSlot).when(mUiccController).getUiccSlotForPhone(eq(1));
         setServiceState(mSecondServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mSecondPhone).getImsPhone();
         doReturn(true).when(mImsConnection1).isIncoming();
         doReturn(2000L).when(mImsConnection1).getCreateTime();
         doReturn(mImsCall1).when(mImsConnection1).getCall();
@@ -690,6 +710,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleImsCall_emergency() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(true).when(mImsConnection0).isEmergencyCall();
@@ -731,6 +753,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleImsCall_roaming() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         doReturn(true).when(mServiceState).getVoiceRoaming();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
@@ -772,6 +796,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleImsCall_codecSwitch() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(300000L).when(mImsConnection0).getDurationMillis();
@@ -824,6 +850,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleImsCall_ratSwitch() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(600001L).when(mImsConnection0).getDurationMillis();
@@ -872,9 +900,11 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         mVoiceCallSessionStats0.onCallStateChanged(mImsCall0);
         mVoiceCallSessionStats0.setTimeMillis(4000L);
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_HSPA);
+        doReturn(TelephonyManager.NETWORK_TYPE_HSPA).when(mImsStats).getImsVoiceRadioTech();
         mVoiceCallSessionStats0.onServiceStateChanged(mServiceState);
         mVoiceCallSessionStats0.setTimeMillis(6000L);
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_UMTS);
+        doReturn(TelephonyManager.NETWORK_TYPE_UMTS).when(mImsStats).getImsVoiceRadioTech();
         mVoiceCallSessionStats0.onServiceStateChanged(mServiceState);
         mVoiceCallSessionStats0.setTimeMillis(8000L);
         mVoiceCallSessionStats0.onImsCallTerminated(
@@ -898,6 +928,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @Ignore("b/256234604")
     public void singleImsCall_ratSwitchToUnknown() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(600001L).when(mImsConnection0).getDurationMillis();
@@ -953,12 +985,15 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         mVoiceCallSessionStats0.onCallStateChanged(mImsCall0);
         mVoiceCallSessionStats0.setTimeMillis(4000L);
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_HSPA);
+        doReturn(TelephonyManager.NETWORK_TYPE_HSPA).when(mImsStats).getImsVoiceRadioTech();
         mVoiceCallSessionStats0.onServiceStateChanged(mServiceState);
         mVoiceCallSessionStats0.setTimeMillis(6000L);
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_UMTS);
+        doReturn(TelephonyManager.NETWORK_TYPE_UMTS).when(mImsStats).getImsVoiceRadioTech();
         mVoiceCallSessionStats0.onServiceStateChanged(mServiceState);
         mVoiceCallSessionStats0.setTimeMillis(8000L);
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_UNKNOWN);
+        doReturn(TelephonyManager.NETWORK_TYPE_UNKNOWN).when(mImsStats).getImsVoiceRadioTech();
         mVoiceCallSessionStats0.onServiceStateChanged(mServiceState);
         mVoiceCallSessionStats0.setTimeMillis(10000L);
         mVoiceCallSessionStats0.onImsCallTerminated(
@@ -984,6 +1019,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleImsCall_rttOnDial() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(true).when(mImsConnection0).hasRttTextStream();
@@ -1028,6 +1065,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleImsCall_rttStartedMidCall() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(mImsCall0).when(mImsConnection0).getCall();
@@ -1079,6 +1118,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void concurrentImsCalls_firstCallHangupFirst() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         // call 0 starts first, MO
         doReturn(false).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
@@ -1171,6 +1212,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         // RAT change, LTE to HSPA
         mVoiceCallSessionStats0.setTimeMillis(80000L);
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_HSPA);
+        doReturn(TelephonyManager.NETWORK_TYPE_HSPA).when(mImsStats).getImsVoiceRadioTech();
         mVoiceCallSessionStats0.onServiceStateChanged(mServiceState);
         // call 0 hangup by remote
         mVoiceCallSessionStats0.setTimeMillis(90000L);
@@ -1180,6 +1222,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         // RAT change, HSPA to UMTS
         mVoiceCallSessionStats0.setTimeMillis(100000L);
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_UMTS);
+        doReturn(TelephonyManager.NETWORK_TYPE_UMTS).when(mImsStats).getImsVoiceRadioTech();
         mVoiceCallSessionStats0.onServiceStateChanged(mServiceState);
         // call 1 hangup by local
         mVoiceCallSessionStats0.setTimeMillis(120000L);
@@ -1205,6 +1248,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void concurrentImsCalls_firstCallHangupLast() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         // call 0 starts first, MO
         doReturn(false).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
@@ -1297,6 +1342,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         // RAT change, LTE to HSPA
         mVoiceCallSessionStats0.setTimeMillis(80000L);
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_HSPA);
+        doReturn(TelephonyManager.NETWORK_TYPE_HSPA).when(mImsStats).getImsVoiceRadioTech();
         mVoiceCallSessionStats0.onServiceStateChanged(mServiceState);
         // call 1 hangup by remote
         mVoiceCallSessionStats0.setTimeMillis(90000L);
@@ -1306,6 +1352,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         // RAT change, HSPA to UMTS
         mVoiceCallSessionStats0.setTimeMillis(100000L);
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_UMTS);
+        doReturn(TelephonyManager.NETWORK_TYPE_UMTS).when(mImsStats).getImsVoiceRadioTech();
         mVoiceCallSessionStats0.onServiceStateChanged(mServiceState);
         // call 0 hangup by local
         mVoiceCallSessionStats0.setTimeMillis(120000L);
@@ -1331,6 +1378,8 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void concurrentImsCalls_firstCallHangupDuringSecondCallSetup() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
+        doReturn(mImsPhone).when(mPhone).getImsPhone();
         // call 0 starts first, MO
         doReturn(false).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
@@ -1418,6 +1467,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         // RAT change, LTE to HSPA
         mVoiceCallSessionStats0.setTimeMillis(80000L);
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_HSPA);
+        doReturn(TelephonyManager.NETWORK_TYPE_HSPA).when(mImsStats).getImsVoiceRadioTech();
         mVoiceCallSessionStats0.onServiceStateChanged(mServiceState);
         // call 1 hangup by remote
         mVoiceCallSessionStats0.setTimeMillis(90000L);
@@ -1533,12 +1583,14 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
 
         mVoiceCallSessionStats0.setTimeMillis(2000L);
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
         doReturn(Call.State.DIALING).when(mCsCall0).getState();
         doReturn(Call.State.DIALING).when(mGsmConnection0).getState();
         doReturn(DisconnectCause.NOT_DISCONNECTED).when(mGsmConnection0).getDisconnectCause();
         mVoiceCallSessionStats0.onRilDial(mGsmConnection0);
         mVoiceCallSessionStats0.setTimeMillis(3000L);
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_UMTS);
+        doReturn(TelephonyManager.NETWORK_TYPE_UMTS).when(mImsStats).getImsVoiceRadioTech();
         mVoiceCallSessionStats0.onServiceStateChanged(mServiceState);
         mVoiceCallSessionStats0.setTimeMillis(15000L);
         doReturn(DisconnectCause.LOST_SIGNAL).when(mGsmConnection0).getDisconnectCause();
@@ -1735,6 +1787,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleCall_srvccFailed() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(mImsCall0).when(mImsConnection0).getCall();
@@ -1783,6 +1836,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
                 TelephonyManager.SRVCC_STATE_HANDOVER_STARTED);
         mVoiceCallSessionStats0.setTimeMillis(10000L);
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_UMTS);
+        doReturn(TelephonyManager.NETWORK_TYPE_UMTS).when(mImsStats).getImsVoiceRadioTech();
         mVoiceCallSessionStats0.onServiceStateChanged(mServiceState);
         mVoiceCallSessionStats0.setTimeMillis(11000L);
         mVoiceCallSessionStats0.onRilSrvccStateChanged(
@@ -1812,6 +1866,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleCall_srvccCanceled() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(mImsCall0).when(mImsConnection0).getCall();
@@ -1878,6 +1933,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleCall_srvccSuccess() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(mImsCall0).when(mImsConnection0).getCall();
@@ -1941,6 +1997,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
                 TelephonyManager.SRVCC_STATE_HANDOVER_STARTED);
         mVoiceCallSessionStats0.setTimeMillis(7000L);
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_UMTS);
+        doReturn(TelephonyManager.NETWORK_TYPE_UMTS).when(mImsStats).getImsVoiceRadioTech();
         mVoiceCallSessionStats0.onServiceStateChanged(mServiceState);
         mVoiceCallSessionStats0.setTimeMillis(8000L);
         mVoiceCallSessionStats0.onRilSrvccStateChanged(
@@ -1970,6 +2027,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void concurrentCalls_srvcc() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
         doReturn(mImsPhone).when(mPhone).getImsPhone();
         doReturn(new ArrayList(List.of(mImsConnection0, mImsConnection1)))
                 .when(mImsPhone)
@@ -2073,6 +2131,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         // RAT change, LTE to UMTS
         mVoiceCallSessionStats0.setTimeMillis(80000L);
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_UMTS);
+        doReturn(TelephonyManager.NETWORK_TYPE_UMTS).when(mImsStats).getImsVoiceRadioTech();
         mVoiceCallSessionStats0.onServiceStateChanged(mServiceState);
         mVoiceCallSessionStats0.setTimeMillis(85000L);
         mVoiceCallSessionStats0.onRilSrvccStateChanged(
