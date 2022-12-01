@@ -157,6 +157,7 @@ public class NetworkTypeController extends StateMachine {
     private boolean mIsTimerResetEnabledForLegacyStateRRCIdle;
     private int mLtePlusThresholdBandwidth;
     private int mNrAdvancedThresholdBandwidth;
+    private boolean mIncludeLteForNrAdvancedThresholdBandwidth;
     private int[] mAdditionalNrAdvancedBandsList;
     private String mPrimaryTimerState;
     private String mSecondaryTimerState;
@@ -267,6 +268,9 @@ public class NetworkTypeController extends StateMachine {
                 CarrierConfigManager.KEY_LTE_PLUS_THRESHOLD_BANDWIDTH_KHZ_INT);
         mNrAdvancedThresholdBandwidth = CarrierConfigManager.getDefaultConfig().getInt(
                 CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT);
+        mIncludeLteForNrAdvancedThresholdBandwidth = CarrierConfigManager.getDefaultConfig()
+                .getBoolean(CarrierConfigManager
+                        .KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL);
         mEnableNrAdvancedWhileRoaming = CarrierConfigManager.getDefaultConfig().getBoolean(
                 CarrierConfigManager.KEY_ENABLE_NR_ADVANCED_WHILE_ROAMING_BOOL);
 
@@ -302,6 +306,9 @@ public class NetworkTypeController extends StateMachine {
                 mNrAdvancedThresholdBandwidth = b.getInt(
                         CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT,
                         mNrAdvancedThresholdBandwidth);
+                mIncludeLteForNrAdvancedThresholdBandwidth = b.getBoolean(CarrierConfigManager
+                        .KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL,
+                        mIncludeLteForNrAdvancedThresholdBandwidth);
                 mAdditionalNrAdvancedBandsList = b.getIntArray(
                         CarrierConfigManager.KEY_ADDITIONAL_NR_ADVANCED_BANDS_INT_ARRAY);
                 mNrAdvancedCapablePcoId = b.getInt(
@@ -1265,7 +1272,8 @@ public class NetworkTypeController extends StateMachine {
         if (mPhone.getServiceStateTracker().getPhysicalChannelConfigList() != null) {
             bandwidths = mPhone.getServiceStateTracker().getPhysicalChannelConfigList()
                     .stream()
-                    .filter(config -> config.getNetworkType() == TelephonyManager.NETWORK_TYPE_NR)
+                    .filter(config -> mIncludeLteForNrAdvancedThresholdBandwidth
+                            || config.getNetworkType() == TelephonyManager.NETWORK_TYPE_NR)
                     .map(PhysicalChannelConfig::getCellBandwidthDownlinkKhz)
                     .mapToInt(Integer::intValue)
                     .sum();
