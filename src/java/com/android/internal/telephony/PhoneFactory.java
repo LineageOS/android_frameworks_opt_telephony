@@ -609,6 +609,17 @@ public class PhoneFactory {
         pw.decreaseIndent();
         pw.println("++++++++++++++++++++++++++++++++");
 
+        pw.println("sRadioHalCapabilities:");
+        pw.increaseIndent();
+        try {
+            sRadioHalCapabilities.dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
+        pw.decreaseIndent();
+        pw.println("++++++++++++++++++++++++++++++++");
+
         pw.println("LocalLogs:");
         pw.increaseIndent();
         synchronized (sLocalLogs) {
