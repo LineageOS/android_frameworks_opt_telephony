@@ -87,6 +87,7 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
         when(mSmsDispatchersController.isIms()).thenReturn(true);
         mTrackerData = new HashMap<>(1);
         when(mSmsTracker.getData()).thenReturn(mTrackerData);
+        verify(mSmsDispatchersController).setImsManager(mImsManager);
     }
 
     @After
