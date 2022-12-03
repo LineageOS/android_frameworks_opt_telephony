@@ -463,11 +463,7 @@ public class MultiSimSettingController extends Handler {
         // being specified in it. So here we do additional check to make sur we don't miss the
         // subId.
         if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-            if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-                subId = mSubscriptionManagerService.getSubId(phoneId);
-            } else {
-                subId = mSubController.getSubId(phoneId);
-            }
+            subId = SubscriptionManager.getSubscriptionId(phoneId);
             if (SubscriptionManager.isValidSubscriptionId(subId)) {
                 CarrierConfigManager cm = mContext.getSystemService(CarrierConfigManager.class);
                 if (cm != null && cm.getConfigForSubId(subId) != null) {

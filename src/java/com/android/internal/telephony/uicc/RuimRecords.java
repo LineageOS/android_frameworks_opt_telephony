@@ -33,7 +33,6 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.MccTable;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.util.BitwiseInputStream;
@@ -821,7 +820,7 @@ public class RuimRecords extends IccRecords {
         // TODO: The below is hacky since the SubscriptionController may not be ready at this time.
         if (!TextUtils.isEmpty(mMdn)) {
             int phoneId = mParentApp.getUiccProfile().getPhoneId();
-            int subId = SubscriptionController.getInstance().getSubId(phoneId);
+            int subId = SubscriptionManager.getSubscriptionId(phoneId);
             if (SubscriptionManager.isValidSubscriptionId(subId)) {
                 SubscriptionManager.from(mContext).setDisplayNumber(mMdn, subId);
             } else {

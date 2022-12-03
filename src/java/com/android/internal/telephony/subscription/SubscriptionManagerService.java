@@ -22,12 +22,14 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.RequiresPermission;
 import android.app.AppOpsManager;
+import android.app.PendingIntent;
 import android.app.compat.CompatChanges;
 import android.compat.annotation.ChangeId;
 import android.compat.annotation.EnabledSince;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
@@ -59,11 +61,14 @@ import android.util.EventLog;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
+import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CarrierResolver;
 import com.android.internal.telephony.ISetOpportunisticDataCallback;
 import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.MultiSimSettingController;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyPermissions;
 import com.android.internal.telephony.euicc.EuiccController;
@@ -690,6 +695,16 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
+     * Set the phone number retrieved from IMS.
+     *
+     * @param subId Subscription id.
+     * @param numberFromIms The phone number retrieved from IMS.
+     */
+    public void setNumberFromIms(int subId, @NonNull String numberFromIms) {
+        mSubscriptionDatabaseManager.setNumberFromIms(subId, numberFromIms);
+    }
+
+    /**
      * Mark all subscriptions on this SIM slot index inactive.
      *
      * @param simSlotIndex The SIM slot index.
@@ -890,7 +905,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                 Binder.getCallingPid(), Binder.getCallingUid(), callingPackage, callingFeatureId,
                 "getAllSubInfoList")) {
             throw new SecurityException("Need READ_PHONE_STATE, READ_PRIVILEGED_PHONE_STATE, or "
-                    + "carrier privilege to call getAllSubInfoList");
+                    + "carrier privilege");
         }
 
         final long identity = Binder.clearCallingIdentity();
@@ -921,8 +936,29 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     @Override
     @Nullable
+    @RequiresPermission(anyOf = {
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.READ_PRIVILEGED_PHONE_STATE,
+            "carrier privileges",
+    })
     public SubscriptionInfo getActiveSubscriptionInfo(int subId, @NonNull String callingPackage,
             @Nullable String callingFeatureId) {
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext, subId, callingPackage,
+                callingFeatureId, "getActiveSubscriptionInfo")) {
+            throw new SecurityException("Need READ_PHONE_STATE, READ_PRIVILEGED_PHONE_STATE, or "
+                    + "carrier privilege");
+        }
+
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+            throw new IllegalArgumentException("Invalid sub id " + subId);
+        }
+
+        SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
+                .getSubscriptionInfoInternal(subId);
+        if (subInfo.isActive()) {
+            return conditionallyRemoveIdentifiers(subInfo.toSubscriptionInfo(), callingPackage,
+                    callingFeatureId, "getActiveSubscriptionInfo");
+        }
         return null;
     }
 
@@ -966,7 +1002,9 @@ public class SubscriptionManagerService extends ISub.Stub {
         if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext, subId,
                 callingPackage, callingFeatureId,
                 "getActiveSubscriptionInfoForSimSlotIndex")) {
-            throw new SecurityException("Requires READ_PHONE_STATE permission.");
+            throw new SecurityException("Need READ_PHONE_STATE, READ_PRIVILEGED_PHONE_STATE, or "
+                    + "carrier privilege");
+
         }
 
         if (!SubscriptionManager.isValidSlotIndex(slotIndex)) {
@@ -1014,7 +1052,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                 Binder.getCallingPid(), Binder.getCallingUid(), callingPackage, callingFeatureId,
                 "getAllSubInfoList")) {
             throw new SecurityException("Need READ_PHONE_STATE, READ_PRIVILEGED_PHONE_STATE, or "
-                    + "carrier privilege to call getAllSubInfoList");
+                    + "carrier privilege");
         }
 
         final long identity = Binder.clearCallingIdentity();
@@ -1198,17 +1236,88 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
-     * Set display name by simInfo index with name source.
+     * Set display name of a subscription.
      *
-     * @param displayName the display name of SIM card
-     * @param subId the unique SubscriptionInfo index in database
-     * @param nameSource 0: DEFAULT_SOURCE, 1: SIM_SOURCE, 2: USER_INPUT
+     * @param displayName The display name of SIM card.
+     * @param subId The subscription id.
+     * @param nameSource The display name source.
      *
      * @return the number of records updated
      */
     @Override
-    public int setDisplayNameUsingSrc(@NonNull String displayName, int subId, int nameSource) {
-        return 0;
+    public int setDisplayNameUsingSrc(@NonNull String displayName, int subId,
+            @SimDisplayNameSource int nameSource) {
+        enforcePermissions("setDisplayNameUsingSrc", Manifest.permission.MODIFY_PHONE_STATE);
+
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            if (displayName == null) {
+                throw new IllegalArgumentException("displayName is null");
+            }
+
+            if (nameSource < SubscriptionManager.NAME_SOURCE_CARRIER_ID
+                    || nameSource > SubscriptionManager.NAME_SOURCE_SIM_PNN) {
+                throw new IllegalArgumentException("illegal name source " + nameSource);
+            }
+
+            SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
+                    .getSubscriptionInfoInternal(subId);
+
+            if (subInfo == null) {
+                throw new IllegalArgumentException("Cannot find subscription info with sub id "
+                        + subId);
+            }
+
+            if (getNameSourcePriority(subInfo.getDisplayNameSource())
+                    > getNameSourcePriority(nameSource)
+                    || (getNameSourcePriority(subInfo.getDisplayNameSource())
+                    == getNameSourcePriority(nameSource))
+                    && (TextUtils.equals(displayName, subInfo.getDisplayName()))) {
+                log("No need to update the display name. nameSource="
+                        + SubscriptionManager.displayNameSourceToString(nameSource)
+                        + ", existing name=" + subInfo.getDisplayName() + ", source="
+                        + SubscriptionManager.displayNameSourceToString(
+                                subInfo.getDisplayNameSource()));
+                return 0;
+            }
+
+            String nameToSet;
+            if (TextUtils.isEmpty(displayName) || displayName.trim().length() == 0) {
+                nameToSet = mTelephonyManager.getSimOperatorName(subId);
+                if (TextUtils.isEmpty(nameToSet)) {
+                    if (nameSource == SubscriptionManager.NAME_SOURCE_USER_INPUT
+                            && SubscriptionManager.isValidSlotIndex(getSlotIndex(subId))) {
+                        Resources r = Resources.getSystem();
+                        nameToSet = r.getString(R.string.default_card_name,
+                                (getSlotIndex(subId) + 1));
+                    } else {
+                        nameToSet = mContext.getString(SubscriptionManager.DEFAULT_NAME_RES);
+                    }
+                }
+            } else {
+                nameToSet = displayName;
+            }
+
+            mSubscriptionDatabaseManager.setDisplayName(subId, nameToSet);
+            mSubscriptionDatabaseManager.setDisplayNameSource(subId, nameSource);
+
+            // Update the nickname on the eUICC chip if it's an embedded subscription.
+            SubscriptionInfo sub = getSubscriptionInfo(subId);
+            if (sub != null && sub.isEmbedded()) {
+                int cardId = sub.getCardId();
+                log("Updating embedded sub nickname on cardId: " + cardId);
+                mEuiccManager.updateSubscriptionNickname(subId, displayName,
+                        // This PendingIntent simply fulfills the requirement to pass in a callback;
+                        // we don't care about the result (hence 0 requestCode and no action
+                        // specified on the intent).
+                        PendingIntent.getService(mContext, 0 /* requestCode */, new Intent(),
+                                PendingIntent.FLAG_IMMUTABLE /* flags */));
+            }
+
+            return 1;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     /**
@@ -1699,7 +1808,8 @@ public class SubscriptionManagerService extends ISub.Stub {
             @Nullable String callingFeatureId) {
         if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext, subId, callingPackage,
                 callingFeatureId, "isActiveSubId")) {
-            throw new SecurityException("Requires READ_PHONE_STATE permission.");
+            throw new SecurityException("Need READ_PHONE_STATE, READ_PRIVILEGED_PHONE_STATE, or "
+                    + "carrier privilege");
         }
         final long identity = Binder.clearCallingIdentity();
         try {
@@ -1737,10 +1847,88 @@ public class SubscriptionManagerService extends ISub.Stub {
         return 0;
     }
 
+    /**
+     * Returns the phone number for the given {@code subscriptionId} and {@code source},
+     * or an empty string if not available.
+     *
+     * <p>General apps that need to know the phone number should use {@link #getPhoneNumber(int)}
+     * instead. This API may be suitable specific apps that needs to know the phone number from
+     * a specific source. For example, a carrier app needs to know exactly what's on
+     * {@link #PHONE_NUMBER_SOURCE_UICC UICC} and decide if the previously set phone number
+     * of source {@link #PHONE_NUMBER_SOURCE_CARRIER carrier} should be updated.
+     *
+     * <p>The API provides no guarantees of what format the number is in: the format can vary
+     * depending on the {@code source} and the network etc. Programmatic parsing should be done
+     * cautiously, for example, after formatting the number to a consistent format with
+     * {@link android.telephony.PhoneNumberUtils#formatNumberToE164(String, String)}.
+     *
+     * <p>Note the assumption is that one subscription (which usually means one SIM) has
+     * only one phone number. The multiple sources backup each other so hopefully at least one
+     * is availavle. For example, for a carrier that doesn't typically set phone numbers
+     * on {@link SubscriptionManager#PHONE_NUMBER_SOURCE_UICC UICC}, the source
+     * {@link SubscriptionManager#PHONE_NUMBER_SOURCE_IMS IMS} may provide one. Or, a carrier may
+     * decide to provide the phone number via source
+     * {@link SubscriptionManager#PHONE_NUMBER_SOURCE_CARRIER carrier} if neither source UICC nor
+     * IMS is available.
+     *
+     * <p>The availability and correctness of the phone number depends on the underlying source
+     * and the network etc. Additional verification is needed to use this number for
+     * security-related or other sensitive scenarios.
+     *
+     * @param subId The subscription ID.
+     * @param source The source of the phone number.
+     *
+     * @return The phone number, or an empty string if not available.
+     *
+     * @throws IllegalArgumentException if {@code source} or {@code subId} is invalid.
+     * @throws SecurityException if the caller doesn't have permissions required.
+     *
+     * @see SubscriptionManager#PHONE_NUMBER_SOURCE_UICC
+     * @see SubscriptionManager#PHONE_NUMBER_SOURCE_CARRIER
+     * @see SubscriptionManager#PHONE_NUMBER_SOURCE_IMS
+     */
     @Override
-    public String getPhoneNumber(int subId, int source,
+    @NonNull
+    @RequiresPermission(anyOf = {
+            Manifest.permission.READ_PHONE_NUMBERS,
+            Manifest.permission.READ_PRIVILEGED_PHONE_STATE,
+            "carrier privileges",
+    })
+    public String getPhoneNumber(int subId, @PhoneNumberSource int source,
             @NonNull String callingPackage, @Nullable String callingFeatureId) {
-        return null;
+        TelephonyPermissions.enforceAnyPermissionGrantedOrCarrierPrivileges(
+                mContext, subId, Binder.getCallingUid(), "getPhoneNumber",
+                Manifest.permission.READ_PHONE_NUMBERS,
+                Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+
+        final long identity = Binder.clearCallingIdentity();
+
+        SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
+                .getSubscriptionInfoInternal(subId);
+
+        if (subInfo == null) {
+            throw new IllegalArgumentException("Invalid sub id " + subId);
+        }
+
+        try {
+            switch(source) {
+                case SubscriptionManager.PHONE_NUMBER_SOURCE_UICC:
+                    Phone phone = PhoneFactory.getPhone(getPhoneId(subId));
+                    if (phone != null) {
+                        return TextUtils.emptyIfNull(phone.getLine1Number());
+                    } else {
+                        return subInfo.getNumber();
+                    }
+                case SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER:
+                    return subInfo.getNumberFromCarrier();
+                case SubscriptionManager.PHONE_NUMBER_SOURCE_IMS:
+                    return subInfo.getNumberFromIms();
+                default:
+                    throw new IllegalArgumentException("Invalid number source " + source);
+            }
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     @Override

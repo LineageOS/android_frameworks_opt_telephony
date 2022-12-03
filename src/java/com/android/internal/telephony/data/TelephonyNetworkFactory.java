@@ -29,9 +29,7 @@ import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.metrics.NetworkRequestsStats;
-import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
 
@@ -113,11 +111,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
             };
 
     private NetworkCapabilities makeNetworkFilterByPhoneId(int phoneId) {
-        if (mPhone.isSubscriptionManagerServiceEnabled()) {
-            return makeNetworkFilter(SubscriptionManagerService.getInstance().getSubId(phoneId));
-        } else {
-            return makeNetworkFilter(SubscriptionController.getInstance().getSubId(phoneId));
-        }
+        return makeNetworkFilter(SubscriptionManager.getSubscriptionId(phoneId));
     }
 
     /**
@@ -239,13 +233,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
     // watch for phone->subId changes, reapply new filter and let
     // that flow through to apply/revoke of requests
     private void onSubIdChange() {
-        int newSubscriptionId;
-        if (mPhone.isSubscriptionManagerServiceEnabled()) {
-            newSubscriptionId = SubscriptionManagerService.getInstance().getSubId(
-                    mPhone.getPhoneId());
-        } else {
-            newSubscriptionId = SubscriptionController.getInstance().getSubId(mPhone.getPhoneId());
-        }
+        int newSubscriptionId = SubscriptionManager.getSubscriptionId(mPhone.getPhoneId());
         if (mSubscriptionId != newSubscriptionId) {
             if (DBG) logl("onSubIdChange " + mSubscriptionId + "->" + newSubscriptionId);
             mSubscriptionId = newSubscriptionId;
