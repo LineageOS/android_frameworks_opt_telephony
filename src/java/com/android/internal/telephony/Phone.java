@@ -25,8 +25,8 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.hardware.radio.modem.ImeiInfo;
 import android.content.res.Configuration;
+import android.hardware.radio.modem.ImeiInfo;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Build;
@@ -245,8 +245,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_IMS_DEREGISTRATION_TRIGGERED = 65;
     protected static final int EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE = 66;
     protected static final int EVENT_GET_DEVICE_IMEI_DONE = 67;
+    protected static final int EVENT_TRIGGER_NOTIFY_ANBR = 68;
 
-    protected static final int EVENT_LAST = EVENT_GET_DEVICE_IMEI_DONE;
+    protected static final int EVENT_LAST = EVENT_TRIGGER_NOTIFY_ANBR;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
@@ -4987,6 +4988,18 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void triggerEpsFallback(@MmTelFeature.EpsFallbackReason int reason, Message response) {
         mCi.triggerEpsFallback(reason, response);
+    }
+
+    /**
+     * Notifies the recommended bit rate for the indicated logical channel and direction.
+     *
+     * @param mediaType MediaType is used to identify media stream such as audio or video.
+     * @param direction Direction of this packet stream (e.g. uplink or downlink).
+     * @param bitsPerSecond The recommended bit rate for the UE for a specific logical channel and
+     *        a specific direction by NW.
+     */
+    public void triggerNotifyAnbr(int mediaType, int direction, int bitsPerSecond) {
+        mCi.triggerNotifyAnbr(mediaType, direction, bitsPerSecond, null);
     }
 
     /**

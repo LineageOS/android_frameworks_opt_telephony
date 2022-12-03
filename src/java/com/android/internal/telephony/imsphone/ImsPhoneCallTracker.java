@@ -4319,6 +4319,26 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 conn.receivedRtpHeaderExtensions(rtpHeaderExtensionData);
             }
         }
+
+        /**
+         * Access Network Bitrate Recommendation Query (ANBRQ), see 3GPP TS 26.114.
+         * This API triggers radio to send ANBRQ message to the access network to query the desired
+         * bitrate.
+         *
+         * @param imsCall The ImsCall the data was received on.
+         * @param mediaType MediaType is used to identify media stream such as audio or video.
+         * @param direction Direction of this packet stream (e.g. uplink or downlink).
+         * @param bitsPerSecond This value is the bitrate requested by the other party UE through
+         *        RTP CMR, RTCPAPP or TMMBR, and ImsStack converts this value to the MAC bitrate
+         *        (defined in TS36.321, range: 0 ~ 8000 kbit/s).
+         */
+        @Override
+        public void onCallSessionSendAnbrQuery(ImsCall imsCall, int mediaType, int direction,
+                int bitsPerSecond) {
+            log("onCallSessionSendAnbrQuery mediaType=" + mediaType + ", direction="
+                    + direction + ", bitPerSecond=" + bitsPerSecond);
+            handleSendAnbrQuery(mediaType, direction, bitsPerSecond);
+        }
     };
 
     /**
@@ -5835,6 +5855,28 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
         if (connList.isEmpty()) return null;
         return connList.toArray(new SrvccConnection[0]);
+    }
+
+    /** Send the mediaType, direction, bitrate for ANBR Query to the radio */
+    public void handleSendAnbrQuery(int mediaType, int direction, int bitsPerSecond) {
+        mPhone.getDefaultPhone().mCi.sendAnbrQuery(mediaType, direction, bitsPerSecond, null);
+    }
+
+
+    /**
+     * Notifies the recommended bit rate for the indicated logical channel and direction.
+     *
+     * @param mediaType MediaType is used to identify media stream such as audio or video.
+     * @param direction Direction of this packet stream (e.g. uplink or downlink).
+     * @param bitsPerSecond The recommended bit rate for the UE for a specific logical channel and
+     *        a specific direction by NW.
+     */
+    public void triggerNotifyAnbr(int mediaType, int direction, int bitsPerSecond) {
+        ImsCall activeCall = mForegroundCall.getFirstConnection().getImsCall();
+
+        if (activeCall != null) {
+            activeCall.callSessionNotifyAnbr(mediaType, direction, bitsPerSecond);
+        }
     }
 
     private boolean isCallProfileSupported(SrvccCall profile) {
