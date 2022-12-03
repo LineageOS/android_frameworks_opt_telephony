@@ -46,6 +46,7 @@ import android.testing.TestableLooper;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.cat.CatService;
@@ -78,6 +79,7 @@ public class UiccProfileTest extends TelephonyTest {
     private Handler mMockedHandler;
     private UiccCard mUiccCard;
     private SubscriptionInfo mSubscriptionInfo;
+    private ISub mMockedIsub;
 
     private IccCardApplicationStatus composeUiccApplicationStatus(
             IccCardApplicationStatus.AppType appType,
@@ -99,6 +101,13 @@ public class UiccProfileTest extends TelephonyTest {
         mMockedHandler = mock(Handler.class);
         mUiccCard = mock(UiccCard.class);
         mSubscriptionInfo = mock(SubscriptionInfo.class);
+        mMockedIsub = mock(ISub.class);
+
+        doReturn(mMockedIsub).when(mIBinder).queryLocalInterface(anyString());
+        mServiceManagerMockedServices.put("isub", mIBinder);
+
+        doReturn(1).when(mMockedIsub).getSubId(0);
+
          /* initially there are no application available, but the array should not be empty. */
         IccCardApplicationStatus umtsApp = composeUiccApplicationStatus(
                 IccCardApplicationStatus.AppType.APPTYPE_USIM,

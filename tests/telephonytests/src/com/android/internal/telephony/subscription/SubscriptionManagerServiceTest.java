@@ -177,6 +177,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
      */
     private int insertSubscription(@NonNull SubscriptionInfoInternal subInfo) {
         try {
+            mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
             subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                     .setId(SubscriptionManager.INVALID_SUBSCRIPTION_ID).build();
 
@@ -205,6 +206,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
             method = WatchedMapClass.getDeclaredMethod("put", cArgs);
             method.setAccessible(true);
             method.invoke(map, subInfo.getSimSlotIndex(), subId);
+            mContextFixture.removeCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
             return subId;
         } catch (Exception e) {
             fail("Failed to insert subscription. e=" + e);
@@ -492,12 +494,8 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @Test
     public void testSetDefaultVoiceSubId() throws Exception {
-        // Grant MODIFY_PHONE_STATE permission for insertion.
-        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
-        // Remove MODIFY_PHONE_STATE
-        mContextFixture.removeCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
 
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
         // Should fail without MODIFY_PHONE_STATE
@@ -537,12 +535,8 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     @Test
     public void testSetDefaultDataSubId() throws Exception {
         doReturn(false).when(mTelephonyManager).isVoiceCapable();
-        // Grant MODIFY_PHONE_STATE permission for insertion.
-        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
-        // Remove MODIFY_PHONE_STATE
-        mContextFixture.removeCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
 
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
         // Should fail without MODIFY_PHONE_STATE
@@ -581,12 +575,8 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @Test
     public void testSetDefaultSmsSubId() throws Exception {
-        // Grant MODIFY_PHONE_STATE permission for insertion.
-        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
-        // Remove MODIFY_PHONE_STATE
-        mContextFixture.removeCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
 
         // Should fail without MODIFY_PHONE_STATE
         assertThrows(SecurityException.class,
@@ -614,13 +604,9 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @Test
     public void testIsActiveSubId() {
-        // Grant MODIFY_PHONE_STATE permission for insertion.
-        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         insertSubscription(new SubscriptionInfoInternal.Builder(FAKE_SUBSCRIPTION_INFO2)
                 .setSimSlotIndex(SubscriptionManager.INVALID_SIM_SLOT_INDEX).build());
-        // Remove MODIFY_PHONE_STATE
-        mContextFixture.removeCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
 
         // Should fail without READ_PHONE_STATE
         assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
@@ -671,12 +657,8 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @Test
     public void testGetActiveSubscriptionInfoForSimSlotIndex() {
-        // Grant MODIFY_PHONE_STATE permission for insertion.
-        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
-        // Remove MODIFY_PHONE_STATE
-        mContextFixture.removeCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
 
         // Should fail without READ_PHONE_STATE
         assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
@@ -762,5 +744,57 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(subInfo.isEmbedded()).isTrue();
         assertThat(subInfo.isRemovableEmbedded()).isFalse();
         assertThat(subInfo.getNativeAccessRules()).isEqualTo(FAKE_NATIVE_ACCESS_RULES2);
+    }
+
+    @Test
+    public void testGetActiveSubscriptionInfo() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        // Should fail without READ_PHONE_STATE
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .getActiveSubscriptionInfo(1, CALLING_PACKAGE, CALLING_FEATURE));
+
+        // Grant READ_PHONE_STATE permission for insertion.
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
+        SubscriptionInfo subInfo = mSubscriptionManagerServiceUT
+                .getActiveSubscriptionInfoForSimSlotIndex(0, CALLING_PACKAGE,
+                        CALLING_FEATURE);
+        assertThat(subInfo).isNotNull();
+        assertThat(subInfo.getSubscriptionId()).isEqualTo(1);
+        assertThat(subInfo.getIccId()).isEmpty();
+        assertThat(subInfo.getNumber()).isEmpty();
+
+        // Grant carrier privilege for sub 1
+        setCarrierPrivilegesForSubId(true, 1);
+        subInfo = mSubscriptionManagerServiceUT.getActiveSubscriptionInfoForSimSlotIndex(
+                0, CALLING_PACKAGE, CALLING_FEATURE);
+        assertThat(subInfo).isEqualTo(FAKE_SUBSCRIPTION_INFO1.toSubscriptionInfo());
+    }
+
+    @Test
+    public void testSetDisplayNameUsingSrc() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        // Should fail without MODIFY_PHONE_STATE
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .setDisplayNameUsingSrc(FAKE_CARRIER_NAME2, 1,
+                        SubscriptionManager.NAME_SOURCE_CARRIER_ID));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // Carrier ID name source should have lower priority. Should not be able to update the
+        // display name.
+        assertThat(mSubscriptionManagerServiceUT.setDisplayNameUsingSrc(FAKE_CARRIER_NAME2,
+                1, SubscriptionManager.NAME_SOURCE_CARRIER_ID)).isEqualTo(0);
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(1).getDisplayName())
+                .isEqualTo(FAKE_CARRIER_NAME1);
+
+        // User input display name should have highest priority.
+        assertThat(mSubscriptionManagerServiceUT.setDisplayNameUsingSrc(FAKE_CARRIER_NAME2,
+                1, SubscriptionManager.NAME_SOURCE_USER_INPUT)).isEqualTo(1);
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(1).getDisplayName())
+                .isEqualTo(FAKE_CARRIER_NAME2);
     }
 }

@@ -602,18 +602,18 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         // Initialize SMS stats
         mSmsStats = new SmsStats(this);
 
+        mIsSubscriptionManagerServiceEnabled = mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_using_subscription_manager_service);
+        if (isSubscriptionManagerServiceEnabled()) {
+            mSubscriptionManagerService = SubscriptionManagerService.getInstance();
+        }
+
         if (getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             return;
         }
 
         if (TelephonyUtils.IS_DEBUGGABLE) {
             mTelephonyTester = new TelephonyTester(this);
-        }
-
-        mIsSubscriptionManagerServiceEnabled = mContext.getResources().getBoolean(
-                com.android.internal.R.bool.config_using_subscription_manager_service);
-        if (isSubscriptionManagerServiceEnabled()) {
-            mSubscriptionManagerService = SubscriptionManagerService.getInstance();
         }
 
         // Initialize device storage and outgoing SMS usage monitors for SMSDispatchers.
