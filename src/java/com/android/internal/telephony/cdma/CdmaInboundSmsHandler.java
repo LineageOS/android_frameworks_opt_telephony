@@ -194,7 +194,8 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
      * @return true if the message was handled here; false to continue processing
      */
     @Override
-    protected int dispatchMessageRadioSpecific(SmsMessageBase smsb, @SmsSource int smsSource) {
+    protected int dispatchMessageRadioSpecific(SmsMessageBase smsb, @SmsSource int smsSource,
+            int token) {
         SmsMessage sms = (SmsMessage) smsb;
         boolean isBroadcastType = (SmsEnvelope.MESSAGE_TYPE_BROADCAST == sms.getMessageType());
 

@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.app.Activity;
 import android.content.Context;
 import android.os.Binder;
 import android.os.Message;
@@ -249,6 +250,10 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                             mappedResult =
                                     ImsSmsImplBase.DELIVER_STATUS_ERROR_REQUEST_NOT_SUPPORTED;
                             break;
+                        case Activity.RESULT_OK:
+                            // class2 message saving to SIM operation is in progress, defer ack
+                            // until saving to SIM is success/failure
+                            return;
                         default:
                             mappedResult = ImsSmsImplBase.DELIVER_STATUS_ERROR_GENERIC;
                             break;
@@ -264,7 +269,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     } catch (ImsException e) {
                         loge("Failed to acknowledgeSms(). Error: " + e.getMessage());
                     }
-                }, true /* ignoreClass */, true /* isOverIms */);
+                }, true /* ignoreClass */, true /* isOverIms */, token);
             } finally {
                 Binder.restoreCallingIdentity(identity);
             }
@@ -296,6 +301,9 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                             mImsManager = manager;
                             setListeners();
                             mIsImsServiceUp = true;
+
+                            /* set ImsManager */
+                            mSmsDispatchersController.setImsManager(mImsManager);
                         }
                     }
 
@@ -310,6 +318,9 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         synchronized (mLock) {
                             mImsManager = null;
                             mIsImsServiceUp = false;
+
+                            /* unset ImsManager */
+                            mSmsDispatchersController.setImsManager(null);
                         }
                     }
                 }, this::post);

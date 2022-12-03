@@ -192,7 +192,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         initialize();
 
         // verify nothing has been done while there are no inputs
-        assertFalse("data allowed initially", mDataAllowed[0]);
+        assertTrue("data should be always allowed for emergency", mDataAllowed[0]);
         assertFalse("data allowed initially", mDataAllowed[1]);
 
         NetworkRequest internetNetworkRequest = addInternetNetworkRequest(null, 50);
@@ -298,7 +298,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         processAllMessages();
         verify(mActivePhoneSwitchHandler, times(1)).sendMessageAtTime(any(), anyLong());
         clearInvocations(mActivePhoneSwitchHandler);
-        assertFalse("data allowed", mDataAllowed[0]);
+        assertTrue("data not allowed", mDataAllowed[0]);
         assertFalse("data allowed", mDataAllowed[1]);
 
         // 6 gain subscription-specific request
@@ -342,7 +342,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         processAllMessages();
         verify(mActivePhoneSwitchHandler, times(1)).sendMessageAtTime(any(), anyLong());
         clearInvocations(mActivePhoneSwitchHandler);
-        assertFalse("data allowed", mDataAllowed[0]);
+        assertTrue("data not allowed", mDataAllowed[0]);
         assertFalse("data allowed", mDataAllowed[1]);
 
         // 10 don't switch phones when in emergency mode
