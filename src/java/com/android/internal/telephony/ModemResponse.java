@@ -21,6 +21,7 @@ import static android.telephony.TelephonyManager.HAL_SERVICE_MODEM;
 import android.hardware.radio.RadioError;
 import android.hardware.radio.RadioResponseInfo;
 import android.hardware.radio.modem.IRadioModemResponse;
+import android.hardware.radio.modem.ImeiInfo;
 import android.os.SystemClock;
 import android.telephony.ActivityStatsTechSpecificInfo;
 import android.telephony.AnomalyReporter;
@@ -77,6 +78,14 @@ public class ModemResponse extends IRadioModemResponse.Stub {
                 HAL_SERVICE_MODEM, mRil, responseInfo, imei, imeisv, esn, meid);
     }
 
+    /**
+     *
+     * @param responseInfo Response info struct containing response type, serial no. and error
+     * @param imeiInfo imeiInfo object containing ImeiType, device IMEI and IMEISV
+     */
+    public void getImeiResponse(RadioResponseInfo responseInfo, ImeiInfo imeiInfo) {
+        // TODO as part of the framework coding
+    }
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param config Array of HardwareConfig of the radio
