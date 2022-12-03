@@ -174,9 +174,12 @@ public class SmsControllerTest extends TelephonyTest {
     @Test
     public void sendVisualVoicemailSmsForSubscriber_phoneIsNotInEcm() {
         assertFalse(mPhone.isInEcm());
+        int subId = 1;
+        doReturn(true).when(mSubscriptionManager)
+                .isSubscriptionAssociatedWithUser(eq(subId), any());
 
         mSmsControllerUT.sendVisualVoicemailSmsForSubscriber(mCallingPackage,null ,
-                1, null, 0, null, null);
+                subId, null, 0, null, null);
         verify(mIccSmsInterfaceManager).sendTextWithSelfPermissions(any(),
                 any(), any(), any(), any(), any(), any(), eq(false), eq(true));
     }

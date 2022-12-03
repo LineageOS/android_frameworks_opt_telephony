@@ -2217,6 +2217,82 @@ public class SubscriptionControllerTest extends TelephonyTest {
                         SubscriptionManager.DEFAULT_SUBSCRIPTION_ID));
     }
 
+    @Test
+    public void isSubscriptionAssociatedWithUser_withoutPermission() {
+        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
+
+        assertThrows(SecurityException.class,
+                () -> mSubscriptionControllerUT.isSubscriptionAssociatedWithUser(1,
+                        UserHandle.of(UserHandle.USER_SYSTEM)));
+    }
+
+    @Test
+    public void isSubscriptionAssociatedWithUser_noSubscription() {
+        // isSubscriptionAssociatedWithUser should return true if there are no active subscriptions.
+        assertThat(mSubscriptionControllerUT.isSubscriptionAssociatedWithUser(1,
+                UserHandle.of(UserHandle.USER_SYSTEM))).isEqualTo(true);
+    }
+
+    @Test
+    public void isSubscriptionAssociatedWithUser_unknownSubId() {
+        testInsertSim();
+        /* Get SUB ID */
+        int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
+        assertTrue(subIds != null && subIds.length != 0);
+        int unknownSubId = 123;
+
+        assertThat(mSubscriptionControllerUT.isSubscriptionAssociatedWithUser(unknownSubId,
+                UserHandle.of(UserHandle.USER_SYSTEM))).isEqualTo(false);
+    }
+
+    @Test
+    public void isSubscriptionAssociatedWithUser_userAssociatedWithSubscription() {
+        testInsertSim();
+        /* Get SUB ID */
+        int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
+        assertTrue(subIds != null && subIds.length != 0);
+        final int subId = subIds[0];
+
+        mSubscriptionControllerUT.setSubscriptionUserHandle(
+                UserHandle.of(UserHandle.USER_SYSTEM), subId);
+
+        assertThat(mSubscriptionControllerUT.isSubscriptionAssociatedWithUser(subId,
+                UserHandle.of(UserHandle.USER_SYSTEM))).isEqualTo(true);
+    }
+
+    @Test
+    public void isSubscriptionAssociatedWithUser_userNotAssociatedWithSubscription() {
+        testInsertSim();
+        enableGetSubscriptionUserHandle();
+        /* Get SUB ID */
+        int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
+        assertTrue(subIds != null && subIds.length != 0);
+        final int subId = subIds[0];
+
+        mSubscriptionControllerUT.setSubscriptionUserHandle(UserHandle.of(UserHandle.USER_SYSTEM),
+                subId);
+
+        assertThat(mSubscriptionControllerUT.isSubscriptionAssociatedWithUser(subId,
+                UserHandle.of(10))).isEqualTo(false);
+    }
+
+
+    @Test
+    public void getSubscriptionInfoListAssociatedWithUser_withoutPermission() {
+        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
+
+        assertThrows(SecurityException.class,
+                () -> mSubscriptionControllerUT.getSubscriptionInfoListAssociatedWithUser(
+                        UserHandle.of(UserHandle.USER_SYSTEM)));
+    }
+
+    @Test
+    public void getSubscriptionInfoListAssociatedWithUser_noSubscription() {
+        List<SubscriptionInfo> associatedSubInfoList = mSubscriptionControllerUT
+                .getSubscriptionInfoListAssociatedWithUser(UserHandle.of(UserHandle.USER_SYSTEM));
+        assertThat(associatedSubInfoList.size()).isEqualTo(0);
+    }
+
     private void enableGetSubscriptionUserHandle() {
         Resources mResources = mock(Resources.class);
         doReturn(true).when(mResources).getBoolean(
