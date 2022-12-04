@@ -17,6 +17,7 @@
 package com.android.internal.telephony.subscription;
 
 import android.annotation.CallbackExecutor;
+import android.annotation.ColorInt;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.ContentValues;
@@ -510,6 +511,8 @@ public class SubscriptionDatabaseManager extends Handler {
      * when constructing the new {@link SubscriptionInfo}. This should be one of the
      * SubscriptionInfoInternal.Builder.setXxxx method.
      * @param <T> The type of newValue for subscription cache update.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     private <T> void writeDatabaseAndCacheHelper(int subId, @NonNull String columnName,
             @Nullable T newValue,
@@ -544,7 +547,9 @@ public class SubscriptionDatabaseManager extends Handler {
                     }
                 }
             } else {
-                logel("Subscription doesn't exist. subId=" + subId + ", columnName" + columnName);
+                logel("Subscription doesn't exist. subId=" + subId + ", columnName=" + columnName);
+                throw new IllegalArgumentException("Subscription doesn't exist. subId=" + subId
+                        + ", columnName=" + columnName);
             }
         } finally {
             mReadWriteLock.writeLock().unlock();
@@ -555,6 +560,8 @@ public class SubscriptionDatabaseManager extends Handler {
      * Update the database with the {@link SubscriptionInfoInternal}, and also update the cache.
      *
      * @param newSubInfo The new {@link SubscriptionInfoInternal}.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void updateSubscription(@NonNull SubscriptionInfoInternal newSubInfo) {
         Objects.requireNonNull(newSubInfo);
@@ -566,8 +573,8 @@ public class SubscriptionDatabaseManager extends Handler {
             SubscriptionInfoInternal oldSubInfo = mAllSubscriptionInfoInternalCache.get(
                     newSubInfo.getSubscriptionId());
             if (oldSubInfo == null) {
-                throw new RuntimeException("updateSubscription: subscription does not exist. subId="
-                        + subId);
+                throw new IllegalArgumentException("updateSubscription: subscription does not "
+                        + "exist. subId=" + subId);
             }
             if (oldSubInfo.equals(newSubInfo)) return;
 
@@ -589,6 +596,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param iccId The ICCID of the SIM that is associated with this subscription.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setIccId(int subId, @NonNull String iccId) {
         Objects.requireNonNull(iccId);
@@ -602,6 +611,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param simSlotIndex The SIM slot index.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setSimSlotIndex(int subId, int simSlotIndex) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_SIM_SLOT_INDEX, simSlotIndex,
@@ -614,6 +625,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param displayName The display name.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setDisplayName(int subId, @NonNull String displayName) {
         Objects.requireNonNull(displayName);
@@ -627,6 +640,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param carrierName The carrier name.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setCarrierName(int subId, @NonNull String carrierName) {
         Objects.requireNonNull(carrierName);
@@ -640,6 +655,8 @@ public class SubscriptionDatabaseManager extends Handler {
      * @param subId Subscription id.
      * @param displayNameSource The source of the display name.
      *
+     * @throws IllegalArgumentException if the subscription does not exist.
+     *
      * @see SubscriptionInfo#getDisplayName()
      */
     public void setDisplayNameSource(int subId, @SimDisplayNameSource int displayNameSource) {
@@ -652,8 +669,10 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param iconTint The color to be used for tinting the icon when displaying to the user.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
-    public void setIconTint(int subId, int iconTint) {
+    public void setIconTint(int subId, @ColorInt int iconTint) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_COLOR, iconTint,
                 SubscriptionInfoInternal.Builder::setIconTint);
     }
@@ -663,6 +682,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param number the number presented to the user identify this subscription.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setNumber(int subId, @NonNull String number) {
         Objects.requireNonNull(number);
@@ -677,6 +698,8 @@ public class SubscriptionDatabaseManager extends Handler {
      * @param dataRoaming Data roaming mode. Either
      * {@link SubscriptionManager#DATA_ROAMING_ENABLE} or
      * {@link SubscriptionManager#DATA_ROAMING_DISABLE}
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setDataRoaming(int subId, int dataRoaming) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_DATA_ROAMING, dataRoaming,
@@ -688,6 +711,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param mcc The mobile country code.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setMcc(int subId, @NonNull String mcc) {
         Objects.requireNonNull(mcc);
@@ -700,6 +725,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param mnc Mobile network code.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setMnc(int subId, @NonNull String mnc) {
         Objects.requireNonNull(mnc);
@@ -712,6 +739,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param ehplmns EHPLMNs associated with the subscription.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setEhplmns(int subId, @NonNull String[] ehplmns) {
         Objects.requireNonNull(ehplmns);
@@ -724,6 +753,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param hplmns HPLMNs associated with the subscription.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setHplmns(int subId, @NonNull String[] hplmns) {
         Objects.requireNonNull(hplmns);
@@ -736,6 +767,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param isEmbedded {@code true} if the subscription is from eSIM.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setEmbedded(int subId, boolean isEmbedded) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_IS_EMBEDDED, isEmbedded ? 1 : 0,
@@ -747,6 +780,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param cardString The card string of the SIM card.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      *
      * @see SubscriptionInfo#getCardString()
      */
@@ -765,6 +800,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param cardId The card id.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setCardId(int subId, int cardId) {
         // card id does not have a corresponding SimInfo column. So we only update the cache.
@@ -773,7 +810,10 @@ public class SubscriptionDatabaseManager extends Handler {
         mReadWriteLock.writeLock().lock();
         try {
             SubscriptionInfoInternal subInfoCache = mAllSubscriptionInfoInternalCache.get(subId);
-            if (subInfoCache == null) return;
+            if (subInfoCache == null) {
+                throw new IllegalArgumentException("Subscription doesn't exist. subId=" + subId
+                        + ", columnName=cardId");
+            }
             mAllSubscriptionInfoInternalCache.put(subId,
                     new SubscriptionInfoInternal.Builder(subInfoCache)
                             .setCardId(cardId).build());
@@ -788,6 +828,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param nativeAccessRules The native access rules for this subscription.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setNativeAccessRules(int subId, @NonNull UiccAccessRule[] nativeAccessRules) {
         Objects.requireNonNull(nativeAccessRules);
@@ -802,6 +844,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param carrierConfigAccessRules The carrier certificates for this subscription.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setCarrierConfigAccessRules(int subId,
             @NonNull UiccAccessRule[] carrierConfigAccessRules) {
@@ -819,6 +863,8 @@ public class SubscriptionDatabaseManager extends Handler {
      * @param subId Subscription id.
      * @param isRemovableEmbedded {@code true} if the subscription is from the removable
      * embedded SIM.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setRemovableEmbedded(int subId, boolean isRemovableEmbedded) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_IS_REMOVABLE, isRemovableEmbedded ? 1 : 0,
@@ -830,6 +876,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param isEnhanced4GModeEnabled whether enhanced 4G mode is enabled by the user or not.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setEnhanced4GModeEnabled(int subId, boolean isEnhanced4GModeEnabled) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_ENHANCED_4G_MODE_ENABLED,
@@ -842,6 +890,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param isVideoTelephonyEnabled whether video telephony is enabled by the user or not.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setVideoTelephonyEnabled(int subId, boolean isVideoTelephonyEnabled) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_VT_IMS_ENABLED,
@@ -855,6 +905,8 @@ public class SubscriptionDatabaseManager extends Handler {
      * @param subId Subscription id.
      * @param isWifiCallingEnabled whether Wi-Fi calling is enabled by the user or not when the
      * device is not roaming.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setWifiCallingEnabled(int subId, boolean isWifiCallingEnabled) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_WFC_IMS_ENABLED,
@@ -867,6 +919,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param wifiCallingMode Wi-Fi calling mode when the device is not roaming.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setWifiCallingMode(int subId,
             @ImsMmTelManager.WiFiCallingMode int wifiCallingMode) {
@@ -879,6 +933,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param wifiCallingModeForRoaming Wi-Fi calling mode when the device is roaming.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setWifiCallingModeForRoaming(int subId,
             @ImsMmTelManager.WiFiCallingMode int wifiCallingModeForRoaming) {
@@ -893,6 +949,8 @@ public class SubscriptionDatabaseManager extends Handler {
      * @param subId Subscription id.
      * @param isWifiCallingEnabledForRoaming whether Wi-Fi calling is enabled by the user or not
      * when the device is roaming.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setWifiCallingEnabledForRoaming(int subId, boolean isWifiCallingEnabledForRoaming) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_WFC_IMS_ROAMING_ENABLED,
@@ -905,6 +963,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param isOpportunistic {@code true} if the subscription is opportunistic.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setOpportunistic(int subId, boolean isOpportunistic) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_IS_OPPORTUNISTIC, isOpportunistic ? 1 : 0,
@@ -916,6 +976,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param groupUuid The group UUID.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      *
      * @see SubscriptionInfo#getGroupUuid()
      */
@@ -930,6 +992,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param countryIso The ISO country code for the subscription's provider.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setCountryIso(int subId, @NonNull String countryIso) {
         Objects.requireNonNull(countryIso);
@@ -942,6 +1006,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param carrierId The carrier id.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      *
      * @see TelephonyManager#getSimCarrierId()
      */
@@ -956,6 +1022,8 @@ public class SubscriptionDatabaseManager extends Handler {
      * @param subId Subscription id.
      * @param profileClass the profile class populated from the profile metadata if present.
      *
+     * @throws IllegalArgumentException if the subscription does not exist.
+     *
      * @see SubscriptionInfo#getProfileClass()
      */
     public void setProfileClass(int subId, @ProfileClass int profileClass) {
@@ -968,6 +1036,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param type Subscription type.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setSubscriptionType(int subId, @SubscriptionType int type) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_SUBSCRIPTION_TYPE, type,
@@ -979,6 +1049,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param groupOwner Owner package of group the subscription belongs to.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setGroupOwner(int subId, @NonNull String groupOwner) {
         Objects.requireNonNull(groupOwner);
@@ -991,6 +1063,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param enabledMobileDataPolicies The enabled mobile data policies.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setEnabledMobileDataPolicies(int subId, @NonNull String enabledMobileDataPolicies) {
         Objects.requireNonNull(enabledMobileDataPolicies);
@@ -1004,6 +1078,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param imsi The IMSI.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setImsi(int subId, @NonNull String imsi) {
         Objects.requireNonNull(imsi);
@@ -1017,6 +1093,8 @@ public class SubscriptionDatabaseManager extends Handler {
      * @param subId Subscription id.
      * @param areUiccApplicationsEnabled {@code true} if Uicc applications are configured to
      * enable.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setUiccApplicationsEnabled(int subId, boolean areUiccApplicationsEnabled) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_UICC_APPLICATIONS_ENABLED,
@@ -1030,6 +1108,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param isRcsUceEnabled If the user enabled RCS UCE for this subscription.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setRcsUceEnabled(int subId, boolean isRcsUceEnabled) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_IMS_RCS_UCE_ENABLED,
@@ -1042,6 +1122,8 @@ public class SubscriptionDatabaseManager extends Handler {
      * @param subId Subscription id.
      * @param isCrossSimCallingEnabled If the user enabled cross SIM calling for this
      * subscription.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setCrossSimCallingEnabled(int subId, boolean isCrossSimCallingEnabled) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_CROSS_SIM_CALLING_ENABLED,
@@ -1054,6 +1136,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param rcsConfig The RCS config for this subscription.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setRcsConfig(int subId, @NonNull byte[] rcsConfig) {
         Objects.requireNonNull(rcsConfig);
@@ -1066,11 +1150,10 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param allowedNetworkTypesForReasons The allowed network types for reasons in string
-     * format. The format is
-     * "[reason]=[network types bitmask], [reason]=[network types bitmask], ..."
+     * format. The format is "[reason]=[network types bitmask], [reason]=[network types bitmask],
+     * ...". For example, "user=1239287394, thermal=298791239, carrier=3456812312".
      *
-     * For example, "user=1239287394, thermal=298791239, carrier=3456812312".
-     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setAllowedNetworkTypesForReasons(int subId,
             @NonNull String allowedNetworkTypesForReasons) {
@@ -1085,6 +1168,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param deviceToDeviceStatusSharingPreference Device to device sharing status.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setDeviceToDeviceStatusSharingPreference(int subId,
             @DeviceToDeviceStatusSharingPreference int deviceToDeviceStatusSharingPreference) {
@@ -1098,6 +1183,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param isVoImsOptInEnabled Whether the user has opted-in voice over IMS.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setVoImsOptInEnabled(int subId, boolean isVoImsOptInEnabled) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_VOIMS_OPT_IN_STATUS,
@@ -1111,6 +1198,8 @@ public class SubscriptionDatabaseManager extends Handler {
      * @param subId Subscription id.
      * @param deviceToDeviceStatusSharingContacts contacts information that allow device to
      * device sharing.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setDeviceToDeviceStatusSharingContacts(int subId,
             @NonNull String deviceToDeviceStatusSharingContacts) {
@@ -1125,6 +1214,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param isNrAdvancedCallingEnabled Whether the user has enabled NR advanced calling.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setNrAdvancedCallingEnabled(int subId, boolean isNrAdvancedCallingEnabled) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED,
@@ -1137,6 +1228,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param numberFromCarrier The phone number retrieved from carrier.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setNumberFromCarrier(int subId, @NonNull String numberFromCarrier) {
         Objects.requireNonNull(numberFromCarrier);
@@ -1149,6 +1242,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param numberFromIms The phone number retrieved from IMS.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setNumberFromIms(int subId, @NonNull String numberFromIms) {
         Objects.requireNonNull(numberFromIms);
@@ -1161,6 +1256,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param portIndex The port index of the Uicc card.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setPortIndex(int subId, int portIndex) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_PORT_INDEX, portIndex,
@@ -1172,6 +1269,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param usageSetting Subscription's preferred usage setting.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setUsageSetting(int subId, @UsageSetting int usageSetting) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_USAGE_SETTING, usageSetting,
@@ -1183,6 +1282,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param lastUsedTPMessageReference Last used TP message reference.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setLastUsedTPMessageReference(int subId, int lastUsedTPMessageReference) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_TP_MESSAGE_REF,
@@ -1195,6 +1296,8 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @param subId Subscription id.
      * @param userId The user id associated with this subscription.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
      */
     public void setUserId(int subId, int userId) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_USER_HANDLE, userId,

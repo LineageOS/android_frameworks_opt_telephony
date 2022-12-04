@@ -194,6 +194,9 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
             method.setAccessible(true);
             int subId = (int) method.invoke(sdbm, subInfo);
 
+            // Insertion is sync, but the onSubscriptionChanged callback is handled by the handler.
+            processAllMessages();
+
             Class<?> WatchedMapClass = Class.forName("com.android.internal.telephony.subscription"
                     + ".SubscriptionManagerService$WatchedMap");
             field = SubscriptionManagerService.class.getDeclaredField("mSlotIndexToSubId");
@@ -333,7 +336,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         doReturn(new int[]{1, 2}).when(mSubscriptionManager).getCompleteActiveSubscriptionIdList();
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
-        processAllMessages();
 
         verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(2));
 
@@ -811,5 +813,25 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
         assertThat(mSubscriptionManagerServiceUT.getActiveSubInfoCount(
                 CALLING_PACKAGE, CALLING_FEATURE)).isEqualTo(2);
+    }
+
+    @Test
+    public void testSetIconTint() throws Exception {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        Mockito.clearInvocations(mMockedSubscriptionManagerServiceCallback);
+
+        // Should fail without MODIFY_PHONE_STATE
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .setIconTint(1, 12345));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+        mSubscriptionManagerServiceUT.setIconTint(1, 12345);
+        processAllMessages();
+
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1);
+        assertThat(subInfo).isNotNull();
+        assertThat(subInfo.getIconTint()).isEqualTo(12345);
+        verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(1));
     }
 }
