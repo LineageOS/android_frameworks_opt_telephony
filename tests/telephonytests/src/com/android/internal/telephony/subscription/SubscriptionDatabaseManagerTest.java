@@ -427,6 +427,30 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
     }
 
     @Test
+    public void testUpdateSubscriptionSync() throws Exception {
+        mContextFixture.putBooleanResource(com.android.internal.R.bool
+                .config_subscription_database_async_update, false);
+        mDatabaseManagerUT = new SubscriptionDatabaseManager(mContext, Looper.myLooper(),
+                mSubscriptionDatabaseManagerCallback);
+
+        assertThat(insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1).getSubscriptionId())
+                .isEqualTo(1);
+        SubscriptionInfoInternal subInfo = new SubscriptionInfoInternal
+                .Builder(FAKE_SUBSCRIPTION_INFO2)
+                .setId(1)
+                .build();
+        mDatabaseManagerUT.updateSubscription(subInfo);
+
+        verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+        Mockito.clearInvocations(mSubscriptionDatabaseManagerCallback);
+
+        // Same sub info again. Should not trigger callback
+        mDatabaseManagerUT.updateSubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, never()).onSubscriptionChanged(anyInt());
+    }
+
+    @Test
     public void testUpdateIccId() throws Exception {
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setIccId(subInfo.getSubscriptionId(), FAKE_ICCID2);

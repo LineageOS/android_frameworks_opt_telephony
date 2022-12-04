@@ -62,9 +62,9 @@ import java.util.function.Function;
 
 /**
  * The subscription database manager is the wrapper of {@link SimInfo}
- * table. It's a full memory cache of the entire subscription database, and it's intended to run
- * on a separate thread to perform asynchronous database update. The database's cache allows
- * multi threads to read simultaneously, if no write is ongoing.
+ * table. It's a full memory cache of the entire subscription database, and the update can be
+ * asynchronously or synchronously. The database's cache allows multi threads to read
+ * simultaneously, if no write is ongoing.
  *
  * Note that from Android 14, directly writing into the subscription database through content
  * resolver with {@link SimInfo#CONTENT_URI} will cause cache/db out of sync. All the read/write
@@ -247,6 +247,9 @@ public class SubscriptionDatabaseManager extends Handler {
     @NonNull
     private final ReadWriteLock mReadWriteLock = new ReentrantReadWriteLock();
 
+    /** Indicating whether access the database asynchronously or not. */
+    private final boolean mAsyncMode;
+
     /** Local log for most important debug messages. */
     @NonNull
     private final LocalLog mLocalLog = new LocalLog(128);
@@ -334,6 +337,8 @@ public class SubscriptionDatabaseManager extends Handler {
         mContext = context;
         mCallback = callback;
         mUiccController = UiccController.getInstance();
+        mAsyncMode = mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_subscription_database_async_update);
         loadFromDatabase();
     }
 
@@ -458,31 +463,39 @@ public class SubscriptionDatabaseManager extends Handler {
     }
 
     /**
-     * Update a subscription in database asynchronously.
+     * Update a subscription in the database (synchronously or asynchronously).
      *
      * @param subId The subscription id of the subscription to be updated.
      * @param contentValues The fields to be update.
+     *
+     * @return The number of rows updated. Note if the database is configured as asynchronously
+     * update, then this will be always 1.
      */
-    private void updateDatabaseAsync(int subId, @NonNull ContentValues contentValues) {
-        logv("updateDatabaseAsync: prepare to update sub " + subId);
-        // Perform the update in the handler thread asynchronously.
+    private int updateDatabase(int subId, @NonNull ContentValues contentValues) {
+        logv("updateDatabase: prepare to update sub " + subId);
 
         if (!mDatabaseLoaded) {
-            logel("Database has not been loaded. Can't update database at this point. "
-                    + "contentValues=" + contentValues);
+            logel("updateDatabase: Database has not been loaded. Can't update database at this "
+                    + "point. contentValues=" + contentValues);
+            return 0;
         }
 
-        post(() -> {
-            int rowsUpdated = mContext.getContentResolver().update(Uri.withAppendedPath(
+        if (mAsyncMode) {
+            // Perform the update in the handler thread asynchronously.
+            post(() -> {
+                mContext.getContentResolver().update(Uri.withAppendedPath(
+                        SimInfo.CONTENT_URI, String.valueOf(subId)), contentValues, null, null);
+                logv("updateDatabase: async updated subscription in the database."
+                            + " subId=" + subId + ", contentValues= " + contentValues.getValues());
+            });
+            return 1;
+        } else {
+            logv("updateDatabase: sync updated subscription in the database."
+                    + " subId=" + subId + ", contentValues= " + contentValues.getValues());
+
+            return mContext.getContentResolver().update(Uri.withAppendedPath(
                     SimInfo.CONTENT_URI, String.valueOf(subId)), contentValues, null, null);
-            if (rowsUpdated == 1) {
-                logv("updateDatabaseAsync: Successfully updated subscription in the database. "
-                        + "subId=" + subId + ", contentValues= " + contentValues.getValues());
-            } else {
-                logel("updateDatabaseAsync: Unexpected update result. rowsUpdated=" + rowsUpdated
-                        + ", contentValues=" + contentValues);
-            }
-        });
+        }
     }
 
     /**
@@ -522,14 +535,13 @@ public class SubscriptionDatabaseManager extends Handler {
                     // builder.setXxxxxx(newValue);
                     builder = builderSetMethod.apply(builder, newValue);
 
-                    // Update the subscription database cache.
-                    mAllSubscriptionInfoInternalCache.put(subId, builder.build());
-                    mCallback.invokeFromExecutor(() -> mCallback.onSubscriptionChanged(subId));
-
                     // Prepare the content value for update.
                     contentValues.putObject(columnName, newValue);
-                    // Writing into the database is slow. So do this asynchronously.
-                    updateDatabaseAsync(subId, contentValues);
+                    if (updateDatabase(subId, contentValues) > 0) {
+                        // Update the subscription database cache.
+                        mAllSubscriptionInfoInternalCache.put(subId, builder.build());
+                        mCallback.invokeFromExecutor(() -> mCallback.onSubscriptionChanged(subId));
+                    }
                 }
             } else {
                 logel("Subscription doesn't exist. subId=" + subId + ", columnName" + columnName);
@@ -558,14 +570,15 @@ public class SubscriptionDatabaseManager extends Handler {
                         + subId);
             }
             if (oldSubInfo.equals(newSubInfo)) return;
-            mAllSubscriptionInfoInternalCache.put(subId, newSubInfo);
-            mCallback.invokeFromExecutor(() -> mCallback.onSubscriptionChanged(subId));
-            if (oldSubInfo.areUiccApplicationsEnabled()
-                    != newSubInfo.areUiccApplicationsEnabled()) {
-                mCallback.invokeFromExecutor(() -> mCallback.onUiccApplicationsEnabled(subId));
+
+            if (updateDatabase(subId, createDeltaContentValues(oldSubInfo, newSubInfo)) > 0) {
+                mAllSubscriptionInfoInternalCache.put(subId, newSubInfo);
+                mCallback.invokeFromExecutor(() -> mCallback.onSubscriptionChanged(subId));
+                if (oldSubInfo.areUiccApplicationsEnabled()
+                        != newSubInfo.areUiccApplicationsEnabled()) {
+                    mCallback.invokeFromExecutor(() -> mCallback.onUiccApplicationsEnabled(subId));
+                }
             }
-            // Writing into the database is slow. So do this asynchronously.
-            updateDatabaseAsync(subId, createDeltaContentValues(oldSubInfo, newSubInfo));
         } finally {
             mReadWriteLock.writeLock().unlock();
         }
@@ -760,6 +773,7 @@ public class SubscriptionDatabaseManager extends Handler {
         mReadWriteLock.writeLock().lock();
         try {
             SubscriptionInfoInternal subInfoCache = mAllSubscriptionInfoInternalCache.get(subId);
+            if (subInfoCache == null) return;
             mAllSubscriptionInfoInternalCache.put(subId,
                     new SubscriptionInfoInternal.Builder(subInfoCache)
                             .setCardId(cardId).build());
@@ -1192,7 +1206,7 @@ public class SubscriptionDatabaseManager extends Handler {
      */
     private void loadFromDatabase() {
         // Perform the task in the handler thread.
-        post(() -> {
+        Runnable r = () -> {
             try (Cursor cursor = mContext.getContentResolver().query(
                     SimInfo.CONTENT_URI, null, null, null, null)) {
                 mReadWriteLock.writeLock().lock();
@@ -1213,7 +1227,15 @@ public class SubscriptionDatabaseManager extends Handler {
                     mReadWriteLock.writeLock().unlock();
                 }
             }
-        });
+        };
+
+        if (mAsyncMode) {
+            // Load the database asynchronously.
+            post(r);
+        } else {
+            // Load the database synchronously.
+            r.run();
+        }
     }
 
     /**
@@ -1361,7 +1383,12 @@ public class SubscriptionDatabaseManager extends Handler {
      */
     @NonNull
     public List<SubscriptionInfoInternal> getAllSubscriptions() {
-        return new ArrayList<>(mAllSubscriptionInfoInternalCache.values());
+        mReadWriteLock.readLock().lock();
+        try {
+            return new ArrayList<>(mAllSubscriptionInfoInternalCache.values());
+        } finally {
+            mReadWriteLock.readLock().unlock();
+        }
     }
 
     /**
