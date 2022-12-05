@@ -61,6 +61,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -70,6 +71,8 @@ public class CarrierSignalAgentTest extends TelephonyTest {
 
     private CarrierSignalAgent mCarrierSignalAgentUT;
     private PersistableBundle mBundle;
+    private CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener;
+
     private static final String PCO_RECEIVER = "pak/PCO_RECEIVER";
     private static final String DC_ERROR_RECEIVER = "pak/DC_ERROR_RECEIVER";
     private static final String LEGACY_RECEIVER = "old.pkg/LEGACY_RECEIVER";
@@ -103,6 +106,7 @@ public class CarrierSignalAgentTest extends TelephonyTest {
         FAKE_DEFAULT_NETWORK_INTENT.putExtra(
                 TelephonyManager.EXTRA_DEFAULT_NETWORK_AVAILABLE, true);
     }
+    private static final int PHONE_ID = 0;
 
     // Mocked classes
     ResolveInfo mResolveInfo;
@@ -112,8 +116,17 @@ public class CarrierSignalAgentTest extends TelephonyTest {
         logd("CarrierSignalAgentTest +Setup!");
         super.setUp(getClass().getSimpleName());
         mResolveInfo = mock(ResolveInfo.class);
+        doReturn((Executor) Runnable::run).when(mContext).getMainExecutor();
         mBundle = mContextFixture.getCarrierConfigBundle();
+        when(mCarrierConfigManager.getConfigForSubId(anyInt(), any())).thenReturn(mBundle);
+
+        // Capture listener to emulate the carrier config change notification used later
+        ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
+                ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
         mCarrierSignalAgentUT = new CarrierSignalAgent(mPhone);
+        verify(mCarrierConfigManager).registerCarrierConfigChangeListener(any(),
+                listenerArgumentCaptor.capture());
+        mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(0);
 
         ComponentName legacyReceiverComponent = ComponentName.unflattenFromString(LEGACY_RECEIVER);
         ApplicationInfo fakeLegacyApplicationInfo = new ApplicationInfo();
@@ -159,9 +172,10 @@ public class CarrierSignalAgentTest extends TelephonyTest {
         verify(mContext, times(count)).sendBroadcast(mCaptorIntent.capture());
 
         // Trigger carrier config reloading
-        mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        mCarrierConfigChangeListener.onCarrierConfigChanged(PHONE_ID,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
         processAllMessages();
-        count++;
 
         // Verify no broadcast has been sent due to no manifest receivers
         mCarrierSignalAgentUT.notifyCarrierSignalReceivers(intent);
@@ -208,14 +222,16 @@ public class CarrierSignalAgentTest extends TelephonyTest {
                 });
 
         // Trigger carrier config reloading
-        mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        mCarrierConfigChangeListener.onCarrierConfigChanged(PHONE_ID,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
         processAllMessages();
 
         // Verify broadcast has been sent to two different registered manifest receivers
         doReturn(new ArrayList<>(Arrays.asList(mResolveInfo)))
                 .when(mPackageManager).queryBroadcastReceivers((Intent) any(), anyInt());
 
-        int broadcastCount = 1;
+        int broadcastCount = 0;
         {
             mCarrierSignalAgentUT.notifyCarrierSignalReceivers(new Intent(FAKE_PCO_INTENT));
             broadcastCount++;
@@ -325,9 +341,10 @@ public class CarrierSignalAgentTest extends TelephonyTest {
         verify(mContext, times(count)).sendBroadcast(mCaptorIntent.capture());
 
         // Trigger carrier config reloading
-        mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        mCarrierConfigChangeListener.onCarrierConfigChanged(PHONE_ID,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
         processAllMessages();
-        count++;
 
         // Verify broadcast has been sent to registered components
         mCarrierSignalAgentUT.notifyCarrierSignalReceivers(intent);
@@ -362,9 +379,10 @@ public class CarrierSignalAgentTest extends TelephonyTest {
                 argThat(o -> Objects.equals(o.getAction(), ACTION_CARRIER_SIGNAL_PCO_VALUE)),
                 anyInt());
 
-        mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        mCarrierConfigChangeListener.onCarrierConfigChanged(PHONE_ID,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
         processAllMessages();
-        count++;
 
         // Wake signal for PAK_PCO_RECEIVER
         mCarrierSignalAgentUT.notifyCarrierSignalReceivers(
@@ -417,7 +435,9 @@ public class CarrierSignalAgentTest extends TelephonyTest {
                 CarrierConfigManager.KEY_CARRIER_APP_WAKE_SIGNAL_CONFIG_STRING_ARRAY,
                 new String[]{ PCO_RECEIVER + ":" + ACTION_CARRIER_SIGNAL_PCO_VALUE + ","
                         + ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED });
-        mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        mCarrierConfigChangeListener.onCarrierConfigChanged(PHONE_ID,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
         processAllMessages();
         // verify no reset action on initial config load
         verify(mCarrierActionAgent, times(0)).sendMessageAtTime(any(Message.class), anyLong());
@@ -427,7 +447,9 @@ public class CarrierSignalAgentTest extends TelephonyTest {
                 CarrierConfigManager.KEY_CARRIER_APP_WAKE_SIGNAL_CONFIG_STRING_ARRAY,
                 new String[]{ PCO_RECEIVER + ":" + ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED
                         + "," + ACTION_CARRIER_SIGNAL_PCO_VALUE});
-        mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        mCarrierConfigChangeListener.onCarrierConfigChanged(PHONE_ID,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
         processAllMessages();
         // verify no reset action for the same config (different order)
         verify(mCarrierActionAgent, times(0)).sendMessageAtTime(any(Message.class), anyLong());
@@ -437,7 +459,9 @@ public class CarrierSignalAgentTest extends TelephonyTest {
                 CarrierConfigManager.KEY_CARRIER_APP_WAKE_SIGNAL_CONFIG_STRING_ARRAY,
                 new String[]{ DC_ERROR_RECEIVER + ":" + ACTION_CARRIER_SIGNAL_REQUEST_NETWORK_FAILED
                         + "," + ACTION_CARRIER_SIGNAL_PCO_VALUE});
-        mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        mCarrierConfigChangeListener.onCarrierConfigChanged(PHONE_ID,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
         processAllMessages();
         // verify there is no reset action
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
