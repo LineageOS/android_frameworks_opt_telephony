@@ -973,6 +973,20 @@ public class SubscriptionInfoInternal {
         return mIsGroupDisabled;
     }
 
+    /**
+     * @return {@code true} if the subscription is from the actively used SIM.
+     */
+    public boolean isActive() {
+        return mSimSlotIndex >= 0 || mType == SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM;
+    }
+
+    /**
+     * @return {@code true} if the subscription is visible to the user.
+     */
+    public boolean isVisible() {
+        return !isOpportunistic() || TextUtils.isEmpty(mGroupUuid);
+    }
+
     /** @return converted {@link SubscriptionInfo}. */
     @NonNull
     public SubscriptionInfo toSubscriptionInfo() {
