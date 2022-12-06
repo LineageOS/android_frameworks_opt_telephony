@@ -34,6 +34,7 @@ import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager.DataEnabledReason;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.MediaQualityStatus;
 
 import java.util.List;
 
@@ -116,6 +117,9 @@ public interface PhoneNotifier {
 
     /** Notify of a change to the call quality of an active foreground call. */
     void notifyCallQualityChanged(Phone sender, CallQuality callQuality, int callNetworkType);
+
+    /** Notify of a change to the media quality status of an active foreground call. */
+    void notifyMediaQualityStatusChanged(Phone sender, MediaQualityStatus status);
 
     /** Notify registration failed */
     void notifyRegistrationFailed(Phone sender, @NonNull CellIdentity cellIdentity,

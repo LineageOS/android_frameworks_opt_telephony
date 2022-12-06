@@ -30,6 +30,7 @@ import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.MediaQualityStatus;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -137,6 +138,10 @@ abstract class ImsPhoneBase extends Phone {
 
     public void onCallQualityChanged(CallQuality callQuality, int callNetworkType) {
         mNotifier.notifyCallQualityChanged(this, callQuality, callNetworkType);
+    }
+
+    public void onMediaQualityStatusChanged(MediaQualityStatus status) {
+        mNotifier.notifyMediaQualityStatusChanged(this, status);
     }
 
     @Override
