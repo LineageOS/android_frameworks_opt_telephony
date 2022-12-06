@@ -1453,6 +1453,18 @@ public class UiccController extends Handler {
         return mUseRemovableEsimAsDefault;
     }
 
+    /**
+     * Returns the MEP mode supported by the UiccSlot associated with slotIndex.
+     * @param slotIndex physical slot index
+     * @return MultipleEnabledProfilesMode supported by the slot
+     */
+    public IccSlotStatus.MultipleEnabledProfilesMode getSupportedMepMode(int slotIndex) {
+        synchronized (mLock) {
+            UiccSlot slot = getUiccSlot(slotIndex);
+            return slot != null ? slot.getSupportedMepMode()
+                    : IccSlotStatus.MultipleEnabledProfilesMode.NONE;
+        }
+    }
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void log(String string) {

@@ -1310,6 +1310,13 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
+    public void iccTransmitApduLogicalChannel(int channel, int cla, int instruction, int p1,
+                                              int p2, int p3, String data,
+                                              boolean isEs10Command, Message response) {
+
+    }
+
+    @Override
     public void iccTransmitApduBasicChannel(int cla, int instruction, int p1, int p2, int p3,
                                             String data, Message response) {
 

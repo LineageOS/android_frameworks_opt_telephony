@@ -2127,6 +2127,27 @@ public interface CommandsInterface {
             int p1, int p2, int p3, String data, Message response);
 
     /**
+     * Exchange APDUs with the SIM on a logical channel.
+     *
+     * Input parameters equivalent to TS 27.007 AT+CGLA command.
+     *
+     * @param channel Channel id of the channel to use for communication. Has to
+     *            be greater than zero.
+     * @param cla Class of the APDU command.
+     * @param instruction Instruction of the APDU command.
+     * @param p1 P1 value of the APDU command.
+     * @param p2 P2 value of the APDU command.
+     * @param p3 P3 value of the APDU command. If p3 is negative a 4 byte APDU
+     *            is sent to the SIM.
+     * @param data Data to be sent with the APDU.
+     * @param isEs10Command whether APDU command is an ES10 command or a regular APDU
+     * @param response Callback message. response.obj.userObj will be
+     *            an IccIoResult on success.
+     */
+    void iccTransmitApduLogicalChannel(int channel, int cla, int instruction,
+            int p1, int p2, int p3, String data, boolean isEs10Command, Message response);
+
+    /**
      * Exchange APDUs with the SIM on a basic channel.
      *
      * Input parameters equivalent to TS 27.007 AT+CSIM command.
