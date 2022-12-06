@@ -28,6 +28,9 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
+import android.app.compat.CompatChanges;
+import android.compat.annotation.ChangeId;
+import android.compat.annotation.EnabledSince;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -161,6 +164,15 @@ public class SubscriptionController extends ISub.Stub {
     protected Context mContext;
     protected TelephonyManager mTelephonyManager;
     protected UiccController mUiccController;
+
+    /**
+     * Apps targeting on Android T and beyond will get an empty list if there is no access to device
+     * identifiers nor has carrier privileges when calling
+     * SubscriptionManager#getSubscriptionsInGroup.
+     */
+    @ChangeId
+    @EnabledSince(targetSdkVersion = Build.VERSION_CODES.TIRAMISU)
+    public static final long REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID = 213902861L;
 
     private AppOpsManager mAppOps;
 
@@ -3525,9 +3537,7 @@ public class SubscriptionController extends ISub.Stub {
         try {
             int ret = setSubscriptionProperty(subId, SubscriptionManager.IS_OPPORTUNISTIC,
                     String.valueOf(opportunistic ? 1 : 0));
-
             if (ret != 0) notifySubscriptionInfoChanged();
-
             return ret;
         } finally {
             Binder.restoreCallingIdentity(token);
@@ -3544,8 +3554,15 @@ public class SubscriptionController extends ISub.Stub {
 
         SubscriptionManager subManager = (SubscriptionManager)
                 mContext.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
-        List<SubscriptionInfo> subInfo = getSubInfo(
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + subId, null);
+
+        List<SubscriptionInfo> subInfo;
+        long token = Binder.clearCallingIdentity();
+        try {
+            subInfo = getSubInfo(
+                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + subId, null);
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
 
         try {
             if (!isActiveSubId(subId) && subInfo != null && subInfo.size() == 1
@@ -3960,9 +3977,19 @@ public class SubscriptionController extends ISub.Stub {
      * Get subscriptionInfo list of subscriptions that are in the same group of given subId.
      * See {@link #createSubscriptionGroup(int[], String)} for more details.
      *
-     * Caller will either have {@link android.Manifest.permission#READ_PHONE_STATE}
-     * permission or had carrier privilege permission on the subscription.
+     * Caller must have {@link android.Manifest.permission#READ_PHONE_STATE}
+     * or carrier privilege permission on the subscription.
      * {@link TelephonyManager#hasCarrierPrivileges(int)}
+     *
+     * <p>Starting with API level 33, the caller needs READ_PHONE_STATE and access to device
+     * identifiers to get the list of subscriptions associated with a group UUID.
+     * This method can be invoked if one of the following requirements is met:
+     * <ul>
+     *     <li>If the app has carrier privilege permission.
+     *     {@link TelephonyManager#hasCarrierPrivileges()}
+     *     <li>If the app has {@link android.Manifest.permission#READ_PHONE_STATE} and
+     *     access to device identifiers.
+     * </ul>
      *
      * @throws SecurityException if the caller doesn't meet the requirements
      *             outlined above.
@@ -3990,6 +4017,21 @@ public class SubscriptionController extends ISub.Stub {
             Binder.restoreCallingIdentity(identity);
         }
 
+        // If the calling app neither has carrier privileges nor READ_PHONE_STATE and access to
+        // device identifiers, it will return an empty list.
+        if (CompatChanges.isChangeEnabled(
+                REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID, Binder.getCallingUid())) {
+            try {
+                if (!TelephonyPermissions.checkCallingOrSelfReadDeviceIdentifiers(mContext,
+                        callingPackage, callingFeatureId, "getSubscriptionsInGroup")) {
+                    EventLog.writeEvent(0x534e4554, "213902861", Binder.getCallingUid());
+                    return new ArrayList<>();
+                }
+            } catch (SecurityException e) {
+                EventLog.writeEvent(0x534e4554, "213902861", Binder.getCallingUid());
+                return new ArrayList<>();
+            }
+        }
         return subInfoList.stream().filter(info -> {
             if (!groupUuid.equals(info.getGroupUuid())) return false;
             int subId = info.getSubscriptionId();

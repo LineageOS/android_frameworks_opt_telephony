@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import android.os.Build;
+
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.telephony.Rlog;
 
@@ -52,6 +54,12 @@ public class DebugService {
                 case "--saveatoms":
                     log("Saving atoms..");
                     PhoneFactory.getMetricsCollector().getAtomsStorage().flushAtoms();
+                    return;
+                case "--clearatoms":
+                    if (Build.IS_DEBUGGABLE) {
+                        log("Clearing atoms..");
+                        PhoneFactory.getMetricsCollector().getAtomsStorage().clearAtoms();
+                    }
                     return;
             }
         }

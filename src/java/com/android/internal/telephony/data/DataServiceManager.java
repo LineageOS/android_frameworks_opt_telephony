@@ -760,12 +760,17 @@ public class DataServiceManager extends Handler {
      * @param onCompleteMessage The result callback for this request.
      */
     public void startHandover(int cid, @NonNull Message onCompleteMessage) {
-        DataServiceCallbackWrapper callback =
-                setupCallbackHelper("startHandover", onCompleteMessage);
-        if (callback == null) {
-            loge("startHandover: callback == null");
+        if (DBG) log("startHandover");
+        if (!mBound) {
+            loge("Data service not bound.");
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
             return;
+        }
+
+        DataServiceCallbackWrapper callback =
+                new DataServiceCallbackWrapper("startHandover");
+        if (onCompleteMessage != null) {
+            mMessageMap.put(callback.asBinder(), onCompleteMessage);
         }
 
         try {
@@ -790,11 +795,17 @@ public class DataServiceManager extends Handler {
      * @param onCompleteMessage The result callback for this request.
      */
     public void cancelHandover(int cid, @NonNull Message onCompleteMessage) {
-        DataServiceCallbackWrapper callback =
-                setupCallbackHelper("cancelHandover", onCompleteMessage);
-        if (callback == null) {
+        if (DBG) log("cancelHandover");
+        if (!mBound) {
+            loge("Data service not bound.");
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
             return;
+        }
+
+        DataServiceCallbackWrapper callback =
+                new DataServiceCallbackWrapper("cancelHandover");
+        if (onCompleteMessage != null) {
+            mMessageMap.put(callback.asBinder(), onCompleteMessage);
         }
 
         try {
@@ -806,26 +817,6 @@ public class DataServiceManager extends Handler {
             mMessageMap.remove(callback.asBinder());
             sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
         }
-    }
-
-    @Nullable
-    private DataServiceCallbackWrapper setupCallbackHelper(
-            @NonNull final String operationName, @NonNull final Message onCompleteMessage) {
-        if (DBG) log(operationName);
-        if (!mBound) {
-            sendCompleteMessage(onCompleteMessage, DataServiceCallback.RESULT_ERROR_ILLEGAL_STATE);
-            return null;
-        }
-
-        DataServiceCallbackWrapper callback =
-                new DataServiceCallbackWrapper(operationName);
-        if (onCompleteMessage != null) {
-            if (DBG) log(operationName + ": onCompleteMessage set");
-            mMessageMap.put(callback.asBinder(), onCompleteMessage);
-        } else {
-            if (DBG) log(operationName + ": onCompleteMessage not set");
-        }
-        return callback;
     }
 
     /**

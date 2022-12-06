@@ -61,6 +61,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.IncomingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.telephony.Rlog;
 
+import java.util.Objects;
 import java.util.Random;
 
 /** Collects sms events per phone ID for the pulled atom. */
@@ -214,6 +215,7 @@ public class SmsStats {
         // Message ID is initialized with random number, as it is not available for all incoming
         // SMS messages (e.g. those handled by OS or error cases).
         proto.messageId = RANDOM.nextLong();
+        proto.count = 1;
         return proto;
     }
 
@@ -238,6 +240,7 @@ public class SmsStats {
         // in the persistent storage.
         proto.retryId = 0;
         proto.intervalMillis = intervalMillis;
+        proto.count = 1;
         return proto;
     }
 
@@ -302,6 +305,26 @@ public class SmsStats {
             default:
                 return OUTGOING_SMS__SEND_RESULT__SMS_SEND_RESULT_UNKNOWN;
         }
+    }
+
+    /**
+     * Returns a hash value to identify messages that are identical for the purpose of merging them
+     * together when storage is full.
+     */
+    static int getSmsHashCode(OutgoingSms sms) {
+        return Objects.hash(sms.smsFormat, sms.smsTech, sms.rat, sms.sendResult, sms.errorCode,
+                    sms.isRoaming, sms.isFromDefaultApp, sms.simSlotIndex, sms.isMultiSim,
+                    sms.isEsim, sms.carrierId);
+    }
+
+    /**
+     * Returns a hash value to identify messages that are identical for the purpose of merging them
+     * together when storage is full.
+     */
+    static int getSmsHashCode(IncomingSms sms) {
+        return Objects.hash(sms.smsFormat, sms.smsTech, sms.rat, sms.smsType,
+            sms.totalParts, sms.receivedParts, sms.blocked, sms.error,
+            sms.isRoaming, sms.simSlotIndex, sms.isMultiSim, sms.isEsim, sms.carrierId);
     }
 
     private int getPhoneId() {

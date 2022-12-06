@@ -65,6 +65,7 @@ import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * DataRetryManager manages data network setup retry and its configurations.
@@ -1397,18 +1398,19 @@ public class DataRetryManager extends Handler {
             // equal to the data profiles kept in data profile manager (due to some fields missing
             // in DataProfileInfo.aidl), so we need to get the equivalent data profile from data
             // profile manager.
-            final DataProfile dp = mDataProfileManager.getDataProfile(
-                    dataProfile.getApnSetting() != null
-                            ? dataProfile.getApnSetting().getApnName() : null,
-                    dataProfile.getTrafficDescriptor());
-            log("onDataProfileUnthrottled: getDataProfile=" + dp);
-            if (dp != null) {
-                dataUnthrottlingEntries = mDataThrottlingEntries.stream()
-                        .filter(entry -> entry.expirationTimeMillis > now
-                                && entry.dataProfile.equals(dp)
-                                && entry.transport == transport)
-                        .collect(Collectors.toList());
+            log("onDataProfileUnthrottled: dataProfile=" + dataProfile);
+            Stream<DataThrottlingEntry> stream = mDataThrottlingEntries.stream();
+            stream = stream.filter(entry -> entry.expirationTimeMillis > now);
+            if (dataProfile.getApnSetting() != null) {
+                stream = stream
+                        .filter(entry -> entry.dataProfile.getApnSetting() != null)
+                        .filter(entry -> entry.dataProfile.getApnSetting().getApnName()
+                                .equals(dataProfile.getApnSetting().getApnName()));
             }
+            stream = stream.filter(entry -> Objects.equals(entry.dataProfile.getTrafficDescriptor(),
+                    dataProfile.getTrafficDescriptor()));
+
+            dataUnthrottlingEntries = stream.collect(Collectors.toList());
         } else if (apn != null) {
             // For HIDL 1.6 or below
             dataUnthrottlingEntries = mDataThrottlingEntries.stream()

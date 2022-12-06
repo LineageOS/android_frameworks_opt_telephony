@@ -22,6 +22,7 @@ import android.annotation.Nullable;
 import android.net.KeepalivePacketData;
 import android.net.NetworkAgent;
 import android.net.NetworkAgentConfig;
+import android.net.NetworkCapabilities;
 import android.net.NetworkProvider;
 import android.net.NetworkScore;
 import android.net.QosFilter;
@@ -153,7 +154,13 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
             @NonNull NetworkAgentConfig config, @NonNull NetworkProvider provider,
             @NonNull TelephonyNetworkAgentCallback callback) {
         super(phone.getContext(), looper, "TelephonyNetworkAgent",
-                dataNetwork.getNetworkCapabilities(), dataNetwork.getLinkProperties(), score,
+                // Connectivity service does not allow an agent created in suspended state.
+                // Always create the network agent with NOT_SUSPENDED and immediately update the
+                // suspended state afterwards.
+                new NetworkCapabilities.Builder(dataNetwork.getNetworkCapabilities())
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
+                        .build(),
+                dataNetwork.getLinkProperties(), score,
                 config, provider);
         register();
         mDataNetwork = dataNetwork;
@@ -164,7 +171,9 @@ public class TelephonyNetworkAgent extends NetworkAgent implements NotifyQosSess
         mLogTag = "TNA-" + mId;
 
         log("TelephonyNetworkAgent created, nc="
-                + dataNetwork.getNetworkCapabilities() + ", score=" + score);
+                + new NetworkCapabilities.Builder(dataNetwork.getNetworkCapabilities())
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
+                .build() + ", score=" + score);
     }
 
     /**

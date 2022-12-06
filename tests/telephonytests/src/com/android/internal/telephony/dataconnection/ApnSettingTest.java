@@ -540,4 +540,54 @@ public class ApnSettingTest extends TelephonyTest {
 
         parcel.recycle();
     }
+
+    @Test
+    public void testBuild_mmsProxyAddrStartsWithHttp() {
+        ApnSetting apn1 = new ApnSetting.Builder()
+                .setId(1234)
+                .setOperatorNumeric("310260")
+                .setEntryName("mms")
+                .setApnName("mms")
+                .setApnTypeBitmask(ApnSetting.TYPE_MMS)
+                .setProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_LTE
+                        | TelephonyManager.NETWORK_TYPE_BITMASK_UMTS))
+                .setMtuV4(1440)
+                .setCarrierEnabled(true)
+                .setMmsProxyAddress("http://proxy.mobile.att.net")
+                .build();
+        assertEquals("proxy.mobile.att.net", apn1.getMmsProxyAddressAsString());
+
+        ApnSetting apn2 = new ApnSetting.Builder()
+                .setId(1235)
+                .setOperatorNumeric("310260")
+                .setEntryName("mms")
+                .setApnName("mms")
+                .setApnTypeBitmask(ApnSetting.TYPE_MMS)
+                .setProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setRoamingProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_EDGE
+                        | TelephonyManager.NETWORK_TYPE_BITMASK_GPRS))
+                .setMtuV4(1440)
+                .setCarrierEnabled(true)
+                .setMmsProxyAddress("https://proxy.mobile.att.net")
+                .build();
+        assertEquals("proxy.mobile.att.net", apn2.getMmsProxyAddressAsString());
+
+        ApnSetting apn3 = new ApnSetting.Builder()
+                .setId(1236)
+                .setOperatorNumeric("310260")
+                .setEntryName("mms")
+                .setApnName("mms")
+                .setApnTypeBitmask(ApnSetting.TYPE_MMS)
+                .setProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setRoamingProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_EDGE
+                        | TelephonyManager.NETWORK_TYPE_BITMASK_GPRS))
+                .setMtuV4(1440)
+                .setCarrierEnabled(true)
+                .setMmsProxyAddress("proxy.mobile.att.net")
+                .build();
+        assertEquals("proxy.mobile.att.net", apn3.getMmsProxyAddressAsString());
+    }
 }

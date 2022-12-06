@@ -2845,6 +2845,7 @@ public class ServiceStateTracker extends Handler {
         String wfcFlightSpnFormat = null;
         int combinedRegState = getCombinedRegState(mSS);
         if (mPhone.getImsPhone() != null && mPhone.getImsPhone().isWifiCallingEnabled()
+                && mPhone.isImsRegistered()
                 && (combinedRegState == ServiceState.STATE_IN_SERVICE
                 && mSS.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN)) {
             // In Wi-Fi Calling mode (connected to WiFi and WFC enabled),
@@ -3783,8 +3784,10 @@ public class ServiceStateTracker extends Handler {
             // incomplete.
             // CellIdentity can return a null MCC and MNC in CDMA
             String localeOperator = operatorNumeric;
-            if (isInvalidOperatorNumeric(operatorNumeric)
-                    || mSS.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN) {
+            if (mSS.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN) {
+                localeOperator = null;
+            }
+            if (isInvalidOperatorNumeric(localeOperator)) {
                 for (CellIdentity cid : prioritizedCids) {
                     if (!TextUtils.isEmpty(cid.getPlmn())) {
                         localeOperator = cid.getPlmn();
@@ -5022,6 +5025,13 @@ public class ServiceStateTracker extends Handler {
         synchronized (this) {
             if (!mPendingRadioPowerOffAfterDataOff) {
                 if (mPhone.isUsingNewDataStack()) {
+                    // hang up all active voice calls first
+                    if (mPhone.isPhoneTypeGsm() && mPhone.isInCall()) {
+                        mPhone.mCT.mRingingCall.hangupIfAlive();
+                        mPhone.mCT.mBackgroundCall.hangupIfAlive();
+                        mPhone.mCT.mForegroundCall.hangupIfAlive();
+                    }
+
                     for (Phone phone : PhoneFactory.getPhones()) {
                         if (!phone.getDataNetworkController().areAllDataDisconnected()) {
                             log("powerOffRadioSafely: Data is active on phone " + phone.getSubId()

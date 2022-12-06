@@ -55,7 +55,7 @@ public class DataIndication extends IRadioDataIndication.Stub {
             android.hardware.radio.data.SetupDataCallResult[] dcList) {
         mRil.processIndication(RIL.DATA_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_DATA_CALL_LIST_CHANGED, dcList);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_DATA_CALL_LIST_CHANGED, dcList);
         ArrayList<DataCallResponse> response = RILUtils.convertHalDataCallResultList(dcList);
         mRil.mDataCallListChangedRegistrants.notifyRegistrants(
                 new AsyncResult(null, response, null));
@@ -70,9 +70,10 @@ public class DataIndication extends IRadioDataIndication.Stub {
             android.hardware.radio.data.KeepaliveStatus halStatus) {
         mRil.processIndication(RIL.DATA_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) {
-            mRil.unsljLogRet(RIL_UNSOL_KEEPALIVE_STATUS, "handle=" + halStatus.sessionHandle
-                    + " code=" +  halStatus.code);
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(
+                    RIL_UNSOL_KEEPALIVE_STATUS,
+                    "handle=" + halStatus.sessionHandle + " code=" + halStatus.code);
         }
 
         KeepaliveStatus ks = new KeepaliveStatus(
@@ -90,7 +91,7 @@ public class DataIndication extends IRadioDataIndication.Stub {
 
         PcoData response = new PcoData(pco.cid, pco.bearerProto, pco.pcoId, pco.contents);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_PCO_DATA, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_PCO_DATA, response);
 
         mRil.mPcoDataRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
     }
@@ -106,7 +107,7 @@ public class DataIndication extends IRadioDataIndication.Stub {
         mRil.processIndication(RIL.DATA_SERVICE, indicationType);
         DataProfile response = RILUtils.convertToDataProfile(dpi);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_UNTHROTTLE_APN, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_UNTHROTTLE_APN, response);
 
         mRil.mApnUnthrottledRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
     }
@@ -120,7 +121,9 @@ public class DataIndication extends IRadioDataIndication.Stub {
     public void slicingConfigChanged(int indicationType,
             android.hardware.radio.data.SlicingConfig slicingConfig) throws RemoteException {
         mRil.processIndication(RIL.DATA_SERVICE, indicationType);
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_SLICING_CONFIG_CHANGED, slicingConfig);
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(RIL_UNSOL_SLICING_CONFIG_CHANGED, slicingConfig);
+        }
         NetworkSlicingConfig ret = RILUtils.convertHalSlicingConfig(slicingConfig);
         mRil.mSlicingConfigChangedRegistrants.notifyRegistrants(
                 new AsyncResult(null, ret, null));

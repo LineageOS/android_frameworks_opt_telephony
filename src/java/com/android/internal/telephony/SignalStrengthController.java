@@ -56,6 +56,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
@@ -227,6 +228,11 @@ public class SignalStrengthController extends Handler {
                 while (it.hasNext()) {
                     SignalRequestRecord srr = it.next();
                     if (srr.mRequest.getLiveToken().equals(record.mRequest.getLiveToken())) {
+                        try {
+                            srr.mRequest.getLiveToken().unlinkToDeath(srr, 0);
+                        } catch (NoSuchElementException ignored) {
+                            // Either never linked or has already unlinked, ignore anyway
+                        }
                         it.remove();
                     }
                 }
@@ -552,12 +558,13 @@ public class SignalStrengthController extends Handler {
         for (SignalThresholdInfo signalThresholdInfo : signalThresholdInfos) {
             final int ran = signalThresholdInfo.getRadioAccessNetworkType();
             final int measurementType = signalThresholdInfo.getSignalMeasurementType();
-            final boolean isEnabledForSystem = signalThresholdInfo.isEnabled();
+            final boolean isEnabledForSystem =
+                    signalThresholdInfo.isEnabled() && shouldHonorSystemThresholds();
             int[] consolidatedThresholds =
                     getConsolidatedSignalThresholds(
                             ran,
                             measurementType,
-                            isEnabledForSystem && shouldHonorSystemThresholds()
+                            isEnabledForSystem
                                     ? signalThresholdInfo.getThresholds()
                                     : new int[]{},
                             ALIGNMENT_HYSTERESIS_DB);
@@ -731,7 +738,11 @@ public class SignalStrengthController extends Handler {
                         && srr.mRequest.isSystemThresholdReportingRequestedWhileIdle());
     }
 
-    void onDeviceIdleStateChanged(boolean isDeviceIdle) {
+    /**
+     * Get notified when device idle state changed
+     */
+    @VisibleForTesting
+    public void onDeviceIdleStateChanged(boolean isDeviceIdle) {
         sendMessage(obtainMessage(EVENT_ON_DEVICE_IDLE_STATE_CHANGED, isDeviceIdle));
 
         localLog("onDeviceIdleStateChanged isDeviceIdle=" + isDeviceIdle);

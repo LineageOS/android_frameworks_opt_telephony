@@ -49,7 +49,7 @@ public class MessagingIndication extends IRadioMessagingIndication.Stub {
             android.hardware.radio.messaging.CdmaSmsMessage msg) {
         mRil.processIndication(RIL.MESSAGING_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_CDMA_NEW_SMS);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RESPONSE_CDMA_NEW_SMS);
 
         SmsMessage sms = new SmsMessage(RILUtils.convertHalCdmaSmsMessage(msg));
         if (mRil.mCdmaSmsRegistrant != null) {
@@ -65,7 +65,7 @@ public class MessagingIndication extends IRadioMessagingIndication.Stub {
     public void cdmaRuimSmsStorageFull(int indicationType) {
         mRil.processIndication(RIL.MESSAGING_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_CDMA_RUIM_SMS_STORAGE_FULL);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_CDMA_RUIM_SMS_STORAGE_FULL);
 
         if (mRil.mIccSmsFullRegistrant != null) {
             mRil.mIccSmsFullRegistrant.notifyRegistrant();
@@ -84,9 +84,9 @@ public class MessagingIndication extends IRadioMessagingIndication.Stub {
     public void newBroadcastSms(int indicationType, byte[] data) {
         mRil.processIndication(RIL.MESSAGING_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) {
-            mRil.unsljLogvRet(RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS,
-                    IccUtils.bytesToHexString(data));
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogvRet(
+                    RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS, IccUtils.bytesToHexString(data));
         }
 
         if (mRil.mGsmBroadcastSmsRegistrant != null) {
@@ -102,7 +102,7 @@ public class MessagingIndication extends IRadioMessagingIndication.Stub {
      */
     public void newSms(int indicationType, byte[] pdu) {
         mRil.processIndication(RIL.MESSAGING_SERVICE, indicationType);
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS);
 
         SmsMessageBase smsb = com.android.internal.telephony.gsm.SmsMessage.createFromPdu(pdu);
         if (mRil.mGsmSmsRegistrant != null) {
@@ -119,7 +119,7 @@ public class MessagingIndication extends IRadioMessagingIndication.Stub {
     public void newSmsOnSim(int indicationType, int recordNumber) {
         mRil.processIndication(RIL.MESSAGING_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS_ON_SIM);
 
         if (mRil.mSmsOnSimRegistrant != null) {
             mRil.mSmsOnSimRegistrant.notifyRegistrant(new AsyncResult(null, recordNumber, null));
@@ -135,7 +135,7 @@ public class MessagingIndication extends IRadioMessagingIndication.Stub {
     public void newSmsStatusReport(int indicationType, byte[] pdu) {
         mRil.processIndication(RIL.MESSAGING_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RESPONSE_NEW_SMS_STATUS_REPORT);
 
         if (mRil.mSmsStatusRegistrant != null) {
             mRil.mSmsStatusRegistrant.notifyRegistrant(new AsyncResult(null, pdu, null));
@@ -151,7 +151,7 @@ public class MessagingIndication extends IRadioMessagingIndication.Stub {
     public void simSmsStorageFull(int indicationType) {
         mRil.processIndication(RIL.MESSAGING_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_SIM_SMS_STORAGE_FULL);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_SIM_SMS_STORAGE_FULL);
 
         if (mRil.mIccSmsFullRegistrant != null) {
             mRil.mIccSmsFullRegistrant.notifyRegistrant();
