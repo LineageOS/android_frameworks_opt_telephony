@@ -127,6 +127,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     private ServiceStateStats mServiceStateStats;
 
     private CellularNetworkService mCellularNetworkService;
+    private CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener;
 
     // SST now delegates all signal strength operations to SSC
     // Add Mock SSC as the dependency to avoid NPE
@@ -184,7 +185,18 @@ public class ServiceStateTrackerTest extends TelephonyTest {
             mSsc = new SignalStrengthController(mPhone);
             doReturn(mSsc).when(mPhone).getSignalStrengthController();
 
+            // Capture listener registered for ServiceStateTracker to emulate the carrier config
+            // change notification used later. In this test, it's the third one. The first one
+            // comes from RatRatcheter and the second one comes from SignalStrengthController.
+            ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener>
+                    listenerArgumentCaptor =
+                            ArgumentCaptor.forClass(
+                                    CarrierConfigManager.CarrierConfigChangeListener.class);
             sst = new ServiceStateTracker(mPhone, mSimulatedCommands);
+            verify(mCarrierConfigManager, atLeast(3)).registerCarrierConfigChangeListener(any(),
+                    listenerArgumentCaptor.capture());
+            mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(2);
+
             sst.setServiceStateStats(mServiceStateStats);
             doReturn(sst).when(mPhone).getServiceStateTracker();
             setReady(true);
@@ -253,6 +265,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         replaceInstance(ProxyController.class, "sProxyController", null, mProxyController);
         mBundle = mContextFixture.getCarrierConfigBundle();
         when(mCarrierConfigManager.getConfigForSubId(anyInt(), any())).thenReturn(mBundle);
+        when(mCarrierConfigManager.getConfigForSubId(anyInt())).thenReturn(mBundle);
         mBundle.putStringArray(
                 CarrierConfigManager.KEY_ROAMING_OPERATOR_STRING_ARRAY, new String[]{"123456"});
 
@@ -355,9 +368,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                     30  /* SIGNAL_STRENGTH_GREAT */
                 });
 
-        Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, 0);
-        mContext.sendBroadcast(intent);
+        sendCarrierConfigUpdate(PHONE_ID);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
 
         logd("ServiceStateTrackerTest -Setup!");
@@ -826,15 +837,10 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         verify(mPhone, times(1)).notifyServiceStateChanged(any(ServiceState.class));
     }
 
-    private void sendCarrierConfigUpdate() {
-        CarrierConfigManager mockConfigManager = Mockito.mock(CarrierConfigManager.class);
-        when(mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE))
-                .thenReturn(mockConfigManager);
-        when(mockConfigManager.getConfigForSubId(anyInt())).thenReturn(mBundle);
-
-        Intent intent = new Intent().setAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, PHONE_ID);
-        mContext.sendBroadcast(intent);
+    private void sendCarrierConfigUpdate(int phoneId) {
+        mCarrierConfigChangeListener.onCarrierConfigChanged(phoneId,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
     }
 
@@ -2869,7 +2875,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testUpdateSpnDisplay_spnEmptyAndWifiCallingEnabled_showPlmnOnly() {
         // set empty service provider name
         mBundle.putString(CarrierConfigManager.KEY_CARRIER_NAME_STRING, "");
-        sendCarrierConfigUpdate();
+        sendCarrierConfigUpdate(PHONE_ID);
 
         // GSM phone
         doReturn(true).when(mPhone).isPhoneTypeGsm();
@@ -2949,7 +2955,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testUpdateSpnDisplayLegacy_WlanServiceNoWifiCalling_displayOOS() {
         mBundle.putBoolean(
                 CarrierConfigManager.KEY_ENABLE_CARRIER_DISPLAY_NAME_RESOLVER_BOOL, false);
-        sendCarrierConfigUpdate();
+        sendCarrierConfigUpdate(PHONE_ID);
 
         // GSM phone
         doReturn(true).when(mPhone).isPhoneTypeGsm();
