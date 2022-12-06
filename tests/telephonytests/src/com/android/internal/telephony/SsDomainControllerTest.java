@@ -440,52 +440,17 @@ public class SsDomainControllerTest extends TelephonyTest {
                 new int[] {}, UT_OVER_ALL, new int[] { SUPPLEMENTARY_SERVICE_CW });
         String sc = mServices.get(SS_CW);
 
-        mSdc.setOemHandlesTerminalBasedService(false);
+        mSdc.setOemHandlesTerminalBasedCallWaiting(false);
         SsDomainController.SuppServiceRoutingInfo ssCode =
                 ImsPhoneMmiCode.getSuppServiceRoutingInfo("*#" + sc + "#", mSdc);
         assertNotNull(ssCode);
         assertFalse(ssCode.useSsOverUt());
 
-        mSdc.setOemHandlesTerminalBasedService(true);
+        mSdc.setOemHandlesTerminalBasedCallWaiting(true);
         ssCode = ImsPhoneMmiCode.getSuppServiceRoutingInfo("*#" + sc + "#", mSdc);
 
         assertNotNull(ssCode);
         assertTrue(ssCode.useSsOverUt());
-    }
-
-    @Test
-    @SmallTest
-    public void testOemHandlesTerminalBasedClir() {
-        setUtEnabled();
-
-        // Enable terminal-based CLIR
-        mSdc.updateCarrierConfigForTest(true, true, false, true, true,
-                new int[] {}, UT_OVER_ALL, new int[] { SUPPLEMENTARY_SERVICE_IDENTIFICATION_OIR });
-        String sc = mServices.get(SS_CLIR);
-
-        mSdc.setOemHandlesTerminalBasedService(false);
-        SsDomainController.SuppServiceRoutingInfo ssCode =
-                ImsPhoneMmiCode.getSuppServiceRoutingInfo("*#" + sc + "#", mSdc);
-
-        assertNotNull(ssCode);
-        assertFalse(ssCode.useSsOverUt());
-        assertFalse(mSdc.getOemHandlesTerminalBasedClir());
-
-        mSdc.setOemHandlesTerminalBasedService(true);
-        ssCode = ImsPhoneMmiCode.getSuppServiceRoutingInfo("*#" + sc + "#", mSdc);
-
-        assertNotNull(ssCode);
-        assertTrue(ssCode.useSsOverUt());
-        assertTrue(mSdc.getOemHandlesTerminalBasedClir());
-
-        // Disable terminal-based CLIR
-        mSdc.updateCarrierConfigForTest(true, true, false, true, true,
-                new int[] {}, UT_OVER_ALL, new int[] {});
-        ssCode = ImsPhoneMmiCode.getSuppServiceRoutingInfo("*#" + sc + "#", mSdc);
-
-        assertNotNull(ssCode);
-        assertFalse(ssCode.useSsOverUt());
-        assertFalse(mSdc.getOemHandlesTerminalBasedClir());
     }
 
     private void setUtEnabled() {

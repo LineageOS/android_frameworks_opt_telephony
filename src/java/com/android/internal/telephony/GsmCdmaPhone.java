@@ -2284,18 +2284,18 @@ public class GsmCdmaPhone extends Phone {
 
     /**
      * Checks the availability of Ut directly without SsDomainController.
-     * This is only applicable for the case that the terminal-based service
-     * is handled by the IMS service alone without interworking with framework.
+     * This is only applicable for the case that the terminal-based call waiting service
+     * is handled by the IMS service alone without interworking with CallWaitingController.
      */
-    private boolean useTerminalBasedServiceOverIms(Message onComplete) {
+    private boolean useCallWaitingOverUt(Message onComplete) {
         Phone imsPhone = mImsPhone;
         if (imsPhone == null) {
-            logd("useTerminalBasedServiceOverIms: called for GsmCdma");
+            logd("useCallWaitingOverUt: called for GsmCdma");
             return false;
         }
 
         boolean isUtEnabled = imsPhone.isUtEnabled();
-        Rlog.d(LOG_TAG, "useTerminalBasedServiceOverIms isUtEnabled= " + isUtEnabled
+        Rlog.d(LOG_TAG, "useCallWaitingOverUt isUtEnabled= " + isUtEnabled
                 + " isCsRetry(onComplete))= " + isCsRetry(onComplete));
         return isUtEnabled && !isCsRetry(onComplete);
     }
@@ -2313,14 +2313,6 @@ public class GsmCdmaPhone extends Phone {
      */
     private boolean getOemHandlesTerminalBasedCallWaiting() {
         return mSsDomainController.getOemHandlesTerminalBasedCallWaiting();
-    }
-
-    /**
-     * Returns whether the carrier supports the terminal-based CLIR
-     * and Ims service handles it by itself.
-     */
-    private boolean getOemHandlesTerminalBasedClir() {
-        return mSsDomainController.getOemHandlesTerminalBasedClir();
     }
 
     /**
@@ -2582,13 +2574,6 @@ public class GsmCdmaPhone extends Phone {
                 responseInvalidState(onComplete);
                 return;
             }
-        } else if (getOemHandlesTerminalBasedClir()) {
-            // Ims service handles the terminal-based CLIR by itself.
-            // Use legacy implementation. Forward the request to Ims service if Ut is available.
-            if (useTerminalBasedServiceOverIms(onComplete)) {
-                imsPhone.getOutgoingCallerIdDisplay(onComplete);
-                return;
-            }
         }
 
         if (isPhoneTypeGsm()) {
@@ -2619,13 +2604,6 @@ public class GsmCdmaPhone extends Phone {
                 return;
             } else if (!supportCsfbForSs()) {
                 responseInvalidState(onComplete);
-                return;
-            }
-        } else if (getOemHandlesTerminalBasedClir()) {
-            // Ims service handles the terminal-based CLIR by itself.
-            // Use legacy implementation. Forward the request to Ims service if Ut is available.
-            if (useTerminalBasedServiceOverIms(onComplete)) {
-                imsPhone.setOutgoingCallerIdDisplay(commandInterfaceCLIRMode, onComplete);
                 return;
             }
         }
@@ -2699,7 +2677,7 @@ public class GsmCdmaPhone extends Phone {
         } else if (getOemHandlesTerminalBasedCallWaiting()) {
             // Ims service handles the terminal-based call waiting service by itself.
             // Use legacy implementation. Forward the request to Ims service if Ut is available.
-            if (useTerminalBasedServiceOverIms(onComplete)) {
+            if (useCallWaitingOverUt(onComplete)) {
                 imsPhone.getCallWaiting(onComplete);
                 return;
             }
@@ -2764,7 +2742,7 @@ public class GsmCdmaPhone extends Phone {
         } else if (getOemHandlesTerminalBasedCallWaiting()) {
             // Ims service handles the terminal-based call waiting service by itself.
             // Use legacy implementation. Forward the request to Ims service if Ut is available.
-            if (useTerminalBasedServiceOverIms(onComplete)) {
+            if (useCallWaitingOverUt(onComplete)) {
                 imsPhone.setCallWaiting(enable, onComplete);
                 return;
             }
@@ -2808,7 +2786,7 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public void setTerminalBasedCallWaitingSupported(boolean supported) {
         mCallWaitingController.setTerminalBasedCallWaitingSupported(supported);
-        mSsDomainController.setOemHandlesTerminalBasedService(!supported);
+        mSsDomainController.setOemHandlesTerminalBasedCallWaiting(!supported);
     }
 
     @Override
