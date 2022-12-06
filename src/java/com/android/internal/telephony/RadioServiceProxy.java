@@ -78,9 +78,4 @@ public abstract class RadioServiceProxy {
         if (isEmpty()) return;
         if (!isAidl()) mRadioProxy.responseAcknowledgement();
     }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + "[mHalVersion=" + mHalVersion + ']';
-    }
 }

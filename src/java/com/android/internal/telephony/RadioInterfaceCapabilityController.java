@@ -28,8 +28,6 @@ import android.util.Log;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.telephony.Rlog;
 
-import java.io.FileDescriptor;
-import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.Set;
 
@@ -164,13 +162,6 @@ public class RadioInterfaceCapabilityController extends Handler {
                 setupCapabilities((AsyncResult) msg.obj);
                 break;
         }
-    }
-
-    /**
-     * Dump the fields of the instance
-     */
-    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        pw.println("mRadioConfig=" + mRadioConfig);
     }
 
     private static void log(final String s) {

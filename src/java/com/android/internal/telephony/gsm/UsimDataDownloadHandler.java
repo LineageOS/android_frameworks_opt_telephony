@@ -17,19 +17,13 @@
 package com.android.internal.telephony.gsm;
 
 import android.app.Activity;
-import android.content.res.Resources;
-import android.content.res.Resources.NotFoundException;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsManager;
-import android.telephony.ims.stub.ImsSmsImplBase;
 
-import com.android.ims.ImsException;
-import com.android.ims.ImsManager;
-import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.PhoneFactory;
@@ -67,14 +61,10 @@ public class UsimDataDownloadHandler extends Handler {
 
     private final CommandsInterface mCi;
     private final int mPhoneId;
-    private ImsManager mImsManager;
-    Resources mResource;
 
     public UsimDataDownloadHandler(CommandsInterface commandsInterface, int phoneId) {
         mCi = commandsInterface;
         mPhoneId = phoneId;
-        mImsManager = null; // will get initialized when ImsManager connection is ready
-        mResource = Resources.getSystem();
     }
 
     /**
@@ -89,7 +79,7 @@ public class UsimDataDownloadHandler extends Handler {
      * @return {@code Activity.RESULT_OK} on success; {@code RESULT_SMS_GENERIC_ERROR} on failure
      */
     int handleUsimDataDownload(UsimServiceTable ust, SmsMessage smsMessage,
-            @InboundSmsHandler.SmsSource int smsSource, int token) {
+            @InboundSmsHandler.SmsSource int smsSource) {
         // If we receive an SMS-PP message before the UsimServiceTable has been loaded,
         // assume that the data download service is not present. This is very unlikely to
         // happen because the IMS connection will not be established until after the ISIM
@@ -97,7 +87,7 @@ public class UsimDataDownloadHandler extends Handler {
         if (ust != null && ust.isAvailable(
                 UsimServiceTable.UsimService.DATA_DL_VIA_SMS_PP)) {
             Rlog.d(TAG, "Received SMS-PP data download, sending to UICC.");
-            return startDataDownload(smsMessage, smsSource, token);
+            return startDataDownload(smsMessage, smsSource);
         } else {
             Rlog.d(TAG, "DATA_DL_VIA_SMS_PP service not available, storing message to UICC.");
             String smsc = IccUtils.bytesToHexString(
@@ -105,8 +95,7 @@ public class UsimDataDownloadHandler extends Handler {
                             smsMessage.getServiceCenterAddress()));
             mCi.writeSmsToSim(SmsManager.STATUS_ON_ICC_UNREAD, smsc,
                     IccUtils.bytesToHexString(smsMessage.getPdu()),
-                    obtainMessage(EVENT_WRITE_SMS_COMPLETE,
-                            new int[]{ smsSource, smsMessage.mMessageRef, token }));
+                    obtainMessage(EVENT_WRITE_SMS_COMPLETE));
             addUsimDataDownloadToMetrics(false, smsSource);
             return Activity.RESULT_OK;  // acknowledge after response from write to USIM
         }
@@ -122,9 +111,9 @@ public class UsimDataDownloadHandler extends Handler {
      * @return {@code Activity.RESULT_OK} on success; {@code RESULT_SMS_GENERIC_ERROR} on failure
      */
     public int startDataDownload(SmsMessage smsMessage,
-            @InboundSmsHandler.SmsSource int smsSource, int token) {
+            @InboundSmsHandler.SmsSource int smsSource) {
         if (sendMessage(obtainMessage(EVENT_START_DATA_DOWNLOAD,
-                smsSource, token, smsMessage))) {
+                smsSource, 0 /* unused */, smsMessage))) {
             return Activity.RESULT_OK;  // we will send SMS ACK/ERROR based on UICC response
         } else {
             Rlog.e(TAG, "startDataDownload failed to send message to start data download.");
@@ -133,7 +122,7 @@ public class UsimDataDownloadHandler extends Handler {
     }
 
     private void handleDataDownload(SmsMessage smsMessage,
-            @InboundSmsHandler.SmsSource int smsSource, int token) {
+            @InboundSmsHandler.SmsSource int smsSource) {
         int dcs = smsMessage.getDataCodingScheme();
         int pid = smsMessage.getProtocolIdentifier();
         byte[] pdu = smsMessage.getPdu();           // includes SC address
@@ -150,7 +139,6 @@ public class UsimDataDownloadHandler extends Handler {
 
         byte[] envelope = new byte[totalLength];
         int index = 0;
-        Rlog.d(TAG, "smsSource: " + smsSource + "Token: " + token);
 
         // SMS-PP download tag and length (assumed to be < 256 bytes).
         envelope[index++] = (byte) BER_SMS_PP_DOWNLOAD_TAG;
@@ -185,16 +173,14 @@ public class UsimDataDownloadHandler extends Handler {
         // Verify that we calculated the payload size correctly.
         if (index != envelope.length) {
             Rlog.e(TAG, "startDataDownload() calculated incorrect envelope length, aborting.");
-            acknowledgeSmsWithError(CommandsInterface.GSM_SMS_FAIL_CAUSE_UNSPECIFIED_ERROR,
-                    smsSource, token, smsMessage.mMessageRef);
+            acknowledgeSmsWithError(CommandsInterface.GSM_SMS_FAIL_CAUSE_UNSPECIFIED_ERROR);
             addUsimDataDownloadToMetrics(false, smsSource);
             return;
         }
 
         String encodedEnvelope = IccUtils.bytesToHexString(envelope);
         mCi.sendEnvelopeWithStatus(encodedEnvelope, obtainMessage(
-                EVENT_SEND_ENVELOPE_RESPONSE, new int[]{ dcs, pid, smsSource,
-                    smsMessage.mMessageRef, token }));
+                EVENT_SEND_ENVELOPE_RESPONSE, new int[]{ dcs, pid }));
 
         addUsimDataDownloadToMetrics(true, smsSource);
     }
@@ -225,8 +211,7 @@ public class UsimDataDownloadHandler extends Handler {
      * @param response UICC response encoded as hexadecimal digits. First two bytes are the
      *  UICC SW1 and SW2 status bytes.
      */
-    private void sendSmsAckForEnvelopeResponse(IccIoResult response, int dcs, int pid,
-            int smsSource, int token, int messageRef) {
+    private void sendSmsAckForEnvelopeResponse(IccIoResult response, int dcs, int pid) {
         int sw1 = response.sw1;
         int sw2 = response.sw2;
 
@@ -236,8 +221,7 @@ public class UsimDataDownloadHandler extends Handler {
             success = true;
         } else if (sw1 == 0x93 && sw2 == 0x00) {
             Rlog.e(TAG, "USIM data download failed: Toolkit busy");
-            acknowledgeSmsWithError(CommandsInterface.GSM_SMS_FAIL_CAUSE_USIM_APP_TOOLKIT_BUSY,
-                    smsSource, token, messageRef);
+            acknowledgeSmsWithError(CommandsInterface.GSM_SMS_FAIL_CAUSE_USIM_APP_TOOLKIT_BUSY);
             return;
         } else if (sw1 == 0x62 || sw1 == 0x63) {
             Rlog.e(TAG, "USIM data download failed: " + response.toString());
@@ -250,11 +234,10 @@ public class UsimDataDownloadHandler extends Handler {
         byte[] responseBytes = response.payload;
         if (responseBytes == null || responseBytes.length == 0) {
             if (success) {
-                acknowledgeSmsWithSuccess(0, smsSource, token, messageRef);
+                mCi.acknowledgeLastIncomingGsmSms(true, 0, null);
             } else {
                 acknowledgeSmsWithError(
-                        CommandsInterface.GSM_SMS_FAIL_CAUSE_USIM_DATA_DOWNLOAD_ERROR, smsSource,
-                        token, messageRef);
+                        CommandsInterface.GSM_SMS_FAIL_CAUSE_USIM_DATA_DOWNLOAD_ERROR);
             }
             return;
         }
@@ -285,32 +268,12 @@ public class UsimDataDownloadHandler extends Handler {
 
         System.arraycopy(responseBytes, 0, smsAckPdu, index, responseBytes.length);
 
-        if (smsSource == InboundSmsHandler.SOURCE_INJECTED_FROM_IMS && ackViaIms()) {
-            acknowledgeImsSms(token, messageRef, true, smsAckPdu);
-        } else {
-            mCi.acknowledgeIncomingGsmSmsWithPdu(success,
-                    IccUtils.bytesToHexString(smsAckPdu), null);
-        }
+        mCi.acknowledgeIncomingGsmSmsWithPdu(success,
+                IccUtils.bytesToHexString(smsAckPdu), null);
     }
 
-    private void acknowledgeSmsWithSuccess(int cause, int smsSource, int token, int messageRef) {
-        Rlog.d(TAG, "acknowledgeSmsWithSuccess- cause: " + cause + " smsSource: " + smsSource
-                + " token: " + token + " messageRef: " + messageRef);
-        if (smsSource == InboundSmsHandler.SOURCE_INJECTED_FROM_IMS && ackViaIms()) {
-            acknowledgeImsSms(token, messageRef, true, null);
-        } else {
-            mCi.acknowledgeLastIncomingGsmSms(true, cause, null);
-        }
-    }
-
-    private void acknowledgeSmsWithError(int cause, int smsSource, int token, int messageRef) {
-        Rlog.d(TAG, "acknowledgeSmsWithError- cause: " + cause + " smsSource: " + smsSource
-                + " token: " + token + " messageRef: " + messageRef);
-        if (smsSource == InboundSmsHandler.SOURCE_INJECTED_FROM_IMS && ackViaIms()) {
-            acknowledgeImsSms(token, messageRef, false, null);
-        } else {
-            mCi.acknowledgeLastIncomingGsmSms(false, cause, null);
-        }
+    private void acknowledgeSmsWithError(int cause) {
+        mCi.acknowledgeLastIncomingGsmSms(false, cause, null);
     }
 
     /**
@@ -337,45 +300,6 @@ public class UsimDataDownloadHandler extends Handler {
     }
 
     /**
-     * Route resposes via ImsManager based on config
-     */
-    private boolean ackViaIms() {
-        boolean isViaIms;
-
-        try {
-            isViaIms = mResource.getBoolean(
-                    com.android.internal.R.bool.config_smppsim_response_via_ims);
-        } catch (NotFoundException e) {
-            isViaIms = false;
-        }
-
-        Rlog.d(TAG, "ackViaIms : " + isViaIms);
-        return isViaIms;
-    }
-
-    /**
-     * Acknowledges IMS SMS and delivers the result based on the envelope or SIM saving respose
-     * received from SIM for SMS-PP Data.
-     */
-    private void acknowledgeImsSms(int token, int messageRef, boolean success, byte[] pdu) {
-        int result = success ? ImsSmsImplBase.DELIVER_STATUS_OK :
-                    ImsSmsImplBase.DELIVER_STATUS_ERROR_GENERIC;
-        Rlog.d(TAG, "sending result via acknowledgeImsSms: " + result + " token: " + token);
-
-        try {
-            if (mImsManager != null) {
-                if (pdu != null && pdu.length > 0) {
-                    mImsManager.acknowledgeSms(token, messageRef, result, pdu);
-                } else {
-                    mImsManager.acknowledgeSms(token, messageRef, result);
-                }
-            }
-        } catch (ImsException e) {
-            Rlog.e(TAG, "Failed to acknowledgeSms(). Error: " + e.getMessage());
-        }
-    }
-
-    /**
      * Handle UICC envelope response and send SMS acknowledgement.
      *
      * @param msg the message to handle
@@ -383,84 +307,40 @@ public class UsimDataDownloadHandler extends Handler {
     @Override
     public void handleMessage(Message msg) {
         AsyncResult ar;
-        int smsSource = InboundSmsHandler.SOURCE_INJECTED_FROM_UNKNOWN;
-        int token = 0;
-        int messageRef = 0;
-        int[] responseInfo;
 
         switch (msg.what) {
             case EVENT_START_DATA_DOWNLOAD:
-                Rlog.d(TAG, "EVENT_START_DATA_DOWNLOAD");
-                handleDataDownload((SmsMessage) msg.obj, msg.arg1 /* smsSource */,
-                        msg.arg2 /* token */);
+                handleDataDownload((SmsMessage) msg.obj, msg.arg1 /* smsSource */);
                 break;
 
             case EVENT_SEND_ENVELOPE_RESPONSE:
                 ar = (AsyncResult) msg.obj;
 
-                responseInfo = (int[]) ar.userObj;
-                smsSource = responseInfo[2];
-                messageRef = responseInfo[3];
-                token = responseInfo[4];
-
-                Rlog.d(TAG, "Received EVENT_SEND_ENVELOPE_RESPONSE from source : " + smsSource);
-
                 if (ar.exception != null) {
                     Rlog.e(TAG, "UICC Send Envelope failure, exception: " + ar.exception);
-
                     acknowledgeSmsWithError(
-                            CommandsInterface.GSM_SMS_FAIL_CAUSE_USIM_DATA_DOWNLOAD_ERROR,
-                            smsSource, token, messageRef);
+                            CommandsInterface.GSM_SMS_FAIL_CAUSE_USIM_DATA_DOWNLOAD_ERROR);
                     return;
                 }
 
-                Rlog.d(TAG, "Successful in sending envelope response");
-                sendSmsAckForEnvelopeResponse((IccIoResult) ar.result, responseInfo[0],
-                            responseInfo[1], smsSource, token, messageRef);
+                int[] dcsPid = (int[]) ar.userObj;
+                sendSmsAckForEnvelopeResponse((IccIoResult) ar.result, dcsPid[0], dcsPid[1]);
                 break;
 
             case EVENT_WRITE_SMS_COMPLETE:
                 ar = (AsyncResult) msg.obj;
-
-                responseInfo = (int[]) ar.userObj;
-                smsSource = responseInfo[0];
-                messageRef = responseInfo[1];
-                token = responseInfo[2];
-
-                Rlog.d(TAG, "Received EVENT_WRITE_SMS_COMPLETE from source : " + smsSource);
-
                 if (ar.exception == null) {
                     Rlog.d(TAG, "Successfully wrote SMS-PP message to UICC");
-                    acknowledgeSmsWithSuccess(0, smsSource, token, messageRef);
+                    mCi.acknowledgeLastIncomingGsmSms(true, 0, null);
                 } else {
                     Rlog.d(TAG, "Failed to write SMS-PP message to UICC", ar.exception);
-                    acknowledgeSmsWithError(
-                            CommandsInterface.GSM_SMS_FAIL_CAUSE_UNSPECIFIED_ERROR,
-                            smsSource, token, messageRef);
+                    mCi.acknowledgeLastIncomingGsmSms(false,
+                            CommandsInterface.GSM_SMS_FAIL_CAUSE_UNSPECIFIED_ERROR, null);
                 }
                 break;
 
             default:
                 Rlog.e(TAG, "Ignoring unexpected message, what=" + msg.what);
         }
-    }
-
-    /**
-     * Called when ImsManager connection is ready. ImsManager object will be used to send ACK to IMS
-     * which doesn't use RIL interface.
-     * @param imsManager object
-     */
-    public void setImsManager(ImsManager imsManager) {
-        mImsManager = imsManager;
-    }
-
-    /**
-     * Called to set mocked object of type Resources during unit testing of this file.
-     * @param resource object
-     */
-    @VisibleForTesting
-    public void setResourcesForTest(Resources resource) {
-        mResource = resource;
-        Rlog.d(TAG, "setResourcesForTest");
     }
 }

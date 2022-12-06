@@ -35,10 +35,6 @@ import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS;
-import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_IMS;
-import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_UNKNOWN;
-
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
@@ -153,7 +149,6 @@ public class ServiceStateStatsTest extends TelephonyTest {
         doReturn(ServiceState.STATE_OUT_OF_SERVICE).when(mServiceState).getDataRegState();
         doReturn(TelephonyManager.NETWORK_TYPE_UNKNOWN).when(mServiceState).getVoiceNetworkType();
         doReturn(TelephonyManager.NETWORK_TYPE_UNKNOWN).when(mServiceState).getDataNetworkType();
-        mockWwanCsRat(TelephonyManager.NETWORK_TYPE_UNKNOWN);
         mockWwanPsRat(TelephonyManager.NETWORK_TYPE_UNKNOWN);
         mServiceStateStats.onServiceStateChanged(mServiceState);
 
@@ -253,7 +248,6 @@ public class ServiceStateStatsTest extends TelephonyTest {
         doReturn(ServiceState.STATE_OUT_OF_SERVICE).when(mServiceState).getDataRegState();
         doReturn(TelephonyManager.NETWORK_TYPE_UNKNOWN).when(mServiceState).getVoiceNetworkType();
         doReturn(TelephonyManager.NETWORK_TYPE_UNKNOWN).when(mServiceState).getDataNetworkType();
-        mockWwanCsRat(TelephonyManager.NETWORK_TYPE_UNKNOWN);
         mockWwanPsRat(TelephonyManager.NETWORK_TYPE_UNKNOWN);
         doReturn(-1).when(mPhone).getCarrierId();
         mServiceStateStats.onServiceStateChanged(mServiceState);
@@ -401,7 +395,6 @@ public class ServiceStateStatsTest extends TelephonyTest {
     @SmallTest
     public void onServiceStateChanged_differentDataRats() throws Exception {
         doReturn(TelephonyManager.NETWORK_TYPE_UNKNOWN).when(mServiceState).getDataNetworkType();
-        mockWwanCsRat(TelephonyManager.NETWORK_TYPE_UNKNOWN);
         mockWwanPsRat(TelephonyManager.NETWORK_TYPE_UNKNOWN);
 
         mServiceStateStats.onServiceStateChanged(mServiceState);
@@ -886,29 +879,6 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(200L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         verifyNoMoreInteractions(mPersistAtomsStorage);
-    }
-
-    @Test
-    @SmallTest
-    public void getVoiceRat_bearer() throws Exception {
-        mockWwanPsRat(TelephonyManager.NETWORK_TYPE_LTE);
-        mockWwanCsRat(TelephonyManager.NETWORK_TYPE_LTE);
-        doReturn(TelephonyManager.NETWORK_TYPE_UNKNOWN).when(mImsStats).getImsVoiceRadioTech();
-        assertEquals(TelephonyManager.NETWORK_TYPE_UNKNOWN, mServiceStateStats.getVoiceRat(
-                mPhone, mServiceState, VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_IMS));
-        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, mServiceStateStats.getVoiceRat(
-                mPhone, mServiceState, VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS));
-        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, mServiceStateStats.getVoiceRat(
-                mPhone, mServiceState, VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_UNKNOWN));
-        mockWwanPsRat(TelephonyManager.NETWORK_TYPE_UMTS);
-        mockWwanCsRat(TelephonyManager.NETWORK_TYPE_UMTS);
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
-        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, mServiceStateStats.getVoiceRat(
-                mPhone, mServiceState, VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_IMS));
-        assertEquals(TelephonyManager.NETWORK_TYPE_UMTS, mServiceStateStats.getVoiceRat(
-                mPhone, mServiceState, VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS));
-        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, mServiceStateStats.getVoiceRat(
-                mPhone, mServiceState, VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_UNKNOWN));
     }
 
     private void mockWwanPsRat(@NetworkType int rat) {

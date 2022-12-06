@@ -43,7 +43,6 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 import android.util.Singleton;
 
-import com.android.ims.ImsManager;
 import com.android.internal.telephony.uicc.IccUtils;
 
 import org.junit.After;
@@ -208,11 +207,5 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
         /* handle EVENT_IMS_STATE_DONE */
         processAllMessages();
         assertTrue(mSmsDispatchersController.isIms());
-    }
-
-    @Test
-    public void testSetImsManager() {
-        ImsManager imsManager = mock(ImsManager.class);
-        assertTrue(mSmsDispatchersController.setImsManager(imsManager));
     }
 }

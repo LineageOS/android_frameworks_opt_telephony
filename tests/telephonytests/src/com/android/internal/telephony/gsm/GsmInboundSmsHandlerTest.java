@@ -57,7 +57,6 @@ import android.testing.TestableLooper;
 
 import androidx.test.filters.MediumTest;
 
-import com.android.ims.ImsManager;
 import com.android.internal.telephony.FakeSmsContentProvider;
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.InboundSmsTracker;
@@ -1233,12 +1232,4 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         assertEquals("IdleState", getCurrentState().getName());
 
     }
-
-    @Test
-    public void testSetImsManager() {
-        ImsManager imsManager = Mockito.mock(ImsManager.class);
-        transitionFromStartupToIdle();
-        assertTrue(mGsmInboundSmsHandler.setImsManager(imsManager));
-    }
 }
-

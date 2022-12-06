@@ -6340,13 +6340,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("RIL: " + this);
-        pw.println(" " + mServiceProxies.get(HAL_SERVICE_DATA));
-        pw.println(" " + mServiceProxies.get(HAL_SERVICE_MESSAGING));
-        pw.println(" " + mServiceProxies.get(HAL_SERVICE_MODEM));
-        pw.println(" " + mServiceProxies.get(HAL_SERVICE_NETWORK));
-        pw.println(" " + mServiceProxies.get(HAL_SERVICE_SIM));
-        pw.println(" " + mServiceProxies.get(HAL_SERVICE_VOICE));
-        pw.println(" " + mServiceProxies.get(HAL_SERVICE_IMS));
         pw.println(" mWakeLock=" + mWakeLock);
         pw.println(" mWakeLockTimeout=" + mWakeLockTimeout);
         synchronized (mRequestList) {

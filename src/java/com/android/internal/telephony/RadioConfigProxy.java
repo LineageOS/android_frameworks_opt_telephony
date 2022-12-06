@@ -336,11 +336,4 @@ public class RadioConfigProxy {
                     mRadioConfig.obtainMessage(RadioConfig.EVENT_AIDL_SERVICE_DEAD));
         }
     }
-
-    @Override
-    public String toString() {
-        return "RadioConfigProxy["
-                + "mRadioHalVersion=" + mRadioHalVersion
-                + ", mRadioConfigHalVersion=" + mRadioConfigHalVersion + ']';
-    }
 }

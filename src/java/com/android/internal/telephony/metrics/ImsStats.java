@@ -369,6 +369,7 @@ public class ImsStats {
      * TelephonyManager#NETWORK_TYPE_UNKNOWN} if there isn't any.
      */
     @NetworkType
+    @VisibleForTesting
     public synchronized int getImsVoiceRadioTech() {
         if (mLastRegistrationStats == null
                 || !mLastAvailableFeatures.isCapable(CAPABILITY_TYPE_VOICE)) {

@@ -406,7 +406,7 @@ public class SmsDispatchersController extends Handler {
         // SMS pdus when the phone is camping on CDMA(3gpp2) network and vice versa.
         android.telephony.SmsMessage msg =
                 android.telephony.SmsMessage.createFromPdu(pdu, format);
-        injectSmsPdu(msg, format, callback, false /* ignoreClass */, isOverIms, 0 /* unused */);
+        injectSmsPdu(msg, format, callback, false /* ignoreClass */, isOverIms);
     }
 
     /**
@@ -421,7 +421,7 @@ public class SmsDispatchersController extends Handler {
      */
     @VisibleForTesting
     public void injectSmsPdu(SmsMessage msg, String format, SmsInjectionCallback callback,
-            boolean ignoreClass, boolean isOverIms, int token) {
+            boolean ignoreClass, boolean isOverIms) {
         Rlog.d(TAG, "SmsDispatchersController:injectSmsPdu");
         try {
             if (msg == null) {
@@ -443,7 +443,7 @@ public class SmsDispatchersController extends Handler {
                 Rlog.i(TAG, "SmsDispatchersController:injectSmsText Sending msg=" + msg
                         + ", format=" + format + "to mGsmInboundSmsHandler");
                 mGsmInboundSmsHandler.sendMessage(
-                        InboundSmsHandler.EVENT_INJECT_SMS, isOverIms ? 1 : 0, token, ar);
+                        InboundSmsHandler.EVENT_INJECT_SMS, isOverIms ? 1 : 0, 0, ar);
             } else if (format.equals(SmsConstants.FORMAT_3GPP2)) {
                 Rlog.i(TAG, "SmsDispatchersController:injectSmsText Sending msg=" + msg
                         + ", format=" + format + "to mCdmaInboundSmsHandler");
@@ -458,19 +458,6 @@ public class SmsDispatchersController extends Handler {
             Rlog.e(TAG, "injectSmsPdu failed: ", e);
             callback.onSmsInjectedResult(Intents.RESULT_SMS_GENERIC_ERROR);
         }
-    }
-
-    /**
-     * sets ImsManager object.
-     *
-     * @param imsManager holds a valid object or a null for setting
-     */
-    public boolean setImsManager(ImsManager imsManager) {
-        if (mGsmInboundSmsHandler != null) {
-            mGsmInboundSmsHandler.setImsManager(imsManager);
-            return true;
-        }
-        return false;
     }
 
     /**
