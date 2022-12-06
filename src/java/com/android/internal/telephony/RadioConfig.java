@@ -642,4 +642,9 @@ public class RadioConfig extends Handler {
     private static void loge(String log) {
         Rlog.e(TAG, log);
     }
+
+    @Override
+    public String toString() {
+        return "RadioConfig[" + "mRadioConfigProxy=" + mRadioConfigProxy + ']';
+    }
 }

@@ -182,6 +182,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     /** BroadcastReceiver timed out waiting for an intent */
     public static final int EVENT_RECEIVER_TIMEOUT = 9;
 
+
     /** Wakelock release delay when returning to idle state. */
     private static final int WAKELOCK_TIMEOUT = 3000;
 
@@ -498,7 +499,6 @@ public abstract class InboundSmsHandler extends StateMachine {
                 case EVENT_RETURN_TO_IDLE:
                     // already in idle state; ignore
                     return HANDLED;
-
                 case EVENT_BROADCAST_COMPLETE:
                 case EVENT_START_ACCEPTING_SMS:
                 default:
@@ -537,7 +537,8 @@ public abstract class InboundSmsHandler extends StateMachine {
 
                 case EVENT_INJECT_SMS:
                     // handle new injected SMS
-                    handleInjectSms((AsyncResult) msg.obj, msg.arg1 == 1 /* isOverIms */);
+                    handleInjectSms((AsyncResult) msg.obj, msg.arg1 == 1 /* isOverIms */,
+                            msg.arg2 /* token */);
                     sendMessage(EVENT_RETURN_TO_IDLE);
                     return HANDLED;
 
@@ -660,7 +661,6 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
         }
     }
-
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void handleNewSms(AsyncResult ar) {
         if (ar.exception != null) {
@@ -671,7 +671,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         int result;
         try {
             SmsMessage sms = (SmsMessage) ar.result;
-            result = dispatchMessage(sms.mWrappedSmsMessage, SOURCE_NOT_INJECTED);
+            result = dispatchMessage(sms.mWrappedSmsMessage, SOURCE_NOT_INJECTED, 0 /*unused*/);
         } catch (RuntimeException ex) {
             loge("Exception dispatching message", ex);
             result = RESULT_SMS_DISPATCH_FAILURE;
@@ -690,7 +690,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param ar is the AsyncResult that has the SMS PDU to be injected.
      */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    private void handleInjectSms(AsyncResult ar, boolean isOverIms) {
+    private void handleInjectSms(AsyncResult ar, boolean isOverIms, int token) {
         int result;
         SmsDispatchersController.SmsInjectionCallback callback = null;
         try {
@@ -702,7 +702,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             } else {
                 @SmsSource int smsSource =
                         isOverIms ? SOURCE_INJECTED_FROM_IMS : SOURCE_INJECTED_FROM_UNKNOWN;
-                result = dispatchMessage(sms.mWrappedSmsMessage, smsSource);
+                result = dispatchMessage(sms.mWrappedSmsMessage, smsSource, token);
             }
         } catch (RuntimeException ex) {
             loge("Exception dispatching message", ex);
@@ -723,7 +723,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @return a result code from {@link android.provider.Telephony.Sms.Intents},
      *  or {@link Activity#RESULT_OK} for delayed acknowledgment to SMSC
      */
-    private int dispatchMessage(SmsMessageBase smsb, @SmsSource int smsSource) {
+    private int dispatchMessage(SmsMessageBase smsb, @SmsSource int smsSource, int token) {
         // If sms is null, there was a parsing error.
         if (smsb == null) {
             loge("dispatchSmsMessage: message is null");
@@ -737,7 +737,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             return Intents.RESULT_SMS_HANDLED;
         }
 
-        int result = dispatchMessageRadioSpecific(smsb, smsSource);
+        int result = dispatchMessageRadioSpecific(smsb, smsSource, token);
 
         // In case of error, add to metrics. This is not required in case of success, as the
         // data will be tracked when the message is processed (processMessagePart).
@@ -759,7 +759,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      *  or {@link Activity#RESULT_OK} for delayed acknowledgment to SMSC
      */
     protected abstract int dispatchMessageRadioSpecific(SmsMessageBase smsb,
-            @SmsSource int smsSource);
+            @SmsSource int smsSource, int token);
 
     /**
      * Send an acknowledge message to the SMSC.
