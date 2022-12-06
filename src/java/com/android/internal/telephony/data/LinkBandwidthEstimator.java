@@ -715,7 +715,7 @@ public class LinkBandwidthEstimator extends Handler {
             int filterInKbps = mBwSampleValid ? mBwSampleKbps : avgKbps;
 
             long currTimeMs = mTelephonyFacade.getElapsedSinceBootMillis();
-            int timeDeltaSec = (int) (currTimeMs - mBwSampleValidTimeMs) / 1000;
+            int timeDeltaSec = (int) ((currTimeMs - mBwSampleValidTimeMs) / 1000);
 
             // If the operation condition changes significantly since the last update
             // or the sample has higher BW, use a faster filter. Otherwise, use a slow filter

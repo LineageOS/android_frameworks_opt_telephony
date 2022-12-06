@@ -23,6 +23,7 @@ import static com.android.internal.annotations.VisibleForTesting.Visibility.PRIV
 import static com.android.internal.telephony.Phone.CS_FALLBACK;
 
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.app.usage.NetworkStatsManager;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
@@ -935,8 +936,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
      * {@code ImsReasonInfo#CODE_*} value.
      *
      * See {@link CarrierConfigManager#KEY_IMS_REASONINFO_MAPPING_STRING_ARRAY}.
+     * This ImsReasonInfoKeyPair with this key stating will consider getExtraMessage a match
+     * if the carrier config messages starts with getExtraMessage result.
      */
-    private Map<Pair<Integer, String>, Integer> mImsReasonCodeMap = new ArrayMap<>();
+    private Map<ImsReasonInfoKeyPair, Integer> mImsReasonCodeMap = new ArrayMap<>();
 
 
     /**
@@ -995,6 +998,54 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     // Used for important operational related events for logging.
     private final LocalLog mOperationLocalLog = new LocalLog(64);
 
+    /**
+     * Container to ease passing around a tuple of two objects. This object provides a sensible
+     * implementation of equals(), returning true/false using equals() for one object (Integer)
+     * and startsWith() for another object (String). Also the startsWith() in this equals() method
+     * will return true for A.startsWith(B) if B.second starts with A.second.
+     */
+    private static class ImsReasonInfoKeyPair extends Pair<Integer, String> {
+
+        /**
+         * Constructor for a ImsReasonInfoKeyPair.
+         *
+         * @param first Integer in the ImsReasonInfoKeyPair
+         * @param second String in the ImsReasonInfoKeyPair
+         */
+        private ImsReasonInfoKeyPair(Integer first, String second) {
+            super(first, second);
+        }
+
+        /**
+         * Checks the two objects for equality by delegating to their respective
+         * {@link Object#equals(Object)} methods.
+         *
+         * @param o the {@link com.android.internal.telephony.imsphone.ImsReasonInfoKeyPair} to
+         *         which this one is to be checked for equality
+         * @return true if the underlying objects of the ImsReasonInfoKeyPair are
+         * considered equal and startsWith
+         */
+        @Override
+        public boolean equals(@Nullable Object o) {
+            if (!(o instanceof ImsReasonInfoKeyPair)) {
+                return false;
+            }
+            ImsReasonInfoKeyPair p = (ImsReasonInfoKeyPair) o;
+
+            return Objects.equals(p.first, first)
+                    && Objects.toString(second).startsWith(Objects.toString(p.second));
+        }
+
+        /**
+         * Compute a hash code using the hash code of the Integer key
+         *
+         * @return a hashcode of the first
+         */
+        @Override
+        public int hashCode() {
+            return (first == null ? 0 : first.hashCode());
+        }
+    }
     //***** Events
 
 
@@ -2840,7 +2891,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         if (message != null) {
             message = message.toLowerCase();
         }
-        mImsReasonCodeMap.put(new Pair<>(fromCode, message), toCode);
+        mImsReasonCodeMap.put(new ImsReasonInfoKeyPair(fromCode, message), toCode);
     }
 
     /**
@@ -2863,9 +2914,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
         log("maybeRemapReasonCode : fromCode = " + reasonInfo.getCode() + " ; message = "
                 + reason);
-        Pair<Integer, String> toCheck = new Pair<>(code, reason);
-        Pair<Integer, String> wildcardToCheck = new Pair<>(null, reason);
-        Pair<Integer, String> wildcardMessageToCheck = new Pair<>(code, null);
+        ImsReasonInfoKeyPair toCheck = new ImsReasonInfoKeyPair(code, reason);
+        ImsReasonInfoKeyPair wildcardToCheck = new ImsReasonInfoKeyPair(null, reason);
+        ImsReasonInfoKeyPair wildcardMessageToCheck = new ImsReasonInfoKeyPair(code, null);
+
         if (mImsReasonCodeMap.containsKey(toCheck)) {
             int toCode = mImsReasonCodeMap.get(toCheck);
 
