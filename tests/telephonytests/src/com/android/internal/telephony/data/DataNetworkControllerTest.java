@@ -41,7 +41,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.annotation.NonNull;
-import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.InetAddresses;
 import android.net.LinkAddress;
@@ -73,6 +72,7 @@ import android.telephony.NetworkRegistrationInfo.RegistrationState;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionPlan;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
@@ -163,6 +163,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
     private final SparseArray<RegistrantList> mDataCallListChangedRegistrants = new SparseArray<>();
     private DataNetworkController mDataNetworkControllerUT;
     private PersistableBundle mCarrierConfig;
+    private CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener;
 
     private AccessNetworksManagerCallback mAccessNetworksManagerCallback;
     private LinkBandwidthEstimatorCallback mLinkBandwidthEstimatorCallback;
@@ -469,9 +470,10 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
     private void carrierConfigChanged() {
         // Trigger carrier config reloading
-        Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, 0);
-        mContext.sendBroadcast(intent);
+        mCarrierConfigChangeListener.onCarrierConfigChanged(0 /* logicalSlotIndex */,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
+
         processAllMessages();
     }
 
@@ -766,6 +768,9 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         doReturn(-1).when(mPhone).getSubId();
 
+        // Capture listener to emulate the carrier config change notification used later
+        ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
+                ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
         // Note that creating a "real" data network controller will also result in creating
         // real DataRetryManager, DataConfigManager, etc...Normally in unit test we should isolate
         // other modules and make them mocked, but only focusing on testing the unit we would like
@@ -773,6 +778,10 @@ public class DataNetworkControllerTest extends TelephonyTest {
         // between DataNetworkController and its sub-modules, we intend to make those modules "real"
         // as well, except some modules below we replaced with mocks.
         mDataNetworkControllerUT = new DataNetworkController(mPhone, Looper.myLooper());
+        verify(mCarrierConfigManager).registerCarrierConfigChangeListener(any(),
+                listenerArgumentCaptor.capture());
+        mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(0);
+        assertThat(mCarrierConfigChangeListener).isNotNull();
         doReturn(mDataNetworkControllerUT).when(mPhone).getDataNetworkController();
 
         doReturn(1).when(mPhone).getSubId();

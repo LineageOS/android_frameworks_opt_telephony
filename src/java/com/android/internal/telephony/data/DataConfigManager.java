@@ -19,10 +19,6 @@ package com.android.internal.telephony.data;
 import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.StringDef;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
@@ -338,22 +334,13 @@ public class DataConfigManager extends Handler {
         log("DataConfigManager created.");
 
         mCarrierConfigManager = mPhone.getContext().getSystemService(CarrierConfigManager.class);
-
-        // Register for carrier configs update
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        mPhone.getContext().registerReceiver(new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (intent.getAction().equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
-                    if (mPhone.getPhoneId() == intent.getIntExtra(
-                            CarrierConfigManager.EXTRA_SLOT_INDEX,
-                            SubscriptionManager.INVALID_SIM_SLOT_INDEX)) {
+        // Callback send msg to handler thread, so callback itself can be executed in binder thread.
+        mCarrierConfigManager.registerCarrierConfigChangeListener(Runnable::run,
+                (slotIndex, subId, carrierId, specificCarrierId) -> {
+                    if (slotIndex == mPhone.getPhoneId()) {
                         sendEmptyMessage(EVENT_CARRIER_CONFIG_CHANGED);
                     }
-                }
-            }
-        }, filter, null, mPhone);
+                });
 
         // Register for device config update
         DeviceConfig.addOnPropertiesChangedListener(
