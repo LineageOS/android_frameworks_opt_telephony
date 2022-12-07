@@ -18,15 +18,21 @@ package com.android.internal.telephony.gsm;
 
 import static junit.framework.Assert.fail;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.verify;
 
+import android.os.AsyncResult;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
+import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
@@ -100,6 +106,20 @@ public class GsmMmiCodeTest extends TelephonyTest {
         } catch (Exception e) {
             fail("Shouldn't crash!!!");
         }
+    }
+
+    @Test
+    public void testOperationNotSupported() {
+        // Contrived; this is just to get a simple instance of the class.
+        mGsmMmiCode = GsmMmiCode.newNetworkInitiatedUssd(null, true, mGsmCdmaPhoneUT, null);
+
+        assertThat(mGsmMmiCode).isNotNull();
+        // Emulate request not supported from the network.
+        AsyncResult ar = new AsyncResult(null, null,
+                new CommandException(CommandException.Error.REQUEST_NOT_SUPPORTED));
+        mGsmMmiCode.getErrorMessage(ar);
+        verify(mContext.getResources()).getText(
+                eq(com.android.internal.R.string.mmiErrorNotSupported));
     }
 
     private void setCarrierSupportsCallerIdVerticalServiceCodesCarrierConfig() {
