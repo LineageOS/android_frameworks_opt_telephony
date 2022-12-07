@@ -32,8 +32,8 @@ import static org.mockito.Mockito.isA;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.Message;
@@ -41,6 +41,7 @@ import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
+import android.telephony.TelephonyManager;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -70,6 +71,8 @@ public class UiccProfileTest extends TelephonyTest {
     }
 
     private IccIoResult mIccIoResult;
+    private PersistableBundle mBundle;
+    private CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener;
 
     private static final int UICCPROFILE_CARRIER_PRIVILEGE_LOADED_EVENT = 3;
 
@@ -118,8 +121,18 @@ public class UiccProfileTest extends TelephonyTest {
                         mIccCardStatus.mGsmUmtsSubscriptionAppIndex = -1;
         mIccIoResult = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes("FF40"));
         mSimulatedCommands.setIccIoResultForApduLogicalChannel(mIccIoResult);
+        mBundle = mContextFixture.getCarrierConfigBundle();
+        when(mCarrierConfigManager.getConfigForSubId(anyInt(), any())).thenReturn(mBundle);
+
+        // Capture CarrierConfigChangeListener to emulate the carrier config change notification
+        ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
+                ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
         mUiccProfile = new UiccProfile(mContext, mSimulatedCommands, mIccCardStatus,
               0 /* phoneId */, mUiccCard, new Object());
+        verify(mCarrierConfigManager).registerCarrierConfigChangeListener(any(),
+                listenerArgumentCaptor.capture());
+        mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(0);
+
         processAllMessages();
         logd("Create UiccProfile");
 
@@ -130,6 +143,7 @@ public class UiccProfileTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mUiccProfile = null;
         mIccIoResult = null;
+        mBundle = null;
         super.tearDown();
     }
 
@@ -535,8 +549,9 @@ public class UiccProfileTest extends TelephonyTest {
         carrierConfigBundle.putString(CarrierConfigManager.KEY_CARRIER_NAME_STRING,
                 fakeCarrierName);
 
-        // broadcast CARRIER_CONFIG_CHANGED
-        mContext.sendBroadcast(new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        // send carrier config change
+        mCarrierConfigChangeListener.onCarrierConfigChanged(mPhone.getPhoneId(), mPhone.getSubId(),
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
         processAllMessages();
 
         // verify that setSimOperatorNameForPhone() is called with fakeCarrierName
