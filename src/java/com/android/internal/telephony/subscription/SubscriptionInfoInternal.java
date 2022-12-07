@@ -31,6 +31,7 @@
 
 package com.android.internal.telephony.subscription;
 
+import android.annotation.ColorInt;
 import android.annotation.NonNull;
 import android.os.UserHandle;
 import android.provider.Telephony.SimInfo;
@@ -113,6 +114,7 @@ public class SubscriptionInfoInternal {
     /**
      * The color to be used for tinting the icon when displaying to the user.
      */
+    @ColorInt
     private final int mIconTint;
 
     /**
@@ -481,7 +483,7 @@ public class SubscriptionInfoInternal {
      * @see #getCarrierName()
      */
     @NonNull
-    public CharSequence getDisplayName() {
+    public String getDisplayName() {
         return mDisplayName;
     }
 
@@ -492,7 +494,7 @@ public class SubscriptionInfoInternal {
      * @see #getDisplayName()
      */
     @NonNull
-    public CharSequence getCarrierName() {
+    public String getCarrierName() {
         return mCarrierName;
     }
 
@@ -509,6 +511,7 @@ public class SubscriptionInfoInternal {
      *
      * @return A hexadecimal color value.
      */
+    @ColorInt
     public int getIconTint() {
         return mIconTint;
     }
@@ -971,6 +974,20 @@ public class SubscriptionInfoInternal {
      */
     public boolean isGroupDisabled() {
         return mIsGroupDisabled;
+    }
+
+    /**
+     * @return {@code true} if the subscription is from the actively used SIM.
+     */
+    public boolean isActive() {
+        return mSimSlotIndex >= 0 || mType == SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM;
+    }
+
+    /**
+     * @return {@code true} if the subscription is visible to the user.
+     */
+    public boolean isVisible() {
+        return !isOpportunistic() || TextUtils.isEmpty(mGroupUuid);
     }
 
     /** @return converted {@link SubscriptionInfo}. */
@@ -1747,6 +1764,24 @@ public class SubscriptionInfoInternal {
         public Builder setNativeAccessRules(@NonNull byte[] nativeAccessRules) {
             Objects.requireNonNull(nativeAccessRules);
             mNativeAccessRules = nativeAccessRules;
+            return this;
+        }
+
+        /**
+         * Set the native access rules for this subscription, if it is embedded and defines any.
+         * This does not include access rules for non-embedded subscriptions.
+         *
+         * @param nativeAccessRules The native access rules for this subscription.
+         *
+         * @return The builder.
+         */
+        @NonNull
+        public Builder setNativeAccessRules(@NonNull List<UiccAccessRule> nativeAccessRules) {
+            Objects.requireNonNull(nativeAccessRules);
+            if (!nativeAccessRules.isEmpty()) {
+                mNativeAccessRules = UiccAccessRule.encodeRules(
+                        nativeAccessRules.toArray(new UiccAccessRule[0]));
+            }
             return this;
         }
 

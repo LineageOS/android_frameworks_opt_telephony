@@ -30,6 +30,8 @@ import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.data.DataStallRecoveryManager;
+import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 
 /** Generates metrics related to data stall recovery events per phone ID for the pushed atom. */
 public class DataStallRecoveryStats {
@@ -124,7 +126,12 @@ public class DataStallRecoveryStats {
     }
 
     private static boolean getIsOpportunistic(Phone phone) {
+        if (phone.isSubscriptionManagerServiceEnabled()) {
+            SubscriptionInfoInternal subInfo = SubscriptionManagerService.getInstance()
+                    .getSubscriptionInfoInternal(phone.getSubId());
+            return subInfo != null && subInfo.isOpportunistic();
+        }
         SubscriptionController subController = SubscriptionController.getInstance();
-        return subController != null ? subController.isOpportunistic(phone.getSubId()) : false;
+        return subController != null && subController.isOpportunistic(phone.getSubId());
     }
 }

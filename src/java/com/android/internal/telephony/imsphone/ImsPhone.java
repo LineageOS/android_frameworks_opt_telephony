@@ -116,6 +116,7 @@ import com.android.internal.telephony.metrics.ImsStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.metrics.VoiceCallSessionStats;
 import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
+import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.util.NotificationChannelController;
 import com.android.internal.telephony.util.TelephonyUtils;
@@ -2524,15 +2525,30 @@ public class ImsPhone extends ImsPhoneBase {
             // IMS callbacks are sent back to telephony after SIM state changed.
             return;
         }
-        SubscriptionController subController = SubscriptionController.getInstance();
-        String countryIso = getCountryIso(subController, subId);
-        // Format the number as one more defense to reject garbage values:
-        // phoneNumber will become null.
-        phoneNumber = PhoneNumberUtils.formatNumberToE164(phoneNumber, countryIso);
-        if (phoneNumber == null) {
-            return;
+
+        if (isSubscriptionManagerServiceEnabled()) {
+            SubscriptionInfoInternal subInfo = mSubscriptionManagerService
+                    .getSubscriptionInfoInternal(subId);
+            if (subInfo != null) {
+                phoneNumber = PhoneNumberUtils.formatNumberToE164(phoneNumber,
+                        subInfo.getCountryIso());
+                if (phoneNumber == null) {
+                    return;
+                }
+                mSubscriptionManagerService.setNumberFromIms(subId, phoneNumber);
+            }
+        } else {
+            SubscriptionController subController = SubscriptionController.getInstance();
+            String countryIso = getCountryIso(subController, subId);
+            // Format the number as one more defense to reject garbage values:
+            // phoneNumber will become null.
+            phoneNumber = PhoneNumberUtils.formatNumberToE164(phoneNumber, countryIso);
+            if (phoneNumber == null) {
+                return;
+            }
+            subController.setSubscriptionProperty(subId, COLUMN_PHONE_NUMBER_SOURCE_IMS,
+                    phoneNumber);
         }
-        subController.setSubscriptionProperty(subId, COLUMN_PHONE_NUMBER_SOURCE_IMS, phoneNumber);
     }
 
     private static String getCountryIso(SubscriptionController subController, int subId) {

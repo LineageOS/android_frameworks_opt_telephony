@@ -61,6 +61,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.euicc.EuiccConnector.OtaStatusChangedCallback;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccPort;
@@ -1587,9 +1588,15 @@ public class EuiccController extends IEuiccController.Stub {
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     public void refreshSubscriptionsAndSendResult(
             PendingIntent callbackIntent, int resultCode, Intent extrasIntent) {
-        SubscriptionController.getInstance()
-                .requestEmbeddedSubscriptionInfoListRefresh(
-                        () -> sendResult(callbackIntent, resultCode, extrasIntent));
+        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
+            SubscriptionManagerService.getInstance().updateEmbeddedSubscriptions(
+                    List.of(mTelephonyManager.getCardIdForDefaultEuicc()),
+                    () -> sendResult(callbackIntent, resultCode, extrasIntent));
+        } else {
+            SubscriptionController.getInstance()
+                    .requestEmbeddedSubscriptionInfoListRefresh(
+                            () -> sendResult(callbackIntent, resultCode, extrasIntent));
+        }
     }
 
     /** Dispatch the given callback intent with the given result code and data. */
