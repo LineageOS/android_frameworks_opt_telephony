@@ -97,6 +97,8 @@ import com.android.internal.telephony.data.DataNetworkController.DataNetworkCont
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.metrics.ServiceStateStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccRecords;
@@ -345,6 +347,7 @@ public class ServiceStateTracker extends Handler {
     private SubscriptionManager mSubscriptionManager;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private SubscriptionController mSubscriptionController;
+    private SubscriptionManagerService mSubscriptionManagerService;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final SstSubscriptionsChangedListener mOnSubscriptionsChangedListener =
         new SstSubscriptionsChangedListener();
@@ -649,7 +652,12 @@ public class ServiceStateTracker extends Handler {
         mCi.registerForCellInfoList(this, EVENT_UNSOL_CELL_INFO_LIST, null);
         mCi.registerForPhysicalChannelConfiguration(this, EVENT_PHYSICAL_CHANNEL_CONFIG, null);
 
-        mSubscriptionController = SubscriptionController.getInstance();
+        if (mPhone.isSubscriptionManagerServiceEnabled()) {
+            mSubscriptionManagerService = SubscriptionManagerService.getInstance();
+        } else {
+            mSubscriptionController = SubscriptionController.getInstance();
+        }
+
         mSubscriptionManager = SubscriptionManager.from(phone.getContext());
         mSubscriptionManager.addOnSubscriptionsChangedListener(
                 new android.os.HandlerExecutor(this), mOnSubscriptionsChangedListener);
@@ -2750,9 +2758,16 @@ public class ServiceStateTracker extends Handler {
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
             mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
 
-            if (!mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(),
-                    data.shouldShowPlmn(), data.getPlmn(), data.shouldShowSpn(), data.getSpn())) {
-                mSpnUpdatePending = true;
+            if (mPhone.isSubscriptionManagerServiceEnabled()) {
+                mSubscriptionManagerService.setCarrierName(mPhone.getSubId(),
+                        getCarrierName(data.shouldShowPlmn(), data.getPlmn(),
+                                data.shouldShowSpn(), data.getSpn()));
+            } else {
+                if (!mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(),
+                        data.shouldShowPlmn(), data.getPlmn(), data.shouldShowSpn(),
+                        data.getSpn())) {
+                    mSpnUpdatePending = true;
+                }
             }
         }
 
@@ -2762,6 +2777,26 @@ public class ServiceStateTracker extends Handler {
         mCurSpn = data.getSpn();
         mCurDataSpn = data.getDataSpn();
         mCurPlmn = data.getPlmn();
+    }
+
+    @NonNull
+    private String getCarrierName(boolean showPlmn, String plmn, boolean showSpn, String spn) {
+        String carrierName = "";
+        if (showPlmn) {
+            carrierName = plmn;
+            if (showSpn) {
+                // Need to show both plmn and spn if both are not same.
+                if (!Objects.equals(spn, plmn)) {
+                    String separator = mPhone.getContext().getString(
+                            com.android.internal.R.string.kg_text_message_separator).toString();
+                    carrierName = new StringBuilder().append(carrierName).append(separator)
+                            .append(spn).toString();
+                }
+            }
+        } else if (showSpn) {
+            carrierName = spn;
+        }
+        return carrierName;
     }
 
     private void updateSpnDisplayCdnr() {
@@ -4488,14 +4523,23 @@ public class ServiceStateTracker extends Handler {
         }
         Context context = mPhone.getContext();
 
-        SubscriptionInfo info = mSubscriptionController
-                .getActiveSubscriptionInfo(mPhone.getSubId(), context.getOpPackageName(),
-                        context.getAttributionTag());
+        if (mPhone.isSubscriptionManagerServiceEnabled()) {
+            SubscriptionInfoInternal subInfo = mSubscriptionManagerService
+                    .getSubscriptionInfoInternal(mPhone.getSubId());
+            if (subInfo == null || !subInfo.isVisible()) {
+                log("cannot setNotification on invisible subid mSubId=" + mSubId);
+                return;
+            }
+        } else {
+            SubscriptionInfo info = mSubscriptionController
+                    .getActiveSubscriptionInfo(mPhone.getSubId(), context.getOpPackageName(),
+                            context.getAttributionTag());
 
-        //if subscription is part of a group and non-primary, suppress all notifications
-        if (info == null || (info.isOpportunistic() && info.getGroupUuid() != null)) {
-            log("cannot setNotification on invisible subid mSubId=" + mSubId);
-            return;
+            //if subscription is part of a group and non-primary, suppress all notifications
+            if (info == null || (info.isOpportunistic() && info.getGroupUuid() != null)) {
+                log("cannot setNotification on invisible subid mSubId=" + mSubId);
+                return;
+            }
         }
 
         // Needed because sprout RIL sends these when they shouldn't?
@@ -4527,7 +4571,7 @@ public class ServiceStateTracker extends Handler {
 
         final boolean multipleSubscriptions = (((TelephonyManager) mPhone.getContext()
                   .getSystemService(Context.TELEPHONY_SERVICE)).getPhoneCount() > 1);
-        final int simNumber = mSubscriptionController.getSlotIndex(mSubId) + 1;
+        int simNumber = SubscriptionManager.getSlotIndex(mSubId) + 1;
 
         switch (notifyType) {
             case PS_ENABLED:

@@ -1858,12 +1858,14 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Set SIM color tint by simInfo index
-     * @param tint the tint color of the SIM
+     *
      * @param subId the unique SubInfoRecord index in database
+     * @param tint the tint color of the SIM
+     *
      * @return the number of records updated
      */
     @Override
-    public int setIconTint(int tint, int subId) {
+    public int setIconTint(int subId, int tint) {
         if (DBG) logd("[setIconTint]+ tint:" + tint + " subId:" + subId);
 
         enforceModifyPhoneState("setIconTint");

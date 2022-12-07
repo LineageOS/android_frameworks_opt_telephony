@@ -42,6 +42,8 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyScanManager;
 import android.util.Log;
 
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -195,6 +197,13 @@ public final class NetworkScanRequestTracker {
     public static Set<String> getAllowedMccMncsForLocationRestrictedScan(Context context) {
         final long token = Binder.clearCallingIdentity();
         try {
+            if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
+                return SubscriptionManagerService.getInstance()
+                        .getAvailableSubscriptionInfoList(context.getOpPackageName(),
+                                context.getAttributionTag()).stream()
+                        .flatMap(NetworkScanRequestTracker::getAllowableMccMncsFromSubscriptionInfo)
+                        .collect(Collectors.toSet());
+            }
             return SubscriptionController.getInstance()
                     .getAvailableSubscriptionInfoList(context.getOpPackageName(),
                             context.getAttributionTag()).stream()

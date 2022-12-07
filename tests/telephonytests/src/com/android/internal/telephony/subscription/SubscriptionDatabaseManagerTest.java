@@ -19,10 +19,13 @@ package com.android.internal.telephony.subscription;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
 
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -111,6 +114,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     static final SubscriptionInfoInternal FAKE_SUBSCRIPTION_INFO1 =
             new SubscriptionInfoInternal.Builder()
+                    .setId(1)
                     .setIccId(FAKE_ICCID1)
                     .setSimSlotIndex(0)
                     .setDisplayName(FAKE_CARRIER_NAME1)
@@ -165,6 +169,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     static final SubscriptionInfoInternal FAKE_SUBSCRIPTION_INFO2 =
             new SubscriptionInfoInternal.Builder()
+                    .setId(2)
                     .setIccId(FAKE_ICCID2)
                     .setSimSlotIndex(1)
                     .setDisplayName(FAKE_CARRIER_NAME2)
@@ -194,7 +199,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                     .setCountryIso(FAKE_COUNTRY_CODE2)
                     .setCarrierId(FAKE_CARRIER_ID2)
                     .setProfileClass(SubscriptionManager.PROFILE_CLASS_PROVISIONING)
-                    .setType(SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM)
+                    .setType(SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM)
                     .setGroupOwner(FAKE_OWNER2)
                     .setEnabledMobileDataPolicies(FAKE_MOBILE_DATA_POLICY2)
                     .setImsi(FAKE_IMSI2)
@@ -364,9 +369,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
      */
     private SubscriptionInfoInternal insertSubscriptionAndVerify(
             @NonNull SubscriptionInfoInternal subInfo) throws Exception {
-        assertThat(subInfo.getSubscriptionId()).isEqualTo(
-                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
-        int subId = mDatabaseManagerUT.insertSubscriptionInfo(subInfo);
+        int subId = mDatabaseManagerUT.insertSubscriptionInfo(
+                new SubscriptionInfoInternal.Builder(subInfo)
+                        .setId(SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+                        .build());
         assertThat(SubscriptionManager.isValidSubscriptionId(subId)).isTrue();
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setId(subId).build();
@@ -404,6 +410,35 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateSubscription() throws Exception {
+        SubscriptionInfoInternal subInfo = new SubscriptionInfoInternal
+                .Builder(FAKE_SUBSCRIPTION_INFO2)
+                .setId(1)
+                .build();
+
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.updateSubscription(subInfo));
+
+        assertThat(insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1).getSubscriptionId())
+                .isEqualTo(1);
+        mDatabaseManagerUT.updateSubscription(subInfo);
+        processAllMessages();
+        verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+        Mockito.clearInvocations(mSubscriptionDatabaseManagerCallback);
+
+        // Same sub info again. Should not trigger callback
+        mDatabaseManagerUT.updateSubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, never()).onSubscriptionChanged(anyInt());
+    }
+
+    @Test
+    public void testUpdateSubscriptionSync() throws Exception {
+        mContextFixture.putBooleanResource(com.android.internal.R.bool
+                .config_subscription_database_async_update, false);
+        mDatabaseManagerUT = new SubscriptionDatabaseManager(mContext, Looper.myLooper(),
+                mSubscriptionDatabaseManagerCallback);
+
         assertThat(insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1).getSubscriptionId())
                 .isEqualTo(1);
         SubscriptionInfoInternal subInfo = new SubscriptionInfoInternal
@@ -411,13 +446,22 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setId(1)
                 .build();
         mDatabaseManagerUT.updateSubscription(subInfo);
-        processAllMessages();
+
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+        Mockito.clearInvocations(mSubscriptionDatabaseManagerCallback);
+
+        // Same sub info again. Should not trigger callback
+        mDatabaseManagerUT.updateSubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, never()).onSubscriptionChanged(anyInt());
     }
 
     @Test
     public void testUpdateIccId() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setIccId(1, FAKE_ICCID2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setIccId(subInfo.getSubscriptionId(), FAKE_ICCID2);
         processAllMessages();
@@ -429,6 +473,11 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateSimSlotIndex() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setSimSlotIndex(1,
+                        SubscriptionManager.INVALID_SIM_SLOT_INDEX));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setSimSlotIndex(subInfo.getSubscriptionId(),
                 SubscriptionManager.INVALID_SIM_SLOT_INDEX);
@@ -442,6 +491,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateDisplayName() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setDisplayName(1, FAKE_CARRIER_NAME2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setDisplayName(subInfo.getSubscriptionId(), FAKE_CARRIER_NAME2);
         processAllMessages();
@@ -454,6 +507,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateCarrierName() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setCarrierName(1, FAKE_CARRIER_NAME2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setCarrierName(subInfo.getSubscriptionId(), FAKE_CARRIER_NAME2);
         processAllMessages();
@@ -466,18 +523,28 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateDisplayNameSource() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setDisplayNameSource(1,
+                        SubscriptionManager.NAME_SOURCE_USER_INPUT));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
-        mDatabaseManagerUT.setCarrierName(subInfo.getSubscriptionId(), FAKE_CARRIER_NAME2);
+        mDatabaseManagerUT.setDisplayNameSource(subInfo.getSubscriptionId(),
+                SubscriptionManager.NAME_SOURCE_USER_INPUT);
         processAllMessages();
 
-        subInfo = new SubscriptionInfoInternal.Builder(subInfo).setCarrierName(
-                FAKE_CARRIER_NAME2).build();
+        subInfo = new SubscriptionInfoInternal.Builder(subInfo).setDisplayNameSource(
+                SubscriptionManager.NAME_SOURCE_USER_INPUT).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
     }
 
     @Test
     public void testUpdateIconTint() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setIconTint(1, FAKE_COLOR2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setIconTint(subInfo.getSubscriptionId(), FAKE_COLOR2);
         processAllMessages();
@@ -489,6 +556,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateNumber() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setNumber(1, FAKE_PHONE_NUMBER2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setNumber(subInfo.getSubscriptionId(), FAKE_PHONE_NUMBER2);
         processAllMessages();
@@ -501,6 +572,11 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateDataRoaming() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setDataRoaming(1,
+                        SubscriptionManager.DATA_ROAMING_DISABLE));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setDataRoaming(subInfo.getSubscriptionId(),
                 SubscriptionManager.DATA_ROAMING_DISABLE);
@@ -514,6 +590,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateMcc() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setMcc(1, FAKE_MCC2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setMcc(subInfo.getSubscriptionId(), FAKE_MCC2);
         processAllMessages();
@@ -525,6 +605,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateMnc() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setMnc(1, FAKE_MNC2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setMnc(subInfo.getSubscriptionId(), FAKE_MNC2);
         processAllMessages();
@@ -536,6 +620,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateEhplmns() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setEhplmns(1, FAKE_EHPLMNS2.split(",")));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setEhplmns(subInfo.getSubscriptionId(), FAKE_EHPLMNS2.split(","));
         processAllMessages();
@@ -547,6 +635,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateHplmns() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setHplmns(1, FAKE_HPLMNS2.split(",")));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setHplmns(subInfo.getSubscriptionId(), FAKE_HPLMNS2.split(","));
         processAllMessages();
@@ -558,6 +650,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateEmbedded() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setEmbedded(1, false));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setEmbedded(subInfo.getSubscriptionId(), false);
         processAllMessages();
@@ -569,6 +665,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateCardString() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setCardString(1, FAKE_ICCID2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setCardString(subInfo.getSubscriptionId(), FAKE_ICCID2);
         processAllMessages();
@@ -583,6 +683,11 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateNativeAccessRules() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setNativeAccessRules(1,
+                        UiccAccessRule.decodeRules(FAKE_NATIVE_ACCESS_RULES2)));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setNativeAccessRules(subInfo.getSubscriptionId(),
                 UiccAccessRule.decodeRules(FAKE_NATIVE_ACCESS_RULES2));
@@ -596,6 +701,11 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateCarrierConfigAccessRules() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setCarrierConfigAccessRules(1,
+                        UiccAccessRule.decodeRules(FAKE_CARRIER_CONFIG_ACCESS_RULES2)));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setCarrierConfigAccessRules(subInfo.getSubscriptionId(),
                 UiccAccessRule.decodeRules(FAKE_CARRIER_CONFIG_ACCESS_RULES2));
@@ -609,6 +719,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateRemovableEmbedded() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setRemovableEmbedded(1, true));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setRemovableEmbedded(subInfo.getSubscriptionId(), true);
         processAllMessages();
@@ -620,6 +734,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateEnhanced4GModeEnabled() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setEnhanced4GModeEnabled(1, false));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setEnhanced4GModeEnabled(subInfo.getSubscriptionId(), false);
         processAllMessages();
@@ -631,6 +749,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateVideoTelephonyEnabled() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setVideoTelephonyEnabled(1, false));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setVideoTelephonyEnabled(subInfo.getSubscriptionId(), false);
         processAllMessages();
@@ -642,6 +764,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateWifiCallingEnabled() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setWifiCallingEnabled(1, false));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setWifiCallingEnabled(subInfo.getSubscriptionId(), false);
         processAllMessages();
@@ -653,6 +779,11 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateWifiCallingMode() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setWifiCallingMode(
+                        1, ImsMmTelManager.WIFI_MODE_WIFI_ONLY));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setWifiCallingMode(subInfo.getSubscriptionId(),
                 ImsMmTelManager.WIFI_MODE_WIFI_ONLY);
@@ -666,6 +797,11 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateWifiCallingModeForRoaming() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setWifiCallingModeForRoaming(
+                        1, ImsMmTelManager.WIFI_MODE_WIFI_ONLY));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setWifiCallingModeForRoaming(subInfo.getSubscriptionId(),
                 ImsMmTelManager.WIFI_MODE_WIFI_ONLY);
@@ -679,6 +815,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateWifiCallingEnabledForRoaming() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setWifiCallingEnabledForRoaming(1, false));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setWifiCallingEnabledForRoaming(subInfo.getSubscriptionId(), false);
         processAllMessages();
@@ -691,6 +831,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateOpportunistic() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setOpportunistic(1, true));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setOpportunistic(subInfo.getSubscriptionId(), true);
         processAllMessages();
@@ -702,6 +846,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateGroupUuid() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setGroupUuid(1, FAKE_UUID2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setGroupUuid(subInfo.getSubscriptionId(), FAKE_UUID2);
         processAllMessages();
@@ -713,6 +861,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateCountryIso() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setCountryIso(1, FAKE_COUNTRY_CODE2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setCountryIso(subInfo.getSubscriptionId(), FAKE_COUNTRY_CODE2);
         processAllMessages();
@@ -725,6 +877,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateCarrierId() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setCarrierId(1, FAKE_CARRIER_ID2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setCarrierId(subInfo.getSubscriptionId(), FAKE_CARRIER_ID2);
         processAllMessages();
@@ -737,6 +893,11 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateProfileClass() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setProfileClass(
+                        1, SubscriptionManager.PROFILE_CLASS_TESTING));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setProfileClass(subInfo.getSubscriptionId(),
                 SubscriptionManager.PROFILE_CLASS_TESTING);
@@ -750,6 +911,11 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateSubscriptionType() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setSubscriptionType(
+                        1, SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setSubscriptionType(subInfo.getSubscriptionId(),
                 SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM);
@@ -763,6 +929,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateGroupOwner() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setGroupOwner(1, FAKE_OWNER2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setGroupOwner(subInfo.getSubscriptionId(), FAKE_OWNER2);
         processAllMessages();
@@ -775,6 +945,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateEnabledMobileDataPolicies() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setEnabledMobileDataPolicies(1, FAKE_MOBILE_DATA_POLICY2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setEnabledMobileDataPolicies(subInfo.getSubscriptionId(),
                 FAKE_MOBILE_DATA_POLICY2);
@@ -788,6 +962,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateImsi() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setImsi(1, FAKE_IMSI2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setImsi(subInfo.getSubscriptionId(), FAKE_IMSI2);
         processAllMessages();
@@ -800,6 +978,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateUiccApplicationsEnabled() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setUiccApplicationsEnabled(1, false));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setUiccApplicationsEnabled(subInfo.getSubscriptionId(), false);
         processAllMessages();
@@ -812,6 +994,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateRcsUceEnabled() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setRcsUceEnabled(1, false));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setRcsUceEnabled(subInfo.getSubscriptionId(), false);
         processAllMessages();
@@ -824,6 +1010,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateCrossSimCallingEnabled() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setCrossSimCallingEnabled(1, false));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setCrossSimCallingEnabled(subInfo.getSubscriptionId(), false);
         processAllMessages();
@@ -836,6 +1026,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateRcsConfig() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setRcsConfig(1, FAKE_RCS_CONFIG2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setRcsConfig(subInfo.getSubscriptionId(), FAKE_RCS_CONFIG2);
         processAllMessages();
@@ -848,6 +1042,11 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateAllowedNetworkTypesForReasons() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setAllowedNetworkTypesForReasons(
+                        1, FAKE_ALLOWED_NETWORK_TYPES_FOR_REASONS2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setAllowedNetworkTypesForReasons(subInfo.getSubscriptionId(),
                 FAKE_ALLOWED_NETWORK_TYPES_FOR_REASONS2);
@@ -861,6 +1060,11 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateDeviceToDeviceStatusSharingPreference() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setDeviceToDeviceStatusSharingPreference(
+                        1, SubscriptionManager.D2D_SHARING_DISABLED));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setDeviceToDeviceStatusSharingPreference(subInfo.getSubscriptionId(),
                 SubscriptionManager.D2D_SHARING_DISABLED);
@@ -875,6 +1079,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateNrAdvancedCallingEnabled() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setNrAdvancedCallingEnabled(1, false));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setNrAdvancedCallingEnabled(subInfo.getSubscriptionId(), false);
         processAllMessages();
@@ -887,6 +1095,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateNumberFromCarrier() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setNumberFromCarrier(1, FAKE_PHONE_NUMBER2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setNumberFromCarrier(subInfo.getSubscriptionId(), FAKE_PHONE_NUMBER2);
         processAllMessages();
@@ -899,6 +1111,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateNumberFromIms() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setNumberFromIms(1, FAKE_PHONE_NUMBER2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setNumberFromIms(subInfo.getSubscriptionId(), FAKE_PHONE_NUMBER2);
         processAllMessages();
@@ -911,6 +1127,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdatePortIndex() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setPortIndex(1, 1));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setPortIndex(subInfo.getSubscriptionId(), 1);
         processAllMessages();
@@ -923,6 +1143,11 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateUsageSetting() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setUsageSetting(
+                        1, SubscriptionManager.USAGE_SETTING_VOICE_CENTRIC));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setUsageSetting(subInfo.getSubscriptionId(),
                 SubscriptionManager.USAGE_SETTING_VOICE_CENTRIC);
@@ -936,6 +1161,11 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateLastUsedTPMessageReference() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setLastUsedTPMessageReference(
+                        1, FAKE_TP_MESSAGE_REFERENCE2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setLastUsedTPMessageReference(subInfo.getSubscriptionId(),
                 FAKE_TP_MESSAGE_REFERENCE2);
@@ -949,6 +1179,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testUpdateUserId() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setUserId(1, FAKE_USER_ID2));
+
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setUserId(subInfo.getSubscriptionId(), FAKE_USER_ID2);
         processAllMessages();

@@ -39,7 +39,9 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccPort;
@@ -51,6 +53,7 @@ import com.android.internal.telephony.uicc.euicc.async.AsyncResultCallback;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.List;
 
 /** Backing implementation of {@link EuiccCardManager}. */
 public class EuiccCardController extends IEuiccCardController.Stub {
@@ -649,9 +652,14 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onResult(Void result) {
                 Log.i(TAG, "Request subscription info list refresh after delete.");
-                SubscriptionController.getInstance()
-                        .requestEmbeddedSubscriptionInfoListRefresh(
-                                mUiccController.convertToPublicCardId(cardId));
+                if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
+                    SubscriptionManagerService.getInstance().updateEmbeddedSubscriptions(
+                            List.of(mUiccController.convertToPublicCardId(cardId)), null);
+                } else {
+                    SubscriptionController.getInstance()
+                            .requestEmbeddedSubscriptionInfoListRefresh(
+                                    mUiccController.convertToPublicCardId(cardId));
+                }
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK);
                 } catch (RemoteException exception) {
@@ -701,9 +709,14 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onResult(Void result) {
                 Log.i(TAG, "Request subscription info list refresh after reset memory.");
-                SubscriptionController.getInstance()
-                        .requestEmbeddedSubscriptionInfoListRefresh(
-                                mUiccController.convertToPublicCardId(cardId));
+                if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
+                    SubscriptionManagerService.getInstance().updateEmbeddedSubscriptions(
+                            List.of(mUiccController.convertToPublicCardId(cardId)), null);
+                } else {
+                    SubscriptionController.getInstance()
+                            .requestEmbeddedSubscriptionInfoListRefresh(
+                                    mUiccController.convertToPublicCardId(cardId));
+                }
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK);
                 } catch (RemoteException exception) {
@@ -1190,9 +1203,14 @@ public class EuiccCardController extends IEuiccCardController.Stub {
             @Override
             public void onResult(byte[] result) {
                 Log.i(TAG, "Request subscription info list refresh after install.");
-                SubscriptionController.getInstance()
-                        .requestEmbeddedSubscriptionInfoListRefresh(
-                                mUiccController.convertToPublicCardId(cardId));
+                if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
+                    SubscriptionManagerService.getInstance().updateEmbeddedSubscriptions(
+                            List.of(mUiccController.convertToPublicCardId(cardId)), null);
+                } else {
+                    SubscriptionController.getInstance()
+                            .requestEmbeddedSubscriptionInfoListRefresh(
+                                    mUiccController.convertToPublicCardId(cardId));
+                }
                 try {
                     callback.onComplete(EuiccCardManager.RESULT_OK, result);
                 } catch (RemoteException exception) {

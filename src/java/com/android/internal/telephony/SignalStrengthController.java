@@ -48,6 +48,7 @@ import android.util.LocalLog;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
@@ -359,9 +360,16 @@ public class SignalStrengthController extends Handler {
                 || (curTime - mSignalStrengthUpdatedTime > SIGNAL_STRENGTH_REFRESH_THRESHOLD_IN_MS);
         if (!isStale) return false;
 
-        List<SubscriptionInfo> subInfoList = SubscriptionController.getInstance()
-                .getActiveSubscriptionInfoList(mPhone.getContext().getOpPackageName(),
-                        mPhone.getContext().getAttributionTag());
+        List<SubscriptionInfo> subInfoList;
+        if (mPhone.isSubscriptionManagerServiceEnabled()) {
+            subInfoList = SubscriptionManagerService.getInstance().getActiveSubscriptionInfoList(
+                    mPhone.getContext().getOpPackageName(),
+                    mPhone.getContext().getAttributionTag());
+        } else {
+            subInfoList = SubscriptionController.getInstance()
+                    .getActiveSubscriptionInfoList(mPhone.getContext().getOpPackageName(),
+                            mPhone.getContext().getAttributionTag());
+        }
 
         if (!ArrayUtils.isEmpty(subInfoList)) {
             for (SubscriptionInfo info : subInfoList) {
