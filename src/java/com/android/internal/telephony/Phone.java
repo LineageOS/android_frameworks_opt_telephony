@@ -239,8 +239,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_GET_USAGE_SETTING_DONE = 63;
     protected static final int EVENT_SET_USAGE_SETTING_DONE = 64;
     protected static final int EVENT_IMS_DEREGISTRATION_TRIGGERED = 65;
+    protected static final int EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE = 66;
 
-    protected static final int EVENT_LAST = EVENT_IMS_DEREGISTRATION_TRIGGERED;
+    protected static final int EVENT_LAST = EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
@@ -266,6 +267,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     // Integer used to let the calling application know that the we are ignoring auto mode switch.
     private static final int ALREADY_IN_AUTO_SELECTION = 1;
+
+    public static final String PREF_NULL_CIPHER_AND_INTEGRITY_ENABLED =
+            "pref_null_cipher_and_integrity_enabled";
 
     /**
      * This method is invoked when the Phone exits Emergency Callback Mode.
@@ -4995,18 +4999,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Set the UE's ability to accept/reject null ciphered and/or null integrity-protected
-     * connections.
-     *
-     * @param result Callback message.
-     * @param enabled true to allow null ciphered and/or null integrity-protected connections,
-     * false to disallow.
-     */
-    public void setNullCipherAndIntegrityEnabled(@Nullable Message result, boolean enabled) {
-        mCi.setNullCipherAndIntegrityEnabled(result, enabled);
-    }
-
-    /**
      * Notifies that IMS deregistration is triggered.
      *
      * @param reason the reason why the deregistration is triggered.
@@ -5042,6 +5034,22 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return subManager.isValidSubscriptionId(subId)
                 ? subManager.getSubscriptionUserHandle(subId)
                 : null;
+    }
+
+    /**
+     * @return global null cipher and integrity enabled preference
+     */
+    public boolean getNullCipherAndIntegrityEnabledPreference() {
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+        return sp.getBoolean(PREF_NULL_CIPHER_AND_INTEGRITY_ENABLED, true);
+    }
+
+    /**
+     * Override to implement handling of an update to the enablement of the null cipher and
+     * integrity preference.
+     * {@see #PREF_NULL_CIPHER_AND_INTEGRITY_ENABLED}
+     */
+    public void handleNullCipherEnabledChange() {
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

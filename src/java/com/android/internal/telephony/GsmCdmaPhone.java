@@ -2924,6 +2924,7 @@ public class GsmCdmaPhone extends Phone {
         mCi.getRadioCapability(obtainMessage(EVENT_GET_RADIO_CAPABILITY));
         mCi.areUiccApplicationsEnabled(obtainMessage(EVENT_GET_UICC_APPS_ENABLEMENT_DONE));
 
+        handleNullCipherEnabledChange();
         startLceAfterRadioIsAvailable();
     }
 
@@ -3377,6 +3378,9 @@ public class GsmCdmaPhone extends Phone {
             case EVENT_SUBSCRIPTIONS_CHANGED:
                 logd("EVENT_SUBSCRIPTIONS_CHANGED");
                 updateUsageSetting();
+                break;
+            case EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE:
+                logd("EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE");
                 break;
 
             case EVENT_IMS_DEREGISTRATION_TRIGGERED:
@@ -4913,5 +4917,12 @@ public class GsmCdmaPhone extends Phone {
             SsData.ServiceType serviceType) {
         ArrayList<String> controlStrings = GsmMmiCode.getControlStrings(requestType, serviceType);
         return FdnUtils.isSuppServiceRequestBlockedByFdn(mPhoneId, controlStrings, getCountryIso());
+    }
+
+    @Override
+    public void handleNullCipherEnabledChange() {
+        mCi.setNullCipherAndIntegrityEnabled(
+                getNullCipherAndIntegrityEnabledPreference(),
+                obtainMessage(EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE));
     }
 }
