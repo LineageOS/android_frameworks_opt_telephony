@@ -180,6 +180,7 @@ public class ServiceStateTracker extends Handler {
     private long mLastCellInfoReqTime;
     private List<CellInfo> mLastCellInfoList = null;
     private List<PhysicalChannelConfig> mLastPhysicalChannelConfigList = null;
+    private int mLastAnchorNrCellId = PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN;
 
     private final Set<Integer> mRadioPowerOffReasons = new HashSet();
 
@@ -1637,8 +1638,20 @@ public class ServiceStateTracker extends Handler {
                 if (ar.exception == null) {
                     List<PhysicalChannelConfig> list = (List<PhysicalChannelConfig>) ar.result;
                     if (VDBG) {
-                        log("EVENT_PHYSICAL_CHANNEL_CONFIG: size=" + list.size() + " list="
-                                + list);
+                        log("EVENT_PHYSICAL_CHANNEL_CONFIG: list=" + list
+                                + (list == null ? "" : ", list.size()=" + list.size()));
+                    }
+                    if ((list == null || list.isEmpty())
+                            && mLastAnchorNrCellId != PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN
+                            && mPhone.getContext().getSystemService(TelephonyManager.class)
+                                    .isRadioInterfaceCapabilitySupported(TelephonyManager
+                                            .CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED)
+                            && !mCarrierConfig.getBoolean(CarrierConfigManager
+                                    .KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL)
+                            && mCarrierConfig.getBoolean(CarrierConfigManager
+                                    .KEY_RATCHET_NR_ADVANCED_BANDWIDTH_IF_RRC_IDLE_BOOL)) {
+                        log("Ignore empty PCC list when RRC idle.");
+                        break;
                     }
                     mLastPhysicalChannelConfigList = list;
                     boolean hasChanged = false;
@@ -1650,8 +1663,40 @@ public class ServiceStateTracker extends Handler {
                         mNrFrequencyChangedRegistrants.notifyRegistrants();
                         hasChanged = true;
                     }
-                    hasChanged |= RatRatcheter
-                            .updateBandwidths(getBandwidthsFromConfigs(list), mSS);
+                    int anchorNrCellId = PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN;
+                    if (list != null) {
+                        anchorNrCellId = list
+                                .stream()
+                                .filter(config -> config.getNetworkType()
+                                        == TelephonyManager.NETWORK_TYPE_NR
+                                        && config.getConnectionStatus()
+                                        == PhysicalChannelConfig.CONNECTION_PRIMARY_SERVING)
+                                .map(PhysicalChannelConfig::getPhysicalCellId)
+                                .findFirst()
+                                .orElse(PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN);
+                    }
+                    boolean includeLte = mCarrierConfig.getBoolean(CarrierConfigManager
+                            .KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL);
+                    int[] bandwidths = new int[0];
+                    if (list != null) {
+                        bandwidths = list.stream()
+                                .filter(config -> includeLte || config.getNetworkType()
+                                        == TelephonyManager.NETWORK_TYPE_NR)
+                                .map(PhysicalChannelConfig::getCellBandwidthDownlinkKhz)
+                                .mapToInt(Integer::intValue)
+                                .toArray();
+                    }
+                    if (anchorNrCellId == mLastAnchorNrCellId
+                            && anchorNrCellId != PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN) {
+                        log("Ratchet bandwidths since anchor NR cell is the same.");
+                        hasChanged |= RatRatcheter.updateBandwidths(bandwidths, mSS);
+                    } else {
+                        log("Do not ratchet bandwidths since anchor NR cell is different ("
+                                + mLastAnchorNrCellId + "->" + anchorNrCellId + ").");
+                        mLastAnchorNrCellId = anchorNrCellId;
+                        hasChanged = !Arrays.equals(mSS.getCellBandwidths(), bandwidths);
+                        mSS.setCellBandwidths(bandwidths);
+                    }
 
                     mPhone.notifyPhysicalChannelConfig(list);
                     // Notify NR frequency, NR connection status or bandwidths changed.
