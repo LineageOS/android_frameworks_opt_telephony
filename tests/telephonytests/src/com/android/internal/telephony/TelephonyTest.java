@@ -103,6 +103,7 @@ import com.android.internal.telephony.data.DataRetryManager;
 import com.android.internal.telephony.data.DataServiceManager;
 import com.android.internal.telephony.data.DataSettingsManager;
 import com.android.internal.telephony.data.LinkBandwidthEstimator;
+import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
@@ -212,6 +213,7 @@ public abstract class TelephonyTest {
     protected RuimRecords mRuimRecords;
     protected IsimUiccRecords mIsimUiccRecords;
     protected ProxyController mProxyController;
+    protected PhoneSwitcher mPhoneSwitcher;
     protected Singleton<IActivityManager> mIActivityManagerSingleton;
     protected IActivityManager mIActivityManager;
     protected IIntentSender mIIntentSender;
@@ -442,6 +444,7 @@ public abstract class TelephonyTest {
         mRuimRecords = Mockito.mock(RuimRecords.class);
         mIsimUiccRecords = Mockito.mock(IsimUiccRecords.class);
         mProxyController = Mockito.mock(ProxyController.class);
+        mPhoneSwitcher = Mockito.mock(PhoneSwitcher.class);
         mIActivityManagerSingleton = Mockito.mock(Singleton.class);
         mIActivityManager = Mockito.mock(IActivityManager.class);
         mIIntentSender = Mockito.mock(IIntentSender.class);
@@ -808,6 +811,7 @@ public abstract class TelephonyTest {
         replaceInstance(CdmaSubscriptionSourceManager.class, "sInstance", null, mCdmaSSM);
         replaceInstance(SubscriptionController.class, "sInstance", null, mSubscriptionController);
         replaceInstance(ProxyController.class, "sProxyController", null, mProxyController);
+        replaceInstance(PhoneSwitcher.class, "sPhoneSwitcher", null, mPhoneSwitcher);
         replaceInstance(ActivityManager.class, "IActivityManagerSingleton", null,
                 mIActivityManagerSingleton);
         replaceInstance(CdmaSubscriptionSourceManager.class,

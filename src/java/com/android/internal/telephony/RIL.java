@@ -565,9 +565,20 @@ public class RIL extends BaseCommands implements CommandsInterface {
             if (mMockModem != null) {
                 mMockModem = null;
                 for (int service = MIN_SERVICE_IDX; service <= MAX_SERVICE_IDX; service++) {
-                    if (isRadioServiceSupported(service)) {
-                        resetProxyAndRequestList(service);
+                    if (service == HAL_SERVICE_RADIO) {
+                        if (isRadioVersion2_0()) {
+                            mHalVersion.put(service, RADIO_HAL_VERSION_2_0);
+                        } else {
+                            mHalVersion.put(service, RADIO_HAL_VERSION_UNKNOWN);
+                        }
+                    } else {
+                        if (isRadioServiceSupported(service)) {
+                            mHalVersion.put(service, RADIO_HAL_VERSION_UNKNOWN);
+                        } else {
+                            mHalVersion.put(service, RADIO_HAL_VERSION_UNSUPPORTED);
+                        }
                     }
+                    resetProxyAndRequestList(service);
                 }
             }
         }
