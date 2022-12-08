@@ -171,10 +171,11 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         mTrackers.remove(token);
                         break;
                     case ImsSmsImplBase.SEND_STATUS_ERROR_RETRY:
-                        if (tracker.mRetryCount < MAX_SEND_RETRIES) {
+                        if (tracker.mRetryCount < getMaxSmsRetryCount()) {
                             tracker.mRetryCount += 1;
                             sendMessageDelayed(
-                                    obtainMessage(EVENT_SEND_RETRY, tracker), SEND_RETRY_DELAY);
+                                    obtainMessage(EVENT_SEND_RETRY, tracker),
+                                    getSmsRetryDelayValue());
                         } else {
                             tracker.onFailed(mContext, reason, networkReasonCode);
                             mTrackers.remove(token);
@@ -403,6 +404,52 @@ public class ImsSmsDispatcher extends SMSDispatcher {
             loge("Failed to get sms format. Error: " + e.getMessage());
             return SmsConstants.FORMAT_UNKNOWN;
         }
+    }
+
+    @Override
+    protected int getMaxSmsRetryCount() {
+        int retryCount = MAX_SEND_RETRIES;
+        CarrierConfigManager mConfigManager;
+
+        mConfigManager = (CarrierConfigManager)  mContext.getSystemService(
+                Context.CARRIER_CONFIG_SERVICE);
+
+        if (mConfigManager != null) {
+            PersistableBundle carrierConfig = mConfigManager.getConfigForSubId(
+                    getSubId());
+
+            if (carrierConfig != null) {
+                retryCount = carrierConfig.getInt(
+                        CarrierConfigManager.ImsSms.KEY_SMS_MAX_RETRY_COUNT_INT);
+            }
+        }
+
+        Rlog.d(TAG, "Retry Count: " + retryCount);
+
+        return retryCount;
+    }
+
+    @Override
+    protected int getSmsRetryDelayValue() {
+        int retryDelay = SEND_RETRY_DELAY;
+        CarrierConfigManager mConfigManager;
+
+        mConfigManager = (CarrierConfigManager)  mContext.getSystemService(
+                Context.CARRIER_CONFIG_SERVICE);
+
+        if (mConfigManager != null) {
+            PersistableBundle carrierConfig = mConfigManager.getConfigForSubId(
+                    getSubId());
+
+            if (carrierConfig != null) {
+                retryDelay = carrierConfig.getInt(
+                        CarrierConfigManager.ImsSms.KEY_SMS_OVER_IMS_SEND_RETRY_DELAY_MILLIS_INT);
+            }
+        }
+
+        Rlog.d(TAG, "Retry delay: " + retryDelay);
+
+        return retryDelay;
     }
 
     @Override
