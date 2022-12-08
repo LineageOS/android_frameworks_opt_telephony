@@ -59,6 +59,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
 
     private static final String TAG = "ImsSmsDispatcher";
     private static final int CONNECT_DELAY_MS = 5000; // 5 seconds;
+    public static final int MAX_SEND_RETRIES_OVER_IMS = MAX_SEND_RETRIES;
 
     /**
      * Creates FeatureConnector instances for ImsManager, used during testing to inject mock
@@ -171,7 +172,15 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         mTrackers.remove(token);
                         break;
                     case ImsSmsImplBase.SEND_STATUS_ERROR_RETRY:
+                        int maxRetryCountOverIms = getMaxRetryCountOverIms();
                         if (tracker.mRetryCount < getMaxSmsRetryCount()) {
+                            if (maxRetryCountOverIms < getMaxSmsRetryCount()
+                                    && tracker.mRetryCount >= maxRetryCountOverIms) {
+                                tracker.mRetryCount += 1;
+                                mTrackers.remove(token);
+                                fallbackToPstn(tracker);
+                                break;
+                            }
                             tracker.mRetryCount += 1;
                             sendMessageDelayed(
                                     obtainMessage(EVENT_SEND_RETRY, tracker),
@@ -407,7 +416,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     }
 
     @Override
-    protected int getMaxSmsRetryCount() {
+    public int getMaxSmsRetryCount() {
         int retryCount = MAX_SEND_RETRIES;
         CarrierConfigManager mConfigManager;
 
@@ -429,8 +438,37 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         return retryCount;
     }
 
+    /**
+     * Returns the number of times SMS can be sent over IMS
+     *
+     * @return  retry count over Ims from  carrier configuration
+     */
+    @VisibleForTesting
+    public int getMaxRetryCountOverIms() {
+        int retryCountOverIms = MAX_SEND_RETRIES_OVER_IMS;
+        CarrierConfigManager mConfigManager;
+
+        mConfigManager = (CarrierConfigManager) mContext.getSystemService(Context
+                                                        .CARRIER_CONFIG_SERVICE);
+
+        if (mConfigManager != null) {
+            PersistableBundle carrierConfig = mConfigManager.getConfigForSubId(
+                    getSubId());
+
+
+            if (carrierConfig != null) {
+                retryCountOverIms = carrierConfig.getInt(
+                        CarrierConfigManager.ImsSms.KEY_SMS_MAX_RETRY_COUNT_OVER_IMS_INT);
+            }
+        }
+
+        Rlog.d(TAG, "Retry Count Over Ims: " + retryCountOverIms);
+
+        return retryCountOverIms;
+    }
+
     @Override
-    protected int getSmsRetryDelayValue() {
+    public int getSmsRetryDelayValue() {
         int retryDelay = SEND_RETRY_DELAY;
         CarrierConfigManager mConfigManager;
 
