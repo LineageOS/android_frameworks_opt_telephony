@@ -98,7 +98,7 @@ public class SignalStrengthTest {
                 new CellSignalStrengthWcdma(-94, 4, -102, -5),
                 new CellSignalStrengthTdscdma(-95, 2, -103),
                 new CellSignalStrengthLte(-85, -91, -6, -10, 1, 12, 1),
-                new CellSignalStrengthNr(-91, -6, 3, 1, NrCqiReport, -80, -7, 4));
+                new CellSignalStrengthNr(-91, -6, 3, 1, NrCqiReport, -80, -7, 4, 1));
         assertParcelingIsLossless(s);
 
         PersistableBundle bundle = new PersistableBundle();

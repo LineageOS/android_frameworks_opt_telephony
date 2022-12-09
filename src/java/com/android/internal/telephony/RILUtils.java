@@ -3275,7 +3275,8 @@ public class RILUtils {
             return new CellSignalStrengthNr(CellSignalStrengthNr.flip(ss.base.csiRsrp),
                     CellSignalStrengthNr.flip(ss.base.csiRsrq), ss.base.csiSinr,
                     ss.csiCqiTableIndex, ss.csiCqiReport, CellSignalStrengthNr.flip(ss.base.ssRsrp),
-                    CellSignalStrengthNr.flip(ss.base.ssRsrq), ss.base.ssSinr);
+                    CellSignalStrengthNr.flip(ss.base.ssRsrq), ss.base.ssSinr,
+                    CellInfo.UNAVAILABLE);
         }
         return null;
     }
@@ -3290,7 +3291,7 @@ public class RILUtils {
         return new CellSignalStrengthNr(CellSignalStrengthNr.flip(ss.csiRsrp),
                 CellSignalStrengthNr.flip(ss.csiRsrq), ss.csiSinr, ss.csiCqiTableIndex,
                 primitiveArrayToArrayList(ss.csiCqiReport), CellSignalStrengthNr.flip(ss.ssRsrp),
-                CellSignalStrengthNr.flip(ss.ssRsrq), ss.ssSinr);
+                CellSignalStrengthNr.flip(ss.ssRsrq), ss.ssSinr, ss.timingAdvance);
     }
 
     private static ClosedSubscriberGroupInfo convertHalClosedSubscriberGroupInfo(
