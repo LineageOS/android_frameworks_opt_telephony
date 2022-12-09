@@ -2425,7 +2425,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testGetMdn() throws Exception {
+    public void testGetMdn() {
         doReturn(false).when(mPhone).isPhoneTypeGsm();
         doReturn(false).when(mPhone).isPhoneTypeCdma();
         doReturn(true).when(mPhone).isPhoneTypeCdmaLte();
