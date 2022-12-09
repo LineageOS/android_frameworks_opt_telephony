@@ -56,7 +56,6 @@ import android.telephony.ims.FeatureTagState;
 import android.telephony.ims.RcsContactPresenceTuple;
 import android.telephony.ims.RcsContactUceCapability;
 import android.telephony.ims.aidl.IRcsConfigCallback;
-import android.util.Base64;
 import android.util.IndentingPrintWriter;
 
 import com.android.ims.rcs.uce.UceStatsWriter;
@@ -83,7 +82,6 @@ import com.android.telephony.Rlog;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -1777,84 +1775,4 @@ public class RcsStats {
         }
         pw.decreaseIndent();
     }
-
-    /**
-     * Reset all events
-     */
-    public synchronized void reset() {
-        if (mAtomsStorage == null || mAtomsStorage.mAtoms == null) {
-            return;
-        }
-
-        PersistAtomsProto.PersistAtoms metricAtoms = mAtomsStorage.mAtoms;
-
-        metricAtoms.imsRegistrationFeatureTagStats =
-                PersistAtomsProto.ImsRegistrationFeatureTagStats.emptyArray();
-        metricAtoms.rcsClientProvisioningStats =
-                PersistAtomsProto.RcsClientProvisioningStats.emptyArray();
-        metricAtoms.rcsAcsProvisioningStats =
-                PersistAtomsProto.RcsAcsProvisioningStats.emptyArray();
-        metricAtoms.sipDelegateStats = PersistAtomsProto.SipDelegateStats.emptyArray();
-        metricAtoms.sipTransportFeatureTagStats =
-                PersistAtomsProto.SipTransportFeatureTagStats.emptyArray();
-        metricAtoms.sipMessageResponse = PersistAtomsProto.SipMessageResponse.emptyArray();
-        metricAtoms.sipTransportSession = PersistAtomsProto.SipTransportSession.emptyArray();
-        metricAtoms.imsDedicatedBearerListenerEvent =
-                PersistAtomsProto.ImsDedicatedBearerListenerEvent.emptyArray();
-        metricAtoms.imsDedicatedBearerEvent =
-                PersistAtomsProto.ImsDedicatedBearerEvent.emptyArray();
-        metricAtoms.imsRegistrationServiceDescStats =
-                PersistAtomsProto.ImsRegistrationServiceDescStats.emptyArray();
-        metricAtoms.uceEventStats = PersistAtomsProto.UceEventStats.emptyArray();
-        metricAtoms.presenceNotifyEvent = PersistAtomsProto.PresenceNotifyEvent.emptyArray();
-        metricAtoms.gbaEvent = PersistAtomsProto.GbaEvent.emptyArray();
-    }
-
-    /**
-     * Convert the PersistAtomsProto into Base-64 encoded string
-     *
-     * @return Encoded string
-     */
-    public String buildLog() {
-        PersistAtomsProto.PersistAtoms log = buildProto();
-        return Base64.encodeToString(
-                PersistAtomsProto.PersistAtoms.toByteArray(log), Base64.DEFAULT);
-    }
-
-    /**
-     * Build the PersistAtomsProto
-     *
-     * @return PersistAtomsProto.PersistAtoms
-     */
-    public PersistAtomsProto.PersistAtoms buildProto() {
-        PersistAtomsProto.PersistAtoms log = new PersistAtomsProto.PersistAtoms();
-
-        PersistAtomsProto.PersistAtoms atoms = mAtomsStorage.mAtoms;
-        log.imsRegistrationFeatureTagStats = Arrays.copyOf(atoms.imsRegistrationFeatureTagStats,
-                atoms.imsRegistrationFeatureTagStats.length);
-        log.rcsClientProvisioningStats = Arrays.copyOf(atoms.rcsClientProvisioningStats,
-                atoms.rcsClientProvisioningStats.length);
-        log.rcsAcsProvisioningStats = Arrays.copyOf(atoms.rcsAcsProvisioningStats,
-                atoms.rcsAcsProvisioningStats.length);
-        log.sipDelegateStats = Arrays.copyOf(atoms.sipDelegateStats, atoms.sipDelegateStats.length);
-        log.sipTransportFeatureTagStats = Arrays.copyOf(atoms.sipTransportFeatureTagStats,
-                atoms.sipTransportFeatureTagStats.length);
-        log.sipMessageResponse = Arrays.copyOf(atoms.sipMessageResponse,
-                atoms.sipMessageResponse.length);
-        log.sipTransportSession = Arrays.copyOf(atoms.sipTransportSession,
-                atoms.sipTransportSession.length);
-        log.imsDedicatedBearerListenerEvent = Arrays.copyOf(atoms.imsDedicatedBearerListenerEvent,
-                atoms.imsDedicatedBearerListenerEvent.length);
-        log.imsDedicatedBearerEvent = Arrays.copyOf(atoms.imsDedicatedBearerEvent,
-                atoms.imsDedicatedBearerEvent.length);
-        log.imsRegistrationServiceDescStats = Arrays.copyOf(atoms.imsRegistrationServiceDescStats,
-                atoms.imsRegistrationServiceDescStats.length);
-        log.uceEventStats = Arrays.copyOf(atoms.uceEventStats, atoms.uceEventStats.length);
-        log.presenceNotifyEvent = Arrays.copyOf(atoms.presenceNotifyEvent,
-                atoms.presenceNotifyEvent.length);
-        log.gbaEvent = Arrays.copyOf(atoms.gbaEvent, atoms.gbaEvent.length);
-
-        return log;
-    }
-
 }
