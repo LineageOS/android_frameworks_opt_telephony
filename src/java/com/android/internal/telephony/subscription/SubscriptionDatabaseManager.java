@@ -30,6 +30,7 @@ import android.provider.Telephony;
 import android.provider.Telephony.SimInfo;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.SubscriptionManager.DataRoamingMode;
 import android.telephony.SubscriptionManager.DeviceToDeviceStatusSharingPreference;
 import android.telephony.SubscriptionManager.ProfileClass;
 import android.telephony.SubscriptionManager.SimDisplayNameSource;
@@ -701,7 +702,7 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @throws IllegalArgumentException if the subscription does not exist.
      */
-    public void setDataRoaming(int subId, int dataRoaming) {
+    public void setDataRoaming(int subId, @DataRoamingMode int dataRoaming) {
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_DATA_ROAMING, dataRoaming,
                 SubscriptionInfoInternal.Builder::setDataRoaming);
     }
