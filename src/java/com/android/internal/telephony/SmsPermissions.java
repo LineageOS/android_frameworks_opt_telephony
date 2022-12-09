@@ -134,7 +134,15 @@ public class SmsPermissions {
      */
     public boolean checkCallingOrSelfCanGetSmscAddress(String callingPackage, String message) {
         // Allow it to the default SMS app always.
-        if (!isCallerDefaultSmsPackage(callingPackage)) {
+        boolean isDefaultSmsPackage;
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            isDefaultSmsPackage = isCallerDefaultSmsPackage(callingPackage);
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+
+        if (!isDefaultSmsPackage) {
             TelephonyPermissions
                         .enforceCallingOrSelfReadPrivilegedPhoneStatePermissionOrCarrierPrivilege(
                                 mContext, mPhone.getSubId(), message);
@@ -153,7 +161,15 @@ public class SmsPermissions {
      */
     public boolean checkCallingOrSelfCanSetSmscAddress(String callingPackage, String message) {
         // Allow it to the default SMS app always.
-        if (!isCallerDefaultSmsPackage(callingPackage)) {
+        boolean isDefaultSmsPackage;
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            isDefaultSmsPackage = isCallerDefaultSmsPackage(callingPackage);
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+
+        if (!isDefaultSmsPackage) {
             // Allow it with MODIFY_PHONE_STATE or Carrier Privileges
             TelephonyPermissions.enforceCallingOrSelfModifyPermissionOrCarrierPrivilege(
                     mContext, mPhone.getSubId(), message);
