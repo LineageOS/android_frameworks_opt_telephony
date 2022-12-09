@@ -180,7 +180,7 @@ public class EuiccPortTest extends TelephonyTest {
         assertEquals(1, profiles.length);
         assertEquals("98760000000000543210", profiles[0].getIccid());
         assertEquals(EuiccProfileInfo.PROFILE_STATE_ENABLED, profiles[0].getState());
-        verifyStoreData(channel, "BF2D0F5C0D5A909192B79F709599BF769F24");
+        verifyStoreData(channel, "BF2D0F5C0D5A909192B79F709599BF769F20");
     }
 
     @Test
@@ -203,7 +203,7 @@ public class EuiccPortTest extends TelephonyTest {
     @Test
     public void testEnabledOnEsimPort_GetAllProfiles() {
         int channel = mockLogicalChannelResponses(
-                "BF2D18A016E3145A0A896700000000004523019F7001009F2401019000");
+                "BF2D18A016E3145A0A896700000000004523019F7001009F2001019000");
 
         ResultCaptor<EuiccProfileInfo[]> resultCaptor = new ResultCaptor<>();
         mEuiccPort.mIsSupportsMultipleEnabledProfiles = true; // MEP capable
@@ -218,7 +218,7 @@ public class EuiccPortTest extends TelephonyTest {
         // which is valid port. So the state should be enabled.
         // (As per MEP state and enabledOnEsimPort concept)
         assertEquals(EuiccProfileInfo.PROFILE_STATE_ENABLED, profiles[0].getState());
-        verifyStoreData(channel, "BF2D0F5C0D5A909192B79F709599BF769F24");
+        verifyStoreData(channel, "BF2D0F5C0D5A909192B79F709599BF769F20");
     }
 
     @Test
@@ -235,7 +235,7 @@ public class EuiccPortTest extends TelephonyTest {
         EuiccProfileInfo[] profiles = resultCaptor.result;
         assertEquals(1, profiles.length);
         assertEquals(EuiccProfileInfo.PROFILE_STATE_DISABLED, profiles[0].getState());
-        verifyStoreData(channel, "BF2D0F5C0D5A909192B79F709599BF769F24");
+        verifyStoreData(channel, "BF2D0F5C0D5A909192B79F709599BF769F20");
     }
 
     @Test

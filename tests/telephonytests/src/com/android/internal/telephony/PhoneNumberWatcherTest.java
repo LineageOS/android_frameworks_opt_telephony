@@ -23,7 +23,7 @@ import android.text.Editable;
 import android.text.Selection;
 import android.text.SpannableStringBuilder;
 import android.text.TextWatcher;
-
+import android.text.style.TtsSpan;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -42,6 +42,8 @@ public class PhoneNumberWatcherTest {
         textWatcher.afterTextChanged(number);
         assertEquals(formatted1, number.toString());
         assertEquals(formatted1.length(), Selection.getSelectionEnd(number));
+        assertSingleTtsSpan(number);
+
         // Append one chars
         final char appendChar = '6';
         final String formatted2 = "(650) 123-456";
@@ -53,6 +55,13 @@ public class PhoneNumberWatcherTest {
         textWatcher.afterTextChanged(number);
         assertEquals(formatted2, number.toString());
         assertEquals(formatted2.length(), Selection.getSelectionEnd(number));
+        assertSingleTtsSpan(number);
+    }
+
+    private void assertSingleTtsSpan(Editable s)
+    {
+        int numTtsSpans = (s.getSpans(0, s.length(), TtsSpan.class)).length;
+        assertEquals(1, numTtsSpans);
     }
 
     @Test @SmallTest
@@ -70,6 +79,8 @@ public class PhoneNumberWatcherTest {
         textWatcher.afterTextChanged(number);
         assertEquals(result1, number.toString());
         assertEquals(result1.length(), Selection.getSelectionEnd(number));
+        assertSingleTtsSpan(number);
+
         // Remove last 5 chars
         final String result2 = "650-123";
         textWatcher.beforeTextChanged(number, number.length() - 4, 4, 0);
@@ -79,6 +90,7 @@ public class PhoneNumberWatcherTest {
         textWatcher.afterTextChanged(number);
         assertEquals(result2, number.toString());
         assertEquals(result2.length(), Selection.getSelectionEnd(number));
+        assertSingleTtsSpan(number);
     }
 
     @Test @SmallTest
@@ -97,6 +109,7 @@ public class PhoneNumberWatcherTest {
         assertEquals(expected1, number.toString());
         // the cursor should still at the right of '1'
         assertEquals(5, Selection.getSelectionEnd(number));
+        assertSingleTtsSpan(number);
 
         // Insert multiple chars
         final String expected2 = "(650) 145-6723";
@@ -108,6 +121,7 @@ public class PhoneNumberWatcherTest {
         assertEquals(expected2, number.toString());
         // the cursor should be still at the right of '7'
         assertEquals(12, Selection.getSelectionEnd(number));
+        assertSingleTtsSpan(number);
     }
 
     @Test @SmallTest
@@ -188,6 +202,7 @@ public class PhoneNumberWatcherTest {
         assertEquals(expected2, number.toString());
         // the cursor should still at the right of '4'
         assertEquals(expected2.length(), Selection.getSelectionEnd(number));
+        assertSingleTtsSpan(number);
     }
 
     @Test @SmallTest

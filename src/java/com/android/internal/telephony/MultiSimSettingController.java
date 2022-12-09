@@ -303,7 +303,7 @@ public class MultiSimSettingController extends Handler {
             case EVENT_USER_DATA_ENABLED: {
                 int subId = msg.arg1;
                 boolean enable = msg.arg2 != 0;
-                onUserDataEnabled(subId, enable);
+                onUserDataEnabled(subId, enable, true);
                 break;
             }
             case EVENT_ROAMING_DATA_ENABLED: {
@@ -352,14 +352,15 @@ public class MultiSimSettingController extends Handler {
      * If user is enabling a non-default non-opportunistic subscription, make it default
      * data subscription.
      */
-    protected void onUserDataEnabled(int subId, boolean enable) {
-        if (DBG) log("onUserDataEnabled");
+    private void onUserDataEnabled(int subId, boolean enable, boolean setDefaultData) {
+        if (DBG) log("[onUserDataEnabled] subId=" + subId + " enable=" + enable +
+        " setDefaultData=" + setDefaultData);
         // Make sure MOBILE_DATA of subscriptions in same group are synced.
         setUserDataEnabledForGroup(subId, enable);
 
         // If user is enabling a non-default non-opportunistic subscription, make it default.
         if (mSubController.getDefaultDataSubId() != subId && !mSubController.isOpportunistic(subId)
-                && enable && mSubController.isActiveSubId(subId)) {
+                && enable && mSubController.isActiveSubId(subId) && setDefaultData) {
              android.provider.Settings.Global.putInt(mContext.getContentResolver(),
                  SETTING_USER_PREF_DATA_SUB, subId);
             mSubController.setDefaultDataSubId(subId);
@@ -546,13 +547,23 @@ public class MultiSimSettingController extends Handler {
         try {
             enable = GlobalSettingsHelper.getBoolean(
                     mContext, Settings.Global.MOBILE_DATA, refSubId);
-            onUserDataEnabled(refSubId, enable);
         } catch (SettingNotFoundException exception) {
             //pass invalid refSubId to fetch the single-sim setting
             enable = GlobalSettingsHelper.getBoolean(
                     mContext, Settings.Global.MOBILE_DATA, INVALID_SUBSCRIPTION_ID, enable);
-            onUserDataEnabled(refSubId, enable);
         }
+        boolean setDefaultData = true;
+        List<SubscriptionInfo> activeSubList = mSubController.getActiveSubscriptionInfoList(
+                mContext.getOpPackageName(), mContext.getAttributionTag());
+        for (SubscriptionInfo activeInfo : activeSubList) {
+            if (!(groupUuid.equals(activeInfo.getGroupUuid()))) {
+                // Do not set refSubId as defaultDataSubId if there are other active
+                // subscriptions which does not belong to this groupUuid
+                setDefaultData = false;
+                break;
+            }
+        }
+        onUserDataEnabled(refSubId, enable, setDefaultData);
 
         enable = false;
         try {
@@ -760,6 +771,12 @@ public class MultiSimSettingController extends Handler {
             boolean voiceSelected, boolean smsSelected) {
         int dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_NONE;
 
+        // Do not show preference selection dialog during SuW as there is fullscreen activity to
+        // choose preference.
+        if (Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.DEVICE_PROVISIONED, 0) == 0) {
+            return dialogType;
+        }
         // If a primary subscription is removed and only one is left active, ask user
         // for preferred sub selection if any default setting is not set.
         // If another primary subscription is added or default data is not selected, ask
@@ -768,12 +785,8 @@ public class MultiSimSettingController extends Handler {
                 && (!dataSelected || !smsSelected || !voiceSelected)) {
             dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_ALL;
         } else if (mPrimarySubList.size() > 1 && (isUserVisibleChange(change)
-                || (change == PRIMARY_SUB_INITIALIZED && !dataSelected
-                && Settings.Global.getInt(mContext.getContentResolver(),
-                Settings.Global.DEVICE_PROVISIONED, 0) != 0))) {
+                || (change == PRIMARY_SUB_INITIALIZED && !dataSelected))) {
             // If change is SWAPPED_IN_GROUP or MARKED_OPPT, don't ask user again.
-            // In default DSDS devices, do not show data selection dialog during SuW as there is
-            // fullscreen activity to choose data preference.
             dialogType = EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_DATA;
         }
 

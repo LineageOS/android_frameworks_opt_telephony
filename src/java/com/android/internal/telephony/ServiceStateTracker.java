@@ -96,6 +96,7 @@ import com.android.internal.telephony.data.AccessNetworksManager;
 import com.android.internal.telephony.data.DataNetwork;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.dataconnection.DataConnection;
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.metrics.ServiceStateStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
@@ -1701,6 +1702,10 @@ public class ServiceStateTracker extends Handler {
                         TelephonyMetrics.getInstance().writeServiceStateChanged(
                                 mPhone.getPhoneId(), mSS);
                         mPhone.getVoiceCallSessionStats().onServiceStateChanged(mSS);
+                        ImsPhone imsPhone = (ImsPhone) mPhone.getImsPhone();
+                        if (imsPhone != null) {
+                            imsPhone.getImsStats().onServiceStateChanged(mSS);
+                        }
                         mServiceStateStats.onServiceStateChanged(mSS);
                     }
                 }
@@ -3780,8 +3785,10 @@ public class ServiceStateTracker extends Handler {
             // incomplete.
             // CellIdentity can return a null MCC and MNC in CDMA
             String localeOperator = operatorNumeric;
-            if (isInvalidOperatorNumeric(operatorNumeric)
-                    || mSS.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN) {
+            if (mSS.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN) {
+                localeOperator = null;
+            }
+            if (isInvalidOperatorNumeric(localeOperator)) {
                 for (CellIdentity cid : prioritizedCids) {
                     if (!TextUtils.isEmpty(cid.getPlmn())) {
                         localeOperator = cid.getPlmn();
@@ -3822,6 +3829,10 @@ public class ServiceStateTracker extends Handler {
 
             TelephonyMetrics.getInstance().writeServiceStateChanged(mPhone.getPhoneId(), mSS);
             mPhone.getVoiceCallSessionStats().onServiceStateChanged(mSS);
+            ImsPhone imsPhone = (ImsPhone) mPhone.getImsPhone();
+            if (imsPhone != null) {
+                imsPhone.getImsStats().onServiceStateChanged(mSS);
+            }
             mServiceStateStats.onServiceStateChanged(mSS);
         }
 
@@ -4026,28 +4037,6 @@ public class ServiceStateTracker extends Handler {
         }
 
         return carrierName;
-    }
-
-    /**
-     * Get the service provider name. If it is not available, get plmn or pnn
-     * if configured. Otherwise return CARD1/CARD2
-     * @return service provider name.
-     */
-    public String getServiceProviderNameOrPlmn() {
-        String spnOrPlmn = getServiceProviderName();
-        if (!TextUtils.isEmpty(spnOrPlmn)) {
-            return spnOrPlmn;
-        }
-        spnOrPlmn = mSS.getOperatorAlpha();
-        PersistableBundle config = getCarrierConfig();
-        if (mIccRecords != null && config.getBoolean(
-                CarrierConfigManager.KEY_WFC_CARRIER_NAME_OVERRIDE_BY_PNN_BOOL)) {
-            spnOrPlmn = mIccRecords.getPnnHomeName();
-        }
-        if (!TextUtils.isEmpty(spnOrPlmn)) {
-            return spnOrPlmn;
-        }
-        return "CARD" + Integer.toString(mPhone.getPhoneId() + 1);
     }
 
     /**

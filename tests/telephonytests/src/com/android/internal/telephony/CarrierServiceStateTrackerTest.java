@@ -29,7 +29,6 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
@@ -60,7 +59,6 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
     private CarrierServiceStateTracker mCarrierSST;
 
     private static final int SUB_ID = 1;
-    private SharedPreferences mSharedPreferences;
 
     NotificationManager mNotificationManager;
     PersistableBundle mBundle;
@@ -75,7 +73,6 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
 
         mCarrierSST = new CarrierServiceStateTracker(mPhone, mSST);
         mSpyCarrierSST = spy(mCarrierSST);
-        mSharedPreferences = mContext.getSharedPreferences((String) null, 0);
 
         mNotificationManager = (NotificationManager) mContext.getSystemService(
                 Context.NOTIFICATION_SERVICE);
@@ -223,16 +220,5 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
         processAllMessages();
         verify(mNotificationManager, atLeast(2)).cancel(
                 CarrierServiceStateTracker.EMERGENCY_NOTIFICATION_TAG, SUB_ID);
-
-        //Verify that notification is not displayed when Do Not Show preference is set
-        mSharedPreferences.edit().putBoolean(Phone.KEY_DO_NOT_SHOW_LIMITED_SERVICE_ALERT
-                + mPhone.getSubId(), true).commit();
-        doReturn(true).when(mPhone).isWifiCallingEnabled();
-        notificationMsg = mSpyCarrierSST.obtainMessage(
-                CarrierServiceStateTracker.CARRIER_EVENT_IMS_CAPABILITIES_CHANGED, null);
-        mSpyCarrierSST.handleMessage(notificationMsg);
-        processAllMessages();
-	verify(mNotificationManager, atLeast(3)).cancel(CarrierServiceStateTracker.
-                EMERGENCY_NOTIFICATION_TAG, SUB_ID);
     }
 }

@@ -1840,8 +1840,11 @@ public class EuiccController extends IEuiccController.Stub {
     // other SIM. The target SIM should be an eUICC.
     // For a single-active subscription phone, checks whether the caller can manage any active
     // embedded subscription.
-    // From Android T, If embedded slot supports Multiple Enabled Profiles then should check if
-    // the calling app has carrier privilege over the subscription on the target port index.
+    // From Android T, if usePortIndex is true then verify whether the calling app has carrier
+    // privilege over the active embedded subscription on the target port index.
+    // If usePortIndex is false then check whether the calling app can manage any active
+    // subscription on any of the active ports, if there are no active embedded subscriptions then
+    // verify whether the calling app can manage any active subscription on any of the other SIM.
     private boolean canManageSubscriptionOnTargetSim(int cardId, String callingPackage,
             boolean usePortIndex, int targetPortIndex) {
         List<SubscriptionInfo> subInfoList = mSubscriptionManager
@@ -1861,11 +1864,9 @@ public class EuiccController extends IEuiccController.Stub {
                 return false;
             }
             boolean isEuicc = false;
-            boolean isMultipleEnabledProfilesSupported = false;
             for (UiccCardInfo info : cardInfos) {
                 if (info != null && info.getCardId() == cardId && info.isEuicc()) {
                     isEuicc = true;
-                    isMultipleEnabledProfilesSupported = info.isMultipleEnabledProfilesSupported();
                     break;
                 }
             }
@@ -1874,21 +1875,36 @@ public class EuiccController extends IEuiccController.Stub {
                 return false;
             }
 
-            // If the caller can't manage the active embedded subscription on the target SIM, return
-            // false. If the caller can manage the active embedded subscription on the target SIM,
-            // return true directly.
-            for (SubscriptionInfo subInfo : subInfoList) {
-                // 1. subInfo.isEmbedded() can only be true for the target SIM.
-                // 2. Check whether the caller can manage subscription on the target portIndex
-                // (i.e. subInfo.getPortIndex() == targetPortIndex condition) only in case if
-                // isMultipleEnabledProfilesSupported and usePortIndex both are true.
-                if (subInfo.isEmbedded() && subInfo.getCardId() == cardId
-                        && (!isMultipleEnabledProfilesSupported || !usePortIndex
-                        || subInfo.getPortIndex() == targetPortIndex)) {
-                    return mSubscriptionManager.canManageSubscription(subInfo, callingPackage);
-                }
-            }
+            // If the caller can't manage the active embedded subscription on the target SIM port,
+            // return false. If the caller can manage the active embedded subscription on the
+            // target SIM port, return true directly.
+            boolean hasActiveEmbeddedSubscription = subInfoList.stream().anyMatch(
+                    subInfo -> subInfo.isEmbedded() && subInfo.getCardId() == cardId
+                            && (!usePortIndex || subInfo.getPortIndex() == targetPortIndex));
+            Log.d(TAG, "canManageSubscriptionOnTargetSim hasActiveEmbeddedSubscriptions: "
+                    + hasActiveEmbeddedSubscription);
+            if (hasActiveEmbeddedSubscription) {
+                // hasActiveEmbeddedSubscription is true if there is an active embedded subscription
+                // on the target port(in case of usePortIndex is true) or if there is an active
+                // embedded subscription on any of the active ports.
 
+                // 1. If usePortIndex is true, check whether the caller can manage subscription on
+                // the target port.
+                // 2. If usePortIndex is false, check whether the caller can manage subscription on
+                // any of the active ports.
+                for (SubscriptionInfo subInfo : subInfoList) {
+                    // subInfo.isEmbedded() can only be true for the target SIM.
+                    if (subInfo.isEmbedded()
+                            && subInfo.getCardId() == cardId
+                            && (!usePortIndex || subInfo.getPortIndex() == targetPortIndex)
+                            && mSubscriptionManager.canManageSubscription(
+                            subInfo, callingPackage)) {
+                        return true;
+                    }
+                }
+                Log.i(TAG, "canManageSubscriptionOnTargetSim cannot manage embedded subscription");
+                return false;
+            }
             // There is no active subscription on the target SIM, checks whether the caller can
             // manage any active subscription on any other SIM.
             final long token = Binder.clearCallingIdentity();

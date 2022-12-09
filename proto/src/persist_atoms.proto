@@ -23,7 +23,7 @@ option java_outer_classname = "PersistAtomsProto";
 
 // Holds atoms to store on persist storage in case of power cycle or process crash.
 // NOTE: using int64 rather than google.protobuf.Timestamp for timestamps simplifies implementation.
-// Next id: 50
+// Next id: 53
 message PersistAtoms {
     /* Aggregated RAT usage during the call. */
     repeated VoiceCallRatUsage voice_call_rat_usage = 1;
@@ -177,6 +177,9 @@ message PersistAtoms {
 
     /* Timestamp of last network_requests_v2 pull. */
     optional int64 network_requests_v2_pull_timestamp_millis = 51;
+
+    /* Unmetered networks information. */
+    repeated UnmeteredNetworks unmetered_networks = 52;
 }
 
 // The canonical versions of the following enums live in:
@@ -245,6 +248,10 @@ message IncomingSms {
     optional bool is_esim = 12;
     optional int32 carrier_id = 13;
     optional int64 message_id = 14;
+    optional int32 count = 15;
+
+    // Internal use only
+    optional int32 hashCode = 10001;
 }
 
 message OutgoingSms {
@@ -262,6 +269,10 @@ message OutgoingSms {
     optional int64 message_id = 12;
     optional int32 retry_id = 13;
     optional int64 interval_millis = 14;
+    optional int32 count = 15;
+
+    // Internal use only
+    optional int32 hashCode = 10001;
 }
 
 message CarrierIdMismatch {
@@ -292,6 +303,7 @@ message DataCallSession {
     optional bool ongoing = 18;
     optional int32 band_at_end = 19;
     repeated int32 handover_failure_causes = 20;
+    repeated int32 handover_failure_rat = 21;
 }
 
 message CellularServiceState {
@@ -497,4 +509,10 @@ message GbaEvent {
     optional bool successful = 3;
     optional int32 failed_reason = 4;
     optional int32 count = 5;
+}
+
+message UnmeteredNetworks {
+    optional int32 phone_id = 1;
+    optional int32 carrier_id = 2;
+    optional int64 unmetered_networks_bitmask = 3;
 }
