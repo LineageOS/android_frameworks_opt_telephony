@@ -32,14 +32,10 @@ import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_PAC
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_PAD;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_SMS;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
-import static com.android.internal.telephony.SsDomainController.SS_CLIP;
-import static com.android.internal.telephony.SsDomainController.SS_CLIR;
-import static com.android.internal.telephony.SsDomainController.SS_COLP;
-import static com.android.internal.telephony.SsDomainController.SS_COLR;
-import static com.android.internal.telephony.SsDomainController.SS_CW;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
+import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
@@ -67,7 +63,6 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.SsDomainController;
 import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.telephony.Rlog;
@@ -493,12 +488,17 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
 
     static boolean
     isServiceCodeCallBarring(String sc) {
-        return sc != null
-                && (sc.equals(SC_BAOC)
-                || sc.equals(SC_BAOIC) || sc.equals(SC_BAOICxH)
-                || sc.equals(SC_BAIC) || sc.equals(SC_BAICr)
-                || sc.equals(SC_BA_ALL) || sc.equals(SC_BA_MO)
-                || sc.equals(SC_BA_MT));
+        Resources resource = Resources.getSystem();
+        if (sc != null) {
+            String[] barringMMI = resource.getStringArray(
+                com.android.internal.R.array.config_callBarringMMI_for_ims);
+            if (barringMMI != null) {
+                for (String match : barringMMI) {
+                    if (sc.equals(match)) return true;
+                }
+            }
+        }
+        return false;
     }
 
     static boolean isPinPukCommand(String sc) {
@@ -510,11 +510,9 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
      * Whether the dial string is supplementary service code.
      *
      * @param dialString The dial string.
-     * @return an instance of SsDomainController.SuppServiceRoutingInfo if the dial string
-     * is supplementary service code, and null otherwise.
+     * @return true if the dial string is supplementary service code, and {@code false} otherwise.
      */
-    public static SsDomainController.SuppServiceRoutingInfo getSuppServiceRoutingInfo(
-            String dialString, Phone phone) {
+    public static boolean isSuppServiceCodes(String dialString, Phone phone) {
         if (phone != null && phone.getServiceState().getVoiceRoaming()
                 && phone.getDefaultPhone().supportsConversionOfCdmaCallerIdMmiCodesWhileRoaming()) {
             /* The CDMA MMI coded dialString will be converted to a 3GPP MMI Coded dialString
@@ -523,54 +521,38 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             dialString = convertCdmaMmiCodesTo3gppMmiCodes(dialString);
         }
 
-        if (phone == null) return null;
-        return getSuppServiceRoutingInfo(dialString, phone.getSsDomainController());
-    }
-
-    /**
-     * Whether the dial string is supplementary service code.
-     */
-    @VisibleForTesting
-    public static SsDomainController.SuppServiceRoutingInfo getSuppServiceRoutingInfo(
-            String dialString, SsDomainController controller) {
         Matcher m = sPatternSuppService.matcher(dialString);
         if (m.matches()) {
             String sc = makeEmptyNull(m.group(MATCH_GROUP_SERVICE_CODE));
             if (isServiceCodeCallForwarding(sc)) {
-                return controller.getSuppServiceRoutingInfoForCf(scToCallForwardReason(sc));
+                return true;
             } else if (isServiceCodeCallBarring(sc)) {
-                return controller.getSuppServiceRoutingInfoForCb(scToBarringFacility(sc));
+                return true;
             } else if (sc != null && sc.equals(SC_CFUT)) {
-                // for backward compatibility, not specified by CarrierConfig
-                return controller.getSsRoutingOverUt();
+                return true;
             } else if (sc != null && sc.equals(SC_CLIP)) {
-                return controller.getSuppServiceRoutingInfoForSs(SS_CLIP);
+                return true;
             } else if (sc != null && sc.equals(SC_CLIR)) {
-                return controller.getSuppServiceRoutingInfoForSs(SS_CLIR);
+                return true;
             } else if (sc != null && sc.equals(SC_COLP)) {
-                return controller.getSuppServiceRoutingInfoForSs(SS_COLP);
+                return true;
             } else if (sc != null && sc.equals(SC_COLR)) {
-                return controller.getSuppServiceRoutingInfoForSs(SS_COLR);
+                return true;
             } else if (sc != null && sc.equals(SC_CNAP)) {
-                // for backward compatibility, not specified by CarrierConfig
-                return controller.getSsRoutingOverUt();
+                return true;
             } else if (sc != null && sc.equals(SC_BS_MT)) {
-                return controller.getSuppServiceRoutingInfoForCb(
-                        SsDomainController.CB_FACILITY_BIL);
+                return true;
             } else if (sc != null && sc.equals(SC_BAICa)) {
-                return controller.getSuppServiceRoutingInfoForCb(
-                        SsDomainController.CB_FACILITY_ACR);
+                return true;
             } else if (sc != null && sc.equals(SC_PWD)) {
-                // for backward compatibility, not specified by CarrierConfig
-                return controller.getSsRoutingOverUt();
+                return true;
             } else if (sc != null && sc.equals(SC_WAIT)) {
-                return controller.getSuppServiceRoutingInfoForSs(SS_CW);
+                return true;
             } else if (isPinPukCommand(sc)) {
-                // for backward compatibility, not specified by CarrierConfig
-                return controller.getSsRoutingOverUt();
+                return true;
             }
         }
-        return null;
+        return false;
     }
 
     static String

@@ -19,6 +19,8 @@ package com.android.internal.telephony.data;
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
@@ -26,6 +28,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.os.Looper;
+import android.os.PersistableBundle;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -44,17 +47,21 @@ import java.util.Set;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class DataSettingsManagerTest extends TelephonyTest {
+    private static final String DATA_ROAMING_IS_USER_SETTING = "data_roaming_is_user_setting_key0";
 
     // Mocked
     DataSettingsManagerCallback mMockedDataSettingsManagerCallback;
 
     DataSettingsManager mDataSettingsManagerUT;
+    PersistableBundle mBundle;
 
     @Before
     public void setUp() throws Exception {
         logd("DataSettingsManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
         mMockedDataSettingsManagerCallback = Mockito.mock(DataSettingsManagerCallback.class);
+        mBundle = mContextFixture.getCarrierConfigBundle();
+        doReturn(true).when(mDataConfigManager).isConfigCarrierSpecific();
 
         doReturn("").when(mSubscriptionController).getEnabledMobileDataPolicies(anyInt());
         doReturn(true).when(mSubscriptionController).setEnabledMobileDataPolicies(
@@ -101,5 +108,28 @@ public class DataSettingsManagerTest extends TelephonyTest {
         verify(mSubscriptionController, times(2))
                 .setEnabledMobileDataPolicies(anyInt(), stringArgumentCaptor.capture());
         assertEquals("1,2", stringArgumentCaptor.getValue());
+    }
+
+    @Test
+    public void testDefaultDataRoamingEnabled() {
+        doReturn(true).when(mDataConfigManager).isDataRoamingEnabledByDefault();
+        mDataSettingsManagerUT.setDefaultDataRoamingEnabled();
+        assertTrue(mDataSettingsManagerUT.isDataRoamingEnabled());
+
+        mDataSettingsManagerUT.setDataRoamingEnabled(false);
+        processAllMessages();
+        assertFalse(mDataSettingsManagerUT.isDataRoamingEnabled());
+
+        mDataSettingsManagerUT.setDefaultDataRoamingEnabled();
+        assertFalse(mDataSettingsManagerUT.isDataRoamingEnabled());
+    }
+
+    @Test
+    public void testDefaultDataRoamingEnabledFromUpgrade() {
+        doReturn(true).when(mDataConfigManager).isDataRoamingEnabledByDefault();
+        mContext.getSharedPreferences("", 0).edit()
+                .putBoolean(DATA_ROAMING_IS_USER_SETTING, true).commit();
+        mDataSettingsManagerUT.setDefaultDataRoamingEnabled();
+        assertFalse(mDataSettingsManagerUT.isDataRoamingEnabled());
     }
 }
