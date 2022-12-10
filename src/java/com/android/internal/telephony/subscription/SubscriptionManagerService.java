@@ -2319,11 +2319,6 @@ public class SubscriptionManagerService extends ISub.Stub {
         }
     }
 
-    @Override
-    public int getSimStateForSlotIndex(int slotIndex) {
-        return 0;
-    }
-
     /**
      * Check if a subscription is active.
      *
