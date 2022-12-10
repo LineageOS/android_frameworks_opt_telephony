@@ -41,6 +41,7 @@ import android.os.RemoteException;
 import android.os.TelephonyServiceManager;
 import android.os.UserHandle;
 import android.provider.Settings;
+import android.provider.Telephony.SimInfo;
 import android.service.carrier.CarrierIdentifier;
 import android.service.euicc.EuiccProfileInfo;
 import android.service.euicc.EuiccService;
@@ -63,6 +64,7 @@ import android.telephony.UiccAccessRule;
 import android.telephony.euicc.EuiccManager;
 import android.text.TextUtils;
 import android.util.ArraySet;
+import android.util.Base64;
 import android.util.EventLog;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
@@ -109,6 +111,35 @@ public class SubscriptionManagerService extends ISub.Stub {
 
     /** Whether enabling verbose debugging message or not. */
     private static final boolean VDBG = false;
+
+    /**
+     * The columns in {@link SimInfo} table that can be directly accessed through
+     * {@link #getSubscriptionProperty(int, String, String, String)} or
+     * {@link #setSubscriptionProperty(int, String, String)}. Usually those fields are not
+     * sensitive. Mostly they are related to user settings, for example, wifi calling
+     * user settings, cross sim calling user settings, etc...Those fields are protected with
+     * {@link Manifest.permission#READ_PHONE_STATE} permission only.
+     *
+     * For sensitive fields, they usually requires special methods to access. For example,
+     * {@link #getSubscriptionUserHandle(int)} or {@link #getPhoneNumber(int, int, String, String)}
+     * that requires higher permission to access.
+     */
+    private static final Set<String> DIRECT_ACCESS_SUBSCRIPTION_COLUMNS = Set.of(
+            SimInfo.COLUMN_ENHANCED_4G_MODE_ENABLED,
+            SimInfo.COLUMN_VT_IMS_ENABLED,
+            SimInfo.COLUMN_WFC_IMS_ENABLED,
+            SimInfo.COLUMN_WFC_IMS_MODE,
+            SimInfo.COLUMN_WFC_IMS_ROAMING_MODE,
+            SimInfo.COLUMN_WFC_IMS_ROAMING_ENABLED,
+            SimInfo.COLUMN_ENABLED_MOBILE_DATA_POLICIES,
+            SimInfo.COLUMN_IMS_RCS_UCE_ENABLED,
+            SimInfo.COLUMN_CROSS_SIM_CALLING_ENABLED,
+            SimInfo.COLUMN_RCS_CONFIG,
+            SimInfo.COLUMN_D2D_STATUS_SHARING,
+            SimInfo.COLUMN_VOIMS_OPT_IN_STATUS,
+            SimInfo.COLUMN_D2D_STATUS_SHARING_SELECTED_CONTACTS,
+            SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED
+    );
 
     /**
      * Apps targeting on Android T and beyond will get exception if there is no access to device
@@ -545,7 +576,7 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
-     * Sync the settings from specified subscription to all groupped subscriptions.
+     * Sync the settings from specified subscription to all grouped subscriptions.
      *
      * @param subId The subscription id of the referenced subscription.
      */
@@ -558,39 +589,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                 return;
             }
 
-            if (reference.getGroupUuid().isEmpty()) {
-                // The reference subscription is not in a group. No need to sync.
-                return;
-            }
-
-            for (SubscriptionInfoInternal subInfo : mSubscriptionDatabaseManager
-                    .getAllSubscriptions()) {
-                if (subInfo.getSubscriptionId() != subId
-                        && subInfo.getGroupUuid().equals(reference.getGroupUuid())) {
-                    // Copy all settings from reference sub to the grouped subscriptions.
-                    SubscriptionInfoInternal newSubInfo = new SubscriptionInfoInternal
-                            .Builder(subInfo)
-                            .setEnhanced4GModeEnabled(reference.getEnhanced4GModeEnabled())
-                            .setVideoTelephonyEnabled(reference.getVideoTelephonyEnabled())
-                            .setWifiCallingEnabled(reference.getWifiCallingEnabled())
-                            .setWifiCallingModeForRoaming(reference.getWifiCallingModeForRoaming())
-                            .setWifiCallingMode(reference.getWifiCallingMode())
-                            .setWifiCallingEnabledForRoaming(
-                                    reference.getWifiCallingEnabledForRoaming())
-                            .setDataRoaming(reference.getDataRoaming())
-                            .setDisplayName(reference.getDisplayName())
-                            .setEnabledMobileDataPolicies(reference.getEnabledMobileDataPolicies())
-                            .setUiccApplicationsEnabled(reference.getUiccApplicationsEnabled())
-                            .setRcsUceEnabled(reference.getRcsUceEnabled())
-                            .setCrossSimCallingEnabled(reference.getCrossSimCallingEnabled())
-                            .setNrAdvancedCallingEnabled(reference.getNrAdvancedCallingEnabled())
-                            .setUserId(reference.getUserId())
-                            .build();
-                    mSubscriptionDatabaseManager.updateSubscription(newSubInfo);
-                    log("Synced settings from sub " + subId + " to sub "
-                            + newSubInfo.getSubscriptionId());
-                }
-            }
+            mSubscriptionDatabaseManager.syncToGroup(subId);
         });
     }
 
@@ -937,7 +936,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                     if (ruleList != null && !ruleList.isEmpty()) {
                         builder.setNativeAccessRules(embeddedProfile.getUiccAccessRules());
                     }
-                    builder.setRemovableEmbedded(isRemovable ? 1 : 0);
+                    builder.setRemovableEmbedded(isRemovable);
 
                     // override DISPLAY_NAME if the priority of existing nameSource is <= carrier
                     if (getNameSourcePriority(nameSource) <= getNameSourcePriority(
@@ -2239,19 +2238,115 @@ public class SubscriptionManagerService extends ISub.Stub {
         }
     }
 
+    /**
+     * Set a field in the subscription database. Note not all fields are supported.
+     *
+     * @param subId Subscription Id of Subscription.
+     * @param columnName Column name in the database. Note not all fields are supported.
+     * @param value Value to store in the database.
+     *
+     * // TODO: Remove return value after SubscriptionController is deleted.
+     * @return always 1
+     *
+     * @throws IllegalArgumentException if {@code subscriptionId} is invalid, or the field is not
+     * exposed.
+     * @throws SecurityException if callers do not hold the required permission.
+     *
+     * @see #getSubscriptionProperty(int, String, String, String)
+     * @see SimInfo for all the columns.
+     */
     @Override
-    public int setSubscriptionProperty(int subId, @NonNull String propKey,
-            @NonNull String propValue) {
-        return 0;
+    @RequiresPermission(Manifest.permission.MODIFY_PHONE_STATE)
+    public int setSubscriptionProperty(int subId, @NonNull String columnName,
+            @NonNull String value) {
+        enforcePermissions("setSubscriptionProperty", Manifest.permission.MODIFY_PHONE_STATE);
+
+        final long token = Binder.clearCallingIdentity();
+        try {
+            if (!SimInfo.getAllColumns().contains(columnName)) {
+                throw new IllegalArgumentException("Invalid column name " + columnName);
+            }
+
+            // Check if the columns are allowed to be accessed through the generic
+            // getSubscriptionProperty method.
+            if (!DIRECT_ACCESS_SUBSCRIPTION_COLUMNS.contains(columnName)) {
+                throw new SecurityException("Column " + columnName + " is not allowed be directly "
+                        + "accessed through setSubscriptionProperty.");
+            }
+
+            mSubscriptionDatabaseManager.setSubscriptionProperty(subId, columnName, value);
+            return 1;
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
     }
 
+    /**
+     * Get specific field in string format from the subscription info database.
+     *
+     * @param subId Subscription id of the subscription.
+     * @param columnName Column name in subscription database.
+     *
+     * @return Value in string format associated with {@code subscriptionId} and {@code columnName}
+     * from the database.
+     *
+     * @throws IllegalArgumentException if {@code subscriptionId} is invalid, or the field is not
+     * exposed.
+     * @throws SecurityException if callers do not hold the required permission.
+     *
+     * @see SimInfo for all the columns.
+     */
     @Override
-    public String getSubscriptionProperty(int subId, @NonNull String propKey,
+    @NonNull
+    @RequiresPermission(anyOf = {
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.READ_PRIVILEGED_PHONE_STATE,
+            "carrier privileges",
+    })
+    public String getSubscriptionProperty(int subId, @NonNull String columnName,
             @NonNull String callingPackage, @Nullable String callingFeatureId) {
         // Verify that the callingPackage belongs to the calling UID
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
 
-        return null;
+        Objects.requireNonNull(columnName);
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext, subId,
+                callingPackage, callingFeatureId,
+                "getSubscriptionProperty")) {
+            throw new SecurityException("Need READ_PHONE_STATE, READ_PRIVILEGED_PHONE_STATE, or "
+                    + "carrier privilege");
+        }
+
+        if (!SimInfo.getAllColumns().contains(columnName)) {
+            throw new IllegalArgumentException("Invalid column name " + columnName);
+        }
+
+        // Check if the columns are allowed to be accessed through the generic
+        // getSubscriptionProperty method.
+        if (!DIRECT_ACCESS_SUBSCRIPTION_COLUMNS.contains(columnName)) {
+            throw new SecurityException("Column " + columnName + " is not allowed be directly "
+                    + "accessed through getSubscriptionProperty.");
+        }
+
+        final long token = Binder.clearCallingIdentity();
+        try {
+            Object value = mSubscriptionDatabaseManager.getSubscriptionProperty(subId, columnName);
+            // The raw types of subscription database should only have 3 different types.
+            if (value instanceof Integer) {
+                return String.valueOf(value);
+            } else if (value instanceof String) {
+                return (String) value;
+            } else if (value instanceof byte[]) {
+                return Base64.encodeToString((byte[]) value, Base64.DEFAULT);
+            } else {
+                // This should not happen unless SubscriptionDatabaseManager.getSubscriptionProperty
+                // did not implement correctly.
+                throw new RuntimeException("Unexpected type " + value.getClass().getTypeName()
+                        + " was returned from SubscriptionDatabaseManager for column "
+                        + columnName);
+            }
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
     }
 
     @Override
