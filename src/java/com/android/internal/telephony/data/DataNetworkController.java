@@ -2293,8 +2293,7 @@ public class DataNetworkController extends Handler {
                 + "carrier specific. mSimState="
                 + SubscriptionInfoUpdater.simStateString(mSimState));
         updateNetworkRequestsPriority();
-        sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
-                DataEvaluationReason.DATA_CONFIG_CHANGED));
+        onReevaluateUnsatisfiedNetworkRequests(DataEvaluationReason.DATA_CONFIG_CHANGED);
     }
 
     /**
