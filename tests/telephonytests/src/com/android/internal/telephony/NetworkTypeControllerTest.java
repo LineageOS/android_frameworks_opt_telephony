@@ -91,6 +91,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING,
                 "connected_mmwave:5G_Plus,connected:5G,not_restricted_rrc_idle:5G,"
                         + "not_restricted_rrc_con:5G");
+        mBundle.putInt(CarrierConfigManager.KEY_LTE_PLUS_THRESHOLD_BANDWIDTH_KHZ_INT, 20000);
         broadcastCarrierConfigs();
 
         replaceInstance(Handler.class, "mLooper", mDisplayInfoController, Looper.myLooper());
@@ -149,7 +150,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     @Test
     public void testUpdateOverrideNetworkTypeNrSa() throws Exception {
         // not NR
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_NONE).when(mServiceState).getNrState();
         updateOverrideNetworkType();
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
@@ -164,7 +164,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
                 anyInt(), anyInt());
 
         updateOverrideNetworkType();
-
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
                 mNetworkTypeController.getOverrideNetworkType());
     }
@@ -172,7 +171,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     @Test
     public void testUpdateOverrideNetworkTypeNrSaMmwave() throws Exception {
         // not NR
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_NONE).when(mServiceState).getNrState();
         updateOverrideNetworkType();
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
@@ -188,7 +186,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
 
         updateOverrideNetworkType();
-
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED,
                 mNetworkTypeController.getOverrideNetworkType());
     }
@@ -242,7 +239,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     @Test
     public void testTransitionToCurrentStateLegacy() throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
-        doReturn(TelephonyManager.NETWORK_TYPE_HSPAP).when(mServiceState).getDataNetworkType();
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
         assertEquals("legacy", getCurrentState().getName());
@@ -251,7 +247,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     @Test
     public void testTransitionToCurrentStateRestricted() throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
@@ -261,7 +256,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     @Test
     public void testTransitionToCurrentStateIdle() throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
                 new AsyncResult(null, DataCallResponse.LINK_STATUS_DORMANT, null));
@@ -278,7 +272,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         processAllMessages();
         assertEquals("DefaultState", getCurrentState().getName());
 
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         setPhysicalLinkStatus(false);
         mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED */);
@@ -298,7 +291,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         processAllMessages();
         assertEquals("DefaultState", getCurrentState().getName());
 
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
                 new AsyncResult(null, DataCallResponse.LINK_STATUS_DORMANT, null));
@@ -310,7 +302,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     @Test
     public void testTransitionToCurrentStateLteConnected() throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
                 new AsyncResult(null, DataCallResponse.LINK_STATUS_ACTIVE, null));
@@ -329,7 +320,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         processAllMessages();
         assertEquals("DefaultState", getCurrentState().getName());
 
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         setPhysicalLinkStatus(true);
         mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED */);
@@ -350,7 +340,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         processAllMessages();
         assertEquals("DefaultState", getCurrentState().getName());
 
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
                 new AsyncResult(null, DataCallResponse.LINK_STATUS_ACTIVE, null));
@@ -362,7 +351,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     @Test
     public void testTransitionToCurrentStateNrConnected() throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
 
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
@@ -373,7 +361,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     @Test
     public void testTransitionToCurrentStateNrConnectedMmwave() throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
 
@@ -386,7 +373,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     public void testTransitionToCurrentStateNrConnectedMmwaveWithAdditionalBandAndNoMmwave()
             throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_HIGH).when(mServiceState).getNrFrequencyRange();
         mBundle.putIntArray(CarrierConfigManager.KEY_ADDITIONAL_NR_ADVANCED_BANDS_INT_ARRAY,
@@ -410,7 +396,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     public void testTransitionToCurrentStateNrConnectedWithNoAdditionalBandAndNoMmwave()
             throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_HIGH).when(mServiceState).getNrFrequencyRange();
         mBundle.putIntArray(CarrierConfigManager.KEY_ADDITIONAL_NR_ADVANCED_BANDS_INT_ARRAY,
@@ -433,7 +418,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     @Test
     public void testTransitionToCurrentStateNrConnectedWithNrAdvancedCapable() throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         broadcastCarrierConfigs();
@@ -447,7 +431,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     public void testTransitionToCurrentStateNrConnectedWithPcoAndNoNrAdvancedCapable()
             throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 0xFF03);
@@ -467,7 +450,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     public void testTransitionToCurrentStateNrConnectedWithWrongPcoAndNoNrAdvancedCapable()
             throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 0xFF00);
@@ -487,7 +469,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     public void testTransitionToCurrentStateNrConnectedWithNrAdvancedCapableAndPco()
             throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT, 0xFF03);
@@ -506,7 +487,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     @Test
     public void testEventDataRatChanged() throws Exception {
         testTransitionToCurrentStateLegacy();
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
 
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
@@ -549,7 +529,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     @Test
     public void testNrPhysicalChannelChangeFromNrConnectedMmwaveToLteConnected() throws Exception {
         testTransitionToCurrentStateNrConnectedMmwave();
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
 
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
@@ -567,14 +546,12 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         mNetworkTypeController = new NetworkTypeController(mPhone, mDisplayInfoController);
         processAllMessages();
         testTransitionToCurrentStateNrConnectedMmwave();
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         setPhysicalLinkStatus(true);
         mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED */);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
 
         processAllMessages();
-
         assertEquals("not_restricted_rrc_con", getCurrentState().getName());
     }
 
@@ -590,21 +567,18 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         broadcastCarrierConfigs();
         processAllMessages();
         testTransitionToCurrentStateNrConnectedMmwave();
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
                 new AsyncResult(null, DataCallResponse.LINK_STATUS_ACTIVE, null));
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
 
         processAllMessages();
-
         assertEquals("not_restricted_rrc_con", getCurrentState().getName());
     }
 
     @Test
     public void testEventPhysicalChannelChangeFromLteToLteCaInLegacyState() throws Exception {
         testTransitionToCurrentStateLegacy();
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         updateOverrideNetworkType();
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
                 mNetworkTypeController.getOverrideNetworkType());
@@ -614,7 +588,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED */);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
-
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA,
                 mNetworkTypeController.getOverrideNetworkType());
     }
@@ -628,7 +601,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         broadcastCarrierConfigs();
 
         // Transition to LTE connected state
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
                 new AsyncResult(null, DataCallResponse.LINK_STATUS_ACTIVE, null));
@@ -644,7 +616,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED */);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
-
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA,
                 mNetworkTypeController.getOverrideNetworkType());
     }
@@ -658,7 +629,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         broadcastCarrierConfigs();
 
         // Transition to idle state
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED).when(mServiceState).getNrState();
         mNetworkTypeController.sendMessage(4 /* EVENT_PHYSICAL_LINK_STATUS_CHANGED */,
                 new AsyncResult(null, DataCallResponse.LINK_STATUS_DORMANT, null));
@@ -674,7 +644,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED */);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
-
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA,
                 mNetworkTypeController.getOverrideNetworkType());
     }
@@ -687,7 +656,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
                 new AsyncResult(null, DataCallResponse.LINK_STATUS_DORMANT, null));
 
         processAllMessages();
-
         assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
     }
 
@@ -704,7 +672,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED */);
         mNetworkTypeController.sendMessage(3 /* EVENT_SERVICE_STATE_CHANGED */);
         processAllMessages();
-
         assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
     }
 
@@ -724,7 +691,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
                 new AsyncResult(null, DataCallResponse.LINK_STATUS_DORMANT, null));
 
         processAllMessages();
-
         assertEquals("not_restricted_rrc_idle", getCurrentState().getName());
     }
 
@@ -748,8 +714,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
                 mNetworkTypeController.getOverrideNetworkType());
 
         doReturn(NetworkRegistrationInfo.NR_STATE_NONE).when(mServiceState).getNrState();
-        doReturn(TelephonyManager.NETWORK_TYPE_UNKNOWN).when(mServiceState).getDataNetworkType();
-
         mNetworkTypeController.sendMessage(9 /* EVENT_RADIO_OFF_OR_UNAVAILABLE */);
         processAllMessages();
         assertEquals(TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE,
@@ -775,7 +739,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testPrimaryTimerExpire() throws Exception {
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
                 "connected_mmwave,any,10;connected,any,10;not_restricted_rrc_con,any,10");
@@ -807,7 +770,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testPrimaryTimerDeviceIdleMode() throws Exception {
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
                 "connected_mmwave,any,10;connected,any,10;not_restricted_rrc_con,any,10");
@@ -837,7 +799,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testPrimaryTimerReset() throws Exception {
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
                 "connected_mmwave,any,10;connected,any,10;not_restricted_rrc_con,any,10");
@@ -874,7 +835,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testPrimaryTimerReset_theNetworkModeWithoutNr() throws Exception {
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
                 "connected_mmwave,any,10;connected,any,10;not_restricted_rrc_con,any,10");
@@ -904,7 +864,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testPrimaryTimerExpireMmwave() throws Exception {
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
@@ -937,7 +896,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testPrimaryTimerResetMmwave() throws Exception {
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
@@ -975,7 +933,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testSecondaryTimerExpire() throws Exception {
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
                 "connected_mmwave,any,10;connected,any,10;not_restricted_rrc_con,any,10");
@@ -1019,7 +976,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testSecondaryTimerReset() throws Exception {
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
                 "connected_mmwave,any,10;connected,any,10;not_restricted_rrc_con,any,10");
@@ -1068,7 +1024,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testSecondaryTimerExpireMmwave() throws Exception {
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
@@ -1113,7 +1068,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testSecondaryTimerResetMmwave() throws Exception {
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
@@ -1163,7 +1117,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
 
     @Test
     public void testNrTimerResetIn3g() throws Exception {
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         mBundle.putString(CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING,
@@ -1202,12 +1155,12 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         assertFalse(mNetworkTypeController.areAnyTimersActive());
     }
 
-    private void setPhysicalLinkStatus(Boolean state) {
+    private void setPhysicalLinkStatus(boolean state) {
         List<PhysicalChannelConfig> lastPhysicalChannelConfigList = new ArrayList<>();
-        // If PhysicalChannelConfigList is empty, PhysicalLinkStatus is DcController
-        // .PHYSICAL_LINK_NOT_ACTIVE
-        // If PhysicalChannelConfigList is not empty, PhysicalLinkStatus is DcController
-        // .PHYSICAL_LINK_ACTIVE
+        // If PhysicalChannelConfigList is empty, PhysicalLinkStatus is
+        // DataCallResponse.LINK_STATUS_DORMANT
+        // If PhysicalChannelConfigList is not empty, PhysicalLinkStatus is
+        // DataCallResponse.LINK_STATUS_ACTIVE
 
         if (state) {
             PhysicalChannelConfig physicalChannelConfig = new PhysicalChannelConfig.Builder()
@@ -1222,7 +1175,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     @Test
     public void testTransitionToCurrentStateNrConnectedWithLowBandwidth() throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         doReturn(new int[] {19999}).when(mServiceState).getCellBandwidths();
@@ -1237,7 +1189,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     @Test
     public void testTransitionToCurrentStateNrConnectedWithHighBandwidth() throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         List<PhysicalChannelConfig> lastPhysicalChannelConfigList = new ArrayList<>();
@@ -1258,7 +1209,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     public void testTransitionToCurrentStateNrConnectedWithHighBandwidthIncludingLte()
             throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
         List<PhysicalChannelConfig> lastPhysicalChannelConfigList = new ArrayList<>();
@@ -1285,7 +1235,6 @@ public class NetworkTypeControllerTest extends TelephonyTest {
     @Test
     public void testNrAdvancedDisabledWhileRoaming() throws Exception {
         assertEquals("DefaultState", getCurrentState().getName());
-        doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mServiceState).getDataNetworkType();
         doReturn(true).when(mServiceState).getDataRoaming();
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
