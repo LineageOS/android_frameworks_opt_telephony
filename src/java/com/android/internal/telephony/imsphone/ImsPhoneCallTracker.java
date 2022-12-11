@@ -5733,4 +5733,18 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         }
         return false;
     }
+
+    /**
+     * Notifies that radio triggered IMS deregistration.
+     * @param reason the reason why the deregistration is triggered.
+     */
+    public void triggerImsDeregistration(
+            @ImsRegistrationImplBase.ImsDeregistrationReason int reason) {
+        if (mImsManager == null) return;
+        try {
+            mImsManager.triggerDeregistration(reason);
+        } catch (ImsException e) {
+            loge("triggerImsDeregistration: exception " + e);
+        }
+    }
 }

@@ -458,6 +458,7 @@ public class GsmCdmaPhone extends Phone {
         mCi.registerForLceInfo(this, EVENT_LINK_CAPACITY_CHANGED, null);
         mCi.registerForCarrierInfoForImsiEncryption(this,
                 EVENT_RESET_CARRIER_KEY_IMSI_ENCRYPTION, null);
+        mCi.registerForTriggerImsDeregistration(this, EVENT_IMS_DEREGISTRATION_TRIGGERED, null);
         IntentFilter filter = new IntentFilter(
                 CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         filter.addAction(TelecomManager.ACTION_CURRENT_TTY_MODE_CHANGED);
@@ -3376,6 +3377,16 @@ public class GsmCdmaPhone extends Phone {
             case EVENT_SUBSCRIPTIONS_CHANGED:
                 logd("EVENT_SUBSCRIPTIONS_CHANGED");
                 updateUsageSetting();
+                break;
+
+            case EVENT_IMS_DEREGISTRATION_TRIGGERED:
+                logd("EVENT_IMS_DEREGISTRATION_TRIGGERED");
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception == null) {
+                    mImsPhone.triggerImsDeregistration(((int[]) ar.result)[0]);
+                } else {
+                    Rlog.e(LOG_TAG, "Unexpected unsol with exception", ar.exception);
+                }
                 break;
 
             default:
