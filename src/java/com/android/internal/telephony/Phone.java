@@ -238,8 +238,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_SUBSCRIPTIONS_CHANGED = 62;
     protected static final int EVENT_GET_USAGE_SETTING_DONE = 63;
     protected static final int EVENT_SET_USAGE_SETTING_DONE = 64;
+    protected static final int EVENT_IMS_DEREGISTRATION_TRIGGERED = 65;
 
-    protected static final int EVENT_LAST = EVENT_SET_USAGE_SETTING_DONE;
+    protected static final int EVENT_LAST = EVENT_IMS_DEREGISTRATION_TRIGGERED;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
@@ -5003,6 +5004,18 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void setNullCipherAndIntegrityEnabled(@Nullable Message result, boolean enabled) {
         mCi.setNullCipherAndIntegrityEnabled(result, enabled);
+    }
+
+    /**
+     * Notifies that IMS deregistration is triggered.
+     *
+     * @param reason the reason why the deregistration is triggered.
+     */
+    public void triggerImsDeregistration(
+            @ImsRegistrationImplBase.ImsDeregistrationReason int reason) {
+        if (mImsPhone != null) {
+            mImsPhone.triggerImsDeregistration(reason);
+        }
     }
 
     /**

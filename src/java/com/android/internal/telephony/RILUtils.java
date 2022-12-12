@@ -346,6 +346,8 @@ import android.telephony.data.RouteSelectionDescriptor;
 import android.telephony.data.TrafficDescriptor;
 import android.telephony.data.UrspRule;
 import android.telephony.ims.RegistrationManager;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
+import android.telephony.ims.stub.ImsRegistrationImplBase.ImsDeregistrationReason;
 import android.text.TextUtils;
 import android.util.ArraySet;
 import android.util.SparseArray;
@@ -4704,6 +4706,21 @@ public class RILUtils {
                 return NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING;
             default:
                 return NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING;
+        }
+    }
+
+    /** Convert IMS deregistration reason */
+    public static @ImsDeregistrationReason int convertHalDeregistrationReason(int reason) {
+        switch (reason) {
+            case android.hardware.radio.ims.ImsDeregistrationReason.REASON_SIM_REMOVED:
+                return ImsRegistrationImplBase.REASON_SIM_REMOVED;
+            case android.hardware.radio.ims.ImsDeregistrationReason.REASON_SIM_REFRESH:
+                return ImsRegistrationImplBase.REASON_SIM_REFRESH;
+            case android.hardware.radio.ims.ImsDeregistrationReason
+                    .REASON_ALLOWED_NETWORK_TYPES_CHANGED:
+                return ImsRegistrationImplBase.REASON_ALLOWED_NETWORK_TYPES_CHANGED;
+            default:
+                return ImsRegistrationImplBase.REASON_UNKNOWN;
         }
     }
 

@@ -111,7 +111,7 @@ public class ImsIndication extends IRadioImsIndication.Stub {
         if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_TRIGGER_IMS_DEREGISTRATION, reason);
 
         int[] response = new int[1];
-        response[0] = reason;
+        response[0] = RILUtils.convertHalDeregistrationReason(reason);
 
         mRil.mTriggerImsDeregistrationRegistrants.notifyRegistrants(
                 new AsyncResult(null, response, null));

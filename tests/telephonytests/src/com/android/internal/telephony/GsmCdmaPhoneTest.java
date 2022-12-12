@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
 import static com.android.internal.telephony.Phone.EVENT_ICC_CHANGED;
+import static com.android.internal.telephony.Phone.EVENT_IMS_DEREGISTRATION_TRIGGERED;
 import static com.android.internal.telephony.Phone.EVENT_SRVCC_STATE_CHANGED;
 import static com.android.internal.telephony.Phone.EVENT_UICC_APPS_ENABLEMENT_STATUS_CHANGED;
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
@@ -68,6 +69,7 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -2083,4 +2085,17 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         doReturn(false).when(mUiccCardApplication3gpp).getIccFdnEnabled();
     }
 
+    @Test
+    @SmallTest
+    public void testTriggerImsDeregistration() throws Exception {
+        replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
+
+        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(EVENT_IMS_DEREGISTRATION_TRIGGERED,
+                new AsyncResult(null,
+                        new int[]{ImsRegistrationImplBase.REASON_SIM_REFRESH}, null)));
+        processAllMessages();
+
+        verify(mImsPhone, times(1)).triggerImsDeregistration(
+                eq(ImsRegistrationImplBase.REASON_SIM_REFRESH));
+    }
 }
