@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.NetworkRegistrationInfo.DOMAIN_PS;
+
 import static com.android.internal.telephony.CommandException.Error.GENERIC_FAILURE;
 import static com.android.internal.telephony.CommandException.Error.SIM_BUSY;
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_DISABLE;
@@ -1353,6 +1355,12 @@ public class GsmCdmaPhone extends Phone {
             logi("dial; isEmergency=" + isEmergency + " (based on all phones)");
         }
 
+        // Undetectable emergeny number indicated by new domain selection service
+        if (dialArgs.isEmergency) {
+            logi("dial; isEmergency=" + isEmergency + " (domain selection module)");
+            isEmergency = true;
+        }
+
         /** Check if the call is Wireless Priority Service call */
         boolean isWpsCall = dialString != null ? (dialString.startsWith(PREFIX_WPS)
                 || dialString.startsWith(PREFIX_WPS_CLIR_ACTIVATE)
@@ -1377,6 +1385,27 @@ public class GsmCdmaPhone extends Phone {
         boolean useImsForUt = imsPhone != null && imsPhone.isUtEnabled();
         boolean useImsForCall = useImsForCall(dialArgs)
                 && (isWpsCall ? allowWpsOverIms : true);
+
+        Bundle extras = dialArgs.intentExtras;
+        // Only when the domain selection service is supported, EXTRA_DIAL_DOMAIN extra shall exist.
+        if (extras != null && extras.containsKey(PhoneConstants.EXTRA_DIAL_DOMAIN)) {
+            int domain = extras.getInt(PhoneConstants.EXTRA_DIAL_DOMAIN);
+            logi("dial domain=" + domain);
+            useImsForCall = false;
+            useImsForUt = false;
+            useImsForEmergency = false;
+            if (domain == DOMAIN_PS) {
+                if (isEmergency) {
+                    useImsForEmergency = true;
+                } else if (!isMmiCode || isPotentialUssdCode) {
+                    useImsForCall = true;
+                } else {
+                    // should not reach here
+                    loge("dial unexpected Ut domain selection, ignored");
+                }
+            }
+            extras.remove(PhoneConstants.EXTRA_DIAL_DOMAIN);
+        }
 
         if (DBG) {
             logi("useImsForCall=" + useImsForCall

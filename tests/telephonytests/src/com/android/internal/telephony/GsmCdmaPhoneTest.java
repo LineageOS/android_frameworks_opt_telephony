@@ -52,6 +52,7 @@ import static org.mockito.Mockito.when;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
@@ -2107,5 +2108,78 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         verify(mImsPhone, times(1)).triggerImsDeregistration(
                 eq(ImsRegistrationImplBase.REASON_SIM_REFRESH));
+    }
+
+    @Test
+    public void testDomainSelectionEmergencyCallCs() throws CallStateException {
+        setupEmergencyCallScenario(false /* USE_ONLY_DIALED_SIM_ECC_LIST */,
+                false /* isEmergencyOnDialedSim */);
+
+        Bundle extras = new Bundle();
+        extras.putInt(PhoneConstants.EXTRA_DIAL_DOMAIN, NetworkRegistrationInfo.DOMAIN_CS);
+        ImsPhone.ImsDialArgs dialArgs = new ImsPhone.ImsDialArgs.Builder()
+                .setIntentExtras(extras)
+                .build();
+        mPhoneUT.dial(TEST_EMERGENCY_NUMBER, dialArgs);
+
+        verify(mCT).dialGsm(anyString(), any(PhoneInternalInterface.DialArgs.class));
+    }
+
+    @Test
+    public void testDomainSelectionEmergencyCallPs() throws CallStateException {
+        setupEmergencyCallScenario(false /* USE_ONLY_DIALED_SIM_ECC_LIST */,
+                false /* isEmergencyOnDialedSim */);
+
+        doReturn(false).when(mImsPhone).isImsAvailable();
+
+        Bundle extras = new Bundle();
+        extras.putInt(PhoneConstants.EXTRA_DIAL_DOMAIN, NetworkRegistrationInfo.DOMAIN_PS);
+        ImsPhone.ImsDialArgs dialArgs = new ImsPhone.ImsDialArgs.Builder()
+                .setIntentExtras(extras)
+                .build();
+        mPhoneUT.dial(TEST_EMERGENCY_NUMBER, dialArgs);
+
+        verify(mImsPhone).dial(anyString(), any(PhoneInternalInterface.DialArgs.class));
+    }
+
+    @Test
+    public void testDomainSelectionDialCs() throws Exception {
+        doReturn(true).when(mImsPhone).isImsAvailable();
+        doReturn(true).when(mImsManager).isVolteEnabledByPlatform();
+        doReturn(true).when(mImsManager).isEnhanced4gLteModeSettingEnabledByUser();
+        doReturn(true).when(mImsManager).isNonTtyOrTtyOnVolteEnabled();
+        doReturn(true).when(mImsPhone).isVoiceOverCellularImsEnabled();
+        doReturn(true).when(mImsPhone).isUtEnabled();
+
+        replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
+
+        Bundle extras = new Bundle();
+        extras.putInt(PhoneConstants.EXTRA_DIAL_DOMAIN, NetworkRegistrationInfo.DOMAIN_CS);
+        ImsPhone.ImsDialArgs dialArgs = new ImsPhone.ImsDialArgs.Builder()
+                .setIntentExtras(extras)
+                .build();
+        Connection connection = mPhoneUT.dial("1234567890", dialArgs);
+        verify(mCT).dialGsm(eq("1234567890"), any(PhoneInternalInterface.DialArgs.class));
+    }
+
+    @Test
+    public void testDomainSelectionDialPs() throws Exception {
+        mSST.mSS = mServiceState;
+        doReturn(ServiceState.STATE_IN_SERVICE).when(mServiceState).getState();
+
+        mCT.mForegroundCall = mGsmCdmaCall;
+        mCT.mBackgroundCall = mGsmCdmaCall;
+        mCT.mRingingCall = mGsmCdmaCall;
+        doReturn(GsmCdmaCall.State.IDLE).when(mGsmCdmaCall).getState();
+
+        replaceInstance(Phone.class, "mImsPhone", mPhoneUT, mImsPhone);
+
+        Bundle extras = new Bundle();
+        extras.putInt(PhoneConstants.EXTRA_DIAL_DOMAIN, NetworkRegistrationInfo.DOMAIN_PS);
+        ImsPhone.ImsDialArgs dialArgs = new ImsPhone.ImsDialArgs.Builder()
+                .setIntentExtras(extras)
+                .build();
+        Connection connection = mPhoneUT.dial("1234567890", dialArgs);
+        verify(mImsPhone).dial(eq("1234567890"), any(PhoneInternalInterface.DialArgs.class));
     }
 }

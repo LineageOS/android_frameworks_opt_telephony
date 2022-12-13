@@ -1570,7 +1570,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             mLastDialString = dialString;
             mLastDialArgs = dialArgs;
             mPendingMO = new ImsPhoneConnection(mPhone, dialString, this, mForegroundCall,
-                    isEmergencyNumber, isWpsCall);
+                    isEmergencyNumber, isWpsCall, dialArgs);
             mOperationLocalLog.log("dial requested. connId=" + System.identityHashCode(mPendingMO));
             if (isEmergencyNumber && dialArgs != null && dialArgs.intentExtras != null) {
                 Rlog.i(LOG_TAG, "dial ims emergency dialer: " + dialArgs.intentExtras.getBoolean(
@@ -3297,6 +3297,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             int eccCategory = EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED;
             if (imsCall != null && imsCall.getCallProfile() != null) {
                 eccCategory = imsCall.getCallProfile().getEmergencyServiceCategories();
+            }
+
+            if (reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL) {
+                ImsPhoneConnection conn = findConnection(imsCall);
+                if (conn != null) {
+                    conn.setNonDetectableEmergencyCallInfo(eccCategory);
+                }
             }
 
             if (mHoldSwitchingState == HoldSwapState.HOLDING_TO_ANSWER_INCOMING) {
