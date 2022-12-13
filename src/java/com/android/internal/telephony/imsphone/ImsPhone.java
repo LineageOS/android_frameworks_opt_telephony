@@ -303,6 +303,8 @@ public class ImsPhone extends ImsPhoneBase {
     private @ImsRegistrationImplBase.ImsRegistrationTech int mImsRegistrationTech =
             REGISTRATION_TECH_NONE;
     private @RegistrationManager.SuggestedAction int mImsRegistrationSuggestedAction;
+    private @ImsRegistrationImplBase.ImsRegistrationTech int mImsDeregistrationTech =
+            REGISTRATION_TECH_NONE;
     private int mImsRegistrationCapabilities;
     private boolean mNotifiedRegisteredState;
 
@@ -2513,10 +2515,12 @@ public class ImsPhone extends ImsPhoneBase {
 
         @Override
         public void handleImsUnregistered(ImsReasonInfo imsReasonInfo,
-                @RegistrationManager.SuggestedAction int suggestedAction) {
+                @RegistrationManager.SuggestedAction int suggestedAction,
+                @ImsRegistrationImplBase.ImsRegistrationTech int imsRadioTech) {
             if (DBG) {
                 logd("handleImsUnregistered: onImsMmTelDisconnected imsReasonInfo="
-                        + imsReasonInfo + ", suggestedAction=" + suggestedAction);
+                        + imsReasonInfo + ", suggestedAction=" + suggestedAction
+                        + ", disconnectedRadioTech=" + imsRadioTech);
             }
             mRegLocalLog.log("handleImsUnregistered: onImsMmTelDisconnected imsRadioTech="
                     + imsReasonInfo);
@@ -2535,7 +2539,7 @@ public class ImsPhone extends ImsPhoneBase {
                 }
             }
             updateImsRegistrationInfo(REGISTRATION_STATE_NOT_REGISTERED,
-                    REGISTRATION_TECH_NONE, suggestedModemAction);
+                    imsRadioTech, suggestedModemAction);
         }
 
         @Override
@@ -2708,7 +2712,8 @@ public class ImsPhone extends ImsPhoneBase {
         if (regState == mImsRegistrationState) {
             if ((regState == REGISTRATION_STATE_REGISTERED && imsRadioTech == mImsRegistrationTech)
                     || (regState == REGISTRATION_STATE_NOT_REGISTERED
-                            && suggestedAction == mImsRegistrationSuggestedAction)) {
+                            && suggestedAction == mImsRegistrationSuggestedAction
+                            && imsRadioTech == mImsDeregistrationTech)) {
                 // Filter duplicate notification.
                 return;
             }
@@ -2732,6 +2737,11 @@ public class ImsPhone extends ImsPhoneBase {
         mImsRegistrationState = regState;
         mImsRegistrationTech = imsRadioTech;
         mImsRegistrationSuggestedAction = suggestedAction;
+        if (regState == REGISTRATION_STATE_NOT_REGISTERED) {
+            mImsDeregistrationTech = imsRadioTech;
+        } else {
+            mImsDeregistrationTech = REGISTRATION_TECH_NONE;
+        }
         mImsRegistrationCapabilities = 0;
         // REGISTRATION_STATE_REGISTERED will be notified when the capability is updated.
         mNotifiedRegisteredState = false;
