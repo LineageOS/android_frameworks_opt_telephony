@@ -27,6 +27,8 @@ import android.telephony.ServiceState;
 import android.telephony.ServiceState.RilRadioTechnology;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.RtpHeaderExtension;
+import android.telephony.ims.feature.MmTelFeature;
+import android.telephony.ims.feature.MmTelFeature.ImsAudioHandler;
 import android.util.Log;
 
 import com.android.ims.internal.ConferenceParticipant;
@@ -139,6 +141,13 @@ public abstract class Connection {
          * @param extensionData The extension data.
          */
         public void onReceivedRtpHeaderExtensions(@NonNull Set<RtpHeaderExtension> extensionData);
+
+        /**
+         * Indicates that the audio handler for this connection is changed.
+         *
+         * @param imsAudioHandler {@link MmTelFeature#ImsAudioHandler}.
+         */
+        void onAudioModeIsVoipChanged(@ImsAudioHandler int imsAudioHandler);
     }
 
     /**
@@ -194,6 +203,8 @@ public abstract class Connection {
         public void onReceivedDtmfDigit(char digit) {}
         @Override
         public void onReceivedRtpHeaderExtensions(@NonNull Set<RtpHeaderExtension> extensionData) {}
+        @Override
+        public void onAudioModeIsVoipChanged(@ImsAudioHandler int imsAudioHandler) {}
     }
 
     public static final int AUDIO_QUALITY_STANDARD = 1;
@@ -1571,6 +1582,25 @@ public abstract class Connection {
     public void receivedDtmfDigit(char digit) {
         for (Listener l : mListeners) {
             l.onReceivedDtmfDigit(digit);
+        }
+    }
+
+    /**
+     * Called to report audio mode changed for Voip.
+     * @param imsAudioHandler the received value to handle the audio for this IMS call.
+     */
+    public void onAudioModeIsVoipChanged(@ImsAudioHandler int imsAudioHandler) {
+        Rlog.i(TAG, "onAudioModeIsVoipChanged: conn imsAudioHandler " + imsAudioHandler);
+
+        boolean isVoip = imsAudioHandler == MmTelFeature.AUDIO_HANDLER_ANDROID;
+        if (isVoip == mAudioModeIsVoip) return;
+        mAudioModeIsVoip = isVoip;
+
+        Rlog.i(TAG, "onAudioModeIsVoipChanged: isVoip: " + isVoip
+                + "mAudioModeIsVoip:" + mAudioModeIsVoip);
+
+        for (Listener l : mListeners) {
+            l.onAudioModeIsVoipChanged(imsAudioHandler);
         }
     }
 

@@ -365,6 +365,33 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }, mExecutor);
         }
 
+        @Override
+        public void onAudioModeIsVoipChanged(int imsAudioHandler) {
+            TelephonyUtils.runWithCleanCallingIdentity(()-> {
+                ImsCall imsCall = null;
+                if (mForegroundCall.hasConnections()) {
+                    imsCall = mForegroundCall.getImsCall();
+                } else if (mBackgroundCall.hasConnections()) {
+                    imsCall = mBackgroundCall.getImsCall();
+                } else if (mRingingCall.hasConnections()) {
+                    imsCall = mRingingCall.getImsCall();
+                } else if (mHandoverCall.hasConnections()) {
+                    imsCall = mHandoverCall.getImsCall();
+                } else {
+                    Rlog.e(LOG_TAG, "onAudioModeIsVoipChanged: no Call");
+                }
+
+                if (imsCall != null) {
+                    ImsPhoneConnection conn = findConnection(imsCall);
+                    if (conn != null) {
+                        conn.onAudioModeIsVoipChanged(imsAudioHandler);
+                    }
+                } else {
+                    Rlog.e(LOG_TAG, "onAudioModeIsVoipChanged: no ImsCall");
+                }
+            }, mExecutor);
+        }
+
         /**
          * Schedule the given Runnable on mExecutor and block this thread until it finishes.
          * @param r The Runnable to run.
