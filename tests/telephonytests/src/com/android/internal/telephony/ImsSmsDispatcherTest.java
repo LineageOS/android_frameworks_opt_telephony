@@ -98,6 +98,18 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
         super.tearDown();
     }
 
+   /**
+     * Send Memory Availability Notification and verify that the token is correct.
+     */
+    @Test
+    @SmallTest
+    public void testOnMemoryAvailable() throws Exception {
+        int token = mImsSmsDispatcher.mNextToken.get();
+        //Send SMMA
+        mImsSmsDispatcher.onMemoryAvailable();
+        assertEquals(token + 1, mImsSmsDispatcher.mNextToken.get());
+        verify(mImsManager).onMemoryAvailable(eq(token + 1));
+    }
     /**
      * Send an SMS and verify that the token and PDU is correct.
      */
