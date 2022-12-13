@@ -5011,6 +5011,34 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Registers for the domain selected for emergency calls.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForEmergencyDomainSelected(
+            @NonNull Handler h, int what, @Nullable Object obj) {
+    }
+
+    /**
+     * Unregisters for the domain selected for emergency calls.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForEmergencyDomainSelected(@NonNull Handler h) {
+    }
+
+    /**
+     * Notifies the domain selected.
+     *
+     * @param transportType The preferred transport type.
+     */
+    public void notifyEmergencyDomainSelected(
+            @AccessNetworkConstants.TransportType int transportType) {
+    }
+
+    /**
      * @return Telephony tester instance.
      */
     public @Nullable TelephonyTester getTelephonyTester() {

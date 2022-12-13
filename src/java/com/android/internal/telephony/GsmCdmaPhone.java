@@ -64,6 +64,7 @@ import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
+import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.DataActivityType;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.BarringInfo;
@@ -227,6 +228,8 @@ public class GsmCdmaPhone extends Phone {
 
     private final RegistrantList mVolteSilentRedialRegistrants = new RegistrantList();
     private DialArgs mDialArgs = null;
+
+    private final RegistrantList mEmergencyDomainSelectedRegistrants = new RegistrantList();
 
     private String mImei;
     private String mImeiSv;
@@ -4533,6 +4536,27 @@ public class GsmCdmaPhone extends Phone {
         AsyncResult ar = new AsyncResult(null,
                 new SilentRedialParam(dialString, causeCode, mDialArgs), null);
         mVolteSilentRedialRegistrants.notifyRegistrants(ar);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void registerForEmergencyDomainSelected(
+            @NonNull Handler h, int what, @Nullable Object obj) {
+        mEmergencyDomainSelectedRegistrants.addUnique(h, what, obj);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void unregisterForEmergencyDomainSelected(@NonNull Handler h) {
+        mEmergencyDomainSelectedRegistrants.remove(h);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void notifyEmergencyDomainSelected(@TransportType int transportType) {
+        logd("notifyEmergencyDomainSelected transportType=" + transportType);
+        mEmergencyDomainSelectedRegistrants.notifyRegistrants(
+                new AsyncResult(null, transportType, null));
     }
 
     /**

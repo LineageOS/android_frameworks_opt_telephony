@@ -88,7 +88,7 @@ public class NetworkIndication extends IRadioNetworkIndication.Stub {
         BarringInfo cbi = new BarringInfo(RILUtils.convertHalCellIdentity(cellIdentity),
                 RILUtils.convertHalBarringInfoList(barringInfos));
 
-        mRil.mBarringInfoChangedRegistrants.notifyRegistrants(new AsyncResult(null, cbi, null));
+        mRil.notifyBarringInfoChanged(cbi);
     }
 
     /**
