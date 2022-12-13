@@ -5691,7 +5691,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     + " ,error: " + error);
             return null;
         }
-        Trace.asyncTraceForTrackEnd(Trace.TRACE_TAG_NETWORK, "RIL", "" /* unused */, rr.mSerial);
+        Trace.asyncTraceForTrackEnd(Trace.TRACE_TAG_NETWORK, "RIL", rr.mSerial);
 
         // Time logging for RIL command and storing it in TelephonyHistogram.
         addToRilHistogram(rr);
