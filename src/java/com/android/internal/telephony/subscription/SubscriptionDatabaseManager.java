@@ -770,6 +770,34 @@ public class SubscriptionDatabaseManager extends Handler {
     }
 
     /**
+     * Remove a subscription record from the database.
+     *
+     * @param subId The subscription id of the subscription to be deleted.
+     *
+     * @throws IllegalArgumentException If {@code subId} is invalid.
+     */
+    public void removeSubscriptionInfo(int subId) {
+        if (!mAllSubscriptionInfoInternalCache.containsKey(subId)) {
+            throw new IllegalArgumentException("subId " + subId + " is invalid.");
+        }
+
+        mReadWriteLock.writeLock().lock();
+        try {
+            if (mContext.getContentResolver().delete(SimInfo.CONTENT_URI,
+                    SimInfo.COLUMN_UNIQUE_KEY_SUBSCRIPTION_ID + "=?",
+                    new String[]{Integer.toString(subId)}) > 0) {
+                mAllSubscriptionInfoInternalCache.remove(subId);
+            } else {
+                logel("Failed to remove subscription with subId=" + subId);
+            }
+        } finally {
+            mReadWriteLock.writeLock().unlock();
+        }
+
+        mCallback.invokeFromExecutor(() -> mCallback.onSubscriptionChanged(subId));
+    }
+
+    /**
      * Update a subscription in the database (synchronously or asynchronously).
      *
      * @param subId The subscription id of the subscription to be updated.

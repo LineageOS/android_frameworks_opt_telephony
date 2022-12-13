@@ -101,6 +101,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * The subscription manager service is the backend service of {@link SubscriptionManager}.
@@ -830,8 +831,11 @@ public class SubscriptionManagerService extends ISub.Stub {
     public void markSubscriptionsInactive(int simSlotIndex) {
         mSubscriptionDatabaseManager.getAllSubscriptions().stream()
                 .filter(subInfo -> subInfo.getSimSlotIndex() == simSlotIndex)
-                .forEach(subInfo -> mSubscriptionDatabaseManager.setSimSlotIndex(
-                        subInfo.getSubscriptionId(), SubscriptionManager.INVALID_SIM_SLOT_INDEX));
+                .forEach(subInfo -> {
+                    mSubscriptionDatabaseManager.setSimSlotIndex(subInfo.getSubscriptionId(),
+                            SubscriptionManager.INVALID_SIM_SLOT_INDEX);
+                    mSlotIndexToSubId.remove(simSlotIndex);
+                });
     }
 
     /**
@@ -1364,8 +1368,9 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @see SubscriptionManager#requestEmbeddedSubscriptionInfoListRefresh
      */
     @Override
+    // TODO: Remove this after SubscriptionController is removed.
     public void requestEmbeddedSubscriptionInfoListRefresh(int cardId) {
-
+        updateEmbeddedSubscriptions(List.of(cardId), null);
     }
 
     /**
@@ -1430,17 +1435,40 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
-     * Remove subscription info record for the given device.
+     * Remove subscription info record from the subscription database.
      *
      * @param uniqueId This is the unique identifier for the subscription within the specific
      * subscription type.
-     * @param subscriptionType the type of subscription to be removed
+     * @param subscriptionType the type of subscription to be removed.
      *
-     * @return 0 if success, < 0 on error
+     * // TODO: Remove this terrible return value once SubscriptionController is removed.
+     * @return 0 if success, < 0 on error.
+     *
+     * @throws NullPointerException if {@code uniqueId} is {@code null}.
+     * @throws SecurityException if callers do not hold the required permission.
      */
     @Override
+    @RequiresPermission(Manifest.permission.MODIFY_PHONE_STATE)
     public int removeSubInfo(@NonNull String uniqueId, int subscriptionType) {
-        return 0;
+        enforcePermissions("removeSubInfo", Manifest.permission.MODIFY_PHONE_STATE);
+
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
+                    .getSubscriptionInfoInternalByIccId(uniqueId);
+            if (subInfo == null) {
+                loge("Cannot find subscription with uniqueId " + uniqueId);
+                return -1;
+            }
+            if (subInfo.getSubscriptionType() != subscriptionType) {
+                loge("The subscription type does not match.");
+                return -1;
+            }
+            mSubscriptionDatabaseManager.removeSubscriptionInfo(subInfo.getSubscriptionId());
+            return 0;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     /**
@@ -1631,6 +1659,10 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @throws SecurityException if callers do not hold the required permission.
      */
     @Override
+    @RequiresPermission(anyOf = {
+            Manifest.permission.MODIFY_PHONE_STATE,
+            "carrier privileges",
+    })
     public int setOpportunistic(boolean opportunistic, int subId, @NonNull String callingPackage) {
         // Verify that the callingPackage belongs to the calling UID
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
@@ -1835,11 +1867,76 @@ public class SubscriptionManagerService extends ISub.Stub {
         }
     }
 
+    /**
+     * Remove a list of subscriptions from their subscription group.
+     *
+     * @param subIdList list of subId that need removing from their groups.
+     * @param groupUuid The UUID of the subscription group.
+     * @param callingPackage The package making the call.
+     *
+     * @throws SecurityException if the caller doesn't meet the requirements outlined above.
+     * @throws IllegalArgumentException if the some subscriptions in the list doesn't belong the
+     * specified group.
+     *
+     * @see SubscriptionManager#createSubscriptionGroup(List)
+     */
     @Override
-    public void removeSubscriptionsFromGroup(int[] subIdList, @NonNull ParcelUuid groupUuid,
-            @NonNull String callingPackage) {
+    @RequiresPermission(Manifest.permission.MODIFY_PHONE_STATE)
+    public void removeSubscriptionsFromGroup(@NonNull int[] subIdList,
+            @NonNull ParcelUuid groupUuid, @NonNull String callingPackage) {
         // Verify that the callingPackage belongs to the calling UID
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
+
+        // If it doesn't have modify phone state permission, or carrier privilege permission,
+        // a SecurityException will be thrown. If it's due to invalid parameter or internal state,
+        // it will return null.
+        if (mContext.checkCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
+                != PackageManager.PERMISSION_GRANTED
+                && !(checkCarrierPrivilegeOnSubList(subIdList, callingPackage)
+                && canPackageManageGroup(groupUuid, callingPackage))) {
+            throw new SecurityException("removeSubscriptionsFromGroup needs MODIFY_PHONE_STATE or"
+                    + " carrier privilege permission on all specified subscriptions.");
+        }
+
+        Objects.requireNonNull(subIdList);
+        Objects.requireNonNull(groupUuid);
+
+        if (subIdList.length == 0) {
+            throw new IllegalArgumentException("subIdList is empty.");
+        }
+
+        long identity = Binder.clearCallingIdentity();
+
+        try {
+            for (int subId : subIdList) {
+                SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
+                        .getSubscriptionInfoInternal(subId);
+                if (subInfo == null) {
+                    throw new IllegalArgumentException("The provided sub id " + subId
+                            + " is not valid.");
+                }
+                if (!groupUuid.toString().equals(subInfo.getGroupUuid())) {
+                    throw new IllegalArgumentException("Subscription " + subInfo.getSubscriptionId()
+                            + " doesn't belong to group " + groupUuid);
+                }
+            }
+
+            for (SubscriptionInfoInternal subInfo :
+                    mSubscriptionDatabaseManager.getAllSubscriptions()) {
+                if (IntStream.of(subIdList).anyMatch(
+                        subId -> subId == subInfo.getSubscriptionId())) {
+                    mSubscriptionDatabaseManager.setGroupUuid(subInfo.getSubscriptionId(), "");
+                    mSubscriptionDatabaseManager.setGroupOwner(subInfo.getSubscriptionId(), "");
+                } else if (subInfo.getGroupUuid().equals(groupUuid.toString())) {
+                    // Pre-T behavior. If there are still subscriptions having the same UUID, update
+                    // to the new owner.
+                    mSubscriptionDatabaseManager.setGroupOwner(
+                            subInfo.getSubscriptionId(), callingPackage);
+                }
+            }
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     /**
@@ -1850,17 +1947,18 @@ public class SubscriptionManagerService extends ISub.Stub {
      *
      * @param subIdList list of subId that need adding into the group
      * @param groupUuid the groupUuid the subscriptions are being added to.
+     * @param callingPackage The package making the call.
      *
      * @throws SecurityException if the caller doesn't meet the requirements outlined above.
      * @throws IllegalArgumentException if the some subscriptions in the list doesn't exist.
      *
      * @see SubscriptionManager#createSubscriptionGroup(List)
      */
+    @Override
     @RequiresPermission(anyOf = {
             Manifest.permission.MODIFY_PHONE_STATE,
             "carrier privileges",
     })
-    @Override
     public void addSubscriptionsIntoGroup(@NonNull int[] subIdList, @NonNull ParcelUuid groupUuid,
             @NonNull String callingPackage) {
         // Verify that the callingPackage belongs to the calling UID
@@ -1975,7 +2073,7 @@ public class SubscriptionManagerService extends ISub.Stub {
      *
      * @param subId The subscription id.
      *
-     * @return Logical slot indexx (i.e. phone id) as a positive integer or
+     * @return Logical slot index (i.e. phone id) as a positive integer or
      * {@link SubscriptionManager#INVALID_SIM_SLOT_INDEX} if the supplied {@code subId} doesn't have
      * an associated slot index.
      */
@@ -2058,16 +2156,22 @@ public class SubscriptionManagerService extends ISub.Stub {
         }
     }
 
+    /**
+     * @return The default subscription id.
+     */
     @Override
     public int getDefaultSubId() {
         return mDefaultSubId.get();
     }
 
-    @Override
-    public int clearSubInfo() {
-        return 0;
-    }
-
+    /**
+     * Get phone id from the subscription id. In the implementation, the logical SIM slot index
+     * is equivalent to phone id. So this method is same as {@link #getSlotIndex(int)}.
+     *
+     * @param subId The subscription id.
+     *
+     * @return The phone id.
+     */
     @Override
     public int getPhoneId(int subId) {
         // slot index and phone id are equivalent in the current implementation.
@@ -2123,6 +2227,9 @@ public class SubscriptionManagerService extends ISub.Stub {
         }
     }
 
+    /**
+     * @return The default subscription id for voice.
+     */
     @Override
     public int getDefaultVoiceSubId() {
         return mDefaultVoiceSubId.get();
@@ -2173,6 +2280,9 @@ public class SubscriptionManagerService extends ISub.Stub {
         }
     }
 
+    /**
+     * @return The default subscription id for SMS.
+     */
     @Override
     public int getDefaultSmsSubId() {
         return mDefaultSmsSubId.get();
@@ -2351,6 +2461,9 @@ public class SubscriptionManagerService extends ISub.Stub {
 
     @Override
     public boolean setSubscriptionEnabled(boolean enable, int subId) {
+        enforcePermissions("setSubscriptionEnabled", Manifest.permission.MODIFY_PHONE_STATE);
+
+
         return true;
     }
 
@@ -2362,7 +2475,7 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @return {@code true} if the subscription is active.
      *
      * @throws IllegalArgumentException if the provided slot index is invalid.
-     * @throws SecurityException if callers do not hold the required permission.     *
+     * @throws SecurityException if callers do not hold the required permission.
      */
     @Override
     @RequiresPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE)
@@ -2621,7 +2734,7 @@ public class SubscriptionManagerService extends ISub.Stub {
      *
      * <p>Note the assumption is that one subscription (which usually means one SIM) has
      * only one phone number. The multiple sources backup each other so hopefully at least one
-     * is availavle. For example, for a carrier that doesn't typically set phone numbers
+     * is available. For example, for a carrier that doesn't typically set phone numbers
      * on {@link SubscriptionManager#PHONE_NUMBER_SOURCE_UICC UICC}, the source
      * {@link SubscriptionManager#PHONE_NUMBER_SOURCE_IMS IMS} may provide one. Or, a carrier may
      * decide to provide the phone number via source
@@ -3010,15 +3123,38 @@ public class SubscriptionManagerService extends ISub.Stub {
             @NonNull String[] args) {
         IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         pw.println(SubscriptionManagerService.class.getSimpleName() + ":");
+        pw.println("Logical SIM slot sub id mapping:");
+        pw.increaseIndent();
+        mSlotIndexToSubId.forEach((slotIndex, subId)
+                -> pw.println("Logical slot " + slotIndex + ": subId=" + subId));
+        pw.increaseIndent();
+
+        pw.println("defaultSubId=" + getDefaultSubId());
+        pw.println("defaultVoiceSubId=" + getDefaultVoiceSubId());
+        pw.println("defaultDataSubId=" + getDefaultDataSubId());
+        pw.println("activeDataSubId=" + getActiveDataSubscriptionId());
+        pw.println("defaultSmsSubId=" + getDefaultSmsSubId());
+
+        pw.println("Active subscriptions:");
+        pw.increaseIndent();
+        mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                .filter(SubscriptionInfoInternal::isActive).forEach(pw::println);
+        pw.decreaseIndent();
+        pw.println("Embedded subscriptions:");
+        pw.increaseIndent();
+        mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                .filter(SubscriptionInfoInternal::isEmbedded).forEach(pw::println);
+        pw.decreaseIndent();
+        pw.println("Opportunistic subscriptions:");
+        pw.increaseIndent();
+        mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                .filter(SubscriptionInfoInternal::isOpportunistic).forEach(pw::println);
+        pw.decreaseIndent();
         pw.println("All subscriptions:");
         pw.increaseIndent();
         mSubscriptionDatabaseManager.getAllSubscriptions().forEach(pw::println);
         pw.decreaseIndent();
-        pw.println("defaultSubId=" + getDefaultSubId());
-        pw.println("defaultVoiceSubId=" + getDefaultVoiceSubId());
-        pw.println("defaultDataSubId" + getDefaultDataSubId());
-        pw.println("activeDataSubId" + getActiveDataSubscriptionId());
-        pw.println("defaultSmsSubId" + getDefaultSmsSubId());
+
         if (mEuiccManager != null) {
             pw.println("Euicc enabled=" + mEuiccManager.isEnabled());
         }
