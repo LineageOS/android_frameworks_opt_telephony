@@ -20,6 +20,7 @@ import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
 import static com.android.internal.telephony.Phone.EVENT_ICC_CHANGED;
 import static com.android.internal.telephony.Phone.EVENT_IMS_DEREGISTRATION_TRIGGERED;
+import static com.android.internal.telephony.Phone.EVENT_RADIO_AVAILABLE;
 import static com.android.internal.telephony.Phone.EVENT_SRVCC_STATE_CHANGED;
 import static com.android.internal.telephony.Phone.EVENT_UICC_APPS_ENABLEMENT_STATUS_CHANGED;
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
@@ -2044,7 +2045,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     }
 
     @Test
-    public void testDial_fdnCheck() throws Exception{
+    public void testDial_fdnCheck() throws Exception {
         // dial setup
         mSST.mSS = mServiceState;
         doReturn(ServiceState.STATE_IN_SERVICE).when(mServiceState).getState();
@@ -2072,12 +2073,21 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
             connection = mPhoneUT.dial("1234567890",
                     new PhoneInternalInterface.DialArgs.Builder().build());
             fail("Expected CallStateException with ERROR_FDN_BLOCKED thrown.");
-        } catch(CallStateException e) {
+        } catch (CallStateException e) {
             assertEquals(CallStateException.ERROR_FDN_BLOCKED, e.getError());
         }
 
         // clean up
         fdnCheckCleanup();
+    }
+
+    @Test
+    public void testHandleNullCipherAndIntegrityEnabledOnRadioAvailable() {
+        GsmCdmaPhone spiedPhone = spy(mPhoneUT);
+        spiedPhone.sendMessage(spiedPhone.obtainMessage(EVENT_RADIO_AVAILABLE,
+                new AsyncResult(null, new int[]{ServiceState.RIL_RADIO_TECHNOLOGY_GSM}, null)));
+        processAllMessages();
+        verify(spiedPhone, times(1)).handleNullCipherEnabledChange();
     }
 
     public void fdnCheckCleanup() {
