@@ -22,6 +22,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
@@ -212,6 +213,18 @@ public class SmsStorageMonitor extends Handler {
 
     private void sendMemoryStatusReport(boolean isAvailable) {
         mIsWaitingResponse = true;
+        Resources r = mContext.getResources();
+        if (r.getBoolean(com.android.internal.R.bool.config_smma_notification_supported_over_ims)) {
+            IccSmsInterfaceManager smsIfcMngr = mPhone.getIccSmsInterfaceManager();
+            if (smsIfcMngr != null) {
+                Rlog.d(TAG, "sendMemoryStatusReport: smsIfcMngr is available");
+                if (smsIfcMngr.mDispatchersController.isIms() && isAvailable) {
+                    smsIfcMngr.mDispatchersController.reportSmsMemoryStatus(
+                            obtainMessage(EVENT_REPORT_MEMORY_STATUS_DONE));
+                    return;
+                }
+            }
+        }
         mCi.reportSmsMemoryStatus(isAvailable, obtainMessage(EVENT_REPORT_MEMORY_STATUS_DONE));
     }
 
