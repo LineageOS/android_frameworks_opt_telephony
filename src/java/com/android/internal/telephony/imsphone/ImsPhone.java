@@ -19,6 +19,12 @@ package com.android.internal.telephony.imsphone;
 import static android.provider.Telephony.SimInfo.COLUMN_PHONE_NUMBER_SOURCE_IMS;
 import static android.telephony.ims.ImsManager.EXTRA_WFC_REGISTRATION_FAILURE_MESSAGE;
 import static android.telephony.ims.ImsManager.EXTRA_WFC_REGISTRATION_FAILURE_TITLE;
+import static android.telephony.ims.RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED;
+import static android.telephony.ims.RegistrationManager.REGISTRATION_STATE_REGISTERED;
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_NONE;
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK;
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
 
 import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAIC;
 import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAICr;
@@ -42,6 +48,7 @@ import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDI
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_NONE;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
 
+import android.annotation.NonNull;
 import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -79,6 +86,7 @@ import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsCallForwardInfo;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsRegistrationAttributes;
 import android.telephony.ims.ImsSsData;
 import android.telephony.ims.ImsSsInfo;
 import android.telephony.ims.RegistrationManager;
@@ -289,6 +297,14 @@ public class ImsPhone extends ImsPhoneBase {
     private RegistrantList mSsnRegistrants = new RegistrantList();
 
     private ImsStats mImsStats;
+
+    private int mImsRegistrationState;
+    // The access network type where IMS is registered
+    private @ImsRegistrationImplBase.ImsRegistrationTech int mImsRegistrationTech =
+            REGISTRATION_TECH_NONE;
+    private @RegistrationManager.SuggestedAction int mImsRegistrationSuggestedAction;
+    private int mImsRegistrationCapabilities;
+    private boolean mNotifiedRegisteredState;
 
     // A runnable which is used to automatically exit from Ecm after a period of time.
     private Runnable mExitEcmRunnable = new Runnable() {
@@ -2454,12 +2470,18 @@ public class ImsPhone extends ImsPhoneBase {
     public void resetImsRegistrationState() {
         if (DBG) logd("resetImsRegistrationState");
         mImsMmTelRegistrationHelper.reset();
+        int subId = getSubId();
+        if (SubscriptionManager.isValidSubscriptionId(subId)) {
+            updateImsRegistrationInfo(REGISTRATION_STATE_NOT_REGISTERED,
+                    REGISTRATION_TECH_NONE, SUGGESTED_ACTION_NONE);
+        }
     }
 
     private ImsRegistrationCallbackHelper.ImsRegistrationUpdate mMmTelRegistrationUpdate = new
             ImsRegistrationCallbackHelper.ImsRegistrationUpdate() {
         @Override
-        public void handleImsRegistered(int imsRadioTech) {
+        public void handleImsRegistered(@NonNull ImsRegistrationAttributes attributes) {
+            int imsRadioTech = attributes.getTransportType();
             if (DBG) {
                 logd("handleImsRegistered: onImsMmTelConnected imsRadioTech="
                         + AccessNetworkConstants.transportTypeToString(imsRadioTech));
@@ -2470,6 +2492,8 @@ public class ImsPhone extends ImsPhoneBase {
             getDefaultPhone().setImsRegistrationState(true);
             mMetrics.writeOnImsConnectionState(mPhoneId, ImsConnectionState.State.CONNECTED, null);
             mImsStats.onImsRegistered(imsRadioTech);
+            updateImsRegistrationInfo(REGISTRATION_STATE_REGISTERED,
+                    attributes.getRegistrationTechnology(), SUGGESTED_ACTION_NONE);
         }
 
         @Override
@@ -2488,10 +2512,11 @@ public class ImsPhone extends ImsPhoneBase {
         }
 
         @Override
-        public void handleImsUnregistered(ImsReasonInfo imsReasonInfo) {
+        public void handleImsUnregistered(ImsReasonInfo imsReasonInfo,
+                @RegistrationManager.SuggestedAction int suggestedAction) {
             if (DBG) {
                 logd("handleImsUnregistered: onImsMmTelDisconnected imsReasonInfo="
-                        + imsReasonInfo);
+                        + imsReasonInfo + ", suggestedAction=" + suggestedAction);
             }
             mRegLocalLog.log("handleImsUnregistered: onImsMmTelDisconnected imsRadioTech="
                     + imsReasonInfo);
@@ -2501,6 +2526,16 @@ public class ImsPhone extends ImsPhoneBase {
             mMetrics.writeOnImsConnectionState(mPhoneId, ImsConnectionState.State.DISCONNECTED,
                     imsReasonInfo);
             mImsStats.onImsUnregistered(imsReasonInfo);
+            mImsRegistrationTech = REGISTRATION_TECH_NONE;
+            int suggestedModemAction = SUGGESTED_ACTION_NONE;
+            if (imsReasonInfo.getCode() == ImsReasonInfo.CODE_REGISTRATION_ERROR) {
+                if ((suggestedAction == SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK)
+                        || (suggestedAction == SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT)) {
+                    suggestedModemAction = suggestedAction;
+                }
+            }
+            updateImsRegistrationInfo(REGISTRATION_STATE_NOT_REGISTERED,
+                    REGISTRATION_TECH_NONE, suggestedModemAction);
         }
 
         @Override
@@ -2631,6 +2666,75 @@ public class ImsPhone extends ImsPhoneBase {
 
     public boolean getLastKnownRoamingState() {
         return mLastKnownRoamingState;
+    }
+
+    /**
+     * Update IMS registration information to modem.
+     *
+     * @param capabilities indicate MMTEL capability such as VOICE, VIDEO and SMS.
+     */
+    public void updateImsRegistrationInfo(int capabilities) {
+        if (mImsRegistrationState == REGISTRATION_STATE_REGISTERED) {
+            if (mNotifiedRegisteredState && (capabilities == mImsRegistrationCapabilities)) {
+                // Duplicated notification, no change in capabilities.
+                return;
+            }
+
+            mImsRegistrationCapabilities = capabilities;
+            if (capabilities == 0) {
+                // Ignore this as this usually happens just before onUnregistered callback.
+                // We can notify modem when onUnregistered() flow occurs.
+                return;
+            }
+
+            mDefaultPhone.mCi.updateImsRegistrationInfo(mImsRegistrationState,
+                    mImsRegistrationTech, 0, capabilities, null);
+            mNotifiedRegisteredState = true;
+        }
+    }
+
+    /**
+     * Update IMS registration info
+     *
+     * @param regState indicates IMS registration state.
+     * @param imsRadioTech indicates the type of the radio access network where IMS is registered.
+     * @param suggestedAction indicates the suggested action for the radio to perform.
+     */
+    private void updateImsRegistrationInfo(
+            @RegistrationManager.ImsRegistrationState int regState,
+            @ImsRegistrationImplBase.ImsRegistrationTech int imsRadioTech,
+            @RegistrationManager.SuggestedAction int suggestedAction) {
+
+        if (regState == mImsRegistrationState) {
+            if ((regState == REGISTRATION_STATE_REGISTERED && imsRadioTech == mImsRegistrationTech)
+                    || (regState == REGISTRATION_STATE_NOT_REGISTERED
+                            && suggestedAction == mImsRegistrationSuggestedAction)) {
+                // Filter duplicate notification.
+                return;
+            }
+        }
+
+        if (regState == REGISTRATION_STATE_NOT_REGISTERED) {
+            mDefaultPhone.mCi.updateImsRegistrationInfo(regState,
+                    imsRadioTech, suggestedAction, 0, null);
+        } else if (mImsRegistrationState == REGISTRATION_STATE_REGISTERED) {
+            // This happens when radio tech is changed while in REGISTERED state.
+            if (mImsRegistrationCapabilities > 0) {
+                // Capability has been updated. Notify REGISTRATION_STATE_REGISTERED.
+                mDefaultPhone.mCi.updateImsRegistrationInfo(regState, imsRadioTech, 0,
+                        mImsRegistrationCapabilities, null);
+                mImsRegistrationTech = imsRadioTech;
+                mNotifiedRegisteredState = true;
+                return;
+            }
+        }
+
+        mImsRegistrationState = regState;
+        mImsRegistrationTech = imsRadioTech;
+        mImsRegistrationSuggestedAction = suggestedAction;
+        mImsRegistrationCapabilities = 0;
+        // REGISTRATION_STATE_REGISTERED will be notified when the capability is updated.
+        mNotifiedRegisteredState = false;
     }
 
     @Override

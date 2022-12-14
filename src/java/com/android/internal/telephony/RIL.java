@@ -84,6 +84,8 @@ import android.telephony.data.DataProfile;
 import android.telephony.data.NetworkSliceInfo;
 import android.telephony.data.TrafficDescriptor;
 import android.telephony.emergency.EmergencyNumber;
+import android.telephony.ims.RegistrationManager;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.text.TextUtils;
 import android.util.SparseArray;
 
@@ -5257,8 +5259,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void updateImsRegistrationInfo(int state,
-            int accessNetworkType, int suggestedAction, int capabilities, Message result) {
+    public void updateImsRegistrationInfo(
+            @RegistrationManager.ImsRegistrationState int state,
+            @ImsRegistrationImplBase.ImsRegistrationTech int imsRadioTech,
+            @RegistrationManager.SuggestedAction int suggestedAction,
+            int capabilities, Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
         if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
@@ -5266,14 +5271,15 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                // Do not log function arg for privacy
-                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
+                        + " state=" + state + ", radioTech=" + imsRadioTech
+                        + ", suggested=" + suggestedAction + ", cap=" + capabilities);
             }
 
             android.hardware.radio.ims.ImsRegistration registrationInfo =
                     new android.hardware.radio.ims.ImsRegistration();
             registrationInfo.regState = RILUtils.convertImsRegistrationState(state);
-            registrationInfo.accessNetworkType = accessNetworkType;
+            registrationInfo.accessNetworkType = RILUtils.convertImsRegistrationTech(imsRadioTech);
             registrationInfo.suggestedAction = suggestedAction;
             registrationInfo.capabilities = RILUtils.convertImsCapability(capabilities);
 
@@ -5685,7 +5691,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     + " ,error: " + error);
             return null;
         }
-        Trace.asyncTraceForTrackEnd(Trace.TRACE_TAG_NETWORK, "RIL", "" /* unused */, rr.mSerial);
+        Trace.asyncTraceForTrackEnd(Trace.TRACE_TAG_NETWORK, "RIL", rr.mSerial);
 
         // Time logging for RIL command and storing it in TelephonyHistogram.
         addToRilHistogram(rr);

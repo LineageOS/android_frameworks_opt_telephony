@@ -34,6 +34,9 @@ import static android.telephony.ims.ImsService.CAPABILITY_TERMINAL_BASED_CALL_WA
 import static com.android.internal.annotations.VisibleForTesting.Visibility.PRIVATE;
 import static com.android.internal.telephony.CallWaitingController.TERMINAL_BASED_ACTIVATED;
 import static com.android.internal.telephony.CallWaitingController.TERMINAL_BASED_NOT_SUPPORTED;
+import static com.android.internal.telephony.CommandsInterface.IMS_MMTEL_CAPABILITY_SMS;
+import static com.android.internal.telephony.CommandsInterface.IMS_MMTEL_CAPABILITY_VIDEO;
+import static com.android.internal.telephony.CommandsInterface.IMS_MMTEL_CAPABILITY_VOICE;
 import static com.android.internal.telephony.Phone.CS_FALLBACK;
 
 import android.Manifest;
@@ -358,6 +361,33 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     mPhone.mDefaultPhone.setVoiceMessageCount(count);
                 } else {
                     loge("onVoiceMessageCountUpdate: null phone");
+                }
+            }, mExecutor);
+        }
+
+        @Override
+        public void onAudioModeIsVoipChanged(int imsAudioHandler) {
+            TelephonyUtils.runWithCleanCallingIdentity(()-> {
+                ImsCall imsCall = null;
+                if (mForegroundCall.hasConnections()) {
+                    imsCall = mForegroundCall.getImsCall();
+                } else if (mBackgroundCall.hasConnections()) {
+                    imsCall = mBackgroundCall.getImsCall();
+                } else if (mRingingCall.hasConnections()) {
+                    imsCall = mRingingCall.getImsCall();
+                } else if (mHandoverCall.hasConnections()) {
+                    imsCall = mHandoverCall.getImsCall();
+                } else {
+                    Rlog.e(LOG_TAG, "onAudioModeIsVoipChanged: no Call");
+                }
+
+                if (imsCall != null) {
+                    ImsPhoneConnection conn = findConnection(imsCall);
+                    if (conn != null) {
+                        conn.onAudioModeIsVoipChanged(imsAudioHandler);
+                    }
+                } else {
+                    Rlog.e(LOG_TAG, "onAudioModeIsVoipChanged: no ImsCall");
                 }
             }, mExecutor);
         }
@@ -4551,6 +4581,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 try {
                     ImsFeature.Capabilities capabilities = (ImsFeature.Capabilities) args.arg1;
                     handleFeatureCapabilityChanged(capabilities);
+                    updateImsRegistrationInfo();
                 } finally {
                     args.recycle();
                 }
@@ -5746,5 +5777,24 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         } catch (ImsException e) {
             loge("triggerImsDeregistration: exception " + e);
         }
+    }
+
+    private void updateImsRegistrationInfo() {
+        int capabilities = 0;
+
+        if (mMmTelCapabilities.isCapable(
+                MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE)) {
+            capabilities |= IMS_MMTEL_CAPABILITY_VOICE;
+        }
+        if (mMmTelCapabilities.isCapable(
+                MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VIDEO)) {
+            capabilities |= IMS_MMTEL_CAPABILITY_VIDEO;
+        }
+        if (mMmTelCapabilities.isCapable(
+                MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_SMS)) {
+            capabilities |= IMS_MMTEL_CAPABILITY_SMS;
+        }
+
+        mPhone.updateImsRegistrationInfo(capabilities);
     }
 }

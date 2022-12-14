@@ -409,6 +409,11 @@ public class SmsDispatchersController extends Handler {
         injectSmsPdu(msg, format, callback, false /* ignoreClass */, isOverIms, 0 /* unused */);
     }
 
+    @VisibleForTesting
+    public void setImsSmsDispatcher(ImsSmsDispatcher imsSmsDispatcher) {
+        mImsSmsDispatcher = imsSmsDispatcher;
+    }
+
     /**
      * Inject an SMS PDU into the android platform.
      *
@@ -571,6 +576,23 @@ public class SmsDispatchersController extends Handler {
                         : (isCdmaFormat(newFormat)) ? mCdmaDispatcher : mGsmDispatcher;
 
         dispatcher.sendSms(tracker);
+    }
+
+    /**
+     * Memory Available Event
+     * @param result callback message
+     */
+    public void reportSmsMemoryStatus(Message result) {
+        Rlog.d(TAG, "reportSmsMemoryStatus: ");
+        try {
+            mImsSmsDispatcher.onMemoryAvailable();
+            AsyncResult.forMessage(result, null, null);
+            result.sendToTarget();
+        } catch (Exception e) {
+            Rlog.e(TAG, "reportSmsMemoryStatus Failed ", e);
+            AsyncResult.forMessage(result, null, e);
+            result.sendToTarget();
+        }
     }
 
     /**

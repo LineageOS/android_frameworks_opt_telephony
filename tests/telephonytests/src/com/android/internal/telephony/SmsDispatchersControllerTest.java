@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
@@ -33,6 +34,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.app.ActivityManager;
+import android.os.AsyncResult;
 import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.PhoneNumberUtils;
@@ -94,6 +96,30 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
         switchImsSmsFormat(PhoneConstants.PHONE_TYPE_CDMA);
         assertEquals(SmsConstants.FORMAT_3GPP2, mSmsDispatchersController.getImsSmsFormat());
         assertTrue(mSmsDispatchersController.isIms());
+    }
+
+    @Test @SmallTest
+    public void testReportSmsMemoryStatus() throws Exception {
+        int eventReportMemoryStatusDone = 3;
+        SmsStorageMonitor smsStorageMonnitor = new SmsStorageMonitor(mPhone);
+        Message result = smsStorageMonnitor.obtainMessage(eventReportMemoryStatusDone);
+        ImsSmsDispatcher mImsSmsDispatcher = Mockito.mock(ImsSmsDispatcher.class);
+        mSmsDispatchersController.setImsSmsDispatcher(mImsSmsDispatcher);
+        mSmsDispatchersController.reportSmsMemoryStatus(result);
+        AsyncResult ar = (AsyncResult) result.obj;
+        verify(mImsSmsDispatcher).onMemoryAvailable();
+        assertNull(ar.exception);
+    }
+
+    @Test @SmallTest
+    public void testReportSmsMemoryStatusFailure() throws Exception {
+        int eventReportMemoryStatusDone = 3;
+        SmsStorageMonitor smsStorageMonnitor = new SmsStorageMonitor(mPhone);
+        Message result = smsStorageMonnitor.obtainMessage(eventReportMemoryStatusDone);
+        mSmsDispatchersController.setImsSmsDispatcher(null);
+        mSmsDispatchersController.reportSmsMemoryStatus(result);
+        AsyncResult ar = (AsyncResult) result.obj;
+        assertNotNull(ar.exception);
     }
 
     @Test @SmallTest @FlakyTest

@@ -447,6 +447,20 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         return SMSDispatcherUtil.calculateLength(isCdmaMo(), messageBody, use7bitOnly);
     }
 
+    /**
+     * Send the Memory Available Event to the ImsService
+     */
+    public void onMemoryAvailable() {
+        logd("onMemoryAvailable ");
+        int token = mNextToken.incrementAndGet();
+        try {
+            logd("onMemoryAvailable: token = " + token);
+            getImsManager().onMemoryAvailable(token);
+        } catch (ImsException e) {
+            loge("onMemoryAvailable failed: " + e.getMessage());
+        }
+    }
+
     @Override
     public void sendSms(SmsTracker tracker) {
         logd("sendSms: "

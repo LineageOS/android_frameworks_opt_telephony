@@ -18,6 +18,8 @@
 
 package com.android.internal.telephony;
 
+import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+
 import static com.android.internal.telephony.util.TelephonyUtils.checkDumpPermission;
 
 import android.annotation.Nullable;
@@ -790,6 +792,58 @@ public class SmsController extends ISmsImplBase {
             callingPkg = getCallingPackage();
         }
         return getPhone(subId).getAppSmsManager().createAppSpecificSmsToken(callingPkg, intent);
+    }
+
+    @Override
+    public void setStorageMonitorMemoryStatusOverride(int subId, boolean isStorageAvailable) {
+        Phone phone = getPhone(subId);
+        Context context;
+        if (phone != null) {
+            context = phone.getContext();
+        } else {
+            Rlog.e(LOG_TAG, "Phone Object is Null");
+            return;
+        }
+        // If it doesn't have modify phone state permission
+        // a SecurityException will be thrown.
+        if (context.checkPermission(android.Manifest
+                        .permission.MODIFY_PHONE_STATE, Binder.getCallingPid(),
+                        Binder.getCallingUid()) != PERMISSION_GRANTED) {
+            throw new SecurityException(
+                    "setStorageMonitorMemoryStatusOverride needs MODIFY_PHONE_STATE");
+        }
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            phone.mSmsStorageMonitor.sendMemoryStatusOverride(isStorageAvailable);
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+    }
+
+    @Override
+    public void clearStorageMonitorMemoryStatusOverride(int subId) {
+        Phone phone = getPhone(subId);
+        Context context;
+        if (phone != null) {
+            context = phone.getContext();
+        } else {
+            Rlog.e(LOG_TAG, "Phone Object is Null");
+            return;
+        }
+        // If it doesn't have modify phone state permission
+        // a SecurityException will be thrown.
+        if (context.checkPermission(android.Manifest
+                        .permission.MODIFY_PHONE_STATE, Binder.getCallingPid(),
+                        Binder.getCallingUid()) != PERMISSION_GRANTED) {
+            throw new SecurityException(
+                    "clearStorageMonitorMemoryStatusOverride needs MODIFY_PHONE_STATE");
+        }
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            phone.mSmsStorageMonitor.clearMemoryStatusOverride();
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     @Override
