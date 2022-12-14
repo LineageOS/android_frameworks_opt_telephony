@@ -5555,7 +5555,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      * @param enabled true if null ciphering / null integrity modes are permitted, false otherwise
      */
     @Override
-    public void setNullCipherAndIntegrityEnabled(Message result, boolean enabled) {
+    public void setNullCipherAndIntegrityEnabled(boolean enabled, Message result) {
         RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
         if (networkProxy.isEmpty()) return;
         if (mHalVersion.get(HAL_SERVICE_NETWORK).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {

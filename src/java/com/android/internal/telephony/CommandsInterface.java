@@ -2946,9 +2946,9 @@ public interface CommandsInterface {
      * Set the UE's ability to accept/reject null ciphered and/or null integrity-protected
      * connections.
      *
-     * @param result Callback message containing the success or failure status.
      * @param enabled true to allow null ciphered and/or null integrity-protected connections,
      * false to disallow.
+     * @param result Callback message containing the success or failure status.
      */
-    default void setNullCipherAndIntegrityEnabled(Message result, boolean enabled) {}
+    default void setNullCipherAndIntegrityEnabled(boolean enabled, Message result) {}
 }
