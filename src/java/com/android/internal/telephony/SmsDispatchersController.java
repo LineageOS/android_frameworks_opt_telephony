@@ -20,6 +20,8 @@ import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
 import static com.android.internal.telephony.cdma.sms.BearerData.ERROR_NONE;
 import static com.android.internal.telephony.cdma.sms.BearerData.ERROR_TEMPORARY;
 
+import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
@@ -35,14 +37,22 @@ import android.os.Message;
 import android.os.UserManager;
 import android.provider.Telephony.Sms;
 import android.provider.Telephony.Sms.Intents;
+import android.telephony.Annotation.DisconnectCauses;
+import android.telephony.DomainSelectionService;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
+import android.telephony.TelephonyManager;
 
 import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
 import com.android.internal.telephony.cdma.CdmaSMSDispatcher;
+import com.android.internal.telephony.domainselection.DomainSelectionConnection;
+import com.android.internal.telephony.domainselection.DomainSelectionResolver;
+import com.android.internal.telephony.domainselection.EmergencySmsDomainSelectionConnection;
+import com.android.internal.telephony.domainselection.SmsDomainSelectionConnection;
 import com.android.internal.telephony.gsm.GsmInboundSmsHandler;
 import com.android.internal.telephony.gsm.GsmSMSDispatcher;
 import com.android.telephony.Rlog;
@@ -51,6 +61,8 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  *
@@ -114,6 +126,195 @@ public class SmsDispatchersController extends Handler {
     /** 3GPP2 format sent messages awaiting a delivery status report. */
     private HashMap<Integer, SMSDispatcher.SmsTracker> mDeliveryPendingMapFor3GPP2 =
             new HashMap<>();
+
+    /**
+     * Testing interface for injecting mock DomainSelectionConnection and a flag to indicate
+     * whether the domain selection is supported.
+     */
+    @VisibleForTesting
+    public interface DomainSelectionResolverProxy {
+        /**
+         * Returns a {@link DomainSelectionConnection} created using the specified
+         * context and callback.
+         *
+         * @param phone The {@link Phone} instance.
+         * @param selectorType The domain selector type to identify the domain selection connection.
+         *                     A {@link DomainSelectionService#SELECTOR_TYPE_SMS} is used for SMS.
+         * @param isEmergency A flag to indicate whether this connection is
+         *                    for an emergency SMS or not.
+         */
+        @Nullable DomainSelectionConnection getDomainSelectionConnection(Phone phone,
+                @DomainSelectionService.SelectorType int selectorType, boolean isEmergency);
+
+        /**
+         * Checks if the device supports the domain selection service to route the call / SMS /
+         * supplementary services to the appropriate domain.
+         *
+         * @return {@code true} if the domain selection is supported on the device,
+         *         {@code false} otherwise.
+         */
+        boolean isDomainSelectionSupported();
+    }
+
+    private DomainSelectionResolverProxy mDomainSelectionResolverProxy =
+            new DomainSelectionResolverProxy() {
+                @Override
+                @Nullable
+                public DomainSelectionConnection getDomainSelectionConnection(Phone phone,
+                        @DomainSelectionService.SelectorType int selectorType,
+                        boolean isEmergency) {
+                    try {
+                        return DomainSelectionResolver.getInstance().getDomainSelectionConnection(
+                                phone, selectorType, isEmergency);
+                    } catch (IllegalStateException e) {
+                        // In general, DomainSelectionResolver is always initialized by TeleService,
+                        // but if it's not initialized (like in unit tests),
+                        // it returns null to perform the legacy behavior in this case.
+                        return null;
+                    }
+                }
+
+                @Override
+                public boolean isDomainSelectionSupported() {
+                    return DomainSelectionResolver.getInstance().isDomainSelectionSupported();
+                }
+            };
+
+    /** Stores the sending SMS information for a pending request. */
+    private class PendingRequest {
+        public static final int TYPE_DATA = 1;
+        public static final int TYPE_TEXT = 2;
+        public static final int TYPE_MULTIPART_TEXT = 3;
+        public static final int TYPE_RETRY_SMS = 4;
+
+        public final int type;
+        public final SMSDispatcher.SmsTracker tracker;
+        public final String callingPackage;
+        public final String destAddr;
+        public final String scAddr;
+        public final ArrayList<PendingIntent> sentIntents;
+        public final ArrayList<PendingIntent> deliveryIntents;
+        public final boolean isForVvm;
+        // sendData specific
+        public final byte[] data;
+        public final int destPort;
+        // sendText / sendMultipartText specific
+        public final ArrayList<String> texts;
+        public final Uri messageUri;
+        public final boolean persistMessage;
+        public final int priority;
+        public final boolean expectMore;
+        public final int validityPeriod;
+        public final long messageId;
+        public final boolean skipShortCodeCheck;
+
+        PendingRequest(int type, SMSDispatcher.SmsTracker tracker, String callingPackage,
+                String destAddr, String scAddr, ArrayList<PendingIntent> sentIntents,
+                ArrayList<PendingIntent> deliveryIntents, boolean isForVvm, byte[] data,
+                int destPort, ArrayList<String> texts, Uri messageUri, boolean persistMessage,
+                int priority, boolean expectMore, int validityPeriod, long messageId,
+                boolean skipShortCodeCheck) {
+            this.type = type;
+            this.tracker = tracker;
+            this.callingPackage = callingPackage;
+            this.destAddr = destAddr;
+            this.scAddr = scAddr;
+            this.sentIntents = sentIntents;
+            this.deliveryIntents = deliveryIntents;
+            this.isForVvm = isForVvm;
+
+            this.data = data;
+            this.destPort = destPort;
+
+            this.texts = texts;
+            this.messageUri = messageUri;
+            this.persistMessage = persistMessage;
+            this.priority = priority;
+            this.expectMore = expectMore;
+            this.validityPeriod = validityPeriod;
+            this.messageId = messageId;
+            this.skipShortCodeCheck = skipShortCodeCheck;
+        }
+    }
+
+    /**
+     * Manages the {@link DomainSelectionConnection} instance and its related information.
+     */
+    @VisibleForTesting
+    protected class DomainSelectionConnectionHolder
+            implements DomainSelectionConnection.DomainSelectionConnectionCallback {
+        private final boolean mEmergency;
+        // Manages the pending request while selecting a proper domain.
+        private final List<PendingRequest> mPendingRequests = new ArrayList<>();
+        // Manages the domain selection connections: MO SMS or emergency SMS.
+        private DomainSelectionConnection mConnection;
+
+        DomainSelectionConnectionHolder(boolean emergency) {
+            mEmergency = emergency;
+        }
+
+        /**
+         * Returns a {@link DomainSelectionConnection} instance.
+         */
+        public DomainSelectionConnection getConnection() {
+            return mConnection;
+        }
+
+        /**
+         * Returns a list of {@link PendingRequest} that was added
+         * while the domain selection is performed.
+         */
+        public List<PendingRequest> getPendingRequests() {
+            return mPendingRequests;
+        }
+
+        /**
+         * Checks whether or not the domain selection is requested.
+         * If there is no pending request, the domain selection request is needed to
+         * select a proper domain for MO SMS.
+         */
+        public boolean isDomainSelectionRequested() {
+            return !mPendingRequests.isEmpty();
+        }
+
+        /**
+         * Checks whether or not this holder is for an emergency SMS.
+         */
+        public boolean isEmergency() {
+            return mEmergency;
+        }
+
+        /**
+         * Clears all pending requests.
+         */
+        public void clearAllRequests() {
+            mPendingRequests.clear();
+        }
+
+        /**
+         * Add a new pending request.
+         */
+        public void addRequest(@NonNull PendingRequest request) {
+            mPendingRequests.add(request);
+        }
+
+        /**
+         * Sets a {@link DomainSelectionConnection} instance.
+         */
+        public void setConnection(DomainSelectionConnection connection) {
+            mConnection = connection;
+        }
+
+
+        @Override
+        public void onSelectionTerminated(@DisconnectCauses int cause) {
+            notifyDomainSelectionTerminated(this);
+        }
+    }
+
+    /** Manages the domain selection connections: MO SMS or emergency SMS. */
+    private DomainSelectionConnectionHolder mDscHolder;
+    private DomainSelectionConnectionHolder mEmergencyDscHolder;
 
     /**
      * Puts a delivery pending tracker to the map based on the format.
@@ -189,6 +390,9 @@ public class SmsDispatchersController extends Handler {
         mCdmaDispatcher.dispose();
         mGsmInboundSmsHandler.dispose();
         mCdmaInboundSmsHandler.dispose();
+        // Cancels the domain selection request if it's still in progress.
+        finishDomainSelection(mDscHolder);
+        finishDomainSelection(mEmergencyDscHolder);
     }
 
     /**
@@ -484,15 +688,42 @@ public class SmsDispatchersController extends Handler {
      * @param tracker holds the SMS message to send
      */
     public void sendRetrySms(SMSDispatcher.SmsTracker tracker) {
-        String oldFormat = tracker.mFormat;
         boolean retryUsingImsService = false;
 
-        if (!tracker.mUsesImsServiceForIms && mImsSmsDispatcher.isAvailable()) {
-            // If this tracker has not been handled by ImsSmsDispatcher yet and IMS Service is
-            // available now, retry this failed tracker using IMS Service.
-            retryUsingImsService = true;
+        if (!tracker.mUsesImsServiceForIms) {
+            if (mDomainSelectionResolverProxy.isDomainSelectionSupported()) {
+                DomainSelectionConnectionHolder holder = getDomainSelectionConnection(false);
+
+                // If the DomainSelectionConnection is not available,
+                // fallback to the legacy implementation.
+                if (holder != null && holder.getConnection() != null) {
+                    sendSmsUsingDomainSelection(holder,
+                            new PendingRequest(PendingRequest.TYPE_RETRY_SMS, tracker,
+                                    null, null, null, null, null, false, null, 0, null, null, false,
+                                    0, false, 0, 0L, false),
+                            "sendRetrySms");
+                    return;
+                }
+            }
+
+            if (mImsSmsDispatcher.isAvailable()) {
+                // If this tracker has not been handled by ImsSmsDispatcher yet and IMS Service is
+                // available now, retry this failed tracker using IMS Service.
+                retryUsingImsService = true;
+            }
         }
 
+        sendRetrySms(tracker, retryUsingImsService);
+    }
+
+    /**
+     * Retry the message along to the radio.
+     *
+     * @param tracker holds the SMS message to send
+     * @param retryUsingImsService a flag to indicate whether the retry SMS can use the ImsService
+     */
+    public void sendRetrySms(SMSDispatcher.SmsTracker tracker, boolean retryUsingImsService) {
+        String oldFormat = tracker.mFormat;
         // If retryUsingImsService is true, newFormat will be IMS SMS format. Otherwise, newFormat
         // will be based on voice technology.
         String newFormat =
@@ -641,6 +872,347 @@ public class SmsDispatchersController extends Handler {
         return (mCdmaDispatcher.getFormat().equals(format));
     }
 
+    /** Sets a proxy interface for accessing the methods of {@link DomainSelectionResolver}. */
+    @VisibleForTesting
+    public void setDomainSelectionResolverProxy(@NonNull DomainSelectionResolverProxy proxy) {
+        mDomainSelectionResolverProxy = proxy;
+    }
+
+    /**
+     * Determines whether or not to use CDMA format for MO SMS when the domain selection uses.
+     * If the domain is {@link NetworkRegistrationInfo#DOMAIN_PS}, then format is based on
+     * IMS SMS format, otherwise format is based on current phone type.
+     *
+     * @return {@code true} if CDMA format should be used for MO SMS, {@code false} otherwise.
+     */
+    private boolean isCdmaMo(@NetworkRegistrationInfo.Domain int domain) {
+        if (domain != NetworkRegistrationInfo.DOMAIN_PS) {
+            // IMS is not registered, use voice technology to determine SMS format.
+            return (PhoneConstants.PHONE_TYPE_CDMA == mPhone.getPhoneType());
+        }
+        // IMS is registered with SMS support
+        return isCdmaFormat(mImsSmsDispatcher.getFormat());
+    }
+
+    /**
+     * Returns a {@link DomainSelectionConnectionHolder} according to the flag specified.
+     *
+     * @param emergency The flag to indicate that the domain selection is for an emergency SMS.
+     * @return A {@link DomainSelectionConnectionHolder} instance or null.
+     */
+    @VisibleForTesting
+    @Nullable
+    protected DomainSelectionConnectionHolder getDomainSelectionConnectionHolder(
+            boolean emergency) {
+        return emergency ? mEmergencyDscHolder : mDscHolder;
+    }
+
+    /**
+     * Returns a {@link DomainSelectionConnectionHolder} if the domain selection supports,
+     * return null otherwise.
+     *
+     * @param emergency The flag to indicate that the domain selection is for an emergency SMS.
+     * @return A {@link DomainSelectionConnectionHolder} that grabs the
+     *         {@link DomainSelectionConnection} and its related information to use the domain
+     *         selection architecture.
+     */
+    private DomainSelectionConnectionHolder getDomainSelectionConnection(boolean emergency) {
+        DomainSelectionConnectionHolder holder = getDomainSelectionConnectionHolder(emergency);
+        DomainSelectionConnection connection = (holder != null) ? holder.getConnection() : null;
+        boolean created = false;
+
+        if (connection == null) {
+            connection = mDomainSelectionResolverProxy.getDomainSelectionConnection(
+                    mPhone, DomainSelectionService.SELECTOR_TYPE_SMS, emergency);
+
+            if (connection == null) {
+                // Domain selection architecture is not supported.
+                // Use the legacy architecture.
+                return null;
+            }
+
+            created = true;
+        }
+
+        if (holder == null) {
+            holder = new DomainSelectionConnectionHolder(emergency);
+
+            if (emergency) {
+                mEmergencyDscHolder = holder;
+            } else {
+                mDscHolder = holder;
+            }
+        }
+
+        holder.setConnection(connection);
+
+        return holder;
+    }
+
+    /**
+     * Requests the domain selection for MO SMS.
+     *
+     * @param holder The {@link DomainSelectionConnectionHolder} that contains the
+     *               {@link DomainSelectionConnection} and its related information.
+     */
+    private void requestDomainSelection(@NonNull DomainSelectionConnectionHolder holder) {
+        DomainSelectionService.SelectionAttributes attr =
+                new DomainSelectionService.SelectionAttributes.Builder(mPhone.getPhoneId(),
+                        mPhone.getSubId(), DomainSelectionService.SELECTOR_TYPE_SMS)
+                .setEmergency(holder.isEmergency())
+                .build();
+
+        if (holder.isEmergency()) {
+            EmergencySmsDomainSelectionConnection emergencyConnection =
+                    (EmergencySmsDomainSelectionConnection) holder.getConnection();
+            CompletableFuture<Integer> future =
+                    emergencyConnection.requestDomainSelection(attr, holder);
+            future.thenAcceptAsync((domain) -> {
+                if (VDBG) {
+                    logd("requestDomainSelection(emergency): domain="
+                            + DomainSelectionService.getDomainName(domain));
+                }
+                sendAllPendingRequests(holder, domain);
+                finishDomainSelection(holder);
+            }, this::post);
+        } else {
+            SmsDomainSelectionConnection connection =
+                    (SmsDomainSelectionConnection) holder.getConnection();
+            CompletableFuture<Integer> future = connection.requestDomainSelection(attr, holder);
+            future.thenAcceptAsync((domain) -> {
+                if (VDBG) {
+                    logd("requestDomainSelection: domain="
+                            + DomainSelectionService.getDomainName(domain));
+                }
+                sendAllPendingRequests(holder, domain);
+                finishDomainSelection(holder);
+            }, this::post);
+        }
+    }
+
+    /**
+     * Sends a SMS after selecting the domain via the domain selection service.
+     *
+     * @param holder The {@link DomainSelectionConnectionHolder} that contains the
+     *               {@link DomainSelectionConnection} and its related information.
+     * @param request The {@link PendingRequest} that stores the SMS request
+     *                (data, text, multipart text) to be sent.
+     * @param logTag The log tag to display which method called this method.
+     */
+    private void sendSmsUsingDomainSelection(@NonNull DomainSelectionConnectionHolder holder,
+            @NonNull PendingRequest request, @NonNull String logTag) {
+        boolean isDomainSelectionRequested = holder.isDomainSelectionRequested();
+        // The domain selection is in progress so waits for the result of
+        // the domain selection by adding this request to the pending list.
+        holder.addRequest(request);
+
+        if (!isDomainSelectionRequested) {
+            if (VDBG) {
+                logd("requestDomainSelection: " + logTag);
+            }
+            requestDomainSelection(holder);
+        }
+    }
+
+    /**
+     * Finishes the domain selection for MO SMS.
+     *
+     * @param holder The {@link DomainSelectionConnectionHolder} object that is being finished.
+     */
+    private void finishDomainSelection(DomainSelectionConnectionHolder holder) {
+        DomainSelectionConnection connection = (holder != null) ? holder.getConnection() : null;
+
+        if (connection != null) {
+            // After this method is called, the domain selection service will clean up
+            // its resources and finish the procedure that are related to the current domain
+            // selection request.
+            connection.finishSelection();
+        }
+
+        if (holder != null) {
+            final List<PendingRequest> pendingRequests = holder.getPendingRequests();
+
+            logd("finishDomainSelection: pendingRequests=" + pendingRequests.size());
+
+            for (PendingRequest r : pendingRequests) {
+                triggerSentIntentForFailure(r.sentIntents);
+            }
+
+            holder.clearAllRequests();
+            holder.setConnection(null);
+        }
+    }
+
+    /**
+     * Notifies the application that MO SMS is not sent by the error of domain selection.
+     *
+     * @param holder The {@link DomainSelectionConnectionHolder} object that is being terminated.
+     */
+    private void notifyDomainSelectionTerminated(@NonNull DomainSelectionConnectionHolder holder) {
+        final List<PendingRequest> pendingRequests = holder.getPendingRequests();
+
+        logd("notifyDomainSelectionTerminated: pendingRequests=" + pendingRequests.size());
+
+        for (PendingRequest r : pendingRequests) {
+            triggerSentIntentForFailure(r.sentIntents);
+        }
+
+        holder.setConnection(null);
+        holder.clearAllRequests();
+    }
+
+    /**
+     * Sends all pending requests for MO SMS.
+     *
+     * @param holder The {@link DomainSelectionConnectionHolder} object that all the pending
+     *               requests are handled.
+     * @param domain The domain where the SMS is being sent, which can be one of the following:
+     *               - {@link NetworkRegistrationInfo#DOMAIN_PS}
+     *               - {@link NetworkRegistrationInfo#DOMAIN_CS}
+     */
+    private void sendAllPendingRequests(@NonNull DomainSelectionConnectionHolder holder,
+            @NetworkRegistrationInfo.Domain int domain) {
+        final List<PendingRequest> pendingRequests = holder.getPendingRequests();
+
+        if (VDBG) {
+            logd("sendAllPendingRequests: domain=" + DomainSelectionService.getDomainName(domain)
+                    + ", size=" + pendingRequests.size());
+        }
+
+        for (PendingRequest r : pendingRequests) {
+            switch (r.type) {
+                case PendingRequest.TYPE_DATA:
+                    sendData(domain, r);
+                    break;
+                case PendingRequest.TYPE_TEXT:
+                    sendText(domain, r);
+                    break;
+                case PendingRequest.TYPE_MULTIPART_TEXT:
+                    sendMultipartText(domain, r);
+                    break;
+                case PendingRequest.TYPE_RETRY_SMS:
+                    sendRetrySms(r.tracker, (domain == NetworkRegistrationInfo.DOMAIN_PS));
+                    break;
+                default:
+                    // Not reachable.
+                    break;
+            }
+        }
+
+        holder.clearAllRequests();
+    }
+
+    /**
+     * Sends a data based SMS to a specific application port.
+     *
+     * @param domain The domain where the SMS is being sent, which can be one of the following:
+     *               - {@link NetworkRegistrationInfo#DOMAIN_PS}
+     *               - {@link NetworkRegistrationInfo#DOMAIN_CS}
+     * @param request The pending request for MO SMS.
+     */
+    private void sendData(@NetworkRegistrationInfo.Domain int domain,
+            @NonNull PendingRequest request) {
+        if (domain == NetworkRegistrationInfo.DOMAIN_PS) {
+            mImsSmsDispatcher.sendData(request.callingPackage, request.destAddr, request.scAddr,
+                    request.destPort, request.data, request.sentIntents.get(0),
+                    request.deliveryIntents.get(0), request.isForVvm);
+        } else if (isCdmaMo(domain)) {
+            mCdmaDispatcher.sendData(request.callingPackage, request.destAddr, request.scAddr,
+                    request.destPort, request.data, request.sentIntents.get(0),
+                    request.deliveryIntents.get(0), request.isForVvm);
+        } else {
+            mGsmDispatcher.sendData(request.callingPackage, request.destAddr, request.scAddr,
+                    request.destPort, request.data, request.sentIntents.get(0),
+                    request.deliveryIntents.get(0), request.isForVvm);
+        }
+    }
+
+    /**
+     * Sends a text based SMS.
+     *
+     * @param domain The domain where the SMS is being sent, which can be one of the following:
+     *               - {@link NetworkRegistrationInfo#DOMAIN_PS}
+     *               - {@link NetworkRegistrationInfo#DOMAIN_CS}
+     * @param request The pending request for MO SMS.
+     */
+    private void sendText(@NetworkRegistrationInfo.Domain int domain,
+            @NonNull PendingRequest request) {
+        if (domain == NetworkRegistrationInfo.DOMAIN_PS) {
+            mImsSmsDispatcher.sendText(request.destAddr, request.scAddr, request.texts.get(0),
+                    request.sentIntents.get(0), request.deliveryIntents.get(0),
+                    request.messageUri, request.callingPackage, request.persistMessage,
+                    request.priority, false /*request.expectMore*/, request.validityPeriod,
+                    request.isForVvm, request.messageId, request.skipShortCodeCheck);
+        } else {
+            if (isCdmaMo(domain)) {
+                mCdmaDispatcher.sendText(request.destAddr, request.scAddr, request.texts.get(0),
+                        request.sentIntents.get(0), request.deliveryIntents.get(0),
+                        request.messageUri, request.callingPackage, request.persistMessage,
+                        request.priority, request.expectMore, request.validityPeriod,
+                        request.isForVvm, request.messageId, request.skipShortCodeCheck);
+            } else {
+                mGsmDispatcher.sendText(request.destAddr, request.scAddr, request.texts.get(0),
+                        request.sentIntents.get(0), request.deliveryIntents.get(0),
+                        request.messageUri, request.callingPackage, request.persistMessage,
+                        request.priority, request.expectMore, request.validityPeriod,
+                        request.isForVvm, request.messageId, request.skipShortCodeCheck);
+            }
+        }
+    }
+
+    /**
+     * Sends a multi-part text based SMS.
+     *
+     * @param domain The domain where the SMS is being sent, which can be one of the following:
+     *               - {@link NetworkRegistrationInfo#DOMAIN_PS}
+     *               - {@link NetworkRegistrationInfo#DOMAIN_CS}
+     * @param request The pending request for MO SMS.
+     */
+    private void sendMultipartText(@NetworkRegistrationInfo.Domain int domain,
+            @NonNull PendingRequest request) {
+        if (domain == NetworkRegistrationInfo.DOMAIN_PS) {
+            mImsSmsDispatcher.sendMultipartText(request.destAddr, request.scAddr, request.texts,
+                    request.sentIntents, request.deliveryIntents, request.messageUri,
+                    request.callingPackage, request.persistMessage, request.priority,
+                    false /*request.expectMore*/, request.validityPeriod, request.messageId);
+        } else {
+            if (isCdmaMo(domain)) {
+                mCdmaDispatcher.sendMultipartText(request.destAddr, request.scAddr, request.texts,
+                        request.sentIntents, request.deliveryIntents, request.messageUri,
+                        request.callingPackage, request.persistMessage, request.priority,
+                        request.expectMore, request.validityPeriod, request.messageId);
+            } else {
+                mGsmDispatcher.sendMultipartText(request.destAddr, request.scAddr, request.texts,
+                        request.sentIntents, request.deliveryIntents, request.messageUri,
+                        request.callingPackage, request.persistMessage, request.priority,
+                        request.expectMore, request.validityPeriod, request.messageId);
+            }
+        }
+    }
+
+    private void triggerSentIntentForFailure(@NonNull PendingIntent sentIntent) {
+        try {
+            sentIntent.send(SmsManager.RESULT_ERROR_GENERIC_FAILURE);
+        } catch (CanceledException e) {
+            logd("Intent has been canceled!");
+        }
+    }
+
+    private void triggerSentIntentForFailure(@NonNull List<PendingIntent> sentIntents) {
+        for (PendingIntent sentIntent : sentIntents) {
+            triggerSentIntentForFailure(sentIntent);
+        }
+    }
+
+    /**
+     * Creates an ArrayList object from any object.
+     */
+    private static <T> ArrayList<T> asArrayList(T object) {
+        ArrayList<T> list = new ArrayList<>();
+        list.add(object);
+        return list;
+    }
+
     /**
      * Send a data based SMS to a specific application port.
      *
@@ -725,6 +1297,23 @@ public class SmsDispatchersController extends Handler {
         if (scAddr == null) {
             scAddr = getSmscAddressFromUSIM(callingPackage);
         }
+
+        if (mDomainSelectionResolverProxy.isDomainSelectionSupported()) {
+            DomainSelectionConnectionHolder holder = getDomainSelectionConnection(false);
+
+            // If the DomainSelectionConnection is not available,
+            // fallback to the legacy implementation.
+            if (holder != null && holder.getConnection() != null) {
+                sendSmsUsingDomainSelection(holder,
+                        new PendingRequest(PendingRequest.TYPE_DATA, null, callingPackage,
+                                destAddr, scAddr, asArrayList(sentIntent),
+                                asArrayList(deliveryIntent), isForVvm, data, destPort, null, null,
+                                false, 0, false, 0, 0L, false),
+                        "sendData");
+                return;
+            }
+        }
+
         if (mImsSmsDispatcher.isAvailable()) {
             mImsSmsDispatcher.sendData(callingPackage, destAddr, scAddr, destPort, data, sentIntent,
                     deliveryIntent, isForVvm);
@@ -947,6 +1536,26 @@ public class SmsDispatchersController extends Handler {
         if (scAddr == null) {
             scAddr = getSmscAddressFromUSIM(callingPkg);
         }
+
+        if (mDomainSelectionResolverProxy.isDomainSelectionSupported()) {
+            TelephonyManager tm = mContext.getSystemService(TelephonyManager.class);
+            boolean isEmergency = tm.isEmergencyNumber(destAddr);
+            DomainSelectionConnectionHolder holder = getDomainSelectionConnection(isEmergency);
+
+            // If the DomainSelectionConnection is not available,
+            // fallback to the legacy implementation.
+            if (holder != null && holder.getConnection() != null) {
+                sendSmsUsingDomainSelection(holder,
+                        new PendingRequest(PendingRequest.TYPE_TEXT, null, callingPkg,
+                                destAddr, scAddr, asArrayList(sentIntent),
+                                asArrayList(deliveryIntent), isForVvm, null, 0, asArrayList(text),
+                                messageUri, persistMessage, priority, expectMore, validityPeriod,
+                                messageId, skipShortCodeCheck),
+                        "sendText");
+                return;
+            }
+        }
+
         if (mImsSmsDispatcher.isAvailable() || mImsSmsDispatcher.isEmergencySmsSupport(destAddr)) {
             mImsSmsDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
                     messageUri, callingPkg, persistMessage, priority, false /*expectMore*/,
@@ -1076,6 +1685,23 @@ public class SmsDispatchersController extends Handler {
         if (scAddr == null) {
             scAddr = getSmscAddressFromUSIM(callingPkg);
         }
+
+        if (mDomainSelectionResolverProxy.isDomainSelectionSupported()) {
+            DomainSelectionConnectionHolder holder = getDomainSelectionConnection(false);
+
+            // If the DomainSelectionConnection is not available,
+            // fallback to the legacy implementation.
+            if (holder != null && holder.getConnection() != null) {
+                sendSmsUsingDomainSelection(holder,
+                        new PendingRequest(PendingRequest.TYPE_MULTIPART_TEXT, null,
+                                callingPkg, destAddr, scAddr, sentIntents, deliveryIntents, false,
+                                null, 0, parts, messageUri, persistMessage, priority, expectMore,
+                                validityPeriod, messageId, false),
+                        "sendMultipartText");
+                return;
+            }
+        }
+
         if (mImsSmsDispatcher.isAvailable()) {
             mImsSmsDispatcher.sendMultipartText(destAddr, scAddr, parts, sentIntents,
                     deliveryIntents, messageUri, callingPkg, persistMessage, priority,
@@ -1231,5 +1857,9 @@ public class SmsDispatchersController extends Handler {
 
     private void logd(String msg) {
         Rlog.d(TAG, msg);
+    }
+
+    private void logi(String s) {
+        Rlog.i(TAG + " [" + mPhone.getPhoneId() + "]", s);
     }
 }
