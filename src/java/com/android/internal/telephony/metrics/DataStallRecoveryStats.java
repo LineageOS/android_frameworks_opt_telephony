@@ -54,13 +54,15 @@ public class DataStallRecoveryStats {
      * @param isRecovered The data stall symptom recovered or not.
      * @param durationMillis The duration from data stall symptom occurred.
      * @param reason The recovered(data resume) reason.
+     * @param isFirstValidation The validation status if it's the first come after recovery.
      */
     public static void onDataStallEvent(
             @DataStallRecoveryManager.RecoveryAction int recoveryAction,
             Phone phone,
             boolean isRecovered,
             int durationMillis,
-            @DataStallRecoveryManager.RecoveredReason int reason) {
+            @DataStallRecoveryManager.RecoveredReason int reason,
+            boolean isFirstValidation) {
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             phone = phone.getDefaultPhone();
         }
@@ -99,6 +101,19 @@ public class DataStallRecoveryStats {
             }
         }
 
+        // the number returned here matches the NetworkRegistrationState enum we have
+        int phoneNetworkRegState = NetworkRegistrationInfo
+                .REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING;
+
+        NetworkRegistrationInfo phoneRegInfo = phone.getServiceState()
+                        .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
+                                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        if (phoneRegInfo != null) {
+            phoneNetworkRegState = phoneRegInfo.getRegistrationState();
+        }
+
+        int phoneId = phone.getPhoneId();
+
         TelephonyStatsLog.write(
                 TelephonyStatsLog.DATA_STALL_RECOVERY_REPORTED,
                 carrierId,
@@ -112,7 +127,10 @@ public class DataStallRecoveryStats {
                 durationMillis,
                 reason,
                 otherSignalStrength,
-                otherNetworkRegState);
+                otherNetworkRegState,
+                phoneNetworkRegState,
+                isFirstValidation,
+                phoneId);
     }
 
     /** Returns the RAT used for data (including IWLAN). */
