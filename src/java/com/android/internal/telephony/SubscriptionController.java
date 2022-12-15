@@ -4814,8 +4814,14 @@ public class SubscriptionController extends ISub.Stub {
      * @throws IllegalArgumentException if subId is invalid.
      */
     @Override
+    @Nullable
     public UserHandle getSubscriptionUserHandle(int subId) {
         enforceManageSubscriptionUserAssociation("getSubscriptionUserHandle");
+
+        if (!mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_enable_get_subscription_user_handle)) {
+            return null;
+        }
 
         long token = Binder.clearCallingIdentity();
         try {
