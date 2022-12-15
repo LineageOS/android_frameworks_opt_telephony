@@ -350,6 +350,7 @@ public class GsmCdmaPhone extends Phone {
 
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
         mSST.registerForVoiceRegStateOrRatChanged(this, EVENT_VRS_OR_RAT_CHANGED, null);
+        mSST.getServiceStateStats().registerDataNetworkControllerCallback();
 
         if (isSubscriptionManagerServiceEnabled()) {
             mSubscriptionManagerService.registerCallback(new SubscriptionManagerServiceCallback(

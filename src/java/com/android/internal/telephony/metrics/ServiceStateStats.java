@@ -15,7 +15,13 @@
  */
 
 package com.android.internal.telephony.metrics;
+import static android.telephony.TelephonyManager.DATA_CONNECTED;
 
+import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS;
+import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_IMS;
+import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_UNKNOWN;
+
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.os.SystemClock;
 import android.telephony.AccessNetworkConstants;
@@ -24,24 +30,24 @@ import android.telephony.Annotation.NetworkType;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
-
-import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS;
-import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_IMS;
-import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_UNKNOWN;
+import android.telephony.data.DataProfile;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
+import com.android.internal.telephony.data.DataNetworkController;
+import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
 import com.android.telephony.Rlog;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /** Tracks service state duration and switch metrics for each phone. */
-public class ServiceStateStats {
+public class ServiceStateStats extends DataNetworkControllerCallback {
     private static final String TAG = ServiceStateStats.class.getSimpleName();
 
     private final AtomicReference<TimestampedServiceState> mLastState =
@@ -50,6 +56,7 @@ public class ServiceStateStats {
     private final PersistAtomsStorage mStorage;
 
     public ServiceStateStats(Phone phone) {
+        super(Runnable::run);
         mPhone = phone;
         mStorage = PhoneFactory.getMetricsCollector().getAtomsStorage();
     }
@@ -80,6 +87,21 @@ public class ServiceStateStats {
         addServiceState(lastState, now);
     }
 
+    /** Registers for internet pdn connected callback. */
+    public void registerDataNetworkControllerCallback() {
+        mPhone.getDataNetworkController().registerDataNetworkControllerCallback(this);
+    }
+
+    /** Updates service state when internet pdn gets connected. */
+    public void onInternetDataNetworkConnected(@NonNull List<DataProfile> dataProfiles) {
+        onInternetDataNetworkChanged(true);
+    }
+
+    /** Updates service state when internet pdn gets disconnected. */
+    public void onInternetDataNetworkDisconnected() {
+        onInternetDataNetworkChanged(false);
+    }
+
     /** Updates the current service state. */
     public void onServiceStateChanged(ServiceState serviceState) {
         final long now = getTimeMillis();
@@ -97,7 +119,7 @@ public class ServiceStateStats {
             newState.isMultiSim = SimSlotState.isMultiSim();
             newState.carrierId = mPhone.getCarrierId();
             newState.isEmergencyOnly = isEmergencyOnly(serviceState);
-
+            newState.isInternetPdnUp = isInternetPdnUp(mPhone);
             TimestampedServiceState prevState =
                     mLastState.getAndSet(new TimestampedServiceState(newState, now));
             addServiceStateAndSwitch(
@@ -224,6 +246,7 @@ public class ServiceStateStats {
         copy.carrierId = state.carrierId;
         copy.totalTimeMillis = state.totalTimeMillis;
         copy.isEmergencyOnly = state.isEmergencyOnly;
+        copy.isInternetPdnUp = state.isInternetPdnUp;
         return copy;
     }
 
@@ -308,6 +331,29 @@ public class ServiceStateStats {
         int nrState = state.getNrState();
         return nrState == NetworkRegistrationInfo.NR_STATE_CONNECTED
                 || nrState == NetworkRegistrationInfo.NR_STATE_NOT_RESTRICTED;
+    }
+
+    private static boolean isInternetPdnUp(Phone phone) {
+        DataNetworkController dataNetworkController = phone.getDataNetworkController();
+        if (dataNetworkController != null) {
+            return dataNetworkController.getInternetDataNetworkState() == DATA_CONNECTED;
+        }
+        return false;
+    }
+
+    private void onInternetDataNetworkChanged(boolean internetPdnUp) {
+        final long now = getTimeMillis();
+        TimestampedServiceState lastState =
+                mLastState.getAndUpdate(
+                        state -> {
+                            if (state.mServiceState == null) {
+                                return new TimestampedServiceState(null, now);
+                            }
+                            CellularServiceState newServiceState = copyOf(state.mServiceState);
+                            newServiceState.isInternetPdnUp = internetPdnUp;
+                            return new TimestampedServiceState(newServiceState, now);
+                        });
+        addServiceState(lastState, now);
     }
 
     @VisibleForTesting

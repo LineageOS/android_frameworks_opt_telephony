@@ -1466,7 +1466,8 @@ public class PersistAtomsStorage {
                     && state.simSlotIndex == key.simSlotIndex
                     && state.isMultiSim == key.isMultiSim
                     && state.carrierId == key.carrierId
-                    && state.isEmergencyOnly == key.isEmergencyOnly) {
+                    && state.isEmergencyOnly == key.isEmergencyOnly
+                    && state.isInternetPdnUp == key.isInternetPdnUp) {
                 return state;
             }
         }
