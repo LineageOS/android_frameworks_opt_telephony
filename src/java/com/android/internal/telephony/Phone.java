@@ -46,6 +46,7 @@ import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation.SrvccState;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CarrierRestrictionRules;
+import android.telephony.CellBroadcastIdRange;
 import android.telephony.CellIdentity;
 import android.telephony.CellInfo;
 import android.telephony.ClientRequestStats;
@@ -5108,6 +5109,21 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void isN1ModeEnabled(Message result) {
         mCi.isN1ModeEnabled(result);
+    }
+
+    /**
+     * Return current cell broadcast ranges.
+     */
+    public List<CellBroadcastIdRange> getCellBroadcastIdRanges() {
+        return new ArrayList<>();
+    }
+
+    /**
+     * Set reception of cell broadcast messages with the list of the given ranges.
+     */
+    public void setCellBroadcastIdRanges(
+            @NonNull List<CellBroadcastIdRange> ranges, Consumer<Integer> callback) {
+        callback.accept(TelephonyManager.CELLBROADCAST_RESULT_UNSUPPORTED);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

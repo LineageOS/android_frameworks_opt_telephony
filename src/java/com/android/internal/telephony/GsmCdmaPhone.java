@@ -71,6 +71,7 @@ import android.telephony.Annotation.DataActivityType;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.BarringInfo;
 import android.telephony.CarrierConfigManager;
+import android.telephony.CellBroadcastIdRange;
 import android.telephony.CellIdentity;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.LinkCapacityEstimate;
@@ -236,6 +237,9 @@ public class GsmCdmaPhone extends Phone {
     private String mImei;
     private String mImeiSv;
     private String mVmNumber;
+
+    CellBroadcastConfigTracker mCellBroadcastConfigTracker =
+            CellBroadcastConfigTracker.make(this, null);
 
     // Create Cfu (Call forward unconditional) so that dialing number &
     // mOnComplete (Message object passed by client) can be packed &
@@ -4959,6 +4963,22 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public InboundSmsHandler getInboundSmsHandler(boolean is3gpp2) {
         return mIccSmsInterfaceManager.getInboundSmsHandler(is3gpp2);
+    }
+
+    /**
+     * Return current cell broadcast ranges.
+     */
+    public List<CellBroadcastIdRange> getCellBroadcastIdRanges() {
+        return mCellBroadcastConfigTracker.getCellBroadcastIdRanges();
+    }
+
+    /**
+     * Set reception of cell broadcast messages with the list of the given ranges.
+     */
+    @Override
+    public void setCellBroadcastIdRanges(
+            @NonNull List<CellBroadcastIdRange> ranges, Consumer<Integer> callback) {
+        mCellBroadcastConfigTracker.setCellBroadcastIdRanges(ranges, callback);
     }
 
     /**
