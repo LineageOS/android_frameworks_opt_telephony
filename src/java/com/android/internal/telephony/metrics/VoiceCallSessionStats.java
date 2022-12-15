@@ -514,6 +514,17 @@ public class VoiceCallSessionStats {
             proto.carrierId = mPhone.getCarrierId();
         }
 
+        // Update end RAT
+        @NetworkType
+        int rat = ServiceStateStats.getVoiceRat(mPhone, getServiceState(), proto.bearerAtEnd);
+        if (proto.ratAtEnd != rat) {
+            proto.ratSwitchCount++;
+            proto.ratAtEnd = rat;
+            if (rat != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
+                proto.lastKnownRat = rat;
+            }
+        }
+
         mAtomsStorage.addVoiceCallSession(proto);
 
         // merge RAT usages to PersistPullers when the call session ends (i.e. no more active calls)
