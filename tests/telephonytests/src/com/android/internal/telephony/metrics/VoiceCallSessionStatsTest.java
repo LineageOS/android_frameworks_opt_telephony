@@ -283,6 +283,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
                         TelephonyManager.NETWORK_TYPE_LTE,
                         ImsReasonInfo.CODE_SIP_FORBIDDEN);
         expectedCall.setupFailed = true;
+        expectedCall.setupDurationMillis = 200;
         expectedCall.ratAtConnected = TelephonyManager.NETWORK_TYPE_UNKNOWN;
         expectedCall.callDuration = VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_UNKNOWN;
         VoiceCallRatUsage expectedRatUsage =
@@ -326,6 +327,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
                         TelephonyManager.NETWORK_TYPE_LTE,
                         ImsReasonInfo.CODE_SIP_REQUEST_CANCELLED);
         expectedCall.setupFailed = true;
+        expectedCall.setupDurationMillis = 200;
         expectedCall.ratAtConnected = TelephonyManager.NETWORK_TYPE_UNKNOWN;
         expectedCall.callDuration = VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_UNKNOWN;
         VoiceCallRatUsage expectedRatUsage =
@@ -1568,6 +1570,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         expectedCall.bandAtEnd = 0;
         expectedCall.ratSwitchCount = 1L;
         expectedCall.setupFailed = true;
+        expectedCall.setupDurationMillis = 13000;
         expectedCall.ratAtConnected = TelephonyManager.NETWORK_TYPE_UNKNOWN;
         expectedCall.codecBitmask = 0L;
         expectedCall.mainCodecQuality =
