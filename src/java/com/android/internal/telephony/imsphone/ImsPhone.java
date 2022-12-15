@@ -2754,6 +2754,11 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public void updateImsCallStatus(List<ImsCallInfo> imsCallInfo, Message response) {
+        mDefaultPhone.updateImsCallStatus(imsCallInfo, response);
+    }
+
+    @Override
     public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
         IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         pw.println("ImsPhone extends:");

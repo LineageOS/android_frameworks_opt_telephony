@@ -37,6 +37,7 @@ import android.database.MatrixCursor;
 import android.net.Uri;
 import android.os.Looper;
 import android.provider.Telephony;
+import android.provider.Telephony.SimInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.ims.ImsMmTelManager;
@@ -235,14 +236,14 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         private final List<String> mAllColumns;
 
         SubscriptionProvider() {
-            mAllColumns = Telephony.SimInfo.getAllColumns();
+            mAllColumns = SimInfo.getAllColumns();
         }
 
         @Override
         public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
                 String sortOrder) {
             logd("SubscriptionProvider: query. uri=" + uri);
-            if (!Telephony.SimInfo.CONTENT_URI.equals(uri)) {
+            if (!SimInfo.CONTENT_URI.equals(uri)) {
                 throw new UnsupportedOperationException("Unsupported uri=" + uri);
             }
             if (projection != null || selection != null || selectionArgs != null) {
@@ -267,15 +268,22 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
         @Override
         public int update(Uri uri, ContentValues values, String where, String[] whereArgs) {
-            if (!uri.isPathPrefixMatch(Telephony.SimInfo.CONTENT_URI)) {
+            if (!uri.isPathPrefixMatch(SimInfo.CONTENT_URI)) {
                 throw new UnsupportedOperationException("Unsupported uri=" + uri);
             }
 
             int subId = Integer.parseInt(uri.getLastPathSegment());
-            assertThat(mDatabase.size()).isAtLeast(subId);
-
-            ContentValues existingValues = mDatabase.get(subId - 1);
             logd("update: subId=" + subId + ", contentValues=" + values);
+
+            ContentValues existingValues = mDatabase.stream()
+                    .filter(contentValues -> contentValues.get(
+                            SimInfo.COLUMN_UNIQUE_KEY_SUBSCRIPTION_ID).equals(subId))
+                    .findFirst()
+                    .orElse(null);
+            if (existingValues == null) {
+                throw new IllegalArgumentException("Invalid sub id " + subId);
+            }
+
             for (Map.Entry<String, Object> entry : values.valueSet()) {
                 String column = entry.getKey();
                 Object value = entry.getValue();
@@ -289,13 +297,30 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
         @Override
         public int delete(Uri uri, String selection, String[] selectionArgs) {
-            throw new UnsupportedOperationException("delete is not supported uri=" + uri);
+            if (!uri.isPathPrefixMatch(SimInfo.CONTENT_URI)) {
+                throw new UnsupportedOperationException("Unsupported uri=" + uri);
+            }
+
+            logd("delete: uri=" + uri + ", selection=" + selection + ", selectionArgs="
+                    + Arrays.toString(selectionArgs));
+            if (!selection.equals(SimInfo.COLUMN_UNIQUE_KEY_SUBSCRIPTION_ID + "=?")) {
+                throw new UnsupportedOperationException("Only support delete by sub id.");
+            }
+
+            int rowsRemoved = 0;
+            for (String selectionArg : selectionArgs) {
+                int subId = Integer.parseInt(selectionArg);
+                // Clear it to null instead of removing it.
+                rowsRemoved += mDatabase.removeIf(contentValues -> contentValues.get(
+                        SimInfo.COLUMN_UNIQUE_KEY_SUBSCRIPTION_ID).equals(subId)) ? 1 : 0;
+            }
+            return rowsRemoved;
         }
 
         @Override
         public Uri insert(Uri uri, ContentValues values) {
             logd("SubscriptionProvider: insert. uri=" + uri + ", values=" + values);
-            if (!Telephony.SimInfo.CONTENT_URI.equals(uri)) {
+            if (!SimInfo.CONTENT_URI.equals(uri)) {
                 throw new UnsupportedOperationException("Unsupported uri=" + uri);
             }
 
@@ -304,10 +329,17 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                     throw new IllegalArgumentException("Insert with unknown column " + column);
                 }
             }
-            int subId = mDatabase.size() + 1;
-            values.put(Telephony.SimInfo.COLUMN_UNIQUE_KEY_SUBSCRIPTION_ID, subId);
+            // The last row's subId + 1
+            int subId;
+            if (mDatabase.isEmpty()) {
+                subId = 1;
+            } else {
+                subId = (int) mDatabase.get(mDatabase.size() - 1)
+                        .get(SimInfo.COLUMN_UNIQUE_KEY_SUBSCRIPTION_ID) + 1;
+            }
+            values.put(SimInfo.COLUMN_UNIQUE_KEY_SUBSCRIPTION_ID, subId);
             mDatabase.add(values);
-            return ContentUris.withAppendedId(Telephony.SimInfo.CONTENT_URI, subId);
+            return ContentUris.withAppendedId(SimInfo.CONTENT_URI, subId);
         }
     }
 
@@ -382,7 +414,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     @Test
     public void testGetAllColumns() throws Exception {
-        Field[] declaredFields = Telephony.SimInfo.class.getDeclaredFields();
+        Field[] declaredFields = SimInfo.class.getDeclaredFields();
         List<String> columnNames = new ArrayList<>();
         for (Field field : declaredFields) {
             if (Modifier.isStatic(field.getModifiers()) && field.getName().startsWith("COLUMN_")) {
@@ -391,7 +423,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         }
         // When you add a new column in Telephony.SimInfo, did you remember to modify
         // Telephony.SimInfo.getAllColumns() as well?
-        assertThat(Telephony.SimInfo.getAllColumns()).containsExactlyElementsIn(columnNames);
+        assertThat(SimInfo.getAllColumns()).containsExactlyElementsIn(columnNames);
     }
 
     @Test
@@ -469,6 +501,12 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setIccId(FAKE_ICCID2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_ICC_ID)).isEqualTo(FAKE_ICCID2);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_ICC_ID, FAKE_ICCID1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getIccId())
+                .isEqualTo(FAKE_ICCID1);
     }
 
     @Test
@@ -487,6 +525,13 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 SubscriptionManager.INVALID_SIM_SLOT_INDEX).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_SIM_SLOT_INDEX))
+                .isEqualTo(SubscriptionManager.INVALID_SIM_SLOT_INDEX);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_SIM_SLOT_INDEX, 123);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getSimSlotIndex())
+                .isEqualTo(123);
     }
 
     @Test
@@ -503,6 +548,13 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 FAKE_CARRIER_NAME2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_DISPLAY_NAME))
+                .isEqualTo(FAKE_CARRIER_NAME2);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_DISPLAY_NAME, FAKE_CARRIER_NAME1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getDisplayName())
+                .isEqualTo(FAKE_CARRIER_NAME1);
     }
 
     @Test
@@ -519,6 +571,13 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 FAKE_CARRIER_NAME2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_CARRIER_NAME))
+                .isEqualTo(FAKE_CARRIER_NAME2);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_CARRIER_NAME, FAKE_CARRIER_NAME1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getCarrierName())
+                .isEqualTo(FAKE_CARRIER_NAME1);
     }
 
     @Test
@@ -537,6 +596,13 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 SubscriptionManager.NAME_SOURCE_USER_INPUT).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_NAME_SOURCE))
+                .isEqualTo(SubscriptionManager.NAME_SOURCE_USER_INPUT);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_NAME_SOURCE, SubscriptionManager.NAME_SOURCE_SIM_PNN);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getDisplayNameSource())
+                .isEqualTo(SubscriptionManager.NAME_SOURCE_SIM_PNN);
     }
 
     @Test
@@ -552,6 +618,13 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setIconTint(FAKE_COLOR2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_COLOR))
+                .isEqualTo(FAKE_COLOR2);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_COLOR, FAKE_COLOR1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getIconTint())
+                .isEqualTo(FAKE_COLOR1);
     }
 
     @Test
@@ -568,6 +641,13 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setNumber(FAKE_PHONE_NUMBER2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_NUMBER))
+                .isEqualTo(FAKE_PHONE_NUMBER2);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_NUMBER, FAKE_PHONE_NUMBER1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getNumber())
+                .isEqualTo(FAKE_PHONE_NUMBER1);
     }
 
     @Test
@@ -586,6 +666,13 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setDataRoaming(SubscriptionManager.DATA_ROAMING_DISABLE).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_DATA_ROAMING))
+                .isEqualTo(SubscriptionManager.DATA_ROAMING_DISABLE);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_DATA_ROAMING, SubscriptionManager.DATA_ROAMING_ENABLE);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getDataRoaming())
+                .isEqualTo(SubscriptionManager.DATA_ROAMING_ENABLE);
     }
 
     @Test
@@ -601,6 +688,13 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setMcc(FAKE_MCC2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_MCC_STRING))
+                .isEqualTo(FAKE_MCC2);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_MCC_STRING, FAKE_MCC1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getMcc())
+                .isEqualTo(FAKE_MCC1);
     }
 
     @Test
@@ -616,36 +710,57 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setMnc(FAKE_MNC2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_MNC_STRING))
+                .isEqualTo(FAKE_MNC2);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_MNC_STRING, FAKE_MNC1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getMnc())
+                .isEqualTo(FAKE_MNC1);
     }
 
     @Test
     public void testUpdateEhplmns() throws Exception {
         // exception is expected if there is nothing in the database.
         assertThrows(IllegalArgumentException.class,
-                () -> mDatabaseManagerUT.setEhplmns(1, FAKE_EHPLMNS2.split(",")));
+                () -> mDatabaseManagerUT.setEhplmns(1, FAKE_EHPLMNS2));
 
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
-        mDatabaseManagerUT.setEhplmns(subInfo.getSubscriptionId(), FAKE_EHPLMNS2.split(","));
+        mDatabaseManagerUT.setEhplmns(subInfo.getSubscriptionId(), FAKE_EHPLMNS2);
         processAllMessages();
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setEhplmns(FAKE_EHPLMNS2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_EHPLMNS))
+                .isEqualTo(FAKE_EHPLMNS2);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_EHPLMNS, FAKE_EHPLMNS1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getEhplmns())
+                .isEqualTo(FAKE_EHPLMNS1);
     }
 
     @Test
     public void testUpdateHplmns() throws Exception {
         // exception is expected if there is nothing in the database.
         assertThrows(IllegalArgumentException.class,
-                () -> mDatabaseManagerUT.setHplmns(1, FAKE_HPLMNS2.split(",")));
+                () -> mDatabaseManagerUT.setHplmns(1, FAKE_HPLMNS2));
 
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
-        mDatabaseManagerUT.setHplmns(subInfo.getSubscriptionId(), FAKE_HPLMNS2.split(","));
+        mDatabaseManagerUT.setHplmns(subInfo.getSubscriptionId(), FAKE_HPLMNS2);
         processAllMessages();
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setHplmns(FAKE_HPLMNS2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_HPLMNS))
+                .isEqualTo(FAKE_HPLMNS2);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_HPLMNS, FAKE_HPLMNS1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getHplmns())
+                .isEqualTo(FAKE_HPLMNS1);
     }
 
     @Test
@@ -661,6 +776,13 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setEmbedded(0).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_IS_EMBEDDED))
+                .isEqualTo(0);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_IS_EMBEDDED, 1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getEmbedded())
+                .isEqualTo(1);
     }
 
     @Test
@@ -679,24 +801,37 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_CARD_ID))
+                .isEqualTo(FAKE_ICCID2);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_CARD_ID, FAKE_ICCID1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getCardString())
+                .isEqualTo(FAKE_ICCID1);
     }
 
     @Test
     public void testUpdateNativeAccessRules() throws Exception {
         // exception is expected if there is nothing in the database.
         assertThrows(IllegalArgumentException.class,
-                () -> mDatabaseManagerUT.setNativeAccessRules(1,
-                        UiccAccessRule.decodeRules(FAKE_NATIVE_ACCESS_RULES2)));
+                () -> mDatabaseManagerUT.setNativeAccessRules(1, FAKE_NATIVE_ACCESS_RULES2));
 
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setNativeAccessRules(subInfo.getSubscriptionId(),
-                UiccAccessRule.decodeRules(FAKE_NATIVE_ACCESS_RULES2));
+                FAKE_NATIVE_ACCESS_RULES2);
         processAllMessages();
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setNativeAccessRules(FAKE_NATIVE_ACCESS_RULES2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_ACCESS_RULES))
+                .isEqualTo(FAKE_NATIVE_ACCESS_RULES2);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_ACCESS_RULES, FAKE_NATIVE_ACCESS_RULES1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getNativeAccessRules())
+                .isEqualTo(FAKE_NATIVE_ACCESS_RULES1);
     }
 
     @Test
@@ -704,77 +839,110 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         // exception is expected if there is nothing in the database.
         assertThrows(IllegalArgumentException.class,
                 () -> mDatabaseManagerUT.setCarrierConfigAccessRules(1,
-                        UiccAccessRule.decodeRules(FAKE_CARRIER_CONFIG_ACCESS_RULES2)));
+                        FAKE_CARRIER_CONFIG_ACCESS_RULES2));
 
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
         mDatabaseManagerUT.setCarrierConfigAccessRules(subInfo.getSubscriptionId(),
-                UiccAccessRule.decodeRules(FAKE_CARRIER_CONFIG_ACCESS_RULES2));
+                FAKE_CARRIER_CONFIG_ACCESS_RULES2);
         processAllMessages();
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setCarrierConfigAccessRules(FAKE_CARRIER_CONFIG_ACCESS_RULES2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_ACCESS_RULES_FROM_CARRIER_CONFIGS))
+                .isEqualTo(FAKE_CARRIER_CONFIG_ACCESS_RULES2);
+        mDatabaseManagerUT.setSubscriptionProperty(1,
+                SimInfo.COLUMN_ACCESS_RULES_FROM_CARRIER_CONFIGS,
+                FAKE_CARRIER_CONFIG_ACCESS_RULES2);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getCarrierConfigAccessRules())
+                .isEqualTo(FAKE_CARRIER_CONFIG_ACCESS_RULES2);
     }
 
     @Test
     public void testUpdateRemovableEmbedded() throws Exception {
         // exception is expected if there is nothing in the database.
         assertThrows(IllegalArgumentException.class,
-                () -> mDatabaseManagerUT.setRemovableEmbedded(1, true));
+                () -> mDatabaseManagerUT.setRemovableEmbedded(1, 1));
 
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
-        mDatabaseManagerUT.setRemovableEmbedded(subInfo.getSubscriptionId(), true);
+        mDatabaseManagerUT.setRemovableEmbedded(subInfo.getSubscriptionId(), 1);
         processAllMessages();
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setRemovableEmbedded(1).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_IS_REMOVABLE))
+                .isEqualTo(1);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_IS_REMOVABLE, 0);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getRemovableEmbedded())
+                .isEqualTo(0);
     }
 
     @Test
     public void testUpdateEnhanced4GModeEnabled() throws Exception {
         // exception is expected if there is nothing in the database.
         assertThrows(IllegalArgumentException.class,
-                () -> mDatabaseManagerUT.setEnhanced4GModeEnabled(1, false));
+                () -> mDatabaseManagerUT.setEnhanced4GModeEnabled(1, 0));
 
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
-        mDatabaseManagerUT.setEnhanced4GModeEnabled(subInfo.getSubscriptionId(), false);
+        mDatabaseManagerUT.setEnhanced4GModeEnabled(subInfo.getSubscriptionId(), 0);
         processAllMessages();
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setEnhanced4GModeEnabled(0).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_ENHANCED_4G_MODE_ENABLED)).isEqualTo(0);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_ENHANCED_4G_MODE_ENABLED, 1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getEnhanced4GModeEnabled())
+                .isEqualTo(1);
     }
 
     @Test
     public void testUpdateVideoTelephonyEnabled() throws Exception {
         // exception is expected if there is nothing in the database.
         assertThrows(IllegalArgumentException.class,
-                () -> mDatabaseManagerUT.setVideoTelephonyEnabled(1, false));
+                () -> mDatabaseManagerUT.setVideoTelephonyEnabled(1, 0));
 
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
-        mDatabaseManagerUT.setVideoTelephonyEnabled(subInfo.getSubscriptionId(), false);
+        mDatabaseManagerUT.setVideoTelephonyEnabled(subInfo.getSubscriptionId(), 0);
         processAllMessages();
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setVideoTelephonyEnabled(0).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_VT_IMS_ENABLED)).isEqualTo(0);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_VT_IMS_ENABLED, 1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getVideoTelephonyEnabled())
+                .isEqualTo(1);
     }
 
     @Test
     public void testUpdateWifiCallingEnabled() throws Exception {
         // exception is expected if there is nothing in the database.
         assertThrows(IllegalArgumentException.class,
-                () -> mDatabaseManagerUT.setWifiCallingEnabled(1, false));
+                () -> mDatabaseManagerUT.setWifiCallingEnabled(1, 0));
 
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
-        mDatabaseManagerUT.setWifiCallingEnabled(subInfo.getSubscriptionId(), false);
+        mDatabaseManagerUT.setWifiCallingEnabled(subInfo.getSubscriptionId(), 0);
         processAllMessages();
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setWifiCallingEnabled(0).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_WFC_IMS_ENABLED))
+                .isEqualTo(0);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_WFC_IMS_ENABLED, 1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getWifiCallingEnabled())
+                .isEqualTo(1);
     }
 
     @Test
@@ -793,6 +961,13 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setWifiCallingMode(ImsMmTelManager.WIFI_MODE_WIFI_ONLY).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_WFC_IMS_MODE))
+                .isEqualTo(ImsMmTelManager.WIFI_MODE_WIFI_ONLY);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_WFC_IMS_MODE,
+                ImsMmTelManager.WIFI_MODE_CELLULAR_PREFERRED);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getWifiCallingMode())
+                .isEqualTo(ImsMmTelManager.WIFI_MODE_CELLULAR_PREFERRED);
     }
 
     @Test
@@ -811,37 +986,80 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setWifiCallingModeForRoaming(ImsMmTelManager.WIFI_MODE_WIFI_ONLY).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_WFC_IMS_ROAMING_MODE))
+                .isEqualTo(ImsMmTelManager.WIFI_MODE_WIFI_ONLY);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_WFC_IMS_ROAMING_MODE,
+                ImsMmTelManager.WIFI_MODE_CELLULAR_PREFERRED);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getWifiCallingModeForRoaming())
+                .isEqualTo(ImsMmTelManager.WIFI_MODE_CELLULAR_PREFERRED);
     }
 
     @Test
     public void testUpdateWifiCallingEnabledForRoaming() throws Exception {
         // exception is expected if there is nothing in the database.
         assertThrows(IllegalArgumentException.class,
-                () -> mDatabaseManagerUT.setWifiCallingEnabledForRoaming(1, false));
+                () -> mDatabaseManagerUT.setWifiCallingEnabledForRoaming(1, 0));
 
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
-        mDatabaseManagerUT.setWifiCallingEnabledForRoaming(subInfo.getSubscriptionId(), false);
+        mDatabaseManagerUT.setWifiCallingEnabledForRoaming(subInfo.getSubscriptionId(), 0);
         processAllMessages();
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setWifiCallingEnabledForRoaming(0).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_WFC_IMS_ROAMING_ENABLED)).isEqualTo(0);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_WFC_IMS_ROAMING_ENABLED, 1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .getWifiCallingEnabledForRoaming()).isEqualTo(1);
     }
+
+    @Test
+    public void testUpdateVoImsOptInEnabled() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setVoImsOptInEnabled(1, 0));
+
+        SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
+        mDatabaseManagerUT.setVoImsOptInEnabled(subInfo.getSubscriptionId(), 0);
+        processAllMessages();
+
+        subInfo = new SubscriptionInfoInternal.Builder(subInfo)
+                .setVoImsOptInEnabled(0).build();
+        verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_VOIMS_OPT_IN_STATUS)).isEqualTo(0);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_VOIMS_OPT_IN_STATUS, 1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .getVoImsOptInEnabled()).isEqualTo(1);
+    }
+
 
     @Test
     public void testUpdateOpportunistic() throws Exception {
         // exception is expected if there is nothing in the database.
         assertThrows(IllegalArgumentException.class,
-                () -> mDatabaseManagerUT.setOpportunistic(1, true));
+                () -> mDatabaseManagerUT.setOpportunistic(1, 1));
 
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
-        mDatabaseManagerUT.setOpportunistic(subInfo.getSubscriptionId(), true);
+        mDatabaseManagerUT.setOpportunistic(subInfo.getSubscriptionId(), 1);
         processAllMessages();
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setOpportunistic(1).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_IS_OPPORTUNISTIC)).isEqualTo(1);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_IS_OPPORTUNISTIC, 0);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .getOpportunistic()).isEqualTo(0);
     }
 
     @Test
@@ -857,6 +1075,12 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setGroupUuid(FAKE_UUID2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_GROUP_UUID)).isEqualTo(FAKE_UUID2);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_GROUP_UUID, FAKE_UUID1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .getGroupUuid()).isEqualTo(FAKE_UUID1);
     }
 
     @Test
@@ -873,6 +1097,13 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setCountryIso(FAKE_COUNTRY_CODE2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_ISO_COUNTRY_CODE)).isEqualTo(FAKE_COUNTRY_CODE2);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_ISO_COUNTRY_CODE, FAKE_COUNTRY_CODE1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .getCountryIso()).isEqualTo(FAKE_COUNTRY_CODE1);
     }
 
     @Test
@@ -889,6 +1120,12 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setCarrierId(FAKE_CARRIER_ID2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_CARRIER_ID))
+                .isEqualTo(FAKE_CARRIER_ID2);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_CARRIER_ID, FAKE_CARRIER_ID1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getCarrierId())
+                .isEqualTo(FAKE_CARRIER_ID1);
     }
 
     @Test
@@ -907,6 +1144,13 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setProfileClass(SubscriptionManager.PROFILE_CLASS_TESTING).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_PROFILE_CLASS))
+                .isEqualTo(SubscriptionManager.PROFILE_CLASS_TESTING);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_PROFILE_CLASS,
+                SubscriptionManager.PROFILE_CLASS_PROVISIONING);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getProfileClass())
+                .isEqualTo(SubscriptionManager.PROFILE_CLASS_PROVISIONING);
     }
 
     @Test
@@ -925,6 +1169,13 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setType(SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_SUBSCRIPTION_TYPE))
+                .isEqualTo(SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_SUBSCRIPTION_TYPE,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getSubscriptionType())
+                .isEqualTo(SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
     }
 
     @Test
@@ -941,6 +1192,12 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setGroupOwner(FAKE_OWNER2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_GROUP_OWNER))
+                .isEqualTo(FAKE_OWNER2);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_GROUP_OWNER, FAKE_OWNER1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getGroupOwner())
+                .isEqualTo(FAKE_OWNER1);
     }
 
     @Test
@@ -958,6 +1215,13 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setEnabledMobileDataPolicies(FAKE_MOBILE_DATA_POLICY2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1,
+                SimInfo.COLUMN_ENABLED_MOBILE_DATA_POLICIES)).isEqualTo(FAKE_MOBILE_DATA_POLICY2);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_ENABLED_MOBILE_DATA_POLICIES, FAKE_MOBILE_DATA_POLICY1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getEnabledMobileDataPolicies())
+                .isEqualTo(FAKE_MOBILE_DATA_POLICY1);
     }
 
     @Test
@@ -974,54 +1238,78 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setImsi(FAKE_IMSI2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_IMSI))
+                .isEqualTo(FAKE_IMSI2);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_IMSI, FAKE_IMSI1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getImsi())
+                .isEqualTo(FAKE_IMSI1);
     }
 
     @Test
     public void testUpdateUiccApplicationsEnabled() throws Exception {
         // exception is expected if there is nothing in the database.
         assertThrows(IllegalArgumentException.class,
-                () -> mDatabaseManagerUT.setUiccApplicationsEnabled(1, false));
+                () -> mDatabaseManagerUT.setUiccApplicationsEnabled(1, 0));
 
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
-        mDatabaseManagerUT.setUiccApplicationsEnabled(subInfo.getSubscriptionId(), false);
+        mDatabaseManagerUT.setUiccApplicationsEnabled(subInfo.getSubscriptionId(), 0);
         processAllMessages();
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setUiccApplicationsEnabled(0).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_UICC_APPLICATIONS_ENABLED)).isEqualTo(0);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_UICC_APPLICATIONS_ENABLED, 1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getUiccApplicationsEnabled())
+                .isEqualTo(1);
     }
 
     @Test
     public void testUpdateRcsUceEnabled() throws Exception {
         // exception is expected if there is nothing in the database.
         assertThrows(IllegalArgumentException.class,
-                () -> mDatabaseManagerUT.setRcsUceEnabled(1, false));
+                () -> mDatabaseManagerUT.setRcsUceEnabled(1, 0));
 
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
-        mDatabaseManagerUT.setRcsUceEnabled(subInfo.getSubscriptionId(), false);
+        mDatabaseManagerUT.setRcsUceEnabled(subInfo.getSubscriptionId(), 0);
         processAllMessages();
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setRcsUceEnabled(0).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_IMS_RCS_UCE_ENABLED)).isEqualTo(0);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_IMS_RCS_UCE_ENABLED, 1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getRcsUceEnabled())
+                .isEqualTo(1);
     }
 
     @Test
     public void testUpdateCrossSimCallingEnabled() throws Exception {
         // exception is expected if there is nothing in the database.
         assertThrows(IllegalArgumentException.class,
-                () -> mDatabaseManagerUT.setCrossSimCallingEnabled(1, false));
+                () -> mDatabaseManagerUT.setCrossSimCallingEnabled(1, 0));
 
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
-        mDatabaseManagerUT.setCrossSimCallingEnabled(subInfo.getSubscriptionId(), false);
+        mDatabaseManagerUT.setCrossSimCallingEnabled(subInfo.getSubscriptionId(), 0);
         processAllMessages();
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setCrossSimCallingEnabled(0).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_CROSS_SIM_CALLING_ENABLED)).isEqualTo(0);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_CROSS_SIM_CALLING_ENABLED, 1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getCrossSimCallingEnabled())
+                .isEqualTo(1);
     }
 
     @Test
@@ -1038,6 +1326,12 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setRcsConfig(FAKE_RCS_CONFIG2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_RCS_CONFIG)).isEqualTo(FAKE_RCS_CONFIG2);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_RCS_CONFIG, FAKE_RCS_CONFIG1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getRcsConfig())
+                .isEqualTo(FAKE_RCS_CONFIG1);
     }
 
     @Test
@@ -1056,6 +1350,16 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setAllowedNetworkTypesForReasons(FAKE_ALLOWED_NETWORK_TYPES_FOR_REASONS2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_ALLOWED_NETWORK_TYPES_FOR_REASONS))
+                .isEqualTo(FAKE_ALLOWED_NETWORK_TYPES_FOR_REASONS2);
+        mDatabaseManagerUT.setSubscriptionProperty(1,
+                SimInfo.COLUMN_ALLOWED_NETWORK_TYPES_FOR_REASONS,
+                FAKE_ALLOWED_NETWORK_TYPES_FOR_REASONS1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .getAllowedNetworkTypesForReasons())
+                .isEqualTo(FAKE_ALLOWED_NETWORK_TYPES_FOR_REASONS1);
     }
 
     @Test
@@ -1075,22 +1379,38 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                         SubscriptionManager.D2D_SHARING_DISABLED).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_D2D_STATUS_SHARING))
+                .isEqualTo(SubscriptionManager.D2D_SHARING_DISABLED);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_D2D_STATUS_SHARING,
+                SubscriptionManager.D2D_SHARING_ALL);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .getDeviceToDeviceStatusSharingPreference())
+                .isEqualTo(SubscriptionManager.D2D_SHARING_ALL);
     }
 
     @Test
     public void testUpdateNrAdvancedCallingEnabled() throws Exception {
         // exception is expected if there is nothing in the database.
         assertThrows(IllegalArgumentException.class,
-                () -> mDatabaseManagerUT.setNrAdvancedCallingEnabled(1, false));
+                () -> mDatabaseManagerUT.setNrAdvancedCallingEnabled(1, 0));
 
         SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
-        mDatabaseManagerUT.setNrAdvancedCallingEnabled(subInfo.getSubscriptionId(), false);
+        mDatabaseManagerUT.setNrAdvancedCallingEnabled(subInfo.getSubscriptionId(), 0);
         processAllMessages();
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                 .setNrAdvancedCallingEnabled(0).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED)).isEqualTo(0);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED, 1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .getNrAdvancedCallingEnabled()).isEqualTo(1);
     }
 
     @Test
@@ -1107,6 +1427,13 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setNumberFromCarrier(FAKE_PHONE_NUMBER2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_PHONE_NUMBER_SOURCE_CARRIER)).isEqualTo(FAKE_PHONE_NUMBER2);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_PHONE_NUMBER_SOURCE_CARRIER, FAKE_PHONE_NUMBER1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .getNumberFromCarrier()).isEqualTo(FAKE_PHONE_NUMBER1);
     }
 
     @Test
@@ -1123,6 +1450,13 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setNumberFromIms(FAKE_PHONE_NUMBER2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                1, SimInfo.COLUMN_PHONE_NUMBER_SOURCE_IMS)).isEqualTo(FAKE_PHONE_NUMBER2);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_PHONE_NUMBER_SOURCE_IMS, FAKE_PHONE_NUMBER1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .getNumberFromIms()).isEqualTo(FAKE_PHONE_NUMBER1);
     }
 
     @Test
@@ -1139,6 +1473,12 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setPortIndex(1).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_PORT_INDEX))
+                .isEqualTo(1);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_PORT_INDEX, 2);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getPortIndex())
+                .isEqualTo(2);
     }
 
     @Test
@@ -1157,6 +1497,13 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setUsageSetting(SubscriptionManager.USAGE_SETTING_VOICE_CENTRIC).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_USAGE_SETTING))
+                .isEqualTo(SubscriptionManager.USAGE_SETTING_VOICE_CENTRIC);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_USAGE_SETTING, SubscriptionManager.USAGE_SETTING_DATA_CENTRIC);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getUsageSetting())
+                .isEqualTo(SubscriptionManager.USAGE_SETTING_DATA_CENTRIC);
     }
 
     @Test
@@ -1175,6 +1522,13 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setLastUsedTPMessageReference(FAKE_TP_MESSAGE_REFERENCE2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_TP_MESSAGE_REF))
+                .isEqualTo(FAKE_TP_MESSAGE_REFERENCE2);
+        mDatabaseManagerUT.setSubscriptionProperty(
+                1, SimInfo.COLUMN_TP_MESSAGE_REF, FAKE_TP_MESSAGE_REFERENCE1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .getLastUsedTPMessageReference()).isEqualTo(FAKE_TP_MESSAGE_REFERENCE1);
     }
 
     @Test
@@ -1191,5 +1545,96 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .setUserId(FAKE_USER_ID2).build();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(1, SimInfo.COLUMN_USER_HANDLE))
+                .isEqualTo(FAKE_USER_ID2);
+        mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_USER_HANDLE, FAKE_USER_ID1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .getUserId()).isEqualTo(FAKE_USER_ID1);
+    }
+
+    @Test
+    public void testUpdateSubscriptionsInGroup() throws Exception {
+        insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
+        insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO2);
+        // Two subs are now in the same group
+        mDatabaseManagerUT.setGroupUuid(2, FAKE_UUID1);
+
+        mDatabaseManagerUT.setWifiCallingEnabled(1, 1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .isWifiCallingEnabled()).isTrue();
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(2)
+                .isWifiCallingEnabled()).isTrue();
+
+        mDatabaseManagerUT.setWifiCallingEnabled(1, 0);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .isWifiCallingEnabled()).isFalse();
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(2)
+                .isWifiCallingEnabled()).isFalse();
+
+        mDatabaseManagerUT.setUserId(1, 5678);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .getUserId()).isEqualTo(5678);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(2)
+                .getUserId()).isEqualTo(5678);
+
+        mDatabaseManagerUT.setWifiCallingEnabledForRoaming(1, 0);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .isWifiCallingEnabledForRoaming()).isFalse();
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(2)
+                .isWifiCallingEnabledForRoaming()).isFalse();
+
+        mDatabaseManagerUT.setDisplayName(1, "Pokemon");
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .getDisplayName()).isEqualTo("Pokemon");
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(2)
+                .getDisplayName()).isEqualTo("Pokemon");
+
+        // ICCID is not the field that will be synced to all subs in the group.
+        mDatabaseManagerUT.setIccId(1, "0987");
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .getIccId()).isEqualTo("0987");
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(2)
+                .getIccId()).isEqualTo(FAKE_ICCID2);
+    }
+
+    @Test
+    public void testRemoveSubscriptionInfo() throws Exception {
+        insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
+        insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO2);
+        Mockito.clearInvocations(mSubscriptionDatabaseManagerCallback);
+
+        mDatabaseManagerUT.removeSubscriptionInfo(1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)).isNull();
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(2))
+                .isEqualTo(FAKE_SUBSCRIPTION_INFO2);
+        verify(mSubscriptionDatabaseManagerCallback).onSubscriptionChanged(eq(1));
+
+        // Insert a new one. Should become sub 3.
+        Mockito.clearInvocations(mSubscriptionDatabaseManagerCallback);
+        insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)).isNull();
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(2))
+                .isEqualTo(FAKE_SUBSCRIPTION_INFO2);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(3))
+                .isEqualTo(new SubscriptionInfoInternal.Builder(FAKE_SUBSCRIPTION_INFO1)
+                        .setId(3).build());
+        verify(mSubscriptionDatabaseManagerCallback).onSubscriptionChanged(eq(3));
+
+        Mockito.clearInvocations(mSubscriptionDatabaseManagerCallback);
+        mDatabaseManagerUT.removeSubscriptionInfo(2);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)).isNull();
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(2)).isNull();
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(3))
+                .isEqualTo(new SubscriptionInfoInternal.Builder(FAKE_SUBSCRIPTION_INFO1)
+                        .setId(3).build());
+        verify(mSubscriptionDatabaseManagerCallback).onSubscriptionChanged(eq(2));
+
+        Mockito.clearInvocations(mSubscriptionDatabaseManagerCallback);
+        mDatabaseManagerUT.removeSubscriptionInfo(3);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)).isNull();
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(2)).isNull();
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(3)).isNull();
+        verify(mSubscriptionDatabaseManagerCallback).onSubscriptionChanged(eq(3));
     }
 }

@@ -85,6 +85,7 @@ import com.android.internal.telephony.data.DataSettingsManager;
 import com.android.internal.telephony.data.LinkBandwidthEstimator;
 import com.android.internal.telephony.emergency.EmergencyConstants;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
+import com.android.internal.telephony.imsphone.ImsCallInfo;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.metrics.SmsStats;
@@ -5011,6 +5012,34 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Registers for the domain selected for emergency calls.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForEmergencyDomainSelected(
+            @NonNull Handler h, int what, @Nullable Object obj) {
+    }
+
+    /**
+     * Unregisters for the domain selected for emergency calls.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForEmergencyDomainSelected(@NonNull Handler h) {
+    }
+
+    /**
+     * Notifies the domain selected.
+     *
+     * @param transportType The preferred transport type.
+     */
+    public void notifyEmergencyDomainSelected(
+            @AccessNetworkConstants.TransportType int transportType) {
+    }
+
+    /**
      * @return Telephony tester instance.
      */
     public @Nullable TelephonyTester getTelephonyTester() {
@@ -5050,6 +5079,16 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * {@see #PREF_NULL_CIPHER_AND_INTEGRITY_ENABLED}
      */
     public void handleNullCipherEnabledChange() {
+    }
+
+    /**
+     * Notifies the IMS call status to the modem.
+     *
+     * @param imsCallInfo The list of {@link ImsCallInfo}.
+     * @param response A callback to receive the response.
+     */
+    public void updateImsCallStatus(@NonNull List<ImsCallInfo> imsCallInfo, Message response) {
+        mCi.updateImsCallStatus(imsCallInfo, response);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

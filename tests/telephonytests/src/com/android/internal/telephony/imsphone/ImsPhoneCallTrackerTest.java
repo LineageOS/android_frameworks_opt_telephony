@@ -33,6 +33,7 @@ import static android.telephony.TelephonyManager.SRVCC_STATE_HANDOVER_CANCELED;
 import static android.telephony.TelephonyManager.SRVCC_STATE_HANDOVER_COMPLETED;
 import static android.telephony.TelephonyManager.SRVCC_STATE_HANDOVER_FAILED;
 import static android.telephony.TelephonyManager.SRVCC_STATE_HANDOVER_STARTED;
+import static android.telephony.emergency.EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE;
 import static android.telephony.ims.ImsStreamMediaProfile.DIRECTION_INACTIVE;
 import static android.telephony.ims.ImsStreamMediaProfile.DIRECTION_SEND_RECEIVE;
 
@@ -84,6 +85,7 @@ import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
+import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsCallSession;
 import android.telephony.ims.ImsConferenceState;
@@ -2346,6 +2348,73 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
         verify(mImsPhone, times(1)).updateImsRegistrationInfo(
                 eq(CommandsInterface.IMS_MMTEL_CAPABILITY_SMS));
+    }
+
+    @Test
+    @SmallTest
+    public void testDomainSelectionAlternateService() {
+        startOutgoingCall();
+        ImsPhoneConnection c = mCTUT.mForegroundCall.getFirstConnection();
+        mImsCallProfile.setEmergencyServiceCategories(EMERGENCY_SERVICE_CATEGORY_AMBULANCE);
+        mImsCallListener.onCallStartFailed(mSecondImsCall,
+                new ImsReasonInfo(ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL, -1));
+        processAllMessages();
+        EmergencyNumber emergencyNumber = c.getEmergencyNumberInfo();
+        assertNotNull(emergencyNumber);
+        assertEquals(EMERGENCY_SERVICE_CATEGORY_AMBULANCE,
+                emergencyNumber.getEmergencyServiceCategoryBitmask());
+    }
+
+    @Test
+    public void testUpdateImsCallStatusIncoming() throws Exception {
+        // Incoming call
+        ImsPhoneConnection connection = setupRingingConnection();
+
+        verify(mImsPhone, times(1)).updateImsCallStatus(any(), any());
+
+        // Disconnect the call
+        mImsCallListener.onCallTerminated(connection.getImsCall(),
+                new ImsReasonInfo(ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, 0));
+
+        verify(mImsPhone, times(2)).updateImsCallStatus(any(), any());
+    }
+
+    @Test
+    public void testUpdateImsCallStatus() throws Exception {
+        // Dialing
+        ImsPhoneConnection connection = placeCall();
+
+        verify(mImsPhone, times(1)).updateImsCallStatus(any(), any());
+
+        // Alerting
+        ImsCall imsCall = connection.getImsCall();
+        imsCall.getImsCallSessionListenerProxy().callSessionProgressing(imsCall.getSession(),
+                new ImsStreamMediaProfile());
+
+        verify(mImsPhone, times(2)).updateImsCallStatus(any(), any());
+
+        // Active
+        imsCall.getImsCallSessionListenerProxy().callSessionStarted(imsCall.getSession(),
+                new ImsCallProfile());
+
+        verify(mImsPhone, times(3)).updateImsCallStatus(any(), any());
+
+        // Held by remote
+        mCTUT.onCallHoldReceived(imsCall);
+
+        verify(mImsPhone, times(4)).updateImsCallStatus(any(), any());
+
+        // Resumed by remote
+        mImsCallListener.onCallResumeReceived(imsCall);
+
+        verify(mImsPhone, times(5)).updateImsCallStatus(any(), any());
+
+        // Disconnecting and then Disconnected
+        mCTUT.hangup(connection);
+        mImsCallListener.onCallTerminated(imsCall,
+                new ImsReasonInfo(ImsReasonInfo.CODE_USER_TERMINATED, 0));
+
+        verify(mImsPhone, times(7)).updateImsCallStatus(any(), any());
     }
 
     private void sendCarrierConfigChanged() {
