@@ -27,6 +27,7 @@ import android.os.Message;
 import android.os.WorkSource;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
+import android.telephony.BarringInfo;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.ClientRequestStats;
 import android.telephony.DomainSelectionService;
@@ -47,6 +48,7 @@ import android.telephony.ims.stub.ImsRegistrationImplBase;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.emergency.EmergencyConstants;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
+import com.android.internal.telephony.imsphone.ImsCallInfo;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.SimPhonebookRecord;
@@ -2644,6 +2646,15 @@ public interface CommandsInterface {
     default void getBarringInfo(Message result) {};
 
     /**
+     * Returns the last barring information received.
+     *
+     * @return the last barring information.
+     */
+    default @Nullable BarringInfo getLastBarringInfo() {
+        return null;
+    };
+
+    /**
      * Allocates a pdu session id
      *
      * AsyncResult.result is the allocated pdu session id
@@ -2954,4 +2965,12 @@ public interface CommandsInterface {
      * @param result Callback message containing the success or failure status.
      */
     default void setNullCipherAndIntegrityEnabled(boolean enabled, Message result) {}
+
+    /**
+     * Notifies the IMS call status to the modem.
+     *
+     * @param imsCallInfo The list of {@link ImsCallInfo}.
+     * @param result A callback to receive the response.
+     */
+    default void updateImsCallStatus(@NonNull List<ImsCallInfo> imsCallInfo, Message result) {}
 }

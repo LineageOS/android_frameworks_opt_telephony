@@ -210,6 +210,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SWITCH_WAI
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_TRIGGER_EMERGENCY_NETWORK_SCAN;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_TRIGGER_EPS_FALLBACK;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_UDUB;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_UPDATE_IMS_CALL_STATUS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_UPDATE_IMS_REGISTRATION_INFO;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_UPDATE_SIM_PHONEBOOK_RECORD;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_VOICE_RADIO_TECH;
@@ -361,6 +362,7 @@ import com.android.internal.telephony.cdma.sms.CdmaSmsSubaddress;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
 import com.android.internal.telephony.data.KeepaliveStatus;
 import com.android.internal.telephony.data.KeepaliveStatus.KeepaliveStatusCode;
+import com.android.internal.telephony.imsphone.ImsCallInfo;
 import com.android.internal.telephony.uicc.AdnCapacity;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
@@ -5197,6 +5199,8 @@ public class RILUtils {
                 return "TRIGGER_EPS_FALLBACK";
             case RIL_REQUEST_SET_NULL_CIPHER_AND_INTEGRITY_ENABLED:
                 return "SET_NULL_CIPHER_AND_INTEGRITY_ENABLED";
+            case RIL_REQUEST_UPDATE_IMS_CALL_STATUS:
+                return "UPDATE_IMS_CALL_STATUS";
             default:
                 return "<unknown request " + request + ">";
         }
@@ -5679,6 +5683,65 @@ public class RILUtils {
             halCapabilities |= android.hardware.radio.ims.ImsRegistration.IMS_RCS_CAPABILITIES;
         }
         return halCapabilities;
+    }
+
+    /** Converts the ImsCallInfo instances to HAL ImsCall instances. */
+    public static android.hardware.radio.ims.ImsCall[] convertImsCallInfo(
+            List<ImsCallInfo> imsCallInfos) {
+        if (imsCallInfos == null) {
+            return new android.hardware.radio.ims.ImsCall[0];
+        }
+
+        int length = 0;
+        for (int i = 0; i < imsCallInfos.size(); i++) {
+            if (imsCallInfos.get(i) != null) length++;
+        }
+        if (length == 0) {
+            return new android.hardware.radio.ims.ImsCall[0];
+        }
+
+        android.hardware.radio.ims.ImsCall[] halInfos =
+                new android.hardware.radio.ims.ImsCall[length];
+
+        int index = 0;
+        for (int i = 0; i < imsCallInfos.size(); i++) {
+            ImsCallInfo info = imsCallInfos.get(i);
+            if (info == null) continue;
+
+            halInfos[index] = new android.hardware.radio.ims.ImsCall();
+            halInfos[index].index = info.getIndex();
+            halInfos[index].callState = convertToHalImsCallState(info.getCallState());
+            halInfos[index].callType = info.isEmergencyCall()
+                    ? android.hardware.radio.ims.ImsCall.CallType.EMERGENCY
+                    : android.hardware.radio.ims.ImsCall.CallType.NORMAL;
+            halInfos[index].accessNetwork = convertToHalAccessNetworkAidl(info.getCallRadioTech());
+            halInfos[index].direction = info.isIncoming()
+                    ? android.hardware.radio.ims.ImsCall.Direction.INCOMING
+                    : android.hardware.radio.ims.ImsCall.Direction.OUTGOING;
+            halInfos[index].isHeldByRemote = info.isHeldByRemote();
+            index++;
+        }
+
+        return halInfos;
+    }
+
+    /**
+     * Converts the call state to HAL IMS call state.
+     *
+     * @param state The {@link Call.State}.
+     * @return The converted {@link android.hardware.radio.ims.ImsCall.CallState}.
+     */
+    private static int convertToHalImsCallState(Call.State state) {
+        switch (state) {
+            case ACTIVE: return android.hardware.radio.ims.ImsCall.CallState.ACTIVE;
+            case HOLDING: return android.hardware.radio.ims.ImsCall.CallState.HOLDING;
+            case DIALING: return android.hardware.radio.ims.ImsCall.CallState.DIALING;
+            case ALERTING: return android.hardware.radio.ims.ImsCall.CallState.ALERTING;
+            case INCOMING: return android.hardware.radio.ims.ImsCall.CallState.INCOMING;
+            case WAITING: return android.hardware.radio.ims.ImsCall.CallState.WAITING;
+            case DISCONNECTING: return android.hardware.radio.ims.ImsCall.CallState.DISCONNECTING;
+            default: return android.hardware.radio.ims.ImsCall.CallState.DISCONNECTED;
+        }
     }
 
     private static void logd(String log) {

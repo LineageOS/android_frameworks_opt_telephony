@@ -56,6 +56,7 @@ import android.provider.Settings;
 import android.sysprop.TelephonyProperties;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
+import android.telephony.BarringInfo;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.CellInfo;
 import android.telephony.CellSignalStrengthCdma;
@@ -94,6 +95,7 @@ import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.emergency.EmergencyConstants;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
+import com.android.internal.telephony.imsphone.ImsCallInfo;
 import com.android.internal.telephony.metrics.ModemRestartStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.SmsSession;
@@ -268,6 +270,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private final RadioProxyDeathRecipient mRadioProxyDeathRecipient;
     final RilHandler mRilHandler;
     private MockModem mMockModem;
+
+    // The last barring information received
+    private BarringInfo mLastBarringInfo = null;
 
     // Thread-safe HashMap to map from RIL_REQUEST_XXX constant to HalVersion.
     // This is for Radio HAL Fallback Compatibility feature. When a RIL request
@@ -5590,6 +5595,38 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void updateImsCallStatus(@NonNull List<ImsCallInfo> imsCallInfo, Message result) {
+        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
+        if (imsProxy.isEmpty()) return;
+        if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_UPDATE_IMS_CALL_STATUS, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
+                        + " " + imsCallInfo);
+            }
+            try {
+                imsProxy.updateImsCallStatus(rr.mSerial, RILUtils.convertImsCallInfo(imsCallInfo));
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(HAL_SERVICE_IMS, "updateImsCallStatus", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "updateImsCallStatus: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
     //***** Private Methods
     /**
      * This is a helper function to be called when an indication callback is called for any radio
@@ -6437,6 +6474,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         CellInfo.UNAVAILABLE, CellInfo.UNAVAILABLE),
                 new CellSignalStrengthTdscdma(), new CellSignalStrengthLte(),
                 new CellSignalStrengthNr());
+    }
+
+    void notifyBarringInfoChanged(@NonNull BarringInfo barringInfo) {
+        mLastBarringInfo = barringInfo;
+        mBarringInfoChangedRegistrants.notifyRegistrants(new AsyncResult(null, barringInfo, null));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public @Nullable BarringInfo getLastBarringInfo() {
+        return mLastBarringInfo;
     }
 
     /**
