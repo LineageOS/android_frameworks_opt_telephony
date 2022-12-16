@@ -2342,7 +2342,7 @@ public class DataNetwork extends StateMachine {
             // If the new link properties is not compatible (e.g. IP changes, interface changes),
             // then we should de-register the network agent and re-create a new one.
             if ((isConnected() || isHandoverInProgress())
-                    && !isLinkPropertiesCompatible(linkProperties, mLinkProperties)) {
+                    && !isLinkPropertiesCompatible(mLinkProperties, linkProperties)) {
                 logl("updateDataNetwork: Incompatible link properties detected. Re-create the "
                         + "network agent. Changed from " + mLinkProperties + " to "
                         + linkProperties);
