@@ -114,6 +114,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_HANGUP_WAI
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IMS_REGISTRATION_STATE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IMS_SEND_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ISIM_AUTHENTICATION;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_N1_MODE_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_NR_DUAL_CONNECTIVITY_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_VONR_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_LAST_CALL_FAIL_CAUSE;
@@ -164,6 +165,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_LINK_C
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_LOCATION_UPDATES;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_MUTE;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_N1_MODE_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_NETWORK_SELECTION_AUTOMATIC;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_NETWORK_SELECTION_MANUAL;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_NULL_CIPHER_AND_INTEGRITY_ENABLED;
@@ -5201,6 +5203,10 @@ public class RILUtils {
                 return "SET_NULL_CIPHER_AND_INTEGRITY_ENABLED";
             case RIL_REQUEST_UPDATE_IMS_CALL_STATUS:
                 return "UPDATE_IMS_CALL_STATUS";
+            case RIL_REQUEST_SET_N1_MODE_ENABLED:
+                return "SET_N1_MODE_ENABLED";
+            case RIL_REQUEST_IS_N1_MODE_ENABLED:
+                return "IS_N1_MODE_ENABLED";
             default:
                 return "<unknown request " + request + ">";
         }
