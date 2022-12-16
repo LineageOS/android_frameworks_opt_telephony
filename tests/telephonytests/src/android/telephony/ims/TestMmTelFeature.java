@@ -64,6 +64,11 @@ public class TestMmTelFeature extends MmTelFeature {
         notifyIncomingCall(c, new Bundle());
     }
 
+    public ImsCallSessionListener incomingCall(
+            ImsCallSessionImplBase c, String callId, Bundle extra) {
+        return notifyIncomingCall(c, callId, extra);
+    }
+
     @Override
     public ImsCallProfile createCallProfile(int callSessionType, int callType) {
         return super.createCallProfile(callSessionType, callType);
