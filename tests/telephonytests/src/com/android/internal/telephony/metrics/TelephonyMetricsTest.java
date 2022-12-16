@@ -25,11 +25,6 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEACTIVATE
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SETUP_DATA_CALL;
 import static com.android.internal.telephony.data.LinkBandwidthEstimator.NUM_SIGNAL_LEVEL;
-import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_ADDRESS;
-import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_DNS;
-import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_GATEWAY;
-import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_IFNAME;
-import static com.android.internal.telephony.dataconnection.DcTrackerTest.FAKE_PCSCF_ADDRESS;
 import static com.android.internal.telephony.nano.TelephonyProto.PdpType.PDP_TYPE_IPV4V6;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -89,6 +84,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public class TelephonyMetricsTest extends TelephonyTest {
+    private static final String FAKE_ADDRESS = "99.88.77.66";
+    private static final String FAKE_DNS = "55.66.77.88";
+    private static final String FAKE_GATEWAY = "11.22.33.44";
+    private static final String FAKE_IFNAME = "FAKE IFNAME";
+    private static final String FAKE_PCSCF_ADDRESS = "22.33.44.55";
     // Mocked classes
     private ImsCallSession mImsCallSession;
     private ServiceState mServiceState;
