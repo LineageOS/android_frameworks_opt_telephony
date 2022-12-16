@@ -150,12 +150,11 @@ public class DomainSelectionController {
                 c = new NormalCallDomainSelectionConnection(phone, this);
             }
         } else if (selectorType == SELECTOR_TYPE_SMS) {
-            // TODO(ag/20126511) uncomment when SmSDomainSelectionConnection is ready.
-            /*if (isEmergency) {
+            if (isEmergency) {
                 c = new EmergencySmsDomainSelectionConnection(phone, this);
             } else {
                 c = new SmsDomainSelectionConnection(phone, this);
-            }*/
+            }
         }
 
         addConnection(c);

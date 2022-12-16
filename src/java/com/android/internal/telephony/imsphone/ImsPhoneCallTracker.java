@@ -393,6 +393,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }, mExecutor);
         }
 
+        @Override
+        public void onTriggerEpsFallback(@MmTelFeature.EpsFallbackReason int reason) {
+            TelephonyUtils.runWithCleanCallingIdentity(()-> {
+                if (DBG) log("onTriggerEpsFallback reason=" + reason);
+                mPhone.triggerEpsFallback(reason, null);
+            }, mExecutor);
+        }
+
         /**
          * Schedule the given Runnable on mExecutor and block this thread until it finishes.
          * @param r The Runnable to run.

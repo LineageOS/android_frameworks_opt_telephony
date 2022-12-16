@@ -90,6 +90,7 @@ import android.telephony.ims.ImsRegistrationAttributes;
 import android.telephony.ims.ImsSsData;
 import android.telephony.ims.ImsSsInfo;
 import android.telephony.ims.RegistrationManager;
+import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.telephony.ims.stub.ImsUtImplBase;
 import android.text.TextUtils;
@@ -2743,7 +2744,7 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
-    public void triggerEpsFallback(int reason, Message response) {
+    public void triggerEpsFallback(@MmTelFeature.EpsFallbackReason int reason, Message response) {
         mDefaultPhone.triggerEpsFallback(reason, response);
     }
 
