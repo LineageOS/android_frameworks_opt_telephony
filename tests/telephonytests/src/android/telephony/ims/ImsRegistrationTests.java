@@ -16,6 +16,9 @@
 
 package android.telephony.ims;
 
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_LTE;
+
 import static junit.framework.Assert.assertEquals;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -148,7 +151,18 @@ public class ImsRegistrationTests {
         ImsReasonInfo info = new ImsReasonInfo();
         mRegistration.onDeregistered(info);
 
-        verify(mCallback).onDeregistered(eq(info), anyInt());
+        verify(mCallback).onDeregistered(eq(info), anyInt(), anyInt());
+    }
+
+    @SmallTest
+    @Test
+    public void testRegistrationCallbackOnDeregisteredWithSuggestedAction() throws RemoteException {
+        ImsReasonInfo info = new ImsReasonInfo();
+        mRegistration.onDeregistered(info,
+                SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK, REGISTRATION_TECH_LTE);
+
+        verify(mCallback).onDeregistered(eq(info),
+                eq(SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK), eq(REGISTRATION_TECH_LTE));
     }
 
     @SmallTest
@@ -219,10 +233,10 @@ public class ImsRegistrationTests {
 
         // The original callback that has been registered should get LTE tech in disconnected
         // message
-        verify(mCallback).onDeregistered(eq(info), anyInt());
+        verify(mCallback).onDeregistered(eq(info), anyInt(), anyInt());
         // A callback that has just been registered should get NONE for tech in disconnected
         // message
-        verify(mCallback2).onDeregistered(eq(info), anyInt());
+        verify(mCallback2).onDeregistered(eq(info), anyInt(), anyInt());
     }
 
     @SmallTest
@@ -232,7 +246,7 @@ public class ImsRegistrationTests {
 
         mRegistration.onDeregistered(info);
 
-        verify(mCallback).onDeregistered(eq(info), anyInt());
+        verify(mCallback).onDeregistered(eq(info), anyInt(), anyInt());
         assertEquals(ImsRegistrationImplBase.REGISTRATION_TECH_NONE,
                 mRegBinder.getRegistrationTechnology());
     }
@@ -243,7 +257,7 @@ public class ImsRegistrationTests {
         mRegBinder.addRegistrationCallback(mCallback2);
         // Verify that if we have never set the registration state, we do not callback immediately
         // with onUnregistered.
-        verify(mCallback2, never()).onDeregistered(any(ImsReasonInfo.class), anyInt());
+        verify(mCallback2, never()).onDeregistered(any(ImsReasonInfo.class), anyInt(), anyInt());
     }
 
     @SmallTest

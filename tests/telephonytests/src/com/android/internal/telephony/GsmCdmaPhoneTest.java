@@ -61,6 +61,7 @@ import android.os.PersistableBundle;
 import android.os.Process;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
+import android.provider.DeviceConfig;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
@@ -79,6 +80,7 @@ import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+import android.util.Log;
 
 import androidx.test.filters.FlakyTest;
 
@@ -115,6 +117,7 @@ import java.util.List;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class GsmCdmaPhoneTest extends TelephonyTest {
+    private static final String LOG_TAG = "GsmCdmaPhoneTest";
     private static final String TEST_EMERGENCY_NUMBER = "555";
 
     // Mocked classes
@@ -125,6 +128,11 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     //mPhoneUnderTest
     private GsmCdmaPhone mPhoneUT;
+
+    // Ideally we would use TestableDeviceConfig, but that's not doable because the Settings
+    // app is not currently debuggable. For now, we use the real device config and ensure that
+    // we reset the cellular_security namespace property to its pre-test value after every test.
+    private DeviceConfig.Properties mPreTestProperties;
 
     private static final int EVENT_EMERGENCY_CALLBACK_MODE_EXIT = 1;
     private static final int EVENT_EMERGENCY_CALL_TOGGLE = 2;
@@ -149,6 +157,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mPreTestProperties = DeviceConfig.getProperties(
+                TelephonyManager.PROPERTY_ENABLE_NULL_CIPHER_TOGGLE);
         mTestHandler = Mockito.mock(Handler.class);
         mUiccSlot = Mockito.mock(UiccSlot.class);
         mUiccPort = Mockito.mock(UiccPort.class);
@@ -173,6 +183,13 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mPhoneUT.removeCallbacksAndMessages(null);
         mPhoneUT = null;
+        try {
+            DeviceConfig.setProperties(mPreTestProperties);
+        } catch (DeviceConfig.BadConfigException e) {
+            Log.e(LOG_TAG,
+                    "Failed to reset DeviceConfig to pre-test state. Test results may be impacted. "
+                            + e.getMessage());
+        }
         super.tearDown();
     }
 
@@ -2090,12 +2107,34 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     }
 
     @Test
-    public void testHandleNullCipherAndIntegrityEnabledOnRadioAvailable() {
-        GsmCdmaPhone spiedPhone = spy(mPhoneUT);
-        spiedPhone.sendMessage(spiedPhone.obtainMessage(EVENT_RADIO_AVAILABLE,
+    public void testHandleNullCipherAndIntegrityEnabled_featureFlagOn() {
+        DeviceConfig.setProperty(DeviceConfig.NAMESPACE_CELLULAR_SECURITY,
+                TelephonyManager.PROPERTY_ENABLE_NULL_CIPHER_TOGGLE, Boolean.TRUE.toString(),
+                false);
+        mPhoneUT.mCi = mMockCi;
+
+        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(EVENT_RADIO_AVAILABLE,
                 new AsyncResult(null, new int[]{ServiceState.RIL_RADIO_TECHNOLOGY_GSM}, null)));
         processAllMessages();
-        verify(spiedPhone, times(1)).handleNullCipherEnabledChange();
+
+        verify(mMockCi, times(1)).setNullCipherAndIntegrityEnabled(anyBoolean(),
+                any(Message.class));
+    }
+
+    @Test
+    public void testHandleNullCipherAndIntegrityEnabled_featureFlagOff() {
+        mPhoneUT.mCi = mMockCi;
+        DeviceConfig.setProperty(DeviceConfig.NAMESPACE_CELLULAR_SECURITY,
+                TelephonyManager.PROPERTY_ENABLE_NULL_CIPHER_TOGGLE, Boolean.FALSE.toString(),
+                false);
+
+        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(EVENT_RADIO_AVAILABLE,
+                new AsyncResult(null, new int[]{ServiceState.RIL_RADIO_TECHNOLOGY_GSM}, null)));
+        processAllMessages();
+
+        verify(mMockCi, times(0)).setNullCipherAndIntegrityEnabled(anyBoolean(),
+                any(Message.class));
+
     }
 
     public void fdnCheckCleanup() {

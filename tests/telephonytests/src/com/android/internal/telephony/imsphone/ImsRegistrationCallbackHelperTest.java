@@ -17,6 +17,9 @@
 package com.android.internal.telephony.imsphone;
 
 import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_NONE;
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_LTE;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -166,7 +169,24 @@ public class ImsRegistrationCallbackHelperTest extends TelephonyTest {
         assertEquals(RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED,
                 mRegistrationCallbackHelper.getImsRegistrationState());
         verify(mMockRegistrationUpdate).handleImsUnregistered(eq(reasonInfo),
-                eq(SUGGESTED_ACTION_NONE));
+                eq(SUGGESTED_ACTION_NONE), eq(REGISTRATION_TECH_NONE));
+    }
+
+    @Test
+    @SmallTest
+    public void testImsUnRegisteredWithSuggestedAction() {
+        // Verify the RegistrationCallback should not be null
+        RegistrationCallback callback = mRegistrationCallbackHelper.getCallback();
+        assertNotNull(callback);
+
+        ImsReasonInfo reasonInfo = new ImsReasonInfo(ImsReasonInfo.CODE_REGISTRATION_ERROR, 0);
+        callback.onUnregistered(reasonInfo, SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK,
+                REGISTRATION_TECH_LTE);
+
+        assertEquals(RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED,
+                mRegistrationCallbackHelper.getImsRegistrationState());
+        verify(mMockRegistrationUpdate).handleImsUnregistered(eq(reasonInfo),
+                eq(SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK), eq(REGISTRATION_TECH_LTE));
     }
 
     @Test

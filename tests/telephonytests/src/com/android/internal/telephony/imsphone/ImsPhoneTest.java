@@ -28,7 +28,6 @@ import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_3G;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_LTE;
-import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NR;
 
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
@@ -746,7 +745,6 @@ public class ImsPhoneTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testRoamingToAirplanModeIwlanInService() throws Exception {
-        doReturn(true).when(mAccessNetworksManager).isInLegacyMode();
         doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
         doReturn(true).when(mPhone).isRadioOn();
 
@@ -774,7 +772,6 @@ public class ImsPhoneTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testRoamingToOutOfService() throws Exception {
-        doReturn(true).when(mAccessNetworksManager).isInLegacyMode();
         doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
         doReturn(true).when(mPhone).isRadioOn();
 
@@ -794,83 +791,6 @@ public class ImsPhoneTest extends TelephonyTest {
 
         // setWfcMode should not be called again, out_of_service should not trigger move out of
         // roaming.
-        verify(mImsManager, times(1)).setWfcMode(anyInt(), anyBoolean());
-    }
-
-    @Test
-    @SmallTest
-    public void testRoamingChangeForLteInLegacyMode() throws Exception {
-        doReturn(true).when(mAccessNetworksManager).isInLegacyMode();
-        doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
-        doReturn(true).when(mPhone).isRadioOn();
-
-        //roaming - data registration only on LTE
-        Message m = getServiceStateChangedMessage(getServiceStateDataOnly(
-                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.STATE_IN_SERVICE, true));
-        // Inject the message synchronously instead of waiting for the thread to do it.
-        mImsPhoneUT.handleMessage(m);
-        m.recycle();
-
-        verify(mImsManager, times(1)).setWfcMode(anyInt(), eq(true));
-
-        // not roaming - data registration on LTE
-        m = getServiceStateChangedMessage(getServiceStateDataOnly(
-                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.STATE_IN_SERVICE, false));
-        mImsPhoneUT.handleMessage(m);
-        m.recycle();
-
-        verify(mImsManager, times(1)).setWfcMode(anyInt(), eq(false));
-    }
-
-    @Test
-    @SmallTest
-    public void testDataOnlyRoamingCellToIWlanInLegacyMode() throws Exception {
-        doReturn(true).when(mAccessNetworksManager).isInLegacyMode();
-        doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
-        doReturn(true).when(mPhone).isRadioOn();
-
-        //roaming - data registration only on LTE
-        Message m = getServiceStateChangedMessage(getServiceStateDataOnly(
-                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.STATE_IN_SERVICE, true));
-        // Inject the message synchronously instead of waiting for the thread to do it.
-        mImsPhoneUT.handleMessage(m);
-        m.recycle();
-
-        verify(mImsManager, times(1)).setWfcMode(anyInt(), eq(true));
-
-        // not roaming - data registration onto IWLAN
-        m = getServiceStateChangedMessage(getServiceStateDataOnly(
-                ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN, ServiceState.STATE_IN_SERVICE, false));
-        mImsPhoneUT.handleMessage(m);
-        m.recycle();
-
-        // Verify that it hasn't been called again.
-        verify(mImsManager, times(1)).setWfcMode(anyInt(), anyBoolean());
-    }
-
-    @Test
-    @SmallTest
-    public void testCellVoiceDataChangeToWlanInLegacyMode() throws Exception {
-        doReturn(true).when(mAccessNetworksManager).isInLegacyMode();
-        doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
-        doReturn(true).when(mPhone).isRadioOn();
-
-        //roaming - voice/data registration on LTE
-        ServiceState ss = getServiceStateDataAndVoice(
-                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.STATE_IN_SERVICE, true);
-        Message m = getServiceStateChangedMessage(ss);
-        // Inject the message synchronously instead of waiting for the thread to do it.
-        mImsPhoneUT.handleMessage(m);
-
-        verify(mImsManager, times(1)).setWfcMode(anyInt(), eq(true));
-
-        // roaming - voice LTE, data registration onto IWLAN
-        modifyServiceStateData(ss, ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN,
-                ServiceState.STATE_IN_SERVICE, false);
-        mImsPhoneUT.handleMessage(m);
-        m.recycle();
-
-        // Verify that it hasn't been called again.
         verify(mImsManager, times(1)).setWfcMode(anyInt(), anyBoolean());
     }
 
@@ -1306,11 +1226,27 @@ public class ImsPhoneTest extends TelephonyTest {
                 ImsReasonInfo.CODE_UNSPECIFIED, "");
 
         // unregistered with fatal error
-        registrationCallback.onUnregistered(reasonInfo, SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK);
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK, REGISTRATION_TECH_NR);
         regInfo = mSimulatedCommands.getImsRegistrationInfo();
 
         assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
-                && regInfo[1] == REGISTRATION_TECH_NONE
+                && regInfo[1] == REGISTRATION_TECH_NR
+                && regInfo[2] == SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[2] == 0);
+
+        // unregistered with fatal error but rat changed
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK, REGISTRATION_TECH_LTE);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_LTE
                 && regInfo[2] == SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK);
 
         // reset the registration info saved in the SimulatedCommands
@@ -1320,7 +1256,8 @@ public class ImsPhoneTest extends TelephonyTest {
         assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[2] == 0);
 
         // duplicated notification with the same suggested action
-        registrationCallback.onUnregistered(reasonInfo, SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK);
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK, REGISTRATION_TECH_LTE);
         regInfo = mSimulatedCommands.getImsRegistrationInfo();
 
         // verify that there is no update in the SimulatedCommands
@@ -1328,11 +1265,12 @@ public class ImsPhoneTest extends TelephonyTest {
 
         // unregistered with repeated error
         registrationCallback.onUnregistered(reasonInfo,
-                SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT);
+                SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT,
+                REGISTRATION_TECH_LTE);
         regInfo = mSimulatedCommands.getImsRegistrationInfo();
 
         assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
-                && regInfo[1] == REGISTRATION_TECH_NONE
+                && regInfo[1] == REGISTRATION_TECH_LTE
                 && regInfo[2] == SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT);
 
         // reset the registration info saved in the SimulatedCommands
@@ -1343,28 +1281,31 @@ public class ImsPhoneTest extends TelephonyTest {
 
         // duplicated notification with the same suggested action
         registrationCallback.onUnregistered(reasonInfo,
-                SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT);
+                SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT,
+                REGISTRATION_TECH_LTE);
         regInfo = mSimulatedCommands.getImsRegistrationInfo();
 
         // verify that there is no update in the SimulatedCommands
         assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[2] == 0);
 
         // unregistered with temporary error
-        registrationCallback.onUnregistered(reasonInfo, SUGGESTED_ACTION_NONE);
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_NONE, REGISTRATION_TECH_LTE);
         regInfo = mSimulatedCommands.getImsRegistrationInfo();
 
         assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
-                && regInfo[1] == REGISTRATION_TECH_NONE
+                && regInfo[1] == REGISTRATION_TECH_LTE
                 && regInfo[2] == SUGGESTED_ACTION_NONE);
 
         // verifies that reason codes except ImsReasonInfo.CODE_REGISTRATION_ERROR are discarded.
         reasonInfo = new ImsReasonInfo(ImsReasonInfo.CODE_LOCAL_NETWORK_NO_SERVICE,
                 ImsReasonInfo.CODE_UNSPECIFIED, "");
-        registrationCallback.onUnregistered(reasonInfo, SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK);
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK, REGISTRATION_TECH_NR);
         regInfo = mSimulatedCommands.getImsRegistrationInfo();
 
         assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
-                && regInfo[1] == REGISTRATION_TECH_NONE
+                && regInfo[1] == REGISTRATION_TECH_NR
                 && regInfo[2] == SUGGESTED_ACTION_NONE);
 
         // change the registration info saved in the SimulatedCommands
@@ -1374,7 +1315,8 @@ public class ImsPhoneTest extends TelephonyTest {
         assertTrue(regInfo[0] == 1 && regInfo[1] == 1 && regInfo[2] == 1);
 
         // duplicated notification with the same suggested action
-        registrationCallback.onUnregistered(reasonInfo, SUGGESTED_ACTION_NONE);
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_NONE, REGISTRATION_TECH_NR);
         regInfo = mSimulatedCommands.getImsRegistrationInfo();
 
         // verify that there is no update in the SimulatedCommands

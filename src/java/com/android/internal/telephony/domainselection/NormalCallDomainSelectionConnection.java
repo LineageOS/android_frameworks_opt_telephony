@@ -25,6 +25,7 @@ import android.telephony.Annotation.DisconnectCauses;
 import android.telephony.DomainSelectionService;
 import android.telephony.DomainSelectionService.EmergencyScanType;
 import android.telephony.NetworkRegistrationInfo;
+import android.telephony.ims.ImsReasonInfo;
 
 import com.android.internal.telephony.Phone;
 
@@ -90,5 +91,36 @@ public class NormalCallDomainSelectionConnection extends DomainSelectionConnecti
         mCallback = callback;
         selectDomain(attr);
         return getCompletableFuture();
+    }
+
+    /**
+     * Returns the attributes required to determine the domain for a normal call.
+     *
+     * @param slotId The slot identifier.
+     * @param subId The subscription identifier.
+     * @param callId The call identifier.
+     * @param number The dialed number.
+     * @param isVideoCall flag for video call.
+     * @param callFailCause The reason why the last CS attempt failed.
+     * @param imsReasonInfo The reason why the last PS attempt failed.
+     * @return The attributes required to determine the domain.
+     */
+    public static @NonNull DomainSelectionService.SelectionAttributes getSelectionAttributes(
+            int slotId, int subId, @NonNull String callId, @NonNull String number,
+            boolean isVideoCall, int callFailCause, @Nullable ImsReasonInfo imsReasonInfo) {
+
+        DomainSelectionService.SelectionAttributes.Builder builder =
+                new DomainSelectionService.SelectionAttributes.Builder(
+                        slotId, subId, SELECTOR_TYPE_CALLING)
+                        .setEmergency(false)
+                        .setCallId(callId)
+                        .setNumber(number)
+                        .setCsDisconnectCause(callFailCause)
+                        .setVideoCall(isVideoCall);
+
+        if (imsReasonInfo != null) {
+            builder.setPsDisconnectCause(imsReasonInfo);
+        }
+        return builder.build();
     }
 }

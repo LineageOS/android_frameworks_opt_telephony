@@ -96,6 +96,7 @@ import android.telephony.ims.ProvisioningManager;
 import android.telephony.ims.RtpHeaderExtension;
 import android.telephony.ims.RtpHeaderExtensionType;
 import android.telephony.ims.SrvccCall;
+import android.telephony.ims.aidl.IImsCallSessionListener;
 import android.telephony.ims.aidl.ISrvccStartedCallback;
 import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.feature.MmTelFeature;
@@ -168,10 +169,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -234,16 +237,18 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private final MmTelFeatureListener mMmTelFeatureListener = new MmTelFeatureListener();
     private class MmTelFeatureListener extends MmTelFeature.Listener {
 
-        private void processIncomingCall(IImsCallSession c, Bundle extras) {
+        private IImsCallSessionListener processIncomingCall(@NonNull IImsCallSession c,
+                @Nullable String callId, @Nullable Bundle extras) {
             if (DBG) log("processIncomingCall: incoming call intent");
 
             if (extras == null) extras = new Bundle();
-            if (mImsManager == null) return;
+            if (mImsManager == null) return null;
 
             try {
+                IImsCallSessionListener iimsCallSessionListener;
                 // Network initiated USSD will be treated by mImsUssdListener
                 boolean isUssd = extras.getBoolean(MmTelFeature.EXTRA_IS_USSD, false);
-                // For compatibility purposes with older vendor implmentations.
+                // For compatibility purposes with older vendor implementations.
                 isUssd |= extras.getBoolean(ImsManager.EXTRA_USSD, false);
                 if (isUssd) {
                     if (DBG) log("processIncomingCall: USSD");
@@ -252,11 +257,14 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     if (mUssdSession != null) {
                         mUssdSession.accept(ImsCallProfile.CALL_TYPE_VOICE);
                     }
-                    return;
+                    if (callId != null) mUssdSession.getCallSession().setCallId(callId);
+                    iimsCallSessionListener = (IImsCallSessionListener) mUssdSession
+                            .getCallSession().getIImsCallSessionListenerProxy();
+                    return iimsCallSessionListener;
                 }
 
                 boolean isUnknown = extras.getBoolean(MmTelFeature.EXTRA_IS_UNKNOWN_CALL, false);
-                // For compatibility purposes with older vendor implmentations.
+                // For compatibility purposes with older vendor implementations.
                 isUnknown |= extras.getBoolean(ImsManager.EXTRA_IS_UNKNOWN_CALL, false);
                 if (DBG) {
                     log("processIncomingCall: isUnknown = " + isUnknown
@@ -266,6 +274,9 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
                 // Normal MT/Unknown call
                 ImsCall imsCall = mImsManager.takeCall(c, mImsCallListener);
+                if (callId != null) imsCall.getCallSession().setCallId(callId);
+                iimsCallSessionListener = (IImsCallSessionListener) imsCall
+                        .getCallSession().getIImsCallSessionListenerProxy();
                 ImsPhoneConnection conn = new ImsPhoneConnection(mPhone, imsCall,
                         ImsPhoneCallTracker.this,
                         (isUnknown ? mForegroundCall : mRingingCall), isUnknown);
@@ -288,13 +299,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 if ((c != null) && (c.getCallProfile() != null)
                         && (c.getCallProfile().getCallExtras() != null)
                         && (c.getCallProfile().getCallExtras()
-                          .containsKey(ImsCallProfile.EXTRA_CALL_DISCONNECT_CAUSE))) {
+                        .containsKey(ImsCallProfile.EXTRA_CALL_DISCONNECT_CAUSE))) {
                     String error = c.getCallProfile()
                             .getCallExtra(ImsCallProfile.EXTRA_CALL_DISCONNECT_CAUSE, null);
                     if (error != null) {
                         try {
                             int cause = getDisconnectCauseFromReasonInfo(
-                                        new ImsReasonInfo(Integer.parseInt(error), 0, null),
+                                    new ImsReasonInfo(Integer.parseInt(error), 0, null),
                                     conn.getState());
                             if (cause == DisconnectCause.INCOMING_AUTO_REJECTED) {
                                 conn.setDisconnectCause(cause);
@@ -340,18 +351,19 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 updatePhoneState();
                 mPhone.notifyPreciseCallStateChanged();
                 mImsCallInfoTracker.addImsCallStatus(conn);
+                return iimsCallSessionListener;
             } catch (ImsException | RemoteException e) {
                 loge("processIncomingCall: exception " + e);
                 mOperationLocalLog.log("onIncomingCall: exception processing: "  + e);
+                return null;
             }
         }
 
         @Override
-        public void onIncomingCall(IImsCallSession c, Bundle extras) {
-            // we want to ensure we block this binder thread until incoming call setup completes
-            // as to avoid race conditions where the ImsService tries to update the state of the
-            // call before the listeners have been attached.
-            executeAndWait(()-> processIncomingCall(c, extras));
+        @Nullable
+        public IImsCallSessionListener onIncomingCall(
+                @NonNull IImsCallSession c, @Nullable String callId, @Nullable Bundle extras) {
+            return executeAndWaitForReturn(()-> processIncomingCall(c, callId, extras));
         }
 
         @Override
@@ -411,6 +423,24 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                         () -> TelephonyUtils.runWithCleanCallingIdentity(r), mExecutor).join();
             } catch (CancellationException | CompletionException e) {
                 logw("Binder - exception: " + e.getMessage());
+            }
+        }
+
+        /**
+         * Schedule the given Runnable on mExecutor and block this thread until it finishes.
+         * @param r The Runnable to run.
+         */
+        private <T> T executeAndWaitForReturn(Supplier<T> r) {
+
+            CompletableFuture<T> future = CompletableFuture.supplyAsync(
+                    () -> TelephonyUtils.runWithCleanCallingIdentity(r), mExecutor);
+
+            try {
+                return future.get();
+            } catch (ExecutionException | InterruptedException e) {
+                Log.w(LOG_TAG, "ImsPhoneCallTracker : executeAndWaitForReturn exception: "
+                        + e.getMessage());
+                return null;
             }
         }
     }
