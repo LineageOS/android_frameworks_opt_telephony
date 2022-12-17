@@ -61,7 +61,6 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
-import com.android.internal.telephony.SubscriptionInfoUpdater;
 import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.nano.StoredPinProto.EncryptedPin;
 import com.android.internal.telephony.nano.StoredPinProto.StoredPin;
@@ -519,8 +518,8 @@ public class PinStorage extends Handler {
 
     /** Handle the update of the {@code state} of the SIM card in {@code slotId}. */
     private synchronized void onSimStatusChange(int slotId, @SimState int state) {
-        logd("SIM card/application changed[%d]: %s",
-                slotId, SubscriptionInfoUpdater.simStateString(state));
+        logd("SIM card/application changed[%d]: %s", slotId,
+                TelephonyManager.simStateToString(state));
         switch (state) {
             case TelephonyManager.SIM_STATE_ABSENT:
             case TelephonyManager.SIM_STATE_PIN_REQUIRED: {
