@@ -59,6 +59,7 @@ import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
+import android.provider.DeviceConfig;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.sysprop.TelephonyProperties;
@@ -4995,6 +4996,11 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public void handleNullCipherEnabledChange() {
+        if (!DeviceConfig.getBoolean(DeviceConfig.NAMESPACE_CELLULAR_SECURITY,
+                TelephonyManager.PROPERTY_ENABLE_NULL_CIPHER_TOGGLE, false)) {
+            logi("Not handling null cipher update. Feature disabled by DeviceConfig.");
+            return;
+        }
         mCi.setNullCipherAndIntegrityEnabled(
                 getNullCipherAndIntegrityEnabledPreference(),
                 obtainMessage(EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE));

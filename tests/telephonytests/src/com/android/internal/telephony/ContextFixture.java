@@ -176,6 +176,11 @@ public class ContextFixture implements TestFixture<Context> {
                     mKeyValuePairs.put(request, (String)args.get("value"));
                     mNumKeyValuePairs++;
                     break;
+                case Settings.CALL_METHOD_PUT_CONFIG:
+                    logd("PUT_config called");
+                    logd("adding config flag: " + request + "-" + args.getString("value"));
+                    mFlags.put(request, args.getString("value"));
+                    break;
                 case Settings.CALL_METHOD_LIST_CONFIG:
                     logd("LIST_config: " + mFlags);
                     Bundle result = new Bundle();

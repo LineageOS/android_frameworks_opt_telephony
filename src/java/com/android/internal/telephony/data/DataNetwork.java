@@ -898,8 +898,9 @@ public class DataNetwork extends StateMachine {
         mDataAllowedReason = dataAllowedReason;
         dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
         mAttachedNetworkRequestList.addAll(networkRequestList);
-        mCid.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, INVALID_CID);
-        mCid.put(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, INVALID_CID);
+        for (int transportType : mAccessNetworksManager.getAvailableTransports()) {
+            mCid.put(transportType, INVALID_CID);
+        }
         mTcpBufferSizes = mDataConfigManager.getDefaultTcpConfigString();
         mTelephonyDisplayInfo = mPhone.getDisplayInfoController().getTelephonyDisplayInfo();
 
@@ -2345,7 +2346,7 @@ public class DataNetwork extends StateMachine {
             // If the new link properties is not compatible (e.g. IP changes, interface changes),
             // then we should de-register the network agent and re-create a new one.
             if ((isConnected() || isHandoverInProgress())
-                    && !isLinkPropertiesCompatible(linkProperties, mLinkProperties)) {
+                    && !isLinkPropertiesCompatible(mLinkProperties, linkProperties)) {
                 logl("updateDataNetwork: Incompatible link properties detected. Re-create the "
                         + "network agent. Changed from " + mLinkProperties + " to "
                         + linkProperties);

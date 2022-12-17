@@ -23,6 +23,7 @@ import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsRegistrationAttributes;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.aidl.IImsRegistrationCallback;
+import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.util.Log;
 
 import java.util.concurrent.Executor;
@@ -52,7 +53,8 @@ public class ImsRegistrationCallbackHelper {
          * Handle the callback when IMS is unregistered.
          */
         void handleImsUnregistered(ImsReasonInfo imsReasonInfo,
-                @RegistrationManager.SuggestedAction int suggestedAction);
+                @RegistrationManager.SuggestedAction int suggestedAction,
+                @ImsRegistrationImplBase.ImsRegistrationTech int imsRadioTech);
 
         /**
          * Handle the callback when the list of subscriber {@link Uri}s associated with this IMS
@@ -81,14 +83,17 @@ public class ImsRegistrationCallbackHelper {
 
                 @Override
                 public void onUnregistered(ImsReasonInfo imsReasonInfo) {
-                    onUnregistered(imsReasonInfo, RegistrationManager.SUGGESTED_ACTION_NONE);
+                    onUnregistered(imsReasonInfo, RegistrationManager.SUGGESTED_ACTION_NONE,
+                            ImsRegistrationImplBase.REGISTRATION_TECH_NONE);
                 }
 
                 @Override
                 public void onUnregistered(ImsReasonInfo imsReasonInfo,
-                        @RegistrationManager.SuggestedAction int suggestedAction) {
+                        @RegistrationManager.SuggestedAction int suggestedAction,
+                        @ImsRegistrationImplBase.ImsRegistrationTech int imsRadioTech) {
                     updateRegistrationState(RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED);
-                    mImsRegistrationUpdate.handleImsUnregistered(imsReasonInfo, suggestedAction);
+                    mImsRegistrationUpdate.handleImsUnregistered(imsReasonInfo, suggestedAction,
+                            imsRadioTech);
                 }
 
                 @Override
