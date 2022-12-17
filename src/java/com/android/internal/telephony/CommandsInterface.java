@@ -1791,6 +1791,17 @@ public interface CommandsInterface {
     public void getDeviceIdentity(Message response);
 
     /**
+     * Request the device IMEI / IMEI type / IMEISV
+     * "response" is ImeiInfo object that contains
+     *  [0] ImeiType Indicates whether IMEI is of primary or secondary type
+     *  [1] IMEI if GSM subscription is available
+     *  [2] IMEISV if GSM subscription is available
+     *
+     * @param response Message
+     */
+    public void getImei(Message response);
+
+    /**
      * Request the device MDN / H_SID / H_NID / MIN.
      * "response" is const char **
      *   [0] is MDN if CDMA subscription is available

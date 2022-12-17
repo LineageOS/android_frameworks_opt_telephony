@@ -3723,6 +3723,35 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void getImei(Message result) {
+        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
+        if (!modemProxy.isEmpty() &&
+                mHalVersion.get(HAL_SERVICE_NETWORK).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_DEVICE_IMEI, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                modemProxy.getImei(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(HAL_SERVICE_MODEM, "getImei", e);
+            }
+        }  else {
+            if (RILJ_LOGD) {
+                Rlog.e(RILJ_LOG_TAG, "getImei: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    @Override
     public void exitEmergencyCallbackMode(Message result) {
         RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
         if (!voiceProxy.isEmpty()) {

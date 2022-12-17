@@ -25,6 +25,8 @@ import static com.android.internal.telephony.Phone.EVENT_RADIO_AVAILABLE;
 import static com.android.internal.telephony.Phone.EVENT_SRVCC_STATE_CHANGED;
 import static com.android.internal.telephony.Phone.EVENT_UICC_APPS_ENABLEMENT_STATUS_CHANGED;
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+import static com.android.internal.telephony.test.SimulatedCommands.FAKE_IMEI;
+import static com.android.internal.telephony.test.SimulatedCommands.FAKE_IMEISV;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -53,6 +55,7 @@ import static org.mockito.Mockito.when;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.hardware.radio.modem.ImeiInfo;
 import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
@@ -986,7 +989,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         verify(mTelephonyManager).setBasebandVersionForPhone(eq(mPhoneUT.getPhoneId()),
                 nullable(String.class));
         // IMEI
-        assertEquals(SimulatedCommands.FAKE_IMEI, mPhoneUT.getImei());
+        assertEquals(FAKE_IMEI, mPhoneUT.getImei());
         // IMEISV
         assertEquals(SimulatedCommands.FAKE_IMEISV, mPhoneUT.getDeviceSvn());
         // radio capability
@@ -1012,7 +1015,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         verify(mTelephonyManager, times(2)).setBasebandVersionForPhone(eq(mPhoneUT.getPhoneId()),
                 nullable(String.class));
         // device identity
-        assertEquals(SimulatedCommands.FAKE_IMEI, mPhoneUT.getImei());
+        assertEquals(FAKE_IMEI, mPhoneUT.getImei());
         assertEquals(SimulatedCommands.FAKE_IMEISV, mPhoneUT.getDeviceSvn());
         assertEquals(SimulatedCommands.FAKE_ESN, mPhoneUT.getEsn());
         assertEquals(SimulatedCommands.FAKE_MEID, mPhoneUT.getMeid());
@@ -2548,10 +2551,10 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     @SmallTest
     public void testMergeCellBroadcastIdRangesAsNeeded() {
         final int[][] channelValues = {
-            {0, 999}, {1000, 1003}, {1004, 0x0FFF}, {0x1000, 0x10FF}, {0x1100, 0x112F},
-            {0x1130, 0x1900}, {0x1901, 0x9FFF}, {0xA000, 0xFFFE}, {0xFFFF, 0xFFFF}};
+                {0, 999}, {1000, 1003}, {1004, 0x0FFF}, {0x1000, 0x10FF}, {0x1100, 0x112F},
+                {0x1130, 0x1900}, {0x1901, 0x9FFF}, {0xA000, 0xFFFE}, {0xFFFF, 0xFFFF}};
         final int[] typeValues = {
-            SmsCbMessage.MESSAGE_FORMAT_3GPP, SmsCbMessage.MESSAGE_FORMAT_3GPP2};
+                SmsCbMessage.MESSAGE_FORMAT_3GPP, SmsCbMessage.MESSAGE_FORMAT_3GPP2};
         final boolean[] enabledValues = {true, false};
 
         List<CellBroadcastIdRange> ranges = new ArrayList<>();
@@ -2596,5 +2599,39 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         assertThrows(IllegalArgumentException.class, () ->
                 mergeRangesAsNeeded(ranges2));
+    }
+
+    @Test
+    public void getImeiType_primary() {
+        Message message = mPhoneUT.obtainMessage(Phone.EVENT_GET_DEVICE_IMEI_DONE);
+        ImeiInfo imeiInfo = new ImeiInfo();
+        imeiInfo.imei = FAKE_IMEI;
+        imeiInfo.svn = FAKE_IMEISV;
+        imeiInfo.type = ImeiInfo.ImeiType.PRIMARY;
+        AsyncResult.forMessage(message, imeiInfo, null);
+        mPhoneUT.handleMessage(message);
+        assertEquals(Phone.IMEI_TYPE_PRIMARY, mPhoneUT.getImeiType());
+        assertEquals(FAKE_IMEI, mPhoneUT.getImei());
+    }
+
+    @Test
+    public void getImeiType_Secondary() {
+        Message message = mPhoneUT.obtainMessage(Phone.EVENT_GET_DEVICE_IMEI_DONE);
+        ImeiInfo imeiInfo = new ImeiInfo();
+        imeiInfo.imei = FAKE_IMEI;
+        imeiInfo.svn = FAKE_IMEISV;
+        imeiInfo.type = ImeiInfo.ImeiType.SECONDARY;
+        AsyncResult.forMessage(message, imeiInfo, null);
+        mPhoneUT.handleMessage(message);
+        assertEquals(Phone.IMEI_TYPE_SECONDARY, mPhoneUT.getImeiType());
+        assertEquals(FAKE_IMEI, mPhoneUT.getImei());
+    }
+
+    @Test
+    public void getImei() {
+        assertTrue(mPhoneUT.isPhoneTypeGsm());
+        Message message = mPhoneUT.obtainMessage(Phone.EVENT_RADIO_AVAILABLE);
+        mPhoneUT.handleMessage(message);
+        verify(mSimulatedCommandsVerifier, times(2)).getImei(nullable(Message.class));
     }
 }

@@ -25,6 +25,7 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.hardware.radio.modem.ImeiInfo;
 import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.AsyncResult;
@@ -243,8 +244,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_SET_USAGE_SETTING_DONE = 64;
     protected static final int EVENT_IMS_DEREGISTRATION_TRIGGERED = 65;
     protected static final int EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE = 66;
+    protected static final int EVENT_GET_DEVICE_IMEI_DONE = 67;
 
-    protected static final int EVENT_LAST = EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE;
+    protected static final int EVENT_LAST = EVENT_GET_DEVICE_IMEI_DONE;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
@@ -479,6 +481,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected SmsStats mSmsStats;
 
     protected LinkBandwidthEstimator mLinkBandwidthEstimator;
+
+    public static final int IMEI_TYPE_UNKNOWN = -1;
+    public static final int IMEI_TYPE_PRIMARY = ImeiInfo.ImeiType.PRIMARY;
+    public static final int IMEI_TYPE_SECONDARY = ImeiInfo.ImeiType.SECONDARY;
 
     public IccRecords getIccRecords() {
         return mIccRecords.get();
@@ -4381,6 +4387,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         // When radio capability switch is done, query IMEI value and update it in Phone objects
         // to make it in sync with the IMEI value currently used by Logical-Modem.
         if (capabilitySwitched) {
+            mCi.getImei(obtainMessage(EVENT_GET_DEVICE_IMEI_DONE));
             mCi.getDeviceIdentity(obtainMessage(EVENT_GET_DEVICE_IDENTITY_DONE));
         }
     }

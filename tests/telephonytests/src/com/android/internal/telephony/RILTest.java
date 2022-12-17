@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static android.telephony.TelephonyManager.HAL_SERVICE_DATA;
+import static android.telephony.TelephonyManager.HAL_SERVICE_MODEM;
 import static android.telephony.TelephonyManager.HAL_SERVICE_NETWORK;
 import static android.telephony.TelephonyManager.HAL_SERVICE_RADIO;
 import static android.telephony.TelephonyManager.HAL_SERVICE_SIM;
@@ -32,6 +33,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_CONFERENCE
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DATA_REGISTRATION_STATE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DELETE_SMS_ON_SIM;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEVICE_IDENTITY;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEVICE_IMEI;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DTMF;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENABLE_UICC_APPLICATIONS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ENTER_NETWORK_DEPERSONALIZATION;
@@ -95,6 +97,7 @@ import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.assertTrue;
+import static junit.framework.Assert.fail;
 
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -125,12 +128,14 @@ import android.hardware.radio.V1_6.IRadio;
 import android.net.ConnectivityManager;
 import android.net.InetAddresses;
 import android.net.LinkAddress;
+import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.IPowerManager;
 import android.os.IThermalService;
 import android.os.Looper;
 import android.os.Message;
 import android.os.PowerManager;
+import android.os.RemoteException;
 import android.os.WorkSource;
 import android.service.carrier.CarrierIdentifier;
 import android.telephony.AccessNetworkConstants;
@@ -177,6 +182,7 @@ import androidx.test.filters.FlakyTest;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -212,6 +218,7 @@ public class RILTest extends TelephonyTest {
     private RadioDataProxy mDataProxy;
     private RadioNetworkProxy mNetworkProxy;
     private RadioSimProxy mSimProxy;
+    private RadioModemProxy mRadioModemProxy;
 
     private Map<Integer, HalVersion> mHalVersionV10 = new HashMap<>();
     private Map<Integer, HalVersion> mHalVersionV11 = new HashMap<>();
@@ -220,6 +227,7 @@ public class RILTest extends TelephonyTest {
     private Map<Integer, HalVersion> mHalVersionV14 = new HashMap<>();
     private Map<Integer, HalVersion> mHalVersionV15 = new HashMap<>();
     private Map<Integer, HalVersion> mHalVersionV16 = new HashMap<>();
+    private Map<Integer, HalVersion> mHalVersionV21 = new HashMap<>();
 
     private RIL mRILInstance;
     private RIL mRILUnderTest;
@@ -307,6 +315,7 @@ public class RILTest extends TelephonyTest {
         mDataProxy = mock(RadioDataProxy.class);
         mNetworkProxy = mock(RadioNetworkProxy.class);
         mSimProxy = mock(RadioSimProxy.class);
+        mRadioModemProxy = mock(RadioModemProxy.class);
         try {
             TelephonyDevController.create();
         } catch (RuntimeException e) {
@@ -327,6 +336,7 @@ public class RILTest extends TelephonyTest {
         proxies.put(HAL_SERVICE_DATA, mDataProxy);
         proxies.put(HAL_SERVICE_NETWORK, mNetworkProxy);
         proxies.put(HAL_SERVICE_SIM, mSimProxy);
+        proxies.put(HAL_SERVICE_MODEM, mRadioModemProxy);
         mRILInstance = new RIL(context,
                 RadioAccessFamily.getRafFromNetworkType(RILConstants.PREFERRED_NETWORK_MODE),
                 Phone.PREFERRED_CDMA_SUBSCRIPTION, 0, proxies);
@@ -338,9 +348,12 @@ public class RILTest extends TelephonyTest {
                 eq(RadioNetworkProxy.class), any());
         doReturn(mSimProxy).when(mRILUnderTest).getRadioServiceProxy(eq(RadioSimProxy.class),
                 any());
+        doReturn(mRadioModemProxy).when(mRILUnderTest).getRadioServiceProxy(
+                eq(RadioModemProxy.class), any());
         doReturn(false).when(mDataProxy).isEmpty();
         doReturn(false).when(mNetworkProxy).isEmpty();
         doReturn(false).when(mSimProxy).isEmpty();
+        doReturn(false).when(mRadioModemProxy).isEmpty();
         try {
             for (int service = RIL.MIN_SERVICE_IDX; service <= RIL.MAX_SERVICE_IDX; service++) {
                 mHalVersionV10.put(service, new HalVersion(1, 0));
@@ -350,6 +363,7 @@ public class RILTest extends TelephonyTest {
                 mHalVersionV14.put(service, new HalVersion(1, 4));
                 mHalVersionV15.put(service, new HalVersion(1, 5));
                 mHalVersionV16.put(service, new HalVersion(1, 6));
+                mHalVersionV21.put(service, new HalVersion(2, 1));
             }
             replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV10);
         } catch (Exception e) {
@@ -2925,5 +2939,32 @@ public class RILTest extends TelephonyTest {
         verify(mRadioProxy).getSlicingConfig(mSerialNumberCaptor.capture());
         verifyRILResponse_1_6(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_GET_SLICING_CONFIG);
+    }
+
+    @Test
+    public void getImei() throws RemoteException {
+        try {
+            replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV21);
+        } catch (Exception e) {
+            fail();
+        }
+        mRILUnderTest.getImei(obtainMessage());
+        verify(mRadioModemProxy, atLeast(1)).getImei(mSerialNumberCaptor.capture());
+        verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_DEVICE_IMEI);
+    }
+
+    @Test
+    public void getImeiNotSupported() {
+        try {
+            replaceInstance(RIL.class, "mHalVersion", mRILUnderTest, mHalVersionV16);
+        } catch (Exception e) {
+            fail();
+        }
+        Message message = obtainMessage();
+        mRILUnderTest.getImei(message);
+        AsyncResult ar = (AsyncResult) message.obj;
+        Assert.assertEquals(null, ar.result);
+        Assert.assertNotNull(ar.exception.getMessage());
+        Assert.assertEquals("REQUEST_NOT_SUPPORTED", ar.exception.getMessage());
     }
 }
