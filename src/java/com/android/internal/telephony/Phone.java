@@ -4926,6 +4926,53 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Notifies the NAS and RRC layers of the radio the type of upcoming IMS traffic.
+     *
+     * @param token A nonce to identify the request.
+     * @param trafficType IMS traffic type like registration, voice, video, SMS, emergency, and etc.
+     * @param accessNetworkType The type of the radio access network used.
+     * @param trafficDirection Indicates whether traffic is originated by mobile originated or
+     *        mobile terminated use case eg. MO/MT call/SMS etc.
+     * @param response is callback message.
+     */
+    public void startImsTraffic(int token,
+            @MmTelFeature.ImsTrafficType int trafficType,
+            @AccessNetworkConstants.RadioAccessNetworkType int accessNetworkType,
+            @MmTelFeature.ImsTrafficDirection int trafficDirection, Message response) {
+        mCi.startImsTraffic(token, trafficType, accessNetworkType, trafficDirection, response);
+    }
+
+    /**
+     * Notifies IMS traffic has been stopped.
+     *
+     * @param token The token assigned by startImsTraffic.
+     * @param response is callback message.
+     */
+    public void stopImsTraffic(int token, Message response) {
+        mCi.stopImsTraffic(token, response);
+    }
+
+    /**
+     * Register for notifications of connection setup failure
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForConnectionSetupFailure(Handler h, int what, Object obj) {
+        mCi.registerForConnectionSetupFailure(h, what, obj);
+    }
+
+    /**
+     * Unregister for notifications of connection setup failure
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForConnectionSetupFailure(Handler h) {
+        mCi.unregisterForConnectionSetupFailure(h);
+    }
+
+    /**
      * Triggers the UE initiated EPS fallback procedure.
      *
      * @param reason specifies the reason for EPS fallback.
