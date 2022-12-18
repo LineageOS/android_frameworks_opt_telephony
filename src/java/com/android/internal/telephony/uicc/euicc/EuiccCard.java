@@ -27,6 +27,7 @@ import android.text.TextUtils;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccCardStatus;
+import com.android.internal.telephony.uicc.IccSlotStatus.MultipleEnabledProfilesMode;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.euicc.async.AsyncResultCallback;
@@ -43,8 +44,9 @@ public class EuiccCard extends UiccCard {
     private RegistrantList mEidReadyRegistrants;
 
     public EuiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock,
-            boolean isSupportsMultipleEnabledProfiles) {
-        super(c, ci, ics, phoneId, lock, isSupportsMultipleEnabledProfiles);
+            boolean isSupportsMultipleEnabledProfiles,
+            MultipleEnabledProfilesMode supportedMepMode) {
+        super(c, ci, ics, phoneId, lock, isSupportsMultipleEnabledProfiles, supportedMepMode);
         if (TextUtils.isEmpty(ics.eid)) {
             loge("no eid given in constructor for phone " + phoneId);
             loadEidAndNotifyRegistrants();
@@ -61,11 +63,13 @@ public class EuiccCard extends UiccCard {
      * UiccCard creation which will impact UICC MEP capability.
      */
     @Override
-    public void updateSupportMultipleEnabledProfile(boolean supported) {
+    public void updateSupportMepProperties(boolean supported,
+            MultipleEnabledProfilesMode supportedMepMode) {
         mIsSupportsMultipleEnabledProfiles = supported;
+        mSupportedMepMode = supportedMepMode;
         for (UiccPort port : mUiccPorts.values()) {
             if (port instanceof EuiccPort) {
-                ((EuiccPort) port).updateSupportMultipleEnabledProfile(supported);
+                ((EuiccPort) port).updateSupportMepProperties(supported, supportedMepMode);
             } else {
                 loge("eUICC card has non-euicc port object:" + port.toString());
             }

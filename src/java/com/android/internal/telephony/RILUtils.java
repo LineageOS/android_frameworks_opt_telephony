@@ -374,6 +374,7 @@ import com.android.internal.telephony.uicc.IccSimPortInfo;
 import com.android.internal.telephony.uicc.IccSlotPortMapping;
 import com.android.internal.telephony.uicc.IccSlotStatus;
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.uicc.PortUtils;
 import com.android.internal.telephony.uicc.SimPhonebookRecord;
 import com.android.telephony.Rlog;
 
@@ -1828,10 +1829,12 @@ public class RILUtils {
      * @param p2 p2
      * @param p3 p3
      * @param data data
+     * @param radioHalVersion radio hal version
      * @return The converted SimApdu
      */
     public static android.hardware.radio.sim.SimApdu convertToHalSimApduAidl(int channel, int cla,
-            int instruction, int p1, int p2, int p3, String data) {
+            int instruction, int p1, int p2, int p3, String data, boolean isEs10Command,
+            HalVersion radioHalVersion) {
         android.hardware.radio.sim.SimApdu msg = new android.hardware.radio.sim.SimApdu();
         msg.sessionId = channel;
         msg.cla = cla;
@@ -1840,6 +1843,9 @@ public class RILUtils {
         msg.p2 = p2;
         msg.p3 = p3;
         msg.data = convertNullToEmptyString(data);
+        if (radioHalVersion.greaterOrEqual(RIL.RADIO_HAL_VERSION_2_1)) {
+            msg.isEs10 = isEs10Command;
+        }
         return msg;
     }
 
@@ -4359,6 +4365,7 @@ public class RILUtils {
             android.hardware.radio.sim.CardStatus cardStatus) {
         IccCardStatus iccCardStatus = new IccCardStatus();
         iccCardStatus.setCardState(cardStatus.cardState);
+        iccCardStatus.setMultipleEnabledProfilesMode(cardStatus.supportedMepMode);
         iccCardStatus.setUniversalPinState(cardStatus.universalPinState);
         iccCardStatus.mGsmUmtsSubscriptionAppIndex = cardStatus.gsmUmtsSubscriptionAppIndex;
         iccCardStatus.mCdmaSubscriptionAppIndex = cardStatus.cdmaSubscriptionAppIndex;
@@ -4386,7 +4393,9 @@ public class RILUtils {
         }
         IccSlotPortMapping slotPortMapping = new IccSlotPortMapping();
         slotPortMapping.mPhysicalSlotIndex = cardStatus.slotMap.physicalSlotId;
-        slotPortMapping.mPortIndex = cardStatus.slotMap.portId;
+        slotPortMapping.mPortIndex = PortUtils.convertFromHalPortIndex(
+                cardStatus.slotMap.physicalSlotId, cardStatus.slotMap.portId,
+                iccCardStatus.mCardState, iccCardStatus.mSupportedMepMode);
         iccCardStatus.mSlotPortMapping = slotPortMapping;
         return iccCardStatus;
     }
@@ -4502,6 +4511,7 @@ public class RILUtils {
                 }
                 iccSlotStatus.atr = slotStatus.atr;
                 iccSlotStatus.eid = slotStatus.eid;
+                iccSlotStatus.setMultipleEnabledProfilesMode(slotStatus.supportedMepMode);
                 response.add(iccSlotStatus);
             }
             return response;
@@ -4569,7 +4579,8 @@ public class RILUtils {
             int logicalSlotIdx = mapping.getLogicalSlotIndex();
             res[logicalSlotIdx] = new android.hardware.radio.config.SlotPortMapping();
             res[logicalSlotIdx].physicalSlotId = mapping.getPhysicalSlotIndex();
-            res[logicalSlotIdx].portId = mapping.getPortIndex();
+            res[logicalSlotIdx].portId = PortUtils.convertToHalPortIndex(
+                    mapping.getPhysicalSlotIndex(), mapping.getPortIndex());
         }
         return res;
     }
