@@ -17,10 +17,12 @@
 package com.android.internal.telephony;
 
 import static android.telephony.TelephonyManager.HAL_SERVICE_IMS;
+import static android.telephony.ims.feature.MmTelFeature.ImsTrafficSessionCallbackWrapper.INVALID_TOKEN;
 
 import android.hardware.radio.RadioError;
 import android.hardware.radio.RadioResponseInfo;
 import android.hardware.radio.ims.IRadioImsResponse;
+import android.telephony.ims.feature.ConnectionFailureInfo;
 
 /**
  * Interface declaring response functions to solicited radio requests for IMS APIs.
@@ -65,17 +67,13 @@ public class ImsResponse extends IRadioImsResponse.Stub {
         RILRequest rr = mRil.processResponse(HAL_SERVICE_IMS, responseInfo);
 
         if (rr != null) {
-            Object[] response = { "", null };
-
+            Object[] response = { new Integer(INVALID_TOKEN), null };
             if (responseInfo.error == RadioError.NONE) {
                 if (failureInfo != null) {
-                    int[] info = new int[3];
-                    info[0] = failureInfo.failureReason;
-                    info[1] = failureInfo.causeCode;
-                    info[2] = failureInfo.waitTimeMillis;
-                    response[1] = info;
+                    response[1] = new ConnectionFailureInfo(
+                            RILUtils.convertHalConnectionFailureReason(failureInfo.failureReason),
+                            failureInfo.causeCode, failureInfo.waitTimeMillis);
                 }
-
                 RadioResponse.sendMessageResponse(rr.mResult, response);
             }
             mRil.processResponseDone(rr, responseInfo, response);

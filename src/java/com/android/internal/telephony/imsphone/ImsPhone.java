@@ -2723,6 +2723,30 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public void startImsTraffic(int token,
+            @MmTelFeature.ImsTrafficType int trafficType,
+            @AccessNetworkConstants.RadioAccessNetworkType int accessNetworkType,
+            @MmTelFeature.ImsTrafficDirection int trafficDirection, Message response) {
+        mDefaultPhone.startImsTraffic(token, trafficType,
+                accessNetworkType, trafficDirection, response);
+    }
+
+    @Override
+    public void stopImsTraffic(int token, Message response) {
+        mDefaultPhone.stopImsTraffic(token, response);
+    }
+
+    @Override
+    public void registerForConnectionSetupFailure(Handler h, int what, Object obj) {
+        mDefaultPhone.registerForConnectionSetupFailure(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForConnectionSetupFailure(Handler h) {
+        mDefaultPhone.unregisterForConnectionSetupFailure(h);
+    }
+
+    @Override
     public void triggerImsDeregistration(
             @ImsRegistrationImplBase.ImsDeregistrationReason int reason) {
         mCT.triggerImsDeregistration(reason);

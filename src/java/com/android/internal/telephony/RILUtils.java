@@ -349,6 +349,8 @@ import android.telephony.data.RouteSelectionDescriptor;
 import android.telephony.data.TrafficDescriptor;
 import android.telephony.data.UrspRule;
 import android.telephony.ims.RegistrationManager;
+import android.telephony.ims.feature.ConnectionFailureInfo;
+import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.telephony.ims.stub.ImsRegistrationImplBase.ImsDeregistrationReason;
 import android.text.TextUtils;
@@ -4726,6 +4728,83 @@ public class RILUtils {
             default:
                 return ImsRegistrationImplBase.REASON_UNKNOWN;
         }
+    }
+
+    /**
+     * Convert the IMS traffic type.
+     * @param trafficType IMS traffic type like registration, voice, video, SMS, emergency, and etc.
+     * @return The converted IMS traffic type.
+     */
+    public static int convertImsTrafficType(@MmTelFeature.ImsTrafficType int trafficType) {
+        switch (trafficType) {
+            case MmTelFeature.IMS_TRAFFIC_TYPE_EMERGENCY:
+                return android.hardware.radio.ims.ImsTrafficType.EMERGENCY;
+            case MmTelFeature.IMS_TRAFFIC_TYPE_EMERGENCY_SMS:
+                return android.hardware.radio.ims.ImsTrafficType.EMERGENCY_SMS;
+            case MmTelFeature.IMS_TRAFFIC_TYPE_VOICE:
+                return android.hardware.radio.ims.ImsTrafficType.VOICE;
+            case MmTelFeature.IMS_TRAFFIC_TYPE_VIDEO:
+                return android.hardware.radio.ims.ImsTrafficType.VIDEO;
+            case MmTelFeature.IMS_TRAFFIC_TYPE_SMS:
+                return android.hardware.radio.ims.ImsTrafficType.SMS;
+            case MmTelFeature.IMS_TRAFFIC_TYPE_REGISTRATION:
+                return android.hardware.radio.ims.ImsTrafficType.REGISTRATION;
+        }
+        return android.hardware.radio.ims.ImsTrafficType.UT_XCAP;
+    }
+
+    /**
+     * Convert the IMS traffic direction.
+     * @param trafficDirection Indicates the traffic direction.
+     * @return The converted IMS traffic direction.
+     */
+    public static int convertImsTrafficDirection(
+            @MmTelFeature.ImsTrafficDirection int trafficDirection) {
+        switch (trafficDirection) {
+            case MmTelFeature.IMS_TRAFFIC_DIRECTION_INCOMING:
+                return android.hardware.radio.ims.ImsCall.Direction.INCOMING;
+            default:
+                return android.hardware.radio.ims.ImsCall.Direction.OUTGOING;
+        }
+    }
+
+    /**
+     * Convert the IMS connection failure reason.
+     * @param halReason  Specifies the reason that IMS connection failed.
+     * @return The converted IMS connection failure reason.
+     */
+    public static @ConnectionFailureInfo.FailureReason int convertHalConnectionFailureReason(
+            int halReason) {
+        switch (halReason) {
+            case android.hardware.radio.ims.ConnectionFailureInfo
+                    .ConnectionFailureReason.REASON_ACCESS_DENIED:
+                return ConnectionFailureInfo.REASON_ACCESS_DENIED;
+            case android.hardware.radio.ims.ConnectionFailureInfo
+                    .ConnectionFailureReason.REASON_NAS_FAILURE:
+                return ConnectionFailureInfo.REASON_NAS_FAILURE;
+            case android.hardware.radio.ims.ConnectionFailureInfo
+                    .ConnectionFailureReason.REASON_RACH_FAILURE:
+                return ConnectionFailureInfo.REASON_RACH_FAILURE;
+            case android.hardware.radio.ims.ConnectionFailureInfo
+                    .ConnectionFailureReason.REASON_RLC_FAILURE:
+                return ConnectionFailureInfo.REASON_RLC_FAILURE;
+            case android.hardware.radio.ims.ConnectionFailureInfo
+                    .ConnectionFailureReason.REASON_RRC_REJECT:
+                return ConnectionFailureInfo.REASON_RRC_REJECT;
+            case android.hardware.radio.ims.ConnectionFailureInfo
+                    .ConnectionFailureReason.REASON_RRC_TIMEOUT:
+                return ConnectionFailureInfo.REASON_RRC_TIMEOUT;
+            case android.hardware.radio.ims.ConnectionFailureInfo
+                    .ConnectionFailureReason.REASON_NO_SERVICE:
+                return ConnectionFailureInfo.REASON_NO_SERVICE;
+            case android.hardware.radio.ims.ConnectionFailureInfo
+                    .ConnectionFailureReason.REASON_PDN_NOT_AVAILABLE:
+                return ConnectionFailureInfo.REASON_PDN_NOT_AVAILABLE;
+            case android.hardware.radio.ims.ConnectionFailureInfo
+                    .ConnectionFailureReason.REASON_RF_BUSY:
+                return ConnectionFailureInfo.REASON_RF_BUSY;
+        }
+        return ConnectionFailureInfo.REASON_UNSPECIFIED;
     }
 
     /** Append the data to the end of an ArrayList */

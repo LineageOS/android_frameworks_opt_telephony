@@ -333,6 +333,11 @@ abstract class ImsPhoneBase extends Phone {
     }
 
     @Override
+    public int getImeiType() {
+        return Phone.IMEI_TYPE_UNKNOWN;
+    }
+
+    @Override
     public String getEsn() {
         Rlog.e(LOG_TAG, "[VoltePhone] getEsn() is a CDMA method");
         return "0";

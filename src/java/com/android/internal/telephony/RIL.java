@@ -86,6 +86,7 @@ import android.telephony.data.NetworkSliceInfo;
 import android.telephony.data.TrafficDescriptor;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.RegistrationManager;
+import android.telephony.ims.feature.ConnectionFailureInfo;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.text.TextUtils;
 import android.util.SparseArray;
@@ -3722,6 +3723,35 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void getImei(Message result) {
+        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
+        if (!modemProxy.isEmpty() &&
+                mHalVersion.get(HAL_SERVICE_NETWORK).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_DEVICE_IMEI, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                modemProxy.getImei(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(HAL_SERVICE_MODEM, "getImei", e);
+            }
+        }  else {
+            if (RILJ_LOGD) {
+                Rlog.e(RILJ_LOG_TAG, "getImei: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    @Override
     public void exitEmergencyCallbackMode(Message result) {
         RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
         if (!voiceProxy.isEmpty()) {
@@ -5306,7 +5336,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void startImsTraffic(int token, int trafficType, int accessNetworkType, Message result) {
+    public void startImsTraffic(int token,
+            int trafficType, int accessNetworkType, int trafficDirection, Message result) {
         RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
         if (imsProxy.isEmpty()) return;
         if (mHalVersion.get(HAL_SERVICE_IMS).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
@@ -5314,12 +5345,15 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
+                        + "{" + token + ", " + trafficType + ", "
+                        + accessNetworkType + ", " + trafficDirection + "}");
             }
 
             try {
-                // TODO(ag/20335448): replace 0 with actual trafficDirection
-                imsProxy.startImsTraffic(rr.mSerial, token, trafficType, accessNetworkType, 0);
+                imsProxy.startImsTraffic(rr.mSerial, token,
+                        RILUtils.convertImsTrafficType(trafficType), accessNetworkType,
+                        RILUtils.convertImsTrafficDirection(trafficDirection));
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(HAL_SERVICE_IMS, "startImsTraffic", e);
             }
@@ -5344,7 +5378,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
+                        + "{" + token + "}");
             }
 
             try {
@@ -6281,6 +6316,22 @@ public class RIL extends BaseCommands implements CommandsInterface {
             for (HardwareConfig hwcfg : hwcfgs) {
                 sb.append("[").append(hwcfg).append("] ");
             }
+            s = sb.toString();
+        } else if (req == RIL_REQUEST_START_IMS_TRAFFIC
+                || req == RIL_UNSOL_CONNECTION_SETUP_FAILURE) {
+            sb = new StringBuilder("{");
+            Object[] info = (Object[]) ret;
+            int token = (Integer) info[0];
+            sb.append(token).append(", ");
+            if (info[1] != null) {
+                ConnectionFailureInfo failureInfo = (ConnectionFailureInfo) info[1];
+                sb.append(failureInfo.getReason()).append(", ");
+                sb.append(failureInfo.getCauseCode()).append(", ");
+                sb.append(failureInfo.getWaitTimeMillis());
+            } else {
+                sb.append("null");
+            }
+            sb.append("}");
             s = sb.toString();
         } else {
             // Check if toString() was overridden. Java classes created from HIDL have a built-in

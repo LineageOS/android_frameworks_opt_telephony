@@ -1160,6 +1160,11 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
+    public void getImei(Message response) {
+
+    }
+
+    @Override
     public void getCDMASubscription(Message response) {
 
     }

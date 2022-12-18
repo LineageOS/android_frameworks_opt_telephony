@@ -79,13 +79,19 @@ public class ModemResponse extends IRadioModemResponse.Stub {
     }
 
     /**
-     *
      * @param responseInfo Response info struct containing response type, serial no. and error
-     * @param imeiInfo imeiInfo object containing ImeiType, device IMEI and IMEISV
+     * @param imeiInfo object containing ImeiType, device IMEI and IMEISV
      */
     public void getImeiResponse(RadioResponseInfo responseInfo, ImeiInfo imeiInfo) {
-        // TODO as part of the framework coding
+        RILRequest rr = mRil.processResponse(HAL_SERVICE_MODEM, responseInfo);
+        if (rr != null) {
+            if (responseInfo.error == RadioError.NONE) {
+                RadioResponse.sendMessageResponse(rr.mResult, imeiInfo);
+            }
+            mRil.processResponseDone(rr, responseInfo, imeiInfo);
+        }
     }
+
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
      * @param config Array of HardwareConfig of the radio
