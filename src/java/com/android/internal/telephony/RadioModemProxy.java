@@ -131,6 +131,19 @@ public class RadioModemProxy extends RadioServiceProxy {
     }
 
     /**
+     * Call IRadioModem#getImei
+     *
+     * @param serial Serial number of request
+     * @throws RemoteException
+     */
+    public void getImei(int serial) throws RemoteException {
+        if (isEmpty()) return;
+        if (isAidl()) {
+            mModemProxy.getImei(serial);
+        }
+    }
+
+    /**
      * Call IRadioModem#getHardwareConfig
      * @param serial Serial number of request
      * @throws RemoteException

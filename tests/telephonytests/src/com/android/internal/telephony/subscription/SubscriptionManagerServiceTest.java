@@ -64,6 +64,7 @@ import android.app.PropertyInvalidatedCache;
 import android.compat.testing.PlatformCompatChangeRule;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
@@ -916,8 +917,12 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     @Test
     public void testSetGetSubscriptionUserHandle() {
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        Resources mResources = Mockito.mock(Resources.class);
+        doReturn(true).when(mResources).getBoolean(
+                eq(com.android.internal.R.bool.config_enable_get_subscription_user_handle));
+        doReturn(mResources).when(mContext).getResources();
 
-        // Should fail without MODIFY_PHONE_STATE
+        // Should fail without MANAGE_SUBSCRIPTION_USER_ASSOCIATION
         assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
                 .setSubscriptionUserHandle(new UserHandle(12), 1));
 

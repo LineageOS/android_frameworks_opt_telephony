@@ -46,7 +46,6 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.UsageSetting;
 import android.telephony.TelephonyManager;
-import android.telephony.TelephonyManager.SimState;
 import android.telephony.UiccAccessRule;
 import android.telephony.euicc.EuiccManager;
 import android.text.TextUtils;
@@ -1301,9 +1300,9 @@ public class SubscriptionInfoUpdater extends Handler {
             if (slot != null) {
                 i.putExtra(PhoneConstants.PORT_KEY, slot.getPortIndexFromPhoneId(phoneId));
             }
-            logd("Broadcasting intent ACTION_SIM_CARD_STATE_CHANGED " + simStateString(state)
-                    + " for phone: " + phoneId + " slot: " + slotId + " port: "
-                    + slot.getPortIndexFromPhoneId(phoneId));
+            logd("Broadcasting intent ACTION_SIM_CARD_STATE_CHANGED "
+                    + TelephonyManager.simStateToString(state) + " for phone: " + phoneId
+                    + " slot: " + slotId + " port: " + slot.getPortIndexFromPhoneId(phoneId));
             sContext.sendBroadcast(i, Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
             TelephonyMetrics.getInstance().updateSimState(phoneId, state);
         }
@@ -1333,48 +1332,11 @@ public class SubscriptionInfoUpdater extends Handler {
             if (slot != null) {
                 i.putExtra(PhoneConstants.PORT_KEY, slot.getPortIndexFromPhoneId(phoneId));
             }
-            logd("Broadcasting intent ACTION_SIM_APPLICATION_STATE_CHANGED " + simStateString(state)
-                    + " for phone: " + phoneId + " slot: " + slotId + "port: "
-                    + slot.getPortIndexFromPhoneId(phoneId));
+            logd("Broadcasting intent ACTION_SIM_APPLICATION_STATE_CHANGED "
+                    + TelephonyManager.simStateToString(state) + " for phone: " + phoneId
+                    + " slot: " + slotId + "port: " + slot.getPortIndexFromPhoneId(phoneId));
             sContext.sendBroadcast(i, Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
             TelephonyMetrics.getInstance().updateSimState(phoneId, state);
-        }
-    }
-
-    /**
-     * Convert SIM state into string
-     *
-     * @param state SIM state
-     * @return SIM state in string format
-     */
-    public static String simStateString(@SimState int state) {
-        switch (state) {
-            case TelephonyManager.SIM_STATE_UNKNOWN:
-                return "UNKNOWN";
-            case TelephonyManager.SIM_STATE_ABSENT:
-                return "ABSENT";
-            case TelephonyManager.SIM_STATE_PIN_REQUIRED:
-                return "PIN_REQUIRED";
-            case TelephonyManager.SIM_STATE_PUK_REQUIRED:
-                return "PUK_REQUIRED";
-            case TelephonyManager.SIM_STATE_NETWORK_LOCKED:
-                return "NETWORK_LOCKED";
-            case TelephonyManager.SIM_STATE_READY:
-                return "READY";
-            case TelephonyManager.SIM_STATE_NOT_READY:
-                return "NOT_READY";
-            case TelephonyManager.SIM_STATE_PERM_DISABLED:
-                return "PERM_DISABLED";
-            case TelephonyManager.SIM_STATE_CARD_IO_ERROR:
-                return "CARD_IO_ERROR";
-            case TelephonyManager.SIM_STATE_CARD_RESTRICTED:
-                return "CARD_RESTRICTED";
-            case TelephonyManager.SIM_STATE_LOADED:
-                return "LOADED";
-            case TelephonyManager.SIM_STATE_PRESENT:
-                return "PRESENT";
-            default:
-                return "INVALID";
         }
     }
 

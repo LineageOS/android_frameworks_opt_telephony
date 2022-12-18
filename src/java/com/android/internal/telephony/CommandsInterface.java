@@ -43,6 +43,7 @@ import android.telephony.data.NetworkSliceInfo;
 import android.telephony.data.TrafficDescriptor;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.RegistrationManager;
+import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
@@ -1790,6 +1791,17 @@ public interface CommandsInterface {
     public void getDeviceIdentity(Message response);
 
     /**
+     * Request the device IMEI / IMEI type / IMEISV
+     * "response" is ImeiInfo object that contains
+     *  [0] ImeiType Indicates whether IMEI is of primary or secondary type
+     *  [1] IMEI if GSM subscription is available
+     *  [2] IMEISV if GSM subscription is available
+     *
+     * @param response Message
+     */
+    public void getImei(Message response);
+
+    /**
      * Request the device MDN / H_SID / H_NID / MIN.
      * "response" is const char **
      *   [0] is MDN if CDMA subscription is available
@@ -2783,7 +2795,7 @@ public interface CommandsInterface {
      public void unregisterForSimPhonebookRecordsReceived(Handler h);
 
     /**
-     * Registers for notifications when connection setup fails.
+     * Registers for notifications of connection setup failure.
      *
      * @param h Handler for notification message.
      * @param what User-defined message code.
@@ -2792,7 +2804,7 @@ public interface CommandsInterface {
     default void registerForConnectionSetupFailure(Handler h, int what, Object obj) {}
 
     /**
-     * Unregisters for notifications when connection setup fails.
+     * Unregisters for notifications of connection setup failure.
      *
      * @param h Handler to be removed from the registrant list.
      */
@@ -2928,9 +2940,13 @@ public interface CommandsInterface {
      * @param token A nonce to identify the request.
      * @param trafficType IMS traffic type like registration, voice, video, SMS, emergency, and etc.
      * @param accessNetworkType The type of underlying radio access network used.
+     * @param trafficDirection Indicates whether traffic is originated by mobile originated or
+     *        mobile terminated use case eg. MO/MT call/SMS etc.
      */
-    default void startImsTraffic(int token, int trafficType,
+    default void startImsTraffic(int token,
+            @MmTelFeature.ImsTrafficType int trafficType,
             @AccessNetworkConstants.RadioAccessNetworkType int accessNetworkType,
+            @MmTelFeature.ImsTrafficDirection int trafficDirection,
             Message result) {}
 
     /**

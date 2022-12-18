@@ -1035,6 +1035,10 @@ public interface PhoneInternalInterface {
     String getImei();
 
     /**
+     * Retrieves IMEI type for phones.
+     */
+    int getImeiType();
+    /**
      * Retrieves the IccPhoneBookInterfaceManager of the Phone
      */
     public IccPhoneBookInterfaceManager getIccPhoneBookInterfaceManager();
