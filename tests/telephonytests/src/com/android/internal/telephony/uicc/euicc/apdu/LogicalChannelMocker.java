@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.uicc.euicc.apdu;
 
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -70,26 +71,44 @@ public final class LogicalChannelMocker {
             @Override
             public Object answer(InvocationOnMock invocation) throws Throwable {
                 Object responseObject = responseObjects[mIndex++];
-                boolean isException = responseObject instanceof Throwable;
-                int sw1 = 0;
-                int sw2 = 0;
-                String hex = responseObject.toString();
-                if (!isException) {
-                    int l = hex.length();
-                    sw1 = Integer.parseInt(hex.substring(l - 4, l - 2), 16);
-                    sw2 = Integer.parseInt(hex.substring(l - 2), 16);
-                    hex = hex.substring(0, l - 4);
-                }
-                IccIoResult result = isException ? null : new IccIoResult(sw1, sw2, hex);
-                Throwable exception = isException ? (Throwable) responseObject : null;
-
-                Message msg = response.getValue();
-                AsyncResult.forMessage(msg, result, exception);
-                msg.sendToTarget();
+                mockIccTransmitApduLogicalChannelResponse(response, responseObject);
                 return null;
             }
         }).when(mockCi).iccTransmitApduLogicalChannel(eq(channel), anyInt(), anyInt(), anyInt(),
                 anyInt(), anyInt(), anyString(), response.capture());
+
+        doAnswer(new Answer() {
+            private int mIndex = 0;
+
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                Object responseObject = responseObjects[mIndex++];
+                mockIccTransmitApduLogicalChannelResponse(response, responseObject);
+                return null;
+            }
+        }).when(mockCi).iccTransmitApduLogicalChannel(eq(channel), anyInt(), anyInt(), anyInt(),
+                anyInt(), anyInt(), anyString(), anyBoolean(), response.capture());
+    }
+
+    private static void mockIccTransmitApduLogicalChannelResponse(ArgumentCaptor<Message> response,
+            Object responseObject) throws Throwable {
+
+        boolean isException = responseObject instanceof Throwable;
+        int sw1 = 0;
+        int sw2 = 0;
+        String hex = responseObject.toString();
+        if (!isException) {
+            int l = hex.length();
+            sw1 = Integer.parseInt(hex.substring(l - 4, l - 2), 16);
+            sw2 = Integer.parseInt(hex.substring(l - 2), 16);
+            hex = hex.substring(0, l - 4);
+        }
+        IccIoResult result = isException ? null : new IccIoResult(sw1, sw2, hex);
+        Throwable exception = isException ? (Throwable) responseObject : null;
+
+        Message msg = response.getValue();
+        AsyncResult.forMessage(msg, result, exception);
+        msg.sendToTarget();
     }
 
     public static void mockCloseLogicalChannel(CommandsInterface mockCi, int channel) {

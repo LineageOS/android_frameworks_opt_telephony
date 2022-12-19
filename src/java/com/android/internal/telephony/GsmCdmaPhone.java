@@ -3452,6 +3452,14 @@ public class GsmCdmaPhone extends Phone {
                 }
                 break;
 
+            case EVENT_TRIGGER_NOTIFY_ANBR:
+                logd("EVENT_TRIGGER_NOTIFY_ANBR");
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception == null) {
+                    mImsPhone.triggerNotifyAnbr(((int[]) ar.result)[0], ((int[]) ar.result)[1],
+                            ((int[]) ar.result)[2]);
+                }
+                break;
             default:
                 super.handleMessage(msg);
         }

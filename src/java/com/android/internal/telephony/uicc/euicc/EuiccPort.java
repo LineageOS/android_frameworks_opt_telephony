@@ -35,7 +35,9 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
+import com.android.internal.telephony.uicc.IccSlotStatus.MultipleEnabledProfilesMode;
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.uicc.PortUtils;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccPort;
 import com.android.internal.telephony.uicc.asn1.Asn1Decoder;
@@ -125,9 +127,11 @@ public class EuiccPort extends UiccPort {
     private volatile String mEid;
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     public boolean mIsSupportsMultipleEnabledProfiles;
+    private MultipleEnabledProfilesMode mSupportedMepMode;
 
     public EuiccPort(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock,
-            UiccCard card, boolean isSupportsMultipleEnabledProfiles) {
+            UiccCard card, boolean isSupportsMultipleEnabledProfiles,
+            MultipleEnabledProfilesMode supportedMepMode) {
         super(c, ci, ics, phoneId, lock, card);
         // TODO: Set supportExtendedApdu based on ATR.
         mApduSender = new ApduSender(ci, ISD_R_AID, false /* supportExtendedApdu */);
@@ -138,6 +142,7 @@ public class EuiccPort extends UiccPort {
             mCardId = ics.eid;
         }
         mIsSupportsMultipleEnabledProfiles = isSupportsMultipleEnabledProfiles;
+        mSupportedMepMode = supportedMepMode;
     }
 
     /**
@@ -165,12 +170,14 @@ public class EuiccPort extends UiccPort {
     }
 
     /**
-     * Updates MEP(Multiple Enabled Profile) support flag.
+     * Updates MEP(Multiple Enabled Profile) support and mode flags.
      * The flag can be updated after the port creation.
      */
-    public void updateSupportMultipleEnabledProfile(boolean supported) {
+    public void updateSupportMepProperties(boolean supported,
+            MultipleEnabledProfilesMode supportedMepMode) {
         logd("updateSupportMultipleEnabledProfile");
         mIsSupportsMultipleEnabledProfiles = supported;
+        mSupportedMepMode = supportedMepMode;
     }
 
     /**
@@ -303,11 +310,20 @@ public class EuiccPort extends UiccPort {
         sendApduWithSimResetErrorWorkaround(
                 newRequestProvider((RequestBuilder requestBuilder) -> {
                     byte[] iccidBytes = IccUtils.bcdToBytes(padTrailingFs(iccid));
-                    requestBuilder.addStoreData(Asn1Node.newBuilder(Tags.TAG_ENABLE_PROFILE)
+                    Asn1Node.Builder builder = Asn1Node.newBuilder(Tags.TAG_ENABLE_PROFILE)
                             .addChild(Asn1Node.newBuilder(Tags.TAG_CTX_COMP_0)
                                     .addChildAsBytes(Tags.TAG_ICCID, iccidBytes))
-                            .addChildAsBoolean(Tags.TAG_CTX_1, refresh)
-                            .build().toHex());
+                            .addChildAsBoolean(Tags.TAG_CTX_1, refresh);
+                    // Port index should be added only in case of MEP-A1 mode.
+                    if (mSupportedMepMode.isMepA1Mode()) {
+                        // In case of MEP-A1 and MEP-A2, profiles are selected on eSIM Ports 1 and
+                        // higher (refer as target port). Hence, convert the portIndex to
+                        // target port index before adding.
+                        builder.addChildAsInteger(Tags.TAG_CTX_2,
+                                PortUtils.convertToHalPortIndex(mSupportedMepMode,
+                                        super.getPortIdx()));
+                    }
+                    requestBuilder.addStoreData(builder.build().toHex());
                 }),
                 response -> {
                     int result;

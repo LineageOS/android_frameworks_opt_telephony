@@ -2758,6 +2758,11 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public void triggerNotifyAnbr(int mediaType, int direction, int bitsPerSecond) {
+        mCT.triggerNotifyAnbr(mediaType, direction, bitsPerSecond);
+    }
+
+    @Override
     public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
         IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         pw.println("ImsPhone extends:");

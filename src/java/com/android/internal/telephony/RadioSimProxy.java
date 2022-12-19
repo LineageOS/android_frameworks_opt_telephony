@@ -53,6 +53,9 @@ public class RadioSimProxy extends RadioServiceProxy {
             HalVersion newHalVersion;
             int version = sim.getInterfaceVersion();
             switch(version) {
+                case 2:
+                    newHalVersion = RIL.RADIO_HAL_VERSION_2_1;
+                    break;
                 default:
                     newHalVersion = RIL.RADIO_HAL_VERSION_2_0;
                     break;
@@ -373,7 +376,8 @@ public class RadioSimProxy extends RadioServiceProxy {
         if (isEmpty()) return;
         if (isAidl()) {
             mSimProxy.iccTransmitApduBasicChannel(serial,
-                    RILUtils.convertToHalSimApduAidl(0, cla, instruction, p1, p2, p3, data));
+                    RILUtils.convertToHalSimApduAidl(0, cla, instruction, p1, p2, p3, data,
+                            false, mHalVersion));
         } else {
             mRadioProxy.iccTransmitApduBasicChannel(serial,
                     RILUtils.convertToHalSimApdu(0, cla, instruction, p1, p2, p3, data));
@@ -394,10 +398,29 @@ public class RadioSimProxy extends RadioServiceProxy {
      */
     public void iccTransmitApduLogicalChannel(int serial, int channel, int cla, int instruction,
             int p1, int p2, int p3, String data) throws RemoteException {
+        iccTransmitApduLogicalChannel(serial, channel, cla, instruction, p1, p2, p3, data, false);
+    }
+
+    /**
+     * Call IRadioSim#iccTransmitApduLogicalChannel
+     * @param serial Serial number of request
+     * @param channel Channel ID of the channel to use for communication
+     * @param cla Class of the command
+     * @param instruction Instruction of the command
+     * @param p1 P1 value of the command
+     * @param p2 P2 value of the command
+     * @param p3 P3 value of the command
+     * @param data Data to be sent
+     * @param isEs10Command APDU is an isEs10 command or not
+     * @throws RemoteException
+     */
+    public void iccTransmitApduLogicalChannel(int serial, int channel, int cla, int instruction,
+            int p1, int p2, int p3, String data, boolean isEs10Command) throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
             mSimProxy.iccTransmitApduLogicalChannel(serial,
-                    RILUtils.convertToHalSimApduAidl(channel, cla, instruction, p1, p2, p3, data));
+                    RILUtils.convertToHalSimApduAidl(channel, cla, instruction, p1, p2, p3, data,
+                            isEs10Command, mHalVersion));
         } else {
             mRadioProxy.iccTransmitApduLogicalChannel(serial,
                     RILUtils.convertToHalSimApdu(channel, cla, instruction, p1, p2, p3, data));

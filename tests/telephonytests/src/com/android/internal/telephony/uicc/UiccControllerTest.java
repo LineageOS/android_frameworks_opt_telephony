@@ -104,6 +104,8 @@ public class UiccControllerTest extends TelephonyTest {
 
         doReturn(PHONE_COUNT).when(mTelephonyManager).getPhoneCount();
         doReturn(PHONE_COUNT).when(mTelephonyManager).getSimCount();
+        doReturn(IccSlotStatus.MultipleEnabledProfilesMode.NONE)
+                .when(mMockSlot).getSupportedMepMode();
         // set number of slots to 1
         mContextFixture.putIntResource(com.android.internal.R.integer.config_num_physical_slots, 1);
 
@@ -114,6 +116,8 @@ public class UiccControllerTest extends TelephonyTest {
         mIccCardStatus.mCdmaSubscriptionAppIndex =
                 mIccCardStatus.mImsSubscriptionAppIndex =
                         mIccCardStatus.mGsmUmtsSubscriptionAppIndex = -1;
+        mIccCardStatus.mCardState = IccCardStatus.CardState.CARDSTATE_PRESENT;
+        mIccCardStatus.mSupportedMepMode = IccSlotStatus.MultipleEnabledProfilesMode.NONE;
         mSimulatedCommands.setIccCardStatus(mIccCardStatus);
         // for testing we pretend slotIndex is set. In reality it would be invalid on older versions
         // (before 1.2) of hal
