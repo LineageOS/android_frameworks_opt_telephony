@@ -38,10 +38,7 @@ import static org.mockito.Mockito.when;
 import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Message;
@@ -73,8 +70,6 @@ import org.mockito.Mockito;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -82,7 +77,7 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
     /**
      * Inherits the SmsDispatchersController to verify the protected methods.
      */
-    private class TestSmsDispatchersController extends SmsDispatchersController {
+    private static class TestSmsDispatchersController extends SmsDispatchersController {
         TestSmsDispatchersController(Phone phone, SmsStorageMonitor storageMonitor,
                 SmsUsageMonitor usageMonitor) {
             super(phone, storageMonitor, usageMonitor);
@@ -113,7 +108,7 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
     /**
      * Inherits the SMSDispatcher to verify the abstract or protected methods.
      */
-    protected abstract class TestSmsDispatcher extends SMSDispatcher {
+    protected abstract static class TestSmsDispatcher extends SMSDispatcher {
         public TestSmsDispatcher(Phone phone, SmsDispatchersController smsDispatchersController) {
             super(phone, smsDispatchersController);
         }
@@ -139,7 +134,7 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
     /**
      * Inherits the SMSDispatcher to verify the protected methods.
      */
-    protected class TestImsSmsDispatcher extends ImsSmsDispatcher {
+    protected static class TestImsSmsDispatcher extends ImsSmsDispatcher {
         public TestImsSmsDispatcher(Phone phone, SmsDispatchersController smsDispatchersController,
                 FeatureConnectorFactory factory) {
             super(phone, smsDispatchersController, factory);
@@ -159,36 +154,6 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
         }
     }
 
-    /**
-     * Provides a Test class to verify the sent failure case.
-     */
-    private class TestIntentReceiver extends BroadcastReceiver {
-        private final Context mContext;
-        private final CountDownLatch mLatch = new CountDownLatch(1);
-        private Intent mIntent;
-
-        TestIntentReceiver(Context context) {
-            mContext = context;
-            mContext.registerReceiver(this, new IntentFilter(ACTION_TEST_SMS_SENT));
-        }
-
-        public void dispose() {
-            mContext.unregisterReceiver(this);
-        }
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            assertNull(mIntent);
-            mIntent = intent;
-            mLatch.countDown();
-        }
-
-        public Intent getIntent(long timeoutMillis) throws Exception {
-            mLatch.await(timeoutMillis, TimeUnit.MILLISECONDS);
-            return mIntent;
-        }
-    }
-
     private static final String ACTION_TEST_SMS_SENT = "TEST_SMS_SENT";
 
     // Mocked classes
@@ -203,7 +168,6 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
     private TestSmsDispatchersController mSmsDispatchersController;
     private boolean mInjectionCallbackTriggered = false;
     private CompletableFuture<Integer> mDscFuture;
-    private TestIntentReceiver mIntentReceiver;
 
     @Before
     public void setUp() throws Exception {
@@ -227,10 +191,6 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
         mDscFuture = null;
         mSmsDispatchersController.dispose();
         mSmsDispatchersController = null;
-        if (mIntentReceiver != null) {
-            mIntentReceiver.dispose();
-            mIntentReceiver = null;
-        }
         super.tearDown();
     }
 
@@ -502,8 +462,8 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
     }
 
     @Test
+    @SmallTest
     public void testNotifyDomainSelectionTerminated() throws Exception {
-        registerTestIntentReceiver();
         setUpDomainSelectionConnection();
         setUpSmsDispatchers();
 
@@ -534,9 +494,13 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
         assertFalse(holder.isDomainSelectionRequested());
         assertEquals(0, holder.getPendingRequests().size());
 
-        Intent intent = mIntentReceiver.getIntent(2000);
-        assertNotNull(intent);
-        assertEquals(SmsManager.RESULT_ERROR_GENERIC_FAILURE, mIntentReceiver.getResultCode());
+        // We can use the IntentReceiver for receiving the sent result, but it can be reported as
+        // a flaky test since sometimes broadcasts can take a long time if the system is under load.
+        // At this point, we couldn't use the PendingIntent as a mock because it's a final class
+        // so this test checks the method in the IActivityManager when the PendingIntent#send(int)
+        // is called.
+        verify(mIActivityManager).sendIntentSender(any(), any(), any(),
+                eq(SmsManager.RESULT_ERROR_GENERIC_FAILURE), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -587,14 +551,6 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
     public void testSetImsManager() {
         ImsManager imsManager = mock(ImsManager.class);
         assertTrue(mSmsDispatchersController.setImsManager(imsManager));
-    }
-
-    private void registerTestIntentReceiver() throws Exception {
-        // unmock ActivityManager to be able to register receiver, create real PendingIntent and
-        // receive a test intent.
-        restoreInstance(Singleton.class, "mInstance", mIActivityManagerSingleton);
-        restoreInstance(ActivityManager.class, "IActivityManagerSingleton", null);
-        mIntentReceiver = new TestIntentReceiver(TestApplication.getAppContext());
     }
 
     private void setUpDomainSelectionConnectionAsNotSupported() {
