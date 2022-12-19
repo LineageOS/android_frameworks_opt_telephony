@@ -4112,6 +4112,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void iccTransmitApduLogicalChannel(int channel, int cla, int instruction, int p1, int p2,
             int p3, String data, Message result) {
+        iccTransmitApduLogicalChannel(channel, cla, instruction, p1, p2, p3, data, false, result);
+    }
+
+    @Override
+    public void iccTransmitApduLogicalChannel(int channel, int cla, int instruction, int p1, int p2,
+            int p3, String data, boolean isEs10Command, Message result) {
         if (channel <= 0) {
             throw new RuntimeException(
                     "Invalid channel in iccTransmitApduLogicalChannel: " + channel);
@@ -4128,6 +4134,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             + String.format(" channel = %d", channel)
                             + String.format(" cla = 0x%02X ins = 0x%02X", cla, instruction)
                             + String.format(" p1 = 0x%02X p2 = 0x%02X p3 = 0x%02X", p1, p2, p3)
+                            + " isEs10Command = " + isEs10Command
                             + " data = " + data);
                 } else {
                     riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
@@ -4136,7 +4143,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             try {
                 simProxy.iccTransmitApduLogicalChannel(
-                        rr.mSerial, channel, cla, instruction, p1, p2, p3, data);
+                        rr.mSerial, channel, cla, instruction, p1, p2, p3, data, isEs10Command);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(HAL_SERVICE_SIM, "iccTransmitApduLogicalChannel", e);
             }

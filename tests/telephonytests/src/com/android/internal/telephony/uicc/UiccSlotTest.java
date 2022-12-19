@@ -511,4 +511,51 @@ public class UiccSlotTest extends TelephonyTest {
         assertTrue("EuiccCard should be removable", mUiccSlot.isRemovable());
     }
 
+    @Test
+    @SmallTest
+    public void testMultipleEnabledProfilesData() {
+        IccSlotStatus iss = new IccSlotStatus();
+        IccSimPortInfo simPortInfo1 = new IccSimPortInfo();
+        simPortInfo1.mPortActive = false;
+        simPortInfo1.mLogicalSlotIndex = -1;
+        simPortInfo1.mIccId = "fake-iccid";
+
+        IccSimPortInfo simPortInfo2 = new IccSimPortInfo();
+        simPortInfo2.mPortActive = true;
+        simPortInfo2.mLogicalSlotIndex = 0;
+        simPortInfo2.mIccId = "fake-iccid";
+
+        iss.mSimPortInfos = new IccSimPortInfo[] {simPortInfo1, simPortInfo2};
+        iss.cardState = IccCardStatus.CardState.CARDSTATE_PRESENT;
+        iss.atr = "3B9F97C00AB1FE453FC6838031E073FE211F65D002341569810F21";
+        iss.setMultipleEnabledProfilesMode(3);
+
+
+        // initial state
+        assertEquals(IccCardStatus.CardState.CARDSTATE_ABSENT, mUiccSlot.getCardState());
+        assertEquals(IccSlotStatus.MultipleEnabledProfilesMode.NONE,
+                mUiccSlot.getSupportedMepMode());
+        assertFalse(mUiccSlot.isMultipleEnabledProfileSupported());
+
+        // update slot to inactive
+        mUiccSlot.update(null, iss, 0 /* slotIndex */);
+
+        // assert on updated values
+        assertNull(mUiccSlot.getUiccCard());
+        assertEquals(IccCardStatus.CardState.CARDSTATE_PRESENT, mUiccSlot.getCardState());
+        assertTrue(mUiccSlot.isMultipleEnabledProfileSupported());
+        assertEquals(IccSlotStatus.MultipleEnabledProfilesMode.MEP_B,
+                mUiccSlot.getSupportedMepMode());
+
+        iss.mSimPortInfos = new IccSimPortInfo[] {simPortInfo1};
+        iss.setMultipleEnabledProfilesMode(1); // Set MEP mode to MEP-A1
+
+        // update port info and MEP mode
+        mUiccSlot.update(null, iss, 0 /* slotIndex */);
+
+        // assert on updated values
+        assertFalse(mUiccSlot.isMultipleEnabledProfileSupported());
+        assertEquals(IccSlotStatus.MultipleEnabledProfilesMode.MEP_A1,
+                mUiccSlot.getSupportedMepMode());
+    }
 }

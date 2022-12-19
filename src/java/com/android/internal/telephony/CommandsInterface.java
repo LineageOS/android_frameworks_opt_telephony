@@ -2141,6 +2141,27 @@ public interface CommandsInterface {
             int p1, int p2, int p3, String data, Message response);
 
     /**
+     * Exchange APDUs with the SIM on a logical channel.
+     *
+     * Input parameters equivalent to TS 27.007 AT+CGLA command.
+     *
+     * @param channel Channel id of the channel to use for communication. Has to
+     *            be greater than zero.
+     * @param cla Class of the APDU command.
+     * @param instruction Instruction of the APDU command.
+     * @param p1 P1 value of the APDU command.
+     * @param p2 P2 value of the APDU command.
+     * @param p3 P3 value of the APDU command. If p3 is negative a 4 byte APDU
+     *            is sent to the SIM.
+     * @param data Data to be sent with the APDU.
+     * @param isEs10Command whether APDU command is an ES10 command or a regular APDU
+     * @param response Callback message. response.obj.userObj will be
+     *            an IccIoResult on success.
+     */
+    void iccTransmitApduLogicalChannel(int channel, int cla, int instruction,
+            int p1, int p2, int p3, String data, boolean isEs10Command, Message response);
+
+    /**
      * Exchange APDUs with the SIM on a basic channel.
      *
      * Input parameters equivalent to TS 27.007 AT+CSIM command.
@@ -2969,8 +2990,21 @@ public interface CommandsInterface {
      * @param mediaType Media type is used to identify media stream such as audio or video.
      * @param direction Direction of this packet stream (e.g. uplink or downlink).
      * @param bitsPerSecond The bit rate requested by the opponent UE.
+     * @param result Callback message to receive the result.
      */
     default void sendAnbrQuery(int mediaType, int direction, int bitsPerSecond, Message result) {}
+
+    /**
+     * Notifies the recommended bit rate for the indicated logical channel and direction.
+     *
+     * @param mediaType MediaType is used to identify media stream such as audio or video.
+     * @param direction Direction of this packet stream (e.g. uplink or downlink).
+     * @param bitsPerSecond The recommended bit rate for the UE for a specific logical channel and
+     *        a specific direction by NW.
+     * @param result Callback message to receive the result.
+     */
+    default void triggerNotifyAnbr(int mediaType, int direction, int bitsPerSecond,
+                Message result) {}
 
     /**
      * Set the UE's ability to accept/reject null ciphered and/or null integrity-protected
