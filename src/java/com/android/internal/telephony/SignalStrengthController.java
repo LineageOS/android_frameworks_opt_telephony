@@ -602,12 +602,14 @@ public class SignalStrengthController extends Handler {
                             measurementType,
                             mPhone.getSubId(),
                             mPhone.isDeviceIdle());
+            int hysteresisDb = getMinimumHysteresisDb(isEnabledForAppRequest, ran, measurementType,
+                    consolidatedThresholds);
             consolidatedSignalThresholdInfos.add(
                     new SignalThresholdInfo.Builder()
                             .setRadioAccessNetworkType(ran)
                             .setSignalMeasurementType(measurementType)
                             .setHysteresisMs(REPORTING_HYSTERESIS_MILLIS)
-                            .setHysteresisDb(REPORTING_HYSTERESIS_DB)
+                            .setHysteresisDb(hysteresisDb)
                             .setThresholds(consolidatedThresholds, true /*isSystem*/)
                             .setIsEnabled(isEnabledForSystem || isEnabledForAppRequest)
                             .build());
@@ -616,6 +618,126 @@ public class SignalStrengthController extends Handler {
 
         localLog("setSignalStrengthReportingCriteria consolidatedSignalThresholdInfos="
                         + consolidatedSignalThresholdInfos);
+    }
+
+    /**
+     * Return the minimum hysteresis dB from all available sources:
+     * - system default
+     * - value set by client through API
+     * - threshold delta
+     */
+    @VisibleForTesting
+    public int getMinimumHysteresisDb(boolean isEnabledForAppRequest, int ran, int measurementType,
+              final int[] consolidatedThresholdList) {
+
+        int currHysteresisDb = getHysteresisDbFromCarrierConfig(ran, measurementType);
+
+        if (isEnabledForAppRequest) {
+            // Get minimum hysteresisDb at api
+            int apiHysteresisDb =
+                    getHysteresisDbFromSignalThresholdInfoRequests(ran, measurementType);
+
+            // Choose minimum of hysteresisDb between api Vs current system/cc value set
+            currHysteresisDb = Math.min(currHysteresisDb, apiHysteresisDb);
+
+            // Hal Req: choose hysteresis db value to be smaller of smallest of threshold delta
+            currHysteresisDb =  computeHysteresisDbOnSmallestThresholdDelta(
+                    currHysteresisDb, consolidatedThresholdList);
+        }
+        return currHysteresisDb;
+    }
+
+    /**
+     * Get the hysteresis db value from Signal Requests
+     * Note: Based on the current use case, there does not exist multile App signal threshold info
+     * requests with hysteresis db value, so this logic picks the latest hysteresis db value set.
+     *
+     * TODO(b/262655157): Support Multiple App Hysteresis DB value customisation
+     */
+    private int getHysteresisDbFromSignalThresholdInfoRequests(
+            @AccessNetworkConstants.RadioAccessNetworkType int ran,
+            @SignalThresholdInfo.SignalMeasurementType int measurement) {
+        int apiHysteresisDb = REPORTING_HYSTERESIS_DB;
+        for (SignalRequestRecord record : mSignalRequestRecords) {
+            for (SignalThresholdInfo info : record.mRequest.getSignalThresholdInfos()) {
+                if (isRanAndSignalMeasurementTypeMatch(ran, measurement, info)) {
+                    if (info.getHysteresisDb() >= 0) {
+                        apiHysteresisDb = info.getHysteresisDb();
+                    }
+                }
+            }
+        }
+        return apiHysteresisDb;
+    }
+
+    private int getHysteresisDbFromCarrierConfig(int ran, int measurement) {
+        int configHysteresisDb = REPORTING_HYSTERESIS_DB;
+        String configKey = null;
+
+        switch (ran) {
+            case AccessNetworkConstants.AccessNetworkType.GERAN:
+                if (measurement == SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI) {
+                    configKey = CarrierConfigManager.KEY_GERAN_RSSI_HYSTERESIS_DB_INT;
+                }
+                break;
+            case AccessNetworkConstants.AccessNetworkType.UTRAN:
+                if (measurement == SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSCP) {
+                    configKey = CarrierConfigManager.KEY_UTRAN_RSCP_HYSTERESIS_DB_INT;
+                } else if (measurement == SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_ECNO) {
+                    configKey = CarrierConfigManager.KEY_UTRAN_ECNO_HYSTERESIS_DB_INT;
+                }
+                break;
+            case AccessNetworkConstants.AccessNetworkType.EUTRAN:
+                if (measurement == SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSRP) {
+                    configKey = CarrierConfigManager.KEY_EUTRAN_RSRP_HYSTERESIS_DB_INT;
+                } else if (measurement == SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSRQ) {
+                    configKey = CarrierConfigManager.KEY_EUTRAN_RSRQ_HYSTERESIS_DB_INT;
+                } else if (measurement == SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSNR) {
+                    configKey = CarrierConfigManager.KEY_EUTRAN_RSSNR_HYSTERESIS_DB_INT;
+                }
+                break;
+            case AccessNetworkConstants.AccessNetworkType.NGRAN:
+                if (measurement == SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_SSRSRP) {
+                    configKey = CarrierConfigManager.KEY_NGRAN_SSRSRP_HYSTERESIS_DB_INT;
+                } else if (measurement == SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_SSRSRQ) {
+                    configKey = CarrierConfigManager.KEY_NGRAN_SSRSRQ_HYSTERESIS_DB_INT;
+                } else if (measurement == SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_SSSINR) {
+                    configKey = CarrierConfigManager.KEY_NGRAN_SSSINR_HYSTERESIS_DB_INT;
+                }
+                break;
+            default:
+                localLog("No matching configuration");
+        }
+        if (configKey != null) {
+            configHysteresisDb = mCarrierConfig.getInt(configKey, REPORTING_HYSTERESIS_DB);
+        }
+        return configHysteresisDb >= SignalThresholdInfo.HYSTERESIS_DB_MINIMUM
+                ? configHysteresisDb : REPORTING_HYSTERESIS_DB;
+    }
+
+    /**
+     * This method computes the hysteresis db value between smaller of the smallest Threshold Delta
+     * and system / cc / api hysteresis db value determined.
+     *
+     * @param currMinHysteresisDb  smaller value between system / cc / api hysteresis db value
+     * @param signalThresholdInfoArray consolidated threshold info with App request consolidated.
+     * @return current minimum hysteresis db value computed between above params.
+     *
+     */
+    private int computeHysteresisDbOnSmallestThresholdDelta(
+            int currMinHysteresisDb, final int[] signalThresholdInfoArray) {
+        int index = 0;
+        if (signalThresholdInfoArray.length > 1) {
+            while (index != signalThresholdInfoArray.length - 1) {
+                if (signalThresholdInfoArray[index + 1] - signalThresholdInfoArray[index]
+                        < currMinHysteresisDb) {
+                    currMinHysteresisDb =
+                            signalThresholdInfoArray[index + 1] - signalThresholdInfoArray[index];
+                }
+                index++;
+            }
+        }
+        return currMinHysteresisDb;
     }
 
     void setSignalStrengthDefaultValues() {

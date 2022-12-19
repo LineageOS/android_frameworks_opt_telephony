@@ -210,13 +210,17 @@ public class SignalThresholdInfoTest extends TestCase {
         assertThat(stList.get(1).getSignalMeasurementType())
                 .isEqualTo(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI);
         assertThat(stList.get(1).getThresholds()).isEqualTo(mRssiThresholds);
+        assertThat(stList.get(0).getHysteresisDb())
+                .isEqualTo(SignalThresholdInfo.HYSTERESIS_DB_MINIMUM);
+        assertThat(stList.get(1).getHysteresisDb())
+                .isEqualTo(HYSTERESIS_DB);
     }
 
     @Test
     @SmallTest
     public void testEqualsSignalThresholdInfo() {
         final int[] dummyThresholds = new int[] {-100, -90, -70, -60};
-        final int[] dummyThreholdsDisordered = new int[] {-60, -90, -100, -70};
+        final int[] dummyThresholdsDisordered = new int[] {-60, -90, -100, -70};
         SignalThresholdInfo st1 =
                 new SignalThresholdInfo.Builder()
                         .setRadioAccessNetworkType(1)
@@ -259,7 +263,7 @@ public class SignalThresholdInfoTest extends TestCase {
                         .setSignalMeasurementType(1)
                         .setHysteresisMs(HYSTERESIS_MS)
                         .setHysteresisDb(HYSTERESIS_DB)
-                        .setThresholds(dummyThreholdsDisordered)
+                        .setThresholds(dummyThresholdsDisordered)
                         .setIsEnabled(false)
                         .build();
 
@@ -276,6 +280,34 @@ public class SignalThresholdInfoTest extends TestCase {
 
     @Test
     @SmallTest
+    public void testHysteresisDbSettings_WithValidRange() {
+        SignalThresholdInfo st1 =
+                new SignalThresholdInfo.Builder()
+                        .setRadioAccessNetworkType(AccessNetworkConstants.AccessNetworkType.GERAN)
+                        .setSignalMeasurementType(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI)
+                        .setThresholds(new int[] {}, true)
+                        .build();
+        SignalThresholdInfo st2 =
+                new SignalThresholdInfo.Builder()
+                        .setRadioAccessNetworkType(AccessNetworkConstants.AccessNetworkType.GERAN)
+                        .setSignalMeasurementType(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI)
+                        .setThresholds(new int[] {}, true)
+                        .setHysteresisDb(3)
+                        .build();
+        SignalThresholdInfo st3 =
+                new SignalThresholdInfo.Builder()
+                        .setRadioAccessNetworkType(AccessNetworkConstants.AccessNetworkType.GERAN)
+                        .setSignalMeasurementType(SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI)
+                        .setThresholds(new int[] {}, true)
+                        .setHysteresisDb(1)
+                        .build();
+        assertThat(st1.getHysteresisDb()).isEqualTo(HYSTERESIS_DB);
+        assertThat(st2.getHysteresisDb()).isEqualTo(3);
+        assertThat(st3.getHysteresisDb()).isEqualTo(1);
+    }
+
+    @Test
+    @SmallTest
     public void testBuilderWithValidParameters() {
         ArrayList<SignalThresholdInfo> stList = buildSignalThresholdInfoWithPublicFields();
 
@@ -283,7 +315,7 @@ public class SignalThresholdInfoTest extends TestCase {
             SignalThresholdInfo st = stList.get(i);
             assertThat(st.getThresholds()).isEqualTo(mThresholds[i]);
             assertThat(st.getHysteresisMs()).isEqualTo(SignalThresholdInfo.HYSTERESIS_MS_DISABLED);
-            assertThat(st.getHysteresisDb()).isEqualTo(SignalThresholdInfo.HYSTERESIS_DB_DISABLED);
+            assertThat(st.getHysteresisDb()).isEqualTo(HYSTERESIS_DB);
             assertFalse(st.isEnabled());
         }
     }
@@ -297,26 +329,32 @@ public class SignalThresholdInfoTest extends TestCase {
             buildWithInvalidParameterThrowException(
                     AccessNetworkConstants.AccessNetworkType.GERAN,
                     signalMeasurementType,
-                    new int[] {-1});
+                    new int[] {-1}, 2);
         }
 
         // Null thresholds array
         buildWithInvalidParameterThrowException(
                 AccessNetworkConstants.AccessNetworkType.GERAN,
                 SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI,
-                null);
+                null, 0);
 
         // Empty thresholds
         buildWithInvalidParameterThrowException(
                 AccessNetworkConstants.AccessNetworkType.GERAN,
                 SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI,
-                new int[] {});
+                new int[] {}, 5);
 
         // Too long thresholds array
         buildWithInvalidParameterThrowException(
                 AccessNetworkConstants.AccessNetworkType.GERAN,
                 SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI,
-                new int[] {-100, -90, -70, -60, -58});
+                new int[] {-100, -90, -70, -60, -58}, 3);
+
+        // Test Hysteresis Db invalid Range
+        buildWithInvalidParameterThrowException(
+                AccessNetworkConstants.AccessNetworkType.GERAN,
+                SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI,
+                new int[] {-100, -90, -70, -60}, -1);
 
         // Thresholds value out of range
         for (int signalMeasurementType : INVALID_THRESHOLDS_MAP.keySet()) {
@@ -325,7 +363,7 @@ public class SignalThresholdInfoTest extends TestCase {
                 buildWithInvalidParameterThrowException(
                         getValidRan(signalMeasurementType),
                         signalMeasurementType,
-                        new int[] {threshold});
+                        new int[] {threshold}, 1);
             }
         }
 
@@ -336,19 +374,20 @@ public class SignalThresholdInfoTest extends TestCase {
                     type <= SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_ECNO;
                     type++) {
                 if (!validTypes.contains(type)) {
-                    buildWithInvalidParameterThrowException(ran, type, new int[] {-1});
+                    buildWithInvalidParameterThrowException(ran, type, new int[] {-1}, 2);
                 }
             }
         }
     }
 
     private void buildWithInvalidParameterThrowException(
-            int ran, int signalMeasurementType, int[] thresholds) {
+            int ran, int signalMeasurementType, int[] thresholds, int hysteresisDb) {
         try {
             new SignalThresholdInfo.Builder()
                     .setRadioAccessNetworkType(ran)
                     .setSignalMeasurementType(signalMeasurementType)
                     .setThresholds(thresholds)
+                    .setHysteresisDb(hysteresisDb)
                     .build();
             fail("exception expected");
         } catch (IllegalArgumentException | NullPointerException expected) {
