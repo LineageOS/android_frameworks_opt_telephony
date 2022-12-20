@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+package com.android.internal.telephony.domainselection;
+
 import static android.telephony.DisconnectCause.ERROR_UNSPECIFIED;
 import static android.telephony.DomainSelectionService.SELECTOR_TYPE_CALLING;
 import static android.telephony.NetworkRegistrationInfo.DOMAIN_CS;
@@ -121,8 +123,7 @@ public class NormalCallDomainSelectionConnectionTest extends TelephonyTest {
 
         verify(mMockDomainSelectionController).selectDomain(any(), any());
 
-        WwanSelectorCallback wwanCallback = null;
-        wwanCallback = mTransportCallback.onWwanSelected();
+        WwanSelectorCallback wwanCallback = mTransportCallback.onWwanSelected();
 
         assertFalse(future.isDone());
         wwanCallback.onDomainSelected(DOMAIN_CS);
@@ -147,8 +148,7 @@ public class NormalCallDomainSelectionConnectionTest extends TelephonyTest {
 
         verify(mMockDomainSelectionController).selectDomain(any(), any());
 
-        WwanSelectorCallback wwanCallback = null;
-        wwanCallback = mTransportCallback.onWwanSelected();
+        WwanSelectorCallback wwanCallback = mTransportCallback.onWwanSelected();
 
         assertFalse(future.isDone());
         wwanCallback.onDomainSelected(DOMAIN_PS);
@@ -169,6 +169,7 @@ public class NormalCallDomainSelectionConnectionTest extends TelephonyTest {
         mTransportCallback.onSelectionTerminated(ERROR_UNSPECIFIED);
 
         verify(mMockConnectionCallback).onSelectionTerminated(eq(ERROR_UNSPECIFIED));
+        assertNotNull(future);
     }
 
     @Test
@@ -178,14 +179,14 @@ public class NormalCallDomainSelectionConnectionTest extends TelephonyTest {
                 NormalCallDomainSelectionConnection.getSelectionAttributes(1, 2,
                         TELECOM_CALL_ID1, "123", false, 10, imsReasonInfo);
 
-        assertEquals(attributes.getSlotId(), 1);
-        assertEquals(attributes.getSubId(), 2);
-        assertEquals(attributes.getCallId(), TELECOM_CALL_ID1);
-        assertEquals(attributes.getNumber(), "123");
-        assertEquals(attributes.isVideoCall(), false);
-        assertEquals(attributes.isEmergency(), false);
-        assertEquals(attributes.getSelectorType(), SELECTOR_TYPE_CALLING);
-        assertEquals(attributes.getCsDisconnectCause(), 10);
-        assertEquals(attributes.getPsDisconnectCause(), imsReasonInfo);
+        assertEquals(1, attributes.getSlotId());
+        assertEquals(2, attributes.getSubId());
+        assertEquals(TELECOM_CALL_ID1, attributes.getCallId());
+        assertEquals("123", attributes.getNumber());
+        assertEquals(false, attributes.isVideoCall());
+        assertEquals(false, attributes.isEmergency());
+        assertEquals(SELECTOR_TYPE_CALLING, attributes.getSelectorType());
+        assertEquals(10, attributes.getCsDisconnectCause());
+        assertEquals(imsReasonInfo, attributes.getPsDisconnectCause());
     }
 }
