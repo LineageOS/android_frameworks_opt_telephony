@@ -700,7 +700,7 @@ public class SubscriptionInfoUpdater extends Handler {
         CarrierConfigManager configManager =
                 (CarrierConfigManager) sContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
         configManager.updateConfigForPhoneId(phoneId, simState);
-        mCarrierServiceBindHelper.updateForPhoneId(phoneId, simState);
+        mCarrierServiceBindHelper.updateSimState(phoneId, simState);
     }
 
     private void updateSubscriptionCarrierId(int phoneId, String simState) {
