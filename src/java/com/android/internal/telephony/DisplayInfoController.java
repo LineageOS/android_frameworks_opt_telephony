@@ -18,9 +18,11 @@ package com.android.internal.telephony;
 
 import android.annotation.NonNull;
 import android.os.Handler;
+import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.telephony.AnomalyReporter;
+import android.telephony.ServiceState;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.util.IndentingPrintWriter;
@@ -62,10 +64,14 @@ public class DisplayInfoController extends Handler {
                     TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED)
             );
 
+    /** Event for service state changed (roaming). */
+    private static final int EVENT_SERVICE_STATE_CHANGED = 1;
+
     private final Phone mPhone;
     private final NetworkTypeController mNetworkTypeController;
     private final RegistrantList mTelephonyDisplayInfoChangedRegistrants = new RegistrantList();
     private @NonNull TelephonyDisplayInfo mTelephonyDisplayInfo;
+    private @NonNull ServiceState mServiceState;
 
     public DisplayInfoController(Phone phone) {
         mPhone = phone;
@@ -75,6 +81,13 @@ public class DisplayInfoController extends Handler {
                 TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE);
         mNetworkTypeController = new NetworkTypeController(phone, this);
         mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
+
+        mServiceState = mPhone.getServiceStateTracker().getServiceState();
+        post(() -> {
+            mPhone.getServiceStateTracker()
+                    .registerForServiceStateChanged(this, EVENT_SERVICE_STATE_CHANGED, null);
+            updateTelephonyDisplayInfo();
+        });
     }
 
     /**
@@ -91,7 +104,8 @@ public class DisplayInfoController extends Handler {
     public void updateTelephonyDisplayInfo() {
         TelephonyDisplayInfo newDisplayInfo = new TelephonyDisplayInfo(
                 mNetworkTypeController.getDataNetworkType(),
-                mNetworkTypeController.getOverrideNetworkType());
+                mNetworkTypeController.getOverrideNetworkType(),
+                mServiceState.getRoaming());
         if (!newDisplayInfo.equals(mTelephonyDisplayInfo)) {
             logl("TelephonyDisplayInfo changed from " + mTelephonyDisplayInfo + " to "
                     + newDisplayInfo);
@@ -151,6 +165,17 @@ public class DisplayInfoController extends Handler {
      */
     public void unregisterForTelephonyDisplayInfoChanged(Handler h) {
         mTelephonyDisplayInfoChangedRegistrants.remove(h);
+    }
+
+    @Override
+    public void handleMessage(@NonNull Message msg) {
+        switch (msg.what) {
+            case EVENT_SERVICE_STATE_CHANGED:
+                mServiceState = mPhone.getServiceStateTracker().getServiceState();
+                log("ServiceState updated, isRoaming=" + mServiceState.getRoaming());
+                updateTelephonyDisplayInfo();
+                break;
+        }
     }
 
     /**
