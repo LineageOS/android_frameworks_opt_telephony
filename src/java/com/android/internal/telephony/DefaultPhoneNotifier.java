@@ -37,6 +37,7 @@ import android.telephony.TelephonyRegistryManager;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsCallSession;
 import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.MediaQualityStatus;
 
 import com.android.telephony.Rlog;
 
@@ -235,6 +236,12 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
             int callNetworkType) {
         mTelephonyRegistryMgr.notifyCallQualityChanged(sender.getPhoneId(), sender.getSubId(),
                 callQuality, callNetworkType);
+    }
+
+    @Override
+    public void notifyMediaQualityStatusChanged(Phone sender, MediaQualityStatus status) {
+        mTelephonyRegistryMgr.notifyMediaQualityStatusChanged(
+                sender.getPhoneId(), sender.getSubId(), status);
     }
 
     @Override
