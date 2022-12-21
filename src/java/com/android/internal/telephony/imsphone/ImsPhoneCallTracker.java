@@ -95,6 +95,8 @@ import android.telephony.ims.ImsMmTelManager;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsStreamMediaProfile;
 import android.telephony.ims.ImsSuppServiceNotification;
+import android.telephony.ims.MediaQualityStatus;
+import android.telephony.ims.MediaThreshold;
 import android.telephony.ims.ProvisioningManager;
 import android.telephony.ims.RtpHeaderExtension;
 import android.telephony.ims.RtpHeaderExtensionType;
@@ -481,6 +483,18 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }, mExecutor);
         }
 
+        @Override
+        public void onMediaQualityStatusChanged(MediaQualityStatus status) {
+            TelephonyUtils.runWithCleanCallingIdentity(()-> {
+                if (mPhone != null && mPhone.mDefaultPhone != null) {
+                    if (DBG) log("onMediaQualityStatusChanged " + status);
+                    mPhone.onMediaQualityStatusChanged(status);
+                } else {
+                    loge("onMediaQualityStatusChanged: null phone");
+                }
+            }, mExecutor);
+        }
+
         /**
          * Schedule the given Runnable on mExecutor and block this thread until it finishes.
          * @param r The Runnable to run.
@@ -644,6 +658,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private static final int EVENT_REDIAL_WITHOUT_RTT = 32;
     private static final int EVENT_START_IMS_TRAFFIC_DONE = 33;
     private static final int EVENT_CONNECTION_SETUP_FAILURE = 34;
+    private static final int EVENT_NEW_ACTIVE_CALL_STARTED = 35;
 
     private static final int TIMEOUT_HANGUP_PENDINGMO = 500;
 
@@ -776,11 +791,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     private boolean mSupportCepOnPeer = true;
     private boolean mSupportD2DUsingRtp = false;
     private boolean mSupportSdpForRtpHeaderExtensions = false;
+    private int mThresholdRtpPacketLoss;
+    private int mThresholdRtpJitter;
+    private long mThresholdRtpInactivityTime;
     private final List<Integer> mSrvccTypeSupported = new ArrayList<>();
     private final SrvccStartedCallback mSrvccStartedCallback = new SrvccStartedCallback();
     // Tracks the state of our background/foreground calls while a call hold/swap operation is
     // in progress. Values listed above.
     private HoldSwapState mHoldSwitchingState = HoldSwapState.INACTIVE;
+    private MediaThreshold mMediaThreshold;
 
     private String mLastDialString = null;
     private ImsDialArgs mLastDialArgs = null;
@@ -1419,6 +1438,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             mUtInterface = null;
         }
         mCurrentlyConnectedSubId = Optional.empty();
+        mMediaThreshold = null;
         resetImsCapabilities();
         hangupAllOrphanedConnections(DisconnectCause.LOST_SIGNAL);
         // For compatibility with apps that still use deprecated intent
@@ -1843,6 +1863,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         logi("updateCarrierConfiguration: Updating ImsService configs.");
         mCarrierConfigLoadedForSubscription = true;
         updateImsServiceConfig();
+        updateMediaThreshold(
+                mThresholdRtpPacketLoss, mThresholdRtpJitter, mThresholdRtpInactivityTime);
     }
 
     /**
@@ -1891,6 +1913,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         mSupportSdpForRtpHeaderExtensions = carrierConfig.getBoolean(
                 CarrierConfigManager
                         .KEY_SUPPORTS_SDP_NEGOTIATION_OF_D2D_RTP_HEADER_EXTENSIONS_BOOL);
+        mThresholdRtpPacketLoss = carrierConfig.getInt(
+                CarrierConfigManager.ImsVoice.KEY_VOICE_RTP_PACKET_LOSS_RATE_THRESHOLD_INT);
+        mThresholdRtpInactivityTime = carrierConfig.getLong(
+                CarrierConfigManager.ImsVoice
+                        .KEY_VOICE_RTP_INACTIVITY_TIME_THRESHOLD_MILLIS_LONG);
+        mThresholdRtpJitter = carrierConfig.getInt(
+                CarrierConfigManager.ImsVoice.KEY_VOICE_RTP_JITTER_THRESHOLD_MILLIS_INT);
 
         if (mPhone.getContext().getResources().getBoolean(
                 com.android.internal.R.bool.config_allow_ussd_over_ims)) {
@@ -1944,6 +1973,33 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         if (srvccType != null && srvccType.length > 0) {
             mSrvccTypeSupported.addAll(
                     Arrays.stream(srvccType).boxed().collect(Collectors.toList()));
+        }
+    }
+
+    private void updateMediaThreshold(
+            int thresholdPacketLoss, int thresholdJitter, long thresholdInactivityTime) {
+        if (!MediaThreshold.isValidRtpInactivityTimeMillis(thresholdInactivityTime)
+                && !MediaThreshold.isValidJitterMillis(thresholdJitter)
+                && !MediaThreshold.isValidRtpPacketLossRate(thresholdPacketLoss)) {
+            logi("There is no valid RTP threshold value");
+            return;
+        }
+        int[] thPacketLosses = {thresholdPacketLoss};
+        long[] thInactivityTimesMillis = {thresholdInactivityTime};
+        int[] thJitters = {thresholdJitter};
+        MediaThreshold threshold = new MediaThreshold.Builder()
+                .setThresholdsRtpPacketLossRate(thPacketLosses)
+                .setThresholdsRtpInactivityTimeMillis(thInactivityTimesMillis)
+                .setThresholdsRtpJitterMillis(thJitters).build();
+        if (mMediaThreshold == null || !mMediaThreshold.equals(threshold)) {
+            logi("setMediaThreshold :" + threshold);
+            try {
+                mImsManager.setMediaThreshold(MediaQualityStatus.MEDIA_SESSION_TYPE_AUDIO,
+                        threshold);
+                mMediaThreshold = threshold;
+            } catch (ImsException e) {
+                loge("setMediaThreshold Failed: " + e);
+            }
         }
     }
 
@@ -2997,8 +3053,15 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         // Do not log operations that do not change the state
         mOperationLocalLog.log("processCallStateChange: state=" + state + " cause=" + cause
                 + " connId=" + System.identityHashCode(conn));
-
+        boolean noActiveCall = false;
+        if (mForegroundCall.getState() != ImsPhoneCall.State.ACTIVE
+                && mBackgroundCall.getState() != ImsPhoneCall.State.ACTIVE) {
+            noActiveCall = true;
+        }
         changed = conn.update(imsCall, state);
+        if (noActiveCall && changed && state == ImsPhoneCall.State.ACTIVE) {
+            sendMessage(obtainMessage(EVENT_NEW_ACTIVE_CALL_STARTED));
+        }
         if (state == ImsPhoneCall.State.DISCONNECTED) {
             changed = conn.onDisconnect(cause) || changed;
             //detach the disconnected connections
@@ -4847,6 +4910,24 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     }
                 } catch (RemoteException e) {
                     Rlog.e(LOG_TAG, "Exception: " + e);
+                }
+                break;
+            }
+
+            case EVENT_NEW_ACTIVE_CALL_STARTED: {
+                try {
+                    MediaQualityStatus status = mImsManager
+                            .queryMediaQualityStatus(MediaQualityStatus.MEDIA_SESSION_TYPE_AUDIO);
+                    if (status != null) {
+                        if (mPhone != null && mPhone.mDefaultPhone != null) {
+                            if (DBG) log("notify media quality status: " + status);
+                            mPhone.onMediaQualityStatusChanged(status);
+                        } else {
+                            loge("onMediaQualityStatusChanged: null phone");
+                        }
+                    }
+                } catch (ImsException e) {
+                    Rlog.e(LOG_TAG, "Exception in queryMediaQualityStatus: " + e);
                 }
                 break;
             }

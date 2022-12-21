@@ -316,6 +316,26 @@ public abstract class SMSDispatcher extends Handler {
     protected abstract String getFormat();
 
     /**
+     * Gets the maximum number of times the SMS can be retried upon Failure,
+     * from the {@link android.telephony.CarrierConfigManager}
+     *
+     * @return the default maximum number of times SMS can be sent
+     */
+    protected int getMaxSmsRetryCount() {
+        return MAX_SEND_RETRIES;
+    }
+
+    /**
+     * Gets the Time delay before next send attempt on a failed SMS,
+     * from the {@link android.telephony.CarrierConfigManager}
+     *
+     * @return the Time in miiliseconds for delay before next send attempt on a failed SMS
+     */
+    protected int getSmsRetryDelayValue() {
+        return SEND_RETRY_DELAY;
+    }
+
+    /**
      * Called when a status report is received. This should correspond to a previously successful
      * SEND.
      *
@@ -1014,7 +1034,7 @@ public abstract class SMSDispatcher extends Handler {
                 // This is retry after failure over IMS but voice is not available.
                 // Set retry to max allowed, so no retry is sent and cause
                 // SmsManager.RESULT_ERROR_GENERIC_FAILURE to be returned to app.
-                tracker.mRetryCount = MAX_SEND_RETRIES;
+                tracker.mRetryCount = getMaxSmsRetryCount();
 
                 Rlog.d(TAG, "handleSendComplete: Skipping retry: "
                         + " isIms()=" + isIms()
@@ -1037,7 +1057,7 @@ public abstract class SMSDispatcher extends Handler {
                         tracker.isFromDefaultSmsApplication(mContext),
                         tracker.getInterval());
             } else if (error == SmsManager.RESULT_RIL_SMS_SEND_FAIL_RETRY
-                    && tracker.mRetryCount < MAX_SEND_RETRIES) {
+                    && tracker.mRetryCount < getMaxSmsRetryCount()) {
                 // Retry after a delay if needed.
                 // TODO: According to TS 23.040, 9.2.3.6, we should resend
                 //       with the same TP-MR as the failed message, and
@@ -1049,7 +1069,7 @@ public abstract class SMSDispatcher extends Handler {
                 tracker.mRetryCount++;
                 int errorCode = (smsResponse != null) ? smsResponse.mErrorCode : NO_ERROR_CODE;
                 Message retryMsg = obtainMessage(EVENT_SEND_RETRY, tracker);
-                sendMessageDelayed(retryMsg, SEND_RETRY_DELAY);
+                sendMessageDelayed(retryMsg, getSmsRetryDelayValue());
                 mPhone.getSmsStats().onOutgoingSms(
                         tracker.mImsRetry > 0 /* isOverIms */,
                         SmsConstants.FORMAT_3GPP2.equals(getFormat()),
