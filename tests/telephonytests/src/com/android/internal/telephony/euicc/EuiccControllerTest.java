@@ -65,6 +65,8 @@ import android.telephony.euicc.EuiccManager;
 
 import androidx.test.runner.AndroidJUnit4;
 
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.euicc.EuiccConnector.GetOtaStatusCommandCallback;
 import com.android.internal.telephony.euicc.EuiccConnector.OtaStatusChangedCallback;
@@ -89,6 +91,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 @RunWith(AndroidJUnit4.class)
 public class EuiccControllerTest extends TelephonyTest {
@@ -128,6 +131,7 @@ public class EuiccControllerTest extends TelephonyTest {
     private static final int SUBSCRIPTION_ID = 12345;
     private static final String ICC_ID = "54321";
     private static final int CARD_ID = 25;
+    private static final int REMOVABLE_CARD_ID = 26;
 
     // Mocked classes
     private EuiccConnector mMockConnector;
@@ -1288,6 +1292,135 @@ public class EuiccControllerTest extends TelephonyTest {
     public void testIsCompactChangeEnabled_enable() {
         assertTrue(mController.isCompatChangeEnabled(TEST_PACKAGE_NAME,
                 SWITCH_WITHOUT_PORT_INDEX_EXCEPTION_ON_DISABLE));
+    }
+
+    @Test
+    public void testIsSimPortAvailable_invalidCase() {
+        setUiccCardInfos(false, true, true);
+        // assert non euicc card id
+        assertFalse(mController.isSimPortAvailable(REMOVABLE_CARD_ID, 0, PACKAGE_NAME));
+
+        // assert invalid port index
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 5 /* portIndex */, PACKAGE_NAME));
+    }
+
+    @Test
+    public void testIsSimPortAvailable_port_active() throws Exception {
+        setUiccCardInfos(false, true, true);
+
+        // port has empty iccid
+        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+
+        // Set port is active, has valid iccid(may be boot profile) and UiccProfile is empty
+        setUiccCardInfos(false, true, false);
+        when(mUiccController.getUiccPortForSlot(anyInt(), anyInt())).thenReturn(mUiccPort);
+        when(mUiccPort.getUiccProfile()).thenReturn(mUiccProfile);
+        when(mUiccProfile.isEmptyProfile()).thenReturn(true);
+        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+
+        // port is active, valid iccid, not empty profile but Phone object is null
+        when(mUiccPort.getUiccProfile()).thenReturn(mUiccProfile);
+        when(mUiccProfile.isEmptyProfile()).thenReturn(false);
+        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone});
+        // logicalSlotIndex of port#0 is 1, Phone object should be null
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+
+        // port is active, valid iccid, not empty profile but no carrier privileges
+        when(mUiccPort.getUiccProfile()).thenReturn(mUiccProfile);
+        when(mUiccProfile.isEmptyProfile()).thenReturn(false);
+        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone, mPhone});
+        when(mPhone.getCarrierPrivilegesTracker()).thenReturn(null);
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+        when(mPhone.getCarrierPrivilegesTracker()).thenReturn(mCarrierPrivilegesTracker);
+        when(mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForPackage(PACKAGE_NAME))
+                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS);
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+
+        // port is active, valid iccid, not empty profile and has carrier privileges
+        when(mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForPackage(PACKAGE_NAME))
+                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
+        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+    }
+
+    @Test
+    public void testIsSimPortAvailable_port_inActive() {
+        setUiccCardInfos(false, false, true);
+        when(mUiccController.getUiccSlots()).thenReturn(new UiccSlot[]{mUiccSlot});
+        when(mUiccSlot.isRemovable()).thenReturn(true);
+
+        // Check getRemovableNonEuiccSlot null case
+        when(mUiccSlot.isEuicc()).thenReturn(true);
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+
+        // Check getRemovableNonEuiccSlot isActive() false case
+        when(mUiccSlot.isEuicc()).thenReturn(false);
+        when(mUiccSlot.isActive()).thenReturn(false);
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+
+        // assert false,multisim is not enabled
+        when(mUiccSlot.isEuicc()).thenReturn(false);
+        when(mUiccSlot.isActive()).thenReturn(true);
+        when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(PACKAGE_NAME)).thenReturn(
+                TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
+        when(mTelephonyManager.isMultiSimEnabled()).thenReturn(false);
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+
+        // assert false, caller does not have carrier privileges
+        setHasWriteEmbeddedPermission(false);
+        when(mTelephonyManager.isMultiSimEnabled()).thenReturn(true);
+        when(mUiccSlot.getPortList()).thenReturn(new int[] {0});
+        when(mSubscriptionManager.getActiveSubscriptionInfoForSimSlotIndex(anyInt())).thenReturn(
+                new SubscriptionInfo.Builder().build());
+        when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(PACKAGE_NAME)).thenReturn(
+                TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS);
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+
+        // assert true, caller does not have carrier privileges but has write_embedded permission
+        setHasWriteEmbeddedPermission(true);
+        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+
+        // assert true, caller has carrier privileges
+        setHasWriteEmbeddedPermission(false);
+        when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(PACKAGE_NAME)).thenReturn(
+                TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
+        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+    }
+
+
+    private void setUiccCardInfos(boolean isMepSupported, boolean isPortActive,
+            boolean isEmptyPort) {
+        List<UiccPortInfo> euiccPortInfoList;
+        if (isMepSupported) {
+            euiccPortInfoList = Arrays.asList(
+                    new UiccPortInfo(isEmptyPort ? "" : ICC_ID /* iccId */, 0 /* portIdx */,
+                            isPortActive ? 1 : -1 /* logicalSlotIdx */,
+                            isPortActive /* isActive */),
+                    new UiccPortInfo(isEmptyPort ? "" : ICC_ID /* iccId */, 1 /* portIdx */,
+                            -1 /* logicalSlotIdx */,
+                            isPortActive /* isActive */));
+        } else {
+            euiccPortInfoList = Collections.singletonList(
+                    new UiccPortInfo(isEmptyPort ? "" : ICC_ID /* iccId */, 0 /* portIdx */,
+                            isPortActive ? 1 : -1 /* logicalSlotIdx */,
+                            isPortActive /* isActive */)
+                    );
+        }
+
+        UiccCardInfo cardInfo1 = new UiccCardInfo(true, CARD_ID, "", 0,
+                false /* isRemovable */,
+                isMepSupported /* isMultipleEnabledProfileSupported */,
+                euiccPortInfoList);
+        UiccCardInfo cardInfo2 = new UiccCardInfo(false /* isEuicc */,
+                REMOVABLE_CARD_ID /* cardId */,
+                "", 0, true /* isRemovable */,
+                false /* isMultipleEnabledProfileSupported */,
+                Collections.singletonList(
+                        new UiccPortInfo("" /* iccId */, 0 /* portIdx */,
+                                0 /* logicalSlotIdx */, true /* isActive */)));
+        ArrayList<UiccCardInfo> cardInfos = new ArrayList<>();
+        cardInfos.add(cardInfo1);
+        cardInfos.add(cardInfo2);
+        when(mTelephonyManager.getUiccCardsInfo()).thenReturn(cardInfos);
     }
 
     private void setUpUiccSlotData() {
