@@ -331,8 +331,11 @@ public class SubscriptionController extends ISub.Stub {
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public static SubscriptionController getInstance() {
+        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
+            throw new RuntimeException("getInstance should not be called.");
+        }
         if (sInstance == null) {
-           Log.wtf(LOG_TAG, "getInstance null");
+            Log.wtf(LOG_TAG, "getInstance null");
         }
 
         return sInstance;

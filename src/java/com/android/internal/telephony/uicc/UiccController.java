@@ -40,7 +40,6 @@ import android.preference.PreferenceManager;
 import android.sysprop.TelephonyProperties;
 import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
-import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyManager.SimState;
@@ -951,31 +950,6 @@ public class UiccController extends Handler {
     }
 
     /**
-     * Check if the SIM application is enabled on the card or not.
-     *
-     * @param phoneId The phone id.
-     * @return {@code true} if the application is enabled.
-     */
-    private boolean areUiccAppsEnabledOnCard(int phoneId) {
-        // When uicc apps are disabled(supported in IRadio 1.5), we will still get IccId from
-        // cardStatus (since IRadio 1.2). Amd upon cardStatus change we'll receive another
-        // handleSimNotReady so this will be evaluated again.
-        UiccSlot slot = getUiccSlotForPhone(phoneId);
-        if (slot == null) return false;
-        UiccPort port = getUiccPort(phoneId);
-        String iccId = (port == null) ? null : port.getIccId();
-        if (iccId == null) {
-            return false;
-        }
-        SubscriptionInfo info = SubscriptionManagerService.getInstance()
-                .getAllSubInfoList(mContext.getOpPackageName(), mContext.getAttributionTag())
-                .stream().filter(subInfo -> subInfo.getIccId().equals(
-                        IccUtils.stripTrailingFs(iccId)))
-                .findFirst().orElse(null);
-        return info != null && info.areUiccApplicationsEnabled();
-    }
-
-    /**
      * Update the SIM state.
      *
      * @param phoneId Phone id.
@@ -1011,7 +985,8 @@ public class UiccController extends Handler {
 
                         if (simState == TelephonyManager.SIM_STATE_NOT_READY
                                 && (uiccProfile != null && !uiccProfile.isEmptyProfile())
-                                && areUiccAppsEnabledOnCard(phoneId)) {
+                                && SubscriptionManagerService.getInstance()
+                                .areUiccAppsEnabledOnCard(phoneId)) {
                             // STATE_NOT_READY is not a final state for when both
                             // 1) It's not an empty profile, and
                             // 2) Its uicc applications are set to enabled.
