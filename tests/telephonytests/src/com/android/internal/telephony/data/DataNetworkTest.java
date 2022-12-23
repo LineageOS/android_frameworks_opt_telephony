@@ -365,7 +365,8 @@ public class DataNetworkTest extends TelephonyTest {
                 .setQosBearerSessions(new ArrayList<>())
                 .setTrafficDescriptors(new ArrayList<>())
                 .build();
-        mDataNetworkUT.tearDown(1/*TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED*/);
+        mDataNetworkUT.sendMessage(7/*EVENT_TEAR_DOWN_NETWORK*/,
+                1/*TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED*/);
         mDataNetworkUT.sendMessage(8/*EVENT_DATA_STATE_CHANGED*/,
                 new AsyncResult(transport, new ArrayList<>(Arrays.asList(response)), null));
         processAllMessages();
@@ -598,7 +599,7 @@ public class DataNetworkTest extends TelephonyTest {
         processAllMessages();
 
         verify(mDataNetworkCallback).onDisconnected(eq(mDataNetworkUT),
-                eq(DataFailCause.RADIO_NOT_AVAILABLE), eq(DataNetwork.TEAR_DOWN_REASON_NONE));
+                eq(DataFailCause.RADIO_NOT_AVAILABLE));
     }
 
     @Test
@@ -856,9 +857,8 @@ public class DataNetworkTest extends TelephonyTest {
                 anyInt());
         verify(mMockedWwanDataServiceManager).deactivateDataCall(eq(123),
                 eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
-        verify(mDataNetworkCallback).onDisconnected(eq(mDataNetworkUT),
-                eq(DataFailCause.EMM_DETACHED),
-                eq(DataNetwork.TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED));
+        verify(mDataNetworkCallback).onDisconnected(eq(mDataNetworkUT), eq(
+                DataFailCause.EMM_DETACHED));
 
         ArgumentCaptor<PreciseDataConnectionState> pdcsCaptor =
                 ArgumentCaptor.forClass(PreciseDataConnectionState.class);
@@ -971,7 +971,7 @@ public class DataNetworkTest extends TelephonyTest {
         verify(mMockedWlanDataServiceManager).deactivateDataCall(eq(123),
                 eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
         verify(mDataNetworkCallback).onDisconnected(eq(mDataNetworkUT), eq(
-                DataFailCause.EMM_DETACHED), anyInt() /* tear down reason */);
+                DataFailCause.EMM_DETACHED));
 
         ArgumentCaptor<PreciseDataConnectionState> pdcsCaptor =
                 ArgumentCaptor.forClass(PreciseDataConnectionState.class);
@@ -1245,7 +1245,7 @@ public class DataNetworkTest extends TelephonyTest {
         processAllMessages();
 
         verify(mDataNetworkCallback).onDisconnected(eq(mDataNetworkUT), eq(
-                DataFailCause.RADIO_NOT_AVAILABLE), eq(DataNetwork.TEAR_DOWN_REASON_NONE));
+                DataFailCause.RADIO_NOT_AVAILABLE));
         assertThat(mDataNetworkUT.isConnected()).isFalse();
     }
 

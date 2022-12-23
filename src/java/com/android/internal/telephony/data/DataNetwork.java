@@ -266,9 +266,8 @@ public class DataNetwork extends StateMachine {
     private static final int DEFAULT_INTERNET_NETWORK_SCORE = 50;
     private static final int OTHER_NETWORK_SCORE = 45;
 
-    @IntDef(prefix = {"TEAR_DOWN_REASON_"},
+    @IntDef(prefix = {"DEACTIVATION_REASON_"},
             value = {
-                    TEAR_DOWN_REASON_NONE,
                     TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED,
                     TEAR_DOWN_REASON_SIM_REMOVAL,
                     TEAR_DOWN_REASON_AIRPLANE_MODE_ON,
@@ -300,9 +299,6 @@ public class DataNetwork extends StateMachine {
                     TEAR_DOWN_REASON_PREFERRED_DATA_SWITCHED,
             })
     public @interface TearDownReason {}
-
-    /** Data network was not torn down. */
-    public static final int TEAR_DOWN_REASON_NONE = 0;
 
     /** Data network tear down requested by connectivity service. */
     public static final int TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED = 1;
@@ -381,7 +377,7 @@ public class DataNetwork extends StateMachine {
     /** Data network tear down due to data profile not preferred. */
     public static final int TEAR_DOWN_REASON_DATA_PROFILE_NOT_PREFERRED = 26;
 
-    /** Data network tear down due to handover not allowed by policy. */
+    /** Data network tear down due to not allowed by policy. */
     public static final int TEAR_DOWN_REASON_NOT_ALLOWED_BY_POLICY = 27;
 
     /** Data network tear down due to illegal state. */
@@ -630,11 +626,6 @@ public class DataNetwork extends StateMachine {
     private @DataFailureCause int mFailCause = DataFailCause.NONE;
 
     /**
-     * The tear down reason if the data call is voluntarily deactivated, not due to failure.
-     */
-    private @TearDownReason int mTearDownReason = TEAR_DOWN_REASON_NONE;
-
-    /**
      * The retry delay in milliseconds from setup data failure.
      */
     private long mRetryDelayMillis = DataCallResponse.RETRY_DURATION_UNDEFINED;
@@ -794,10 +785,9 @@ public class DataNetwork extends StateMachine {
          *
          * @param dataNetwork The data network.
          * @param cause The disconnect cause.
-         * @param tearDownReason The reason the network was torn down
          */
         public abstract void onDisconnected(@NonNull DataNetwork dataNetwork,
-                @DataFailureCause int cause, @TearDownReason int tearDownReason);
+                @DataFailureCause int cause);
 
         /**
          * Called when handover between IWLAN and cellular network succeeded.
@@ -1574,7 +1564,7 @@ public class DataNetwork extends StateMachine {
 
             if (mEverConnected) {
                 mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
-                        .onDisconnected(DataNetwork.this, mFailCause, mTearDownReason));
+                        .onDisconnected(DataNetwork.this, mFailCause));
                 if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                     unregisterForWwanEvents();
                 }
@@ -2542,7 +2532,6 @@ public class DataNetwork extends StateMachine {
         if (getCurrentState() == null || isDisconnected()) {
             return;
         }
-        mTearDownReason = reason;
         sendMessage(obtainMessage(EVENT_TEAR_DOWN_NETWORK, reason));
     }
 
@@ -3368,8 +3357,6 @@ public class DataNetwork extends StateMachine {
      */
     public static @NonNull String tearDownReasonToString(@TearDownReason int reason) {
         switch (reason) {
-            case TEAR_DOWN_REASON_NONE:
-                return "NONE";
             case TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED:
                 return "CONNECTIVITY_SERVICE_UNWANTED";
             case TEAR_DOWN_REASON_SIM_REMOVAL:

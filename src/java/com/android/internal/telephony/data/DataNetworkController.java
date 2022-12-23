@@ -1850,7 +1850,7 @@ public class DataNetworkController extends Handler {
             }
         }
 
-        log("Evaluated " + dataNetwork + ", " + evaluation);
+        log("Evaluated " + dataNetwork + ", " + evaluation.toString());
         return evaluation;
     }
 
@@ -2044,7 +2044,7 @@ public class DataNetworkController extends Handler {
                     return DataNetwork.TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK;
             }
         }
-        return DataNetwork.TEAR_DOWN_REASON_NONE;
+        return 0;
     }
 
     /**
@@ -2486,9 +2486,9 @@ public class DataNetworkController extends Handler {
 
                     @Override
                     public void onDisconnected(@NonNull DataNetwork dataNetwork,
-                            @DataFailureCause int cause, @TearDownReason int tearDownReason) {
+                            @DataFailureCause int cause) {
                         DataNetworkController.this.onDataNetworkDisconnected(
-                                dataNetwork, cause, tearDownReason);
+                                dataNetwork, cause);
                     }
 
                     @Override
@@ -2810,13 +2810,11 @@ public class DataNetworkController extends Handler {
      *
      * @param dataNetwork The data network.
      * @param cause The disconnect cause.
-     * @param tearDownReason The reason the network was torn down
      */
     private void onDataNetworkDisconnected(@NonNull DataNetwork dataNetwork,
-            @DataFailureCause int cause, @TearDownReason int tearDownReason) {
+            @DataFailureCause int cause) {
         logl("onDataNetworkDisconnected: " + dataNetwork + ", cause="
-                + DataFailCause.toString(cause) + "(" + cause + "), tearDownReason="
-                + DataNetwork.tearDownReasonToString(tearDownReason));
+                + DataFailCause.toString(cause) + "(" + cause + ")");
         mDataNetworkList.remove(dataNetwork);
         mPendingImsDeregDataNetworks.remove(dataNetwork);
         mDataRetryManager.cancelPendingHandoverRetry(dataNetwork);
@@ -2837,13 +2835,11 @@ public class DataNetworkController extends Handler {
                     () -> callback.onAnyDataNetworkExistingChanged(mAnyDataNetworkExisting)));
         }
 
-        // Immediately reestablish on target transport if network was torn down due to policy
-        long delayMillis = tearDownReason == DataNetwork.TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED
-                ? 0 : mDataConfigManager.getRetrySetupAfterDisconnectMillis();
         // Sometimes network was unsolicitedly reported lost for reasons. We should re-evaluate
         // and see if data network can be re-established again.
         sendMessageDelayed(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
-                        DataEvaluationReason.RETRY_AFTER_DISCONNECTED), delayMillis);
+                DataEvaluationReason.RETRY_AFTER_DISCONNECTED),
+                mDataConfigManager.getRetrySetupAfterDisconnectMillis());
     }
 
     /**
