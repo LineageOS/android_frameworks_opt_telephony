@@ -54,6 +54,7 @@ import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -120,6 +121,8 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     private SubscriptionManagerService mSubscriptionManagerServiceUT;
 
     private final SubscriptionProvider mSubscriptionProvider = new SubscriptionProvider();
+
+    private static final UserHandle FAKE_USER_HANDLE = new UserHandle(12);
 
     // mocked
     private SubscriptionManagerServiceCallback mMockedSubscriptionManagerServiceCallback;
@@ -228,6 +231,13 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
             fail("Failed to insert subscription. e=" + e);
         }
         return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    }
+
+    private void enableGetSubscriptionUserHandle() {
+        Resources mResources = mock(Resources.class);
+        doReturn(true).when(mResources).getBoolean(
+                eq(com.android.internal.R.bool.config_enable_get_subscription_user_handle));
+        doReturn(mResources).when(mContext).getResources();
     }
 
     @Test
@@ -917,18 +927,15 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     @Test
     public void testSetGetSubscriptionUserHandle() {
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
-        Resources mResources = Mockito.mock(Resources.class);
-        doReturn(true).when(mResources).getBoolean(
-                eq(com.android.internal.R.bool.config_enable_get_subscription_user_handle));
-        doReturn(mResources).when(mContext).getResources();
+        enableGetSubscriptionUserHandle();
 
         // Should fail without MANAGE_SUBSCRIPTION_USER_ASSOCIATION
         assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
-                .setSubscriptionUserHandle(new UserHandle(12), 1));
+                .setSubscriptionUserHandle(FAKE_USER_HANDLE, 1));
 
         mContextFixture.addCallingOrSelfPermission(
                 Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
-        mSubscriptionManagerServiceUT.setSubscriptionUserHandle(new UserHandle(12), 1);
+        mSubscriptionManagerServiceUT.setSubscriptionUserHandle(FAKE_USER_HANDLE, 1);
 
         processAllMessages();
         verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(1));
@@ -936,7 +943,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
                 .getSubscriptionInfoInternal(1);
         assertThat(subInfo).isNotNull();
-        assertThat(subInfo.getUserId()).isEqualTo(12);
+        assertThat(subInfo.getUserId()).isEqualTo(FAKE_USER_HANDLE.getIdentifier());
 
         mContextFixture.removeCallingOrSelfPermission(
                 Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
@@ -948,7 +955,35 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
 
         assertThat(mSubscriptionManagerServiceUT.getSubscriptionUserHandle(1))
-                .isEqualTo(new UserHandle(12));
+                .isEqualTo(FAKE_USER_HANDLE);
+    }
+
+    @Test
+    public void testIsSubscriptionAssociatedWithUser() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        enableGetSubscriptionUserHandle();
+
+        // Should fail without MANAGE_SUBSCRIPTION_USER_ASSOCIATION
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .isSubscriptionAssociatedWithUser(1, FAKE_USER_HANDLE));
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .getSubscriptionInfoListAssociatedWithUser(FAKE_USER_HANDLE));
+
+        mContextFixture.addCallingOrSelfPermission(
+                Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+
+        mSubscriptionManagerServiceUT.setSubscriptionUserHandle(FAKE_USER_HANDLE, 1);
+        processAllMessages();
+        verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(1));
+
+        List<SubscriptionInfo> associatedSubInfoList = mSubscriptionManagerServiceUT
+                .getSubscriptionInfoListAssociatedWithUser(FAKE_USER_HANDLE);
+        assertThat(associatedSubInfoList.size()).isEqualTo(1);
+        assertThat(associatedSubInfoList.get(0).getSubscriptionId()).isEqualTo(1);
+
+        assertThat(mSubscriptionManagerServiceUT.isSubscriptionAssociatedWithUser(1,
+                FAKE_USER_HANDLE)).isEqualTo(true);
     }
 
     @Test
@@ -1522,24 +1557,13 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     }
 
     @Test
-    public void testGetNonAccessibleFields() {
+    public void testGetNonAccessibleFields() throws Exception {
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
-        Set<String> accessibleColumns = Set.of(
-                SimInfo.COLUMN_ENHANCED_4G_MODE_ENABLED,
-                SimInfo.COLUMN_VT_IMS_ENABLED,
-                SimInfo.COLUMN_WFC_IMS_ENABLED,
-                SimInfo.COLUMN_WFC_IMS_MODE,
-                SimInfo.COLUMN_WFC_IMS_ROAMING_MODE,
-                SimInfo.COLUMN_WFC_IMS_ROAMING_ENABLED,
-                SimInfo.COLUMN_ENABLED_MOBILE_DATA_POLICIES,
-                SimInfo.COLUMN_IMS_RCS_UCE_ENABLED,
-                SimInfo.COLUMN_CROSS_SIM_CALLING_ENABLED,
-                SimInfo.COLUMN_RCS_CONFIG,
-                SimInfo.COLUMN_D2D_STATUS_SHARING,
-                SimInfo.COLUMN_VOIMS_OPT_IN_STATUS,
-                SimInfo.COLUMN_D2D_STATUS_SHARING_SELECTED_CONTACTS,
-                SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED
-        );
+
+        Field field = SubscriptionManagerService.class.getDeclaredField(
+                "DIRECT_ACCESS_SUBSCRIPTION_COLUMNS");
+        field.setAccessible(true);
+        Set<String> accessibleColumns = (Set<String>) field.get(null);
 
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
 

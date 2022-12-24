@@ -173,9 +173,12 @@ public class SmsControllerTest extends TelephonyTest {
     @Test
     public void sendVisualVoicemailSmsForSubscriber_phoneIsNotInEcm() {
         assertFalse(mPhone.isInEcm());
+        int subId = 1;
+        doReturn(true).when(mSubscriptionManager)
+                .isSubscriptionAssociatedWithUser(eq(subId), any());
 
         mSmsControllerUT.sendVisualVoicemailSmsForSubscriber(mCallingPackage,null ,
-                1, null, 0, null, null);
+                subId, null, 0, null, null);
         verify(mIccSmsInterfaceManager).sendTextWithSelfPermissions(any(),
                 any(), any(), any(), any(), any(), any(), eq(false), eq(true));
     }
@@ -194,7 +197,11 @@ public class SmsControllerTest extends TelephonyTest {
 
     @Test
     public void sendsendTextForSubscriberTest() {
-        mSmsControllerUT.sendTextForSubscriber(1, mCallingPackage, null, "1234",
+        int subId = 1;
+        doReturn(true).when(mSubscriptionManager)
+                .isSubscriptionAssociatedWithUser(eq(subId), any());
+
+        mSmsControllerUT.sendTextForSubscriber(subId, mCallingPackage, null, "1234",
                 null, "text", null, null, false, 0L, true, true);
         verify(mIccSmsInterfaceManager, Mockito.times(1))
                 .sendText(mCallingPackage, "1234", null, "text", null, null, false, 0L, true);
