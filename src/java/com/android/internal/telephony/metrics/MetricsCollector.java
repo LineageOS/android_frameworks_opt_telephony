@@ -483,17 +483,17 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         if (phones.length == 0) {
             return StatsManager.PULL_SKIP;
         }
-        boolean isAutoDataSwitchOn = false;
-        for (Phone phone : phones) {
-            // only applies to non-DDS
-            if (phone.getSubId() != SubscriptionManager.getDefaultDataSubscriptionId()) {
-                isAutoDataSwitchOn = phone.getDataSettingsManager().isMobileDataPolicyEnabled(
-                        TelephonyManager.MOBILE_DATA_POLICY_AUTO_DATA_SWITCH);
-                break;
-            }
-        }
+        boolean isAutoDataSwitchOn = Arrays.stream(phones)
+                .anyMatch(phone ->
+                        phone.getSubId() != SubscriptionManager.getDefaultDataSubscriptionId()
+                                && phone.getDataSettingsManager().isMobileDataPolicyEnabled(
+                        TelephonyManager.MOBILE_DATA_POLICY_AUTO_DATA_SWITCH));
+        boolean hasDedicatedManagedProfileSub = Arrays.stream(phones)
+                .anyMatch(Phone::isManagedProfile);
+
         data.add(TelephonyStatsLog.buildStatsEvent(DEVICE_TELEPHONY_PROPERTIES, true,
-                isAutoDataSwitchOn, mStorage.getAutoDataSwitchToggleCount()));
+                isAutoDataSwitchOn, mStorage.getAutoDataSwitchToggleCount(),
+                hasDedicatedManagedProfileSub));
         return StatsManager.PULL_SUCCESS;
     }
 
@@ -816,7 +816,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 sms.isEsim,
                 sms.carrierId,
                 sms.messageId,
-                sms.count);
+                sms.count,
+                sms.isManagedProfile);
     }
 
     private static StatsEvent buildStatsEvent(OutgoingSms sms) {
@@ -838,7 +839,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 sms.intervalMillis,
                 sms.count,
                 sms.sendErrorCode,
-                sms.networkErrorCode);
+                sms.networkErrorCode,
+                sms.isManagedProfile);
     }
 
     private static StatsEvent buildStatsEvent(DataCallSession dataCallSession) {

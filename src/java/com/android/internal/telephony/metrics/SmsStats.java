@@ -233,6 +233,7 @@ public class SmsStats {
         // SMS messages (e.g. those handled by OS or error cases).
         proto.messageId = RANDOM.nextLong();
         proto.count = 1;
+        proto.isManagedProfile = mPhone.isManagedProfile();
         return proto;
     }
 
@@ -258,6 +259,7 @@ public class SmsStats {
         proto.retryId = 0;
         proto.intervalMillis = intervalMillis;
         proto.count = 1;
+        proto.isManagedProfile = mPhone.isManagedProfile();
         return proto;
     }
 
