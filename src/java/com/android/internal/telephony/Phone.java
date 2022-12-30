@@ -39,6 +39,7 @@ import android.os.RegistrantList;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.UserHandle;
+import android.os.UserManager;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.sysprop.TelephonyProperties;
@@ -5132,6 +5133,20 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return subManager.isValidSubscriptionId(subId)
                 ? subManager.getSubscriptionUserHandle(subId)
                 : null;
+    }
+
+    /**
+     * Checks if the context user is a managed profile.
+     *
+     * Note that this applies specifically to <em>managed</em> profiles.
+     *
+     * @return whether the context user is a managed profile.
+     */
+    public boolean isManagedProfile() {
+        UserHandle userHandle = getUserHandle();
+        UserManager userManager = mContext.getSystemService(UserManager.class);
+        if (userHandle == null || userManager == null) return false;
+        return userManager.isManagedProfile(userHandle.getIdentifier());
     }
 
     /**
