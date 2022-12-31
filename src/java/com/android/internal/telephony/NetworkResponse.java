@@ -523,22 +523,6 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
         RadioResponse.responseVoid(HAL_SERVICE_NETWORK, mRil, responseInfo);
     }
 
-    /**
-     * @param responseInfo Response info struct containing response type, serial no. and error
-     */
-    public void setLocationPrivacySettingResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(HAL_SERVICE_NETWORK, mRil, responseInfo);
-    }
-
-    /**
-     * @param responseInfo Response info struct containing response type, serial no. and error.
-     * @param shareLocation Indicates whether the location sharing is allowed or not.
-     */
-    public void getLocationPrivacySettingResponse(
-            RadioResponseInfo responseInfo, boolean shareLocation) {
-        RadioResponse.responseInts(HAL_SERVICE_NETWORK, mRil, responseInfo, shareLocation ? 1 : 0);
-    }
-
     @Override
     public String getInterfaceHash() {
         return IRadioNetworkResponse.HASH;
