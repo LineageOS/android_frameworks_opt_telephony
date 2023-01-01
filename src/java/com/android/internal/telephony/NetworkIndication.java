@@ -25,7 +25,6 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_EMERGENCY_NE
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_LCEDATA_RECV;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NETWORK_SCAN_RESULT;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NITZ_TIME_RECEIVED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_NETWORK_INITIATED_LOCATION_RESULT;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED;
@@ -401,20 +400,6 @@ public class NetworkIndication extends IRadioNetworkIndication.Stub {
 
         mRil.mEmergencyNetworkScanRegistrants.notifyRegistrants(
                 new AsyncResult(null, response, null));
-    }
-
-    /**
-     *  Reports the result of the network initiated location request.
-     *
-     *  @param locationResponseType result of the network initiated location request.
-     *         Define by LocationResponseType.
-     */
-    public void onNetworkInitiatedLocationResult(int indicationType, int locationResponseType) {
-        mRil.processIndication(HAL_SERVICE_NETWORK, indicationType);
-
-        if (mRil.isLogOrTrace()) {
-            mRil.unsljLogvRet(RIL_UNSOL_ON_NETWORK_INITIATED_LOCATION_RESULT, locationResponseType);
-        }
     }
 
     @Override
