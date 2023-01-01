@@ -4625,6 +4625,22 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     public void notifySrvccState(int state) {
         if (DBG) log("notifySrvccState state=" + state);
 
+        if (mImsManager != null) {
+            try {
+                if (state == TelephonyManager.SRVCC_STATE_HANDOVER_STARTED) {
+                    mImsManager.notifySrvccStarted(mSrvccStartedCallback);
+                } else if (state == TelephonyManager.SRVCC_STATE_HANDOVER_COMPLETED) {
+                    mImsManager.notifySrvccCompleted();
+                } else if (state == TelephonyManager.SRVCC_STATE_HANDOVER_FAILED) {
+                    mImsManager.notifySrvccFailed();
+                } else if (state == TelephonyManager.SRVCC_STATE_HANDOVER_CANCELED) {
+                    mImsManager.notifySrvccCanceled();
+                }
+            } catch (ImsException e) {
+                loge("notifySrvccState : exception " + e);
+            }
+        }
+
         switch(state) {
             case TelephonyManager.SRVCC_STATE_HANDOVER_STARTED:
                 mSrvccState = Call.SrvccState.STARTED;
@@ -4655,22 +4671,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             default:
                 //ignore invalid state
                 return;
-        }
-
-        if (mImsManager != null) {
-            try {
-                if (mSrvccState == Call.SrvccState.STARTED) {
-                    mImsManager.notifySrvccStarted(mSrvccStartedCallback);
-                } else if (mSrvccState == Call.SrvccState.COMPLETED) {
-                    mImsManager.notifySrvccCompleted();
-                } else if (mSrvccState == Call.SrvccState.FAILED) {
-                    mImsManager.notifySrvccFailed();
-                } else if (mSrvccState == Call.SrvccState.CANCELED) {
-                    mImsManager.notifySrvccCanceled();
-                }
-            } catch (ImsException e) {
-                loge("notifySrvccState : exception " + e);
-            }
         }
     }
 
