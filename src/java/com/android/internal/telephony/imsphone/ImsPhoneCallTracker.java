@@ -3399,29 +3399,28 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 cause = DisconnectCause.IMS_MERGED_SUCCESSFULLY;
             }
 
-            String callId = imsCall.getSession().getCallId();
             EmergencyNumberTracker emergencyNumberTracker = null;
             EmergencyNumber num = null;
 
-            if (conn != null) {
+            if (conn != null && imsCall.getSession() != null) {
+                String callId = imsCall.getSession().getCallId();
                 emergencyNumberTracker = conn.getEmergencyNumberTracker();
                 num = conn.getEmergencyNumberInfo();
-            }
-
-            mMetrics.writeOnImsCallTerminated(mPhone.getPhoneId(), imsCall.getCallSession(),
+                mMetrics.writeOnImsCallTerminated(mPhone.getPhoneId(), imsCall.getCallSession(),
                     reasonInfo, mCallQualityMetrics.get(callId), num,
                     getNetworkCountryIso(), emergencyNumberTracker != null
-                    ? emergencyNumberTracker.getEmergencyNumberDbVersion()
-                    : TelephonyManager.INVALID_EMERGENCY_NUMBER_DB_VERSION);
-            mPhone.getVoiceCallSessionStats().onImsCallTerminated(conn, new ImsReasonInfo(
+                        ? emergencyNumberTracker.getEmergencyNumberDbVersion()
+                        : TelephonyManager.INVALID_EMERGENCY_NUMBER_DB_VERSION);
+                mPhone.getVoiceCallSessionStats().onImsCallTerminated(conn, new ImsReasonInfo(
                     maybeRemapReasonCode(reasonInfo),
                     reasonInfo.mExtraCode, reasonInfo.mExtraMessage));
-            // Remove info for the callId from the current calls and add it to the history
-            CallQualityMetrics lastCallMetrics = mCallQualityMetrics.remove(callId);
-            if (lastCallMetrics != null) {
-                mCallQualityMetricsHistory.add(lastCallMetrics);
+                // Remove info for the callId from the current calls and add it to the history
+                CallQualityMetrics lastCallMetrics = mCallQualityMetrics.remove(callId);
+                if (lastCallMetrics != null) {
+                    mCallQualityMetricsHistory.add(lastCallMetrics);
+                }
+                pruneCallQualityMetricsHistory();
             }
-            pruneCallQualityMetricsHistory();
             mPhone.notifyImsReason(reasonInfo);
 
             if (conn != null) {
