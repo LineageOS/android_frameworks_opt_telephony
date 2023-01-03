@@ -4398,8 +4398,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         @Override
         public void onCallSessionSendAnbrQuery(ImsCall imsCall, int mediaType, int direction,
                 int bitsPerSecond) {
-            log("onCallSessionSendAnbrQuery mediaType=" + mediaType + ", direction="
+            if (DBG) {
+                log("onCallSessionSendAnbrQuery mediaType=" + mediaType + ", direction="
                     + direction + ", bitPerSecond=" + bitsPerSecond);
+            }
             handleSendAnbrQuery(mediaType, direction, bitsPerSecond);
         }
     };
@@ -5940,6 +5942,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     /** Send the mediaType, direction, bitrate for ANBR Query to the radio */
     public void handleSendAnbrQuery(int mediaType, int direction, int bitsPerSecond) {
+        if (DBG) log("handleSendAnbrQuery - mediaType=" + mediaType);
         mPhone.getDefaultPhone().mCi.sendAnbrQuery(mediaType, direction, bitsPerSecond, null);
     }
 
@@ -5956,6 +5959,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         ImsCall activeCall = mForegroundCall.getFirstConnection().getImsCall();
 
         if (activeCall != null) {
+            if (DBG) log("triggerNotifyAnbr - mediaType=" + mediaType);
             activeCall.callSessionNotifyAnbr(mediaType, direction, bitsPerSecond);
         }
     }

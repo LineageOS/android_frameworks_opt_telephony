@@ -2995,18 +2995,6 @@ public interface CommandsInterface {
     default void sendAnbrQuery(int mediaType, int direction, int bitsPerSecond, Message result) {}
 
     /**
-     * Notifies the recommended bit rate for the indicated logical channel and direction.
-     *
-     * @param mediaType MediaType is used to identify media stream such as audio or video.
-     * @param direction Direction of this packet stream (e.g. uplink or downlink).
-     * @param bitsPerSecond The recommended bit rate for the UE for a specific logical channel and
-     *        a specific direction by NW.
-     * @param result Callback message to receive the result.
-     */
-    default void triggerNotifyAnbr(int mediaType, int direction, int bitsPerSecond,
-                Message result) {}
-
-    /**
      * Set the UE's ability to accept/reject null ciphered and/or null integrity-protected
      * connections.
      *
