@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-import android.annotation.NonNull;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -201,13 +200,7 @@ public class CarrierServiceBindHelper {
         }
     }
 
-    /**
-     * Update SIM state.
-     *
-     * @param phoneId The phone id.
-     * @param simState The legacy SIM state.
-     */
-    public void updateSimState(int phoneId, @NonNull String simState) {
+    void updateForPhoneId(int phoneId, String simState) {
         logdWithLocalLog("update binding for phoneId: " + phoneId + " simState: " + simState);
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {
             return;

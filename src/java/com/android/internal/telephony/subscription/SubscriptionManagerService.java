@@ -59,7 +59,6 @@ import android.telephony.SubscriptionManager.SubscriptionType;
 import android.telephony.SubscriptionManager.UsageSetting;
 import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
-import android.telephony.TelephonyManager.SimState;
 import android.telephony.TelephonyRegistryManager;
 import android.telephony.UiccAccessRule;
 import android.telephony.euicc.EuiccManager;
@@ -428,10 +427,6 @@ public class SubscriptionManagerService extends ISub.Stub {
                     @Override
                     public void onDatabaseLoaded() {
                         log("Subscription database has been loaded.");
-                        for (int phoneId = 0; phoneId < mTelephonyManager.getActiveModemCount()
-                                ; phoneId++) {
-                            markSubscriptionsInactive(phoneId);
-                        }
                     }
 
                     /**
@@ -831,7 +826,7 @@ public class SubscriptionManagerService extends ISub.Stub {
     /**
      * Mark all subscriptions on this SIM slot index inactive.
      *
-     * @param simSlotIndex The logical SIM slot index (i.e. phone id).
+     * @param simSlotIndex The SIM slot index.
      */
     public void markSubscriptionsInactive(int simSlotIndex) {
         mSubscriptionDatabaseManager.getAllSubscriptions().stream()
@@ -988,15 +983,6 @@ public class SubscriptionManagerService extends ISub.Stub {
         if (callback != null) {
             callback.run();
         }
-    }
-
-    /**
-     * Update the subscriptions on the logical SIM slot index (i.e. phone id).
-     *
-     * @param slotIndex The logical SIM slot index.
-     */
-    private void updateSubscriptions(int slotIndex) {
-
     }
 
     /**
@@ -3186,134 +3172,6 @@ public class SubscriptionManagerService extends ISub.Stub {
         SubscriptionInfoInternal subscriptionInfoInternal = getSubscriptionInfoInternal(subId);
         return subscriptionInfoInternal != null
                 ? subscriptionInfoInternal.toSubscriptionInfo() : null;
-    }
-
-    /**
-     * Called when SIM state changed to absent.
-     *
-     * @param slotIndex The logical SIM slot index.
-     */
-    private void onSimAbsent(int slotIndex) {
-        if (mSlotIndexToSubId.containsKey(slotIndex)) {
-            // Re-enable the SIM when it's removed, so it will be in enabled state when it gets
-            // re-inserted again. (pre-U behavior)
-            mSubscriptionDatabaseManager.setUiccApplicationsEnabled(
-                    mSlotIndexToSubId.get(slotIndex), true);
-            // When sim is absent, set the port index to invalid port index. (pre-U behavior)
-            mSubscriptionDatabaseManager.setPortIndex(mSlotIndexToSubId.get(slotIndex),
-                    TelephonyManager.INVALID_PORT_INDEX);
-        }
-        updateSubscriptions(slotIndex);
-    }
-
-    /**
-     * Called when SIM state changed to locked.
-     *
-     * @param slotIndex The logical SIM slot index.
-     */
-    private void onSimLocked(int slotIndex) {
-
-    }
-
-    /**
-     * Called when SIM state changed to ready.
-     *
-     * @param slotIndex The logical SIM slot index.
-     */
-    private void onSimReady(int slotIndex) {
-
-    }
-
-    /**
-     * Called when SIM state changed to not ready.
-     *
-     * @param slotIndex The logical SIM slot index.
-     */
-    private void onSimNotReady(int slotIndex) {
-
-    }
-
-    /**
-     * Called when SIM encounters error.
-     *
-     * @param slotIndex The logical SIM slot index.
-     */
-    private void onSimError(int slotIndex) {
-
-    }
-
-    /**
-     * Called when SIM state changed to loaded.
-     *
-     * @param slotIndex The logical SIM slot index.
-     */
-    private void onSimLoaded(int slotIndex) {
-    }
-
-    /**
-     * Called when eSIM becomes inactive.
-     *
-     * @param slotIndex The logical SIM slot index.
-     */
-    public void updateSimStateForInactivePort(int slotIndex) {
-        mHandler.post(() -> {
-            if (mSlotIndexToSubId.containsKey(slotIndex)) {
-                // Re-enable the UICC application , so it will be in enabled state when it becomes
-                // active again. (pre-U behavior)
-                mSubscriptionDatabaseManager.setUiccApplicationsEnabled(
-                        mSlotIndexToSubId.get(slotIndex), true);
-                updateSubscriptions(slotIndex);
-            }
-        });
-    }
-
-    /**
-     * Update SIM state. This method is supposed to be called by {@link UiccController} only.
-     *
-     * @param slotIndex The logical SIM slot index.
-     * @param simState SIM state.
-     * @param executor The executor to execute the callback.
-     * @param updateCompleteCallback The callback to call when subscription manager service
-     * completes subscription update. SIM state changed event will be broadcasted by
-     * {@link UiccController} upon receiving callback.
-     */
-    public void updateSimState(int slotIndex, @SimState int simState,
-            @Nullable @CallbackExecutor Executor executor,
-            @Nullable Runnable updateCompleteCallback) {
-        mHandler.post(() -> {
-            switch (simState) {
-                case TelephonyManager.SIM_STATE_ABSENT:
-                    onSimAbsent(slotIndex);
-                    break;
-                case TelephonyManager.SIM_STATE_PIN_REQUIRED:
-                case TelephonyManager.SIM_STATE_PUK_REQUIRED:
-                case TelephonyManager.SIM_STATE_NETWORK_LOCKED:
-                case TelephonyManager.SIM_STATE_PERM_DISABLED:
-                    onSimLocked(slotIndex);
-                    break;
-                case TelephonyManager.SIM_STATE_READY:
-                    onSimReady(slotIndex);
-                    break;
-                case TelephonyManager.SIM_STATE_NOT_READY:
-                    onSimNotReady(slotIndex);
-                    break;
-                case TelephonyManager.SIM_STATE_CARD_IO_ERROR:
-                    onSimError(slotIndex);
-                    break;
-                case TelephonyManager.SIM_STATE_CARD_RESTRICTED:
-                    // No specific things needed to be done. Just return and broadcast the SIM
-                    // states.
-                    break;
-                case TelephonyManager.SIM_STATE_LOADED:
-                    onSimLoaded(slotIndex);
-                    break;
-                default:
-                    break;
-            }
-            if (executor != null && updateCompleteCallback != null) {
-                executor.execute(updateCompleteCallback);
-            }
-        });
     }
 
     /**
