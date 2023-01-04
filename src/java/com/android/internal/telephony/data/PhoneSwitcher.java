@@ -531,14 +531,8 @@ public class PhoneSwitcher extends Handler {
         mMaxDataAttachModemCount = maxActivePhones;
         mLocalLog = new LocalLog(MAX_LOCAL_LOG_LINES);
 
-        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-            mSubscriptionManagerService = SubscriptionManagerService.getInstance();
-            mSubscriptionController = null;
-        } else {
-            mSubscriptionController = SubscriptionController.getInstance();
-            mSubscriptionManagerService = null;
-        }
-
+        mSubscriptionController = SubscriptionController.getInstance();
+        mSubscriptionManagerService = SubscriptionManagerService.getInstance();
         mRadioConfig = RadioConfig.getInstance();
         mValidator = CellularNetworkValidator.getInstance();
 
