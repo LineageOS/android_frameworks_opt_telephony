@@ -802,8 +802,8 @@ public class UiccProfile extends IccCard {
             }
             log("setExternalState: set mPhoneId=" + mPhoneId + " mExternalState=" + mExternalState);
 
-            UiccController.getInstance().updateSimState(mPhoneId, mExternalState,
-                    getIccStateReason(mExternalState));
+            UiccController.updateInternalIccState(mContext, mExternalState,
+                    getIccStateReason(mExternalState), mPhoneId);
         }
     }
 
