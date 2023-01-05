@@ -125,7 +125,8 @@ public final class CellBroadcastConfigTracker extends StateMachine {
                         transitionTo(mCdmaConfiguringState);
                     } else {
                         logd("Do nothing as the requested ranges are same as now");
-                        request.getCallback().accept(TelephonyManager.CELLBROADCAST_RESULT_SUCCESS);
+                        request.getCallback().accept(
+                                TelephonyManager.CELL_BROADCAST_RESULT_SUCCESS);
                     }
                     retVal = HANDLED;
                     break;
@@ -167,7 +168,7 @@ public final class CellBroadcastConfigTracker extends StateMachine {
                     } else {
                         logd("Failed to set gsm config");
                         request.getCallback().accept(
-                                TelephonyManager.CELLBROADCAST_RESULT_FAIL_CONFIG);
+                                TelephonyManager.CELL_BROADCAST_RESULT_FAIL_CONFIG);
                         // transit to idle state on the failure case
                         transitionTo(mIdleState);
                     }
@@ -213,14 +214,14 @@ public final class CellBroadcastConfigTracker extends StateMachine {
                         } else {
                             logd("Done as no need to update ranges for 3gpp2");
                             request.getCallback().accept(
-                                    TelephonyManager.CELLBROADCAST_RESULT_SUCCESS);
+                                    TelephonyManager.CELL_BROADCAST_RESULT_SUCCESS);
                             // transit to idle state if there is no cdma config change
                             transitionTo(mIdleState);
                         }
                     } else {
                         logd("Failed to set gsm activation");
                         request.getCallback().accept(
-                                TelephonyManager.CELLBROADCAST_RESULT_FAIL_ACTIVATION);
+                                TelephonyManager.CELL_BROADCAST_RESULT_FAIL_ACTIVATION);
                         // transit to idle state on the failure case
                         transitionTo(mIdleState);
                     }
@@ -264,7 +265,7 @@ public final class CellBroadcastConfigTracker extends StateMachine {
                     } else {
                         logd("Failed to set cdma config");
                         request.getCallback().accept(
-                                TelephonyManager.CELLBROADCAST_RESULT_FAIL_CONFIG);
+                                TelephonyManager.CELL_BROADCAST_RESULT_FAIL_CONFIG);
                         // transit to idle state on the failure case
                         transitionTo(mIdleState);
                     }
@@ -303,11 +304,11 @@ public final class CellBroadcastConfigTracker extends StateMachine {
                     if (ar.exception == null) {
                         mCbRanges3gpp2 = request.get3gpp2Ranges();
                         request.getCallback().accept(
-                                    TelephonyManager.CELLBROADCAST_RESULT_SUCCESS);
+                                    TelephonyManager.CELL_BROADCAST_RESULT_SUCCESS);
                     } else {
                         logd("Failed to set cdma activation");
                         request.getCallback().accept(
-                                TelephonyManager.CELLBROADCAST_RESULT_FAIL_ACTIVATION);
+                                TelephonyManager.CELL_BROADCAST_RESULT_FAIL_ACTIVATION);
                     }
                     // transit to idle state anyway
                     transitionTo(mIdleState);

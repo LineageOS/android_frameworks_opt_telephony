@@ -5205,7 +5205,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void setCellBroadcastIdRanges(
             @NonNull List<CellBroadcastIdRange> ranges, Consumer<Integer> callback) {
-        callback.accept(TelephonyManager.CELLBROADCAST_RESULT_UNSUPPORTED);
+        callback.accept(TelephonyManager.CELL_BROADCAST_RESULT_UNSUPPORTED);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
