@@ -527,15 +527,8 @@ public class UiccProfile extends IccCard {
 
     private void updateCarrierNameForSubscription(int subId, int nameSource) {
         /* update display name with carrier override */
-        SubscriptionInfo subInfo;
-
-        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-            subInfo = SubscriptionManagerService.getInstance().getActiveSubscriptionInfo(subId,
-                    mContext.getOpPackageName(), mContext.getAttributionTag());
-        } else {
-            subInfo = SubscriptionController.getInstance().getActiveSubscriptionInfo(
-                    subId, mContext.getOpPackageName(), mContext.getAttributionTag());
-        }
+        SubscriptionInfo subInfo = SubscriptionController.getInstance().getActiveSubscriptionInfo(
+                subId, mContext.getOpPackageName(), mContext.getAttributionTag());
 
         if (subInfo == null) {
             return;
@@ -809,8 +802,8 @@ public class UiccProfile extends IccCard {
             }
             log("setExternalState: set mPhoneId=" + mPhoneId + " mExternalState=" + mExternalState);
 
-            UiccController.getInstance().updateSimState(mPhoneId, mExternalState,
-                    getIccStateReason(mExternalState));
+            UiccController.updateInternalIccState(mContext, mExternalState,
+                    getIccStateReason(mExternalState), mPhoneId);
         }
     }
 

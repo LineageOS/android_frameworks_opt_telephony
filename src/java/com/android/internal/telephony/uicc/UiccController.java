@@ -21,8 +21,6 @@ import static android.telephony.TelephonyManager.UNSUPPORTED_CARD_ID;
 
 import static java.util.Arrays.copyOf;
 
-import android.Manifest;
-import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.BroadcastOptions;
 import android.compat.annotation.UnsupportedAppUsage;
@@ -42,7 +40,6 @@ import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
-import android.telephony.TelephonyManager.SimState;
 import android.telephony.UiccCardInfo;
 import android.telephony.UiccPortInfo;
 import android.telephony.UiccSlotMapping;
@@ -52,20 +49,14 @@ import android.util.LocalLog;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.telephony.CarrierServiceBindHelper;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccCardConstants;
-import com.android.internal.telephony.IntentBroadcaster;
 import com.android.internal.telephony.PhoneConfigurationManager;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RadioConfig;
 import com.android.internal.telephony.SubscriptionInfoUpdater;
-import com.android.internal.telephony.TelephonyIntents;
-import com.android.internal.telephony.metrics.TelephonyMetrics;
-import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.euicc.EuiccCard;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
@@ -149,9 +140,6 @@ public class UiccController extends Handler {
     private static final int EVENT_MULTI_SIM_CONFIG_CHANGED = 10;
     // NOTE: any new EVENT_* values must be added to eventToString.
 
-    @NonNull
-    private final TelephonyManager mTelephonyManager;
-
     // this needs to be here, because on bootup we dont know which index maps to which UiccSlot
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private CommandsInterface[] mCis;
@@ -163,24 +151,10 @@ public class UiccController extends Handler {
     // This maps the externally exposed card ID (int) to the internal card ID string (ICCID/EID).
     // The array index is the card ID (int).
     // This mapping exists to expose card-based functionality without exposing the EID, which is
-    // considered sensitive information.
+    // considered sensetive information.
     // mCardStrings is populated using values from the IccSlotStatus and IccCardStatus. For
     // HAL < 1.2, these do not contain the EID or the ICCID, so mCardStrings will be empty
     private ArrayList<String> mCardStrings;
-
-    /**
-     * SIM card state.
-     */
-    @NonNull
-    @SimState
-    private final int[] mSimCardState;
-
-    /**
-     * SIM application state.
-     */
-    @NonNull
-    @SimState
-    private final int[] mSimApplicationState;
 
     // This is the card ID of the default eUICC. It starts as UNINITIALIZED_CARD_ID.
     // When we load the EID (either with slot status or from the EuiccCard), we set it to the eUICC
@@ -231,9 +205,6 @@ public class UiccController extends Handler {
 
     protected RegistrantList mIccChangedRegistrants = new RegistrantList();
 
-    @NonNull
-    private final CarrierServiceBindHelper mCarrierServiceBindHelper;
-
     private UiccStateChangedLauncher mLauncher;
     private RadioConfig mRadioConfig;
 
@@ -272,13 +243,8 @@ public class UiccController extends Handler {
             numPhysicalSlots = mCis.length;
         }
 
-        mTelephonyManager = mContext.getSystemService(TelephonyManager.class);
-
         mUiccSlots = new UiccSlot[numPhysicalSlots];
         mPhoneIdToSlotId = new int[mCis.length];
-        int supportedModemCount = mTelephonyManager.getSupportedModemCount();
-        mSimCardState = new int[supportedModemCount];
-        mSimApplicationState = new int[supportedModemCount];
         Arrays.fill(mPhoneIdToSlotId, INVALID_SLOT_ID);
         if (VDBG) logPhoneIdToSlotIdMapping();
         mRadioConfig = RadioConfig.getInstance();
@@ -293,8 +259,6 @@ public class UiccController extends Handler {
         mLauncher = new UiccStateChangedLauncher(c, this);
         mCardStrings = loadCardStrings();
         mDefaultEuiccCardId = UNINITIALIZED_CARD_ID;
-
-        mCarrierServiceBindHelper = new CarrierServiceBindHelper(mContext);
 
         mEuiccSlots = mContext.getResources()
                 .getIntArray(com.android.internal.R.array.non_removable_euicc_slots);
@@ -743,276 +707,35 @@ public class UiccController extends Handler {
         }
     }
 
-    /**
-     * Update SIM state for the inactive eSIM port.
-     *
-     * @param phoneId Previously active phone id.
-     * @param iccId ICCID of the SIM.
-     */
-    public void updateSimStateForInactivePort(int phoneId, String iccId) {
-        if (SubscriptionManager.isValidPhoneId(phoneId)) {
+    static void updateInternalIccStateForInactivePort(
+            Context context, int prevActivePhoneId, String iccId) {
+        if (SubscriptionManager.isValidPhoneId(prevActivePhoneId)) {
             // Mark SIM state as ABSENT on previously phoneId.
-            mTelephonyManager.setSimStateForPhone(phoneId,
+            TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(
+                    Context.TELEPHONY_SERVICE);
+            telephonyManager.setSimStateForPhone(prevActivePhoneId,
                     IccCardConstants.State.ABSENT.toString());
         }
 
-        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-            SubscriptionManagerService.getInstance().updateSimStateForInactivePort(phoneId);
+        SubscriptionInfoUpdater subInfoUpdator = PhoneFactory.getSubscriptionInfoUpdater();
+        if (subInfoUpdator != null) {
+            subInfoUpdator.updateInternalIccStateForInactivePort(prevActivePhoneId, iccId);
         } else {
-            SubscriptionInfoUpdater subInfoUpdater = PhoneFactory.getSubscriptionInfoUpdater();
-            if (subInfoUpdater != null) {
-                subInfoUpdater.updateInternalIccStateForInactivePort(phoneId, iccId);
-            } else {
-                Rlog.e(LOG_TAG, "subInfoUpdate is null.");
-            }
+            Rlog.e(LOG_TAG, "subInfoUpdate is null.");
         }
     }
 
-    /**
-     * Broadcast the legacy SIM state changed event.
-     *
-     * @param phoneId The phone id.
-     * @param state The legacy SIM state.
-     * @param reason The reason of SIM state change.
-     */
-    private void broadcastSimStateChanged(int phoneId, @NonNull String state,
-            @Nullable String reason) {
-        // Note: This intent is way deprecated and is only being kept around because there's no
-        // graceful way to deprecate a sticky broadcast that has a lot of listeners.
-        // DO NOT add any new extras to this broadcast -- it is not protected by any permissions.
-        Intent intent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
-        intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
-        intent.putExtra(PhoneConstants.PHONE_NAME_KEY, "Phone");
-        intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE, state);
-        intent.putExtra(IccCardConstants.INTENT_KEY_LOCKED_REASON, reason);
-        SubscriptionManager.putPhoneIdAndSubIdExtra(intent, phoneId);
-        Rlog.d(LOG_TAG, "Broadcasting intent ACTION_SIM_STATE_CHANGED " + state + " reason "
-                + reason + " for phone: " + phoneId);
-        IntentBroadcaster.getInstance().broadcastStickyIntent(mContext, intent, phoneId);
-    }
+    static void updateInternalIccState(Context context, IccCardConstants.State state, String reason,
+            int phoneId) {
+        TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(
+                Context.TELEPHONY_SERVICE);
+        telephonyManager.setSimStateForPhone(phoneId, state.toString());
 
-    /**
-     * Broadcast SIM card state changed event.
-     *
-     * @param phoneId The phone id.
-     * @param state The SIM card state.
-     */
-    private void broadcastSimCardStateChanged(int phoneId, @SimState int state) {
-        if (state != mSimCardState[phoneId]) {
-            mSimCardState[phoneId] = state;
-            Intent intent = new Intent(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED);
-            intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
-            intent.putExtra(TelephonyManager.EXTRA_SIM_STATE, state);
-            SubscriptionManager.putPhoneIdAndSubIdExtra(intent, phoneId);
-            // TODO(b/130664115) we manually populate this intent with the slotId. In the future we
-            // should do a review of whether to make this public
-            UiccSlot slot = UiccController.getInstance().getUiccSlotForPhone(phoneId);
-            int slotId = UiccController.getInstance().getSlotIdFromPhoneId(phoneId);
-            intent.putExtra(PhoneConstants.SLOT_KEY, slotId);
-            if (slot != null) {
-                intent.putExtra(PhoneConstants.PORT_KEY, slot.getPortIndexFromPhoneId(phoneId));
-            }
-            Rlog.d(LOG_TAG, "Broadcasting intent ACTION_SIM_CARD_STATE_CHANGED "
-                    + TelephonyManager.simStateToString(state) + " for phone: " + phoneId
-                    + " slot: " + slotId + " port: " + slot.getPortIndexFromPhoneId(phoneId));
-            mContext.sendBroadcast(intent, Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
-            TelephonyMetrics.getInstance().updateSimState(phoneId, state);
-        }
-    }
-
-    /**
-     * Broadcast SIM application state changed event.
-     *
-     * @param phoneId The phone id.
-     * @param state The SIM application state.
-     */
-    private void broadcastSimApplicationStateChanged(int phoneId, @SimState int state) {
-        // Broadcast if the state has changed, except if old state was UNKNOWN and new is NOT_READY,
-        // because that's the initial state and a broadcast should be sent only on a transition
-        // after SIM is PRESENT. The only exception is eSIM boot profile, where NOT_READY is the
-        // terminal state.
-        boolean isUnknownToNotReady =
-                (mSimApplicationState[phoneId] == TelephonyManager.SIM_STATE_UNKNOWN
-                        && state == TelephonyManager.SIM_STATE_NOT_READY);
-        IccCard iccCard = PhoneFactory.getPhone(phoneId).getIccCard();
-        boolean emptyProfile = iccCard != null && iccCard.isEmptyProfile();
-        if (state != mSimApplicationState[phoneId] && (!isUnknownToNotReady || emptyProfile)) {
-            mSimApplicationState[phoneId] = state;
-            Intent intent = new Intent(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
-            intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
-            intent.putExtra(TelephonyManager.EXTRA_SIM_STATE, state);
-            SubscriptionManager.putPhoneIdAndSubIdExtra(intent, phoneId);
-            // TODO(b/130664115) we populate this intent with the actual slotId. In the future we
-            // should do a review of whether to make this public
-            UiccSlot slot = UiccController.getInstance().getUiccSlotForPhone(phoneId);
-            int slotId = UiccController.getInstance().getSlotIdFromPhoneId(phoneId);
-            intent.putExtra(PhoneConstants.SLOT_KEY, slotId);
-            if (slot != null) {
-                intent.putExtra(PhoneConstants.PORT_KEY, slot.getPortIndexFromPhoneId(phoneId));
-            }
-            Rlog.d(LOG_TAG, "Broadcasting intent ACTION_SIM_APPLICATION_STATE_CHANGED "
-                    + TelephonyManager.simStateToString(state)
-                    + " for phone: " + phoneId + " slot: " + slotId + "port: "
-                    + slot.getPortIndexFromPhoneId(phoneId));
-            mContext.sendBroadcast(intent, Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
-            TelephonyMetrics.getInstance().updateSimState(phoneId, state);
-        }
-    }
-
-    /**
-     * Get SIM state from SIM lock reason.
-     *
-     * @param lockedReason The SIM lock reason.
-     *
-     * @return The SIM state.
-     */
-    @SimState
-    private static int getSimStateFromLockedReason(String lockedReason) {
-        switch (lockedReason) {
-            case IccCardConstants.INTENT_VALUE_LOCKED_ON_PIN:
-                return TelephonyManager.SIM_STATE_PIN_REQUIRED;
-            case IccCardConstants.INTENT_VALUE_LOCKED_ON_PUK:
-                return TelephonyManager.SIM_STATE_PUK_REQUIRED;
-            case IccCardConstants.INTENT_VALUE_LOCKED_NETWORK:
-                return TelephonyManager.SIM_STATE_NETWORK_LOCKED;
-            case IccCardConstants.INTENT_VALUE_ABSENT_ON_PERM_DISABLED:
-                return TelephonyManager.SIM_STATE_PERM_DISABLED;
-            default:
-                Rlog.e(LOG_TAG, "Unexpected SIM locked reason " + lockedReason);
-                return TelephonyManager.SIM_STATE_UNKNOWN;
-        }
-    }
-
-    /**
-     * Broadcast SIM state events.
-     *
-     * @param phoneId The phone id.
-     * @param simState The SIM state.
-     * @param reason SIM state changed reason.
-     */
-    private void broadcastSimStateEvents(int phoneId, IccCardConstants.State simState,
-            @Nullable String reason) {
-        String legacyStringSimState = getIccStateIntentString(simState);
-        int cardState = TelephonyManager.SIM_STATE_UNKNOWN;
-        int applicationState = TelephonyManager.SIM_STATE_UNKNOWN;
-
-        switch (simState) {
-            case ABSENT:
-                cardState = TelephonyManager.SIM_STATE_ABSENT;
-                break;
-            case PIN_REQUIRED:
-            case PUK_REQUIRED:
-            case NETWORK_LOCKED:
-            case PERM_DISABLED:
-                cardState = TelephonyManager.SIM_STATE_PRESENT;
-                applicationState = getSimStateFromLockedReason(reason);
-                break;
-            case READY:
-            case NOT_READY:
-                // Both READY and NOT_READY have the same card state and application state.
-                cardState = TelephonyManager.SIM_STATE_PRESENT;
-                applicationState = TelephonyManager.SIM_STATE_NOT_READY;
-                break;
-            case CARD_IO_ERROR:
-                cardState = TelephonyManager.SIM_STATE_CARD_IO_ERROR;
-                applicationState = TelephonyManager.SIM_STATE_NOT_READY;
-                break;
-            case CARD_RESTRICTED:
-                cardState = TelephonyManager.SIM_STATE_CARD_RESTRICTED;
-                applicationState = TelephonyManager.SIM_STATE_NOT_READY;
-                break;
-            case LOADED:
-                cardState = TelephonyManager.SIM_STATE_PRESENT;
-                applicationState = TelephonyManager.SIM_STATE_LOADED;
-                break;
-            case UNKNOWN:
-            default:
-                break;
-        }
-
-        broadcastSimStateChanged(phoneId, legacyStringSimState, reason);
-        broadcastSimCardStateChanged(phoneId, cardState);
-        broadcastSimApplicationStateChanged(phoneId, applicationState);
-    }
-
-    /**
-     * Update carrier service.
-     *
-     * @param phoneId The phone id.
-     * @param simState The SIM state.
-     */
-    private void updateCarrierServices(int phoneId, @NonNull String simState) {
-        CarrierConfigManager configManager = mContext.getSystemService(CarrierConfigManager.class);
-        if (configManager != null) {
-            configManager.updateConfigForPhoneId(phoneId, simState);
-        }
-        mCarrierServiceBindHelper.updateSimState(phoneId, simState);
-    }
-
-    /**
-     * Update the SIM state.
-     *
-     * @param phoneId Phone id.
-     * @param state SIM state (legacy).
-     * @param reason The reason for SIM state update.
-     */
-    public void updateSimState(int phoneId, @NonNull IccCardConstants.State state,
-            @Nullable String reason) {
-        log("updateSimState: phoneId=" + phoneId + ", state=" + state + ", reason=" + reason);
-        if (!SubscriptionManager.isValidPhoneId(phoneId)) {
-            Rlog.e(LOG_TAG, "updateInternalIccState: Invalid phone id " + phoneId);
-            return;
-        }
-
-        mTelephonyManager.setSimStateForPhone(phoneId, state.toString());
-
-        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-            String legacySimState = getIccStateIntentString(state);
-            int simState = state.ordinal();
-            SubscriptionManagerService.getInstance().updateSimState(phoneId, simState, this::post,
-                    () -> {
-                        // The following are executed after subscription update completed in
-                        // subscription manager service.
-
-                        broadcastSimStateEvents(phoneId, state, reason);
-
-                        UiccProfile uiccProfile = getUiccProfileForPhone(phoneId);
-
-                        if (simState == TelephonyManager.SIM_STATE_READY) {
-                            // SIM_STATE_READY is not a final state.
-                            return;
-                        }
-
-                        if (simState == TelephonyManager.SIM_STATE_NOT_READY
-                                && (uiccProfile != null && !uiccProfile.isEmptyProfile())
-                                && SubscriptionManagerService.getInstance()
-                                .areUiccAppsEnabledOnCard(phoneId)) {
-                            // STATE_NOT_READY is not a final state for when both
-                            // 1) It's not an empty profile, and
-                            // 2) Its uicc applications are set to enabled.
-                            //
-                            // At this phase, we consider STATE_NOT_READY not a final state, so
-                            // return for now.
-                            log("updateSimState: SIM_STATE_NOT_READY is not a final state.");
-                            return;
-                        }
-
-                        // At this point, the SIM state must be a final state (meaning we won't
-                        // get more SIM state updates). So resolve the carrier id and update the
-                        // carrier services.
-                        log("updateSimState: resolve carrier id and update carrier services.");
-                        PhoneFactory.getPhone(phoneId).resolveSubscriptionCarrierId(legacySimState);
-                        updateCarrierServices(phoneId, legacySimState);
-                    }
-            );
+        SubscriptionInfoUpdater subInfoUpdator = PhoneFactory.getSubscriptionInfoUpdater();
+        if (subInfoUpdator != null) {
+            subInfoUpdator.updateInternalIccState(getIccStateIntentString(state), reason, phoneId);
         } else {
-            SubscriptionInfoUpdater subInfoUpdater = PhoneFactory.getSubscriptionInfoUpdater();
-            if (subInfoUpdater != null) {
-                subInfoUpdater.updateInternalIccState(getIccStateIntentString(state), reason,
-                        phoneId);
-            } else {
-                Rlog.e(LOG_TAG, "subInfoUpdate is null.");
-            }
+            Rlog.e(LOG_TAG, "subInfoUpdate is null.");
         }
     }
 
