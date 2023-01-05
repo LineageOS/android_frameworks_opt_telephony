@@ -1557,13 +1557,24 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     }
 
     @Test
-    public void testGetNonAccessibleFields() throws Exception {
+    public void testGetNonAccessibleFields() {
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
-
-        Field field = SubscriptionManagerService.class.getDeclaredField(
-                "DIRECT_ACCESS_SUBSCRIPTION_COLUMNS");
-        field.setAccessible(true);
-        Set<String> accessibleColumns = (Set<String>) field.get(null);
+        Set<String> accessibleColumns = Set.of(
+                SimInfo.COLUMN_ENHANCED_4G_MODE_ENABLED,
+                SimInfo.COLUMN_VT_IMS_ENABLED,
+                SimInfo.COLUMN_WFC_IMS_ENABLED,
+                SimInfo.COLUMN_WFC_IMS_MODE,
+                SimInfo.COLUMN_WFC_IMS_ROAMING_MODE,
+                SimInfo.COLUMN_WFC_IMS_ROAMING_ENABLED,
+                SimInfo.COLUMN_ENABLED_MOBILE_DATA_POLICIES,
+                SimInfo.COLUMN_IMS_RCS_UCE_ENABLED,
+                SimInfo.COLUMN_CROSS_SIM_CALLING_ENABLED,
+                SimInfo.COLUMN_RCS_CONFIG,
+                SimInfo.COLUMN_D2D_STATUS_SHARING,
+                SimInfo.COLUMN_VOIMS_OPT_IN_STATUS,
+                SimInfo.COLUMN_D2D_STATUS_SHARING_SELECTED_CONTACTS,
+                SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED
+        );
 
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
 
