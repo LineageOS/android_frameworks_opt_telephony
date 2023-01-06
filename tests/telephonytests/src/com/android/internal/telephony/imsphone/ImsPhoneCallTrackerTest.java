@@ -126,6 +126,7 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SrvccConnection;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.d2d.RtpTransport;
+import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker.VtDataUsageProvider;
 
 import org.junit.After;
@@ -171,6 +172,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private INetworkStatsProviderCallback mVtDataUsageProviderCb;
     private ImsPhoneCallTracker.ConnectorFactory mConnectorFactory;
     private CommandsInterface mMockCi;
+    private DomainSelectionResolver mDomainSelectionResolver;
 
     private final Executor mExecutor = Runnable::run;
 
@@ -237,6 +239,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         doReturn(ImsFeature.STATE_READY).when(mImsManager).getImsServiceState();
         doReturn(mImsCallProfile).when(mImsManager).createCallProfile(anyInt(), anyInt());
         mContextFixture.addSystemFeature(PackageManager.FEATURE_TELEPHONY_IMS);
+        mDomainSelectionResolver = mock(DomainSelectionResolver.class);
 
         doAnswer(invocation -> {
             mMmTelListener = (MmTelFeature.Listener) invocation.getArguments()[0];
@@ -271,6 +274,9 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                     (FeatureConnector.Listener<ImsManager>) invocation.getArguments()[3];
             return mMockConnector;
         }).when(mConnectorFactory).create(any(), anyInt(), anyString(), any(), any());
+
+        DomainSelectionResolver.setDomainSelectionResolver(mDomainSelectionResolver);
+        doReturn(false).when(mDomainSelectionResolver).isDomainSelectionSupported();
 
         mCTUT = new ImsPhoneCallTracker(mImsPhone, mConnectorFactory, Runnable::run);
         mCTUT.setDataEnabled(true);
@@ -2399,11 +2405,47 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testDomainSelectionAlternateService() {
+    public void testDomainSelectionAlternateServiceStartFailed() {
+        doReturn(true).when(mDomainSelectionResolver).isDomainSelectionSupported();
         startOutgoingCall();
         ImsPhoneConnection c = mCTUT.mForegroundCall.getFirstConnection();
         mImsCallProfile.setEmergencyServiceCategories(EMERGENCY_SERVICE_CATEGORY_AMBULANCE);
         mImsCallListener.onCallStartFailed(mSecondImsCall,
+                new ImsReasonInfo(ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL, -1));
+        processAllMessages();
+        EmergencyNumber emergencyNumber = c.getEmergencyNumberInfo();
+        assertNotNull(emergencyNumber);
+        assertEquals(EMERGENCY_SERVICE_CATEGORY_AMBULANCE,
+                emergencyNumber.getEmergencyServiceCategoryBitmask());
+    }
+
+    @Test
+    @SmallTest
+    public void testDomainSelectionAlternateServiceStartFailedNullPendingMO() {
+        doReturn(true).when(mDomainSelectionResolver).isDomainSelectionSupported();
+        startOutgoingCall();
+        ImsPhoneConnection c = mCTUT.mForegroundCall.getFirstConnection();
+        mImsCallListener.onCallProgressing(mSecondImsCall);
+        processAllMessages();
+        mImsCallProfile.setEmergencyServiceCategories(EMERGENCY_SERVICE_CATEGORY_AMBULANCE);
+        mImsCallListener.onCallStartFailed(mSecondImsCall,
+                new ImsReasonInfo(ImsReasonInfo.CODE_LOCAL_CALL_CS_RETRY_REQUIRED,
+                        ImsReasonInfo.EXTRA_CODE_CALL_RETRY_EMERGENCY));
+        processAllMessages();
+        EmergencyNumber emergencyNumber = c.getEmergencyNumberInfo();
+        assertNotNull(emergencyNumber);
+        assertEquals(EMERGENCY_SERVICE_CATEGORY_AMBULANCE,
+                emergencyNumber.getEmergencyServiceCategoryBitmask());
+    }
+
+    @Test
+    @SmallTest
+    public void testDomainSelectionAlternateServiceTerminated() {
+        doReturn(true).when(mDomainSelectionResolver).isDomainSelectionSupported();
+        startOutgoingCall();
+        ImsPhoneConnection c = mCTUT.mForegroundCall.getFirstConnection();
+        mImsCallProfile.setEmergencyServiceCategories(EMERGENCY_SERVICE_CATEGORY_AMBULANCE);
+        mImsCallListener.onCallTerminated(mSecondImsCall,
                 new ImsReasonInfo(ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL, -1));
         processAllMessages();
         EmergencyNumber emergencyNumber = c.getEmergencyNumberInfo();
