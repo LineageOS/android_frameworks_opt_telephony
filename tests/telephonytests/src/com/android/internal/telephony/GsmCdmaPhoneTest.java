@@ -2255,7 +2255,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mPhoneUT.mCi = mMockCi;
 
         mPhoneUT.setCellBroadcastIdRanges(ranges, r -> assertTrue(
-                TelephonyManager.CELLBROADCAST_RESULT_SUCCESS == r));
+                TelephonyManager.CELL_BROADCAST_RESULT_SUCCESS == r));
         waitForMs(100);
 
         verify(mMockCi, times(1)).setGsmBroadcastConfig(gsmCaptor.capture(), msgCaptor.capture());
@@ -2294,7 +2294,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 CdmaSmsBroadcastConfigInfo[].class);
 
         mPhoneUT.setCellBroadcastIdRanges(ranges, r -> assertTrue(
-                TelephonyManager.CELLBROADCAST_RESULT_SUCCESS == r));
+                TelephonyManager.CELL_BROADCAST_RESULT_SUCCESS == r));
         waitForMs(100);
 
         verify(mMockCi, times(1)).setGsmBroadcastConfig(any(), any());
@@ -2322,7 +2322,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         // Verify not to set cdma or gsm config as the config is not changed
         mPhoneUT.setCellBroadcastIdRanges(ranges, r -> assertTrue(
-                TelephonyManager.CELLBROADCAST_RESULT_SUCCESS == r));
+                TelephonyManager.CELL_BROADCAST_RESULT_SUCCESS == r));
         waitForMs(100);
 
         verify(mMockCi, times(1)).setCdmaBroadcastConfig(any(), any());
@@ -2334,7 +2334,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         // Verify to reset ranges with empty ranges list
         mPhoneUT.setCellBroadcastIdRanges(new ArrayList<>(), r -> assertTrue(
-                TelephonyManager.CELLBROADCAST_RESULT_SUCCESS == r));
+                TelephonyManager.CELL_BROADCAST_RESULT_SUCCESS == r));
 
         waitForMs(100);
 
@@ -2380,7 +2380,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         //Verify to set gsm and cdma config then activate again
         mPhoneUT.setCellBroadcastIdRanges(ranges, r -> assertTrue(
-                TelephonyManager.CELLBROADCAST_RESULT_SUCCESS == r));
+                TelephonyManager.CELL_BROADCAST_RESULT_SUCCESS == r));
 
         waitForMs(100);
 
@@ -2443,7 +2443,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         // Verify the result on setGsmBroadcastConfig failure
         mPhoneUT.setCellBroadcastIdRanges(ranges, r -> assertTrue(
-                TelephonyManager.CELLBROADCAST_RESULT_FAIL_CONFIG == r));
+                TelephonyManager.CELL_BROADCAST_RESULT_FAIL_CONFIG == r));
         waitForMs(100);
 
         verify(mMockCi, times(1)).setGsmBroadcastConfig(any(), msgCaptor.capture());
@@ -2461,7 +2461,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         // Verify the result on setGsmBroadcastActivation failure
         mPhoneUT.setCellBroadcastIdRanges(ranges, r -> assertTrue(
-                TelephonyManager.CELLBROADCAST_RESULT_FAIL_ACTIVATION == r));
+                TelephonyManager.CELL_BROADCAST_RESULT_FAIL_ACTIVATION == r));
         waitForMs(100);
 
         verify(mMockCi, times(2)).setGsmBroadcastConfig(any(), msgCaptor.capture());
@@ -2486,7 +2486,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         // Verify the result on setCdmaBroadcastConfig failure
         mPhoneUT.setCellBroadcastIdRanges(ranges, r -> assertTrue(
-                TelephonyManager.CELLBROADCAST_RESULT_FAIL_CONFIG == r));
+                TelephonyManager.CELL_BROADCAST_RESULT_FAIL_CONFIG == r));
         waitForMs(100);
 
         verify(mMockCi, times(3)).setGsmBroadcastConfig(any(), msgCaptor.capture());
@@ -2522,7 +2522,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         // Verify the result on setCdmaBroadcastActivation failure
         mPhoneUT.setCellBroadcastIdRanges(ranges, r -> assertTrue(
-                TelephonyManager.CELLBROADCAST_RESULT_FAIL_ACTIVATION == r));
+                TelephonyManager.CELL_BROADCAST_RESULT_FAIL_ACTIVATION == r));
         waitForMs(200);
 
         // Verify no more calls as there is no change of ranges for 3gpp

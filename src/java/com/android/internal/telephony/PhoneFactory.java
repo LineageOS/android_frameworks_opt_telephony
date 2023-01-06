@@ -214,14 +214,9 @@ public class PhoneFactory {
                     TelephonyComponentFactory.getInstance().inject(SubscriptionController.class
                             .getName()).initSubscriptionController(context);
                 }
-
-                SubscriptionController sc = null;
-                if (!isSubscriptionManagerServiceEnabled()) {
-                    sc = SubscriptionController.getInstance();
-                }
-
                 TelephonyComponentFactory.getInstance().inject(MultiSimSettingController.class.
-                        getName()).initMultiSimSettingController(context, sc);
+                        getName()).initMultiSimSettingController(context,
+                        SubscriptionController.getInstance());
 
                 if (context.getPackageManager().hasSystemFeature(
                         PackageManager.FEATURE_TELEPHONY_EUICC)) {
