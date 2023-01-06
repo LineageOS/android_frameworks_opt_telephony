@@ -5158,6 +5158,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * @return whether or not this Phone interacts with a modem that supports the null cipher
+     * and integrity feature.
+     */
+    public boolean isNullCipherAndIntegritySupported() {
+        return false;
+    }
+
+    /**
      * Override to implement handling of an update to the enablement of the null cipher and
      * integrity preference.
      * {@see #PREF_NULL_CIPHER_AND_INTEGRITY_ENABLED}
