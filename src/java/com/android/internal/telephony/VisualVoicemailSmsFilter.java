@@ -305,7 +305,8 @@ public class VisualVoicemailSmsFilter {
              * received message. However, the message is most likely encoded with UTF-8. Therefore,
              * we need to retry decoding the received message with UTF-8.
              */
-            if ((body == null || message.getReceivedEncodingType() == ENCODING_8BIT)
+            if ((body == null || (message.is3gpp()
+                    && message.getReceivedEncodingType() == ENCODING_8BIT))
                     && message.getUserData() != null) {
                 Log.d(TAG, "getFullMessage decode using UTF-8");
                 // Attempt to interpret the user data as UTF-8. UTF-8 string over data SMS using
