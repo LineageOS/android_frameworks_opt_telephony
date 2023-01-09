@@ -801,8 +801,13 @@ public class UiccProfile extends IccCard {
             }
             log("setExternalState: set mPhoneId=" + mPhoneId + " mExternalState=" + mExternalState);
 
-            UiccController.updateInternalIccState(mContext, mExternalState,
-                    getIccStateReason(mExternalState), mPhoneId);
+            if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
+                UiccController.getInstance().updateSimState(mPhoneId, mExternalState,
+                        getIccStateReason(mExternalState));
+            } else {
+                UiccController.updateInternalIccState(mContext, mExternalState,
+                        getIccStateReason(mExternalState), mPhoneId);
+            }
         }
     }
 

@@ -187,9 +187,15 @@ public class UiccSlot extends Handler {
                 if (!iss.mSimPortInfos[i].mPortActive) {
                     // TODO: (b/79432584) evaluate whether should broadcast card state change
                     // even if it's inactive.
-                    UiccController.updateInternalIccStateForInactivePort(mContext,
-                            mPortIdxToPhoneId.getOrDefault(i, INVALID_PHONE_ID),
-                            iss.mSimPortInfos[i].mIccId);
+                    if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
+                        UiccController.getInstance().updateSimStateForInactivePort(
+                                mPortIdxToPhoneId.getOrDefault(i, INVALID_PHONE_ID),
+                                iss.mSimPortInfos[i].mIccId);
+                    } else {
+                        UiccController.updateInternalIccStateForInactivePort(mContext,
+                                mPortIdxToPhoneId.getOrDefault(i, INVALID_PHONE_ID),
+                                iss.mSimPortInfos[i].mIccId);
+                    }
                     mLastRadioState.put(i, TelephonyManager.RADIO_POWER_UNAVAILABLE);
                     if (mUiccCard != null) {
                         // Dispose the port
@@ -321,8 +327,14 @@ public class UiccSlot extends Handler {
             if (DBG) log("update: notify card removed");
             sendMessage(obtainMessage(EVENT_CARD_REMOVED, null));
         }
-        UiccController.updateInternalIccState(mContext, IccCardConstants.State.ABSENT,
-                null, phoneId);
+
+        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
+            UiccController.getInstance().updateSimState(phoneId, IccCardConstants.State.ABSENT,
+                    null);
+        } else {
+            UiccController.updateInternalIccState(mContext, IccCardConstants.State.ABSENT,
+                    null, phoneId);
+        }
         // no card present in the slot now; dispose card and make mUiccCard null
         nullifyUiccCard(false /* sim state is not unknown */);
         mLastRadioState.put(portIndex, TelephonyManager.RADIO_POWER_UNAVAILABLE);
@@ -575,8 +587,13 @@ public class UiccSlot extends Handler {
         nullifyUiccCard(true /* sim state is unknown */);
 
         if (phoneId != INVALID_PHONE_ID) {
-            UiccController.updateInternalIccState(
-                    mContext, IccCardConstants.State.UNKNOWN, null, phoneId);
+            if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
+                UiccController.getInstance().updateSimState(phoneId,
+                        IccCardConstants.State.UNKNOWN, null);
+            } else {
+                UiccController.updateInternalIccState(
+                        mContext, IccCardConstants.State.UNKNOWN, null, phoneId);
+            }
             mLastRadioState.put(getPortIndexFromPhoneId(phoneId),
                     TelephonyManager.RADIO_POWER_UNAVAILABLE);
         }
