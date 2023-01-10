@@ -131,7 +131,8 @@ public class AccessNetworksManager extends Handler {
             ApnSetting.TYPE_CBS,
             ApnSetting.TYPE_SUPL,
             ApnSetting.TYPE_EMERGENCY,
-            ApnSetting.TYPE_XCAP
+            ApnSetting.TYPE_XCAP,
+            ApnSetting.TYPE_DUN
     };
 
     private final Phone mPhone;
@@ -364,18 +365,12 @@ public class AccessNetworksManager extends Handler {
             }
 
             List<QualifiedNetworks> qualifiedNetworksList = new ArrayList<>();
-            // For anomaly report, only track frequent HO between cellular and IWLAN
-            boolean isRequestedNetworkOnIwlan = Arrays.stream(qualifiedNetworkTypes)
-                    .anyMatch(network -> network == AccessNetworkType.IWLAN);
             int satisfiedApnTypes = 0;
             for (int apnType : SUPPORTED_APN_TYPES) {
                 if ((apnTypes & apnType) == apnType) {
                     // skip the APN anomaly detection if not using the T data stack
                     if (mDataConfigManager != null) {
                         satisfiedApnTypes |= apnType;
-                        if (isRequestedNetworkOnIwlan) {
-                            trackFrequentApnTypeChange(apnType);
-                        }
                     }
 
                     if (mAvailableNetworks.get(apnType) != null) {
@@ -417,34 +412,13 @@ public class AccessNetworksManager extends Handler {
                 int unsatisfied = satisfiedApnTypes ^ apnTypes;
                 reportAnomaly("QNS requested unsupported APN Types:"
                         + Integer.toBinaryString(unsatisfied),
-                        "3e89a3df-3524-45fa-b5f2-0fb0e4c77ec4");
+                        "3e89a3df-3524-45fa-b5f2-0fb0e4c77ec5");
             }
 
             if (!qualifiedNetworksList.isEmpty()) {
                 setPreferredTransports(qualifiedNetworksList);
                 mQualifiedNetworksChangedRegistrants.notifyResult(qualifiedNetworksList);
             }
-        }
-    }
-
-    /**
-     * Called when receiving preferred transport change request for a specific apnType.
-     *
-     * @param apnType The requested apnType.
-     */
-    private void trackFrequentApnTypeChange(@ApnSetting.ApnType int apnType) {
-        SlidingWindowEventCounter counter = mApnTypeToQnsChangeNetworkCounter.get(apnType);
-        if (counter == null) {
-            counter = new SlidingWindowEventCounter(
-                    mDataConfigManager.getAnomalyQnsChangeThreshold().timeWindow,
-                    mDataConfigManager.getAnomalyQnsChangeThreshold().eventNumOccurrence);
-            mApnTypeToQnsChangeNetworkCounter.put(apnType, counter);
-        }
-        if (counter.addOccurrence()) {
-            reportAnomaly("QNS requested network change for "
-                            + ApnSetting.getApnTypeString(apnType) + " "
-                            + counter.getFrequencyString(),
-                    "3e89a3df-3524-45fa-b5f2-b8911abc7d57");
         }
     }
 

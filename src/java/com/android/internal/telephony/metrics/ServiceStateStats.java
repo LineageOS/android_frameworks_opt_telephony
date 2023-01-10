@@ -25,6 +25,10 @@ import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 
+import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS;
+import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_IMS;
+import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_UNKNOWN;
+
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
@@ -85,7 +89,7 @@ public class ServiceStateStats {
         } else {
             CellularServiceState newState = new CellularServiceState();
             newState.voiceRat = getVoiceRat(mPhone, serviceState);
-            newState.dataRat = getDataRat(serviceState);
+            newState.dataRat = getRat(serviceState, NetworkRegistrationInfo.DOMAIN_PS);
             newState.voiceRoamingType = serviceState.getVoiceRoamingType();
             newState.dataRoamingType = serviceState.getDataRoamingType();
             newState.isEndc = isEndc(serviceState);
@@ -170,7 +174,10 @@ public class ServiceStateStats {
         }
         int chNumber = serviceState.getChannelNumber();
         int band;
-        @NetworkType int rat = getRat(serviceState);
+        @NetworkType int rat = getRat(serviceState, NetworkRegistrationInfo.DOMAIN_PS);
+        if (rat == TelephonyManager.NETWORK_TYPE_UNKNOWN) {
+            rat = serviceState.getVoiceNetworkType();
+        }
         switch (rat) {
             case TelephonyManager.NETWORK_TYPE_GSM:
             case TelephonyManager.NETWORK_TYPE_GPRS:
@@ -187,6 +194,9 @@ public class ServiceStateStats {
             case TelephonyManager.NETWORK_TYPE_LTE:
             case TelephonyManager.NETWORK_TYPE_LTE_CA:
                 band = AccessNetworkUtils.getOperatingBandForEarfcn(chNumber);
+                break;
+            case TelephonyManager.NETWORK_TYPE_NR:
+                band = AccessNetworkUtils.getOperatingBandForNrarfcn(chNumber);
                 break;
             default:
                 Rlog.w(TAG, "getBand: unknown WWAN RAT " + rat);
@@ -231,52 +241,53 @@ public class ServiceStateStats {
     /**
      * Returns the current voice RAT from IMS registration if present, otherwise from the service
      * state.
+     *
+     * <p>If the device is not in service, {@code TelephonyManager.NETWORK_TYPE_UNKNOWN} is returned
+     * despite that the device may have emergency service over a certain RAT.
      */
     static @NetworkType int getVoiceRat(Phone phone, @Nullable ServiceState state) {
+        return getVoiceRat(phone, state, VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_UNKNOWN);
+    }
+
+    /**
+     * Returns the current voice RAT according to the bearer.
+     *
+     * <p>If the device is not in service, {@code TelephonyManager.NETWORK_TYPE_UNKNOWN} is returned
+     * despite that the device may have emergency service over a certain RAT.
+     */
+    @VisibleForTesting public
+    static @NetworkType int getVoiceRat(Phone phone, @Nullable ServiceState state, int bearer) {
         if (state == null) {
             return TelephonyManager.NETWORK_TYPE_UNKNOWN;
         }
         ImsPhone imsPhone = (ImsPhone) phone.getImsPhone();
-        if (imsPhone != null) {
+        if (bearer != VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS && imsPhone != null) {
             @NetworkType int imsVoiceRat = imsPhone.getImsStats().getImsVoiceRadioTech();
             if (imsVoiceRat != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
-                // If IMS is over WWAN but WWAN PS is not in-service, then IMS RAT is invalid
+                // If IMS is registered over WWAN but WWAN PS is not in service,
+                // fallback to WWAN CS RAT
                 boolean isImsVoiceRatValid =
                         (imsVoiceRat == TelephonyManager.NETWORK_TYPE_IWLAN
-                                || getDataRat(state) != TelephonyManager.NETWORK_TYPE_UNKNOWN);
-                return isImsVoiceRatValid ? imsVoiceRat : TelephonyManager.NETWORK_TYPE_UNKNOWN;
+                                || getRat(state, NetworkRegistrationInfo.DOMAIN_PS)
+                                        != TelephonyManager.NETWORK_TYPE_UNKNOWN);
+                if (isImsVoiceRatValid) {
+                    return imsVoiceRat;
+                }
             }
         }
-
-        // If WWAN CS is not in-service, we should return NETWORK_TYPE_UNKNOWN
-        final NetworkRegistrationInfo wwanRegInfo =
-                state.getNetworkRegistrationInfo(
-                        NetworkRegistrationInfo.DOMAIN_CS,
-                        AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        return wwanRegInfo != null && wwanRegInfo.isInService()
-                ? wwanRegInfo.getAccessNetworkTechnology()
-                : TelephonyManager.NETWORK_TYPE_UNKNOWN;
-    }
-
-    /**
-     * Returns RAT used by WWAN.
-     *
-     * <p>Returns PS WWAN RAT, or CS WWAN RAT if PS WWAN RAT is unavailable.
-     */
-    private static @NetworkType int getRat(ServiceState state) {
-        @NetworkType int rat = getDataRat(state);
-        if (rat == TelephonyManager.NETWORK_TYPE_UNKNOWN) {
-            rat = state.getVoiceNetworkType();
+        if (bearer == VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_IMS) {
+            return TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        } else {
+            return getRat(state, NetworkRegistrationInfo.DOMAIN_CS);
         }
-        return rat;
     }
 
-    /** Returns PS (data) RAT used by WWAN. */
-    static @NetworkType int getDataRat(ServiceState state) {
+    /** Returns RAT used by WWAN if WWAN is in service. */
+    public static @NetworkType int getRat(
+            ServiceState state, @NetworkRegistrationInfo.Domain int domain) {
         final NetworkRegistrationInfo wwanRegInfo =
                 state.getNetworkRegistrationInfo(
-                        NetworkRegistrationInfo.DOMAIN_PS,
-                        AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+                        domain, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
         return wwanRegInfo != null && wwanRegInfo.isInService()
                 ? wwanRegInfo.getAccessNetworkTechnology()
                 : TelephonyManager.NETWORK_TYPE_UNKNOWN;
@@ -291,7 +302,7 @@ public class ServiceStateStats {
     }
 
     private static boolean isEndc(ServiceState state) {
-        if (getDataRat(state) != TelephonyManager.NETWORK_TYPE_LTE) {
+        if (getRat(state, NetworkRegistrationInfo.DOMAIN_PS) != TelephonyManager.NETWORK_TYPE_LTE) {
             return false;
         }
         int nrState = state.getNrState();

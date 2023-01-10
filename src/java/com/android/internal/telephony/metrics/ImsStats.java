@@ -35,6 +35,7 @@ import android.os.SystemClock;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Annotation.NetworkType;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsReasonInfo;
@@ -358,7 +359,8 @@ public class ImsStats {
     public synchronized void onServiceStateChanged(ServiceState state) {
         if (mLastTransportType == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
                 && mLastRegistrationStats != null) {
-            mLastRegistrationStats.rat = ServiceStateStats.getDataRat(state);
+            mLastRegistrationStats.rat =
+                    ServiceStateStats.getRat(state, NetworkRegistrationInfo.DOMAIN_PS);
         }
     }
 
@@ -367,7 +369,6 @@ public class ImsStats {
      * TelephonyManager#NETWORK_TYPE_UNKNOWN} if there isn't any.
      */
     @NetworkType
-    @VisibleForTesting
     public synchronized int getImsVoiceRadioTech() {
         if (mLastRegistrationStats == null
                 || !mLastAvailableFeatures.isCapable(CAPABILITY_TYPE_VOICE)) {
@@ -395,7 +396,9 @@ public class ImsStats {
 
     @NetworkType
     private int getWwanPsRat() {
-        return ServiceStateStats.getDataRat(mPhone.getServiceStateTracker().getServiceState());
+        return ServiceStateStats.getRat(
+                mPhone.getServiceStateTracker().getServiceState(),
+                NetworkRegistrationInfo.DOMAIN_PS);
     }
 
     private ImsRegistrationStats getDefaultImsRegistrationStats() {

@@ -4804,6 +4804,8 @@ public class GsmCdmaPhone extends Phone {
 
         boolean mIsVonrEnabledByCarrier =
                 config.getBoolean(CarrierConfigManager.KEY_VONR_ENABLED_BOOL);
+        boolean mDefaultVonr =
+                config.getBoolean(CarrierConfigManager.KEY_VONR_ON_BY_DEFAULT_BOOL);
 
         String result = SubscriptionController.getInstance().getSubscriptionProperty(
                 getSubId(),
@@ -4817,11 +4819,15 @@ public class GsmCdmaPhone extends Phone {
         logd("VoNR setting from telephony.db:"
                 + setting
                 + " ,vonr_enabled_bool:"
-                + mIsVonrEnabledByCarrier);
+                + mIsVonrEnabledByCarrier
+                + " ,vonr_on_by_default_bool:"
+                + mDefaultVonr);
 
         if (!mIsVonrEnabledByCarrier) {
             mCi.setVoNrEnabled(false, obtainMessage(EVENT_SET_VONR_ENABLED_DONE), null);
-        } else if (setting == 1 || setting == -1) {
+        } else if (setting == -1) {
+            mCi.setVoNrEnabled(mDefaultVonr, obtainMessage(EVENT_SET_VONR_ENABLED_DONE), null);
+        } else if (setting == 1) {
             mCi.setVoNrEnabled(true, obtainMessage(EVENT_SET_VONR_ENABLED_DONE), null);
         } else if (setting == 0) {
             mCi.setVoNrEnabled(false, obtainMessage(EVENT_SET_VONR_ENABLED_DONE), null);

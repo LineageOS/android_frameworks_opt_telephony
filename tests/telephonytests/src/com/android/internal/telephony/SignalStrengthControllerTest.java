@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSRP;
 import static android.telephony.SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_RSSI;
 import static android.telephony.SignalThresholdInfo.SIGNAL_MEASUREMENT_TYPE_SSSINR;
 
@@ -24,6 +25,8 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -48,10 +51,13 @@ import android.test.suitebuilder.annotation.MediumTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
+import com.android.internal.util.ArrayUtils;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
@@ -59,12 +65,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Unit test for {@link SignalStrengthUpdateRequest}.
+ * Unit test for {@link SignalStrengthController}.
  */
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class SignalStrengthControllerTest extends TelephonyTest {
-
     private static final String TAG = "SignalStrengthControllerTest";
 
     private static final int ACTIVE_SUB_ID = 0;
@@ -91,19 +96,43 @@ public class SignalStrengthControllerTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(this.getClass().getSimpleName());
         mHandler = Mockito.mock(Handler.class);
+
         when(mPhone.getSubId()).thenReturn(ACTIVE_SUB_ID);
         mSsc = new SignalStrengthController(mPhone);
         replaceInstance(Handler.class, "mLooper", mHandler, mSsc.getLooper());
         replaceInstance(Phone.class, "mLooper", mPhone, mSsc.getLooper());
 
+        // Config a fixed supported RAN/MeasurementTypes to make the test more stable
         mBundle = mContextFixture.getCarrierConfigBundle();
+        // Support GERAN with RSSI
+        mBundle.putIntArray(CarrierConfigManager.KEY_GSM_RSSI_THRESHOLDS_INT_ARRAY,
+                new int[] {
+                        -109, /* SIGNAL_STRENGTH_POOR */
+                        -103, /* SIGNAL_STRENGTH_MODERATE */
+                        -97, /* SIGNAL_STRENGTH_GOOD */
+                        -89,  /* SIGNAL_STRENGTH_GREAT */
+                });
+        // Support EUTRAN with RSRP
+        mBundle.putInt(CarrierConfigManager.KEY_PARAMETERS_USED_FOR_LTE_SIGNAL_BAR_INT,
+                1 /* USE_RSRP */);
+        mBundle.putIntArray(CarrierConfigManager.KEY_LTE_RSRP_THRESHOLDS_INT_ARRAY,
+                new int[] {
+                        -115, /* SIGNAL_STRENGTH_POOR */
+                        -105, /* SIGNAL_STRENGTH_MODERATE */
+                        -95, /* SIGNAL_STRENGTH_GOOD */
+                        -85,  /* SIGNAL_STRENGTH_GREAT */
+                });
+        // Support NR with SSRSRP
+        mBundle.putInt(CarrierConfigManager.KEY_PARAMETERS_USE_FOR_5G_NR_SIGNAL_BAR_INT,
+                1 /* USE_SSRSRP */);
         mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSRSRP_THRESHOLDS_INT_ARRAY,
                 new int[] {
                         -110, /* SIGNAL_STRENGTH_POOR */
                         -90, /* SIGNAL_STRENGTH_MODERATE */
                         -80, /* SIGNAL_STRENGTH_GOOD */
-                        -65,  /* SIGNAL_STRENGTH_GREAT */
+                        -64,  /* SIGNAL_STRENGTH_GREAT */
                 });
+        // By default, NR with SSRSRQ and SSSINR is not supported
         mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSRSRQ_THRESHOLDS_INT_ARRAY,
                 new int[] {
                         -31, /* SIGNAL_STRENGTH_POOR */
@@ -119,6 +148,7 @@ public class SignalStrengthControllerTest extends TelephonyTest {
                         30  /* SIGNAL_STRENGTH_GREAT */
                 });
         processAllMessages();
+        reset(mSimulatedCommandsVerifier);
     }
 
     @After
@@ -652,6 +682,68 @@ public class SignalStrengthControllerTest extends TelephonyTest {
         mSimulatedCommands.notifySignalStrength();
         processAllMessages();
         assertEquals(mSsc.getSignalStrength().getLevel(), CellSignalStrength.SIGNAL_STRENGTH_GOOD);
+    }
+
+    /**
+     * Verify on both high-power and idle modes. All SignalThresholdInfo should be disabled if the
+     * threshold array is empty when calling CI#setSignalStrengthReportingCriteria.
+     */
+    @Test
+    public void consolidateAndSetReportingCriteria_allEmptyThresholdShouldBeDisabled() {
+        // Firstly, test on high-power mode
+        when(mPhone.isDeviceIdle()).thenReturn(false);
+        SignalThresholdInfo info = new SignalThresholdInfo.Builder()
+                .setRadioAccessNetworkType(AccessNetworkConstants.AccessNetworkType.EUTRAN)
+                .setSignalMeasurementType(SIGNAL_MEASUREMENT_TYPE_RSRP)
+                .setThresholds(new int[]{-112}, true /* isSystem */)
+                .build();
+        SignalStrengthUpdateRequest request = createTestSignalStrengthUpdateRequest(
+                info,
+                true /* shouldReportWhileIdle*/,
+                false /* shouldReportSystemWhileIdle */
+        );
+
+        mSsc.setSignalStrengthUpdateRequest(ACTIVE_SUB_ID, CALLING_UID,
+                request, Message.obtain(mHandler));
+        processAllMessages();
+
+        // Expect 3 non-empty thresholds (GERAN/RSSI, EUTRAN/RSRP, NR/SSRSRP)
+        // if Radio HAL ver is >= 1.5
+        verifyAllEmptyThresholdAreDisabledWhenSetSignalStrengthReportingCriteria(
+                3 /*expectedNonEmptyThreshold*/);
+
+        // Then, test when device turns into idle mode in which all system thresholds are emptied
+        // (shouldReportSystemWhileIdle is false)
+        reset(mSimulatedCommandsVerifier);
+        when(mPhone.isDeviceIdle()).thenReturn(true);
+        mSsc.onDeviceIdleStateChanged(true /* isDeviceIdle */);
+        processAllMessages();
+
+        // Expect 1 non-empty threshold left (EUTRAN/RSRP set by the SignalStrengthUpdateRequest)
+        verifyAllEmptyThresholdAreDisabledWhenSetSignalStrengthReportingCriteria(
+                1 /*expectedNonEmptyThreshold*/);
+    }
+
+    private void verifyAllEmptyThresholdAreDisabledWhenSetSignalStrengthReportingCriteria(
+            int expectedNonEmptyThreshold) {
+        ArgumentCaptor<List<SignalThresholdInfo>> signalThresholdInfoCaptor =
+                ArgumentCaptor.forClass(List.class);
+        verify(mSimulatedCommandsVerifier).setSignalStrengthReportingCriteria(
+                signalThresholdInfoCaptor.capture(), isNull());
+        List<SignalThresholdInfo> capturedInfos = signalThresholdInfoCaptor.getAllValues().get(0);
+        assertThat(capturedInfos).isNotEmpty();
+        int actualNonEmptyThreshold = 0;
+        for (SignalThresholdInfo signalThresholdInfo: capturedInfos) {
+            if (ArrayUtils.isEmpty(signalThresholdInfo.getThresholds())) {
+                assertThat(signalThresholdInfo.isEnabled()).isFalse();
+            } else {
+                actualNonEmptyThreshold++;
+            }
+        }
+        // Only check on RADIO hal 1.5 and above to make it less flaky
+        if (mPhone.getHalVersion().greaterOrEqual(RIL.RADIO_HAL_VERSION_1_5)) {
+            assertThat(expectedNonEmptyThreshold).isEqualTo(actualNonEmptyThreshold);
+        }
     }
 
     private void sendCarrierConfigUpdate() {

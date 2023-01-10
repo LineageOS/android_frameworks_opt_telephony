@@ -55,7 +55,9 @@ public class SimIndication extends IRadioSimIndication.Stub {
     public void carrierInfoForImsiEncryption(int indicationType) {
         mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CARRIER_INFO_IMSI_ENCRYPTION, null);
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(RIL_UNSOL_CARRIER_INFO_IMSI_ENCRYPTION, null);
+        }
 
         mRil.mCarrierInfoForImsiEncryptionRegistrants.notifyRegistrants(
                 new AsyncResult(null, null, null));
@@ -70,7 +72,9 @@ public class SimIndication extends IRadioSimIndication.Stub {
         mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
         int[] response = new int[]{cdmaSource};
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED, response);
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(RIL_UNSOL_CDMA_SUBSCRIPTION_SOURCE_CHANGED, response);
+        }
 
         mRil.mCdmaSubscriptionChangedRegistrants.notifyRegistrants(
                 new AsyncResult(null, response, null));
@@ -83,7 +87,7 @@ public class SimIndication extends IRadioSimIndication.Stub {
     public void simPhonebookChanged(int indicationType) {
         mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) {
+        if (mRil.isLogOrTrace()) {
             mRil.unsljLog(RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_CHANGED);
         }
 
@@ -106,8 +110,9 @@ public class SimIndication extends IRadioSimIndication.Stub {
             simPhonebookRecords.add(RILUtils.convertHalPhonebookRecordInfo(record));
         }
 
-        if (RIL.RILJ_LOGD) {
-            mRil.unsljLogRet(RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED,
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(
+                    RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED,
                     "status = " + status + " received " + records.length + " records");
         }
 
@@ -129,7 +134,7 @@ public class SimIndication extends IRadioSimIndication.Stub {
         response.efId = refreshResult.efId;
         response.aid = refreshResult.aid;
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_SIM_REFRESH, response);
+        if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_SIM_REFRESH, response);
 
         mRil.mIccRefreshRegistrants.notifyRegistrants(new AsyncResult(null, response, null));
     }
@@ -141,7 +146,7 @@ public class SimIndication extends IRadioSimIndication.Stub {
     public void simStatusChanged(int indicationType) {
         mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED);
 
         mRil.mIccStatusChangedRegistrants.notifyRegistrants();
     }
@@ -156,7 +161,7 @@ public class SimIndication extends IRadioSimIndication.Stub {
     public void stkEventNotify(int indicationType, String cmd) {
         mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_STK_EVENT_NOTIFY);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_STK_EVENT_NOTIFY);
 
         if (mRil.mCatEventRegistrant != null) {
             mRil.mCatEventRegistrant.notifyRegistrant(new AsyncResult(null, cmd, null));
@@ -172,7 +177,7 @@ public class SimIndication extends IRadioSimIndication.Stub {
     public void stkProactiveCommand(int indicationType, String cmd) {
         mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_STK_PROACTIVE_COMMAND);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_STK_PROACTIVE_COMMAND);
 
         if (mRil.mCatProCmdRegistrant != null) {
             mRil.mCatProCmdRegistrant.notifyRegistrant(new AsyncResult(null, cmd, null));
@@ -186,7 +191,7 @@ public class SimIndication extends IRadioSimIndication.Stub {
     public void stkSessionEnd(int indicationType) {
         mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) mRil.unsljLog(RIL_UNSOL_STK_SESSION_END);
+        if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_STK_SESSION_END);
 
         if (mRil.mCatSessionEndRegistrant != null) {
             mRil.mCatSessionEndRegistrant.notifyRegistrant(new AsyncResult(null, null, null));
@@ -203,7 +208,9 @@ public class SimIndication extends IRadioSimIndication.Stub {
 
         int[] response = new int[]{activate ? 1 : 0};
 
-        if (RIL.RILJ_LOGD) mRil.unsljLogRet(RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED, response);
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogRet(RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED, response);
+        }
 
         mRil.mSubscriptionStatusRegistrants.notifyRegistrants(
                 new AsyncResult(null, response, null));
@@ -217,7 +224,7 @@ public class SimIndication extends IRadioSimIndication.Stub {
     public void uiccApplicationsEnablementChanged(int indicationType, boolean enabled) {
         mRil.processIndication(RIL.SIM_SERVICE, indicationType);
 
-        if (RIL.RILJ_LOGD) {
+        if (mRil.isLogOrTrace()) {
             mRil.unsljLogRet(RIL_UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED, enabled);
         }
 

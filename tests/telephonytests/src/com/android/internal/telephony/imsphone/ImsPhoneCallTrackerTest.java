@@ -1006,7 +1006,9 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         PersistableBundle bundle = new PersistableBundle();
         String[] mappings = new String[]{
                 "1014|call completed elsewhere|1014",
+                "1014|Call Rejected By User|510",
                 "1014|*|510",
+                "510|Call completed elsewhere|1014",
                 };
         bundle.putStringArray(CarrierConfigManager.KEY_IMS_REASONINFO_MAPPING_STRING_ARRAY,
                 mappings);
@@ -1024,6 +1026,9 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
                 new ImsReasonInfo(1014, 200, "Call Rejected By User"))); // 1014 -> 510
         assertEquals(ImsReasonInfo.CODE_ANSWERED_ELSEWHERE, mCTUT.maybeRemapReasonCode(
                 new ImsReasonInfo(1014, 200, "Call completed elsewhere"))); // 1014 -> 1014
+        assertEquals(ImsReasonInfo.CODE_ANSWERED_ELSEWHERE, mCTUT.maybeRemapReasonCode(
+                new ImsReasonInfo(510, 200,
+                        "Call completed elsewhere by instance urn:gsma:imei:xxx"))); // 510 -> 1014
 
         // Simulate that after SIM swap the new carrier config doesn't have the mapping for 1014
         loadReasonCodeRemapCarrierConfig();
@@ -1892,6 +1897,30 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         } catch (Exception ex) {
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
+    }
+
+    /**
+     * Tests the case where a dialed call has not yet moved beyond the "pending MO" phase, but the
+     * user then disconnects.  In such a case we need to ensure that the pending MO reference is
+     * cleared so that another call can be placed.
+     */
+    @Test
+    @SmallTest
+    public void testCallDisconnectBeforeActive() {
+        ImsPhoneConnection connection = placeCall();
+        assertEquals(1, mCTUT.getConnections().size());
+        // Call is the pending MO right now.
+        assertEquals(connection, mCTUT.getPendingMO());
+        assertEquals(Call.State.DIALING, mCTUT.mForegroundCall.getState());
+        assertEquals(PhoneConstants.State.OFFHOOK, mCTUT.getState());
+
+        mImsCallListener.onCallTerminated(connection.getImsCall(),
+                new ImsReasonInfo(ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, 0));
+        // Make sure pending MO got nulled out.
+        assertNull(mCTUT.getPendingMO());
+
+        // Try making another call; it should not fail.
+        ImsPhoneConnection connection2 = placeCall();
     }
 
     private void sendCarrierConfigChanged() {

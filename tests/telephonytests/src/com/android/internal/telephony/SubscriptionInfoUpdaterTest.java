@@ -794,6 +794,38 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testOpportunisticSubscriptionNotUnsetWithEmptyConfigKey() throws Exception {
+        final int phoneId = mPhone.getPhoneId();
+        PersistableBundle carrierConfig = new PersistableBundle();
+
+        String carrierPackageName = "FakeCarrierPackageName";
+
+        doReturn(FAKE_SUB_ID_1).when(mSubscriptionController).getSubIdUsingPhoneId(phoneId);
+        doReturn(mSubInfo).when(mSubscriptionController).getSubscriptionInfo(eq(FAKE_SUB_ID_1));
+        doReturn(true).when(mSubInfo).isOpportunistic();
+        doReturn(carrierPackageName).when(mTelephonyManager)
+                .getCarrierServicePackageNameForLogicalSlot(eq(phoneId));
+        ((MockContentResolver) mContext.getContentResolver()).addProvider(
+                SubscriptionManager.CONTENT_URI.getAuthority(),
+                new FakeSubscriptionContentProvider());
+
+        mUpdater.updateSubscriptionByCarrierConfig(mPhone.getPhoneId(),
+                carrierPackageName, carrierConfig);
+
+        ArgumentCaptor<ContentValues> cvCaptor = ArgumentCaptor.forClass(ContentValues.class);
+        verify(mContentProvider, times(1)).update(
+                eq(SubscriptionManager.getUriForSubscriptionId(FAKE_SUB_ID_1)),
+                cvCaptor.capture(), eq(null), eq(null));
+        // no key is added for the opportunistic bit
+        assertNull(cvCaptor.getValue().getAsInteger(SubscriptionManager.IS_OPPORTUNISTIC));
+        // only carrier certs updated
+        assertEquals(1, cvCaptor.getValue().size());
+        verify(mSubscriptionController, times(1)).refreshCachedActiveSubscriptionInfoList();
+        verify(mSubscriptionController, times(1)).notifySubscriptionInfoChanged();
+    }
+
+    @Test
+    @SmallTest
     public void testUpdateFromCarrierConfigOpportunisticAddToGroup() throws Exception {
         final int phoneId = mPhone.getPhoneId();
         PersistableBundle carrierConfig = getCarrierConfigForSubInfoUpdate(
