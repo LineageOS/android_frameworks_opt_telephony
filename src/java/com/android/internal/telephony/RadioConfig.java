@@ -358,7 +358,7 @@ public class RadioConfig extends Handler {
 
             if (rr != null) {
                 Trace.asyncTraceForTrackEnd(
-                        Trace.TRACE_TAG_NETWORK, "RIL", "" /* unused */, rr.mSerial);
+                        Trace.TRACE_TAG_NETWORK, "RIL", rr.mSerial);
                 mRequestList.remove(serial);
             }
         }
