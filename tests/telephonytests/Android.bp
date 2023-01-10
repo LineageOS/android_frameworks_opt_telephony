@@ -48,6 +48,7 @@ android_test {
     test_suites: [
         "device-tests",
     ],
+    min_sdk_version: "29",
 }
 
 genrule {
