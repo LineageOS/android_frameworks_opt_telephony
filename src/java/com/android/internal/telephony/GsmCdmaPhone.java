@@ -242,6 +242,8 @@ public class GsmCdmaPhone extends Phone {
     CellBroadcastConfigTracker mCellBroadcastConfigTracker =
             CellBroadcastConfigTracker.make(this, null);
 
+    private boolean mIsNullCipherAndIntegritySupported = false;
+
     // Create Cfu (Call forward unconditional) so that dialing number &
     // mOnComplete (Message object passed by client) can be packed &
     // given as a single Cfu object as user data to RIL.
@@ -3440,6 +3442,14 @@ public class GsmCdmaPhone extends Phone {
                 break;
             case EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE:
                 logd("EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE");
+                ar = (AsyncResult) msg.obj;
+                if (ar == null || ar.exception == null) {
+                    mIsNullCipherAndIntegritySupported = true;
+                    return;
+                }
+                CommandException.Error error = ((CommandException) ar.exception).getCommandError();
+                mIsNullCipherAndIntegritySupported = !error.equals(
+                        CommandException.Error.REQUEST_NOT_SUPPORTED);
                 break;
 
             case EVENT_IMS_DEREGISTRATION_TRIGGERED:
@@ -5033,5 +5043,10 @@ public class GsmCdmaPhone extends Phone {
         mCi.setNullCipherAndIntegrityEnabled(
                 getNullCipherAndIntegrityEnabledPreference(),
                 obtainMessage(EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE));
+    }
+
+    @Override
+    public boolean isNullCipherAndIntegritySupported() {
+        return mIsNullCipherAndIntegritySupported;
     }
 }

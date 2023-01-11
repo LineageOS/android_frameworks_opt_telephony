@@ -711,6 +711,59 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
                 emergencyNumberTrackerMock.getEmergencyNumberList()));
     }
 
+    @Test
+    public void testUsingEmergencyNumberDatabaseWithRoutingInOOS() {
+        doReturn(mMockContext).when(mPhone).getContext();
+        doReturn(mContext.getAssets()).when(mMockContext).getAssets();
+        doReturn(mResources).when(mMockContext).getResources();
+        doReturn(false).when(mResources).getBoolean(
+                com.android.internal.R.bool.ignore_emergency_number_routing_from_db);
+
+        EmergencyNumberTracker emergencyNumberTrackerMock = new EmergencyNumberTracker(
+                mPhone, mSimulatedCommands);
+        emergencyNumberTrackerMock.sendMessage(
+                emergencyNumberTrackerMock.obtainMessage(
+                        1 /* EVENT_UNSOL_EMERGENCY_NUMBER_LIST */,
+                        new AsyncResult(null, mEmergencyNumberListTestSample, null)));
+        sendEmergencyNumberPrefix(emergencyNumberTrackerMock);
+        emergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("us");
+        processAllMessages();
+
+        // Check routing when cellidentity is null, which is oos
+        doReturn(null).when(mPhone).getCurrentCellIdentity();
+        EmergencyNumber emergencyNumber = new EmergencyNumber(
+                CONFIG_EMERGENCY_NUMBER_ADDRESS, CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                    "", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                            CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                                    EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                                            EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+        assertTrue(hasDbEmergencyNumber(emergencyNumber,
+                emergencyNumberTrackerMock.getEmergencyNumberList()));
+
+        // Check routing when cellidentity is 04, which is not part of normal routing mncs
+        doReturn(mCellIdentity).when(mPhone).getCurrentCellIdentity();
+        doReturn("04").when(mCellIdentity).getMncString();
+        emergencyNumber = new EmergencyNumber(
+                CONFIG_EMERGENCY_NUMBER_ADDRESS, CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                    "", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                            CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                                    EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                                            EmergencyNumber.EMERGENCY_CALL_ROUTING_EMERGENCY);
+        assertTrue(hasDbEmergencyNumber(emergencyNumber,
+                emergencyNumberTrackerMock.getEmergencyNumberList()));
+
+        // Check routing when cellidentity is 05, which is part of normal routing mncs
+        doReturn("05").when(mCellIdentity).getMncString();
+        emergencyNumber = new EmergencyNumber(
+                CONFIG_EMERGENCY_NUMBER_ADDRESS, CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                    "05", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                            CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                                    EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                                            EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
+        assertTrue(hasDbEmergencyNumber(emergencyNumber,
+                emergencyNumberTrackerMock.getEmergencyNumberList()));
+    }
+
     /**
      * Test OTA Emergency Number Database Update Status.
      */

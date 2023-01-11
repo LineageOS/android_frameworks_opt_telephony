@@ -743,7 +743,8 @@ public class NetworkTypeController extends StateMachine {
                     // fallthrough
                 case EVENT_UPDATE:
                     int rat = getDataNetworkType();
-                    if (rat == TelephonyManager.NETWORK_TYPE_NR || isLte(rat) && isNrConnected()) {
+                    if (rat == TelephonyManager.NETWORK_TYPE_NR
+                            || (isLte(rat) && isNrConnected())) {
                         if (isNrAdvanced()) {
                             transitionTo(mNrConnectedAdvancedState);
                         } else {
@@ -755,7 +756,7 @@ public class NetworkTypeController extends StateMachine {
                         if (isPhysicalLinkActive()) {
                             transitionWithTimerTo(mLteConnectedState);
                         } else {
-                            // Update in case of LTE/LTE+ switch
+                            // Update in case the override network type changed
                             updateOverrideNetworkType();
                         }
                     }
@@ -839,7 +840,7 @@ public class NetworkTypeController extends StateMachine {
                         if (!isPhysicalLinkActive()) {
                             transitionWithTimerTo(mIdleState);
                         } else {
-                            // Update in case of LTE/LTE+ switch
+                            // Update in case the override network type changed
                             updateOverrideNetworkType();
                         }
                     }
@@ -910,11 +911,13 @@ public class NetworkTypeController extends StateMachine {
                     // fallthrough
                 case EVENT_UPDATE:
                     int rat = getDataNetworkType();
-                    if (rat == TelephonyManager.NETWORK_TYPE_NR || isLte(rat) && isNrConnected()) {
+                    if (rat == TelephonyManager.NETWORK_TYPE_NR
+                            || (isLte(rat) && isNrConnected())) {
                         if (isNrAdvanced()) {
                             transitionTo(mNrConnectedAdvancedState);
                         } else {
-                            // Same NR connected state
+                            // Update in case the override network type changed
+                            updateOverrideNetworkType();
                         }
                     } else if (isLte(rat) && isNrNotRestricted()) {
                         transitionWithTimerTo(isPhysicalLinkActive()
@@ -985,7 +988,8 @@ public class NetworkTypeController extends StateMachine {
                     if (rat == TelephonyManager.NETWORK_TYPE_NR
                             || (isLte(rat) && isNrConnected())) {
                         if (isNrAdvanced()) {
-                            // Same NR advanced state
+                            // Update in case the override network type changed
+                            updateOverrideNetworkType();
                         } else {
                             transitionWithTimerTo(mNrConnectedState);
                         }
