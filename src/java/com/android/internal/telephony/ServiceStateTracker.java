@@ -2751,8 +2751,8 @@ public class ServiceStateTracker extends Handler {
 
             if (mPhone.isSubscriptionManagerServiceEnabled()) {
                 mSubscriptionManagerService.setCarrierName(mPhone.getSubId(),
-                        getCarrierName(data.shouldShowPlmn(), data.getPlmn(),
-                                data.shouldShowSpn(), data.getSpn()));
+                        TextUtils.emptyIfNull(getCarrierName(data.shouldShowPlmn(), data.getPlmn(),
+                                data.shouldShowSpn(), data.getSpn())));
             } else {
                 if (!mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(),
                         data.shouldShowPlmn(), data.getPlmn(), data.shouldShowSpn(),
