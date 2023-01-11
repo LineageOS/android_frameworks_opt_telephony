@@ -225,6 +225,8 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
     static class GetMetadataRequest {
         DownloadableSubscription mSubscription;
         boolean mForceDeactivateSim;
+        boolean mSwitchAfterDownload;
+        int mPortIndex;
         GetMetadataCommandCallback mCallback;
     }
 
@@ -447,13 +449,15 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
 
     /** Asynchronously fetch metadata for the given downloadable subscription. */
     @VisibleForTesting(visibility = PACKAGE)
-    public void getDownloadableSubscriptionMetadata(int cardId,
-            DownloadableSubscription subscription,
+    public void getDownloadableSubscriptionMetadata(int cardId, int portIndex,
+            DownloadableSubscription subscription, boolean switchAfterDownload,
             boolean forceDeactivateSim, GetMetadataCommandCallback callback) {
         GetMetadataRequest request =
                 new GetMetadataRequest();
         request.mSubscription = subscription;
         request.mForceDeactivateSim = forceDeactivateSim;
+        request.mSwitchAfterDownload = switchAfterDownload;
+        request.mPortIndex = portIndex;
         request.mCallback = callback;
         sendMessage(CMD_GET_DOWNLOADABLE_SUBSCRIPTION_METADATA, cardId, 0 /* arg2 */, request);
     }
@@ -752,7 +756,9 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                         case CMD_GET_DOWNLOADABLE_SUBSCRIPTION_METADATA: {
                             GetMetadataRequest request = (GetMetadataRequest) message.obj;
                             mEuiccService.getDownloadableSubscriptionMetadata(slotId,
+                                    request.mPortIndex,
                                     request.mSubscription,
+                                    request.mSwitchAfterDownload,
                                     request.mForceDeactivateSim,
                                     new IGetDownloadableSubscriptionMetadataCallback.Stub() {
                                         @Override

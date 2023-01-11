@@ -318,8 +318,8 @@ public class EuiccControllerTest extends TelephonyTest {
                 SUBSCRIPTION, false /* complete */, null /* result */);
         verifyIntentSent(EuiccManager.EMBEDDED_SUBSCRIPTION_RESULT_ERROR,
                 0 /* detailedCode */);
-        verify(mMockConnector).getDownloadableSubscriptionMetadata(anyInt(), any(), anyBoolean(),
-                any());
+        verify(mMockConnector).getDownloadableSubscriptionMetadata(anyInt(), anyInt(), any(),
+                anyBoolean(), anyBoolean(), any());
     }
 
     @Test
@@ -1492,7 +1492,7 @@ public class EuiccControllerTest extends TelephonyTest {
             @Override
             public Void answer(InvocationOnMock invocation) throws Exception {
                 EuiccConnector.GetMetadataCommandCallback cb = invocation
-                        .getArgument(3 /* resultCallback */);
+                        .getArgument(5 /* resultCallback */);
                 if (complete) {
                     cb.onGetMetadataComplete(CARD_ID, result);
                 } else {
@@ -1500,8 +1500,8 @@ public class EuiccControllerTest extends TelephonyTest {
                 }
                 return null;
             }
-        }).when(mMockConnector).getDownloadableSubscriptionMetadata(anyInt(), any(), anyBoolean(),
-                any());
+        }).when(mMockConnector).getDownloadableSubscriptionMetadata(anyInt(), anyInt(), any(),
+                anyBoolean(), anyBoolean(), any());
     }
 
     private void callGetDownloadableSubscriptionMetadata(DownloadableSubscription subscription,

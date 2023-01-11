@@ -386,6 +386,7 @@ public class EuiccController extends IEuiccController.Stub {
 
     void getDownloadableSubscriptionMetadata(int cardId, DownloadableSubscription subscription,
             boolean forceDeactivateSim, String callingPackage, PendingIntent callbackIntent) {
+        Log.d(TAG, " getDownloadableSubscriptionMetadata callingPackage: " + callingPackage);
         if (!callerCanWriteEmbeddedSubscriptions()) {
             throw new SecurityException("Must have WRITE_EMBEDDED_SUBSCRIPTIONS to get metadata");
         }
@@ -393,7 +394,8 @@ public class EuiccController extends IEuiccController.Stub {
         long token = Binder.clearCallingIdentity();
         try {
             mConnector.getDownloadableSubscriptionMetadata(cardId,
-                    subscription, forceDeactivateSim,
+                    TelephonyManager.DEFAULT_PORT_INDEX, subscription,
+                    false /* switchAfterDownload */, forceDeactivateSim,
                     new GetMetadataCommandCallback(
                             token, subscription, callingPackage, callbackIntent));
         } finally {
@@ -602,8 +604,8 @@ public class EuiccController extends IEuiccController.Stub {
             if (!isConsentNeededToResolvePortIndex
                     && canManageSubscriptionOnTargetSim(cardId, callingPackage, true,
                     portIndex)) {
-                mConnector.getDownloadableSubscriptionMetadata(cardId, subscription,
-                    forceDeactivateSim,
+                mConnector.getDownloadableSubscriptionMetadata(cardId, portIndex,
+                        subscription, switchAfterDownload, forceDeactivateSim,
                     new DownloadSubscriptionGetMetadataCommandCallback(token, subscription,
                         switchAfterDownload, callingPackage, forceDeactivateSim,
                         callbackIntent, false /* withUserConsent */, portIndex));
@@ -714,7 +716,8 @@ public class EuiccController extends IEuiccController.Stub {
         Log.d(TAG, " downloadSubscriptionPrivilegedCheckMetadata cardId: " + cardId
                 + " switchAfterDownload: " + switchAfterDownload + " portIndex: " + portIndex
                 + " forceDeactivateSim: " + forceDeactivateSim);
-        mConnector.getDownloadableSubscriptionMetadata(cardId, subscription, forceDeactivateSim,
+        mConnector.getDownloadableSubscriptionMetadata(cardId, portIndex,
+                subscription, switchAfterDownload, forceDeactivateSim,
                 new DownloadSubscriptionGetMetadataCommandCallback(callingToken, subscription,
                         switchAfterDownload, callingPackage, forceDeactivateSim, callbackIntent,
                         true /* withUserConsent */, portIndex));
@@ -863,6 +866,7 @@ public class EuiccController extends IEuiccController.Stub {
 
     void getDefaultDownloadableSubscriptionList(int cardId,
             boolean forceDeactivateSim, String callingPackage, PendingIntent callbackIntent) {
+        Log.d(TAG, " getDefaultDownloadableSubscriptionList callingPackage: " + callingPackage);
         if (!callerCanWriteEmbeddedSubscriptions()) {
             throw new SecurityException(
                     "Must have WRITE_EMBEDDED_SUBSCRIPTIONS to get default list");
