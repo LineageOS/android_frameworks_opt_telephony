@@ -78,6 +78,11 @@ public class ImsCallInfo {
         return changed;
     }
 
+    /** Called when clearing orphaned connection. */
+    public void onDisconnect() {
+        mState = Call.State.DISCONNECTED;
+    }
+
     /** @return the call index. */
     public int getIndex() {
         return mIndex;

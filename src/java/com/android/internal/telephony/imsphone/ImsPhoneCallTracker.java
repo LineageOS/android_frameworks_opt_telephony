@@ -1479,6 +1479,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         // above. Remove all references to it.
         mPendingMO = null;
         updatePhoneState();
+        mImsCallInfoTracker.clearAllOrphanedConnections();
     }
 
     /**
@@ -4658,6 +4659,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 transferHandoverConnections(mBackgroundCall);
                 transferHandoverConnections(mRingingCall);
                 updatePhoneState();
+                mImsCallInfoTracker.notifySrvccCompleted();
                 break;
 
             case TelephonyManager.SRVCC_STATE_HANDOVER_FAILED:
