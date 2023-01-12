@@ -5000,7 +5000,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *        a specific direction by NW.
      */
     public void triggerNotifyAnbr(int mediaType, int direction, int bitsPerSecond) {
-        mCi.triggerNotifyAnbr(mediaType, direction, bitsPerSecond, null);
     }
 
     /**
