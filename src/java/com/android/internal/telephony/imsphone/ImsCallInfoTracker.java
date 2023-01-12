@@ -25,6 +25,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
+import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -39,6 +40,8 @@ import java.util.Map;
  * Contains the state of all IMS calls.
  */
 public class ImsCallInfoTracker {
+    private static final String LOG_TAG = "ImsCallInfoTracker";
+    private static final boolean DBG = false;
 
     private final Phone mPhone;
     private final List<ImsCallInfo> mQueue = new ArrayList<>();
@@ -56,6 +59,8 @@ public class ImsCallInfoTracker {
      * @param c The instance of {@link ImsPhoneConnection}.
      */
     public void addImsCallStatus(@NonNull ImsPhoneConnection c) {
+        if (DBG) Rlog.d(LOG_TAG, "addImsCallStatus");
+
         synchronized (mImsCallInfo) {
             if (mQueue.isEmpty()) {
                 mQueue.add(new ImsCallInfo(mNextIndex++));
@@ -69,6 +74,8 @@ public class ImsCallInfoTracker {
             mImsCallInfo.put(c, imsCallInfo);
 
             notifyImsCallStatus();
+
+            if (DBG) dump();
         }
     }
 
@@ -90,9 +97,18 @@ public class ImsCallInfoTracker {
      */
     public void updateImsCallStatus(@NonNull ImsPhoneConnection c,
             boolean holdReceived, boolean resumeReceived) {
+        if (DBG) {
+            Rlog.d(LOG_TAG, "updateImsCallStatus holdReceived=" + holdReceived
+                    + ", resumeReceived=" + resumeReceived);
+        }
 
         synchronized (mImsCallInfo) {
             ImsCallInfo info = mImsCallInfo.get(c);
+
+            if (info == null) {
+                // This happens when the user tries to hangup the call after handover has completed.
+                return;
+            }
 
             boolean changed = info.update(c, holdReceived, resumeReceived);
 
@@ -100,6 +116,7 @@ public class ImsCallInfoTracker {
 
             Call.State state = c.getState();
 
+            if (DBG) Rlog.d(LOG_TAG, "updateImsCallStatus state=" + state);
             // Call is disconnected. There are 2 cases in disconnected state:
             // if silent redial, state == IDLE, otherwise, state == DISCONNECTED.
             if (state == DISCONNECTED || state == IDLE) {
@@ -113,6 +130,42 @@ public class ImsCallInfoTracker {
                     mNextIndex--;
                 }
             }
+
+            if (DBG) dump();
+        }
+    }
+
+    /** Clears all orphaned IMS call information. */
+    public void clearAllOrphanedConnections() {
+        if (DBG) Rlog.d(LOG_TAG, "clearAllOrphanedConnections");
+
+        Collection<ImsCallInfo> infos = mImsCallInfo.values();
+        infos.stream().forEach(info -> { info.onDisconnect(); });
+        notifyImsCallStatus();
+        clearAllCallInfo();
+
+        if (DBG) dump();
+    }
+
+    /** Notifies that SRVCC has completed. */
+    public void notifySrvccCompleted() {
+        if (DBG) Rlog.d(LOG_TAG, "notifySrvccCompleted");
+
+        clearAllCallInfo();
+        notifyImsCallStatus();
+
+        if (DBG) dump();
+    }
+
+    private void clearAllCallInfo() {
+        try {
+            Collection<ImsCallInfo> infos = mImsCallInfo.values();
+            infos.stream().forEach(info -> { info.reset(); });
+            mImsCallInfo.clear();
+            mQueue.clear();
+            mNextIndex = 1;
+        } catch (UnsupportedOperationException e) {
+            Rlog.e(LOG_TAG, "e=" + e);
         }
     }
 
@@ -141,5 +194,12 @@ public class ImsCallInfoTracker {
                 return 0;
             }
         });
+    }
+
+    private void dump() {
+        Collection<ImsCallInfo> infos = mImsCallInfo.values();
+        ArrayList<ImsCallInfo> imsCallInfo = new ArrayList<ImsCallInfo>(infos);
+        sort(imsCallInfo);
+        Rlog.d(LOG_TAG, "imsCallInfos=" + imsCallInfo);
     }
 }
