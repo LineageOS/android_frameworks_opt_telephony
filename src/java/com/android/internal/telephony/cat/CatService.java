@@ -618,11 +618,15 @@ public class CatService extends Handler implements AppInterface {
     public void sendStkSms(String text, String destAddr, int subId, CommandParams cmdParams,
             ProxyController proxyController) {
         PendingIntent sentPendingIntent = PendingIntent.getBroadcast(mContext, 0,
-                new Intent(SMS_SENT_ACTION).putExtra("cmdDetails",
-                        cmdParams.mCmdDet), PendingIntent.FLAG_MUTABLE);
+                new Intent(SMS_SENT_ACTION)
+                        .putExtra("cmdDetails", cmdParams.mCmdDet)
+                        .setPackage(mContext.getPackageName()),
+                PendingIntent.FLAG_MUTABLE);
         PendingIntent deliveryPendingIntent = PendingIntent.getBroadcast(mContext, 0,
-                new Intent(SMS_DELIVERY_ACTION).putExtra("cmdDetails",
-                        cmdParams.mCmdDet), PendingIntent.FLAG_MUTABLE);
+                new Intent(SMS_DELIVERY_ACTION)
+                        .putExtra("cmdDetails", cmdParams.mCmdDet)
+                        .setPackage(mContext.getPackageName()),
+                PendingIntent.FLAG_MUTABLE);
         SmsController smsController = proxyController.getSmsController();
         smsController.sendTextForSubscriber(subId, mContext.getOpPackageName(),
                 mContext.getAttributionTag(), destAddr, null, text, sentPendingIntent,
