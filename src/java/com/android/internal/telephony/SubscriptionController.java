@@ -4830,8 +4830,7 @@ public class SubscriptionController extends ISub.Stub {
     public UserHandle getSubscriptionUserHandle(int subId) {
         enforceManageSubscriptionUserAssociation("getSubscriptionUserHandle");
 
-        if (!mContext.getResources().getBoolean(
-                com.android.internal.R.bool.config_enable_get_subscription_user_handle)) {
+        if (!SubscriptionInfoUpdater.isWorkProfileTelephonyEnabled()) {
             return null;
         }
 
@@ -4869,6 +4868,10 @@ public class SubscriptionController extends ISub.Stub {
     public boolean isSubscriptionAssociatedWithUser(int subscriptionId,
             @NonNull UserHandle userHandle) {
         enforceManageSubscriptionUserAssociation("isSubscriptionAssociatedWithUser");
+
+        if (!SubscriptionInfoUpdater.isWorkProfileTelephonyEnabled()) {
+            return true;
+        }
 
         long token = Binder.clearCallingIdentity();
         try {
@@ -4922,6 +4925,10 @@ public class SubscriptionController extends ISub.Stub {
                     mContext.getOpPackageName(), mContext.getAttributionTag());
             if (subInfoList == null || subInfoList.isEmpty()) {
                 return new ArrayList<>();
+            }
+
+            if (!SubscriptionInfoUpdater.isWorkProfileTelephonyEnabled()) {
+                return subInfoList;
             }
 
             List<SubscriptionInfo> subscriptionsAssociatedWithUser = new ArrayList<>();

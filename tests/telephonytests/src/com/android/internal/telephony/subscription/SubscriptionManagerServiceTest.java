@@ -150,6 +150,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 SubscriptionManagerServiceCallback.class);
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
                 Telephony.Carriers.CONTENT_URI.getAuthority(), mSubscriptionProvider);
+
         mSubscriptionManagerServiceUT = new SubscriptionManagerService(mContext, Looper.myLooper());
 
         monitorTestableLooper(new TestableLooper(getBackgroundHandler().getLooper()));
@@ -170,6 +171,8 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 anyInt(), nullable(String.class), nullable(String.class), nullable(String.class));
         setIdentifierAccess(false);
         setPhoneNumberAccess(PackageManager.PERMISSION_DENIED);
+
+        mSubscriptionManagerServiceUT.setWorkProfileTelephonyEnabled(true);
 
         logd("SubscriptionManagerServiceTest -Setup!");
     }
@@ -244,13 +247,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
             fail("Failed to insert subscription. e=" + e);
         }
         return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-    }
-
-    private void enableGetSubscriptionUserHandle() {
-        Resources mResources = mock(Resources.class);
-        doReturn(true).when(mResources).getBoolean(
-                eq(com.android.internal.R.bool.config_enable_get_subscription_user_handle));
-        doReturn(mResources).when(mContext).getResources();
     }
 
     @Test
@@ -940,7 +936,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     @Test
     public void testSetGetSubscriptionUserHandle() {
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
-        enableGetSubscriptionUserHandle();
 
         // Should fail without MANAGE_SUBSCRIPTION_USER_ASSOCIATION
         assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
@@ -974,7 +969,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     @Test
     public void testIsSubscriptionAssociatedWithUser() {
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
-        enableGetSubscriptionUserHandle();
 
         // Should fail without MANAGE_SUBSCRIPTION_USER_ASSOCIATION
         assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
