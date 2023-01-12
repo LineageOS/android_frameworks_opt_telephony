@@ -68,6 +68,7 @@ import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelUuid;
 import android.os.UserHandle;
@@ -148,6 +149,8 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 Telephony.Carriers.CONTENT_URI.getAuthority(), mSubscriptionProvider);
         mSubscriptionManagerServiceUT = new SubscriptionManagerService(mContext, Looper.myLooper());
 
+        monitorTestableLooper(new TestableLooper(getBackgroundHandler().getLooper()));
+
         doAnswer(invocation -> {
             ((Runnable) invocation.getArguments()[0]).run();
             return null;
@@ -180,6 +183,13 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION,
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID);
         super.tearDown();
+    }
+
+    private Handler getBackgroundHandler() throws Exception {
+        Field field = SubscriptionManagerService.class.getDeclaredField(
+                "mBackgroundHandler");
+        field.setAccessible(true);
+        return (Handler) field.get(mSubscriptionManagerServiceUT);
     }
 
     /**
