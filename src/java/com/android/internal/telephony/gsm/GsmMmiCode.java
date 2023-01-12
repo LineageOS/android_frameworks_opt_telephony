@@ -1333,8 +1333,8 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         }
     }
     //***** Private instance methods
-
-    private CharSequence getErrorMessage(AsyncResult ar) {
+    @VisibleForTesting
+    public CharSequence getErrorMessage(AsyncResult ar) {
 
         if (ar.exception instanceof CommandException) {
             CommandException.Error err = ((CommandException)(ar.exception)).getCommandError();
@@ -1362,6 +1362,13 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             } else if (err == CommandException.Error.OEM_ERROR_1) {
                 Rlog.i(LOG_TAG, "OEM_ERROR_1 USSD_MODIFIED_TO_DIAL_VIDEO");
                 return mContext.getText(com.android.internal.R.string.stk_cc_ussd_to_dial_video);
+            } else if (err == CommandException.Error.REQUEST_NOT_SUPPORTED
+                || err == CommandException.Error.OPERATION_NOT_ALLOWED) {
+                Rlog.i(LOG_TAG, "REQUEST_NOT_SUPPORTED/OPERATION_NOT_ALLOWED");
+                // getResources().getText() is the same as getText(), however getText() is final and
+                // cannot be mocked in tests.
+                return mContext.getResources().getText(
+                        com.android.internal.R.string.mmiErrorNotSupported);
             }
         }
 
