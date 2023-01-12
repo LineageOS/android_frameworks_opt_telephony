@@ -527,8 +527,15 @@ public class UiccProfile extends IccCard {
 
     private void updateCarrierNameForSubscription(int subId, int nameSource) {
         /* update display name with carrier override */
-        SubscriptionInfo subInfo = SubscriptionController.getInstance().getActiveSubscriptionInfo(
-                subId, mContext.getOpPackageName(), mContext.getAttributionTag());
+        SubscriptionInfo subInfo;
+
+        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
+            subInfo = SubscriptionManagerService.getInstance().getActiveSubscriptionInfo(subId,
+                    mContext.getOpPackageName(), mContext.getAttributionTag());
+        } else {
+            subInfo = SubscriptionController.getInstance().getActiveSubscriptionInfo(
+                    subId, mContext.getOpPackageName(), mContext.getAttributionTag());
+        }
 
         if (subInfo == null) {
             return;
