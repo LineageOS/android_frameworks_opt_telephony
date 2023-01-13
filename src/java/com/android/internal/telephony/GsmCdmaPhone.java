@@ -472,6 +472,7 @@ public class GsmCdmaPhone extends Phone {
         mCi.registerForCarrierInfoForImsiEncryption(this,
                 EVENT_RESET_CARRIER_KEY_IMSI_ENCRYPTION, null);
         mCi.registerForTriggerImsDeregistration(this, EVENT_IMS_DEREGISTRATION_TRIGGERED, null);
+        mCi.registerForNotifyAnbr(this, EVENT_TRIGGER_NOTIFY_ANBR, null);
         IntentFilter filter = new IntentFilter(
                 CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         filter.addAction(TelecomManager.ACTION_CURRENT_TTY_MODE_CHANGED);
@@ -3466,8 +3467,10 @@ public class GsmCdmaPhone extends Phone {
                 logd("EVENT_TRIGGER_NOTIFY_ANBR");
                 ar = (AsyncResult) msg.obj;
                 if (ar.exception == null) {
-                    mImsPhone.triggerNotifyAnbr(((int[]) ar.result)[0], ((int[]) ar.result)[1],
-                            ((int[]) ar.result)[2]);
+                    if (mImsPhone != null) {
+                        mImsPhone.triggerNotifyAnbr(((int[]) ar.result)[0], ((int[]) ar.result)[1],
+                                ((int[]) ar.result)[2]);
+                    }
                 }
                 break;
             default:

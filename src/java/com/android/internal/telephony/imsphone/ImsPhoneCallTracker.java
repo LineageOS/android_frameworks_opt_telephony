@@ -4398,8 +4398,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         @Override
         public void onCallSessionSendAnbrQuery(ImsCall imsCall, int mediaType, int direction,
                 int bitsPerSecond) {
-            log("onCallSessionSendAnbrQuery mediaType=" + mediaType + ", direction="
+            if (DBG) {
+                log("onCallSessionSendAnbrQuery mediaType=" + mediaType + ", direction="
                     + direction + ", bitPerSecond=" + bitsPerSecond);
+            }
             handleSendAnbrQuery(mediaType, direction, bitsPerSecond);
         }
     };
@@ -4623,6 +4625,22 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     public void notifySrvccState(int state) {
         if (DBG) log("notifySrvccState state=" + state);
 
+        if (mImsManager != null) {
+            try {
+                if (state == TelephonyManager.SRVCC_STATE_HANDOVER_STARTED) {
+                    mImsManager.notifySrvccStarted(mSrvccStartedCallback);
+                } else if (state == TelephonyManager.SRVCC_STATE_HANDOVER_COMPLETED) {
+                    mImsManager.notifySrvccCompleted();
+                } else if (state == TelephonyManager.SRVCC_STATE_HANDOVER_FAILED) {
+                    mImsManager.notifySrvccFailed();
+                } else if (state == TelephonyManager.SRVCC_STATE_HANDOVER_CANCELED) {
+                    mImsManager.notifySrvccCanceled();
+                }
+            } catch (ImsException e) {
+                loge("notifySrvccState : exception " + e);
+            }
+        }
+
         switch(state) {
             case TelephonyManager.SRVCC_STATE_HANDOVER_STARTED:
                 mSrvccState = Call.SrvccState.STARTED;
@@ -4653,22 +4671,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             default:
                 //ignore invalid state
                 return;
-        }
-
-        if (mImsManager != null) {
-            try {
-                if (mSrvccState == Call.SrvccState.STARTED) {
-                    mImsManager.notifySrvccStarted(mSrvccStartedCallback);
-                } else if (mSrvccState == Call.SrvccState.COMPLETED) {
-                    mImsManager.notifySrvccCompleted();
-                } else if (mSrvccState == Call.SrvccState.FAILED) {
-                    mImsManager.notifySrvccFailed();
-                } else if (mSrvccState == Call.SrvccState.CANCELED) {
-                    mImsManager.notifySrvccCanceled();
-                }
-            } catch (ImsException e) {
-                loge("notifySrvccState : exception " + e);
-            }
         }
     }
 
@@ -5940,6 +5942,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
 
     /** Send the mediaType, direction, bitrate for ANBR Query to the radio */
     public void handleSendAnbrQuery(int mediaType, int direction, int bitsPerSecond) {
+        if (DBG) log("handleSendAnbrQuery - mediaType=" + mediaType);
         mPhone.getDefaultPhone().mCi.sendAnbrQuery(mediaType, direction, bitsPerSecond, null);
     }
 
@@ -5956,6 +5959,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         ImsCall activeCall = mForegroundCall.getFirstConnection().getImsCall();
 
         if (activeCall != null) {
+            if (DBG) log("triggerNotifyAnbr - mediaType=" + mediaType);
             activeCall.callSessionNotifyAnbr(mediaType, direction, bitsPerSecond);
         }
     }

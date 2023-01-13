@@ -121,6 +121,7 @@ import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.IccCardConstants;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SrvccConnection;
 import com.android.internal.telephony.TelephonyTest;
@@ -169,6 +170,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsPhoneConnection mImsPhoneConnection;
     private INetworkStatsProviderCallback mVtDataUsageProviderCb;
     private ImsPhoneCallTracker.ConnectorFactory mConnectorFactory;
+    private CommandsInterface mMockCi;
 
     private final Executor mExecutor = Runnable::run;
 
@@ -229,6 +231,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         mSecondImsCall = spy(new ImsCall(mContext, mImsCallProfile));
         mImsPhoneConnectionListener = mock(ImsPhoneConnection.Listener.class);
         mImsPhoneConnection = mock(ImsPhoneConnection.class);
+        mMockCi = mock(CommandsInterface.class);
         imsCallMocking(mImsCall);
         imsCallMocking(mSecondImsCall);
         doReturn(ImsFeature.STATE_READY).when(mImsManager).getImsServiceState();
@@ -1456,6 +1459,45 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
         verify(mImsPhone, never()).startOnHoldTone(nullable(Connection.class));
+    }
+
+    @Test
+    @SmallTest
+    public void testSendAnbrQuery() throws Exception {
+        logd("ImsPhoneCallTracker testSendAnbrQuery");
+
+        replaceInstance(Phone.class, "mCi", mPhone, mMockCi);
+        //establish a MT call
+        testImsMTCallAccept();
+
+        ImsPhoneConnection connection = mCTUT.mForegroundCall.getFirstConnection();
+        ImsCall imsCall = connection.getImsCall();
+        imsCall.getImsCallSessionListenerProxy().callSessionSendAnbrQuery(1, 1, 24400);
+
+        verify(mMockCi, times(1)).sendAnbrQuery(eq(1), eq(1), eq(24400), any());
+
+        // Disconnecting and then Disconnected
+        mCTUT.hangup(connection);
+        mImsCallListener.onCallTerminated(imsCall,
+                new ImsReasonInfo(ImsReasonInfo.CODE_USER_TERMINATED, 0));
+    }
+
+    @Test
+    @SmallTest
+    public void testTriggerNotifyAnbr() throws Exception {
+        logd("ImsPhoneCallTracker testTriggerNotifyAnbr");
+
+        testImsMTCallAccept();
+        ImsPhoneConnection connection = mCTUT.mForegroundCall.getFirstConnection();
+        ImsCall imsCall = connection.getImsCall();
+
+        mCTUT.triggerNotifyAnbr(1, 1, 24400);
+        verify(mImsCall, times(1)).callSessionNotifyAnbr(eq(1), eq(1), eq(24400));
+
+        // Disconnecting and then Disconnected
+        mCTUT.hangup(connection);
+        mImsCallListener.onCallTerminated(imsCall,
+                new ImsReasonInfo(ImsReasonInfo.CODE_USER_TERMINATED, 0));
     }
 
     /**
