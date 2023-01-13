@@ -152,6 +152,7 @@ public class NetworkTypeController extends StateMachine {
     private boolean mIsTimerResetEnabledForLegacyStateRRCIdle;
     private int mLtePlusThresholdBandwidth;
     private int mNrAdvancedThresholdBandwidth;
+    private boolean mIncludeLteForNrAdvancedThresholdBandwidth;
     private int[] mAdditionalNrAdvancedBandsList;
     private String mPrimaryTimerState;
     private String mSecondaryTimerState;
@@ -259,6 +260,9 @@ public class NetworkTypeController extends StateMachine {
                 CarrierConfigManager.KEY_LTE_PLUS_THRESHOLD_BANDWIDTH_KHZ_INT);
         mNrAdvancedThresholdBandwidth = CarrierConfigManager.getDefaultConfig().getInt(
                 CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT);
+        mIncludeLteForNrAdvancedThresholdBandwidth = CarrierConfigManager.getDefaultConfig()
+                .getBoolean(CarrierConfigManager
+                        .KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL);
         mEnableNrAdvancedWhileRoaming = CarrierConfigManager.getDefaultConfig().getBoolean(
                 CarrierConfigManager.KEY_ENABLE_NR_ADVANCED_WHILE_ROAMING_BOOL);
 
@@ -294,6 +298,9 @@ public class NetworkTypeController extends StateMachine {
                 mNrAdvancedThresholdBandwidth = b.getInt(
                         CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT,
                         mNrAdvancedThresholdBandwidth);
+                mIncludeLteForNrAdvancedThresholdBandwidth = b.getBoolean(CarrierConfigManager
+                        .KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL,
+                        mIncludeLteForNrAdvancedThresholdBandwidth);
                 mAdditionalNrAdvancedBandsList = b.getIntArray(
                         CarrierConfigManager.KEY_ADDITIONAL_NR_ADVANCED_BANDS_INT_ARRAY);
                 mNrAdvancedCapablePcoId = b.getInt(
@@ -977,18 +984,20 @@ public class NetworkTypeController extends StateMachine {
         }
 
         private void updateNrAdvancedState() {
-            log("updateNrAdvancedState");
-            if (!isNrConnected()) {
+            if (!isNrConnected() && getDataNetworkType() != TelephonyManager.NETWORK_TYPE_NR) {
                 log("NR state changed. Sending EVENT_NR_STATE_CHANGED");
                 sendMessage(EVENT_NR_STATE_CHANGED);
                 return;
             }
-            if (!isNrAdvanced()) {
-                if (DBG) log("updateNrAdvancedState: CONNECTED_NR_ADVANCED -> CONNECTED");
-                transitionWithTimerTo(mNrConnectedState);
-            } else {
-                if (DBG) log("updateNrAdvancedState: CONNECTED -> CONNECTED_NR_ADVANCED");
-                transitionTo(mNrConnectedState);
+            boolean isNrAdvanced = isNrAdvanced();
+            if (isNrAdvanced != mIsNrAdvanced) {
+                if (!isNrAdvanced) {
+                    if (DBG) log("updateNrAdvancedState: CONNECTED_NR_ADVANCED -> CONNECTED");
+                    transitionWithTimerTo(mNrConnectedState, STATE_CONNECTED);
+                } else {
+                    if (DBG) log("updateNrAdvancedState: CONNECTED -> CONNECTED_NR_ADVANCED");
+                    transitionTo(mNrConnectedState);
+                }
             }
             mIsNrAdvanced = isNrAdvanced();
             log("mIsNrAdvanced=" + mIsNrAdvanced);
@@ -998,7 +1007,10 @@ public class NetworkTypeController extends StateMachine {
     private final NrConnectedState mNrConnectedState = new NrConnectedState();
 
     private void transitionWithTimerTo(IState destState) {
-        String destName = destState.getName();
+        transitionWithTimerTo(destState, destState.getName());
+    }
+
+    private void transitionWithTimerTo(IState destState, String destName) {
         if (DBG) log("Transition with primary timer from " + mPreviousState + " to " + destName);
         OverrideTimerRule rule = mOverrideTimerRules.get(mPreviousState);
         if (!mIsDeviceIdleMode && rule != null && rule.getTimer(destName) > 0) {
@@ -1075,6 +1087,8 @@ public class NetworkTypeController extends StateMachine {
             removeMessages(EVENT_PRIMARY_TIMER_EXPIRED);
             mIsPrimaryTimerActive = false;
             mPrimaryTimerState = "";
+            transitionToCurrentState();
+            return;
         }
 
         if (mIsSecondaryTimerActive && !mSecondaryTimerState.equals(currentState)) {
@@ -1086,6 +1100,8 @@ public class NetworkTypeController extends StateMachine {
             removeMessages(EVENT_SECONDARY_TIMER_EXPIRED);
             mIsSecondaryTimerActive = false;
             mSecondaryTimerState = "";
+            transitionToCurrentState();
+            return;
         }
 
         if (mIsPrimaryTimerActive || mIsSecondaryTimerActive) {
@@ -1223,11 +1239,19 @@ public class NetworkTypeController extends StateMachine {
             return false;
         }
 
+        int bandwidths = 0;
+        if (mPhone.getServiceStateTracker().getPhysicalChannelConfigList() != null) {
+            bandwidths = mPhone.getServiceStateTracker().getPhysicalChannelConfigList()
+                    .stream()
+                    .filter(config -> mIncludeLteForNrAdvancedThresholdBandwidth
+                            || config.getNetworkType() == TelephonyManager.NETWORK_TYPE_NR)
+                    .map(PhysicalChannelConfig::getCellBandwidthDownlinkKhz)
+                    .mapToInt(Integer::intValue)
+                    .sum();
+        }
         // Check if meeting minimum bandwidth requirement. For most carriers, there is no minimum
         // bandwidth requirement and mNrAdvancedThresholdBandwidth is 0.
-        if (mNrAdvancedThresholdBandwidth > 0
-                && IntStream.of(mPhone.getServiceState().getCellBandwidths()).sum()
-                < mNrAdvancedThresholdBandwidth) {
+        if (mNrAdvancedThresholdBandwidth > 0 && bandwidths < mNrAdvancedThresholdBandwidth) {
             return false;
         }
 

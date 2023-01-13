@@ -297,6 +297,8 @@ public class DataConfigManager extends Handler {
             new ConcurrentHashMap<>();
     /** Rules for handover between IWLAN and cellular network. */
     private @NonNull final List<HandoverRule> mHandoverRuleList = new ArrayList<>();
+    /** {@code True} keep IMS network in case of moving to non VOPS area; {@code false} otherwise.*/
+    private boolean mShouldKeepNetworkUpInNonVops = false;
 
     /**
      * Constructor
@@ -452,6 +454,7 @@ public class DataConfigManager extends Handler {
         updateDataRetryRules();
         updateMeteredApnTypes();
         updateSingleDataNetworkTypeAndCapabilityExemption();
+        updateVopsConfig();
         updateUnmeteredNetworkTypes();
         updateBandwidths();
         updateTcpBuffers();
@@ -663,6 +666,16 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * Update the voice over PS related config from the carrier config.
+     */
+    private void updateVopsConfig() {
+        synchronized (this) {
+            mShouldKeepNetworkUpInNonVops = mCarrierConfig.getBoolean(CarrierConfigManager
+                    .Ims.KEY_KEEP_PDN_UP_IN_NO_VOPS_BOOL);
+        }
+    }
+
+    /**
      * @return The list of {@link NetworkType} that only supports single data networks
      */
     public @NonNull @NetworkType List<Integer> getNetworkTypesOnlySupportSingleDataNetwork() {
@@ -675,6 +688,11 @@ public class DataConfigManager extends Handler {
      */
     public @NonNull @NetCapability Set<Integer> getCapabilitiesExemptFromSingleDataNetwork() {
         return Collections.unmodifiableSet(mCapabilitiesExemptFromSingleDataList);
+    }
+
+    /** {@code True} keep IMS network in case of moving to non VOPS area; {@code false} otherwise.*/
+    public boolean shouldKeepNetworkUpInNonVops() {
+        return mShouldKeepNetworkUpInNonVops;
     }
 
     /**
@@ -1289,6 +1307,7 @@ public class DataConfigManager extends Handler {
         pw.println("Capabilities exempt from single PDN=" + mCapabilitiesExemptFromSingleDataList
                 .stream().map(DataUtils::networkCapabilityToString)
                 .collect(Collectors.joining(",")));
+        pw.println("mShouldKeepNetworkUpInNoVops=" + mShouldKeepNetworkUpInNonVops);
         pw.println("Unmetered network types=" + String.join(",", mUnmeteredNetworkTypes));
         pw.println("Roaming unmetered network types="
                 + String.join(",", mRoamingUnmeteredNetworkTypes));
