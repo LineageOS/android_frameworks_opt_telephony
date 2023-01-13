@@ -1215,16 +1215,32 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
     @Test
     public void testDataNetworkControllerCallback() throws Exception {
+        Field field = DataNetworkController.class.getDeclaredField(
+                "mDataNetworkControllerCallbacks");
+        field.setAccessible(true);
+        Set<DataNetworkControllerCallback> dataNetworkControllerCallbacks =
+                (Set<DataNetworkControllerCallback>) field.get(mDataNetworkControllerUT);
+
+        // Verify register callback
         mDataNetworkControllerUT.registerDataNetworkControllerCallback(
                 mMockedDataNetworkControllerCallback);
+        TelephonyNetworkRequest request = createNetworkRequest(
+                NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        mDataNetworkControllerUT.addNetworkRequest(request);
         processAllMessages();
-        testSetupDataNetwork();
         verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(true));
         verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkConnected(any());
 
-        mDataNetworkControllerUT.unregisterDataNetworkControllerCallback(
-                mMockedDataNetworkControllerCallback);
+        int countOfCallbacks = dataNetworkControllerCallbacks.size();
+
+        // Verify unregister callback
+        mDataNetworkControllerUT.removeNetworkRequest(request);
         processAllMessages();
+        getDataNetworks().get(0).tearDown(DataNetwork
+                .TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED);
+        processAllFutureMessages();
+
+        assertEquals(countOfCallbacks - 1, dataNetworkControllerCallbacks.size());
     }
 
     @Test
