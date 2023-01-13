@@ -203,12 +203,11 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
                 Telephony.Sms.CONTENT_URI.getAuthority(), mContentProvider);
 
         mGsmInboundSmsHandler = GsmInboundSmsHandler.makeInboundSmsHandler(mContext,
-                mSmsStorageMonitor, mPhone);
+                mSmsStorageMonitor, mPhone, mTestableLooper.getLooper());
         mSmsFilters = new ArrayList<>();
         mSmsFilters.add(mSmsFilter);
         mSmsFilters.add(mSmsFilter2);
         mGsmInboundSmsHandler.setSmsFiltersForTesting(mSmsFilters);
-        monitorTestableLooper(new TestableLooper(mGsmInboundSmsHandler.getHandler().getLooper()));
 
         doReturn(mGsmInboundSmsHandler).when(mPhone).getInboundSmsHandler(false);
         doReturn(mCdmaInboundSmsHandler).when(mPhone).getInboundSmsHandler(true);
