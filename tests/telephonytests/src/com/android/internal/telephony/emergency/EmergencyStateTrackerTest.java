@@ -41,7 +41,6 @@ import static org.mockito.Mockito.when;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -59,9 +58,8 @@ import android.testing.TestableLooper;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.TelephonyIntents;
+import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
-import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.data.PhoneSwitcher;
 
 import org.junit.After;
@@ -84,8 +82,8 @@ import java.util.function.Consumer;
 @TestableLooper.RunWithLooper
 public class EmergencyStateTrackerTest extends TelephonyTest {
 
-    private static final String TEST_CALL_ID = "00001";
-    private static final String TEST_CALL_ID_02 = "00002";
+    private static final String TEST_CALL_ID = "TC@TEST1";
+    private static final long TEST_ECM_EXIT_TIMEOUT_MS = 500;
 
     @Mock EmergencyStateTracker.PhoneFactoryProxy mPhoneFactoryProxy;
     @Mock EmergencyStateTracker.PhoneSwitcherProxy mPhoneSwitcherProxy;
@@ -438,6 +436,97 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
     }
 
     /**
+     * Test that onEmergencyCallDomainUpdated updates the domain correctly so ECBM PS domain is
+     * detected.
+     */
+    @Test
+    @SmallTest
+    public void onEmergencyCallDomainUpdated_PsDomain() {
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        // Create test Phones
+        Phone testPhone = setupTestPhoneForEmergencyCall(/* isRoaming= */ true,
+                /* isRadioOn= */ true);
+        // Call startEmergencyCall() to set testPhone
+        CompletableFuture<Integer> unused = emergencyStateTracker.startEmergencyCall(testPhone,
+                TEST_CALL_ID, false);
+
+        // Set call to ACTIVE
+        emergencyStateTracker.onEmergencyCallStateChanged(Call.State.ACTIVE, TEST_CALL_ID);
+        // set domain
+        emergencyStateTracker.onEmergencyCallDomainUpdated(PhoneConstants.PHONE_TYPE_IMS,
+                TEST_CALL_ID);
+        // End call to enter ECM
+        emergencyStateTracker.endCall(TEST_CALL_ID);
+
+        // Make sure CS ECBM is true
+        assertTrue(emergencyStateTracker.isInEcm());
+        assertFalse(emergencyStateTracker.isInCdmaEcm());
+        assertTrue(emergencyStateTracker.isInImsEcm());
+    }
+
+    /**
+     * Test that onEmergencyCallDomainUpdated updates the domain correctly so ECBM CS domain is
+     * detected.
+     */
+    @Test
+    @SmallTest
+    public void onEmergencyCallDomainUpdated_CsDomain() {
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        // Create test Phones
+        Phone testPhone = setupTestPhoneForEmergencyCall(/* isRoaming= */ true,
+                /* isRadioOn= */ true);
+        // Call startEmergencyCall() to set testPhone
+        CompletableFuture<Integer> unused = emergencyStateTracker.startEmergencyCall(testPhone,
+                TEST_CALL_ID, false);
+
+        // Set call to ACTIVE
+        emergencyStateTracker.onEmergencyCallStateChanged(Call.State.ACTIVE, TEST_CALL_ID);
+        // set domain
+        emergencyStateTracker.onEmergencyCallDomainUpdated(PhoneConstants.PHONE_TYPE_CDMA,
+                TEST_CALL_ID);
+        // End call to enter ECM
+        emergencyStateTracker.endCall(TEST_CALL_ID);
+
+        // Make sure IMS ECBM is true
+        assertTrue(emergencyStateTracker.isInEcm());
+        assertTrue(emergencyStateTracker.isInCdmaEcm());
+        assertFalse(emergencyStateTracker.isInImsEcm());
+    }
+
+    /**
+     * Ensure that if for some reason we enter ECBM for CS domain and the Phone type is GSM,
+     * isInCdmaEcm returns false.
+     */
+    @Test
+    @SmallTest
+    public void onEmergencyCallDomainUpdated_CsDomain_Gsm() {
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        // Create test Phones
+        Phone testPhone = setupTestPhoneForEmergencyCall(/* isRoaming= */ true,
+                /* isRadioOn= */ true);
+        // For some reason the Phone is reporting GSM instead of CDMA.
+        doReturn(PhoneConstants.PHONE_TYPE_GSM).when(testPhone).getPhoneType();
+        // Call startEmergencyCall() to set testPhone
+        CompletableFuture<Integer> unused = emergencyStateTracker.startEmergencyCall(testPhone,
+                TEST_CALL_ID, false);
+
+        // Set call to ACTIVE
+        emergencyStateTracker.onEmergencyCallStateChanged(Call.State.ACTIVE, TEST_CALL_ID);
+        // set domain
+        emergencyStateTracker.onEmergencyCallDomainUpdated(PhoneConstants.PHONE_TYPE_CDMA,
+                TEST_CALL_ID);
+        // End call to enter ECM
+        emergencyStateTracker.endCall(TEST_CALL_ID);
+
+        assertTrue(emergencyStateTracker.isInEcm());
+        assertFalse(emergencyStateTracker.isInCdmaEcm());
+        assertFalse(emergencyStateTracker.isInImsEcm());
+    }
+
+    /**
      * Test that onEmergencyTransportChanged sets the new emergency mode.
      */
     @Test
@@ -544,7 +633,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
 
         assertTrue(emergencyStateTracker.isInEcm());
         // Verify exitEmergencyMode() is called after timeout
-        verify(testPhone, timeout(emergencyStateTracker.defaultEcmExitTimeoutMs + 1000).times(1))
+        verify(testPhone, timeout(TEST_ECM_EXIT_TIMEOUT_MS + 1000).times(1))
                 .exitEmergencyMode(any());
     }
 
@@ -566,15 +655,23 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
                 TEST_CALL_ID, false);
         // Set call to ACTIVE
         emergencyStateTracker.onEmergencyCallStateChanged(Call.State.ACTIVE, TEST_CALL_ID);
+        emergencyStateTracker.onEmergencyCallDomainUpdated(
+                PhoneConstants.PHONE_TYPE_IMS, TEST_CALL_ID);
         // Set ecm as supported
         setEcmSupportedConfig(testPhone, /* ecmSupported= */ true);
         // End call to enter ECM
         emergencyStateTracker.endCall(TEST_CALL_ID);
+        // verify ecbm states are correct
         assertTrue(emergencyStateTracker.isInEcm());
+        assertTrue(emergencyStateTracker.isInImsEcm());
+        assertFalse(emergencyStateTracker.isInCdmaEcm());
 
         emergencyStateTracker.exitEmergencyCallbackMode();
 
+        // Ensure ECBM states are all correctly false after we exit.
         assertFalse(emergencyStateTracker.isInEcm());
+        assertFalse(emergencyStateTracker.isInImsEcm());
+        assertFalse(emergencyStateTracker.isInCdmaEcm());
         // Intents sent for ECM: one for entering ECM and another for exiting
         ArgumentCaptor<Intent> ecmStateIntent = ArgumentCaptor.forClass(Intent.class);
         verify(mContext, times(2))
@@ -585,18 +682,16 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         assertFalse(capturedIntents.get(1)
                 .getBooleanExtra(TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, false));
         // Verify exitEmergencyMode() is called only once
-        verify(testPhone, timeout(emergencyStateTracker.defaultEcmExitTimeoutMs + 1000).times(1))
+        verify(testPhone, timeout(TEST_ECM_EXIT_TIMEOUT_MS + 1000).times(1))
                 .exitEmergencyMode(any());
     }
 
     private EmergencyStateTracker setupEmergencyStateTracker(
             boolean isSuplDdsSwitchRequiredForEmergencyCall) {
         doReturn(mPhoneSwitcher).when(mPhoneSwitcherProxy).getPhoneSwitcher();
-        EmergencyStateTracker emergencyStateTracker = new EmergencyStateTracker(mContext,
-                Looper.getMainLooper(), isSuplDdsSwitchRequiredForEmergencyCall, mPhoneFactoryProxy,
-                mPhoneSwitcherProxy, mTelephonyManagerProxy, mRadioOnHelper,
-                /* ecmExitTimeoutMs= */ 3000);
-        return emergencyStateTracker;
+        return new EmergencyStateTracker(mContext, Looper.getMainLooper(),
+                isSuplDdsSwitchRequiredForEmergencyCall, mPhoneFactoryProxy, mPhoneSwitcherProxy,
+                mTelephonyManagerProxy, mRadioOnHelper, TEST_ECM_EXIT_TIMEOUT_MS);
     }
 
     private Phone setupTestPhoneForEmergencyCall(boolean isRoaming, boolean isRadioOn) {
@@ -627,6 +722,9 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         when(phone.getSubId()).thenReturn(0);
         when(phone.getServiceStateTracker()).thenReturn(mSST);
         when(phone.getUnitTestMode()).thenReturn(true);
+        // Initialize the phone as a CDMA phone for now for ease of testing ECBM.
+        // Tests can individually override this to GSM if required for the test.
+        doReturn(PhoneConstants.PHONE_TYPE_CDMA).when(phone).getPhoneType();
         return phone;
     }
 
