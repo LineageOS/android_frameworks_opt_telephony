@@ -149,6 +149,8 @@ public abstract class SMSDispatcher extends Handler {
     /** New status report received. */
     protected static final int EVENT_NEW_SMS_STATUS_REPORT = 10;
 
+    /** Retry Sending RP-SMMA Notification */
+    protected static final int EVENT_RETRY_SMMA = 11;
     // other
     protected static final int EVENT_NEW_ICC_SMS = 14;
     protected static final int EVENT_ICC_CHANGED = 15;
@@ -186,6 +188,14 @@ public abstract class SMSDispatcher extends Handler {
 
     /** Maximum number of times to retry sending a failed SMS. */
     protected static final int MAX_SEND_RETRIES = 3;
+
+    /** Retransmitted Flag as specified in section 6.3.1.2 in TS 124011
+     * true:  RP-SMMA Retried once and no more transmissions are permitted
+     * false: not retried at all and at least another transmission of the RP-SMMA message
+     * is currently permitted
+     */
+    protected boolean mRPSmmaRetried = false;
+
     /** Delay before next send attempt on a failed SMS, in milliseconds. */
     @VisibleForTesting
     public static final int SEND_RETRY_DELAY = 2000;
