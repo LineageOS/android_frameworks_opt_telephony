@@ -363,6 +363,60 @@ public class ImsCallInfoTrackerTest extends TelephonyTest {
         assertEquals(2, imsCallInfos.get(1).getIndex());
     }
 
+    @Test
+    public void testSrvccCompleted() throws Exception {
+        ArgumentCaptor<List<ImsCallInfo>> captor = ArgumentCaptor.forClass(List.class);
+
+        ImsPhoneConnection c = getConnection(Call.State.DIALING, false);
+        mImsCallInfoTracker.addImsCallStatus(c);
+
+        verify(mImsPhone, times(1)).updateImsCallStatus(captor.capture(), any());
+
+        List<ImsCallInfo> imsCallInfos = captor.getValue();
+
+        assertNotNull(imsCallInfos);
+        assertEquals(1, imsCallInfos.size());
+
+        mImsCallInfoTracker.notifySrvccCompleted();
+
+        verify(mImsPhone, times(2)).updateImsCallStatus(captor.capture(), any());
+
+        imsCallInfos = captor.getValue();
+
+        assertNotNull(imsCallInfos);
+        assertEquals(0, imsCallInfos.size());
+    }
+
+    @Test
+    public void testClearAllOrphanedConnections() throws Exception {
+        ArgumentCaptor<List<ImsCallInfo>> captor = ArgumentCaptor.forClass(List.class);
+
+        ImsPhoneConnection c = getConnection(Call.State.DIALING, false);
+        mImsCallInfoTracker.addImsCallStatus(c);
+
+        verify(mImsPhone, times(1)).updateImsCallStatus(captor.capture(), any());
+
+        List<ImsCallInfo> imsCallInfos = captor.getValue();
+
+        assertNotNull(imsCallInfos);
+        assertEquals(1, imsCallInfos.size());
+
+        mImsCallInfoTracker.clearAllOrphanedConnections();
+
+        verify(mImsPhone, times(2)).updateImsCallStatus(captor.capture(), any());
+
+        imsCallInfos = captor.getValue();
+
+        assertNotNull(imsCallInfos);
+        assertEquals(1, imsCallInfos.size());
+
+        ImsCallInfo info = imsCallInfos.get(0);
+
+        assertNotNull(info);
+        assertEquals(1, info.getIndex());
+        assertEquals(Call.State.IDLE, info.getCallState());
+    }
+
     private ImsPhoneConnection getConnection(Call.State state, boolean isEmergency) {
         ImsPhoneConnection c = mock(ImsPhoneConnection.class);
         doReturn(isEmergency).when(c).isEmergencyCall();

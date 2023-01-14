@@ -41,6 +41,7 @@ import android.app.PendingIntent;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncResult;
+import android.os.Looper;
 import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.DisconnectCause;
@@ -79,8 +80,8 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
      */
     private static class TestSmsDispatchersController extends SmsDispatchersController {
         TestSmsDispatchersController(Phone phone, SmsStorageMonitor storageMonitor,
-                SmsUsageMonitor usageMonitor) {
-            super(phone, storageMonitor, usageMonitor);
+                SmsUsageMonitor usageMonitor, Looper looper) {
+            super(phone, storageMonitor, usageMonitor, looper);
         }
 
         public DomainSelectionConnectionHolder testGetDomainSelectionConnectionHolder(
@@ -174,9 +175,8 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
         mTracker = mock(SMSDispatcher.SmsTracker.class);
         setupMockPackagePermissionChecks();
-
         mSmsDispatchersController = new TestSmsDispatchersController(mPhone, mSmsStorageMonitor,
-            mSmsUsageMonitor);
+            mSmsUsageMonitor, mTestableLooper.getLooper());
         setUpDomainSelectionConnectionAsNotSupported();
         processAllMessages();
     }

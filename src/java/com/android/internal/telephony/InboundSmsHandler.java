@@ -52,6 +52,7 @@ import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Looper;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.PowerWhitelistManager;
@@ -287,8 +288,8 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param storageMonitor the SmsStorageMonitor to check for storage availability
      */
     protected InboundSmsHandler(String name, Context context, SmsStorageMonitor storageMonitor,
-            Phone phone) {
-        super(name);
+            Phone phone, Looper looper) {
+        super(name, looper);
 
         mContext = context;
         mStorageMonitor = storageMonitor;

@@ -2464,6 +2464,41 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         verify(mImsPhone, times(7)).updateImsCallStatus(any(), any());
     }
 
+    @Test
+    public void testUpdateImsCallStatusSrvccCompleted() throws Exception {
+        // Incoming call
+        setupRingingConnection();
+
+        verify(mImsPhone, times(1)).updateImsCallStatus(any(), any());
+
+        // no interaction when SRVCC has started, failed, or canceled.
+        mCTUT.notifySrvccState(SRVCC_STATE_HANDOVER_STARTED);
+
+        verify(mImsPhone, times(1)).updateImsCallStatus(any(), any());
+
+        mCTUT.notifySrvccState(SRVCC_STATE_HANDOVER_FAILED);
+
+        verify(mImsPhone, times(1)).updateImsCallStatus(any(), any());
+
+        mCTUT.notifySrvccState(SRVCC_STATE_HANDOVER_CANCELED);
+
+        verify(mImsPhone, times(1)).updateImsCallStatus(any(), any());
+
+        // interaction when SRVCC has completed
+        mCTUT.notifySrvccState(SRVCC_STATE_HANDOVER_COMPLETED);
+
+        verify(mImsPhone, times(2)).updateImsCallStatus(any(), any());
+    }
+
+    @Test
+    public void testClearAllOrphanedConnectionInfo() throws Exception {
+        verify(mImsPhone, times(0)).updateImsCallStatus(any(), any());
+
+        mConnectorListener.connectionUnavailable(FeatureConnector.UNAVAILABLE_REASON_DISCONNECTED);
+
+        verify(mImsPhone, times(1)).updateImsCallStatus(any(), any());
+    }
+
     /** Verifies that the request from ImsService is passed to ImsPhone as expected. */
     @Test
     @SmallTest
