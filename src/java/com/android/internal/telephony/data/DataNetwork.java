@@ -2361,7 +2361,7 @@ public class DataNetwork extends StateMachine {
         logl("onSetupResponse: resultCode=" + DataServiceCallback.resultCodeToString(resultCode)
                 + ", response=" + response);
         mFailCause = getFailCauseFromDataCallResponse(resultCode, response);
-        validateDataCallResponse(response);
+        validateDataCallResponse(response, true /*isSetupResponse*/);
         if (mFailCause == DataFailCause.NONE) {
             if (mDataNetworkController.isNetworkInterfaceExisting(response.getInterfaceName())) {
                 logl("Interface " + response.getInterfaceName() + " already existing. Silently "
@@ -2431,8 +2431,10 @@ public class DataNetwork extends StateMachine {
      * If the {@link DataCallResponse} contains invalid info, triggers an anomaly report.
      *
      * @param response The response to be validated
+     * @param isSetupResponse {@code true} if the response is for initial data call setup
      */
-    private void validateDataCallResponse(@Nullable DataCallResponse response) {
+    private void validateDataCallResponse(@Nullable DataCallResponse response,
+            boolean isSetupResponse) {
         if (response == null
                 || response.getLinkStatus() == DataCallResponse.LINK_STATUS_INACTIVE) return;
         int failCause = response.getCause();
@@ -2452,8 +2454,10 @@ public class DataNetwork extends StateMachine {
                 reportAnomaly("Invalid DataCallResponse detected",
                         "1f273e9d-b09c-46eb-ad1c-421d01f61164");
             }
+            // Check IP for initial setup response
             NetworkRegistrationInfo nri = getNetworkRegistrationInfo();
-            if (mDataProfile.getApnSetting() != null && nri != null && nri.isInService()) {
+            if (isSetupResponse
+                    && mDataProfile.getApnSetting() != null && nri != null && nri.isInService()) {
                 boolean isRoaming = nri.getInitialRegistrationState()
                         == NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING;
                 int protocol = isRoaming ? mDataProfile.getApnSetting().getRoamingProtocol()
@@ -2612,7 +2616,7 @@ public class DataNetwork extends StateMachine {
         if (response != null) {
             if (!response.equals(mDataCallResponse)) {
                 log("onDataStateChanged: " + response);
-                validateDataCallResponse(response);
+                validateDataCallResponse(response, false /*isSetupResponse*/);
                 mDataCallResponse = response;
                 if (response.getLinkStatus() != DataCallResponse.LINK_STATUS_INACTIVE) {
                     updateDataNetwork(response);
@@ -3190,7 +3194,7 @@ public class DataNetwork extends StateMachine {
         logl("onHandoverResponse: resultCode=" + DataServiceCallback.resultCodeToString(resultCode)
                 + ", response=" + response);
         mFailCause = getFailCauseFromDataCallResponse(resultCode, response);
-        validateDataCallResponse(response);
+        validateDataCallResponse(response, false /*isSetupResponse*/);
         if (mFailCause == DataFailCause.NONE) {
             // Handover succeeded.
 
