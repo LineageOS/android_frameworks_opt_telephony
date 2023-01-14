@@ -55,6 +55,8 @@ import com.android.telephony.Rlog;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * The class represents a single row of {@link SimInfo} table. All columns (excepts unused columns)
@@ -1037,7 +1039,7 @@ public class SubscriptionInfoInternal {
      *
      * @return The stripped string.
      */
-    public static String givePrintableId(String id) {
+    public static String getPrintableId(String id) {
         String idToPrint = null;
         if (id != null) {
             int len = id.length();
@@ -1050,10 +1052,28 @@ public class SubscriptionInfoInternal {
         return idToPrint;
     }
 
+    /**
+     * Convert the allowed network types for reasons to readable format.
+     *
+     * @param allowedNetworkTypesForReasons The raw value of allowed network types for reasons
+     * stored in the database.
+     *
+     * @return The converted string.
+     */
+    public static String getPrintableAllowedNetworkTypesForReasons(
+            @NonNull String allowedNetworkTypesForReasons) {
+        if (TextUtils.isEmpty(allowedNetworkTypesForReasons)) return "";
+        return Stream.of(allowedNetworkTypesForReasons.split(","))
+                .map(s -> s.substring(0, s.indexOf("=") + 1)
+                        + TelephonyManager.convertNetworkTypeBitmaskToString(
+                                Long.parseLong(s.substring(s.indexOf("=") + 1))))
+                .collect(Collectors.joining(", "));
+    }
+
     @Override
     public String toString() {
         return "[SubscriptionInfoInternal: id=" + mId
-                + " iccId=" + givePrintableId(mIccId)
+                + " iccId=" + getPrintableId(mIccId)
                 + " simSlotIndex=" + mSimSlotIndex
                 + " portIndex=" + mPortIndex
                 + " isEmbedded=" + mIsEmbedded
@@ -1073,7 +1093,7 @@ public class SubscriptionInfoInternal {
                 + " mnc=" + mMnc
                 + " ehplmns=" + mEhplmns
                 + " hplmns=" + mHplmns
-                + " cardString=" + givePrintableId(mCardString)
+                + " cardString=" + getPrintableId(mCardString)
                 + " cardId=" + mCardId
                 + " nativeAccessRules=" + IccUtils.bytesToHexString(mNativeAccessRules)
                 + " carrierConfigAccessRules=" + IccUtils.bytesToHexString(
@@ -1091,11 +1111,12 @@ public class SubscriptionInfoInternal {
                 + " wifiCallingModeForRoaming="
                 + ImsMmTelManager.wifiCallingModeToString(mWifiCallingModeForRoaming)
                 + " enabledMobileDataPolicies=" + mEnabledMobileDataPolicies
-                + " imsi=" + givePrintableId(mImsi)
+                + " imsi=" + getPrintableId(mImsi)
                 + " rcsUceEnabled=" + mIsRcsUceEnabled
                 + " crossSimCallingEnabled=" + mIsCrossSimCallingEnabled
                 + " rcsConfig=" + IccUtils.bytesToHexString(mRcsConfig)
-                + " allowedNetworkTypesForReasons=" + mAllowedNetworkTypesForReasons
+                + " allowedNetworkTypesForReasons="
+                + getPrintableAllowedNetworkTypesForReasons(mAllowedNetworkTypesForReasons)
                 + " deviceToDeviceStatusSharingPreference=" + mDeviceToDeviceStatusSharingPreference
                 + " isVoImsOptInEnabled=" + mIsVoImsOptInEnabled
                 + " deviceToDeviceStatusSharingContacts=" + mDeviceToDeviceStatusSharingContacts
