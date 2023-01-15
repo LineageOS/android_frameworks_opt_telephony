@@ -24,6 +24,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.AsyncResult;
 import android.os.Build;
+import android.os.Looper;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.provider.Telephony.Sms.Intents;
@@ -57,8 +58,8 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
      * Create a new GSM inbound SMS handler.
      */
     private GsmInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
-            Phone phone) {
-        super("GsmInboundSmsHandler", context, storageMonitor, phone);
+            Phone phone, Looper looper) {
+        super("GsmInboundSmsHandler", context, storageMonitor, phone, looper);
         phone.mCi.setOnNewGsmSms(getHandler(), EVENT_NEW_SMS, null);
         mDataDownloadHandler = new UsimDataDownloadHandler(phone.mCi, phone.getPhoneId());
         mCellBroadcastServiceManager.enable();
@@ -128,8 +129,9 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
      * Wait for state machine to enter startup state. We can't send any messages until then.
      */
     public static GsmInboundSmsHandler makeInboundSmsHandler(Context context,
-            SmsStorageMonitor storageMonitor, Phone phone) {
-        GsmInboundSmsHandler handler = new GsmInboundSmsHandler(context, storageMonitor, phone);
+            SmsStorageMonitor storageMonitor, Phone phone, Looper looper) {
+        GsmInboundSmsHandler handler =
+                new GsmInboundSmsHandler(context, storageMonitor, phone, looper);
         handler.start();
         return handler;
     }

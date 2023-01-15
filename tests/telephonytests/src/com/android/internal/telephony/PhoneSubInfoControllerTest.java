@@ -17,6 +17,8 @@ package com.android.internal.telephony;
 
 import static android.Manifest.permission.READ_PHONE_STATE;
 import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
+import static android.telephony.TelephonyManager.APPTYPE_ISIM;
+import static android.telephony.TelephonyManager.APPTYPE_USIM;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -52,9 +54,9 @@ import org.mockito.Mockito;
 public class PhoneSubInfoControllerTest extends TelephonyTest {
     private static final String FEATURE_ID = "myfeatureId";
     private static final String PSI_SMSC_TEL1 = "tel:+91123456789";
-    private static final String PSI_SMSC_SIP1 = "sip:+1234567890@msg.pc.t-mobile.com;user=phone";
+    private static final String PSI_SMSC_SIP1 = "sip:+1234567890@abc.pc.operetor1.com;user=phone";
     private static final String PSI_SMSC_TEL2 = "tel:+91987654321";
-    private static final String PSI_SMSC_SIP2 = "sip:+19876543210@msg.pc.t-mobile.com;user=phone";
+    private static final String PSI_SMSC_SIP2 = "sip:+19876543210@dcf.pc.operetor2.com;user=phone";
 
     private PhoneSubInfoController mPhoneSubInfoControllerUT;
     private AppOpsManager mAppOsMgr;
@@ -965,13 +967,13 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         try {
             setUpInitials();
             assertEquals(PSI_SMSC_TEL1, mPhoneSubInfoControllerUT
-                    .getSmscIdentity(0, 5));
+                    .getSmscIdentity(0, APPTYPE_ISIM).toString());
             assertEquals(PSI_SMSC_TEL1, mPhoneSubInfoControllerUT
-                    .getSmscIdentity(0, 3));
+                    .getSmscIdentity(0, APPTYPE_USIM).toString());
             assertEquals(PSI_SMSC_TEL2, mPhoneSubInfoControllerUT
-                    .getSmscIdentity(1, 5));
+                    .getSmscIdentity(1, APPTYPE_ISIM).toString());
             assertEquals(PSI_SMSC_TEL2, mPhoneSubInfoControllerUT
-                    .getSmscIdentity(1, 5));
+                    .getSmscIdentity(1, APPTYPE_USIM).toString());
         } catch (RemoteException e) {
             e.printStackTrace();
         }
@@ -1003,13 +1005,13 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
             doReturn(PSI_SMSC_SIP2).when(mIsimUiccRecords).getSmscIdentity();
 
             assertEquals(PSI_SMSC_SIP1, mPhoneSubInfoControllerUT
-                    .getSmscIdentity(0, 5));
+                    .getSmscIdentity(0, APPTYPE_ISIM).toString());
             assertEquals(PSI_SMSC_SIP1, mPhoneSubInfoControllerUT
-                    .getSmscIdentity(0, 3));
+                    .getSmscIdentity(0, APPTYPE_USIM).toString());
             assertEquals(PSI_SMSC_SIP2, mPhoneSubInfoControllerUT
-                    .getSmscIdentity(1, 5));
+                    .getSmscIdentity(1, APPTYPE_ISIM).toString());
             assertEquals(PSI_SMSC_SIP2, mPhoneSubInfoControllerUT
-                    .getSmscIdentity(1, 5));
+                    .getSmscIdentity(1, APPTYPE_USIM).toString());
         } catch (RemoteException e) {
             e.printStackTrace();
         }
@@ -1022,7 +1024,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         //case 1: no READ_PRIVILEGED_PHONE_STATE & appOsMgr READ_PHONE_PERMISSION
         mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
         try {
-            mPhoneSubInfoControllerUT.getSmscIdentity(0, 5);
+            mPhoneSubInfoControllerUT.getSmscIdentity(0, APPTYPE_ISIM);
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
@@ -1030,7 +1032,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         }
 
         try {
-            mPhoneSubInfoControllerUT.getSmscIdentity(1, 5);
+            mPhoneSubInfoControllerUT.getSmscIdentity(1, APPTYPE_ISIM);
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
@@ -1038,7 +1040,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         }
 
         try {
-            mPhoneSubInfoControllerUT.getSmscIdentity(0, 3);
+            mPhoneSubInfoControllerUT.getSmscIdentity(0, APPTYPE_USIM);
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
@@ -1046,7 +1048,7 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         }
 
         try {
-            mPhoneSubInfoControllerUT.getSmscIdentity(1, 3);
+            mPhoneSubInfoControllerUT.getSmscIdentity(1, APPTYPE_USIM);
             Assert.fail("expected Security Exception Thrown");
         } catch (Exception ex) {
             assertTrue(ex instanceof SecurityException);
@@ -1061,13 +1063,13 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         try {
             assertEquals(PSI_SMSC_TEL1, mPhoneSubInfoControllerUT
-                    .getSmscIdentity(0, 5));
+                    .getSmscIdentity(0, APPTYPE_ISIM).toString());
             assertEquals(PSI_SMSC_TEL1, mPhoneSubInfoControllerUT
-                    .getSmscIdentity(0, 3));
+                    .getSmscIdentity(0, APPTYPE_USIM).toString());
             assertEquals(PSI_SMSC_TEL2, mPhoneSubInfoControllerUT
-                    .getSmscIdentity(1, 5));
+                    .getSmscIdentity(1, APPTYPE_ISIM).toString());
             assertEquals(PSI_SMSC_TEL2, mPhoneSubInfoControllerUT
-                    .getSmscIdentity(1, 5));
+                    .getSmscIdentity(1, APPTYPE_USIM).toString());
         } catch (RemoteException e) {
             e.printStackTrace();
         }
