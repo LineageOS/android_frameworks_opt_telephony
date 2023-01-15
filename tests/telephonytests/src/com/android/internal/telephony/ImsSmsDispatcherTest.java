@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -113,6 +114,73 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
         mImsSmsDispatcher.onMemoryAvailable();
         assertEquals(token + 1, mImsSmsDispatcher.mNextToken.get());
         verify(mImsManager).onMemoryAvailable(eq(token + 1));
+    }
+
+    /**
+     * Receive SEND_STATUS_ERROR_RETRY with onMemoryAvailableResult Api and check if
+     * sending SMMA Notification is retried once
+     */
+    @Test
+    @SmallTest
+    public void testOnMemoryAvailableResultErrorRetry() throws Exception {
+        int token = mImsSmsDispatcher.mNextToken.get();
+        //Send SMMA
+        mImsSmsDispatcher.onMemoryAvailable();
+        assertEquals(token + 1, mImsSmsDispatcher.mNextToken.get());
+        verify(mImsManager).onMemoryAvailable(eq(token + 1));
+        // Retry over IMS
+        mImsSmsDispatcher.getSmsListener().onMemoryAvailableResult(token + 1,
+                ImsSmsImplBase.SEND_STATUS_ERROR_RETRY, SmsResponse.NO_ERROR_CODE);
+        waitForMs(SMSDispatcher.SEND_RETRY_DELAY + 200);
+        processAllMessages();
+        verify(mImsManager).onMemoryAvailable(eq(token + 2));
+        //2nd Failure should not retry
+        mImsSmsDispatcher.getSmsListener().onMemoryAvailableResult(token + 2,
+                ImsSmsImplBase.SEND_STATUS_ERROR_RETRY, SmsResponse.NO_ERROR_CODE);
+        waitForMs(SMSDispatcher.SEND_RETRY_DELAY + 200);
+        processAllMessages();
+        verify(mImsManager, times(0)).onMemoryAvailable(eq(token + 3));
+
+    }
+    /**
+     * Receive SEND_STATUS_OK with onMemoryAvailableResult Api and check if
+     * sending SMMA Notification behaviour is correct
+     */
+    @Test
+    @SmallTest
+    public void testOnMemoryAvailableResultSuccess() throws Exception {
+        int token = mImsSmsDispatcher.mNextToken.get();
+        //Send SMMA
+        mImsSmsDispatcher.onMemoryAvailable();
+        assertEquals(token + 1, mImsSmsDispatcher.mNextToken.get());
+        verify(mImsManager).onMemoryAvailable(eq(token + 1));
+        // Retry over IMS
+        mImsSmsDispatcher.getSmsListener().onMemoryAvailableResult(token + 1,
+                ImsSmsImplBase.SEND_STATUS_OK, SmsResponse.NO_ERROR_CODE);
+        waitForMs(SMSDispatcher.SEND_RETRY_DELAY + 200);
+        processAllMessages();
+        verify(mImsManager, times(0)).onMemoryAvailable(eq(token + 2));
+
+    }
+    /**
+     * Receive SEND_STATUS_ERROR with onMemoryAvailableResult Api and check if
+     * sending SMMA Notification behaviour is correct
+     */
+    @Test
+    @SmallTest
+    public void testOnMemoryAvailableResultError() throws Exception {
+        int token = mImsSmsDispatcher.mNextToken.get();
+        //Send SMMA
+        mImsSmsDispatcher.onMemoryAvailable();
+        assertEquals(token + 1, mImsSmsDispatcher.mNextToken.get());
+        verify(mImsManager).onMemoryAvailable(eq(token + 1));
+        // Retry over IMS
+        mImsSmsDispatcher.getSmsListener().onMemoryAvailableResult(token + 1,
+                ImsSmsImplBase.SEND_STATUS_ERROR, SmsResponse.NO_ERROR_CODE);
+        waitForMs(SMSDispatcher.SEND_RETRY_DELAY + 200);
+        processAllMessages();
+        verify(mImsManager, times(0)).onMemoryAvailable(eq(token + 2));
+
     }
     /**
      * Send an SMS and verify that the token and PDU is correct.
