@@ -44,7 +44,9 @@ import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.util.SMSDispatcherUtil;
 import com.android.telephony.Rlog;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
@@ -74,6 +76,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                 FeatureConnector.Listener<ImsManager> listener, Executor executor);
     }
 
+    public List<Integer> mMemoryAvailableNotifierList = new ArrayList<Integer>();
     @VisibleForTesting
     public Map<Integer, SmsTracker> mTrackers = new ConcurrentHashMap<>();
     @VisibleForTesting
@@ -141,6 +144,37 @@ public class ImsSmsDispatcher extends SMSDispatcher {
     };
 
     private final IImsSmsListener mImsSmsListener = new IImsSmsListener.Stub() {
+        @Override
+        public void onMemoryAvailableResult(int token, @SendStatusResult int status,
+                int networkReasonCode) {
+            final long identity = Binder.clearCallingIdentity();
+            try {
+                logd("onMemoryAvailableResult token=" + token + " status=" + status
+                        + " networkReasonCode=" + networkReasonCode);
+                if (!mMemoryAvailableNotifierList.contains(token)) {
+                    loge("onMemoryAvailableResult Invalid token");
+                    return;
+                }
+                mMemoryAvailableNotifierList.remove(Integer.valueOf(token));
+
+                /**
+                 * The Retrans flag is set and reset As per section 6.3.3.1.2 in TS 124011
+                 * Note: Assuming that SEND_STATUS_ERROR_RETRY is sent in case of temporary failure
+                 */
+                if (status ==  ImsSmsImplBase.SEND_STATUS_ERROR_RETRY) {
+                    if (!mRPSmmaRetried) {
+                        sendMessageDelayed(obtainMessage(EVENT_RETRY_SMMA), SEND_RETRY_DELAY);
+                        mRPSmmaRetried = true;
+                    } else {
+                        mRPSmmaRetried = false;
+                    }
+                } else {
+                    mRPSmmaRetried = false;
+                }
+            } finally {
+                Binder.restoreCallingIdentity(identity);
+            }
+        }
         @Override
         public void onSendSmsResult(int token, int messageRef, @SendStatusResult int status,
                 @SmsManager.Result int reason, int networkReasonCode) {
@@ -292,6 +326,10 @@ public class ImsSmsDispatcher extends SMSDispatcher {
             case EVENT_SEND_RETRY:
                 logd("SMS retry..");
                 sendSms((SmsTracker) msg.obj);
+                break;
+            case EVENT_RETRY_SMMA:
+                logd("SMMA Notification retry..");
+                onMemoryAvailable();
                 break;
             default:
                 super.handleMessage(msg);
@@ -540,9 +578,13 @@ public class ImsSmsDispatcher extends SMSDispatcher {
         int token = mNextToken.incrementAndGet();
         try {
             logd("onMemoryAvailable: token = " + token);
+            mMemoryAvailableNotifierList.add(token);
             getImsManager().onMemoryAvailable(token);
         } catch (ImsException e) {
             loge("onMemoryAvailable failed: " + e.getMessage());
+            if (mMemoryAvailableNotifierList.contains(token)) {
+                mMemoryAvailableNotifierList.remove(Integer.valueOf(token));
+            }
         }
     }
 
