@@ -3869,13 +3869,9 @@ public class RILUtils {
                         convertHalQosBandwidth(eps.uplink), eps.qci);
             case android.hardware.radio.data.Qos.nr:
                 android.hardware.radio.data.NrQos nr = qos.getNr();
-                int averagingWindowMs = nr.averagingWindowMillis;
-                if (averagingWindowMs
-                        == android.hardware.radio.data.NrQos.AVERAGING_WINDOW_UNKNOWN) {
-                    averagingWindowMs = nr.averagingWindowMs;
-                }
                 return new NrQos(convertHalQosBandwidth(nr.downlink),
-                        convertHalQosBandwidth(nr.uplink), nr.qfi, nr.fiveQi, averagingWindowMs);
+                        convertHalQosBandwidth(nr.uplink), nr.qosFlowIdentifier, nr.fiveQi,
+                        nr.averagingWindowMs);
             default:
                 return null;
         }
