@@ -385,7 +385,9 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         registerTestIntentReceiver();
 
         PendingIntent pendingIntent = PendingIntent.getBroadcast(TestApplication.getAppContext(), 0,
-                new Intent(TEST_INTENT), PendingIntent.FLAG_MUTABLE);
+                new Intent(TEST_INTENT)
+                        .setPackage(TestApplication.getAppContext().getPackageName()),
+                PendingIntent.FLAG_MUTABLE);
         mReceivedTestIntent = false;
 
         mGsmSmsDispatcher.sendText("6501002000", "121" /*scAddr*/, "test sms",
@@ -440,9 +442,13 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
 
         ArrayList<PendingIntent> sentIntents = new ArrayList<>();
         PendingIntent sentIntent1 = PendingIntent.getBroadcast(TestApplication.getAppContext(), 0,
-                new Intent(TEST_INTENT), PendingIntent.FLAG_MUTABLE);
+                new Intent(TEST_INTENT)
+                        .setPackage(TestApplication.getAppContext().getPackageName()),
+                PendingIntent.FLAG_MUTABLE);
         PendingIntent sentIntent2 = PendingIntent.getBroadcast(TestApplication.getAppContext(), 0,
-                new Intent(TEST_INTENT), PendingIntent.FLAG_MUTABLE);
+                new Intent(TEST_INTENT)
+                        .setPackage(TestApplication.getAppContext().getPackageName()),
+                PendingIntent.FLAG_MUTABLE);
         sentIntents.add(sentIntent1);
         sentIntents.add(sentIntent2);
 
