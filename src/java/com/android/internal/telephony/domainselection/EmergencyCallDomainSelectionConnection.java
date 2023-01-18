@@ -86,7 +86,9 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
     public void onWlanSelected() {
         mEmergencyStateTracker.onEmergencyTransportChanged(MODE_EMERGENCY_WLAN);
         AccessNetworksManager anm = mPhone.getAccessNetworksManager();
-        if (anm.getPreferredTransport(ApnSetting.TYPE_EMERGENCY) != TRANSPORT_TYPE_WLAN) {
+        int transportType = anm.getPreferredTransport(ApnSetting.TYPE_EMERGENCY);
+        logi("onWlanSelected curTransportType=" + transportType);
+        if (transportType != TRANSPORT_TYPE_WLAN) {
             changePreferredTransport(TRANSPORT_TYPE_WLAN);
             return;
         }
@@ -112,7 +114,9 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
     public void onDomainSelected(@NetworkRegistrationInfo.Domain int domain) {
         if (domain == DOMAIN_PS) {
             AccessNetworksManager anm = mPhone.getAccessNetworksManager();
-            if (anm.getPreferredTransport(ApnSetting.TYPE_EMERGENCY) != TRANSPORT_TYPE_WWAN) {
+            int transportType = anm.getPreferredTransport(ApnSetting.TYPE_EMERGENCY);
+            logi("onDomainSelected curTransportType=" + transportType);
+            if (transportType != TRANSPORT_TYPE_WWAN) {
                 changePreferredTransport(TRANSPORT_TYPE_WWAN);
                 return;
             }
@@ -136,6 +140,7 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
     }
 
     private void changePreferredTransport(@TransportType int transportType) {
+        logi("changePreferredTransport " + transportType);
         initHandler();
         mPreferredTransportType = transportType;
         AccessNetworksManager anm = mPhone.getAccessNetworksManager();
@@ -155,6 +160,8 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
     protected void onQualifiedNetworksChanged() {
         AccessNetworksManager anm = mPhone.getAccessNetworksManager();
         int preferredTransport = anm.getPreferredTransport(ApnSetting.TYPE_EMERGENCY);
+        logi("onQualifiedNetworksChanged preferred=" + mPreferredTransportType
+                + ", current=" + preferredTransport);
         if (preferredTransport == mPreferredTransportType) {
             CompletableFuture<Integer> future = getCompletableFuture();
             if (future != null) future.complete(DOMAIN_PS);
