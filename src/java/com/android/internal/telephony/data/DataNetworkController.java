@@ -141,6 +141,9 @@ public class DataNetworkController extends Handler {
     /** Event for removing a network request. */
     private static final int EVENT_REMOVE_NETWORK_REQUEST = 3;
 
+    /** Event for SRVCC state changed. */
+    private static final int EVENT_SRVCC_STATE_CHANGED = 4;
+
     /** Re-evaluate all unsatisfied network requests. */
     private static final int EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS = 5;
 
@@ -310,6 +313,9 @@ public class DataNetworkController extends Handler {
 
     /** Indicates if NR advanced is allowed by PCO. */
     private boolean mNrAdvancedCapableByPco = false;
+
+    /** Indicates if srvcc is going on. */
+    private boolean mIsSrvccHandoverInProcess = false;
 
     /**
      * Indicates if the data services are bound. Key if the transport type, and value is the boolean
@@ -910,7 +916,7 @@ public class DataNetworkController extends Handler {
                                             preferredTransport));
                             return;
                         }
-                        if (dataNetwork.shouldDelayImsTearDown()) {
+                        if (dataNetwork.shouldDelayImsTearDownDueToInCall()) {
                             log("onDataNetworkHandoverRetryStopped: Delay IMS tear down until call "
                                     + "ends. " + dataNetwork);
                             return;
@@ -1025,6 +1031,7 @@ public class DataNetworkController extends Handler {
                     this, EVENT_VOICE_CALL_ENDED, null);
         }
         mPhone.mCi.registerForSlicingConfigChanged(this, EVENT_SLICE_CONFIG_CHANGED, null);
+        mPhone.mCi.registerForSrvccStateChanged(this, EVENT_SRVCC_STATE_CHANGED, null);
 
         mPhone.getLinkBandwidthEstimator().registerCallback(
                 new LinkBandwidthEstimatorCallback(this::post) {
@@ -1038,6 +1045,7 @@ public class DataNetworkController extends Handler {
 
     @Override
     public void handleMessage(@NonNull Message msg) {
+        AsyncResult ar;
         switch (msg.what) {
             case EVENT_REGISTER_ALL_EVENTS:
                 onRegisterAllEvents();
@@ -1072,6 +1080,12 @@ public class DataNetworkController extends Handler {
                 sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
                         DataEvaluationReason.SLICE_CONFIG_CHANGED));
                 break;
+            case EVENT_SRVCC_STATE_CHANGED:
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception == null) {
+                    onSrvccStateChanged((int[]) ar.result);
+                }
+                break;
             case EVENT_PS_RESTRICT_ENABLED:
                 mPsRestricted = true;
                 break;
@@ -1088,7 +1102,7 @@ public class DataNetworkController extends Handler {
                         REEVALUATE_UNSATISFIED_NETWORK_REQUESTS_TAC_CHANGED_DELAY_MILLIS);
                 break;
             case EVENT_DATA_SERVICE_BINDING_CHANGED:
-                AsyncResult ar = (AsyncResult) msg.obj;
+                ar = (AsyncResult) msg.obj;
                 int transport = (int) ar.userObj;
                 boolean bound = (boolean) ar.result;
                 onDataServiceBindingChanged(transport, bound);
@@ -1750,13 +1764,15 @@ public class DataNetworkController extends Handler {
             }
         }
 
+        boolean isMmtel = false;
         // If the data network is IMS that supports voice call, and has MMTEL request (client
         // specified VoPS is required.)
         if (dataNetwork.getAttachedNetworkRequestList().get(
                 new int[]{NetworkCapabilities.NET_CAPABILITY_MMTEL}) != null) {
             // When reaching here, it means the network supports MMTEL, and also has MMTEL request
             // attached to it.
-            if (!dataNetwork.shouldDelayImsTearDown()) {
+            isMmtel = true;
+            if (!dataNetwork.shouldDelayImsTearDownDueToInCall()) {
                 if (dataNetwork.getTransport() == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                     NetworkRegistrationInfo nri = mServiceState.getNetworkRegistrationInfo(
                             NetworkRegistrationInfo.DOMAIN_PS,
@@ -1803,7 +1819,9 @@ public class DataNetworkController extends Handler {
             // Sometimes network temporarily OOS and network type becomes UNKNOWN. We don't
             // tear down network in that case.
             if (networkType != TelephonyManager.NETWORK_TYPE_UNKNOWN
-                    && !dataProfile.getApnSetting().canSupportLingeringNetworkType(networkType)) {
+                    && !dataProfile.getApnSetting().canSupportLingeringNetworkType(networkType)
+                    // delay IMS tear down if SRVCC in progress
+                    && !(isMmtel && mIsSrvccHandoverInProcess)) {
                 log("networkType=" + TelephonyManager.getNetworkTypeName(networkType)
                         + ", networkTypeBitmask="
                         + TelephonyManager.convertNetworkTypeBitmaskToString(
@@ -2994,6 +3012,25 @@ public class DataNetworkController extends Handler {
     }
 
     /**
+     * Called when SRVCC handover state changes. To preserve the voice call, we don't tear down the
+     * IMS network while handover in process. We reevaluate the network when handover ends.
+     *
+     * @param state The handover state of SRVCC
+     */
+    private void onSrvccStateChanged(@NonNull int[] state) {
+        if (state != null && state.length != 0) {
+            log("onSrvccStateChanged: " + TelephonyManager.srvccStateToString(state[0]));
+            mIsSrvccHandoverInProcess = state[0] == TelephonyManager.SRVCC_STATE_HANDOVER_STARTED;
+            // Reevaluate networks if SRVCC ends.
+            if (!mIsSrvccHandoverInProcess
+                    && !hasMessages(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS)) {
+                sendMessage(obtainMessage(EVENT_REEVALUATE_EXISTING_DATA_NETWORKS,
+                        DataEvaluationReason.SRVCC_STATE_CHANGED));
+            }
+        }
+    }
+
+    /**
      * Called when data service binding changed.
      *
      * @param transport The transport of the changed data service.
@@ -3745,6 +3782,7 @@ public class DataNetworkController extends Handler {
         pw.println("mImsDataNetworkState="
                 + TelephonyUtils.dataStateToString(mImsDataNetworkState));
         pw.println("mDataServiceBound=" + mDataServiceBound);
+        pw.println("mIsSrvccHandoverInProcess=" + mIsSrvccHandoverInProcess);
         pw.println("mSimState=" + TelephonyManager.simStateToString(mSimState));
         pw.println("mDataNetworkControllerCallbacks=" + mDataNetworkControllerCallbacks);
         pw.println("Subscription plans:");
