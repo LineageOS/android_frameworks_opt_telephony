@@ -28,6 +28,7 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.telephony.Annotation.RadioPowerState;
+import android.telephony.BarringInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.emergency.EmergencyNumber;
 
@@ -173,6 +174,8 @@ public abstract class BaseCommands implements CommandsInterface {
     // Cache last emergency number list indication from radio
     private final List<EmergencyNumber> mLastEmergencyNumberListIndication = new ArrayList<>();
 
+    // The last barring information received
+    protected BarringInfo mLastBarringInfo = new BarringInfo();
     // Preferred network type received from PhoneFactory.
     // This is used when establishing a connection to the
     // vendor ril so it starts up in the correct mode.
@@ -913,6 +916,7 @@ public abstract class BaseCommands implements CommandsInterface {
                     || mState == TelephonyManager.RADIO_POWER_UNAVAILABLE)
                     && (oldState == TelephonyManager.RADIO_POWER_ON)) {
                 mOffOrNotAvailRegistrants.notifyRegistrants();
+                mLastBarringInfo = new BarringInfo();
             }
         }
     }
@@ -929,6 +933,12 @@ public abstract class BaseCommands implements CommandsInterface {
         synchronized (mLastEmergencyNumberListIndicationLock) {
             return new ArrayList<>(mLastEmergencyNumberListIndication);
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public @NonNull BarringInfo getLastBarringInfo() {
+        return mLastBarringInfo;
     }
 
     /**
