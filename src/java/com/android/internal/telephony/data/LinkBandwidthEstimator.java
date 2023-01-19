@@ -141,9 +141,9 @@ public class LinkBandwidthEstimator extends Handler {
     private static final int MAX_ERROR_PERCENT = 100 * 100;
     private static final String[] AVG_BW_PER_RAT = {
             "GPRS:24,24", "EDGE:70,18", "UMTS:115,115", "CDMA:14,14",
-            "1xRTT:30,30", "EVDO-0:750,48", "EVDO-A:950,550",
-            "HSDPA:4300,620", "HSUPA:4300,1800", "HSPA:4300,1800", "EVDO-B:1500,550",
-            "eHRPD:750,48", "HSPA+:13000,3400", "TD-SCDMA:115,115",
+            "CDMA - 1xRTT:30,30", "CDMA - EvDo rev. 0:750,48", "CDMA - EvDo rev. A:950,550",
+            "HSDPA:4300,620", "HSUPA:4300,1800", "HSPA:4300,1800", "CDMA - EvDo rev. B:1500,550",
+            "CDMA - eHRPD:750,48", "HSPA+:13000,3400", "TD_SCDMA:115,115",
             "LTE:30000,15000", "NR_NSA:47000,18000",
             "NR_NSA_MMWAVE:145000,60000", "NR:145000,60000", "NR_MMWAVE:145000,60000"};
     private static final Map<String, Pair<Integer, Integer>> AVG_BW_PER_RAT_MAP = new ArrayMap<>();
