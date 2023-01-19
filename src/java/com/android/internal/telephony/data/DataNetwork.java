@@ -545,6 +545,10 @@ public class DataNetwork extends StateMachine {
     /** Data network controller. */
     private final @NonNull DataNetworkController mDataNetworkController;
 
+    /** Data network controller callback. */
+    private final @NonNull DataNetworkController.DataNetworkControllerCallback
+            mDataNetworkControllerCallback;
+
     /** Data config manager. */
     private final @NonNull DataConfigManager mDataConfigManager;
 
@@ -870,12 +874,14 @@ public class DataNetwork extends StateMachine {
         mAccessNetworksManager = phone.getAccessNetworksManager();
         mVcnManager = mPhone.getContext().getSystemService(VcnManager.class);
         mDataNetworkController = phone.getDataNetworkController();
+        mDataNetworkControllerCallback = new DataNetworkController.DataNetworkControllerCallback(
+                getHandler()::post) {
+            @Override
+            public void onSubscriptionPlanOverride() {
+                sendMessage(EVENT_SUBSCRIPTION_PLAN_OVERRIDE);
+            }};
         mDataNetworkController.registerDataNetworkControllerCallback(
-                new DataNetworkController.DataNetworkControllerCallback(getHandler()::post) {
-                    @Override
-                    public void onSubscriptionPlanOverride() {
-                        sendMessage(EVENT_SUBSCRIPTION_PLAN_OVERRIDE);
-                    }});
+                mDataNetworkControllerCallback);
         mDataConfigManager = mDataNetworkController.getDataConfigManager();
         mDataCallSessionStats = new DataCallSessionStats(mPhone);
         mDataNetworkCallback = callback;
@@ -1562,6 +1568,8 @@ public class DataNetwork extends StateMachine {
             }
             notifyPreciseDataConnectionState();
             mNetworkAgent.unregister();
+            mDataNetworkController.unregisterDataNetworkControllerCallback(
+                    mDataNetworkControllerCallback);
             mDataCallSessionStats.onDataCallDisconnected(mFailCause);
 
             if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WLAN

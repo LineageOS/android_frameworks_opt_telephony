@@ -31,7 +31,6 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.RemoteException;
 import android.os.TelephonyServiceManager.ServiceRegisterer;
-import android.os.UserHandle;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SubscriptionManager;
@@ -147,8 +146,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     public String getSubscriberIdForSubscriber(int subId, String callingPackage,
             String callingFeatureId) {
         String message = "getSubscriberIdForSubscriber";
-
-        enforceCallingPackage(callingPackage, Binder.getCallingUid(), message);
+        mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
 
         long identity = Binder.clearCallingIdentity();
         boolean isActive;
@@ -314,28 +312,6 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     private void enforceModifyPermission() {
         mContext.enforceCallingOrSelfPermission(MODIFY_PHONE_STATE,
                 "Requires MODIFY_PHONE_STATE");
-    }
-
-    /**
-     * Make sure the caller is the calling package itself
-     *
-     * @throws SecurityException if the caller is not the calling package
-     */
-    private void enforceCallingPackage(String callingPackage, int callingUid, String message) {
-        int packageUid = -1;
-        PackageManager pm = mContext.createContextAsUser(
-                UserHandle.getUserHandleForUid(callingUid), 0).getPackageManager();
-        if (pm != null) {
-            try {
-                packageUid = pm.getPackageUid(callingPackage, 0);
-            } catch (PackageManager.NameNotFoundException e) {
-                // packageUid is -1
-            }
-        }
-        if (packageUid != callingUid) {
-            throw new SecurityException(message + ": Package " + callingPackage
-                    + " does not belong to " + callingUid);
-        }
     }
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
