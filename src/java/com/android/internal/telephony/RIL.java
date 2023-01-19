@@ -22,6 +22,7 @@ import static android.telephony.TelephonyManager.HAL_SERVICE_MESSAGING;
 import static android.telephony.TelephonyManager.HAL_SERVICE_MODEM;
 import static android.telephony.TelephonyManager.HAL_SERVICE_NETWORK;
 import static android.telephony.TelephonyManager.HAL_SERVICE_RADIO;
+import static android.telephony.TelephonyManager.HAL_SERVICE_SATELLITE;
 import static android.telephony.TelephonyManager.HAL_SERVICE_SIM;
 import static android.telephony.TelephonyManager.HAL_SERVICE_VOICE;
 
@@ -226,7 +227,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     public static final int MIN_SERVICE_IDX = HAL_SERVICE_RADIO;
 
-    public static final int MAX_SERVICE_IDX = HAL_SERVICE_IMS;
+    public static final int MAX_SERVICE_IDX = HAL_SERVICE_SATELLITE;
 
     /**
      * An array of sets that records if services are disabled in the HAL for a specific phone ID
@@ -261,6 +262,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     private ModemIndication mModemIndication;
     private NetworkResponse mNetworkResponse;
     private NetworkIndication mNetworkIndication;
+    private SatelliteResponse mSatelliteResponse;
+    private SatelliteIndication mSatelliteIndication;
     private SimResponse mSimResponse;
     private SimIndication mSimIndication;
     private VoiceResponse mVoiceResponse;
@@ -746,7 +749,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     /**
      * Returns a {@link RadioDataProxy}, {@link RadioMessagingProxy}, {@link RadioModemProxy},
      * {@link RadioNetworkProxy}, {@link RadioSimProxy}, {@link RadioVoiceProxy},
-     * {@link RadioImsProxy}, or null if the service is not available.
+     * {@link RadioImsProxy}, {@link RadioSatelliteProxy}, or null if the service is not available.
      */
     @NonNull
     public <T extends RadioServiceProxy> T getRadioServiceProxy(Class<T> serviceClass,
@@ -772,6 +775,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
         if (serviceClass == RadioImsProxy.class) {
             return (T) getRadioServiceProxy(HAL_SERVICE_IMS, result);
         }
+        if (serviceClass == RadioSatelliteProxy.class) {
+            return (T) getRadioServiceProxy(HAL_SERVICE_SATELLITE, result);
+        }
         riljLoge("getRadioServiceProxy: unrecognized " + serviceClass);
         return null;
     }
@@ -784,7 +790,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @NonNull
     public synchronized RadioServiceProxy getRadioServiceProxy(int service, Message result) {
         if (!SubscriptionManager.isValidPhoneId(mPhoneId)) return mServiceProxies.get(service);
-        if (service == HAL_SERVICE_IMS && !isRadioServiceSupported(service)) {
+        if ((service >= HAL_SERVICE_IMS)
+                && !isRadioServiceSupported(service)) {
             return mServiceProxies.get(service);
         }
         if (!mIsCellularSupported) {
@@ -914,6 +921,21 @@ public class RIL extends BaseCommands implements CommandsInterface {
                                             .asInterface(binder)));
                         }
                         break;
+                    case HAL_SERVICE_SATELLITE:
+                        if (mMockModem == null) {
+                            binder = ServiceManager.waitForDeclaredService(
+                                    android.hardware.radio.satellite.IRadioSatellite.DESCRIPTOR
+                                            + "/" + HIDL_SERVICE_NAME[mPhoneId]);
+                        } else {
+                            binder = mMockModem.getServiceBinder(HAL_SERVICE_SATELLITE);
+                        }
+                        if (binder != null) {
+                            mHalVersion.put(service, ((RadioSatelliteProxy) serviceProxy).setAidl(
+                                    mHalVersion.get(service),
+                                    android.hardware.radio.satellite.IRadioSatellite.Stub
+                                            .asInterface(binder)));
+                        }
+                        break;
                 }
 
                 if (serviceProxy.isEmpty()
@@ -1038,6 +1060,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
                                 ((RadioImsProxy) serviceProxy).getAidl().setResponseFunctions(
                                         mImsResponse, mImsIndication);
                                 break;
+                            case HAL_SERVICE_SATELLITE:
+                                mDeathRecipients.get(service).linkToDeath(
+                                        ((RadioSatelliteProxy) serviceProxy).getAidl().asBinder());
+                                ((RadioSatelliteProxy) serviceProxy).getAidl().setResponseFunctions(
+                                        mSatelliteResponse, mSatelliteIndication);
+                                break;
                         }
                     } else {
                         if (mHalVersion.get(service)
@@ -1152,6 +1180,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         mModemIndication = new ModemIndication(this);
         mNetworkResponse = new NetworkResponse(this);
         mNetworkIndication = new NetworkIndication(this);
+        mSatelliteResponse = new SatelliteResponse(this);
+        mSatelliteIndication = new SatelliteIndication(this);
         mSimResponse = new SimResponse(this);
         mSimIndication = new SimIndication(this);
         mVoiceResponse = new VoiceResponse(this);
@@ -1186,6 +1216,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             mServiceProxies.put(HAL_SERVICE_SIM, new RadioSimProxy());
             mServiceProxies.put(HAL_SERVICE_VOICE, new RadioVoiceProxy());
             mServiceProxies.put(HAL_SERVICE_IMS, new RadioImsProxy());
+            mServiceProxies.put(HAL_SERVICE_SATELLITE, new RadioSatelliteProxy());
         } else {
             mServiceProxies = proxies;
         }
@@ -1267,6 +1298,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 break;
             case HAL_SERVICE_IMS:
                 serviceName = android.hardware.radio.ims.IRadioIms.DESCRIPTOR;
+                break;
+            case HAL_SERVICE_SATELLITE:
+                serviceName = android.hardware.radio.satellite.IRadioSatellite.DESCRIPTOR;
                 break;
         }
 
@@ -5734,6 +5768,545 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+    /**
+     * Get feature capabilities supported by satellite.
+     *
+     * @param result Message that will be sent back to the requester
+     */
+    @Override
+    public void getSatelliteCapabilities(Message result) {
+        RadioSatelliteProxy radioSatelliteProxy =
+                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+        if (radioSatelliteProxy.isEmpty()) return;
+        if (mHalVersion.get(HAL_SERVICE_SATELLITE).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_GET_SATELLITE_CAPABILITIES, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                // Do not log function arg for privacy
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                radioSatelliteProxy.getCapabilities(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(
+                        HAL_SERVICE_SATELLITE, "getSatelliteCapabilities", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "getSatelliteCapabilities: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    /**
+     * Turn satellite modem on/off.
+     *
+     * @param result Message that will be sent back to the requester
+     * @param on True for turning on.
+     *           False for turning off.
+     */
+    @Override
+    public void setSatellitePower(Message result, boolean on) {
+        RadioSatelliteProxy radioSatelliteProxy =
+                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+        if (radioSatelliteProxy.isEmpty()) return;
+        if (mHalVersion.get(HAL_SERVICE_SATELLITE).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_SET_SATELLITE_POWER, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                // Do not log function arg for privacy
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                radioSatelliteProxy.setPower(rr.mSerial, on);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(HAL_SERVICE_SATELLITE, "setSatellitePower", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "setSatellitePower: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    /**
+     * Get satellite modem state.
+     *
+     * @param result Message that will be sent back to the requester
+     */
+    @Override
+    public void getSatellitePowerState(Message result) {
+        RadioSatelliteProxy radioSatelliteProxy =
+                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+        if (radioSatelliteProxy.isEmpty()) return;
+        if (mHalVersion.get(HAL_SERVICE_SATELLITE).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_GET_SATELLITE_POWER, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                // Do not log function arg for privacy
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                radioSatelliteProxy.getPowerState(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(HAL_SERVICE_SATELLITE, "getSatellitePowerState", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "getSatellitePowerState: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    /**
+     * Provision the subscription with a satellite provider. This is needed to register the
+     * subscription if the provider allows dynamic registration.
+     *
+     * @param result Message that will be sent back to the requester.
+     * @param imei IMEI of the SIM associated with the satellite modem.
+     * @param msisdn MSISDN of the SIM associated with the satellite modem.
+     * @param imsi IMSI of the SIM associated with the satellite modem.
+     * @param features List of features to be provisioned.
+     */
+    @Override
+    public void provisionSatelliteService(
+            Message result, String imei, String msisdn, String imsi, int[] features) {
+        RadioSatelliteProxy radioSatelliteProxy =
+                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+        if (radioSatelliteProxy.isEmpty()) return;
+        if (mHalVersion.get(HAL_SERVICE_SATELLITE).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_PROVISION_SATELLITE_SERVICE, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                // Do not log function arg for privacy
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                radioSatelliteProxy.provisionService(rr.mSerial, imei, msisdn, imsi, features);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(
+                        HAL_SERVICE_SATELLITE, "provisionSatelliteService", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "provisionSatelliteService: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    /**
+     * Add contacts that are allowed to be used for satellite communication. This is applicable for
+     * incoming messages as well.
+     *
+     * @param result Message that will be sent back to the requester.
+     * @param contacts List of allowed contacts to be added.
+     */
+    @Override
+    public void addAllowedSatelliteContacts(Message result, String[] contacts) {
+        RadioSatelliteProxy radioSatelliteProxy =
+                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+        if (radioSatelliteProxy.isEmpty()) return;
+        if (mHalVersion.get(HAL_SERVICE_SATELLITE).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_ADD_ALLOWED_SATELLITE_CONTACTS, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                // Do not log function arg for privacy
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                radioSatelliteProxy.addAllowedSatelliteContacts(rr.mSerial, contacts);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(HAL_SERVICE_SATELLITE,
+                        "addAllowedSatelliteContacts", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "addAllowedSatelliteContacts: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    /**
+     * Remove contacts that are allowed to be used for satellite communication. This is applicable
+     * for incoming messages as well.
+     *
+     * @param result Message that will be sent back to the requester.
+     * @param contacts List of allowed contacts to be removed.
+     */
+    @Override
+    public void removeAllowedSatelliteContacts(Message result, String[] contacts) {
+        RadioSatelliteProxy radioSatelliteProxy =
+                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+        if (radioSatelliteProxy.isEmpty()) return;
+        if (mHalVersion.get(HAL_SERVICE_SATELLITE).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_REMOVE_ALLOWED_SATELLITE_CONTACTS, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                // Do not log function arg for privacy
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                radioSatelliteProxy.removeAllowedSatelliteContacts(rr.mSerial, contacts);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(HAL_SERVICE_SATELLITE,
+                        "removeAllowedSatelliteContacts", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "removeAllowedSatelliteContacts: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    /**
+     * Send text messages.
+     *
+     * @param result Message that will be sent back to the requester.
+     * @param messages List of messages in text format to be sent.
+     * @param destination The recipient of the message.
+     * @param latitude The current latitude of the device.
+     * @param longitude The current longitude of the device.
+     */
+    @Override
+    public void sendSatelliteMessages(Message result, String[] messages, String destination,
+            double latitude, double longitude) {
+        RadioSatelliteProxy radioSatelliteProxy =
+                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+        if (radioSatelliteProxy.isEmpty()) return;
+        if (mHalVersion.get(HAL_SERVICE_SATELLITE).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+            RILRequest rr = obtainRequest(
+                    RIL_REQUEST_SEND_SATELLITE_MESSAGES, result, mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                // Do not log function arg for privacy
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                radioSatelliteProxy.sendMessages(rr.mSerial, messages, destination, latitude,
+                        longitude);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(HAL_SERVICE_SATELLITE, "sendSatelliteMessages", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "sendSatelliteMessages: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    /**
+     * Get pending messages.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    @Override
+    public void getPendingSatelliteMessages(Message result) {
+        RadioSatelliteProxy radioSatelliteProxy =
+                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+        if (radioSatelliteProxy.isEmpty()) return;
+        if (mHalVersion.get(HAL_SERVICE_SATELLITE).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_GET_PENDING_SATELLITE_MESSAGES, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                // Do not log function arg for privacy
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                radioSatelliteProxy.getPendingMessages(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(
+                        HAL_SERVICE_SATELLITE, "getPendingSatelliteMessages", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "getPendingSatelliteMessages: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    /**
+     * Get current satellite registration mode.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    @Override
+    public void getSatelliteMode(Message result) {
+        RadioSatelliteProxy radioSatelliteProxy =
+                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+        if (radioSatelliteProxy.isEmpty()) return;
+        if (mHalVersion.get(HAL_SERVICE_SATELLITE).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_GET_SATELLITE_MODE, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                // Do not log function arg for privacy
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                radioSatelliteProxy.getSatelliteMode(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(HAL_SERVICE_SATELLITE, "getSatelliteMode", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "getSatelliteMode: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    /**
+     * Set the filter for what type of indication framework want to receive from modem.
+     *
+     * @param result Message that will be sent back to the requester.
+     * @param filterBitmask The filter bitmask identifying what type of indication framework want to
+     *                         receive from modem.
+     */
+    @Override
+    public void setSatelliteIndicationFilter(Message result, int filterBitmask) {
+        RadioSatelliteProxy radioSatelliteProxy =
+                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+        if (radioSatelliteProxy.isEmpty()) return;
+        if (mHalVersion.get(HAL_SERVICE_SATELLITE).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_SET_SATELLITE_INDICATION_FILTER, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                // Do not log function arg for privacy
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                radioSatelliteProxy.setIndicationFilter(rr.mSerial, filterBitmask);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(HAL_SERVICE_SATELLITE,
+                        "setSatelliteIndicationFilter", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG, "setSatelliteIndicationFilter: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    /**
+     * User started pointing to the satellite. Modem should continue to update the ponting input
+     * as user moves device.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    @Override
+    public void startSendingSatellitePointingInfo(Message result) {
+        RadioSatelliteProxy radioSatelliteProxy =
+                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+        if (radioSatelliteProxy.isEmpty()) return;
+        if (mHalVersion.get(HAL_SERVICE_SATELLITE).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_START_SENDING_SATELLITE_POINTING_INFO, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                // Do not log function arg for privacy
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                radioSatelliteProxy.startSendingSatellitePointingInfo(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(HAL_SERVICE_SATELLITE,
+                        "startSendingSatellitePointingInfo", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG,
+                        "startSendingSatellitePointingInfo: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    /**
+     * Stop pointing to satellite indications.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    @Override
+    public void stopSendingSatellitePointingInfo(Message result) {
+        RadioSatelliteProxy radioSatelliteProxy =
+                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+        if (radioSatelliteProxy.isEmpty()) return;
+        if (mHalVersion.get(HAL_SERVICE_SATELLITE).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_STOP_SENDING_SATELLITE_POINTING_INFO, result,
+                    mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                // Do not log function arg for privacy
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                radioSatelliteProxy.stopSendingSatellitePointingInfo(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(HAL_SERVICE_SATELLITE,
+                        "stopSendingSatellitePointingInfo", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG,
+                        "stopSendingSatellitePointingInfo: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    /**
+     * Get max text limit for messaging per message.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    @Override
+    public void getMaxCharactersPerSatelliteTextMessage(Message result) {
+        RadioSatelliteProxy radioSatelliteProxy =
+                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+        if (radioSatelliteProxy.isEmpty()) return;
+        if (mHalVersion.get(HAL_SERVICE_SATELLITE).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_GET_MAX_CHARACTERS_PER_SATELLITE_TEXT_MESSAGE,
+                    result, mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                // Do not log function arg for privacy
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                radioSatelliteProxy.getMaxCharactersPerTextMessage(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(HAL_SERVICE_SATELLITE,
+                        "getMaxCharactersPerSatelliteTextMessage", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG,
+                        "getMaxCharactersPerSatelliteTextMessage: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
+    /**
+     * Get time for next visibility of satellite.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    @Override
+    public void getTimeForNextSatelliteVisibility(Message result) {
+        RadioSatelliteProxy radioSatelliteProxy =
+                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+        if (radioSatelliteProxy.isEmpty()) return;
+        if (mHalVersion.get(HAL_SERVICE_SATELLITE).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
+            RILRequest rr = obtainRequest(RIL_REQUEST_GET_TIME_FOR_NEXT_SATELLITE_VISIBILITY,
+                    result, mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                // Do not log function arg for privacy
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+            }
+
+            try {
+                radioSatelliteProxy.getTimeForNextSatelliteVisibility(rr.mSerial);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(HAL_SERVICE_SATELLITE,
+                        "getTimeForNextSatelliteVisibility", e);
+            }
+        } else {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG,
+                        "getTimeForNextSatelliteVisibility: REQUEST_NOT_SUPPORTED");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+                result.sendToTarget();
+            }
+        }
+    }
+
     //***** Private Methods
     /**
      * This is a helper function to be called when an indication callback is called for any radio
@@ -6524,6 +7097,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         pw.println(" " + mServiceProxies.get(HAL_SERVICE_SIM));
         pw.println(" " + mServiceProxies.get(HAL_SERVICE_VOICE));
         pw.println(" " + mServiceProxies.get(HAL_SERVICE_IMS));
+        pw.println(" " + mServiceProxies.get(HAL_SERVICE_SATELLITE));
         pw.println(" mWakeLock=" + mWakeLock);
         pw.println(" mWakeLockTimeout=" + mWakeLockTimeout);
         synchronized (mRequestList) {
@@ -6646,6 +7220,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 return "VOICE";
             case HAL_SERVICE_IMS:
                 return "IMS";
+            case HAL_SERVICE_SATELLITE:
+                return "SATELLITE";
             default:
                 return "UNKNOWN:" + service;
         }
