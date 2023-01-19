@@ -3551,7 +3551,8 @@ public class ServiceStateTracker extends Handler {
 
         boolean hasCssIndicatorChanged = (mSS.getCssIndicator() != mNewSS.getCssIndicator());
 
-        boolean hasBandwidthChanged = mSS.getCellBandwidths() != mNewSS.getCellBandwidths();
+        boolean hasBandwidthChanged = !Arrays.equals(
+                mSS.getCellBandwidths(), mNewSS.getCellBandwidths());
 
         boolean has4gHandoff = false;
         boolean hasMultiApnSupport = false;
