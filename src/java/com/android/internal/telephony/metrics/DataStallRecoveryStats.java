@@ -112,7 +112,8 @@ public class DataStallRecoveryStats {
             phoneNetworkRegState = phoneRegInfo.getRegistrationState();
         }
 
-        int phoneId = phone.getPhoneId();
+        // reserve 0 for default value
+        int phoneId = phone.getPhoneId() + 1;
 
         TelephonyStatsLog.write(
                 TelephonyStatsLog.DATA_STALL_RECOVERY_REPORTED,

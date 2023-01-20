@@ -195,9 +195,18 @@ public class SubscriptionManagerService extends ISub.Stub {
     @Nullable
     private EuiccController mEuiccController;
 
-    /** The main handler of subscription manager service. */
+    /**
+     * The main handler of subscription manager service. This is running on phone process's main
+     * thread.
+     */
     @NonNull
     private final Handler mHandler;
+
+    /**
+     * The background handler. This is running on a separate thread.
+     */
+    @NonNull
+    private final Handler mBackgroundHandler;
 
     /** Local log for most important debug messages. */
     @NonNull
@@ -373,6 +382,12 @@ public class SubscriptionManagerService extends ISub.Stub {
 
         mUiccController = UiccController.getInstance();
         mHandler = new Handler(looper);
+
+        HandlerThread backgroundThread = new HandlerThread(LOG_TAG);
+        backgroundThread.start();
+
+        mBackgroundHandler = new Handler(backgroundThread.getLooper());
+
         TelephonyServiceManager.ServiceRegisterer subscriptionServiceRegisterer =
                 TelephonyFrameworkInitializer
                         .getTelephonyServiceManager()
@@ -907,7 +922,8 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     public void updateEmbeddedSubscriptions(@NonNull List<Integer> cardIds,
             @Nullable Runnable callback) {
-        mHandler.post(() -> {
+        // Run this on a background thread.
+        mBackgroundHandler.post(() -> {
             // Do nothing if eUICCs are disabled. (Previous entries may remain in the cache, but
             // they are filtered out of list calls as long as EuiccManager.isEnabled returns false).
             if (mEuiccManager == null || !mEuiccManager.isEnabled()) {
