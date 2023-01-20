@@ -89,6 +89,7 @@ import android.util.Log;
 import androidx.test.filters.FlakyTest;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
+import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.test.SimulatedCommands;
@@ -170,6 +171,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         adnRecordCache = Mockito.mock(AdnRecordCache.class);
         doReturn(false).when(mSST).isDeviceShuttingDown();
         doReturn(true).when(mImsManager).isVolteEnabledByPlatform();
+
+        DomainSelectionResolver.make(mContext, false);
 
         mPhoneUT = new GsmCdmaPhone(mContext, mSimulatedCommands, mNotifier, true, 0,
             PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory, (c, p) -> mImsManager);
