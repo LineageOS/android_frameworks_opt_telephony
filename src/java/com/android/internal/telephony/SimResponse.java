@@ -20,6 +20,7 @@ import static android.telephony.TelephonyManager.HAL_SERVICE_SIM;
 
 import android.hardware.radio.RadioError;
 import android.hardware.radio.RadioResponseInfo;
+import android.hardware.radio.sim.CarrierRestrictions;
 import android.hardware.radio.sim.IRadioSimResponse;
 import android.telephony.CarrierRestrictionRules;
 import android.telephony.TelephonyManager;
@@ -127,7 +128,6 @@ public class SimResponse extends IRadioSimResponse.Stub {
         if (!carrierRestrictions.allowedCarriersPrioritized) {
             carrierRestrictionDefault = CarrierRestrictionRules.CARRIER_RESTRICTION_DEFAULT_ALLOWED;
         }
-
         ret = CarrierRestrictionRules.newBuilder()
                 .setAllowedCarriers(RILUtils.convertHalCarrierList(
                         carrierRestrictions.allowedCarriers))
@@ -135,6 +135,7 @@ public class SimResponse extends IRadioSimResponse.Stub {
                         carrierRestrictions.excludedCarriers))
                 .setDefaultCarrierRestriction(carrierRestrictionDefault)
                 .setMultiSimPolicy(policy)
+                .setCarrierRestrictionStatus(carrierRestrictions.status)
                 .build();
 
         if (responseInfo.error == RadioError.NONE) {

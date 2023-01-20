@@ -3025,4 +3025,242 @@ public interface CommandsInterface {
      * @param result Callback message to receive the result.
      */
     default void isN1ModeEnabled(Message result) {}
+
+    /**
+     * Get feature capabilities supported by satellite.
+     *
+     * @param result Message that will be sent back to the requester
+     */
+    default void getSatelliteCapabilities(Message result) {}
+
+    /**
+     * Turn satellite modem on/off.
+     *
+     * @param result Message that will be sent back to the requester
+     * @param on {@code true} for turning on.
+     *           {@code false} for turning off.
+     */
+    default void setSatellitePower(Message result, boolean on) {}
+
+    /**
+     * Get satellite modem state.
+     *
+     * @param result Message that will be sent back to the requester
+     */
+    default void getSatellitePowerState(Message result) {}
+
+    /**
+     * Provision the subscription with a satellite provider. This is needed to register the
+     * subscription if the provider allows dynamic registration.
+     *
+     * @param result Message that will be sent back to the requester.
+     * @param imei IMEI of the SIM associated with the satellite modem.
+     * @param msisdn MSISDN of the SIM associated with the satellite modem.
+     * @param imsi IMSI of the SIM associated with the satellite modem.
+     * @param features List of features to be provisioned.
+     */
+    default void provisionSatelliteService(
+            Message result, String imei, String msisdn, String imsi, int[] features) {}
+
+    /**
+     * Add contacts that are allowed to be used for satellite communication. This is applicable for
+     * incoming messages as well.
+     *
+     * @param result Message that will be sent back to the requester.
+     * @param contacts List of allowed contacts to be added.
+     */
+    default void addAllowedSatelliteContacts(Message result, String[] contacts) {}
+
+    /**
+     * Remove contacts that are allowed to be used for satellite communication. This is applicable
+     * for incoming messages as well.
+     *
+     * @param result Message that will be sent back to the requester.
+     * @param contacts List of allowed contacts to be removed.
+     */
+    default void removeAllowedSatelliteContacts(Message result, String[] contacts) {}
+
+    /**
+     * Send text messages.
+     *
+     * @param result Message that will be sent back to the requester.
+     * @param messages List of messages in text format to be sent.
+     * @param destination The recipient of the message.
+     * @param latitude The current latitude of the device.
+     * @param longitude The current longitude of the device. The location (i.e., latitude and
+     *        longitude) of the device will be filled for emergency messages.
+     */
+    default void sendSatelliteMessages(Message result, String[] messages, String destination,
+            double latitude, double longitude) {}
+
+    /**
+     * Get pending messages.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    default void getPendingSatelliteMessages(Message result) {}
+
+    /**
+     * Get current satellite registration mode.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    default void getSatelliteMode(Message result) {}
+
+    /**
+     * Set the filter for what type of indication framework want to receive from modem.
+     *
+     * @param result Message that will be sent back to the requester.
+     * @param filterBitmask The filter bitmask identifying what type of indication Telephony
+     *                      framework wants to receive from modem.
+     */
+    default void setSatelliteIndicationFilter(Message result, int filterBitmask) {}
+
+    /**
+     * User started pointing to the satellite. Modem should continue to update the ponting input
+     * as user moves device.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    default void startSendingSatellitePointingInfo(Message result) {}
+
+    /**
+     * Stop sending satellite pointing info to the framework.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    default void stopSendingSatellitePointingInfo(Message result) {}
+
+    /**
+     * Get max number of characters per text message.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    default void getMaxCharactersPerSatelliteTextMessage(Message result) {}
+
+    /**
+     * Get time for next visibility of satellite.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    default void getTimeForNextSatelliteVisibility(Message result) {}
+
+    /**
+     * Registers for pending message count from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForPendingSatelliteMessageCount(@NonNull Handler h,
+            int what, @Nullable Object obj) {}
+
+    /**
+     * Unregisters for pending message count from satellite modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForPendingSatelliteMessageCount(@NonNull Handler h) {}
+
+    /**
+     * Registers for new messages from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForNewSatelliteMessages(@NonNull Handler h,
+            int what, @Nullable Object obj) {}
+
+    /**
+     * Unregisters for new messages from satellite modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForNewSatelliteMessages(@NonNull Handler h) {}
+
+    /**
+     * Registers for messages transfer complete from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForSatelliteMessagesTransferComplete(@NonNull Handler h,
+            int what, @Nullable Object obj) {}
+
+    /**
+     * Unregisters for messages transfer complete from satellite modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForSatelliteMessagesTransferComplete(@NonNull Handler h) {}
+
+    /**
+     * Registers for pointing info changed from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForSatellitePointingInfoChanged(@NonNull Handler h,
+            int what, @Nullable Object obj) {}
+
+    /**
+     * Unregisters for pointing info changed from satellite modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForSatellitePointingInfoChanged(@NonNull Handler h) {}
+
+    /**
+     * Registers for mode changed from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForSatelliteModeChanged(@NonNull Handler h,
+            int what, @Nullable Object obj) {}
+
+    /**
+     * Unregisters for mode changed from satellite modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForSatelliteModeChanged(@NonNull Handler h) {}
+
+    /**
+     * Registers for radio technology changed from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForSatelliteRadioTechnologyChanged(@NonNull Handler h,
+            int what, @Nullable Object obj) {}
+
+    /**
+     * Unregisters for radio technology changed from satellite modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForSatelliteRadioTechnologyChanged(@NonNull Handler h) {}
+
+    /**
+     * Registers for provision state changed from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    default void registerForSatelliteProvisionStateChanged(@NonNull Handler h,
+            int what, @Nullable Object obj) {}
+
+    /**
+     * Unregisters for provision state changed from satellite modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    default void unregisterForSatelliteProvisionStateChanged(@NonNull Handler h) {}
 }
