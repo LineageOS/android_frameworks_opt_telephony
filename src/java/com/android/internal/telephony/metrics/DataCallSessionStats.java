@@ -30,6 +30,7 @@ import android.telephony.Annotation.NetworkType;
 import android.telephony.DataFailCause;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnSetting.ProtocolType;
@@ -270,7 +271,7 @@ public class DataCallSessionStats {
             subInfo = SubscriptionController.getInstance()
                     .getSubscriptionInfo(mPhone.getSubId());
         }
-        if (mPhone.getSubId() != SubscriptionController.getInstance().getDefaultDataSubId()
+        if (mPhone.getSubId() != SubscriptionManager.getDefaultDataSubscriptionId()
                 && ((mDataCallSession.apnTypeBitmask & ApnSetting.TYPE_DEFAULT)
                 == ApnSetting.TYPE_DEFAULT)
                 && subInfo != null && !subInfo.isOpportunistic()) {

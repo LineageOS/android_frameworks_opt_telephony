@@ -100,7 +100,6 @@ import com.android.internal.telephony.data.DataNetworkController;
 import com.android.internal.telephony.data.LinkBandwidthEstimator;
 import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
-import com.android.internal.telephony.emergency.EmergencyStateTracker;
 import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.gsm.SsData;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
@@ -4826,6 +4825,8 @@ public class GsmCdmaPhone extends Phone {
             info = SubscriptionController.getInstance().getSubInfoForIccId(
                     IccUtils.stripTrailingFs(iccId));
         }
+
+        logd("reapplyUiccAppsEnablementIfNeeded: retries=" + retries + ", subInfo=" + info);
 
         // If info is null, it could be a new subscription. By default we enable it.
         boolean expectedValue = info == null || info.areUiccApplicationsEnabled();

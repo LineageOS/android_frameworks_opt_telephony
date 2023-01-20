@@ -2750,9 +2750,11 @@ public class ServiceStateTracker extends Handler {
             mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
 
             if (mPhone.isSubscriptionManagerServiceEnabled()) {
-                mSubscriptionManagerService.setCarrierName(mPhone.getSubId(),
-                        TextUtils.emptyIfNull(getCarrierName(data.shouldShowPlmn(), data.getPlmn(),
-                                data.shouldShowSpn(), data.getSpn())));
+                if (SubscriptionManager.isValidSubscriptionId(subId)) {
+                    mSubscriptionManagerService.setCarrierName(subId, TextUtils.emptyIfNull(
+                            getCarrierName(data.shouldShowPlmn(), data.getPlmn(),
+                                    data.shouldShowSpn(), data.getSpn())));
+                }
             } else {
                 if (!mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(),
                         data.shouldShowPlmn(), data.getPlmn(), data.shouldShowSpn(),

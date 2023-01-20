@@ -1329,17 +1329,17 @@ public class SubscriptionInfoInternal {
         /**
          * Whether enhanced 4G mode is enabled by the user or not.
          */
-        private int mIsEnhanced4GModeEnabled = 0;
+        private int mIsEnhanced4GModeEnabled = -1;
 
         /**
          * Whether video telephony is enabled by the user or not.
          */
-        private int mIsVideoTelephonyEnabled = 0;
+        private int mIsVideoTelephonyEnabled = -1;
 
         /**
          * Whether Wi-Fi calling is enabled by the user or not when the device is not roaming.
          */
-        private int mIsWifiCallingEnabled = 0;
+        private int mIsWifiCallingEnabled = -1;
 
         /**
          * Wi-Fi calling mode when the device is not roaming.
@@ -1356,7 +1356,7 @@ public class SubscriptionInfoInternal {
         /**
          * Whether Wi-Fi calling is enabled by the user or not when the device is roaming.
          */
-        private int mIsWifiCallingEnabledForRoaming = 0;
+        private int mIsWifiCallingEnabledForRoaming = -1;
 
         /**
          * Whether the subscription is opportunistic or not.
@@ -1418,7 +1418,7 @@ public class SubscriptionInfoInternal {
         /**
          * Whether Uicc applications are configured to enable or not.
          */
-        private int mAreUiccApplicationsEnabled = 0;
+        private int mAreUiccApplicationsEnabled = 1;
 
         /**
          * Whether the user has enabled IMS RCS User Capability Exchange (UCE) for this
