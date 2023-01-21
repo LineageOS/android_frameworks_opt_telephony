@@ -146,7 +146,9 @@ import com.android.internal.telephony.SrvccConnection;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.d2d.RtpTransport;
 import com.android.internal.telephony.data.DataSettingsManager;
+import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
+import com.android.internal.telephony.emergency.EmergencyStateTracker;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.imsphone.ImsPhone.ImsDialArgs;
 import com.android.internal.telephony.metrics.CallQualityMetrics;
@@ -1730,9 +1732,22 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         addConnection(mPendingMO);
 
         if (!holdBeforeDial) {
+            // In Ecm mode, if another emergency call is dialed, Ecm mode will not exit.
             if ((!isPhoneInEcmMode) || (isPhoneInEcmMode && isEmergencyNumber)) {
                 dialInternal(mPendingMO, clirMode, videoState, dialArgs.retryCallFailCause,
                         dialArgs.retryCallFailNetworkType, dialArgs.intentExtras);
+            } else if (DomainSelectionResolver.getInstance().isDomainSelectionSupported()) {
+                final int finalClirMode = clirMode;
+                final int finalVideoState = videoState;
+                Runnable onComplete = new Runnable() {
+                    @Override
+                    public void run() {
+                        dialInternal(mPendingMO, finalClirMode, finalVideoState,
+                                dialArgs.retryCallFailCause, dialArgs.retryCallFailNetworkType,
+                                dialArgs.intentExtras);
+                    }
+                };
+                EmergencyStateTracker.getInstance().exitEmergencyCallbackMode(onComplete);
             } else {
                 try {
                     getEcbmInterface().exitEmergencyCallbackMode();
@@ -3488,13 +3503,6 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 eccCategory = imsCall.getCallProfile().getEmergencyServiceCategories();
             }
 
-            if (reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL) {
-                ImsPhoneConnection conn = findConnection(imsCall);
-                if (conn != null) {
-                    conn.setNonDetectableEmergencyCallInfo(eccCategory);
-                }
-            }
-
             if (mHoldSwitchingState == HoldSwapState.HOLDING_TO_ANSWER_INCOMING) {
                 // If we put a call on hold to answer an incoming call, we should reset the
                 // variables that keep track of the switch here.
@@ -3513,6 +3521,27 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                                     maybeRemapReasonCode(reasonInfo),
                                     reasonInfo.mExtraCode,
                                     reasonInfo.mExtraMessage));
+
+            if (DomainSelectionResolver.getInstance().isDomainSelectionSupported()) {
+                ImsPhoneConnection conn = findConnection(imsCall);
+                // Since onCallInitiating and onCallProgressing reset mPendingMO,
+                // we can't depend on mPendingMO.
+                if ((reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL
+                        || reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_CALL_CS_RETRY_REQUIRED)
+                        && conn != null) {
+                    logi("onCallStartFailed eccCategory=" + eccCategory);
+                    if (reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL
+                            || reasonInfo.getExtraCode()
+                                    == ImsReasonInfo.EXTRA_CODE_CALL_RETRY_EMERGENCY) {
+                        conn.setNonDetectableEmergencyCallInfo(eccCategory);
+                    }
+                    conn.setImsReasonInfo(reasonInfo);
+                    sendCallStartFailedDisconnect(imsCall, reasonInfo);
+                    mMetrics.writeOnImsCallStartFailed(mPhone.getPhoneId(),
+                            imsCall.getCallSession(), reasonInfo);
+                    return;
+                }
+            }
 
             if (mPendingMO != null) {
                 // To initiate dialing circuit-switched call
@@ -3673,6 +3702,18 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             }
 
             if (reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL
+                    && DomainSelectionResolver.getInstance().isDomainSelectionSupported()) {
+                if (conn != null) {
+                    int eccCategory = EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED;
+                    if (imsCall != null && imsCall.getCallProfile() != null) {
+                        eccCategory = imsCall.getCallProfile().getEmergencyServiceCategories();
+                        logi("onCallTerminated eccCategory=" + eccCategory);
+                    }
+                    conn.setNonDetectableEmergencyCallInfo(eccCategory);
+                }
+                processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED, cause);
+                return;
+            } else if (reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL
                     && mAutoRetryFailedWifiEmergencyCall) {
                 Pair<ImsCall, ImsReasonInfo> callInfo = new Pair<>(imsCall, reasonInfo);
                 mPhone.getDefaultPhone().mCi.registerForOn(ImsPhoneCallTracker.this,

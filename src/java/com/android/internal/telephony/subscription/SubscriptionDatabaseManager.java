@@ -56,6 +56,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +67,8 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * The subscription database manager is the wrapper of {@link SimInfo}
@@ -233,7 +236,10 @@ public class SubscriptionDatabaseManager extends Handler {
                     SubscriptionInfoInternal::getLastUsedTPMessageReference),
             new AbstractMap.SimpleImmutableEntry<>(
                     SimInfo.COLUMN_USER_HANDLE,
-                    SubscriptionInfoInternal::getUserId)
+                    SubscriptionInfoInternal::getUserId),
+            new AbstractMap.SimpleImmutableEntry<>(
+                    SimInfo.COLUMN_SATELLITE_ENABLED,
+                    SubscriptionInfoInternal::getSatelliteEnabled)
     );
 
     /**
@@ -319,7 +325,10 @@ public class SubscriptionDatabaseManager extends Handler {
                     SubscriptionDatabaseManager::setLastUsedTPMessageReference),
             new AbstractMap.SimpleImmutableEntry<>(
                     SimInfo.COLUMN_USER_HANDLE,
-                    SubscriptionDatabaseManager::setUserId)
+                    SubscriptionDatabaseManager::setUserId),
+            new AbstractMap.SimpleImmutableEntry<>(
+                    SimInfo.COLUMN_SATELLITE_ENABLED,
+                    SubscriptionDatabaseManager::setSatelliteEnabled)
     );
 
     /**
@@ -612,7 +621,8 @@ public class SubscriptionDatabaseManager extends Handler {
     public Object getSubscriptionProperty(int subId, @NonNull String columnName) {
         SubscriptionInfoInternal subInfo = getSubscriptionInfoInternal(subId);
         if (subInfo == null) {
-            throw new IllegalArgumentException("Invalid subId " + subId);
+            throw new IllegalArgumentException("getSubscriptionProperty: Invalid subId " + subId
+                    + ", columnName=" + columnName);
         }
 
         return getSubscriptionInfoFieldByColumnName(subInfo, columnName);
@@ -901,6 +911,10 @@ public class SubscriptionDatabaseManager extends Handler {
                             mAllSubscriptionInfoInternalCache.put(id, builder.build());
                             mCallback.invokeFromExecutor(()
                                     -> mCallback.onSubscriptionChanged(subId));
+                            if (columnName.equals(SimInfo.COLUMN_UICC_APPLICATIONS_ENABLED)) {
+                                mCallback.invokeFromExecutor(()
+                                        -> mCallback.onUiccApplicationsEnabled(subId));
+                            }
                         }
                     }
                 }
@@ -1096,10 +1110,40 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @throws IllegalArgumentException if the subscription does not exist.
      */
+    public void setEhplmns(int subId, @NonNull String[] ehplmns) {
+        Objects.requireNonNull(ehplmns);
+        setEhplmns(subId, Arrays.stream(ehplmns)
+                .filter(Predicate.not(TextUtils::isEmpty))
+                .collect(Collectors.joining(",")));
+    }
+
+    /**
+     * Set EHPLMNs associated with the subscription.
+     *
+     * @param subId Subscription id.
+     * @param ehplmns EHPLMNs associated with the subscription.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
+     */
     public void setEhplmns(int subId, @NonNull String ehplmns) {
         Objects.requireNonNull(ehplmns);
         writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_EHPLMNS, ehplmns,
                 SubscriptionInfoInternal.Builder::setEhplmns);
+    }
+
+    /**
+     * Set HPLMNs associated with the subscription.
+     *
+     * @param subId Subscription id.
+     * @param hplmns HPLMNs associated with the subscription.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
+     */
+    public void setHplmns(int subId, @NonNull String[] hplmns) {
+        Objects.requireNonNull(hplmns);
+        setHplmns(subId, Arrays.stream(hplmns)
+                .filter(Predicate.not(TextUtils::isEmpty))
+                .collect(Collectors.joining(",")));
     }
 
     /**
@@ -1706,6 +1750,20 @@ public class SubscriptionDatabaseManager extends Handler {
     }
 
     /**
+     * Set whether satellite is enabled or not.
+     *
+     * @param subId Subscription id.
+     * @param isSatelliteEnabled if satellite is enabled or not.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
+     */
+    public void setSatelliteEnabled(int subId, int isSatelliteEnabled) {
+        writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_SATELLITE_ENABLED,
+                isSatelliteEnabled,
+                SubscriptionInfoInternal.Builder::setSatelliteEnabled);
+    }
+
+    /**
      * Load the entire database into the cache.
      */
     private void loadFromDatabase() {
@@ -1870,8 +1928,9 @@ public class SubscriptionDatabaseManager extends Handler {
                 .setLastUsedTPMessageReference(cursor.getInt(cursor.getColumnIndexOrThrow(
                         SimInfo.COLUMN_TP_MESSAGE_REF)))
                 .setUserId(cursor.getInt(cursor.getColumnIndexOrThrow(
-                        SimInfo.COLUMN_USER_HANDLE)));
-
+                        SimInfo.COLUMN_USER_HANDLE)))
+                .setSatelliteEnabled(cursor.getInt(cursor.getColumnIndexOrThrow(
+                        SimInfo.COLUMN_SATELLITE_ENABLED)));
         return builder.build();
     }
 

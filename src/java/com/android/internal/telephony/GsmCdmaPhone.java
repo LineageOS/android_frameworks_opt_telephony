@@ -98,6 +98,7 @@ import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.data.AccessNetworksManager;
 import com.android.internal.telephony.data.DataNetworkController;
 import com.android.internal.telephony.data.LinkBandwidthEstimator;
+import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.gsm.SsData;
@@ -1512,10 +1513,13 @@ public class GsmCdmaPhone extends Phone {
         }
         if (DBG) logd("Trying (non-IMS) CS call");
         if (isDialedNumberSwapped && isEmergency) {
-            // Triggers ECM when CS call ends only for test emergency calls using
-            // ril.test.emergencynumber.
-            mIsTestingEmergencyCallbackMode = true;
-            mCi.testingEmergencyCall();
+            // If domain selection is enabled, ECM testing is handled in EmergencyStateTracker
+            if (!DomainSelectionResolver.getInstance().isDomainSelectionSupported()) {
+                // Triggers ECM when CS call ends only for test emergency calls using
+                // ril.test.emergencynumber.
+                mIsTestingEmergencyCallbackMode = true;
+                mCi.testingEmergencyCall();
+            }
         }
 
         chosenPhoneConsumer.accept(this);
@@ -3909,6 +3913,7 @@ public class GsmCdmaPhone extends Phone {
      * otherwise, restart Ecm timer and notify apps the timer is restarted.
      */
     public void handleTimerInEmergencyCallbackMode(int action) {
+        if (DomainSelectionResolver.getInstance().isDomainSelectionSupported()) return;
         switch(action) {
             case CANCEL_ECM_TIMER:
                 removeCallbacks(mExitEcmRunnable);
@@ -4820,6 +4825,8 @@ public class GsmCdmaPhone extends Phone {
             info = SubscriptionController.getInstance().getSubInfoForIccId(
                     IccUtils.stripTrailingFs(iccId));
         }
+
+        logd("reapplyUiccAppsEnablementIfNeeded: retries=" + retries + ", subInfo=" + info);
 
         // If info is null, it could be a new subscription. By default we enable it.
         boolean expectedValue = info == null || info.areUiccApplicationsEnabled();
