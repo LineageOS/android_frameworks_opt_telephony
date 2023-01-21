@@ -778,6 +778,7 @@ public class ContextFixture implements TestFixture<Context> {
 
         doReturn(mBundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
         doReturn(mBundle).when(mCarrierConfigManager).getConfig();
+        doReturn(mBundle).when(mCarrierConfigManager).getConfigForSubId(anyInt(), anyString());
         doAnswer(invocation -> mNetworkId++).when(mNetwork).getNetId();
         doReturn(mNetwork).when(mConnectivityManager).registerNetworkAgent(
                 any(), any(), any(), any(), any(), any(), anyInt());

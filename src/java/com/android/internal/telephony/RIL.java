@@ -275,9 +275,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
     final RilHandler mRilHandler;
     private MockModem mMockModem;
 
-    // The last barring information received
-    private BarringInfo mLastBarringInfo = null;
-
     // Thread-safe HashMap to map from RIL_REQUEST_XXX constant to HalVersion.
     // This is for Radio HAL Fallback Compatibility feature. When a RIL request
     // is received, the HAL method from the mapping HalVersion here (if present),
@@ -4890,7 +4887,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
+                        + " " + enable);
             }
 
             try {
@@ -7176,12 +7174,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
     void notifyBarringInfoChanged(@NonNull BarringInfo barringInfo) {
         mLastBarringInfo = barringInfo;
         mBarringInfoChangedRegistrants.notifyRegistrants(new AsyncResult(null, barringInfo, null));
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public @Nullable BarringInfo getLastBarringInfo() {
-        return mLastBarringInfo;
     }
 
     /**

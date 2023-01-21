@@ -230,6 +230,8 @@ public class DataEvaluation {
         PREFERRED_TRANSPORT_CHANGED(true),
         /** Slice config changed. */
         SLICE_CONFIG_CHANGED(true),
+        /** SRVCC state changed. */
+        SRVCC_STATE_CHANGED(true),
         /**
          * Single data network arbitration. On certain RATs, only one data network is allowed at the
          * same time.
