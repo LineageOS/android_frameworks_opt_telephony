@@ -4946,7 +4946,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public boolean canToggleUiccApplicationsEnablement() {
         return !getRadioServiceProxy(RadioSimProxy.class, null).isEmpty()
-                && mHalVersion.get(HAL_SERVICE_RADIO).greaterOrEqual(RADIO_HAL_VERSION_1_5);
+                && mHalVersion.get(HAL_SERVICE_SIM).greaterOrEqual(RADIO_HAL_VERSION_1_5);
     }
 
     @Override
