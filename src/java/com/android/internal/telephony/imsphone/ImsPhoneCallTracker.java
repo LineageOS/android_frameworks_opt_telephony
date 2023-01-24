@@ -3063,6 +3063,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             conn.maybeChangeRingbackState();
 
             maybeSetVideoCallProvider(conn, imsCall);
+            // IMS call profile might be changed while call state is maintained. In this case, it's
+            // required to notify to CallAttributesListener.
+            // Since call state is not changed, TelephonyRegistry will not notify to
+            // PreciseCallStateListener.
+            mPhone.notifyPreciseCallStateToNotifier();
             return;
         }
 
