@@ -2446,7 +2446,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 }
                 int key = convertAllowedNetworkTypeDbNameToMapIndex(networkTypesValues[0]);
                 long value = Long.parseLong(networkTypesValues[1]);
-                if (key != INVALID_ALLOWED_NETWORK_TYPES
+                if (TelephonyManager.isValidAllowedNetworkTypesReason(key)
                         && value != INVALID_ALLOWED_NETWORK_TYPES) {
                     synchronized (mAllowedNetworkTypesForReasons) {
                         mAllowedNetworkTypesForReasons.put(key, value);
@@ -2484,7 +2484,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         }
     }
 
-    private String convertAllowedNetworkTypeMapIndexToDbName(int reason) {
+    private String convertAllowedNetworkTypeMapIndexToDbName(
+            @TelephonyManager.AllowedNetworkTypesReason int reason) {
         switch (reason) {
             case TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER:
                 return ALLOWED_NETWORK_TYPES_TEXT_USER;
@@ -2495,7 +2496,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             case TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_ENABLE_2G:
                 return ALLOWED_NETWORK_TYPES_TEXT_ENABLE_2G;
             default:
-                return Integer.toString(INVALID_ALLOWED_NETWORK_TYPES);
+                throw new IllegalArgumentException(
+                        "No DB name conversion available for allowed network type reason: " + reason
+                                + ". Did you forget to add an ALLOWED_NETWORK_TYPE_TEXT entry for"
+                                + " a new reason?");
         }
     }
 
