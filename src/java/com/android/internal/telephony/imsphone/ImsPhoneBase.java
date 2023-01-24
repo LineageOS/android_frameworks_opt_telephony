@@ -201,6 +201,10 @@ abstract class ImsPhoneBase extends Phone {
         AsyncResult ar = new AsyncResult(null, this, null);
         mPreciseCallStateRegistrants.notifyRegistrants(ar);
 
+        notifyPreciseCallStateToNotifier();
+    }
+
+    public void notifyPreciseCallStateToNotifier() {
         ImsPhoneCall ringingCall = (ImsPhoneCall) getRingingCall();
         ImsPhoneCall foregroundCall = (ImsPhoneCall) getForegroundCall();
         ImsPhoneCall backgroundCall = (ImsPhoneCall) getBackgroundCall();
