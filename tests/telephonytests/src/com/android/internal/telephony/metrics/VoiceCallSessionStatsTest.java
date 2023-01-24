@@ -73,6 +73,7 @@ import com.android.internal.telephony.protobuf.nano.MessageNano;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccPort;
+import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.uicc.UiccSlot;
 
 import org.junit.After;
@@ -177,8 +178,13 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         doReturn(true).when(mEsimSlot).isActive();
         doReturn(CardState.CARDSTATE_PRESENT).when(mEsimSlot).getCardState();
         doReturn(true).when(mEsimSlot).isEuicc();
-        doReturn(0).when(mInactivePort).getNumApplications();
-        doReturn(4).when(mActivePort).getNumApplications();
+
+        UiccProfile inactiveProfile = mock(UiccProfile.class);
+        UiccProfile activeProfile = mock(UiccProfile.class);
+        doReturn(0).when(inactiveProfile).getNumApplications();
+        doReturn(4).when(activeProfile).getNumApplications();
+        doReturn(inactiveProfile).when(mInactivePort).getUiccProfile();
+        doReturn(activeProfile).when(mActivePort).getUiccProfile();
 
         doReturn(new UiccSlot[] {mPhysicalSlot}).when(mUiccController).getUiccSlots();
         doReturn(mPhysicalSlot).when(mUiccController).getUiccSlot(eq(0));
