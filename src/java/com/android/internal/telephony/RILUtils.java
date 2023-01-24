@@ -6026,7 +6026,6 @@ public class RILUtils {
             CommandException.Error error) {
         switch (error) {
             case INTERNAL_ERR:
-                return SatelliteManager.SATELLITE_SERVICE_INTERNAL_ERROR;
             case MODEM_ERR:
                 return SatelliteManager.SATELLITE_SERVICE_MODEM_ERROR;
             case SYSTEM_ERR:
