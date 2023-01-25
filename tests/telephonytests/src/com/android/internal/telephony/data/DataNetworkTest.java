@@ -56,6 +56,7 @@ import android.telephony.LteVopsSupportInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
+import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
@@ -337,6 +338,8 @@ public class DataNetworkTest extends TelephonyTest {
         doReturn(DataNetwork.BANDWIDTH_SOURCE_BANDWIDTH_ESTIMATOR)
                 .when(mDataConfigManager).getBandwidthEstimateSource();
         doReturn(true).when(mDataConfigManager).isTempNotMeteredSupportedByCarrier();
+        doReturn(true).when(mDataConfigManager).isNetworkTypeUnmetered(
+                any(TelephonyDisplayInfo.class), any(ServiceState.class));
         doReturn(true).when(mDataConfigManager).isImsDelayTearDownEnabled();
         doReturn(DEFAULT_MTU).when(mDataConfigManager).getDefaultMtu();
         doReturn(FAKE_IMSI).when(mPhone).getSubscriberId();
