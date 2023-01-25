@@ -1136,6 +1136,13 @@ public class NetworkTypeController extends StateMachine {
                 resetAllTimers();
             }
 
+            if (currentState.equals(STATE_CONNECTED)
+                    && !mPrimaryTimerState.equals(STATE_CONNECTED_NR_ADVANCED)
+                    && !mSecondaryTimerState.equals(STATE_CONNECTED_NR_ADVANCED)) {
+                if (DBG) log("Reset non-NR_advanced timers since state is NR_CONNECTED");
+                resetAllTimers();
+            }
+
             int rat = getDataNetworkType();
             if (!isLte(rat) && rat != TelephonyManager.NETWORK_TYPE_NR) {
                 if (DBG) log("Reset timers since 2G and 3G don't need NR timers.");
