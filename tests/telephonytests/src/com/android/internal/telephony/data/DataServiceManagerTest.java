@@ -25,12 +25,14 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.TelephonyManager;
@@ -89,15 +91,19 @@ public class DataServiceManagerTest extends TelephonyTest {
 
     private Handler mHandler;
     private Handler mDataServiceHandler;
+    private PersistableBundle mBundle;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mBundle = mContextFixture.getCarrierConfigBundle();
+        when(mCarrierConfigManager.getConfigForSubId(anyInt(), any())).thenReturn(mBundle);
     }
 
     @After
     public void tearDown() throws Exception {
         mDataServiceManagerUT = null;
+        mBundle = null;
         super.tearDown();
     }
 

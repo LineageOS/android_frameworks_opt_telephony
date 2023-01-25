@@ -26,6 +26,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.content.ComponentName;
 import android.content.IntentFilter;
@@ -35,6 +36,7 @@ import android.os.AsyncResult;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.NetworkService;
@@ -67,6 +69,8 @@ public class AccessNetworksManagerTest extends TelephonyTest {
     // The real callback passed created by AccessNetworksManager.
     private IQualifiedNetworksServiceCallback.Stub mQnsCallback;
 
+    private PersistableBundle mBundle;
+
     private void addQnsService() throws Exception {
         ServiceInfo QnsInfo = new ServiceInfo();
         QnsInfo.packageName = "fake.qns";
@@ -97,6 +101,9 @@ public class AccessNetworksManagerTest extends TelephonyTest {
         mMockedQns = mock(IQualifiedNetworksService.class);
         mMockedIBinder = mock(IBinder.class);
 
+        mBundle = mContextFixture.getCarrierConfigBundle();
+        when(mCarrierConfigManager.getConfigForSubId(anyInt(), any())).thenReturn(mBundle);
+
         addQnsService();
         mContextFixture.putResource(
                 com.android.internal.R.string.config_qualified_networks_service_package,
@@ -121,6 +128,7 @@ public class AccessNetworksManagerTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mAccessNetworksManager = null;
+        mBundle = null;
         super.tearDown();
     }
 
