@@ -130,6 +130,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     private UiccSlot mUiccSlot;
     private CommandsInterface mMockCi;
     private AdnRecordCache adnRecordCache;
+    private DomainSelectionResolver mDomainSelectionResolver;
 
     //mPhoneUnderTest
     private GsmCdmaPhone mPhoneUT;
@@ -169,10 +170,11 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mUiccPort = Mockito.mock(UiccPort.class);
         mMockCi = Mockito.mock(CommandsInterface.class);
         adnRecordCache = Mockito.mock(AdnRecordCache.class);
+        mDomainSelectionResolver = Mockito.mock(DomainSelectionResolver.class);
         doReturn(false).when(mSST).isDeviceShuttingDown();
         doReturn(true).when(mImsManager).isVolteEnabledByPlatform();
-
-        DomainSelectionResolver.make(mContext, false);
+        doReturn(false).when(mDomainSelectionResolver).isDomainSelectionSupported();
+        DomainSelectionResolver.setDomainSelectionResolver(mDomainSelectionResolver);
 
         mPhoneUT = new GsmCdmaPhone(mContext, mSimulatedCommands, mNotifier, true, 0,
             PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory, (c, p) -> mImsManager);
@@ -190,6 +192,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mPhoneUT.removeCallbacksAndMessages(null);
         mPhoneUT = null;
+        DomainSelectionResolver.setDomainSelectionResolver(null);
         try {
             DeviceConfig.setProperties(mPreTestProperties);
         } catch (DeviceConfig.BadConfigException e) {
