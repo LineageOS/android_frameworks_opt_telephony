@@ -54,7 +54,6 @@ import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -65,7 +64,6 @@ import android.app.PropertyInvalidatedCache;
 import android.compat.testing.PlatformCompatChangeRule;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.res.Resources;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -660,9 +658,9 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         // Remove MODIFY_PHONE_STATE
         mContextFixture.removeCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
 
-        // Should fail without READ_PHONE_STATE
-        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
-                .getActiveSubscriptionInfoList(CALLING_PACKAGE, CALLING_FEATURE));
+        // Should get an empty list without READ_PHONE_STATE.
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
+                CALLING_PACKAGE, CALLING_FEATURE)).isEmpty();
 
         // Grant READ_PHONE_STATE permission for insertion.
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
@@ -1063,9 +1061,9 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         testSetOpportunistic();
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
 
-        // Should fail without READ_PHONE_STATE
-        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
-                .getOpportunisticSubscriptions(CALLING_PACKAGE, CALLING_FEATURE));
+        // Should get an empty list without READ_PHONE_STATE.
+        assertThat(mSubscriptionManagerServiceUT.getOpportunisticSubscriptions(
+                CALLING_PACKAGE, CALLING_FEATURE)).isEmpty();
 
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
 

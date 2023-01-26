@@ -100,6 +100,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -1638,8 +1639,6 @@ public class SubscriptionManagerService extends ISub.Stub {
      *
      * @return Sorted list of the currently {@link SubscriptionInfo} records available on the
      * device.
-     *
-     * @throws SecurityException if the caller does not have required permissions.
      */
     @Override
     @NonNull
@@ -1659,8 +1658,12 @@ public class SubscriptionManagerService extends ISub.Stub {
         if (!TelephonyPermissions.checkReadPhoneStateOnAnyActiveSub(mContext,
                 Binder.getCallingPid(), Binder.getCallingUid(), callingPackage, callingFeatureId,
                 "getAllSubInfoList")) {
-            throw new SecurityException("Need READ_PHONE_STATE, READ_PRIVILEGED_PHONE_STATE, or "
-                    + "carrier privilege");
+            // Ideally we should avoid silent failure, but since this API has already been used by
+            // many apps and they do not expect the security exception, we return an empty list
+            // here so it's consistent with pre-U behavior.
+            loge("getActiveSubscriptionInfoList: " + callingPackage + " does not have enough "
+                    + "permission. Returning empty list here.");
+            return Collections.emptyList();
         }
 
         return mSubscriptionDatabaseManager.getAllSubscriptions().stream()
@@ -2262,8 +2265,6 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @param callingFeatureId The feature in the package.
      *
      * @return The list of opportunistic subscription info that can be accessed by the callers.
-     *
-     * @throws SecurityException if callers do not hold the required permission.
      */
     @Override
     @NonNull
@@ -2283,8 +2284,12 @@ public class SubscriptionManagerService extends ISub.Stub {
         if (!TelephonyPermissions.checkReadPhoneStateOnAnyActiveSub(mContext,
                 Binder.getCallingPid(), Binder.getCallingUid(), callingPackage, callingFeatureId,
                 "getOpportunisticSubscriptions")) {
-            throw new SecurityException("Need READ_PHONE_STATE, READ_PRIVILEGED_PHONE_STATE, or "
-                    + "carrier privilege");
+            // Ideally we should avoid silent failure, but since this API has already been used by
+            // many apps and they do not expect the security exception, we return an empty list
+            // here so it's consistent with pre-U behavior.
+            loge("getOpportunisticSubscriptions: " + callingPackage + " does not have enough "
+                    + "permission. Returning empty list here.");
+            return Collections.emptyList();
         }
 
         return mSubscriptionDatabaseManager.getAllSubscriptions().stream()
