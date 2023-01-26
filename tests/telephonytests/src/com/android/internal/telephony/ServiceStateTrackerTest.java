@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -250,6 +251,15 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mBundle.putStringArray(CarrierConfigManager.KEY_RATCHET_RAT_FAMILIES,
                 // UMTS < GPRS < EDGE
                 new String[]{"3,1,2"});
+
+        mBundle.putBoolean(CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL,
+                false);
+
+        mBundle.putBoolean(CarrierConfigManager.KEY_RATCHET_NR_ADVANCED_BANDWIDTH_IF_RRC_IDLE_BOOL,
+                true);
+
+        doReturn(true).when(mTelephonyManager).isRadioInterfaceCapabilitySupported(
+                TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
 
         mSimulatedCommands.setVoiceRegState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         mSimulatedCommands.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_HSPA);
@@ -2237,16 +2247,20 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     @Test
-    public void testPhyChanBandwidthRatchetedOnPhyChanBandwidth() throws Exception {
+    public void testPhyChanBandwidthRatchetedOnPhyChanBandwidth() {
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL,
+                true);
+
         // LTE Cell with bandwidth = 10000
         CellIdentityLte cellIdentity10 =
                 new CellIdentityLte(1, 1, 1, 1, new int[] {1, 2}, 10000, "1", "1", "test",
                         "tst", Collections.emptyList(), null);
 
         sendRegStateUpdateForLteCellId(cellIdentity10);
-        assertTrue(Arrays.equals(new int[] {10000}, sst.mSS.getCellBandwidths()));
+        assertArrayEquals(new int[]{10000}, sst.mSS.getCellBandwidths());
         sendPhyChanConfigChange(new int[] {10000, 5000}, TelephonyManager.NETWORK_TYPE_LTE, 1);
-        assertTrue(Arrays.equals(new int[] {10000, 5000}, sst.mSS.getCellBandwidths()));
+        assertArrayEquals(new int[]{10000, 5000}, sst.mSS.getCellBandwidths());
     }
 
     @Test
@@ -2258,7 +2272,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     @Test
-    public void testPhyChanBandwidthResetsOnOos() throws Exception {
+    public void testPhyChanBandwidthResetsOnOos() {
         testPhyChanBandwidthRatchetedOnPhyChanBandwidth();
         LteVopsSupportInfo lteVopsSupportInfo =
                 new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
@@ -2288,11 +2302,16 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testPhyChanBandwidthForNr() {
         // NR Cell with bandwidth = 10000
         CellIdentityNr nrCi = new CellIdentityNr(
-                0, 0, 0, new int[] {}, "", "", 5, "", "", Collections.emptyList());
+                0, 0, 0, new int[]{10000}, "", "", 5, "", "", Collections.emptyList());
 
-        sendPhyChanConfigChange(new int[] {10000, 5000}, TelephonyManager.NETWORK_TYPE_NR, 0);
         sendRegStateUpdateForNrCellId(nrCi);
-        assertTrue(Arrays.equals(new int[] {10000, 5000}, sst.mSS.getCellBandwidths()));
+        // should ratchet for NR
+        sendPhyChanConfigChange(new int[] {10000, 5000}, TelephonyManager.NETWORK_TYPE_NR, 0);
+        assertArrayEquals(new int[]{10000, 5000}, sst.mSS.getCellBandwidths());
+
+        // should not ratchet for LTE
+        sendPhyChanConfigChange(new int[] {100}, TelephonyManager.NETWORK_TYPE_LTE, 0);
+        assertArrayEquals(new int[]{}, sst.mSS.getCellBandwidths());
     }
 
     /**
