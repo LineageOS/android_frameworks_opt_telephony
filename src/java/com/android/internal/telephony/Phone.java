@@ -280,6 +280,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     public static final String PREF_NULL_CIPHER_AND_INTEGRITY_ENABLED =
             "pref_null_cipher_and_integrity_enabled";
+    private final TelephonyAdminReceiver m2gAdminUpdater;
 
     /**
      * This method is invoked when the Phone exits Emergency Callback Mode.
@@ -636,6 +637,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         if (isSubscriptionManagerServiceEnabled()) {
             mSubscriptionManagerService = SubscriptionManagerService.getInstance();
         }
+        m2gAdminUpdater = new TelephonyAdminReceiver(context, this);
 
         if (getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             return;
@@ -2323,6 +2325,12 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         }
         if (!mIsCarrierNrSupported) {
             allowedNetworkTypes &= ~TelephonyManager.NETWORK_TYPE_BITMASK_NR;
+        }
+        if (m2gAdminUpdater.isCellular2gDisabled()) {
+            logd("SubId " + getSubId()
+                    + " disabling 2g in getEffectiveAllowedNetworkTypes according to admin user "
+                    + "restriction");
+            allowedNetworkTypes &= ~TelephonyManager.NETWORK_CLASS_BITMASK_2G;
         }
         logd("SubId" + getSubId() + ",getEffectiveAllowedNetworkTypes: "
                 + TelephonyManager.convertNetworkTypeBitmaskToString(allowedNetworkTypes));
