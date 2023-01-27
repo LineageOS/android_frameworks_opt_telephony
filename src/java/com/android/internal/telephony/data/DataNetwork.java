@@ -904,8 +904,8 @@ public class DataNetwork extends StateMachine {
         mAttachedNetworkRequestList.addAll(networkRequestList);
         mCid.put(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, INVALID_CID);
         mCid.put(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, INVALID_CID);
-        mTcpBufferSizes = mDataConfigManager.getDefaultTcpConfigString();
         mTelephonyDisplayInfo = mPhone.getDisplayInfoController().getTelephonyDisplayInfo();
+        mTcpBufferSizes = mDataConfigManager.getTcpConfigString(mTelephonyDisplayInfo);
 
         for (TelephonyNetworkRequest networkRequest : networkRequestList) {
             networkRequest.setAttachedNetwork(DataNetwork.this);
