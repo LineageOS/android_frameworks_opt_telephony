@@ -24,10 +24,17 @@ import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Intent;
+import android.os.UserHandle;
+import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -35,6 +42,7 @@ import android.testing.TestableLooper;
 import com.android.internal.telephony.ProxyController;
 import com.android.internal.telephony.SmsController;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccFileHandler;
@@ -57,6 +65,10 @@ import java.util.List;
 @TestableLooper.RunWithLooper
 public class CATServiceTest extends TelephonyTest {
 
+    private static final String SMS_SENT_ACTION =
+            "com.android.internal.telephony.cat.SMS_SENT_ACTION";
+    private static final String SMS_DELIVERY_ACTION =
+            "com.android.internal.telephony.cat.SMS_DELIVERY_ACTION";
     //Mocked Classes
     @Mock
     private RilMessageDecoder mRilMessageDecoder;
@@ -66,13 +78,33 @@ public class CATServiceTest extends TelephonyTest {
     private CatService mCatService;
     private IccCardStatus mIccCardStatus;
     private IccIoResult mIccIoResult;
-
     private String mData =
             "D059810301130082028183051353656E64696E672072657175657374202E2E2E0607911989548056780B"
                     + "3051FF05812143F500F6082502700000201115001500BFFF01BA23C2169EA9B02D7A7FBAA0"
                     + "DAABFEE8B8DE9DA06DCD234E";
     private byte[] mRawdata = IccUtils.hexStringToBytes(mData);
     private List<ComprehensionTlv> mCtlvs;
+
+    /**
+     * Terminal Response with result code in last 3 bytes = length + SMS_RP_ERROR(0x35)
+     * + ErrorCode(= 41)
+     */
+    private String mTerminalResponseForSmsRpError = "81030113000202828183023529";
+
+    /**
+     * Terminal Response with result code in last 3 bytes = length + NETWORK_UNABLE_TO_PROCESS(0x21)
+     * + ErrorCode(= 41 with 8th bit set to 1)
+     */
+    private String mTerminalResponseForNetworkUnableToProcess = "810301130002028281830221A9";
+
+    /**
+     * Terminal Response with result code in last 2 bytes = length
+     * + TERMINAL_UNABLE_TO_PROCESS(0x20)
+     */
+    private String mTerminalResponseForTerminalUnableToProcess = "810301130002028281830120";
+
+    //Terminal Response with result code(0x00)for delivery success in last 2 bytes
+    private String mTerminalResponseForDeliverySuccess = "810301130002028281830100";
 
     public CATServiceTest() {
         super();
@@ -109,13 +141,14 @@ public class CATServiceTest extends TelephonyTest {
                 mIccCardStatus.mImsSubscriptionAppIndex =
                         mIccCardStatus.mGsmUmtsSubscriptionAppIndex = -1;
         mIccIoResult = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes("FF40"));
+        mSimulatedCommands = mock(SimulatedCommands.class);
         mSimulatedCommands.setIccIoResultForApduLogicalChannel(mIccIoResult);
         mUiccProfile = new UiccProfile(mContext, mSimulatedCommands, mIccCardStatus,
                 0 /* phoneId */, mUiccCard, new Object());
         processAllMessages();
         logd("Created UiccProfile");
         processAllMessages();
-        mCatService = CatService.getInstance(mSimulatedCommands, mUiccController.mContext,
+        mCatService = CatService.getInstance(mSimulatedCommands, mContext,
                 mUiccProfile, mUiccController.getSlotIdFromPhoneId(0));
         logd("Created CATService");
         createCommandDetails();
@@ -124,12 +157,20 @@ public class CATServiceTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mCatService.dispose();
         mUiccProfile = null;
         mCatService = null;
         mCtlvs = null;
         mProxyController = null;
         mRilMessageDecoder = null;
         mCommandDetails = null;
+        mContext = null;
+        mSimulatedCommands = null;
+        mIccCardStatus = null;
+        mIccCard = null;
+        mIccFileHandler = null;
+        mIccIoResult = null;
+        mSmsController = null;
         super.tearDown();
     }
 
@@ -189,4 +230,86 @@ public class CATServiceTest extends TelephonyTest {
                 "com.android.internal.telephony");
     }
 
+    //Create and assign a PendingResult object in BroadcastReceiver with which resultCode is updated
+    private void setBroadcastReceiverPendingResult(BroadcastReceiver receiver, int resultCode) {
+        BroadcastReceiver.PendingResult pendingResult =
+                new BroadcastReceiver.PendingResult(resultCode,
+                        "resultData",
+                        /* resultExtras= */ null,
+                        BroadcastReceiver.PendingResult.TYPE_UNREGISTERED,
+                        /* ordered= */ true,
+                        /* sticky= */ false,
+                        /* token= */ null,
+                        UserHandle.myUserId(),
+                        /* flags= */ 0);
+        receiver.setPendingResult(pendingResult);
+    }
+
+    @Test
+    public void testSendTerminalResponseForSendSuccess() {
+        setBroadcastReceiverPendingResult(mCatService.mSmsBroadcastReceiver, Activity.RESULT_OK);
+        Intent intent = new Intent(SMS_SENT_ACTION).putExtra("cmdDetails", mCommandDetails);
+        intent.putExtra("ims", true);
+        mContext.sendOrderedBroadcast(intent, null, mCatService.mSmsBroadcastReceiver, null,
+                Activity.RESULT_OK, null, null);
+        processAllMessages();
+        verify(mSimulatedCommands, never()).sendTerminalResponse(
+                any(), any());
+    }
+
+    @Test
+    public void testSendTerminalResponseForSendSmsRpError() {
+        setBroadcastReceiverPendingResult(mCatService.mSmsBroadcastReceiver,
+                SmsManager.RESULT_ERROR_GENERIC_FAILURE);
+        Intent intent = new Intent(SMS_SENT_ACTION).putExtra("cmdDetails", mCommandDetails);
+        intent.putExtra("ims", true);
+        intent.putExtra("errorCode", 41);
+        mContext.sendOrderedBroadcast(intent, null, mCatService.mSmsBroadcastReceiver, null,
+                SmsManager.RESULT_ERROR_GENERIC_FAILURE, null, null);
+        processAllMessages();
+        //Verify if the command is encoded with correct Result byte as per TS 101.267
+        verify(mSimulatedCommands, atLeastOnce()).sendTerminalResponse(
+                eq(mTerminalResponseForSmsRpError), any());
+    }
+
+    @Test
+    public void testSendTerminalResponseForSendSmsNetworkError() {
+        setBroadcastReceiverPendingResult(mCatService.mSmsBroadcastReceiver,
+                SmsManager.RESULT_ERROR_GENERIC_FAILURE);
+        Intent intent = new Intent(SMS_SENT_ACTION).putExtra("cmdDetails", mCommandDetails);
+        intent.putExtra("ims", false);
+        intent.putExtra("errorCode", 41);
+        mContext.sendOrderedBroadcast(intent, null, mCatService.mSmsBroadcastReceiver, null,
+                SmsManager.RESULT_ERROR_GENERIC_FAILURE, null, null);
+        processAllMessages();
+        //Verify if the command is encoded with correct Result byte as per TS 101.267
+        verify(mSimulatedCommands, atLeastOnce()).sendTerminalResponse(
+                eq(mTerminalResponseForNetworkUnableToProcess), any());
+    }
+
+    @Test
+    public void testSendTerminalResponseForDeliveryFailure() {
+        setBroadcastReceiverPendingResult(mCatService.mSmsBroadcastReceiver,
+                SmsManager.RESULT_ERROR_GENERIC_FAILURE);
+        Intent intent = new Intent(SMS_DELIVERY_ACTION).putExtra("cmdDetails", mCommandDetails);
+        mContext.sendOrderedBroadcast(intent, null, mCatService.mSmsBroadcastReceiver, null,
+                SmsManager.RESULT_ERROR_GENERIC_FAILURE, null, null);
+        processAllMessages();
+        //Verify if the command is encoded with correct Result byte as per TS 101.267
+        verify(mSimulatedCommands, atLeastOnce()).sendTerminalResponse(
+                eq(mTerminalResponseForTerminalUnableToProcess), any());
+    }
+
+    @Test
+    public void testSendTerminalResponseForDeliverySuccess() {
+        setBroadcastReceiverPendingResult(mCatService.mSmsBroadcastReceiver,
+                Activity.RESULT_OK);
+        Intent intent = new Intent(SMS_DELIVERY_ACTION).putExtra("cmdDetails", mCommandDetails);
+        mContext.sendOrderedBroadcast(intent, null, mCatService.mSmsBroadcastReceiver, null,
+                Activity.RESULT_OK, null, null);
+        processAllMessages();
+        //Verify if the command is encoded with correct Result byte as per TS 101.267
+        verify(mSimulatedCommands, atLeastOnce()).sendTerminalResponse(
+                eq(mTerminalResponseForDeliverySuccess), any());
+    }
 }
