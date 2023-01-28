@@ -4754,6 +4754,47 @@ public class RILUtils {
         }
     }
 
+    /** Converts the array of network types to readable String array */
+    public static @NonNull String accessNetworkTypesToString(
+            @NonNull @AccessNetworkConstants.RadioAccessNetworkType int[] accessNetworkTypes) {
+        int length = accessNetworkTypes.length;
+        StringBuilder sb = new StringBuilder("{");
+        if (length > 0) {
+            sb.append(Arrays.stream(accessNetworkTypes)
+                    .mapToObj(RILUtils::accessNetworkTypeToString)
+                    .collect(Collectors.joining(",")));
+        }
+        sb.append("}");
+        return sb.toString();
+    }
+
+    private static @NonNull String accessNetworkTypeToString(
+            @AccessNetworkConstants.RadioAccessNetworkType int accessNetworkType) {
+        switch (accessNetworkType) {
+            case AccessNetworkConstants.AccessNetworkType.UNKNOWN: return "UNKNOWN";
+            case AccessNetworkConstants.AccessNetworkType.GERAN: return "GERAN";
+            case AccessNetworkConstants.AccessNetworkType.UTRAN: return "UTRAN";
+            case AccessNetworkConstants.AccessNetworkType.EUTRAN: return "EUTRAN";
+            case AccessNetworkConstants.AccessNetworkType.CDMA2000: return "CDMA2000";
+            case AccessNetworkConstants.AccessNetworkType.IWLAN: return "IWLAN";
+            case AccessNetworkConstants.AccessNetworkType.NGRAN: return "NGRAN";
+            default: return Integer.toString(accessNetworkType);
+        }
+    }
+
+    /** Converts scan type to readable String */
+    public static @NonNull String scanTypeToString(
+            @DomainSelectionService.EmergencyScanType int scanType) {
+        switch (scanType) {
+            case DomainSelectionService.SCAN_TYPE_LIMITED_SERVICE:
+                return "LIMITED_SERVICE";
+            case DomainSelectionService.SCAN_TYPE_FULL_SERVICE:
+                return "FULL_SERVICE";
+            default:
+                return "NO_PREFERENCE";
+        }
+    }
+
     /** Convert IMS deregistration reason */
     public static @ImsDeregistrationReason int convertHalDeregistrationReason(int reason) {
         switch (reason) {
