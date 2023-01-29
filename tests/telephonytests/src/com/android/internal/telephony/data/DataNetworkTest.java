@@ -56,6 +56,7 @@ import android.telephony.LteVopsSupportInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
+import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataCallResponse;
@@ -402,6 +403,7 @@ public class DataNetworkTest extends TelephonyTest {
         // updated later.
         assertThat(linkPropertiesCaptor.getValue()).isEqualTo(new LinkProperties());
 
+        verify(mDataConfigManager).getTcpConfigString(any(TelephonyDisplayInfo.class));
         verify(mSimulatedCommandsVerifier, never()).allocatePduSessionId(any(Message.class));
         verify(mMockedWwanDataServiceManager).setupDataCall(eq(AccessNetworkType.EUTRAN),
                 eq(mInternetDataProfile), eq(false), eq(false),

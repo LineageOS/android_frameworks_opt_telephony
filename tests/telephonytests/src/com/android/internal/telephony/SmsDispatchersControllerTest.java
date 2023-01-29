@@ -616,7 +616,8 @@ public class SmsDispatchersControllerTest extends TelephonyTest {
         when(mTelephonyManager.isEmergencyNumber(eq("911"))).thenReturn(true);
 
         mSentIntent = PendingIntent.getBroadcast(TestApplication.getAppContext(), 0,
-                new Intent(ACTION_TEST_SMS_SENT), PendingIntent.FLAG_MUTABLE);
+                new Intent(ACTION_TEST_SMS_SENT), PendingIntent.FLAG_MUTABLE
+                        | PendingIntent.FLAG_ALLOW_UNSAFE_IMPLICIT_INTENT);
     }
 
     private void sendDataWithDomainSelection(@NetworkRegistrationInfo.Domain int domain,

@@ -143,7 +143,7 @@ public class DisplayInfoController extends Handler {
             }
         } catch (InvalidArgumentException e) {
             logel(e.getMessage());
-            AnomalyReporter.reportAnomaly(UUID.fromString("3aa92a2c-94ed-46a0-a744-d6b1dfec2a55"),
+            AnomalyReporter.reportAnomaly(UUID.fromString("3aa92a2c-94ed-46a0-a744-d6b1dfec2a56"),
                     e.getMessage(), mPhone.getCarrierId());
         }
     }

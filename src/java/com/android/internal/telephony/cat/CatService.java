@@ -44,6 +44,7 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
@@ -209,9 +210,8 @@ public class CatService extends Handler implements AppInterface {
         CatLog.d(this, "Running CAT service on Slotid: " + mSlotId +
                 ". STK app installed:" + mStkAppInstalled);
 
-        SmsBroadcastReceiver smsBroadcastReceiver = new SmsBroadcastReceiver();
-        mContext.registerReceiver(smsBroadcastReceiver, new IntentFilter(SMS_DELIVERY_ACTION));
-        mContext.registerReceiver(smsBroadcastReceiver, new IntentFilter(SMS_SENT_ACTION));
+        mContext.registerReceiver(mSmsBroadcastReceiver, new IntentFilter(SMS_DELIVERY_ACTION));
+        mContext.registerReceiver(mSmsBroadcastReceiver, new IntentFilter(SMS_SENT_ACTION));
     }
 
     /**
@@ -633,21 +633,49 @@ public class CatService extends Handler implements AppInterface {
                 deliveryPendingIntent, false, 0L, true, true);
     }
 
-    private class SmsBroadcastReceiver extends BroadcastReceiver {
+    /**
+     * BroadcastReceiver class to handle error and success cases of
+     * SEND and DELIVERY pending intents used for sending of STK SMS
+     */
+    @VisibleForTesting
+    public final BroadcastReceiver mSmsBroadcastReceiver = new BroadcastReceiver() {
 
         @Override
         public void onReceive(Context context, Intent intent) {
             CommandDetails commandDetails = (CommandDetails) intent.getExtra("cmdDetails");
             if (intent.getAction().equals(SMS_SENT_ACTION)) {
                 int resultCode = getResultCode();
-                switch (resultCode) {
-                    case Activity.RESULT_OK:
-                        break;
-                    default:
-                        //ToDO handle Error cases bug : b/243123292
-                        CatLog.d(this, "Error sending STK SMS : " + resultCode);
-                        sendTerminalResponse(commandDetails, ResultCode.SMS_RP_ERROR, true,
-                                ResultCode.NETWORK_CRNTLY_UNABLE_TO_PROCESS.value(), null);
+                ResultCode terminalResponseResultCode = ResultCode.NETWORK_CRNTLY_UNABLE_TO_PROCESS;
+                CatLog.d(this, "STK SMS errorCode : " + resultCode);
+                int additionalInfo = 0;
+                if (resultCode != Activity.RESULT_OK) {
+                    /**
+                     * The Terminal Response Result code is assigned as per Section 12.12.3
+                     * and 12.12.5 TS 101.267. The Result code SMS_RP_ERROR is added in Ims Case
+                     * and additional information is added as per RP-Cause Values in TS 124.011.
+                     * The Result code NETWORK_CRNTLY_UNABLE_TO_PROCESS is added in non-Ims Case
+                     * and additional information added as per cause values in TS 04.08.
+                     */
+                    if (intent.hasExtra("ims") && intent.getBooleanExtra("ims", false)) {
+                        terminalResponseResultCode = ResultCode.SMS_RP_ERROR;
+                        //Additional information's 8th bit is 0 as per section 12.12.5 of TS 101.267
+                        if (intent.hasExtra("errorCode")) {
+                            additionalInfo = (int) intent.getExtra("errorCode");
+                            if ((additionalInfo & 0x80) != 0) additionalInfo = 0;
+                        }
+                    } else {
+                        //Additional information's 8th bit is 1 as per section 12.12.3 of TS 101.267
+                        if (intent.hasExtra("errorCode")) {
+                            additionalInfo = (int) intent.getExtra("errorCode");
+                            additionalInfo |= 0x80;
+                        }
+                    }
+                    CatLog.d(this, "Error delivering STK SMS errorCode : " + additionalInfo
+                            + " terminalResponseResultCode = " + terminalResponseResultCode);
+                    sendTerminalResponse(commandDetails, terminalResponseResultCode,
+                            true, additionalInfo, null);
+                } else {
+                    CatLog.d(this, " STK SMS sent successfully ");
                 }
             }
             if (intent.getAction().equals(SMS_DELIVERY_ACTION)) {
@@ -655,16 +683,17 @@ public class CatService extends Handler implements AppInterface {
                 switch (resultCode) {
                     case Activity.RESULT_OK:
                         sendTerminalResponse(commandDetails, ResultCode.OK, false, 0, null);
+                        CatLog.d(this, " STK SMS delivered successfully ");
                         break;
                     default:
-                        //ToDO handle Error cases bug: b/243123292
                         CatLog.d(this, "Error delivering STK SMS : " + resultCode);
-                        sendTerminalResponse(commandDetails, ResultCode.SMS_RP_ERROR, true,
-                                ResultCode.TERMINAL_CRNTLY_UNABLE_TO_PROCESS.value(), null);
+                        sendTerminalResponse(commandDetails,
+                                ResultCode.TERMINAL_CRNTLY_UNABLE_TO_PROCESS, false,
+                                0, null);
                 }
             }
         }
-    }
+    };
 
     private void broadcastCatCmdIntent(CatCmdMessage cmdMsg) {
         Intent intent = new Intent(AppInterface.CAT_CMD_ACTION);
