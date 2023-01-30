@@ -27,8 +27,10 @@ import android.app.PendingIntent;
 import android.app.compat.CompatChanges;
 import android.compat.annotation.ChangeId;
 import android.compat.annotation.EnabledSince;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.os.Binder;
@@ -544,6 +546,13 @@ public class SubscriptionManagerService extends ISub.Stub {
             }
         });
 
+        mContext.registerReceiver(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                updateEmbeddedSubscriptions();
+            }
+        }, new IntentFilter(Intent.ACTION_USER_UNLOCKED));
+
         SubscriptionManager.invalidateSubscriptionManagerServiceCaches();
         SubscriptionManager.invalidateSubscriptionManagerServiceEnabledCaches();
     }
@@ -986,7 +995,7 @@ public class SubscriptionManagerService extends ISub.Stub {
             for (int cardId : cardIds) {
                 GetEuiccProfileInfoListResult result = mEuiccController
                         .blockingGetEuiccProfileInfoList(cardId);
-                log("updateEmbeddedSubscriptions: cardId=" + cardId + ", result=" + result);
+                logl("updateEmbeddedSubscriptions: cardId=" + cardId + ", result=" + result);
 
                 if (result.getResult() != EuiccService.RESULT_OK) {
                     loge("Failed to get euicc profile info. result="
@@ -1070,6 +1079,26 @@ public class SubscriptionManagerService extends ISub.Stub {
         log("updateEmbeddedSubscriptions: Finished embedded subscription update.");
         if (callback != null) {
             callback.run();
+        }
+    }
+
+    /**
+     * Update embedded subscriptions from {@link EuiccController}.
+     */
+    private void updateEmbeddedSubscriptions() {
+        UiccSlot[] uiccSlots = mUiccController.getUiccSlots();
+        if (uiccSlots != null) {
+            List<Integer> cardIds = new ArrayList<>();
+            for (UiccSlot uiccSlot : uiccSlots) {
+                if (uiccSlot != null && uiccSlot.isEuicc() && uiccSlot.getUiccCard() != null) {
+                    int cardId = mUiccController.convertToPublicCardId(
+                            uiccSlot.getUiccCard().getCardId());
+                    cardIds.add(cardId);
+                }
+            }
+            if (!cardIds.isEmpty()) {
+                updateEmbeddedSubscriptions(cardIds, null);
+            }
         }
     }
 
