@@ -313,7 +313,14 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         concludeDataCallSessionStats();
         concludeImsStats();
         concludeServiceStateStats();
-        RcsStats.getInstance().concludeSipTransportFeatureTagsStat();
+
+        RcsStats rcsStats = RcsStats.getInstance();
+        if (rcsStats != null) {
+            rcsStats.concludeSipTransportFeatureTagsStat();
+            rcsStats.onFlushIncompleteRcsAcsProvisioningStats();
+            rcsStats.onFlushIncompleteImsRegistrationServiceDescStats();
+            rcsStats.onFlushIncompleteImsRegistrationFeatureTagStats();
+        }
     }
 
     private static int pullSimSlotState(List<StatsEvent> data) {
