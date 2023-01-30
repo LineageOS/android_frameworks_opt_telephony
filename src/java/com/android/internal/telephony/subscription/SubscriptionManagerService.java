@@ -82,6 +82,7 @@ import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.MultiSimSettingController;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyPermissions;
 import com.android.internal.telephony.data.PhoneSwitcher;
@@ -542,6 +543,9 @@ public class SubscriptionManagerService extends ISub.Stub {
                 mEuiccController = EuiccController.get();
             }
         });
+
+        SubscriptionManager.invalidateSubscriptionManagerServiceCaches();
+        SubscriptionManager.invalidateSubscriptionManagerServiceEnabledCaches();
     }
 
     /**
@@ -3563,6 +3567,16 @@ public class SubscriptionManagerService extends ISub.Stub {
         } finally {
             Binder.restoreCallingIdentity(token);
         }
+    }
+
+    /**
+     * @return {@code true} if using {@link SubscriptionManagerService} instead of
+     * {@link SubscriptionController}.
+     */
+    //TODO: Removed before U AOSP public release.
+    @Override
+    public boolean isSubscriptionManagerServiceEnabled() {
+        return true;
     }
 
     /**
