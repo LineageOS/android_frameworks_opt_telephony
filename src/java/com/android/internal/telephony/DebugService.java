@@ -52,13 +52,15 @@ public class DebugService {
                     TelephonyMetrics.getInstance().dump(fd, pw, args);
                     return;
                 case "--saveatoms":
-                    log("Saving atoms..");
-                    PhoneFactory.getMetricsCollector().getAtomsStorage().flushAtoms();
+                    if (Build.IS_DEBUGGABLE) {
+                        log("Saving atoms..");
+                        PhoneFactory.getMetricsCollector().flushAtomsStorage();
+                    }
                     return;
                 case "--clearatoms":
                     if (Build.IS_DEBUGGABLE) {
                         log("Clearing atoms..");
-                        PhoneFactory.getMetricsCollector().getAtomsStorage().clearAtoms();
+                        PhoneFactory.getMetricsCollector().clearAtomsStorage();
                     }
                     return;
             }
