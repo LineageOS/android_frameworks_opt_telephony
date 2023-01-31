@@ -63,6 +63,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.Process;
+import android.os.UserManager;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.provider.DeviceConfig;
@@ -92,6 +93,7 @@ import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.imsphone.ImsPhone;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.AdnRecord;
@@ -2684,5 +2686,30 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         Message message = mPhoneUT.obtainMessage(Phone.EVENT_RADIO_AVAILABLE);
         mPhoneUT.handleMessage(message);
         verify(mSimulatedCommandsVerifier, times(2)).getImei(nullable(Message.class));
+    }
+
+    @Test
+    public void testSetAllowedNetworkTypes_admin2gRestrictionHonored() throws Exception {
+        // circumvent loading/saving to sim db. it's not behavior under test.
+        TelephonyManager.setupISubForTest(Mockito.mock(SubscriptionManagerService.class));
+        TelephonyManager.enableServiceHandleCaching();
+        mPhoneUT.loadAllowedNetworksFromSubscriptionDatabase();
+
+        // 2g is disabled by admin
+        UserManager userManagerMock = mContext.getSystemService(UserManager.class);
+        when(userManagerMock.hasUserRestriction(UserManager.DISALLOW_CELLULAR_2G)).thenReturn(true);
+        mContext.sendBroadcast(new Intent(UserManager.ACTION_USER_RESTRICTIONS_CHANGED));
+
+        // carrier requests 2g to be enabled
+        mPhoneUT.setAllowedNetworkTypes(TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_CARRIER,
+                TelephonyManager.NETWORK_CLASS_BITMASK_2G, null);
+
+        // Assert that 2g was not passed as an allowed network type to the modem
+        ArgumentCaptor<Integer> captureBitMask = ArgumentCaptor.forClass(Integer.class);
+        // One call for the admin restriction update, another by this test
+        verify(mSimulatedCommandsVerifier, times(2)).setAllowedNetworkTypesBitmap(
+                captureBitMask.capture(),
+                nullable(Message.class));
+        assertEquals(0, captureBitMask.getValue() & TelephonyManager.NETWORK_CLASS_BITMASK_2G);
     }
 }
