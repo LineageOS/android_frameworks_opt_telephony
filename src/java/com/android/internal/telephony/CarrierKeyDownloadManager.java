@@ -16,8 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static android.telephony.CarrierConfigManager.KEY_ALLOW_METERED_NETWORK_FOR_CERT_DOWNLOAD_BOOL;
-
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.app.AlarmManager;
@@ -32,7 +30,6 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
-import android.provider.Telephony;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.SubscriptionManager;
@@ -122,13 +119,22 @@ public class CarrierKeyDownloadManager extends Handler {
         mPhone = phone;
         mContext = phone.getContext();
         IntentFilter filter = new IntentFilter();
-        filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         filter.addAction(INTENT_KEY_RENEWAL_ALARM_PREFIX);
         filter.addAction(TelephonyIntents.ACTION_CARRIER_CERTIFICATE_DOWNLOAD);
         mContext.registerReceiver(mBroadcastReceiver, filter, null, phone);
         mDownloadManager = (DownloadManager) mContext.getSystemService(Context.DOWNLOAD_SERVICE);
         mTelephonyManager = mContext.getSystemService(TelephonyManager.class)
                 .createForSubscriptionId(mPhone.getSubId());
+        CarrierConfigManager carrierConfigManager = mContext.getSystemService(
+                CarrierConfigManager.class);
+        // Callback which directly handle config change should be executed on handler thread
+        carrierConfigManager.registerCarrierConfigChangeListener(this::post,
+                (slotIndex, subId, carrierId, specificCarrierId) -> {
+                    if (slotIndex == mPhone.getPhoneId()) {
+                        Log.d(LOG_TAG, "Carrier Config changed: slotIndex=" + slotIndex);
+                        handleAlarmOrConfigChange();
+                    }
+                });
     }
 
     private final BroadcastReceiver mDownloadReceiver = new BroadcastReceiver() {
@@ -159,12 +165,6 @@ public class CarrierKeyDownloadManager extends Handler {
                 if (phoneId == intent.getIntExtra(PhoneConstants.PHONE_KEY,
                         SubscriptionManager.INVALID_SIM_SLOT_INDEX)) {
                     Log.d(LOG_TAG, "Handling reset intent: " + action);
-                    sendEmptyMessage(EVENT_ALARM_OR_CONFIG_CHANGE);
-                }
-            } else if (action.equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
-                if (phoneId == intent.getIntExtra(PhoneConstants.PHONE_KEY,
-                        SubscriptionManager.INVALID_SIM_SLOT_INDEX)) {
-                    Log.d(LOG_TAG, "Carrier Config changed: " + action);
                     sendEmptyMessage(EVENT_ALARM_OR_CONFIG_CHANGE);
                 }
             }
@@ -389,14 +389,23 @@ public class CarrierKeyDownloadManager extends Handler {
             return false;
         }
         int subId = mPhone.getSubId();
-        PersistableBundle b = carrierConfigManager.getConfigForSubId(subId);
-        if (b == null) {
+        PersistableBundle b = null;
+        try {
+            b = carrierConfigManager.getConfigForSubId(subId,
+                    CarrierConfigManager.IMSI_KEY_AVAILABILITY_INT,
+                    CarrierConfigManager.IMSI_KEY_DOWNLOAD_URL_STRING,
+                    CarrierConfigManager.KEY_ALLOW_METERED_NETWORK_FOR_CERT_DOWNLOAD_BOOL);
+        } catch (RuntimeException e) {
+            Log.e(LOG_TAG, "CarrierConfigLoader is not available.");
+        }
+        if (b == null || b.isEmpty()) {
             return false;
         }
+
         mKeyAvailability = b.getInt(CarrierConfigManager.IMSI_KEY_AVAILABILITY_INT);
         mURL = b.getString(CarrierConfigManager.IMSI_KEY_DOWNLOAD_URL_STRING);
         mAllowedOverMeteredNetwork = b.getBoolean(
-                KEY_ALLOW_METERED_NETWORK_FOR_CERT_DOWNLOAD_BOOL);
+                CarrierConfigManager.KEY_ALLOW_METERED_NETWORK_FOR_CERT_DOWNLOAD_BOOL);
         if (mKeyAvailability == 0 || TextUtils.isEmpty(mURL)) {
             Log.d(LOG_TAG,
                     "Carrier not enabled or invalid values. mKeyAvailability=" + mKeyAvailability
