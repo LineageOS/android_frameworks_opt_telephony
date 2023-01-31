@@ -2603,6 +2603,64 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testSetupDataNetworkRetryFailedNetworkRequestRemovedAndAdded() throws Exception {
+        mDataNetworkControllerUT.getDataRetryManager()
+                .registerCallback(mMockedDataRetryManagerCallback);
+        setFailedSetupDataResponse(mMockedWwanDataServiceManager, DataFailCause.CONGESTION,
+                10000, false);
+
+        TelephonyNetworkRequest firstTnr = createNetworkRequest(
+                NetworkCapabilities.NET_CAPABILITY_IMS);
+        TelephonyNetworkRequest secondTnr = createNetworkRequest(
+                NetworkCapabilities.NET_CAPABILITY_IMS);
+
+        mDataNetworkControllerUT.addNetworkRequest(firstTnr);
+        processAllMessages();
+
+        mDataNetworkControllerUT.removeNetworkRequest(firstTnr);
+        mDataNetworkControllerUT.addNetworkRequest(secondTnr);
+        processAllFutureMessages();
+
+        verify(mMockedWwanDataServiceManager, times(1)).setupDataCall(anyInt(),
+                any(DataProfile.class), anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(),
+                any(), any(), anyBoolean(), any(Message.class));
+
+        ArgumentCaptor<DataRetryManager.DataSetupRetryEntry> retryEntry =
+                ArgumentCaptor.forClass(DataRetryManager.DataSetupRetryEntry.class);
+        verify(mMockedDataRetryManagerCallback, times(1))
+                .onDataNetworkSetupRetry(retryEntry.capture());
+        assertThat(retryEntry.getValue().getState()).isEqualTo(
+                DataRetryManager.DataRetryEntry.RETRY_STATE_FAILED);
+        assertThat(retryEntry.getValue().networkRequestList.size()).isEqualTo(1);
+        assertThat(retryEntry.getValue().networkRequestList.get(0)).isEqualTo(firstTnr);
+
+        DataRetryManager.DataSetupRetryEntry dataSetupRetryEntry = retryEntry.getValue();
+        logd("DataSetupRetryEntry:" + dataSetupRetryEntry);
+
+        processAllMessages();
+        processAllFutureMessages();
+
+        setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 1);
+        logd("Sending TAC_CHANGED event");
+        mDataNetworkControllerUT.obtainMessage(25/*EVENT_TAC_CHANGED*/).sendToTarget();
+        mDataNetworkControllerUT.getDataRetryManager().obtainMessage(10/*EVENT_TAC_CHANGED*/)
+                .sendToTarget();
+        processAllFutureMessages();
+
+        // TAC changes should clear the already-scheduled retry and throttling.
+        assertThat(mDataNetworkControllerUT.getDataRetryManager().isAnySetupRetryScheduled(
+                mImsCellularDataProfile, AccessNetworkConstants.TRANSPORT_TYPE_WWAN)).isFalse();
+
+        // But DNC should re-evaluate unsatisfied request and setup IMS again.
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS,
+                NetworkCapabilities.NET_CAPABILITY_MMTEL);
+
+        verify(mMockedWwanDataServiceManager, times(2)).setupDataCall(anyInt(),
+                any(DataProfile.class), anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(),
+                any(), any(), anyBoolean(), any(Message.class));
+    }
+
+    @Test
     public void testSetupDataNetworkPermanentFailure() {
         setFailedSetupDataResponse(mMockedWwanDataServiceManager, DataFailCause.PROTOCOL_ERRORS,
                 DataCallResponse.RETRY_DURATION_UNDEFINED, false);

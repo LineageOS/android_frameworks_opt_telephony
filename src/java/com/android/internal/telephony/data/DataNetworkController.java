@@ -2626,11 +2626,22 @@ public class DataNetworkController extends Handler {
         NetworkRequestList requestList = new NetworkRequestList(
                 dataSetupRetryEntry.networkRequestList);
         requestList.removeIf(request -> !mAllNetworkRequestList.contains(request));
+        // Retrieves the newly added unsatisfied NetworkRequest if all NetworkRequests in the
+        // DataSetupRetryEntry have already been removed.
+        if (requestList.isEmpty()) {
+            List<NetworkRequestList> groupRequestLists = getGroupedUnsatisfiedNetworkRequests();
+            dataSetupRetryEntry.networkRequestList.stream()
+                    .filter(request -> groupRequestLists.stream()
+                            .anyMatch(groupRequestList -> groupRequestList
+                                    .get(request.getCapabilities()) != null))
+                    .forEach(requestList::add);
+        }
         if (requestList.isEmpty()) {
             loge("onDataNetworkSetupRetry: Request list is empty. Abort retry.");
             dataSetupRetryEntry.setState(DataRetryEntry.RETRY_STATE_CANCELLED);
             return;
         }
+        log("onDataNetworkSetupRetry: Request list:" + requestList);
         TelephonyNetworkRequest telephonyNetworkRequest = requestList.get(0);
 
         int networkCapability = telephonyNetworkRequest.getApnTypeNetworkCapability();
