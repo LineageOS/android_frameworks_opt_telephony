@@ -376,6 +376,7 @@ import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.telephony.ims.stub.ImsRegistrationImplBase.ImsDeregistrationReason;
 import android.telephony.satellite.PointingInfo;
 import android.telephony.satellite.SatelliteCapabilities;
+import android.telephony.satellite.SatelliteManager;
 import android.telephony.satellite.stub.SatelliteImplBase;
 import android.text.TextUtils;
 import android.util.ArraySet;
@@ -5975,6 +5976,7 @@ public class RILUtils {
             default: return SatelliteImplBase.FEATURE_UNKNOWN;
         }
     }
+
     /**
      * Convert from android.hardware.radio.satellite.PointingInfo to
      * android.telephony.satellite.stub.PointingInfo
@@ -6012,6 +6014,44 @@ public class RILUtils {
         halPointingInfo.antennaPitchDegrees = pointingInfo.getAntennaPitchDegrees();
         halPointingInfo.antennaRollDegrees = pointingInfo.getAntennaRollDegrees();
         return halPointingInfo;
+    }
+
+    /**
+     * Convert satellite-related errors from CommandException.Error to
+     * SatelliteManager.SatelliteServiceResult.
+     * @param error The satellite error.
+     * @return The converted SatelliteServiceResult.
+     */
+    @SatelliteManager.SatelliteServiceResult public static int convertToSatelliteError(
+            CommandException.Error error) {
+        switch (error) {
+            case INTERNAL_ERR:
+                return SatelliteManager.SATELLITE_SERVICE_INTERNAL_ERROR;
+            case MODEM_ERR:
+                return SatelliteManager.SATELLITE_SERVICE_MODEM_ERROR;
+            case SYSTEM_ERR:
+                return SatelliteManager.SATELLITE_SERVICE_SYSTEM_ERROR;
+            case INVALID_ARGUMENTS:
+                return SatelliteManager.SATELLITE_SERVICE_INVALID_ARGUMENTS;
+            case INVALID_MODEM_STATE:
+                return SatelliteManager.SATELLITE_SERVICE_INVALID_MODEM_STATE;
+            case INVALID_SIM_STATE:
+                return SatelliteManager.SATELLITE_SERVICE_INVALID_SIM_STATE;
+            case INVALID_STATE:
+                return SatelliteManager.SATELLITE_SERVICE_INVALID_STATE;
+            case RADIO_NOT_AVAILABLE:
+                return SatelliteManager.SATELLITE_SERVICE_NOT_AVAILABLE;
+            case REQUEST_NOT_SUPPORTED:
+                return SatelliteManager.SATELLITE_SERVICE_NOT_SUPPORTED;
+            case REQUEST_RATE_LIMITED:
+                return SatelliteManager.SATELLITE_SERVICE_RATE_LIMITED;
+            case NO_MEMORY:
+                return SatelliteManager.SATELLITE_SERVICE_NO_MEMORY;
+            case NO_RESOURCES:
+                return SatelliteManager.SATELLITE_SERVICE_NO_RESOURCES;
+            default:
+                return SatelliteManager.SATELLITE_SERVICE_ERROR;
+        }
     }
 
     /**

@@ -5242,6 +5242,69 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         callback.accept(TelephonyManager.CELL_BROADCAST_RESULT_UNSUPPORTED);
     }
 
+    /**
+     * Start receiving satellite position updates.
+     * This can be called by the pointing UI when the user starts pointing to the satellite.
+     * Modem should continue to report the pointing input as the device or satellite moves.
+     *
+     * @param result The Message to send to result of the operation to.
+     **/
+    public void startSatellitePositionUpdates(Message result) {
+        mCi.startSendingSatellitePointingInfo(result);
+    }
+
+    /**
+     * Stop receiving satellite position updates.
+     * This can be called by the pointing UI when the user stops pointing to the satellite.
+     *
+     * @param result The Message to send to result of the operation to.
+     **/
+    public void stopSatellitePositionUpdates(Message result) {
+        mCi.stopSendingSatellitePointingInfo(result);
+    }
+
+    /**
+     * Registers for pointing info changed from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForSatellitePointingInfoChanged(@NonNull Handler h,
+            int what, @Nullable Object obj) {
+        mCi.registerForSatellitePointingInfoChanged(h, what, obj);
+    }
+
+    /**
+     * Unregisters for pointing info changed from satellite modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForSatellitePointingInfoChanged(@NonNull Handler h) {
+        mCi.unregisterForSatellitePointingInfoChanged(h);
+    }
+
+    /**
+     * Registers for messages transfer complete from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForSatelliteMessagesTransferComplete(@NonNull Handler h,
+            int what, @Nullable Object obj) {
+        mCi.registerForSatelliteMessagesTransferComplete(h, what, obj);
+    }
+
+    /**
+     * Unregisters for messages transfer complete from satellite modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForSatelliteMessagesTransferComplete(@NonNull Handler h) {
+        mCi.unregisterForSatelliteMessagesTransferComplete(h);
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Phone: subId=" + getSubId());
         pw.println(" mPhoneId=" + mPhoneId);
