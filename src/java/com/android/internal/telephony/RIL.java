@@ -5545,7 +5545,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
+                        + " networkType=" + RILUtils.accessNetworkTypesToString(accessNetwork)
+                        + ", scanType=" + RILUtils.scanTypeToString(scanType));
             }
 
             try {
