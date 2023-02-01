@@ -47,6 +47,9 @@ import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccPort;
 import com.android.telephony.Rlog;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     private static final String TAG = "PhoneSubInfoController";
     private static final boolean DBG = true;
@@ -408,6 +411,42 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
                         return null;
                     }
                 });
+    }
+
+    /**
+     * Fetches the ISIM public user identities (EF_IMPU) from UICC based on subId
+     *
+     * @param subId subscriptionId
+     * @param callingPackage package name of the caller
+     * @param callingFeatureId feature Id of the caller
+     * @return List of public user identities of type android.net.Uri or empty list  if
+     * EF_IMPU is not available.
+     * @throws IllegalArgumentException if the subscriptionId is not valid
+     * @throws IllegalStateException in case the ISIM hasn’t been loaded.
+     * @throws SecurityException if the caller does not have the required permission
+     */
+    public List<Uri> getImsPublicUserIdentities(int subId, String callingPackage,
+            String callingFeatureId) {
+        if (TelephonyPermissions.
+                checkCallingOrSelfReadPrivilegedPhoneStatePermissionOrReadPhoneNumber(
+                mContext, subId, callingPackage, callingFeatureId, "getImsPublicUserIdentities")) {
+            Phone phone = getPhone(subId);
+            assert phone != null;
+            IsimRecords isimRecords = phone.getIsimRecords();
+            if (isimRecords != null) {
+                String[] impus = isimRecords.getIsimImpu();
+                List<Uri> impuList = new ArrayList<>();
+                for (String impu : impus) {
+                    if (impu != null && impu.trim().length() > 0) {
+                        impuList.add(Uri.parse(impu));
+                    }
+                }
+                return impuList;
+            }
+            throw new IllegalStateException("ISIM is not loaded");
+        } else {
+            throw new IllegalArgumentException("Invalid SubscriptionID  = " + subId);
+        }
     }
 
     /**
