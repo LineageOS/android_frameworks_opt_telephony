@@ -5264,6 +5264,15 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Get maximum number of characters per text message on satellite.
+     * @param result - message object which contains maximum characters on success
+     *               and error code on failure.
+     */
+    public void getMaxCharactersPerSatelliteTextMessage(Message result) {
+        mCi.getMaxCharactersPerSatelliteTextMessage(result);
+    }
+
+    /**
      * Registers for pointing info changed from satellite modem.
      *
      * @param h Handler for notification message.
