@@ -1065,7 +1065,6 @@ public class DataProfileManagerTest extends TelephonyTest {
                 tnr, TelephonyManager.NETWORK_TYPE_LTE, false);
         assertThat(dataProfile.getApnSetting().getApnName()).isEqualTo(GENERAL_PURPOSE_APN);
         dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
-        dataProfile.setPreferred(true);
         mDataNetworkControllerCallback.onInternetDataNetworkConnected(List.of(dataProfile));
         processAllMessages();
 
@@ -1082,25 +1081,35 @@ public class DataProfileManagerTest extends TelephonyTest {
         assertThat(mDataProfileManagerUT.isAnyPreferredDataProfileExisting()).isTrue();
         assertThat(mDataProfileManagerUT.isDataProfilePreferred(dataProfile)).isTrue();
 
-        // no active internet, expect no preferred APN after reset
-        mDataNetworkControllerCallback.onInternetDataNetworkDisconnected();
+        // Test user selected a bad data profile, expects to adopt the last data profile that
+        // succeeded for internet setup after APN reset
+        // some bad profile that cannot be used for internet
+        mApnSettingContentProvider.setPreferredApn(MATCH_ALL_APN_SET_ID_IMS_APN);
+        mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
+        processAllMessages();
+
+        assertThat(mDataProfileManagerUT.isAnyPreferredDataProfileExisting()).isTrue();
+        assertThat(mDataProfileManagerUT.isDataProfilePreferred(dataProfile)).isFalse();
+
+        // APN reset, preferred APN should set to be the last data profile that succeeded for
+        // internet setup
         mPreferredApnId = -1;
         mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
         processAllMessages();
 
-        assertThat(mDataProfileManagerUT.isAnyPreferredDataProfileExisting()).isFalse();
-        assertThat(mDataProfileManagerUT.isDataProfilePreferred(dataProfile)).isFalse();
+        assertThat(mDataProfileManagerUT.isAnyPreferredDataProfileExisting()).isTrue();
+        assertThat(mDataProfileManagerUT.isDataProfilePreferred(dataProfile)).isTrue();
 
-        // setup internet again
+        // Test removed data profile(user created after reset) shouldn't show up
         mDataNetworkControllerCallback.onInternetDataNetworkConnected(List.of(dataProfile));
         processAllMessages();
-        //APN reset and removed GENERAL_PURPOSE_APN(as if user created) from APN DB
+        //APN reset and removed GENERAL_PURPOSE_APN from APN DB
         mPreferredApnId = -1;
         mApnSettingContentProvider.removeApnByApnId(1);
         mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
         processAllMessages();
 
-        // There should be no preferred APN after APN reset
+        // There should be no preferred APN after APN reset because last working profile is removed
         assertThat(mDataProfileManagerUT.isAnyPreferredDataProfileExisting()).isFalse();
         assertThat(mDataProfileManagerUT.isDataProfilePreferred(dataProfile)).isFalse();
 
