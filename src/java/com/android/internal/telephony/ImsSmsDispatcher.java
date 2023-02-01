@@ -496,7 +496,7 @@ public class ImsSmsDispatcher extends SMSDispatcher {
 
             if (carrierConfig != null) {
                 retryCountOverIms = carrierConfig.getInt(
-                        CarrierConfigManager.ImsSms.KEY_SMS_MAX_RETRY_COUNT_OVER_IMS_INT);
+                        CarrierConfigManager.ImsSms.KEY_SMS_MAX_RETRY_OVER_IMS_COUNT_INT);
             }
         }
 
