@@ -172,8 +172,8 @@ public class SatelliteIndication extends IRadioSatelliteIndication.Stub {
         if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_SATELLITE_PROVISION_STATE_CHANGED);
 
         if (mRil.mSatelliteProvisionStateChangedRegistrants != null) {
-            mRil.mSatelliteProvisionStateChangedRegistrants.notifyRegistrants(
-                    new AsyncResult(null, RILUtils.convertHalSatelliteFeatures(features), null));
+            mRil.mSatelliteProvisionStateChangedRegistrants.notifyRegistrants(new AsyncResult(
+                    provisioned, RILUtils.convertHalSatelliteFeatures(features), null));
         }
     }
 }
