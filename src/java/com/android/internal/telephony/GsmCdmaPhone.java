@@ -34,6 +34,7 @@ import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOI
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.app.ActivityManager;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
@@ -483,6 +484,10 @@ public class GsmCdmaPhone extends Phone {
 
         mCDM = new CarrierKeyDownloadManager(this);
         mCIM = new CarrierInfoManager();
+
+        if (isSubscriptionManagerServiceEnabled()) {
+            initializeCarrierApps();
+        }
     }
 
     private void initRatSpecific(int precisePhoneType) {
@@ -559,6 +564,31 @@ public class GsmCdmaPhone extends Phone {
             // Sets current entry in the telephony carrier table
             updateCurrentCarrierInProvider(operatorNumeric);
         }
+    }
+
+    /**
+     * Initialize the carrier apps.
+     */
+    private void initializeCarrierApps() {
+        // Only perform on the default phone. There is no need to do it twice on the DSDS device.
+        if (mPhoneId != 0) return;
+
+        logd("initializeCarrierApps");
+        mContext.registerReceiverForAllUsers(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                // Remove this line after testing
+                if (Intent.ACTION_USER_FOREGROUND.equals(intent.getAction())) {
+                    UserHandle userHandle = intent.getParcelableExtra(Intent.EXTRA_USER);
+                    // If couldn't get current user ID, guess it's 0.
+                    CarrierAppUtils.disableCarrierAppsUntilPrivileged(mContext.getOpPackageName(),
+                            TelephonyManager.getDefault(),
+                            userHandle != null ? userHandle.getIdentifier() : 0, mContext);
+                }
+            }
+        }, new IntentFilter(Intent.ACTION_USER_FOREGROUND), null, null);
+        CarrierAppUtils.disableCarrierAppsUntilPrivileged(mContext.getOpPackageName(),
+                TelephonyManager.getDefault(), ActivityManager.getCurrentUser(), mContext);
     }
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
