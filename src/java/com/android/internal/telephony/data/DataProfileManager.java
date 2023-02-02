@@ -170,10 +170,6 @@ public class DataProfileManager extends Handler {
                             @NonNull List<DataProfile> dataProfiles) {
                         DataProfileManager.this.onInternetDataNetworkConnected(dataProfiles);
                     }
-                    @Override
-                    public void onInternetDataNetworkDisconnected() {
-                        DataProfileManager.this.onInternetDataNetworkDisconnected();
-                    }
                 });
         mDataConfigManager.registerCallback(new DataConfigManagerCallback(this::post) {
             @Override
@@ -411,28 +407,22 @@ public class DataProfileManager extends Handler {
      * @param dataProfiles The connected internet data networks' profiles.
      */
     private void onInternetDataNetworkConnected(@NonNull List<DataProfile> dataProfiles) {
-        // If there is already a preferred data profile set, then we don't need to do anything.
-        if (mPreferredDataProfile != null) return;
-
-        // If there is no preferred data profile, then we should use one of the data profiles,
-        // which is good for internet, as the preferred data profile.
-
         // Most of the cases there should be only one, but in case there are multiple, choose the
         // one which has longest life cycle.
         DataProfile dataProfile = dataProfiles.stream()
                 .max(Comparator.comparingLong(DataProfile::getLastSetupTimestamp).reversed())
                 .orElse(null);
+
+        // Update a working internet data profile as a future candidate for preferred data profile
+        // after APNs are reset to default
         mLastInternetDataProfile = dataProfile;
+
+        // If there is no preferred data profile, then we should use one of the data profiles,
+        // which is good for internet, as the preferred data profile.
+        if (mPreferredDataProfile != null) return;
         // Save the preferred data profile into database.
         setPreferredDataProfile(dataProfile);
         updateDataProfiles(ONLY_UPDATE_IA_IF_CHANGED);
-    }
-
-    /**
-     * Called when internet data is disconnected.
-     */
-    private void onInternetDataNetworkDisconnected() {
-        mLastInternetDataProfile = null;
     }
 
     /**

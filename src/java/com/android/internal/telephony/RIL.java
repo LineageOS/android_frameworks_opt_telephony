@@ -5545,7 +5545,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     mRILDefaultWorkSource);
 
             if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
+                        + " networkType=" + RILUtils.accessNetworkTypesToString(accessNetwork)
+                        + ", scanType=" + RILUtils.scanTypeToString(scanType));
             }
 
             try {
@@ -6162,7 +6164,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void startSendingSatellitePointingInfo(Message result) {
         RadioSatelliteProxy radioSatelliteProxy =
                 getRadioServiceProxy(RadioSatelliteProxy.class, result);
-        if (radioSatelliteProxy.isEmpty()) return;
+        if (radioSatelliteProxy.isEmpty()) {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG,
+                        "startSendingSatellitePointingInfo: RADIO_NOT_AVAILABLE");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
+                result.sendToTarget();
+            }
+        }
         if (mHalVersion.get(HAL_SERVICE_SATELLITE).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_START_SENDING_SATELLITE_POINTING_INFO, result,
                     mRILDefaultWorkSource);
@@ -6200,7 +6212,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void stopSendingSatellitePointingInfo(Message result) {
         RadioSatelliteProxy radioSatelliteProxy =
                 getRadioServiceProxy(RadioSatelliteProxy.class, result);
-        if (radioSatelliteProxy.isEmpty()) return;
+        if (radioSatelliteProxy.isEmpty()) {
+            if (RILJ_LOGD) {
+                Rlog.d(RILJ_LOG_TAG,
+                        "startSendingSatellitePointingInfo: RADIO_NOT_AVAILABLE");
+            }
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
+                result.sendToTarget();
+            }
+        }
         if (mHalVersion.get(HAL_SERVICE_SATELLITE).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_STOP_SENDING_SATELLITE_POINTING_INFO, result,
                     mRILDefaultWorkSource);

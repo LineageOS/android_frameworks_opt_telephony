@@ -2446,7 +2446,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 }
                 int key = convertAllowedNetworkTypeDbNameToMapIndex(networkTypesValues[0]);
                 long value = Long.parseLong(networkTypesValues[1]);
-                if (key != INVALID_ALLOWED_NETWORK_TYPES
+                if (TelephonyManager.isValidAllowedNetworkTypesReason(key)
                         && value != INVALID_ALLOWED_NETWORK_TYPES) {
                     synchronized (mAllowedNetworkTypesForReasons) {
                         mAllowedNetworkTypesForReasons.put(key, value);
@@ -2484,7 +2484,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         }
     }
 
-    private String convertAllowedNetworkTypeMapIndexToDbName(int reason) {
+    private String convertAllowedNetworkTypeMapIndexToDbName(
+            @TelephonyManager.AllowedNetworkTypesReason int reason) {
         switch (reason) {
             case TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER:
                 return ALLOWED_NETWORK_TYPES_TEXT_USER;
@@ -2495,7 +2496,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             case TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_ENABLE_2G:
                 return ALLOWED_NETWORK_TYPES_TEXT_ENABLE_2G;
             default:
-                return Integer.toString(INVALID_ALLOWED_NETWORK_TYPES);
+                throw new IllegalArgumentException(
+                        "No DB name conversion available for allowed network type reason: " + reason
+                                + ". Did you forget to add an ALLOWED_NETWORK_TYPE_TEXT entry for"
+                                + " a new reason?");
         }
     }
 
@@ -5236,6 +5240,78 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public void setCellBroadcastIdRanges(
             @NonNull List<CellBroadcastIdRange> ranges, Consumer<Integer> callback) {
         callback.accept(TelephonyManager.CELL_BROADCAST_RESULT_UNSUPPORTED);
+    }
+
+    /**
+     * Start receiving satellite position updates.
+     * This can be called by the pointing UI when the user starts pointing to the satellite.
+     * Modem should continue to report the pointing input as the device or satellite moves.
+     *
+     * @param result The Message to send to result of the operation to.
+     **/
+    public void startSatellitePositionUpdates(Message result) {
+        mCi.startSendingSatellitePointingInfo(result);
+    }
+
+    /**
+     * Stop receiving satellite position updates.
+     * This can be called by the pointing UI when the user stops pointing to the satellite.
+     *
+     * @param result The Message to send to result of the operation to.
+     **/
+    public void stopSatellitePositionUpdates(Message result) {
+        mCi.stopSendingSatellitePointingInfo(result);
+    }
+
+    /**
+     * Get maximum number of characters per text message on satellite.
+     * @param result - message object which contains maximum characters on success
+     *               and error code on failure.
+     */
+    public void getMaxCharactersPerSatelliteTextMessage(Message result) {
+        mCi.getMaxCharactersPerSatelliteTextMessage(result);
+    }
+
+    /**
+     * Registers for pointing info changed from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForSatellitePointingInfoChanged(@NonNull Handler h,
+            int what, @Nullable Object obj) {
+        mCi.registerForSatellitePointingInfoChanged(h, what, obj);
+    }
+
+    /**
+     * Unregisters for pointing info changed from satellite modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForSatellitePointingInfoChanged(@NonNull Handler h) {
+        mCi.unregisterForSatellitePointingInfoChanged(h);
+    }
+
+    /**
+     * Registers for messages transfer complete from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForSatelliteMessagesTransferComplete(@NonNull Handler h,
+            int what, @Nullable Object obj) {
+        mCi.registerForSatelliteMessagesTransferComplete(h, what, obj);
+    }
+
+    /**
+     * Unregisters for messages transfer complete from satellite modem.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForSatelliteMessagesTransferComplete(@NonNull Handler h) {
+        mCi.unregisterForSatelliteMessagesTransferComplete(h);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

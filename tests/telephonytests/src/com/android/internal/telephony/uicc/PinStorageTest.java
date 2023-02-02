@@ -19,8 +19,11 @@ import static com.android.internal.telephony.uicc.IccCardStatus.PinState.PINSTAT
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.content.Intent;
@@ -29,6 +32,7 @@ import android.os.WorkSource;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -44,6 +48,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -58,19 +64,38 @@ public class PinStorageTest extends TelephonyTest {
     private int mBootCount;
     private int mSimulatedRebootsCount;
     private PinStorage mPinStorage;
+    private PersistableBundle mBundle;
+
+    // mocks
+    private CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener;
 
     private void simulateReboot() {
         mSimulatedRebootsCount++;
         Settings.Global.putInt(mContext.getContentResolver(),
                 Settings.Global.BOOT_COUNT, mBootCount + mSimulatedRebootsCount);
 
+        createPinStorageAndCaptureListener();
+    }
+
+    private void createPinStorageAndCaptureListener() {
+        // Capture listener to emulate the carrier config change notification used later
+        ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
+                ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
         mPinStorage = new PinStorage(mContext);
         mPinStorage.mShortTermSecretKeyDurationMinutes = 0;
+        verify(mCarrierConfigManager, atLeastOnce()).registerCarrierConfigChangeListener(any(),
+                listenerArgumentCaptor.capture());
+        mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(0);
     }
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mCarrierConfigChangeListener = Mockito.mock(
+                CarrierConfigManager.CarrierConfigChangeListener.class);
+
+        mBundle = mContextFixture.getCarrierConfigBundle();
+        when(mCarrierConfigManager.getConfigForSubId(anyInt(), any())).thenReturn(mBundle);
 
         // Store boot count, so that correct value can be restored at the end.
         mBootCount = Settings.Global.getInt(
@@ -89,8 +114,7 @@ public class PinStorageTest extends TelephonyTest {
         when(mKeyguardManager.isDeviceSecure()).thenReturn(false);
         when(mKeyguardManager.isDeviceLocked()).thenReturn(false);
 
-        mPinStorage = new PinStorage(mContext);
-        mPinStorage.mShortTermSecretKeyDurationMinutes = 0;
+        createPinStorageAndCaptureListener();
     }
 
     @After
@@ -341,7 +365,7 @@ public class PinStorageTest extends TelephonyTest {
         PersistableBundle carrierConfigs = new PersistableBundle();
         carrierConfigs.putBoolean(
                 CarrierConfigManager.KEY_STORE_SIM_PIN_FOR_UNATTENDED_REBOOT_BOOL, false);
-        when(mCarrierConfigManager.getConfigForSubId(anyInt())).thenReturn(carrierConfigs);
+        when(mCarrierConfigManager.getConfigForSubId(anyInt(), any())).thenReturn(carrierConfigs);
 
         mPinStorage.storePin("1234", 0);
 
@@ -362,10 +386,10 @@ public class PinStorageTest extends TelephonyTest {
         PersistableBundle carrierConfigs = new PersistableBundle();
         carrierConfigs.putBoolean(
                 CarrierConfigManager.KEY_STORE_SIM_PIN_FOR_UNATTENDED_REBOOT_BOOL, false);
-        when(mCarrierConfigManager.getConfigForSubId(anyInt())).thenReturn(carrierConfigs);
-        final Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, 0);
-        mContext.sendBroadcast(intent);
+        when(mCarrierConfigManager.getConfigForSubId(anyInt(), any())).thenReturn(carrierConfigs);
+        mCarrierConfigChangeListener.onCarrierConfigChanged(0 /* slotIndex */,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
         processAllMessages();
 
         int result = mPinStorage.prepareUnattendedReboot(sWorkSource);

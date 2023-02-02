@@ -20,10 +20,7 @@ import static android.telephony.TelephonyManager.HAL_SERVICE_NETWORK;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
-import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.IBinder;
@@ -100,7 +97,6 @@ public class SignalStrengthController extends Handler {
     private static final int EVENT_POLL_SIGNAL_STRENGTH                     = 7;
     private static final int EVENT_SIGNAL_STRENGTH_UPDATE                   = 8;
     private static final int EVENT_POLL_SIGNAL_STRENGTH_DONE                = 9;
-    private static final int EVENT_CARRIER_CONFIG_CHANGED                   = 10;
 
     @NonNull
     private final Phone mPhone;
@@ -145,20 +141,6 @@ public class SignalStrengthController extends Handler {
     @NonNull
     private final LocalLog mLocalLog = new LocalLog(64);
 
-    private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            final String action = intent.getAction();
-            if (CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED.equals(action)) {
-                int phoneId = intent.getExtras().getInt(CarrierConfigManager.EXTRA_SLOT_INDEX);
-                // Ignore the carrier config changed if the phoneId is not matched.
-                if (phoneId == mPhone.getPhoneId()) {
-                    sendEmptyMessage(EVENT_CARRIER_CONFIG_CHANGED);
-                }
-            }
-        }
-    };
-
     public SignalStrengthController(@NonNull Phone phone) {
         mPhone = phone;
         mCi = mPhone.mCi;
@@ -168,10 +150,12 @@ public class SignalStrengthController extends Handler {
         mCi.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
         setSignalStrengthDefaultValues();
 
+        CarrierConfigManager ccm = mPhone.getContext().getSystemService(CarrierConfigManager.class);
         mCarrierConfig = getCarrierConfig();
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        mPhone.getContext().registerReceiver(mBroadcastReceiver, filter);
+        // Callback which directly handle config change should be executed on handler thread
+        ccm.registerCarrierConfigChangeListener(this::post,
+                (slotIndex, subId, carrierId, specificCarrierId) ->
+                        onCarrierConfigurationChanged(slotIndex));
     }
 
     @Override
@@ -281,11 +265,6 @@ public class SignalStrengthController extends Handler {
 
                 ar = (AsyncResult) msg.obj;
                 onSignalStrengthResult(ar);
-                break;
-            }
-
-            case EVENT_CARRIER_CONFIG_CHANGED: {
-                onCarrierConfigChanged();
                 break;
             }
 
@@ -1129,7 +1108,9 @@ public class SignalStrengthController extends Handler {
         return earfcnPairList;
     }
 
-    private void onCarrierConfigChanged() {
+    private void onCarrierConfigurationChanged(int slotIndex) {
+        if (slotIndex != mPhone.getPhoneId()) return;
+
         mCarrierConfig = getCarrierConfig();
         log("Carrier Config changed.");
 

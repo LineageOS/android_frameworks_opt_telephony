@@ -263,6 +263,18 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         return mStorage;
     }
 
+    /** Updates duration segments and calls {@link PersistAtomsStorage#flushAtoms()}. */
+    public void flushAtomsStorage() {
+        concludeAll();
+        mStorage.flushAtoms();
+    }
+
+    /** Updates duration segments and calls {@link PersistAtomsStorage#clearAtoms()}. */
+    public void clearAtomsStorage() {
+        concludeAll();
+        mStorage.clearAtoms();
+    }
+
     /**
      * Registers a {@link DataCallSessionStats} which will be pinged for on-going data calls when
      * data call atoms are pulled.
@@ -274,6 +286,41 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     /** Unregisters a {@link DataCallSessionStats} when it no longer handles an active data call. */
     public void unregisterOngoingDataCallStat(DataCallSessionStats call) {
         mOngoingDataCallStats.remove(call);
+    }
+
+    private void concludeDataCallSessionStats() {
+        for (DataCallSessionStats stats : mOngoingDataCallStats) {
+            stats.conclude();
+        }
+    }
+
+    private void concludeImsStats() {
+        for (Phone phone : getPhonesIfAny()) {
+            ImsPhone imsPhone = (ImsPhone) phone.getImsPhone();
+            if (imsPhone != null) {
+                imsPhone.getImsStats().conclude();
+            }
+        }
+    }
+
+    private void concludeServiceStateStats() {
+        for (Phone phone : getPhonesIfAny()) {
+            phone.getServiceStateTracker().getServiceStateStats().conclude();
+        }
+    }
+
+    private void concludeAll() {
+        concludeDataCallSessionStats();
+        concludeImsStats();
+        concludeServiceStateStats();
+
+        RcsStats rcsStats = RcsStats.getInstance();
+        if (rcsStats != null) {
+            rcsStats.concludeSipTransportFeatureTagsStat();
+            rcsStats.onFlushIncompleteRcsAcsProvisioningStats();
+            rcsStats.onFlushIncompleteImsRegistrationServiceDescStats();
+            rcsStats.onFlushIncompleteImsRegistrationFeatureTagStats();
+        }
     }
 
     private static int pullSimSlotState(List<StatsEvent> data) {
@@ -383,10 +430,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
 
     private int pullDataCallSession(List<StatsEvent> data) {
         // Include ongoing data call segments
-        for (DataCallSessionStats stats : mOngoingDataCallStats) {
-            stats.conclude();
-        }
-
+        concludeDataCallSessionStats();
         DataCallSession[] dataCallSessions = mStorage.getDataCallSessions(MIN_COOLDOWN_MILLIS);
         if (dataCallSessions != null) {
             Arrays.stream(dataCallSessions)
@@ -414,10 +458,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
 
     private int pullCellularServiceState(List<StatsEvent> data) {
         // Include the latest durations
-        for (Phone phone : getPhonesIfAny()) {
-            phone.getServiceStateTracker().getServiceStateStats().conclude();
-        }
-
+        concludeServiceStateStats();
         CellularServiceState[] persistAtoms =
                 mStorage.getCellularServiceStates(MIN_COOLDOWN_MILLIS);
         if (persistAtoms != null) {
@@ -433,13 +474,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
 
     private int pullImsRegistrationStats(List<StatsEvent> data) {
         // Include the latest durations
-        for (Phone phone : getPhonesIfAny()) {
-            ImsPhone imsPhone = (ImsPhone) phone.getImsPhone();
-            if (imsPhone != null) {
-                imsPhone.getImsStats().conclude();
-            }
-        }
-
+        concludeImsStats();
         ImsRegistrationStats[] persistAtoms = mStorage.getImsRegistrationStats(MIN_COOLDOWN_MILLIS);
         if (persistAtoms != null) {
             // list is already shuffled when instances were inserted
