@@ -21,8 +21,10 @@ import static android.telephony.TelephonyManager.APPTYPE_ISIM;
 import static android.telephony.TelephonyManager.APPTYPE_USIM;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.anyString;
@@ -34,6 +36,7 @@ import android.app.AppOpsManager;
 import android.app.PropertyInvalidatedCache;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
 import android.os.RemoteException;
@@ -50,6 +53,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.util.List;
 
 public class PhoneSubInfoControllerTest extends TelephonyTest {
     private static final String FEATURE_ID = "myfeatureId";
@@ -1166,5 +1171,128 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
 
         mContextFixture.addCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE);
         assertEquals(refSst, mPhoneSubInfoControllerUT.getSimServiceTable(anyInt(), anyInt()));
+    }
+
+    @Test
+    public void getPrivateUserIdentity() {
+        String refImpi = "1234567890@example.com";
+        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
+        doReturn(refImpi).when(mIsimUiccRecords).getIsimImpi();
+
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOsMgr).noteOpNoThrow(
+                eq(AppOpsManager.OPSTR_USE_ICC_AUTH_WITH_DEVICE_IDENTIFIER), anyInt(), eq(TAG),
+                eq(FEATURE_ID), nullable(String.class));
+
+        String impi = mPhoneSubInfoControllerUT.getImsPrivateUserIdentity(0, TAG, FEATURE_ID);
+        assertEquals(refImpi, impi);
+    }
+
+    @Test
+    public void getPrivateUserIdentity_NoPermission() {
+        String refImpi = "1234567890@example.com";
+        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
+        doReturn(refImpi).when(mIsimUiccRecords).getIsimImpi();
+
+        try {
+            mPhoneSubInfoControllerUT.getImsPrivateUserIdentity(0, TAG, FEATURE_ID);
+            fail();
+        } catch (Exception ex) {
+            assertTrue(ex instanceof SecurityException);
+            assertTrue(ex.getMessage().contains("No permissions to the caller"));
+        }
+    }
+
+    @Test
+    public void getPrivateUserIdentity_InValidSubIdCheck() {
+        String refImpi = "1234567890@example.com";
+        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
+        doReturn(refImpi).when(mIsimUiccRecords).getIsimImpi();
+
+        try {
+            mPhoneSubInfoControllerUT.getImsPrivateUserIdentity(-1, TAG, FEATURE_ID);
+            fail();
+        } catch (Exception ex) {
+            assertTrue(ex instanceof IllegalArgumentException);
+            assertTrue(ex.getMessage().contains("Invalid SubscriptionID"));
+        }
+    }
+
+    @Test
+    public void getImsPublicUserIdentities() {
+        String[] refImpuArray = new String[3];
+        refImpuArray[0] = "012345678";
+        refImpuArray[1] = "sip:test@verify.com";
+        refImpuArray[2] = "tel:+91987754324";
+        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
+        doReturn(refImpuArray).when(mIsimUiccRecords).getIsimImpu();
+
+        List<Uri> impuList = mPhoneSubInfoControllerUT.getImsPublicUserIdentities(0, TAG,
+                FEATURE_ID);
+
+        assertNotNull(impuList);
+        assertEquals(refImpuArray.length, impuList.size());
+        assertEquals(impuList.get(0).toString(), refImpuArray[0]);
+        assertEquals(impuList.get(1).toString(), refImpuArray[1]);
+        assertEquals(impuList.get(2).toString(), refImpuArray[2]);
+    }
+
+    @Test
+    public void getImsPublicUserIdentities_InvalidImpu() {
+        String[] refImpuArray = new String[3];
+        refImpuArray[0] = null;
+        refImpuArray[2] = "";
+        refImpuArray[2] = "tel:+91987754324";
+        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
+        doReturn(refImpuArray).when(mIsimUiccRecords).getIsimImpu();
+        List<Uri> impuList = mPhoneSubInfoControllerUT.getImsPublicUserIdentities(0, TAG,
+                FEATURE_ID);
+        assertNotNull(impuList);
+        // Null or Empty string cannot be converted to URI
+        assertEquals(refImpuArray.length - 2, impuList.size());
+    }
+
+    @Test
+    public void getImsPublicUserIdentities_IsimNotLoadedError() {
+        doReturn(null).when(mPhone).getIsimRecords();
+
+        try {
+            mPhoneSubInfoControllerUT.getImsPublicUserIdentities(0, TAG, FEATURE_ID);
+            fail();
+        } catch (Exception ex) {
+            assertTrue(ex instanceof IllegalStateException);
+            assertTrue(ex.getMessage().contains("ISIM is not loaded"));
+        }
+    }
+
+    @Test
+    public void getImsPublicUserIdentities_InValidSubIdCheck() {
+        try {
+            mPhoneSubInfoControllerUT.getImsPublicUserIdentities(-1, TAG, FEATURE_ID);
+            fail();
+        } catch (Exception ex) {
+            assertTrue(ex instanceof IllegalArgumentException);
+            assertTrue(ex.getMessage().contains("Invalid SubscriptionID"));
+        }
+    }
+
+    @Test
+    public void getImsPublicUserIdentities_NoReadPrivilegedPermission() {
+        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
+        String[] refImpuArray = new String[3];
+        refImpuArray[0] = "012345678";
+        refImpuArray[1] = "sip:test@verify.com";
+        refImpuArray[2] = "tel:+91987754324";
+        doReturn(mIsimUiccRecords).when(mPhone).getIsimRecords();
+        doReturn(refImpuArray).when(mIsimUiccRecords).getIsimImpu();
+
+        List<Uri> impuList = mPhoneSubInfoControllerUT.getImsPublicUserIdentities(0, TAG,
+                FEATURE_ID);
+
+        assertNotNull(impuList);
+        assertEquals(refImpuArray.length, impuList.size());
+        assertEquals(impuList.get(0).toString(), refImpuArray[0]);
+        assertEquals(impuList.get(1).toString(), refImpuArray[1]);
+        assertEquals(impuList.get(2).toString(), refImpuArray[2]);
+        mContextFixture.addCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE);
     }
 }

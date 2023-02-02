@@ -25,6 +25,7 @@ import static android.telephony.TelephonyManager.HAL_SERVICE_NETWORK;
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -34,7 +35,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.content.Context;
-import android.content.Intent;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
@@ -50,6 +50,7 @@ import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.SignalStrength;
 import android.telephony.SignalStrengthUpdateRequest;
 import android.telephony.SignalThresholdInfo;
+import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -94,16 +95,13 @@ public class SignalStrengthControllerTest extends TelephonyTest {
 
     private SignalStrengthController mSsc;
     private PersistableBundle mBundle;
+    private CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(this.getClass().getSimpleName());
         mHandler = Mockito.mock(Handler.class);
-
         when(mPhone.getSubId()).thenReturn(ACTIVE_SUB_ID);
-        mSsc = new SignalStrengthController(mPhone);
-        replaceInstance(Handler.class, "mLooper", mHandler, mSsc.getLooper());
-        replaceInstance(Phone.class, "mLooper", mPhone, mSsc.getLooper());
 
         // Config a fixed supported RAN/MeasurementTypes to make the test more stable
         mBundle = mContextFixture.getCarrierConfigBundle();
@@ -153,6 +151,18 @@ public class SignalStrengthControllerTest extends TelephonyTest {
                         15, /* SIGNAL_STRENGTH_GOOD */
                         30  /* SIGNAL_STRENGTH_GREAT */
                 });
+
+        // Capture listener to emulate the carrier config change notification used later
+        ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
+                ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
+        mSsc = new SignalStrengthController(mPhone);
+        verify(mCarrierConfigManager).registerCarrierConfigChangeListener(any(),
+                listenerArgumentCaptor.capture());
+        mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(0);
+
+        replaceInstance(Handler.class, "mLooper", mHandler, mSsc.getLooper());
+        replaceInstance(Phone.class, "mLooper", mPhone, mSsc.getLooper());
+
         processAllMessages();
         reset(mSimulatedCommandsVerifier);
     }
@@ -964,9 +974,8 @@ public class SignalStrengthControllerTest extends TelephonyTest {
                 .thenReturn(mockConfigManager);
         when(mockConfigManager.getConfigForSubId(anyInt())).thenReturn(mBundle);
 
-        Intent intent = new Intent().setAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, PHONE_ID);
-        mContext.sendBroadcast(intent);
+        mCarrierConfigChangeListener.onCarrierConfigChanged(PHONE_ID, ACTIVE_SUB_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
         processAllMessages();
     }
 

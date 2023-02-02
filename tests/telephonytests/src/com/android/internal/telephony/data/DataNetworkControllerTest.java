@@ -669,6 +669,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         mCarrierConfig.putBoolean(CarrierConfigManager.KEY_NETWORK_TEMP_NOT_METERED_SUPPORTED_BOOL,
                 true);
+        mCarrierConfig.putStringArray(CarrierConfigManager.KEY_UNMETERED_NETWORK_TYPES_STRING_ARRAY,
+                new String[] {"NR_NSA", "NR_NSA_MMWAVE", "NR_SA", "NR_SA_MMWAVE"});
 
         mCarrierConfig.putIntArray(CarrierConfigManager.KEY_ONLY_SINGLE_DC_ALLOWED_INT_ARRAY,
                 new int[]{TelephonyManager.NETWORK_TYPE_CDMA, TelephonyManager.NETWORK_TYPE_1xRTT,

@@ -132,7 +132,6 @@ public class PinStorage extends Handler {
 
     // Events
     private static final int ICC_CHANGED_EVENT = 1;
-    private static final int CARRIER_CONFIG_CHANGED_EVENT = 2;
     private static final int TIMER_EXPIRATION_EVENT = 3;
     private static final int USER_UNLOCKED_EVENT = 4;
     private static final int SUPPLY_PIN_COMPLETE = 5;
@@ -156,14 +155,11 @@ public class PinStorage extends Handler {
     private final SparseArray<byte[]> mRamStorage;
 
     /** Receiver for the required intents. */
-    private final BroadcastReceiver mCarrierConfigChangedReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            if (CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED.equals(action)) {
-                int slotId = intent.getIntExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, -1);
-                sendMessage(obtainMessage(CARRIER_CONFIG_CHANGED_EVENT, slotId, 0));
-            } else if (TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED.equals(action)
+            if (TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED.equals(action)
                     || TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED.equals(action)) {
                 int slotId = intent.getIntExtra(PhoneConstants.PHONE_KEY, -1);
                 int state = intent.getIntExtra(
@@ -188,11 +184,16 @@ public class PinStorage extends Handler {
 
         // Register for necessary intents.
         IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         intentFilter.addAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED);
         intentFilter.addAction(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
         intentFilter.addAction(Intent.ACTION_USER_UNLOCKED);
-        mContext.registerReceiver(mCarrierConfigChangedReceiver, intentFilter);
+        mContext.registerReceiver(mBroadcastReceiver, intentFilter);
+
+        CarrierConfigManager ccm = mContext.getSystemService(CarrierConfigManager.class);
+        // Callback directly handle config change and should be executed in handler thread
+        ccm.registerCarrierConfigChangeListener(this::post,
+                (slotIndex, subId, carrierId, specificCarrierId) ->
+                        onCarrierConfigurationChanged(slotIndex));
 
         // Initialize the long term secret key. This needs to be present in all cases:
         //  - if the device is not secure or is locked: key does not require user authentication
@@ -560,7 +561,7 @@ public class PinStorage extends Handler {
         }
     }
 
-    private void onCarrierConfigChanged(int slotId) {
+    private void onCarrierConfigurationChanged(int slotId) {
         logv("onCarrierConfigChanged[%d]", slotId);
         if (!isCacheAllowed(slotId)) {
             logd("onCarrierConfigChanged[%d] - PIN caching not allowed", slotId);
@@ -589,9 +590,6 @@ public class PinStorage extends Handler {
         switch (msg.what) {
             case ICC_CHANGED_EVENT:
                 onSimStatusChange(/* slotId= */ msg.arg1, /* state= */ msg.arg2);
-                break;
-            case CARRIER_CONFIG_CHANGED_EVENT:
-                onCarrierConfigChanged(/* slotId= */ msg.arg1);
                 break;
             case TIMER_EXPIRATION_EVENT:
                 onTimerExpiration();
@@ -995,12 +993,15 @@ public class PinStorage extends Handler {
                 mContext.getSystemService(CarrierConfigManager.class);
         if (configManager != null) {
             Phone phone = PhoneFactory.getPhone(slotId);
-            if (phone != null) {
-                 // If an invalid subId is used, this bundle will contain default values.
-                config = configManager.getConfigForSubId(phone.getSubId());
+            try {
+                // If an invalid subId is used, this bundle will contain default values.
+                config = configManager.getConfigForSubId(phone.getSubId(),
+                        CarrierConfigManager.KEY_STORE_SIM_PIN_FOR_UNATTENDED_REBOOT_BOOL);
+            } catch (RuntimeException e) {
+                loge("Can't get carrier config subset.");
             }
         }
-        if (config == null) {
+        if (config == null || config.isEmpty()) {
             config = CarrierConfigManager.getDefaultConfig();
         }
 
