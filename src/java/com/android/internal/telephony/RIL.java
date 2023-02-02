@@ -6155,6 +6155,20 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     /**
+     * Check whether satellite modem is supported by the device.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    @Override
+    public void isSatelliteSupported(Message result) {
+        if (result != null) {
+            AsyncResult.forMessage(result, null,
+                    CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+            result.sendToTarget();
+        }
+    }
+
+    /**
      * User started pointing to the satellite. Modem should continue to update the ponting input
      * as user moves device.
      *
