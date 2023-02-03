@@ -305,6 +305,7 @@ message DataCallSession {
     optional int32 band_at_end = 19;
     repeated int32 handover_failure_causes = 20;
     repeated int32 handover_failure_rat = 21;
+    optional bool is_non_dds = 22;
 }
 
 message CellularServiceState {
@@ -516,4 +517,10 @@ message UnmeteredNetworks {
     optional int32 phone_id = 1;
     optional int32 carrier_id = 2;
     optional int64 unmetered_networks_bitmask = 3;
+}
+
+message OutgoingShortCodeSms {
+    optional int32 category = 1;
+    optional int32 xml_version = 2;
+    optional int32 short_code_sms_count = 3;
 }
