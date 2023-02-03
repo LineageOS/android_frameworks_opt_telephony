@@ -20,9 +20,11 @@ import android.annotation.NonNull;
 import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
+import android.os.HandlerExecutor;
 import android.os.Message;
 import android.telephony.CellBroadcastIdRange;
 import android.telephony.SmsCbMessage;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -46,6 +48,8 @@ public final class CellBroadcastConfigTracker extends StateMachine {
     private static final int EVENT_REQUEST = 1;
     private static final int EVENT_CONFIGURATION_DONE = 2;
     private static final int EVENT_ACTIVATION_DONE = 3;
+    private static final int EVENT_RADIO_OFF = 4;
+    private static final int EVENT_SUBSCRIPTION_CHANGED = 5;
 
     private static final int SMS_CB_CODE_SCHEME_MIN = 0;
     private static final int SMS_CB_CODE_SCHEME_MAX = 255;
@@ -55,7 +59,16 @@ public final class CellBroadcastConfigTracker extends StateMachine {
     // Cache of current cell broadcast id ranges of 3gpp2
     private List<CellBroadcastIdRange> mCbRanges3gpp2 = new CopyOnWriteArrayList<>();
     private Phone mPhone;
-
+    @VisibleForTesting
+    public int mSubId;
+    @VisibleForTesting
+    public final SubscriptionManager.OnSubscriptionsChangedListener mSubChangedListener =
+            new SubscriptionManager.OnSubscriptionsChangedListener() {
+                @Override
+                public void onSubscriptionsChanged() {
+                    sendMessage(EVENT_SUBSCRIPTION_CHANGED);
+                }
+            };
 
     /**
      * The class is to present the request to set cell broadcast id ranges
@@ -97,6 +110,40 @@ public final class CellBroadcastConfigTracker extends StateMachine {
                     + "mCallback = " + mCallback + "]";
         }
     }
+
+    /**
+     * The default state.
+     */
+    private class DefaultState extends State {
+        @Override
+        public boolean processMessage(Message msg) {
+            boolean retVal = HANDLED;
+            if (DBG) {
+                logd("DefaultState message:" + msg.what);
+            }
+            switch (msg.what) {
+                case EVENT_RADIO_OFF:
+                    resetConfig();
+                    break;
+                case EVENT_SUBSCRIPTION_CHANGED:
+                    int subId = mPhone.getSubId();
+                    if (mSubId != subId) {
+                        log("SubId changed from " + mSubId + " to " + subId);
+                        mSubId = subId;
+                        resetConfig();
+                    }
+                    break;
+                default:
+                    log("unexpected message!");
+                    break;
+
+            }
+
+            return retVal;
+        }
+    }
+
+    private DefaultState mDefaultState = new DefaultState();
 
     /*
      * The idle state which does not have ongoing radio request.
@@ -335,12 +382,19 @@ public final class CellBroadcastConfigTracker extends StateMachine {
     private void init(Phone phone) {
         logd("init");
         mPhone = phone;
+        mSubId = mPhone.getSubId();
 
-        addState(mIdleState);
-        addState(mGsmConfiguringState);
-        addState(mGsmActivatingState);
-        addState(mCdmaConfiguringState);
-        addState(mCdmaActivatingState);
+        mPhone.registerForRadioOffOrNotAvailable(getHandler(), EVENT_RADIO_OFF, null);
+        mPhone.getContext().getSystemService(SubscriptionManager.class)
+                .addOnSubscriptionsChangedListener(new HandlerExecutor(getHandler()),
+                        mSubChangedListener);
+
+        addState(mDefaultState);
+        addState(mIdleState, mDefaultState);
+        addState(mGsmConfiguringState, mDefaultState);
+        addState(mGsmActivatingState, mDefaultState);
+        addState(mCdmaConfiguringState, mDefaultState);
+        addState(mCdmaActivatingState, mDefaultState);
         setInitialState(mIdleState);
     }
 
@@ -411,6 +465,11 @@ public final class CellBroadcastConfigTracker extends StateMachine {
             }
         });
         return newRanges;
+    }
+
+    private void resetConfig() {
+        mCbRanges3gpp.clear();
+        mCbRanges3gpp2.clear();
     }
 
     private void setGsmConfig(List<CellBroadcastIdRange> ranges, Request request) {
