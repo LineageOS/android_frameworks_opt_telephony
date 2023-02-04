@@ -5973,6 +5973,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     @VisibleForTesting
     public SrvccConnection[] convertToSrvccConnectionInfo(List<SrvccCall> profileList) {
         if (mSrvccTypeSupported.isEmpty() || profileList == null || profileList.isEmpty()) {
+            loge("convertToSrvccConnectionInfo empty list");
             return null;
         }
 
@@ -5981,9 +5982,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             if (isCallProfileSupported(profile)) {
                 addConnection(connList,
                         profile, findConnection(profile.getCallId()));
+            } else {
+                logi("convertToSrvccConnectionInfo not supported"
+                        + " state=" + profile.getPreciseCallState());
             }
         }
 
+        logi("convertToSrvccConnectionInfo size=" + connList.size());
         if (connList.isEmpty()) return null;
         return connList.toArray(new SrvccConnection[0]);
     }
@@ -6013,9 +6018,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
     }
 
     private boolean isCallProfileSupported(SrvccCall profile) {
-        if (profile == null) return false;
+        if (profile == null) {
+            loge("isCallProfileSupported null profile");
+            return false;
+        }
 
-        switch(profile.getPreciseCallState()) {
+        switch (profile.getPreciseCallState()) {
             case PRECISE_CALL_STATE_ACTIVE:
                 return mSrvccTypeSupported.contains(BASIC_SRVCC_SUPPORT);
             case PRECISE_CALL_STATE_HOLDING:
@@ -6031,6 +6039,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             case PRECISE_CALL_STATE_INCOMING_SETUP:
                 return mSrvccTypeSupported.contains(PREALERTING_SRVCC_SUPPORT);
             default:
+                loge("isCallProfileSupported invalid state="
+                        + profile.getPreciseCallState());
                 break;
         }
         return false;
