@@ -7216,6 +7216,19 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return halVersion;
     }
 
+    /**
+     * Get the HAL version corresponding to the interface version of a IRadioService module.
+     * @param interfaceVersion The interface version, from IRadioService#getInterfaceVersion().
+     * @return The corresponding HalVersion.
+     */
+    public static HalVersion getServiceHalVersion(int interfaceVersion) {
+        switch (interfaceVersion) {
+            case 1: return RADIO_HAL_VERSION_2_0;
+            case 2: return RADIO_HAL_VERSION_2_1;
+            default: return RADIO_HAL_VERSION_UNKNOWN;
+        }
+    }
+
     private static String serviceToString(@HalService int service) {
         switch (service) {
             case HAL_SERVICE_RADIO:
