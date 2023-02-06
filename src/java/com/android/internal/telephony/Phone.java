@@ -2460,7 +2460,15 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         }
     }
 
-    private String convertAllowedNetworkTypeMapIndexToDbName(int reason) {
+    /**
+     * Convert the allowed network types reason to string.
+     *
+     * @param reason The allowed network types reason.
+     *
+     * @return The converted string.
+     */
+    public static String convertAllowedNetworkTypeMapIndexToDbName(
+            @TelephonyManager.AllowedNetworkTypesReason int reason) {
         switch (reason) {
             case TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER:
                 return ALLOWED_NETWORK_TYPES_TEXT_USER;
