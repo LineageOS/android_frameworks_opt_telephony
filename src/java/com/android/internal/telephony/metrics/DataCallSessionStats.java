@@ -84,14 +84,14 @@ public class DataCallSessionStats {
      * @param currentRat The data call current Network Type
      * @param apnTypeBitmask APN type bitmask
      * @param protocol Data connection protocol
-     * @param failureCause failure cause as per android.telephony.DataFailCause
+     * @param failureCause The raw failure cause from modem/IWLAN data service.
      */
     public synchronized void onSetupDataCallResponse(
             @Nullable DataCallResponse response,
             @NetworkType int currentRat,
             @ApnType int apnTypeBitmask,
             @ProtocolType int protocol,
-            @DataFailureCause int failureCause) {
+            int failureCause) {
         // there should've been a call to onSetupDataCall to initiate the atom,
         // so this method is being called out of order -> no metric will be logged
         if (mDataCallSession == null) {

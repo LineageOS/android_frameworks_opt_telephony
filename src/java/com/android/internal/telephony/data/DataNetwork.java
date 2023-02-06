@@ -2446,7 +2446,8 @@ public class DataNetwork extends StateMachine {
                 getDataNetworkType(),
                 apnTypeBitmask,
                 protocol,
-                mFailCause);
+                // Log the raw fail cause to avoid large amount of UNKNOWN showing on metrics.
+                response != null ? response.getCause() : mFailCause);
     }
 
     /**
@@ -3263,7 +3264,7 @@ public class DataNetwork extends StateMachine {
             mDataNetworkCallback.invokeFromExecutor(
                     () -> mDataNetworkCallback.onHandoverFailed(DataNetwork.this,
                             mFailCause, retry, handoverFailureMode));
-            trackHandoverFailure();
+            trackHandoverFailure(response != null ? response.getCause() : mFailCause);
         }
 
         // No matter handover succeeded or not, transit back to connected state.
@@ -3273,13 +3274,15 @@ public class DataNetwork extends StateMachine {
     /**
      * Called when handover failed. Record the source and target RAT{@link NetworkType} and the
      * failure cause {@link android.telephony.DataFailCause}.
+     *
+     * @param cause The fail cause.
      */
-    private void trackHandoverFailure() {
+    private void trackHandoverFailure(int cause) {
         int sourceRat = getDataNetworkType();
         int targetTransport = DataUtils.getTargetTransport(mTransport);
         int targetRat = getDataNetworkType(targetTransport);
 
-        mDataCallSessionStats.onHandoverFailure(mFailCause, sourceRat, targetRat);
+        mDataCallSessionStats.onHandoverFailure(cause, sourceRat, targetRat);
     }
 
     /**
