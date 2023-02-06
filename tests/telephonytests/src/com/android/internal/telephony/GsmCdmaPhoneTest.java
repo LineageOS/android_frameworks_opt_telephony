@@ -1167,6 +1167,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     @SmallTest
     public void testGetEmptyIccCard() {
         doReturn(null).when(mUiccController).getUiccProfileForPhone(anyInt());
+        doReturn(null).when(mUiccController).getUiccSlotForPhone(anyInt());
 
         IccCard iccCard = mPhoneUT.getIccCard();
 
