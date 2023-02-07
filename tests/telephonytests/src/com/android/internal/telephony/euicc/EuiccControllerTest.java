@@ -1295,54 +1295,57 @@ public class EuiccControllerTest extends TelephonyTest {
     }
 
     @Test
+    @EnableCompatChanges({EuiccManager.INACTIVE_PORT_AVAILABILITY_CHECK})
     public void testIsSimPortAvailable_invalidCase() {
         setUiccCardInfos(false, true, true);
         // assert non euicc card id
-        assertFalse(mController.isSimPortAvailable(REMOVABLE_CARD_ID, 0, PACKAGE_NAME));
+        assertFalse(mController.isSimPortAvailable(REMOVABLE_CARD_ID, 0, TEST_PACKAGE_NAME));
 
         // assert invalid port index
-        assertFalse(mController.isSimPortAvailable(CARD_ID, 5 /* portIndex */, PACKAGE_NAME));
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 5 /* portIndex */, TEST_PACKAGE_NAME));
     }
 
     @Test
+    @EnableCompatChanges({EuiccManager.INACTIVE_PORT_AVAILABILITY_CHECK})
     public void testIsSimPortAvailable_port_active() throws Exception {
         setUiccCardInfos(false, true, true);
 
         // port has empty iccid
-        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
 
         // Set port is active, has valid iccid(may be boot profile) and UiccProfile is empty
         setUiccCardInfos(false, true, false);
         when(mUiccController.getUiccPortForSlot(anyInt(), anyInt())).thenReturn(mUiccPort);
         when(mUiccPort.getUiccProfile()).thenReturn(mUiccProfile);
         when(mUiccProfile.isEmptyProfile()).thenReturn(true);
-        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
 
         // port is active, valid iccid, not empty profile but Phone object is null
         when(mUiccPort.getUiccProfile()).thenReturn(mUiccProfile);
         when(mUiccProfile.isEmptyProfile()).thenReturn(false);
         replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone});
         // logicalSlotIndex of port#0 is 1, Phone object should be null
-        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
 
         // port is active, valid iccid, not empty profile but no carrier privileges
         when(mUiccPort.getUiccProfile()).thenReturn(mUiccProfile);
         when(mUiccProfile.isEmptyProfile()).thenReturn(false);
         replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone, mPhone});
         when(mPhone.getCarrierPrivilegesTracker()).thenReturn(null);
-        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
         when(mPhone.getCarrierPrivilegesTracker()).thenReturn(mCarrierPrivilegesTracker);
-        when(mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForPackage(PACKAGE_NAME))
+        when(mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForPackage(TEST_PACKAGE_NAME))
                 .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS);
-        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
 
         // port is active, valid iccid, not empty profile and has carrier privileges
-        when(mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForPackage(PACKAGE_NAME))
+        when(mCarrierPrivilegesTracker.getCarrierPrivilegeStatusForPackage(TEST_PACKAGE_NAME))
                 .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
-        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
     }
 
     @Test
+    @EnableCompatChanges({EuiccManager.INACTIVE_PORT_AVAILABILITY_CHECK})
     public void testIsSimPortAvailable_port_inActive() {
         setUiccCardInfos(false, false, true);
         when(mUiccController.getUiccSlots()).thenReturn(new UiccSlot[]{mUiccSlot});
@@ -1350,20 +1353,20 @@ public class EuiccControllerTest extends TelephonyTest {
 
         // Check getRemovableNonEuiccSlot null case
         when(mUiccSlot.isEuicc()).thenReturn(true);
-        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
 
         // Check getRemovableNonEuiccSlot isActive() false case
         when(mUiccSlot.isEuicc()).thenReturn(false);
         when(mUiccSlot.isActive()).thenReturn(false);
-        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
 
         // assert false,multisim is not enabled
         when(mUiccSlot.isEuicc()).thenReturn(false);
         when(mUiccSlot.isActive()).thenReturn(true);
-        when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(PACKAGE_NAME)).thenReturn(
-                TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
+        when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(TEST_PACKAGE_NAME))
+                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
         when(mTelephonyManager.isMultiSimEnabled()).thenReturn(false);
-        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
 
         // assert false, caller does not have carrier privileges
         setHasWriteEmbeddedPermission(false);
@@ -1371,19 +1374,41 @@ public class EuiccControllerTest extends TelephonyTest {
         when(mUiccSlot.getPortList()).thenReturn(new int[] {0});
         when(mSubscriptionManager.getActiveSubscriptionInfoForSimSlotIndex(anyInt())).thenReturn(
                 new SubscriptionInfo.Builder().build());
-        when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(PACKAGE_NAME)).thenReturn(
-                TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS);
-        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+        when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(TEST_PACKAGE_NAME))
+                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS);
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
 
         // assert true, caller does not have carrier privileges but has write_embedded permission
         setHasWriteEmbeddedPermission(true);
-        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
 
         // assert true, caller has carrier privileges
         setHasWriteEmbeddedPermission(false);
-        when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(PACKAGE_NAME)).thenReturn(
-                TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
-        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, PACKAGE_NAME));
+        when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(TEST_PACKAGE_NAME))
+                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
+        assertTrue(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
+    }
+
+    @Test
+    @DisableCompatChanges({EuiccManager.INACTIVE_PORT_AVAILABILITY_CHECK})
+    public void testIsSimPortAvailable_port_inActive_disable_compactChange() {
+        setUiccCardInfos(false, false, true);
+        when(mUiccController.getUiccSlots()).thenReturn(new UiccSlot[]{mUiccSlot});
+        when(mUiccSlot.isRemovable()).thenReturn(true);
+        when(mUiccSlot.isEuicc()).thenReturn(false);
+        when(mUiccSlot.isActive()).thenReturn(true);
+
+        when(mTelephonyManager.isMultiSimEnabled()).thenReturn(true);
+        when(mUiccSlot.getPortList()).thenReturn(new int[] {0});
+        when(mSubscriptionManager.getActiveSubscriptionInfoForSimSlotIndex(anyInt())).thenReturn(
+                new SubscriptionInfo.Builder().build());
+        when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(TEST_PACKAGE_NAME))
+                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
+        setHasWriteEmbeddedPermission(true);
+
+        // Even though all conditions are true, isSimPortAvailable should return false as
+        // compact change is disabled
+        assertFalse(mController.isSimPortAvailable(CARD_ID, 0, TEST_PACKAGE_NAME));
     }
 
 

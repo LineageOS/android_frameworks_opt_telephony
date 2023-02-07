@@ -1951,6 +1951,10 @@ public class EuiccController extends IEuiccController.Stub {
     @Override
     public boolean isSimPortAvailable(int cardId, int portIndex, String callingPackage) {
         mAppOpsManager.checkPackage(Binder.getCallingUid(), callingPackage);
+        // If calling app is targeted for Android U and beyond, check for other conditions
+        // to decide the port availability.
+        boolean shouldCheckConditionsForInactivePort = isCompatChangeEnabled(callingPackage,
+                EuiccManager.INACTIVE_PORT_AVAILABILITY_CHECK);
         // In the event that this check is coming from ONS, WRITE_EMBEDDED_SUBSCRIPTIONS will be
         // required for the case where a port is inactive but could trivially be enabled without
         // requiring user consent.
@@ -1980,6 +1984,9 @@ public class EuiccController extends IEuiccController.Stub {
                         // 3. Caller has carrier privileges on any phone or has
                         // WRITE_EMBEDDED_SUBSCRIPTIONS. The latter covers calls from ONS
                         // which does not have carrier privileges.
+                        if (!shouldCheckConditionsForInactivePort) {
+                            return false;
+                        }
                         boolean hasActiveRemovableNonEuiccSlot = getRemovableNonEuiccSlot() != null
                                 && getRemovableNonEuiccSlot().isActive();
                         boolean hasCarrierPrivileges = mTelephonyManager
