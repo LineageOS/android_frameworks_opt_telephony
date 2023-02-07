@@ -6073,7 +6073,10 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         if (profile == null) return;
 
         int preciseCallState = profile.getPreciseCallState();
-        if (!isAlive(preciseCallState)) return;
+        if (!isAlive(preciseCallState)) {
+            Rlog.i(LOG_TAG, "addConnection not alive, " + preciseCallState);
+            return;
+        }
 
         List<ConferenceParticipant> participants = getConferenceParticipants(c);
         if (participants != null) {
@@ -6083,11 +6086,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     continue;
                 }
                 SrvccConnection srvccConnection = new SrvccConnection(cp, preciseCallState);
+                Rlog.i(LOG_TAG, "addConnection " + srvccConnection);
                 destList.add(srvccConnection);
             }
         } else {
             SrvccConnection srvccConnection =
                     new SrvccConnection(profile.getImsCallProfile(), c, preciseCallState);
+            Rlog.i(LOG_TAG, "addConnection " + srvccConnection);
             destList.add(srvccConnection);
         }
     }

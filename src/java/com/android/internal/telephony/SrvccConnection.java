@@ -32,6 +32,7 @@ import android.text.TextUtils;
 
 import com.android.ims.internal.ConferenceParticipant;
 import com.android.internal.telephony.imsphone.ImsPhoneConnection;
+import com.android.telephony.Rlog;
 
 /**
  * Connection information for SRVCC
@@ -98,6 +99,7 @@ public class SrvccConnection {
     }
 
     public SrvccConnection(ConferenceParticipant cp, @PreciseCallStates int preciseCallState) {
+        Rlog.d(TAG, "initialize with ConferenceParticipant");
         mState = toCallState(preciseCallState);
         mIsMT = cp.getCallDirection() == android.telecom.Call.Details.DIRECTION_INCOMING;
         mNumber = getParticipantAddress(cp.getHandle());
@@ -132,6 +134,7 @@ public class SrvccConnection {
 
     // MT call in alerting or prealerting state
     private void initialize(ImsCallProfile profile) {
+        Rlog.d(TAG, "initialize with ImsCallProfile");
         mIsMT = true;
         mNumber = profile.getCallExtra(ImsCallProfile.EXTRA_OI);
         mName = profile.getCallExtra(ImsCallProfile.EXTRA_CNA);
@@ -142,6 +145,7 @@ public class SrvccConnection {
     }
 
     private void initialize(ImsPhoneConnection c) {
+        Rlog.d(TAG, "initialize with ImsPhoneConnection");
         if (c.isEmergencyCall()) {
             mType = CALL_TYPE_EMERGENCY;
         }
@@ -231,5 +235,26 @@ public class SrvccConnection {
     /** Returns the name presentation */
     public int getNamePresentation() {
         return mNamePresentation;
+    }
+
+    /**
+     * Build a human representation of a connection instance, suitable for debugging.
+     * Don't log personal stuff unless in debug mode.
+     * @return a string representing the internal state of this connection.
+     */
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(" type:").append(getType());
+        sb.append(", state:").append(getState());
+        sb.append(", subState:").append(getSubState());
+        sb.append(", toneType:").append(getRingbackToneType());
+        sb.append(", mpty:").append(isMultiParty());
+        sb.append(", incoming:").append(isIncoming());
+        sb.append(", numberPresentation:").append(getNumberPresentation());
+        sb.append(", number:").append(Rlog.pii(TAG, getNumber()));
+        sb.append(", namePresentation:").append(getNamePresentation());
+        sb.append(", name:").append(Rlog.pii(TAG, getName()));
+        return sb.toString();
     }
 }
