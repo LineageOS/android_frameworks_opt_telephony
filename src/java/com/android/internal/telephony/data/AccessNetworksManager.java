@@ -491,7 +491,7 @@ public class AccessNetworksManager extends Handler {
             b = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId(),
                     CarrierConfigManager
                             .KEY_CARRIER_QUALIFIED_NETWORKS_SERVICE_PACKAGE_OVERRIDE_STRING);
-            if (!b.isEmpty()) {
+            if (b != null && !b.isEmpty()) {
                 // If carrier config overrides it, use the one from carrier config
                 String carrierConfigPackageName = b.getString(CarrierConfigManager
                         .KEY_CARRIER_QUALIFIED_NETWORKS_SERVICE_PACKAGE_OVERRIDE_STRING);
@@ -522,7 +522,7 @@ public class AccessNetworksManager extends Handler {
             b = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId(),
                     CarrierConfigManager
                             .KEY_CARRIER_QUALIFIED_NETWORKS_SERVICE_CLASS_OVERRIDE_STRING);
-            if (!b.isEmpty()) {
+            if (b != null && !b.isEmpty()) {
                 // If carrier config overrides it, use the one from carrier config
                 String carrierConfigClassName = b.getString(CarrierConfigManager
                         .KEY_CARRIER_QUALIFIED_NETWORKS_SERVICE_CLASS_OVERRIDE_STRING);
