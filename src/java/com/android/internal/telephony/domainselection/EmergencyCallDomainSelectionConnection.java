@@ -176,6 +176,15 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void cancelSelection() {
+        logi("cancelSelection");
+        AccessNetworksManager anm = mPhone.getAccessNetworksManager();
+        anm.unregisterForQualifiedNetworksChanged(mHandler);
+        super.cancelSelection();
+    }
+
     /**
      * Returns the attributes required to determine the domain for a telephony service.
      *

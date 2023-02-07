@@ -217,4 +217,11 @@ public class EmergencyCallDomainSelectionConnectionTest extends TelephonyTest {
 
         verify(mConnectionCallback).onSelectionTerminated(eq(ERROR_UNSPECIFIED));
     }
+
+    @Test
+    @SmallTest
+    public void testCancelSelection() throws Exception {
+        mEcDsc.cancelSelection();
+        verify(mAnm).unregisterForQualifiedNetworksChanged(any());
+    }
 }
