@@ -1839,6 +1839,10 @@ public class GsmCdmaCallTracker extends CallTracker {
     }
 
     private boolean isEmcRetryCause(int causeCode) {
+        if (DomainSelectionResolver.getInstance().isDomainSelectionSupported()) {
+            log("isEmcRetryCause AP based domain selection ignores the cause");
+            return false;
+        }
         if (causeCode == CallFailCause.EMC_REDIAL_ON_IMS ||
             causeCode == CallFailCause.EMC_REDIAL_ON_VOWIFI) {
             return true;
