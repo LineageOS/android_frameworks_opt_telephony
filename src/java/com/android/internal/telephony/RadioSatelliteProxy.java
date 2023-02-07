@@ -25,37 +25,26 @@ import android.telephony.Rlog;
  */
 public class RadioSatelliteProxy extends RadioServiceProxy {
     private static final String TAG = "RadioSatelliteProxy";
-    private volatile android.hardware.radio.satellite.IRadioSatellite mRadioSatelliteProxy = null;
+    private volatile android.hardware.radio.satellite.IRadioSatellite mSatelliteProxy = null;
 
     /**
-     * Sets IRadioSatellite as the AIDL implementation for RadioSatelliteProxy.
+     * Sets IRadioSatellite as the AIDL implementation for RadioServiceProxy.
      * @param halVersion Radio HAL version.
-     * @param radioSatellite IRadioSatellite implementation.
+     * @param satellite IRadioSatellite implementation.
      *
      * @return updated HAL version.
      */
     public HalVersion setAidl(HalVersion halVersion,
-            android.hardware.radio.satellite.IRadioSatellite radioSatellite) {
-        mHalVersion = halVersion;
-        mRadioSatelliteProxy = radioSatellite;
-        mIsAidl = true;
-
+            android.hardware.radio.satellite.IRadioSatellite satellite) {
+        HalVersion version = halVersion;
         try {
-            HalVersion newHalVersion;
-            int version = radioSatellite.getInterfaceVersion();
-            switch(version) {
-                default:
-                    newHalVersion = RIL.RADIO_HAL_VERSION_2_0;
-                    break;
-            }
-            Rlog.d(TAG, "AIDL version=" + version + ", halVersion=" + newHalVersion);
-
-            if (mHalVersion.less(newHalVersion)) {
-                mHalVersion = newHalVersion;
-            }
+            version = RIL.getServiceHalVersion(satellite.getInterfaceVersion());
         } catch (RemoteException e) {
             Rlog.e(TAG, "setAidl: " + e);
         }
+        mHalVersion = version;
+        mSatelliteProxy = satellite;
+        mIsAidl = true;
 
         Rlog.d(TAG, "AIDL initialized mHalVersion=" + mHalVersion);
         return mHalVersion;
@@ -66,7 +55,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
      * @return IRadioSatellite implementation.
      */
     public android.hardware.radio.satellite.IRadioSatellite getAidl() {
-        return mRadioSatelliteProxy;
+        return mSatelliteProxy;
     }
 
     /**
@@ -75,7 +64,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
     @Override
     public void clear() {
         super.clear();
-        mRadioSatelliteProxy = null;
+        mSatelliteProxy = null;
     }
 
     /**
@@ -84,7 +73,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
      */
     @Override
     public boolean isEmpty() {
-        return mRadioProxy == null && mRadioSatelliteProxy == null;
+        return mRadioProxy == null && mSatelliteProxy == null;
     }
 
     /**
@@ -95,7 +84,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
     public void responseAcknowledgement() throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mRadioSatelliteProxy.responseAcknowledgement();
+            mSatelliteProxy.responseAcknowledgement();
         }
     }
 
@@ -107,7 +96,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
     public void getCapabilities(int serial) throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mRadioSatelliteProxy.getCapabilities(serial);
+            mSatelliteProxy.getCapabilities(serial);
         }
     }
 
@@ -121,7 +110,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
     public void setPower(int serial, boolean on) throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mRadioSatelliteProxy.setPower(serial, on);
+            mSatelliteProxy.setPower(serial, on);
         }
     }
 
@@ -133,7 +122,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
     public void getPowerState(int serial) throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mRadioSatelliteProxy.getPowerState(serial);
+            mSatelliteProxy.getPowerState(serial);
         }
     }
 
@@ -154,7 +143,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
             int[] features) throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mRadioSatelliteProxy.provisionService(serial, imei, msisdn, imsi, features);
+            mSatelliteProxy.provisionService(serial, imei, msisdn, imsi, features);
         }
     }
 
@@ -167,7 +156,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
     public void addAllowedSatelliteContacts(int serial, String[] contacts) throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mRadioSatelliteProxy.addAllowedSatelliteContacts(serial, contacts);
+            mSatelliteProxy.addAllowedSatelliteContacts(serial, contacts);
         }
     }
 
@@ -181,7 +170,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
             throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mRadioSatelliteProxy.removeAllowedSatelliteContacts(serial, contacts);
+            mSatelliteProxy.removeAllowedSatelliteContacts(serial, contacts);
         }
     }
 
@@ -198,7 +187,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
             double longitude) throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mRadioSatelliteProxy.sendMessages(serial, messages, destination, latitude, longitude);
+            mSatelliteProxy.sendMessages(serial, messages, destination, latitude, longitude);
         }
     }
 
@@ -210,7 +199,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
     public void getPendingMessages(int serial) throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mRadioSatelliteProxy.getPendingMessages(serial);
+            mSatelliteProxy.getPendingMessages(serial);
         }
     }
 
@@ -222,7 +211,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
     public void getSatelliteMode(int serial) throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mRadioSatelliteProxy.getSatelliteMode(serial);
+            mSatelliteProxy.getSatelliteMode(serial);
         }
     }
 
@@ -236,7 +225,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
     public void setIndicationFilter(int serial, int filterBitmask) throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mRadioSatelliteProxy.setIndicationFilter(serial, filterBitmask);
+            mSatelliteProxy.setIndicationFilter(serial, filterBitmask);
         }
     }
 
@@ -248,7 +237,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
     public void startSendingSatellitePointingInfo(int serial) throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mRadioSatelliteProxy.startSendingSatellitePointingInfo(serial);
+            mSatelliteProxy.startSendingSatellitePointingInfo(serial);
         }
     }
 
@@ -260,7 +249,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
     public void stopSendingSatellitePointingInfo(int serial) throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mRadioSatelliteProxy.stopSendingSatellitePointingInfo(serial);
+            mSatelliteProxy.stopSendingSatellitePointingInfo(serial);
         }
     }
 
@@ -272,7 +261,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
     public void getMaxCharactersPerTextMessage(int serial) throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mRadioSatelliteProxy.getMaxCharactersPerTextMessage(serial);
+            mSatelliteProxy.getMaxCharactersPerTextMessage(serial);
         }
     }
 
@@ -284,7 +273,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
     public void getTimeForNextSatelliteVisibility(int serial) throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
-            mRadioSatelliteProxy.getTimeForNextSatelliteVisibility(serial);
+            mSatelliteProxy.getTimeForNextSatelliteVisibility(serial);
         }
     }
 }
