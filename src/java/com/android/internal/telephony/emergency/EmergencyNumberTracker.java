@@ -373,7 +373,7 @@ public class EmergencyNumberTracker extends Handler {
 
     @NonNull
     private PersistableBundle getCarrierConfigSubset(String key) {
-        PersistableBundle bundle = new PersistableBundle();
+        PersistableBundle bundle = null;
 
         if (mPhone != null) {
             CarrierConfigManager ccm =
@@ -386,7 +386,7 @@ public class EmergencyNumberTracker extends Handler {
                 loge("CarrierConfigLoader is not available.");
             }
         }
-        return bundle;
+        return bundle != null ? bundle : new PersistableBundle();
     }
 
     private String getInitialCountryIso() {
