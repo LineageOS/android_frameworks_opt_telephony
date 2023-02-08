@@ -45,29 +45,15 @@ public class RadioSimProxy extends RadioServiceProxy {
      * @return updated HAL version
      */
     public HalVersion setAidl(HalVersion halVersion, android.hardware.radio.sim.IRadioSim sim) {
-        mHalVersion = halVersion;
-        mSimProxy = sim;
-        mIsAidl = true;
-
+        HalVersion version = halVersion;
         try {
-            HalVersion newHalVersion;
-            int version = sim.getInterfaceVersion();
-            switch(version) {
-                case 2:
-                    newHalVersion = RIL.RADIO_HAL_VERSION_2_1;
-                    break;
-                default:
-                    newHalVersion = RIL.RADIO_HAL_VERSION_2_0;
-                    break;
-            }
-            Rlog.d(TAG, "AIDL version=" + version + ", halVersion=" + newHalVersion);
-
-            if (mHalVersion.less(newHalVersion)) {
-                mHalVersion = newHalVersion;
-            }
+            version = RIL.getServiceHalVersion(sim.getInterfaceVersion());
         } catch (RemoteException e) {
             Rlog.e(TAG, "setAidl: " + e);
         }
+        mHalVersion = version;
+        mSimProxy = sim;
+        mIsAidl = true;
 
         Rlog.d(TAG, "AIDL initialized mHalVersion=" + mHalVersion);
         return mHalVersion;

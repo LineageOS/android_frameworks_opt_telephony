@@ -22,6 +22,7 @@ import static android.telephony.AccessNetworkConstants.TRANSPORT_TYPE_WWAN;
 import static android.telephony.DomainSelectionService.SELECTOR_TYPE_CALLING;
 import static android.telephony.NetworkRegistrationInfo.DOMAIN_PS;
 
+import static com.android.internal.telephony.PhoneConstants.DOMAIN_NON_3GPP_PS;
 import static com.android.internal.telephony.emergency.EmergencyConstants.MODE_EMERGENCY_WLAN;
 import static com.android.internal.telephony.emergency.EmergencyConstants.MODE_EMERGENCY_WWAN;
 
@@ -94,7 +95,7 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
         }
 
         CompletableFuture<Integer> future = getCompletableFuture();
-        if (future != null) future.complete(DOMAIN_PS);
+        if (future != null) future.complete(DOMAIN_NON_3GPP_PS);
     }
 
     /** {@inheritDoc} */
@@ -164,9 +165,24 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
                 + ", current=" + preferredTransport);
         if (preferredTransport == mPreferredTransportType) {
             CompletableFuture<Integer> future = getCompletableFuture();
-            if (future != null) future.complete(DOMAIN_PS);
+            if (future != null) {
+                if (preferredTransport == TRANSPORT_TYPE_WLAN) {
+                    future.complete(DOMAIN_NON_3GPP_PS);
+                } else {
+                    future.complete(DOMAIN_PS);
+                }
+            }
             anm.unregisterForQualifiedNetworksChanged(mHandler);
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void cancelSelection() {
+        logi("cancelSelection");
+        AccessNetworksManager anm = mPhone.getAccessNetworksManager();
+        anm.unregisterForQualifiedNetworksChanged(mHandler);
+        super.cancelSelection();
     }
 
     /**

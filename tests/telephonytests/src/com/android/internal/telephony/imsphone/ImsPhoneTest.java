@@ -95,6 +95,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.imsphone.ImsPhone.SS;
 
@@ -119,6 +120,7 @@ public class ImsPhoneTest extends TelephonyTest {
     private ImsPhoneCall mBackgroundCall;
     private ImsPhoneCall mRingingCall;
     private Handler mTestHandler;
+    private DomainSelectionResolver mDomainSelectionResolver;
     Connection mConnection;
     ImsUtInterface mImsUtInterface;
 
@@ -144,6 +146,9 @@ public class ImsPhoneTest extends TelephonyTest {
         mTestHandler = mock(Handler.class);
         mConnection = mock(Connection.class);
         mImsUtInterface = mock(ImsUtInterface.class);
+        mDomainSelectionResolver = mock(DomainSelectionResolver.class);
+        doReturn(false).when(mDomainSelectionResolver).isDomainSelectionSupported();
+        DomainSelectionResolver.setDomainSelectionResolver(mDomainSelectionResolver);
 
         mImsCT.mForegroundCall = mForegroundCall;
         mImsCT.mBackgroundCall = mBackgroundCall;
@@ -187,6 +192,7 @@ public class ImsPhoneTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mImsPhoneUT = null;
         mBundle = null;
+        DomainSelectionResolver.setDomainSelectionResolver(null);
         super.tearDown();
     }
 

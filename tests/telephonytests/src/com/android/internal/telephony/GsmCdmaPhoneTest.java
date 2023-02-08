@@ -82,6 +82,7 @@ import android.telephony.SmsCbMessage;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
@@ -1167,6 +1168,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     @SmallTest
     public void testGetEmptyIccCard() {
         doReturn(null).when(mUiccController).getUiccProfileForPhone(anyInt());
+        doReturn(null).when(mUiccController).getUiccSlotForPhone(anyInt());
 
         IccCard iccCard = mPhoneUT.getIccCard();
 
@@ -2311,6 +2313,33 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mPhoneUT.dial(TEST_EMERGENCY_NUMBER, dialArgs);
 
         verify(mImsPhone).dial(anyString(), any(PhoneInternalInterface.DialArgs.class));
+
+        extras = dialArgs.intentExtras;
+
+        assertFalse(extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE));
+    }
+
+    @Test
+    public void testDomainSelectionEmergencyCallNon3GppPs() throws CallStateException {
+        setupEmergencyCallScenario(false /* USE_ONLY_DIALED_SIM_ECC_LIST */,
+                false /* isEmergencyOnDialedSim */);
+
+        doReturn(false).when(mImsPhone).isImsAvailable();
+
+        Bundle extras = new Bundle();
+        extras.putInt(PhoneConstants.EXTRA_DIAL_DOMAIN, PhoneConstants.DOMAIN_NON_3GPP_PS);
+        ImsPhone.ImsDialArgs dialArgs = new ImsPhone.ImsDialArgs.Builder()
+                .setIntentExtras(extras)
+                .build();
+        mPhoneUT.dial(TEST_EMERGENCY_NUMBER, dialArgs);
+
+        verify(mImsPhone).dial(anyString(), any(PhoneInternalInterface.DialArgs.class));
+
+        extras = dialArgs.intentExtras;
+
+        assertTrue(extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE));
+        assertEquals(String.valueOf(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN),
+                extras.getString(ImsCallProfile.EXTRA_CALL_RAT_TYPE));
     }
 
     @Test
