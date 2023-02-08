@@ -41,26 +41,15 @@ public class RadioMessagingProxy extends RadioServiceProxy {
      */
     public HalVersion setAidl(HalVersion halVersion,
             android.hardware.radio.messaging.IRadioMessaging messaging) {
-        mHalVersion = halVersion;
-        mMessagingProxy = messaging;
-        mIsAidl = true;
-
+        HalVersion version = halVersion;
         try {
-            HalVersion newHalVersion;
-            int version = messaging.getInterfaceVersion();
-            switch(version) {
-                default:
-                    newHalVersion = RIL.RADIO_HAL_VERSION_2_0;
-                    break;
-            }
-            Rlog.d(TAG, "AIDL version=" + version + ", halVersion=" + newHalVersion);
-
-            if (mHalVersion.less(newHalVersion)) {
-                mHalVersion = newHalVersion;
-            }
+            version = RIL.getServiceHalVersion(messaging.getInterfaceVersion());
         } catch (RemoteException e) {
             Rlog.e(TAG, "setAidl: " + e);
         }
+        mHalVersion = version;
+        mMessagingProxy = messaging;
+        mIsAidl = true;
 
         Rlog.d(TAG, "AIDL initialized mHalVersion=" + mHalVersion);
         return mHalVersion;

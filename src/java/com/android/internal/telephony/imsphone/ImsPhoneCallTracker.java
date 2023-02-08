@@ -2119,6 +2119,11 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     conn.setPulledDialogId(dialogId);
                 }
 
+                if (intentExtras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE)) {
+                    logi("dialInternal containing EXTRA_CALL_RAT_TYPE, "
+                            +  intentExtras.getString(ImsCallProfile.EXTRA_CALL_RAT_TYPE));
+                }
+
                 // Pack the OEM-specific call extras.
                 profile.mCallExtras.putBundle(ImsCallProfile.EXTRA_OEM_EXTRAS, intentExtras);
 

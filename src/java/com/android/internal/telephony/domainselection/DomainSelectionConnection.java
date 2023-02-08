@@ -341,8 +341,10 @@ public class DomainSelectionConnection {
     }
 
     private void onCancel(boolean resetScan) {
-        mIsWaitingForScanResult = false;
-        mPhone.cancelEmergencyNetworkScan(resetScan, null);
+        if (mIsWaitingForScanResult) {
+            mIsWaitingForScanResult = false;
+            mPhone.cancelEmergencyNetworkScan(resetScan, null);
+        }
     }
 
     /**
@@ -390,7 +392,7 @@ public class DomainSelectionConnection {
             mPhone.unregisterForEmergencyNetworkScan(mHandler);
             mRegisteredRegistrant = false;
         }
-        if (mIsWaitingForScanResult) onCancel(true);
+        onCancel(true);
         mController.removeConnection(this);
         if (mLooper != null) mLooper.quitSafely();
         mLooper = null;
