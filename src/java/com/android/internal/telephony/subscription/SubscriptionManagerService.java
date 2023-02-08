@@ -896,6 +896,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                             SubscriptionManager.INVALID_SIM_SLOT_INDEX);
                     mSlotIndexToSubId.remove(simSlotIndex);
                 });
+        updateGroupDisabled();
     }
 
     /**
@@ -1321,6 +1322,7 @@ public class SubscriptionManagerService extends ISub.Stub {
             MultiSimSettingController.getInstance().notifyAllSubscriptionLoaded();
         }
 
+        updateGroupDisabled();
         updateDefaultSubId();
     }
 
@@ -1463,6 +1465,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                         + groupUuidString);
             }
         }
+
+        updateGroupDisabled();
 
         final int preferredUsageSetting = config.getInt(
                 CarrierConfigManager.KEY_CELLULAR_USAGE_SETTING_INT,
@@ -1875,6 +1879,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                 }
 
                 int subId = insertSubscriptionInfo(iccId, slotIndex, displayName, subscriptionType);
+                updateGroupDisabled();
                 mSlotIndexToSubId.put(slotIndex, subId);
             } else {
                 // Record already exists.
@@ -2189,6 +2194,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                 mSubscriptionDatabaseManager.setGroupUuid(subId, uuidString);
                 mSubscriptionDatabaseManager.setGroupOwner(subId, callingPackage);
             }
+            updateGroupDisabled();
 
             MultiSimSettingController.getInstance().notifySubscriptionGroupChanged(groupUUID);
             return groupUUID;
@@ -2380,6 +2386,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                             subInfo.getSubscriptionId(), callingPackage);
                 }
             }
+
+            updateGroupDisabled();
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
@@ -2439,6 +2447,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                 mSubscriptionDatabaseManager.setGroupOwner(subId, callingPackage);
             }
 
+            updateGroupDisabled();
             MultiSimSettingController.getInstance().notifySubscriptionGroupChanged(groupUuid);
             logl("addSubscriptionsIntoGroup: add subs " + Arrays.toString(subIdList)
                     + " to the group.");
@@ -3685,6 +3694,28 @@ public class SubscriptionManagerService extends ISub.Stub {
     private String getCallingPackage() {
         return Arrays.toString(mContext.getPackageManager().getPackagesForUid(
                 Binder.getCallingUid()));
+    }
+
+    /**
+     * Update the {@link SubscriptionInfo#isGroupDisabled()} bit for the opportunistic
+     * subscriptions.
+     *
+     * If all primary (non-opportunistic) subscriptions in the group are deactivated
+     * (unplugged pSIM or deactivated eSIM profile), we should disable this opportunistic
+     * subscriptions.
+     */
+    @VisibleForTesting
+    public void updateGroupDisabled() {
+        List<SubscriptionInfo> activeSubscriptions = getActiveSubscriptionInfoList(
+                mContext.getOpPackageName(), mContext.getFeatureId());
+        for (SubscriptionInfo oppSubInfo : getOpportunisticSubscriptions(
+                mContext.getOpPackageName(), mContext.getFeatureId())) {
+            boolean groupDisabled = activeSubscriptions.stream()
+                    .noneMatch(subInfo -> !subInfo.isOpportunistic()
+                            && Objects.equals(oppSubInfo.getGroupUuid(), subInfo.getGroupUuid()));
+            mSubscriptionDatabaseManager.setGroupDisabled(
+                    oppSubInfo.getSubscriptionId(), groupDisabled);
+        }
     }
 
     /**

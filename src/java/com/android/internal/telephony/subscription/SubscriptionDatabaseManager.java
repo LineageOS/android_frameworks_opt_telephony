@@ -1221,8 +1221,8 @@ public class SubscriptionDatabaseManager extends Handler {
         try {
             SubscriptionInfoInternal subInfoCache = mAllSubscriptionInfoInternalCache.get(subId);
             if (subInfoCache == null) {
-                throw new IllegalArgumentException("Subscription doesn't exist. subId=" + subId
-                        + ", columnName=cardId");
+                throw new IllegalArgumentException("setCardId: Subscription doesn't exist. subId="
+                        + subId);
             }
             mAllSubscriptionInfoInternalCache.put(subId,
                     new SubscriptionInfoInternal.Builder(subInfoCache)
@@ -1764,6 +1764,36 @@ public class SubscriptionDatabaseManager extends Handler {
     }
 
     /**
+     * Set whether group of the subscription is disabled. This is only useful if it's a grouped
+     * opportunistic subscription. In this case, if all primary (non-opportunistic)
+     * subscriptions in the group are deactivated (unplugged pSIM or deactivated eSIM profile),
+     * we should disable this opportunistic subscription.
+     *
+     * @param subId Subscription id.
+     * @param isGroupDisabled if group of the subscription is disabled.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
+     */
+    public void setGroupDisabled(int subId, boolean isGroupDisabled) {
+        // group disabled does not have a corresponding SimInfo column. So we only update the cache.
+
+        // Grab the write lock so no other threads can read or write the cache.
+        mReadWriteLock.writeLock().lock();
+        try {
+            SubscriptionInfoInternal subInfoCache = mAllSubscriptionInfoInternalCache.get(subId);
+            if (subInfoCache == null) {
+                throw new IllegalArgumentException("setGroupDisabled: Subscription doesn't exist. "
+                        + "subId=" + subId);
+            }
+            mAllSubscriptionInfoInternalCache.put(subId,
+                    new SubscriptionInfoInternal.Builder(subInfoCache)
+                            .setGroupDisabled(isGroupDisabled).build());
+        } finally {
+            mReadWriteLock.writeLock().unlock();
+        }
+    }
+
+    /**
      * Load the entire database into the cache.
      */
     private void loadFromDatabase() {
@@ -2004,12 +2034,6 @@ public class SubscriptionDatabaseManager extends Handler {
         }
     }
 
-    /**
-     * @return {@code true} if the database has been loaded into the cache.
-     */
-    public boolean isDatabaseLoaded() {
-        return mDatabaseLoaded;
-    }
     /**
      * Log debug messages.
      *
