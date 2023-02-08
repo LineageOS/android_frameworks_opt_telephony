@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony.emergency;
 
-import android.annotation.NonNull;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -166,7 +165,9 @@ public class EmergencyNumberTracker extends Handler {
             CarrierConfigManager configMgr = (CarrierConfigManager)
                     mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
             if (configMgr != null) {
-                PersistableBundle b = getCarrierConfigSubset(
+                PersistableBundle b = CarrierConfigManager.getCarrierConfigSubset(
+                        mPhone.getContext(),
+                        mPhone.getSubId(),
                         CarrierConfigManager.KEY_EMERGENCY_NUMBER_PREFIX_STRING_ARRAY);
                 if (!b.isEmpty()) {
                     mEmergencyNumberPrefix = b.getStringArray(
@@ -332,7 +333,9 @@ public class EmergencyNumberTracker extends Handler {
             if (slotIndex != mPhone.getPhoneId()) return;
 
             PersistableBundle b =
-                    getCarrierConfigSubset(
+                    CarrierConfigManager.getCarrierConfigSubset(
+                            mPhone.getContext(),
+                            mPhone.getSubId(),
                             CarrierConfigManager.KEY_EMERGENCY_NUMBER_PREFIX_STRING_ARRAY);
             if (!b.isEmpty()) {
                 String[] emergencyNumberPrefix =
@@ -346,24 +349,6 @@ public class EmergencyNumberTracker extends Handler {
         } else {
             loge("onCarrierConfigurationChanged mPhone is null.");
         }
-    }
-
-    @NonNull
-    private PersistableBundle getCarrierConfigSubset(String key) {
-        PersistableBundle bundle = null;
-
-        if (mPhone != null) {
-            CarrierConfigManager ccm =
-                    mPhone.getContext().getSystemService(CarrierConfigManager.class);
-            try {
-                if (ccm != null) {
-                    bundle = ccm.getConfigForSubId(mPhone.getPhoneId(), key);
-                }
-            } catch (RuntimeException e) {
-                loge("CarrierConfigLoader is not available.");
-            }
-        }
-        return bundle != null ? bundle : new PersistableBundle();
     }
 
     private String getInitialCountryIso() {

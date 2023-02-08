@@ -571,7 +571,9 @@ public class DataServiceManager extends Handler {
         // Read package name from resource overlay
         packageName = mPhone.getContext().getResources().getString(resourceId);
 
-        PersistableBundle b = getCarrierConfigSubset(carrierConfig);
+        PersistableBundle b =
+                CarrierConfigManager.getCarrierConfigSubset(
+                        mPhone.getContext(), mPhone.getSubId(), carrierConfig);
         if (!b.isEmpty() && !TextUtils.isEmpty(b.getString(carrierConfig))) {
             // If carrier config overrides it, use the one from carrier config
             packageName = b.getString(carrierConfig, packageName);
@@ -619,24 +621,15 @@ public class DataServiceManager extends Handler {
         // Read package name from resource overlay
         className = mPhone.getContext().getResources().getString(resourceId);
 
-        PersistableBundle b = getCarrierConfigSubset(carrierConfig);
+        PersistableBundle b =
+                CarrierConfigManager.getCarrierConfigSubset(
+                        mPhone.getContext(), mPhone.getSubId(), carrierConfig);
         if (!b.isEmpty() && !TextUtils.isEmpty(b.getString(carrierConfig))) {
             // If carrier config overrides it, use the one from carrier config
             className = b.getString(carrierConfig, className);
         }
 
         return className;
-    }
-
-    @NonNull
-    private PersistableBundle getCarrierConfigSubset(String key) {
-        PersistableBundle configs = null;
-        try {
-            configs = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId(), key);
-        } catch (RuntimeException e) {
-            loge("CarrierConfigLoader is not available.");
-        }
-        return configs != null ? configs : new PersistableBundle();
     }
 
     private void sendCompleteMessage(Message msg, @DataServiceCallback.ResultCode int code) {
