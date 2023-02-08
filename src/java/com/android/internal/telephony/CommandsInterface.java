@@ -3171,7 +3171,7 @@ public interface CommandsInterface {
     default void isSatelliteCommunicationAllowedForCurrentLocation(Message result) {}
 
     /**
-     * Get the time after which the satellite will next be visible.
+     * Get the time after which the satellite will be visible.
      *
      * @param result Message that will be sent back to the requester.
      */
