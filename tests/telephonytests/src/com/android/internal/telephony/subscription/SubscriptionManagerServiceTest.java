@@ -88,6 +88,7 @@ import android.telephony.UiccAccessRule;
 import android.test.mock.MockContentResolver;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+import android.util.ArraySet;
 import android.util.Base64;
 
 import com.android.internal.telephony.ContextFixture;
@@ -134,6 +135,8 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     private SubscriptionManagerServiceCallback mMockedSubscriptionManagerServiceCallback;
     private EuiccController mEuiccController;
 
+    private Set<Integer> mActiveSubs = new ArraySet<>();
+
     @Rule
     public TestRule compatChangeRule = new PlatformCompatChangeRule();
 
@@ -155,6 +158,8 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 SubscriptionManagerServiceCallback.class);
         doReturn(FAKE_ICCID1).when(mUiccCard).getCardId();
         doReturn(FAKE_ICCID1).when(mUiccPort).getIccId();
+
+        doReturn(new int[0]).when(mSubscriptionManager).getCompleteActiveSubscriptionIdList();
 
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
                 Telephony.Carriers.CONTENT_URI.getAuthority(), mSubscriptionProvider);
@@ -250,6 +255,15 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
             processAllMessages();
             verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(subId));
             Mockito.clearInvocations(mMockedSubscriptionManagerServiceCallback);
+
+            if (subInfo.getSimSlotIndex() >= 0) {
+                mActiveSubs.add(subId);
+            } else {
+                mActiveSubs.remove(subId);
+            }
+
+            doReturn(mActiveSubs.stream().mapToInt(i->i).toArray()).when(mSubscriptionManager)
+                    .getCompleteActiveSubscriptionIdList();
             return subId;
         } catch (Exception e) {
             fail("Failed to insert subscription. e=" + e);
@@ -373,7 +387,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     @Test
     public void testGetAllSubInfoList() {
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
-        doReturn(new int[]{1, 2}).when(mSubscriptionManager).getCompleteActiveSubscriptionIdList();
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
 
@@ -442,8 +455,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     @Test
     @EnableCompatChanges({SubscriptionManagerService.REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID})
     public void testGetSubscriptionsInGroup() {
-        doReturn(new int[]{1, 2}).when(mSubscriptionManager).getCompleteActiveSubscriptionIdList();
-
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         SubscriptionInfoInternal anotherSubInfo =
                 new SubscriptionInfoInternal.Builder(FAKE_SUBSCRIPTION_INFO2)
@@ -659,7 +670,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @Test
     public void testGetActiveSubscriptionInfoList() {
-        doReturn(new int[]{1}).when(mSubscriptionManager).getCompleteActiveSubscriptionIdList();
         // Grant MODIFY_PHONE_STATE permission for insertion.
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
@@ -837,7 +847,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @Test
     public void testGetActiveSubInfoCount() {
-        doReturn(new int[]{1, 2}).when(mSubscriptionManager).getCompleteActiveSubscriptionIdList();
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
 
@@ -1003,7 +1012,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @Test
     public void testSetUsageSetting() {
-        doReturn(new int[]{1}).when(mSubscriptionManager).getCompleteActiveSubscriptionIdList();
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
 
         // Should fail without MODIFY_PHONE_STATE
@@ -1048,7 +1056,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @Test
     public void testSetOpportunistic() {
-        doReturn(new int[]{1}).when(mSubscriptionManager).getCompleteActiveSubscriptionIdList();
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
 
         // Should fail without MODIFY_PHONE_STATE
@@ -1791,5 +1798,15 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(subInfo.areUiccApplicationsEnabled()).isTrue();
         assertThat(subInfo.getAllowedNetworkTypesForReasons()).isEqualTo("user="
                 + RadioAccessFamily.getRafFromNetworkType(RILConstants.PREFERRED_NETWORK_MODE));
+    }
+
+    @Test
+    public void testGroupDisable() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        insertSubscription(new SubscriptionInfoInternal.Builder(FAKE_SUBSCRIPTION_INFO2)
+                .setGroupUuid(FAKE_UUID1).build());
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(2).isGroupDisabled())
+                .isFalse();
     }
 }
