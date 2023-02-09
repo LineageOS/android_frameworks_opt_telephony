@@ -235,6 +235,13 @@ public class SimResponse extends IRadioSimResponse.Stub {
 
     /**
      * @param responseInfo Response info struct containing response type, serial no. and error
+     */
+    public void iccCloseLogicalChannelWithSessionInfoResponse(RadioResponseInfo responseInfo) {
+        RadioResponse.responseVoid(HAL_SERVICE_SIM, mRil, responseInfo);
+    }
+
+    /**
+     * @param responseInfo Response info struct containing response type, serial no. and error
      * @param iccIo ICC IO operation response as defined by IccIoResult
      */
     public void iccIoForAppResponse(RadioResponseInfo responseInfo,
