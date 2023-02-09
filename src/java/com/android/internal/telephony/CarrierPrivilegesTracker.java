@@ -49,8 +49,6 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.Process;
-import android.os.Registrant;
-import android.os.RegistrantList;
 import android.os.SystemClock;
 import android.os.UserHandle;
 import android.os.UserManager;
@@ -64,7 +62,6 @@ import android.telephony.UiccAccessRule;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.ArraySet;
-import android.util.IntArray;
 import android.util.LocalLog;
 import android.util.Pair;
 
@@ -128,18 +125,6 @@ public class CarrierPrivilegesTracker extends Handler {
                     | PackageManager.MATCH_HIDDEN_UNTIL_INSTALLED_COMPONENTS;
 
     /**
-     * Action to register a Registrant with this Tracker.
-     * obj: Registrant that will be notified of Carrier Privileged UID changes.
-     */
-    private static final int ACTION_REGISTER_LISTENER = 1;
-
-    /**
-     * Action to unregister a Registrant with this Tracker.
-     * obj: Handler used by the Registrant that will be removed.
-     */
-    private static final int ACTION_UNREGISTER_LISTENER = 2;
-
-    /**
      * Action for tracking when the Phone's SIM state changes.
      * arg1: slotId that this Action applies to
      * arg2: simState reported by this Broadcast
@@ -189,7 +174,6 @@ public class CarrierPrivilegesTracker extends Handler {
     private final TelephonyRegistryManager mTelephonyRegistryManager;
 
     @NonNull private final LocalLog mLocalLog = new LocalLog(64);
-    @NonNull private final RegistrantList mRegistrantList = new RegistrantList();
     // Stores rules for Carrier Config-loaded rules
     @NonNull private final List<UiccAccessRule> mCarrierConfigRules = new ArrayList<>();
     // Stores rules for SIM-loaded rules.
@@ -381,14 +365,6 @@ public class CarrierPrivilegesTracker extends Handler {
     @Override
     public void handleMessage(Message msg) {
         switch (msg.what) {
-            case ACTION_REGISTER_LISTENER: {
-                handleRegisterListener((Registrant) msg.obj);
-                break;
-            }
-            case ACTION_UNREGISTER_LISTENER: {
-                handleUnregisterListener((Handler) msg.obj);
-                break;
-            }
             case ACTION_SIM_STATE_UPDATED: {
                 handleSimStateChanged(msg.arg1, msg.arg2);
                 break;
@@ -425,23 +401,6 @@ public class CarrierPrivilegesTracker extends Handler {
                 break;
             }
         }
-    }
-
-    private void handleRegisterListener(@NonNull Registrant registrant) {
-        mRegistrantList.add(registrant);
-        mPrivilegedPackageInfoLock.readLock().lock();
-        try {
-            // Old registrant callback still takes int[] as parameter, need conversion here
-            int[] uids = intSetToArray(mPrivilegedPackageInfo.mUids);
-            registrant.notifyResult(
-                    Arrays.copyOf(uids, uids.length));
-        } finally {
-            mPrivilegedPackageInfoLock.readLock().unlock();
-        }
-    }
-
-    private void handleUnregisterListener(@NonNull Handler handler) {
-        mRegistrantList.remove(handler);
     }
 
     private void handleCarrierConfigUpdated(int subId, int slotIndex) {
@@ -706,12 +665,6 @@ public class CarrierPrivilegesTracker extends Handler {
 
         mPrivilegedPackageInfoLock.readLock().lock();
         try {
-            // The obsoleted callback only care about UIDs
-            if (carrierPrivilegesUidsChanged) {
-                int[] uids = intSetToArray(mPrivilegedPackageInfo.mUids);
-                mRegistrantList.notifyResult(Arrays.copyOf(uids, uids.length));
-            }
-
             if (carrierPrivilegesPackageNamesChanged || carrierPrivilegesUidsChanged) {
                 mTelephonyRegistryManager.notifyCarrierPrivilegesChanged(
                         mPhone.getPhoneId(),
@@ -854,33 +807,6 @@ public class CarrierPrivilegesTracker extends Handler {
                                     e -> "pkg(" + Rlog.pii(TAG, e.getKey()) + ")=" + e.getValue()));
         }
         pw.println("mClearUiccRulesUptimeMillis: " + mClearUiccRulesUptimeMillis);
-    }
-
-    /**
-     * Registers the given Registrant with this tracker.
-     *
-     * <p>After being registered, the Registrant will be notified with the current Carrier
-     * Privileged UIDs for this Phone.
-     *
-     * @deprecated Use {@link TelephonyManager#registerCarrierPrivilegesCallback} instead, which
-     *     also provides package names
-     *     <p>TODO(b/211658797) migrate callers, then delete all Registrant logic from CPT
-     */
-    @Deprecated
-    public void registerCarrierPrivilegesListener(
-            @NonNull Handler h, int what, @Nullable Object obj) {
-        sendMessage(obtainMessage(ACTION_REGISTER_LISTENER, new Registrant(h, what, obj)));
-    }
-
-    /**
-     * Unregisters the given listener with this tracker.
-     *
-     * @deprecated Use {@link TelephonyManager#unregisterCarrierPrivilegesCallback} instead
-     *     <p>TODO(b/211658797) migrate callers, then delete all Registrant logic from CPT
-     */
-    @Deprecated
-    public void unregisterCarrierPrivilegesListener(@NonNull Handler handler) {
-        sendMessage(obtainMessage(ACTION_UNREGISTER_LISTENER, handler));
     }
 
     /**
@@ -1072,12 +998,5 @@ public class CarrierPrivilegesTracker extends Handler {
         return carrierServicePackageName == null
                 ? new Pair<>(null, Process.INVALID_UID)
                 : new Pair<>(carrierServicePackageName, getPackageUid(carrierServicePackageName));
-    }
-
-    @NonNull
-    private static int[] intSetToArray(@NonNull Set<Integer> intSet) {
-        IntArray converter = new IntArray(intSet.size());
-        intSet.forEach(converter::add);
-        return converter.toArray();
     }
 }
