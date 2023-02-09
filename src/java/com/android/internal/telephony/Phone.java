@@ -5321,6 +5321,60 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mCi.unregisterForSatelliteMessagesTransferComplete(h);
     }
 
+    /**
+     * Provision the subscription with a satellite provider. This is needed to register the
+     * subscription if the provider allows dynamic registration.
+     *
+     * @param result Callback message to receive the result.
+     * @param imei IMEI of the SIM associated with the satellite modem.
+     * @param msisdn MSISDN of the SIM associated with the satellite modem.
+     * @param imsi IMSI of the SIM associated with the satellite modem.
+     * @param features List of features to be provisioned.
+     */
+    public void provisionSatelliteService(Message result, String imei, String msisdn, String imsi,
+            int[] features) {
+        mCi.provisionSatelliteService(result, imei, msisdn, imsi, features);
+    }
+
+    /**
+     * Cancel the ongoing provision satellite request of a subscription.
+     *
+     * @param result Callback message to receive the result.
+     * @param imsi IMSI of the subscription whose provision request will be cancelled.
+     */
+    public void cancelProvisionSatelliteService(Message result, String imsi) {
+        //TODO (b/266126070): add implementation.
+    }
+
+    /**
+     * Register for a satellite provision state changed event.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForSatelliteProvisionStateChanged(Handler h, int what, Object obj) {
+        mCi.registerForSatelliteProvisionStateChanged(h, what, obj);
+    }
+
+    /**
+     * Unregister for a satellite provision state changed event.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForSatelliteProvisionStateChanged(Handler h) {
+        mCi.unregisterForSatelliteProvisionStateChanged(h);
+    }
+
+    /**
+     * Get the list of provisioned satellite features.
+     *
+     * @param result Callback message to receive the result.
+     */
+    public void getProvisionedSatelliteFeatures(Message result) {
+        //TODO (b/266126070): add implementation.
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Phone: subId=" + getSubId());
         pw.println(" mPhoneId=" + mPhoneId);
