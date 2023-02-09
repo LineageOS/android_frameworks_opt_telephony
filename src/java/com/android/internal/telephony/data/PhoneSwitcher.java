@@ -658,7 +658,7 @@ public class PhoneSwitcher extends Handler {
     public void handleMessage(Message msg) {
         switch (msg.what) {
             case EVENT_SUBSCRIPTION_CHANGED: {
-                onEvaluate(REQUESTS_UNCHANGED, "subChanged");
+                onEvaluate(REQUESTS_UNCHANGED, "subscription changed");
                 break;
             }
             case EVENT_PRIMARY_DATA_SUB_CHANGED: {
@@ -1070,6 +1070,10 @@ public class PhoneSwitcher extends Handler {
                 sb.append(" phone[").append(i).append("] ").append(mPhoneSubscriptions[i]);
                 sb.append("->").append(sub);
                 mPhoneSubscriptions[i] = sub;
+                // Listen to IMS radio tech change for new sub
+                if (SubscriptionManager.isValidSubscriptionId(sub)) {
+                    registerForImsRadioTechChange(mContext, i);
+                }
                 diffDetected = true;
             }
         }
