@@ -73,6 +73,7 @@ import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
+import android.telephony.satellite.SatelliteDatagram;
 import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Log;
@@ -5478,6 +5479,15 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void pollPendingSatelliteDatagrams(Message result) {
         //mCi.pollPendingSatelliteDatagrams(result);
+    }
+
+    /**
+     * Send datagram over satellite.
+     * @param result - message object which informs if the request is successful or not
+     * @param datagram - datagram to send over satellite
+     */
+    public void sendSatelliteDatagram(Message result, SatelliteDatagram datagram) {
+        //mCi.sendSatelliteDatagram(result, datagram, longitude, latitude);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
