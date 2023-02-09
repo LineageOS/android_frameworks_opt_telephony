@@ -3050,6 +3050,13 @@ public interface CommandsInterface {
     default void getSatellitePowerState(Message result) {}
 
     /**
+     * Check whether satellite modem is supported by the device.
+     *
+     * @param result Message that will be sent back to the requester
+     */
+    default void isSatelliteSupported(Message result) {}
+
+    /**
      * Provision the subscription with a satellite provider. This is needed to register the
      * subscription if the provider allows dynamic registration.
      *
