@@ -26,6 +26,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_LCEDATA_RECV
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NETWORK_SCAN_RESULT;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NITZ_TIME_RECEIVED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_REGISTRATION_FAILED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_NETWORK_STATE_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESTRICTED_STATE_CHANGED;
@@ -316,13 +317,22 @@ public class NetworkIndication extends IRadioNetworkIndication.Stub {
             reportAnomaly(UUID.fromString("f16e5703-6105-4341-9eb3-e68189156eb5"),
                     "Invalid registrationFailed indication");
 
-            mRil.riljLoge("Invalid registrationFailed indication");
+            mRil.riljLoge("Invalid registrationFailed indication (ci is null)=" + (ci == null)
+                    + " (chosenPlmn is empty)=" + TextUtils.isEmpty(chosenPlmn)
+                    + " (is CS/PS)=" + ((domain & NetworkRegistrationInfo.DOMAIN_CS_PS) == 0)
+                    + " (only CS/PS)=" + ((domain & ~NetworkRegistrationInfo.DOMAIN_CS_PS) != 0)
+                    + " (causeCode)=" + causeCode
+                    + " (additionalCauseCode)=" + additionalCauseCode);
             return;
         }
 
+        RegistrationFailedEvent registrationFailedEvent = new RegistrationFailedEvent(
+                ci, chosenPlmn, domain, causeCode, additionalCauseCode);
+        if (mRil.isLogOrTrace()) {
+            mRil.unsljLogMore(RIL_UNSOL_REGISTRATION_FAILED, registrationFailedEvent.toString());
+        }
         mRil.mRegistrationFailedRegistrant.notifyRegistrant(
-                new AsyncResult(null, new RegistrationFailedEvent(
-                        ci, chosenPlmn, domain, causeCode, additionalCauseCode), null));
+                new AsyncResult(null, registrationFailedEvent, null));
     }
 
     /**
