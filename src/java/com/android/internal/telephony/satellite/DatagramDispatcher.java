@@ -33,6 +33,7 @@ import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.metrics.SatelliteStats;
+import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
 
 import java.util.LinkedHashMap;
 import java.util.Map.Entry;
@@ -52,6 +53,7 @@ public class DatagramDispatcher extends Handler {
     @NonNull private static DatagramDispatcher sInstance;
     @NonNull private final Context mContext;
     @NonNull private final DatagramController mDatagramController;
+    @NonNull private final ControllerMetricsStats mControllerMetricsStats;
 
     private static AtomicLong mNextDatagramId = new AtomicLong(0);
 
@@ -103,6 +105,7 @@ public class DatagramDispatcher extends Handler {
         super(looper);
         mContext = context;
         mDatagramController = datagramController;
+        mControllerMetricsStats = ControllerMetricsStats.getInstance();
 
         synchronized (mLock) {
             mSendingDatagramInProgress = false;
@@ -236,6 +239,8 @@ public class DatagramDispatcher extends Handler {
                         mDatagramController.updateSendStatus(argument.subId,
                                 SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_SUCCESS,
                                 getPendingDatagramCount(), error);
+                        mControllerMetricsStats.reportOutgoingDatagramSuccessCount(
+                                argument.datagramType);
 
                         if (getPendingDatagramCount() != 0) {
                             // Send pending datagrams
@@ -245,10 +250,13 @@ public class DatagramDispatcher extends Handler {
                                     SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE,
                                     getPendingDatagramCount(),
                                     SatelliteManager.SATELLITE_ERROR_NONE);
+
                         }
                     } else {
                         // Abort sending all the pending datagrams
                         abortSendingPendingDatagrams(argument.subId, error);
+                        mControllerMetricsStats.reportOutgoingDatagramFailCount(
+                                argument.datagramType);
                     }
                 }
                 break;
@@ -352,6 +360,7 @@ public class DatagramDispatcher extends Handler {
             SendSatelliteDatagramArgument argument = entry.getValue();
             argument.callback.accept(errorCode);
             reportSendDatagramCompleted(argument, errorCode);
+            mControllerMetricsStats.reportOutgoingDatagramFailCount(argument.datagramType);
         }
 
         // Clear pending datagram maps
