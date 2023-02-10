@@ -120,7 +120,7 @@ public class ApduSenderTest {
         assertNull(mResponseCaptor.response);
         assertNull(mResponseCaptor.exception);
         verify(mMockCi).iccOpenLogicalChannel(eq(AID), anyInt(), any());
-        verify(mMockCi).iccCloseLogicalChannel(eq(channel), any());
+        verify(mMockCi).iccCloseLogicalChannel(eq(channel), eq(true /*isEs10*/), any());
     }
 
     @Test

@@ -4122,6 +4122,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void iccCloseLogicalChannel(int channel, Message result) {
+        iccCloseLogicalChannel(channel, false, result);
+    }
+
+    @Override
+    public void iccCloseLogicalChannel(int channel, boolean isEs10, Message result) {
         RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
         if (!simProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SIM_CLOSE_CHANNEL, result,
@@ -4129,11 +4134,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
-                        + " channel = " + channel);
+                        + " channel = " + channel + " isEs10 = " + isEs10);
             }
-
             try {
-                simProxy.iccCloseLogicalChannel(rr.mSerial, channel);
+                simProxy.iccCloseLogicalChannel(rr.mSerial, channel, isEs10);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(HAL_SERVICE_SIM, "iccCloseLogicalChannel", e);
             }
