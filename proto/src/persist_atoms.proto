@@ -23,7 +23,7 @@ option java_outer_classname = "PersistAtomsProto";
 
 // Holds atoms to store on persist storage in case of power cycle or process crash.
 // NOTE: using int64 rather than google.protobuf.Timestamp for timestamps simplifies implementation.
-// Next id: 58
+// Next id: 70
 message PersistAtoms {
     /* Aggregated RAT usage during the call. */
     repeated VoiceCallRatUsage voice_call_rat_usage = 1;
@@ -195,6 +195,42 @@ message PersistAtoms {
 
     /* Timestamp of last emergency number pull. */
     optional int64 emergency_number_pull_timestamp_millis = 57;
+
+    /** Snapshot of satellite controller. */
+    repeated SatelliteController satellite_controller = 58;
+
+    /* Timestamp of last satellite_controller pull. */
+    optional int64 satellite_controller_pull_timestamp_millis = 59;
+
+    /** Snapshot of satellite controller. */
+    repeated SatelliteSession satellite_session = 60;
+
+    /* Timestamp of last satellite_controller pull. */
+    optional int64 satellite_session_pull_timestamp_millis = 61;
+
+    /** Snapshot of satellite incoming datagram. */
+    repeated SatelliteIncomingDatagram satellite_incoming_datagram = 62;
+
+    /* Timestamp of last satellite_incoming_datagram pull. */
+    optional int64 satellite_incoming_datagram_pull_timestamp_millis = 63;
+
+    /** Snapshot of satellite outgoing datagram. */
+    repeated SatelliteOutgoingDatagram satellite_outgoing_datagram = 64;
+
+    /* Timestamp of last satellite_outgoing_datagram pull. */
+    optional int64 satellite_outgoing_datagram_pull_timestamp_millis = 65;
+
+    /** Snapshot of satellite provision datagram. */
+    repeated SatelliteProvision satellite_provision = 66;
+
+    /* Timestamp of last satellite_provision pull. */
+    optional int64 satellite_provision_pull_timestamp_millis = 67;
+
+    /** Snapshot of satellite SOS message recommender. */
+    repeated SatelliteSosMessageRecommender satellite_sos_message_recommender = 68;
+
+    /* Timestamp of last satellite_sos_message_recommender pull. */
+    optional int64 satellite_sos_message_recommender_pull_timestamp_millis = 69;
 }
 
 // The canonical versions of the following enums live in:
@@ -578,4 +614,58 @@ message EmergencyNumbersInfo {
     repeated string urns = 8;
     repeated ServiceCategory service_categories = 9;
     repeated Source sources = 10;
+}
+
+message SatelliteController {
+    optional int32 count_of_satellite_service_enablements_success = 1;
+    optional int32 count_of_satellite_service_enablements_fail = 2;
+    optional int32 count_of_outgoing_datagram_success = 3;
+    optional int32 count_of_outgoing_datagram_fail = 4;
+    optional int32 count_of_incoming_datagram_success = 5;
+    optional int32 count_of_incoming_datagram_fail = 6;
+    optional int32 count_of_datagram_type_sos_sms_success = 7;
+    optional int32 count_of_datagram_type_sos_sms_fail = 8;
+    optional int32 count_of_datagram_type_location_sharing_success = 9;
+    optional int32 count_of_datagram_type_location_sharing_fail = 10;
+    optional int32 count_of_provision_success = 11;
+    optional int32 count_of_provision_fail = 12;
+    optional int32 count_of_deprovision_success = 13;
+    optional int32 count_of_deprovision_fail = 14;
+    optional int32 total_service_uptime_sec = 15;
+    optional int32 total_battery_consumption_percent = 16;
+    optional int32 total_battery_charged_time_sec = 17;
+}
+
+message SatelliteSession {
+    optional int32 satellite_service_initialization_result = 1;
+    optional int32 satellite_technology = 2;
+    optional int32 count = 3;
+}
+
+message SatelliteIncomingDatagram {
+    optional int32 result_code = 1;
+    optional int32 datagram_size_bytes = 2;
+    optional int64 datagram_transfer_time_millis = 3;
+}
+
+message SatelliteOutgoingDatagram {
+    optional int32 datagram_type = 1;
+    optional int32 result_code = 2;
+    optional int32 datagram_size_bytes = 3;
+    optional int64 datagram_transfer_time_millis = 4;
+}
+
+message SatelliteProvision {
+    optional int32 result_code = 1;
+    optional int32 provisioning_time_sec = 2;
+    optional bool is_provision_request = 3;
+    optional bool is_canceled = 4;
+}
+
+message SatelliteSosMessageRecommender {
+    optional bool is_display_sos_message_sent = 1;
+    optional int32 count_of_timer_started = 2;
+    optional bool is_ims_registered = 3;
+    optional int32 cellular_service_state = 4;
+    optional int32 count = 5;
 }

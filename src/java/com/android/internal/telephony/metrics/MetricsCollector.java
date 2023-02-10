@@ -36,6 +36,12 @@ import static com.android.internal.telephony.TelephonyStatsLog.PER_SIM_STATUS;
 import static com.android.internal.telephony.TelephonyStatsLog.PRESENCE_NOTIFY_EVENT;
 import static com.android.internal.telephony.TelephonyStatsLog.RCS_ACS_PROVISIONING_STATS;
 import static com.android.internal.telephony.TelephonyStatsLog.RCS_CLIENT_PROVISIONING_STATS;
+import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_CONTROLLER;
+import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_INCOMING_DATAGRAM;
+import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_OUTGOING_DATAGRAM;
+import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_PROVISION;
+import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_SESSION;
+import static com.android.internal.telephony.TelephonyStatsLog.SATELLITE_SOS_MESSAGE_RECOMMENDER;
 import static com.android.internal.telephony.TelephonyStatsLog.SIM_SLOT_STATE;
 import static com.android.internal.telephony.TelephonyStatsLog.SIP_DELEGATE_STATS;
 import static com.android.internal.telephony.TelephonyStatsLog.SIP_MESSAGE_RESPONSE;
@@ -78,6 +84,12 @@ import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PresenceNotifyEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsAcsProvisioningStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsClientProvisioningStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteController;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteIncomingDatagram;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteOutgoingDatagram;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteProvision;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteSession;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteSosMessageRecommender;
 import com.android.internal.telephony.nano.PersistAtomsProto.SipDelegateStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.SipMessageResponse;
 import com.android.internal.telephony.nano.PersistAtomsProto.SipTransportFeatureTagStats;
@@ -182,6 +194,12 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             registerAtom(PER_SIM_STATUS);
             registerAtom(OUTGOING_SHORT_CODE_SMS);
             registerAtom(EMERGENCY_NUMBERS_INFO);
+            registerAtom(SATELLITE_CONTROLLER);
+            registerAtom(SATELLITE_SESSION);
+            registerAtom(SATELLITE_INCOMING_DATAGRAM);
+            registerAtom(SATELLITE_OUTGOING_DATAGRAM);
+            registerAtom(SATELLITE_PROVISION);
+            registerAtom(SATELLITE_SOS_MESSAGE_RECOMMENDER);
             Rlog.d(TAG, "registered");
         } else {
             Rlog.e(TAG, "could not get StatsManager, atoms not registered");
@@ -260,6 +278,18 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 return pullOutgoingShortCodeSms(data);
             case EMERGENCY_NUMBERS_INFO:
                 return pullEmergencyNumbersInfo(data);
+            case SATELLITE_CONTROLLER:
+                return pullSatelliteController(data);
+            case SATELLITE_SESSION:
+                return pullSatelliteSession(data);
+            case SATELLITE_INCOMING_DATAGRAM:
+                return pullSatelliteIncomingDatagram(data);
+            case SATELLITE_OUTGOING_DATAGRAM:
+                return pullSatelliteOutgoingDatagram(data);
+            case SATELLITE_PROVISION:
+                return pullSatelliteProvision(data);
+            case SATELLITE_SOS_MESSAGE_RECOMMENDER:
+                return pullSatelliteSosMessageRecommender(data);
             default:
                 Rlog.e(TAG, String.format("unexpected atom ID %d", atomTag));
                 return StatsManager.PULL_SKIP;
@@ -317,11 +347,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         }
     }
 
-    private void concludeAll() {
-        concludeDataCallSessionStats();
-        concludeImsStats();
-        concludeServiceStateStats();
-
+    private void concludeRcsStats() {
         RcsStats rcsStats = RcsStats.getInstance();
         if (rcsStats != null) {
             rcsStats.concludeSipTransportFeatureTagsStat();
@@ -329,6 +355,13 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             rcsStats.onFlushIncompleteImsRegistrationServiceDescStats();
             rcsStats.onFlushIncompleteImsRegistrationFeatureTagStats();
         }
+    }
+
+    private void concludeAll() {
+        concludeDataCallSessionStats();
+        concludeImsStats();
+        concludeServiceStateStats();
+        concludeRcsStats();
     }
 
     private static int pullSimSlotState(List<StatsEvent> data) {
@@ -781,6 +814,86 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         return isDataLogged ? StatsManager.PULL_SUCCESS : StatsManager.PULL_SKIP;
     }
 
+    private int pullSatelliteController(List<StatsEvent> data) {
+        SatelliteController[] controllerAtoms =
+                mStorage.getSatelliteControllerStats(MIN_COOLDOWN_MILLIS);
+        if (controllerAtoms != null) {
+            Arrays.stream(controllerAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "SATELLITE_CONTROLLER pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+    private int pullSatelliteSession(List<StatsEvent> data) {
+        SatelliteSession[] sessionAtoms =
+                mStorage.getSatelliteSessionStats(MIN_COOLDOWN_MILLIS);
+        if (sessionAtoms != null) {
+            Arrays.stream(sessionAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "SATELLITE_SESSION pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+    private int pullSatelliteIncomingDatagram(List<StatsEvent> data) {
+        SatelliteIncomingDatagram[] incomingDatagramAtoms =
+                mStorage.getSatelliteIncomingDatagramStats(MIN_COOLDOWN_MILLIS);
+        if (incomingDatagramAtoms != null) {
+            Arrays.stream(incomingDatagramAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "SATELLITE_INCOMING_DATAGRAM pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+
+    private int pullSatelliteOutgoingDatagram(List<StatsEvent> data) {
+        SatelliteOutgoingDatagram[] outgoingDatagramAtoms =
+                mStorage.getSatelliteOutgoingDatagramStats(MIN_COOLDOWN_MILLIS);
+        if (outgoingDatagramAtoms != null) {
+            Arrays.stream(outgoingDatagramAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "SATELLITE_OUTGOING_DATAGRAM pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+
+    private int pullSatelliteProvision(List<StatsEvent> data) {
+        SatelliteProvision[] provisionAtoms =
+                mStorage.getSatelliteProvisionStats(MIN_COOLDOWN_MILLIS);
+        if (provisionAtoms != null) {
+            Arrays.stream(provisionAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "SATELLITE_PROVISION pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
+    private int pullSatelliteSosMessageRecommender(List<StatsEvent> data) {
+        SatelliteSosMessageRecommender[] sosMessageRecommenderAtoms =
+                mStorage.getSatelliteSosMessageRecommenderStats(MIN_COOLDOWN_MILLIS);
+        if (sosMessageRecommenderAtoms != null) {
+            Arrays.stream(sosMessageRecommenderAtoms)
+                    .forEach(persistAtom -> data.add(buildStatsEvent(persistAtom)));
+            return StatsManager.PULL_SUCCESS;
+        } else {
+            Rlog.w(TAG, "SATELLITE_SOS_MESSAGE_RECOMMENDER pull too frequent, skipping");
+            return StatsManager.PULL_SKIP;
+        }
+    }
+
     /** Registers a pulled atom ID {@code atomId}. */
     private void registerAtom(int atomId) {
         mStatsManager.setPullAtomCallback(atomId, /* metadata= */ null,
@@ -1143,6 +1256,72 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 emergencyNumber.urns,
                 emergencyNumber.serviceCategories,
                 emergencyNumber.sources);
+    }
+
+    private static StatsEvent buildStatsEvent(SatelliteController satelliteController) {
+        return TelephonyStatsLog.buildStatsEvent(
+                SATELLITE_CONTROLLER,
+                satelliteController.countOfSatelliteServiceEnablementsSuccess,
+                satelliteController.countOfSatelliteServiceEnablementsFail,
+                satelliteController.countOfOutgoingDatagramSuccess,
+                satelliteController.countOfOutgoingDatagramFail,
+                satelliteController.countOfIncomingDatagramSuccess,
+                satelliteController.countOfIncomingDatagramFail,
+                satelliteController.countOfDatagramTypeSosSmsSuccess,
+                satelliteController.countOfDatagramTypeSosSmsFail,
+                satelliteController.countOfDatagramTypeLocationSharingSuccess,
+                satelliteController.countOfDatagramTypeLocationSharingFail,
+                satelliteController.countOfProvisionSuccess,
+                satelliteController.countOfProvisionFail,
+                satelliteController.countOfDeprovisionSuccess,
+                satelliteController.countOfDeprovisionFail,
+                satelliteController.totalServiceUptimeSec,
+                satelliteController.totalBatteryConsumptionPercent,
+                satelliteController.totalBatteryChargedTimeSec);
+    }
+
+    private static StatsEvent buildStatsEvent(SatelliteSession satelliteSession) {
+        return TelephonyStatsLog.buildStatsEvent(
+                SATELLITE_SESSION,
+                satelliteSession.satelliteServiceInitializationResult,
+                satelliteSession.satelliteTechnology,
+                satelliteSession.count);
+    }
+
+    private static StatsEvent buildStatsEvent(SatelliteIncomingDatagram stats) {
+        return TelephonyStatsLog.buildStatsEvent(
+                SATELLITE_INCOMING_DATAGRAM,
+                stats.resultCode,
+                stats.datagramSizeBytes,
+                stats.datagramTransferTimeMillis);
+    }
+
+    private static StatsEvent buildStatsEvent(SatelliteOutgoingDatagram stats) {
+        return TelephonyStatsLog.buildStatsEvent(
+                SATELLITE_OUTGOING_DATAGRAM,
+                stats.datagramType,
+                stats.resultCode,
+                stats.datagramSizeBytes,
+                stats.datagramTransferTimeMillis);
+    }
+
+    private static StatsEvent buildStatsEvent(SatelliteProvision stats) {
+        return TelephonyStatsLog.buildStatsEvent(
+                SATELLITE_PROVISION,
+                stats.resultCode,
+                stats.provisioningTimeSec,
+                stats.isProvisionRequest,
+                stats.isCanceled);
+    }
+
+    private static StatsEvent buildStatsEvent(SatelliteSosMessageRecommender stats) {
+        return TelephonyStatsLog.buildStatsEvent(
+                SATELLITE_SOS_MESSAGE_RECOMMENDER,
+                stats.isDisplaySosMessageSent,
+                stats.countOfTimerStarted,
+                stats.isImsRegistered,
+                stats.cellularServiceState,
+                stats.count);
     }
 
     /** Returns all phones in {@link PhoneFactory}, or an empty array if phones not made yet. */
