@@ -6026,10 +6026,11 @@ public class RILUtils {
             CommandException.Error error) {
         switch (error) {
             case INTERNAL_ERR:
-            case MODEM_ERR:
                 return SatelliteManager.SATELLITE_SERVICE_MODEM_ERROR;
+            case MODEM_ERR:
+                return SatelliteManager.SATELLITE_SERVICE_UNEXPECTED_MODEM_RESPONSE;
             case SYSTEM_ERR:
-                return SatelliteManager.SATELLITE_SERVICE_SYSTEM_ERROR;
+                return SatelliteManager.SATELLITE_SERVICE_RIL_ERROR;
             case INVALID_ARGUMENTS:
                 return SatelliteManager.SATELLITE_SERVICE_INVALID_ARGUMENTS;
             case INVALID_MODEM_STATE:
@@ -6037,17 +6038,63 @@ public class RILUtils {
             case INVALID_SIM_STATE:
                 return SatelliteManager.SATELLITE_SERVICE_INVALID_SIM_STATE;
             case INVALID_STATE:
-                return SatelliteManager.SATELLITE_SERVICE_INVALID_STATE;
+                return SatelliteManager.SATELLITE_SERVICE_INVALID_RIL_STATE;
             case RADIO_NOT_AVAILABLE:
-                return SatelliteManager.SATELLITE_SERVICE_NOT_AVAILABLE;
+                return SatelliteManager.SATELLITE_SERVICE_RADIO_NOT_AVAILABLE;
             case REQUEST_NOT_SUPPORTED:
-                return SatelliteManager.SATELLITE_SERVICE_NOT_SUPPORTED;
+                return SatelliteManager.SATELLITE_SERVICE_REQUEST_NOT_SUPPORTED;
             case REQUEST_RATE_LIMITED:
-                return SatelliteManager.SATELLITE_SERVICE_RATE_LIMITED;
+                return SatelliteManager.SATELLITE_SERVICE_REQUEST_RATE_LIMITED;
             case NO_MEMORY:
-                return SatelliteManager.SATELLITE_SERVICE_NO_MEMORY;
+                //fallthrough to NO_RESOURCES
             case NO_RESOURCES:
                 return SatelliteManager.SATELLITE_SERVICE_NO_RESOURCES;
+            case NETWORK_ERR:
+                return SatelliteManager.SATELLITE_SERVICE_NETWORK_ERROR;
+            case NETWORK_NOT_READY:
+                return SatelliteManager.SATELLITE_SERVICE_NETWORK_NOT_READY;
+            case NETWORK_REJECT:
+                return SatelliteManager.SATELLITE_SERVICE_SERVER_REJECT;
+            case NETWORK_TIMEOUT:
+                return SatelliteManager.SATELLITE_SERVICE_NETWORK_TIMEOUT;
+            case NO_NETWORK_FOUND:
+                //fallthrough to NO_SATELLITE_SIGNAL
+            case NO_SATELLITE_SIGNAL:
+                return SatelliteManager.SATELLITE_SERVICE_NO_SATELLITE_SIGNAL;
+            case ABORTED:
+                return SatelliteManager.SATELLITE_SERVICE_REQUEST_ABORTED;
+            case ACCESS_BARRED:
+                return SatelliteManager.SATELLITE_SERVICE_ACCESS_BARRED;
+            case FEATURE_NOT_SUPPORTED:
+                return SatelliteManager.SATELLITE_SERVICE_FEATURE_NOT_SUPPORTED;
+            case MODEM_INCOMPATIBLE:
+                return SatelliteManager.SATELLITE_SERVICE_MODEM_INCOMPATIBLE;
+            case NO_SUBSCRIPTION:
+                return SatelliteManager.SATELLITE_SERVICE_NO_SUBSCRIPTION;
+            case OPERATION_NOT_ALLOWED:
+                return SatelliteManager.SATELLITE_SERVICE_OPERATION_NOT_ALLOWED;
+            case RADIO_TECHNOLOGY_NOT_SUPPORTED:
+                return SatelliteManager.SATELLITE_SERVICE_RADIO_TECHNOLOGY_NOT_SUPPORTED;
+            case SIM_ABSENT:
+                return SatelliteManager.SATELLITE_SERVICE_SIM_ABSENT;
+            case SIM_BUSY:
+                return SatelliteManager.SATELLITE_SERVICE_SIM_BUSY;
+            case SIM_ERR:
+                return SatelliteManager.SATELLITE_SERVICE_SIM_ERR;
+            case SIM_FULL:
+                return SatelliteManager.SATELLITE_SERVICE_SIM_FULL;
+            case SUBSCRIBER_NOT_AUTHORIZED:
+                return SatelliteManager.SATELLITE_SERVICE_SUBSCRIBER_NOT_AUTHORIZED;
+            case ENCODING_NOT_SUPPORTED:
+                return SatelliteManager.SATELLITE_SERVICE_ENCODING_NOT_SUPPORTED;
+            case INVALID_CONTACT:
+                return SatelliteManager.SATELLITE_SERVICE_INVALID_CONTACT;
+            case NOT_SUFFICIENT_ACCOUNT_BALANCE:
+                return SatelliteManager.SATELLITE_SERVICE_NOT_SUFFICIENT_ACCOUNT_BALANCE;
+            case SWITCHED_FROM_SATELLITE_TO_TERRESTRIAL:
+                return SatelliteManager.SATELLITE_SERVICE_SWITCHED_FROM_SATELLITE_TO_TERRESTRIAL;
+            case UNIDENTIFIED_SUBSCRIBER:
+                return SatelliteManager.SATELLITE_SERVICE_UNIDENTIFIED_SUBSCRIBER;
             default:
                 return SatelliteManager.SATELLITE_SERVICE_ERROR;
         }
