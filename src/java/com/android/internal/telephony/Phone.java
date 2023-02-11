@@ -5280,6 +5280,39 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Power on or off the satellite modem.
+     * @param result The Message to send the result of the operation to.
+     * @param powerOn {@code true} to power on the satellite modem and {@code false} to power off.
+     */
+    public void setSatellitePower(Message result, boolean powerOn) {
+        mCi.setSatellitePower(result, powerOn);
+    }
+
+    /**
+     * Check whether the satellite modem is powered on.
+     * @param result The Message to send the result of the operation to.
+     */
+    public void isSatellitePowerOn(Message result) {
+        mCi.getSatellitePowerState(result);
+    }
+
+    /**
+     * Check whether the satellite service is supported on the device.
+     * @param result The Message to send the result of the operation to.
+     */
+    public void isSatelliteSupported(Message result) {
+        mCi.isSatelliteSupported(result);
+    }
+
+    /**
+     * Get the satellite capabilities.
+     * @param result The Message to send the result of the operation to.
+     */
+    public void getSatelliteCapabilities(Message result) {
+        mCi.getSatelliteCapabilities(result);
+    }
+
+    /**
      * Registers for pointing info changed from satellite modem.
      *
      * @param h Handler for notification message.
