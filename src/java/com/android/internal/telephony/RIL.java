@@ -6166,6 +6166,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
             result.sendToTarget();
         }
+        /**
+         * TODO: when adding implementation of this method, we need to return successful result
+         * with satellite support set to false if radioSatelliteProxy.isEmpty() is true or
+         * mHalVersion.get(HAL_SERVICE_SATELLITE).greaterOrEqual(RADIO_HAL_VERSION_2_0) is false.
+         */
     }
 
     /**
