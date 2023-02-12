@@ -16,13 +16,10 @@
 
 package com.android.internal.telephony;
 
-import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.content.pm.PackageManager;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.IBinder;
@@ -30,7 +27,6 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RegistrantList;
 import android.os.RemoteException;
-import android.os.UserHandle;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.CarrierConfigManager;
@@ -58,9 +54,6 @@ public class NetworkRegistrationManager extends Handler {
     private final int mTransportType;
 
     private final Phone mPhone;
-
-    private final CarrierConfigManager mCarrierConfigManager;
-
     // Registrants who listens registration state change callback from this class.
     private final RegistrantList mRegStateChangeRegistrants = new RegistrantList();
 
@@ -72,22 +65,6 @@ public class NetworkRegistrationManager extends Handler {
 
     private NetworkServiceConnection mServiceConnection;
 
-    private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            final String action = intent.getAction();
-            if (CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED.equals(action)
-                    && mPhone.getPhoneId() == intent.getIntExtra(
-                    CarrierConfigManager.EXTRA_SLOT_INDEX, 0)) {
-                // We should wait for carrier config changed event because the target binding
-                // package name can come from the carrier config. Note that we still get this event
-                // even when SIM is absent.
-                logd("Carrier config changed. Try to bind network service.");
-                sendEmptyMessage(EVENT_BIND_NETWORK_SERVICE);
-            }
-        }
-    };
-
     public NetworkRegistrationManager(@TransportType int transportType, Phone phone) {
         mTransportType = transportType;
         mPhone = phone;
@@ -96,19 +73,20 @@ public class NetworkRegistrationManager extends Handler {
                 ? "C" : "I") + "-" + mPhone.getPhoneId();
         mTag = "NRM" + tagSuffix;
 
-        mCarrierConfigManager = (CarrierConfigManager) phone.getContext().getSystemService(
-                Context.CARRIER_CONFIG_SERVICE);
+        CarrierConfigManager ccm = phone.getContext().getSystemService(CarrierConfigManager.class);
+        // Callback directly calls rebindService and should be executed in handler thread
+        ccm.registerCarrierConfigChangeListener(
+                this::post,
+                (slotIndex, subId, carrierId, specificCarrierId) -> {
+                    if (slotIndex == phone.getPhoneId()) {
+                        // We should wait for carrier config changed event because the target
+                        // binding package name can come from the carrier config. Note that
+                        // we still get this event even when SIM is absent.
+                        logd("Carrier config changed. Try to bind network service.");
+                        rebindService();
+                    }
+                });
 
-        IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        try {
-            Context contextAsUser = phone.getContext().createPackageContextAsUser(
-                phone.getContext().getPackageName(), 0, UserHandle.ALL);
-            contextAsUser.registerReceiver(mBroadcastReceiver, intentFilter,
-                null /* broadcastPermission */, null);
-        } catch (PackageManager.NameNotFoundException e) {
-            loge("Package name not found: " + e.getMessage());
-        }
         PhoneConfigurationManager.registerForMultiSimConfigChange(
                 this, EVENT_BIND_NETWORK_SERVICE, null);
 
@@ -333,9 +311,10 @@ public class NetworkRegistrationManager extends Handler {
         // Read package name from resource overlay
         packageName = mPhone.getContext().getResources().getString(resourceId);
 
-        PersistableBundle b = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId());
-
-        if (b != null && !TextUtils.isEmpty(b.getString(carrierConfig))) {
+        PersistableBundle b =
+                CarrierConfigManager.getCarrierConfigSubset(
+                        mPhone.getContext(), mPhone.getSubId(), carrierConfig);
+        if (!b.isEmpty() && !TextUtils.isEmpty(b.getString(carrierConfig))) {
             // If carrier config overrides it, use the one from carrier config
             packageName = b.getString(carrierConfig, packageName);
         }
@@ -367,15 +346,17 @@ public class NetworkRegistrationManager extends Handler {
         // Read class name from resource overlay
         className = mPhone.getContext().getResources().getString(resourceId);
 
-        PersistableBundle b = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId());
-
-        if (b != null && !TextUtils.isEmpty(b.getString(carrierConfig))) {
+        PersistableBundle b =
+                CarrierConfigManager.getCarrierConfigSubset(
+                        mPhone.getContext(), mPhone.getSubId(), carrierConfig);
+        if (!b.isEmpty() && !TextUtils.isEmpty(b.getString(carrierConfig))) {
             // If carrier config overrides it, use the one from carrier config
             className = b.getString(carrierConfig, className);
         }
 
         return className;
     }
+
     private void logd(String msg) {
         Rlog.d(mTag, msg);
     }
