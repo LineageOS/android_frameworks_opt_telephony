@@ -697,7 +697,7 @@ public class PhoneSwitcher extends Handler {
     public void handleMessage(Message msg) {
         switch (msg.what) {
             case EVENT_SUBSCRIPTION_CHANGED: {
-                onEvaluate(REQUESTS_UNCHANGED, "subChanged");
+                onEvaluate(REQUESTS_UNCHANGED, "subscription changed");
                 break;
             }
             case EVENT_SERVICE_STATE_CHANGED: {
@@ -1346,6 +1346,10 @@ public class PhoneSwitcher extends Handler {
                     mAutoSelectedDataSubId = DEFAULT_SUBSCRIPTION_ID;
                 }
                 mPhoneSubscriptions[i] = sub;
+                // Listen to IMS radio tech change for new sub
+                if (SubscriptionManager.isValidSubscriptionId(sub)) {
+                    registerForImsRadioTechChange(mContext, i);
+                }
                 diffDetected = true;
             }
         }
