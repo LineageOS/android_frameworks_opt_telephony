@@ -30,13 +30,9 @@ import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_NON
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
 
 import android.annotation.Nullable;
-import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.AsyncResult;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
@@ -68,7 +64,6 @@ public class CallWaitingController extends Handler {
     private static final int EVENT_SET_CALL_WAITING_DONE = 1;
     private static final int EVENT_GET_CALL_WAITING_DONE = 2;
     private static final int EVENT_REGISTERED_TO_NETWORK = 3;
-    private static final int EVENT_CARRIER_CONFIG_CHANGED = 4;
 
     // Class to pack mOnComplete object passed by the caller
     private static class Cw {
@@ -92,32 +87,9 @@ public class CallWaitingController extends Handler {
     @VisibleForTesting
     public static final String KEY_CS_SYNC = "cs_sync";
 
-    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent == null) {
-                return;
-            }
-            if (CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED.equals(intent.getAction())) {
-                Bundle bundle = intent.getExtras();
-                if (bundle == null) {
-                    return;
-                }
-                int slotId = bundle.getInt(CarrierConfigManager.EXTRA_SLOT_INDEX,
-                        SubscriptionManager.INVALID_PHONE_INDEX);
-
-                if (slotId <= SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
-                    loge("onReceive ACTION_CARRIER_CONFIG_CHANGED invalid slotId "
-                            + slotId);
-                    return;
-                }
-
-                if (slotId == mPhone.getPhoneId()) {
-                    sendEmptyMessage(EVENT_CARRIER_CONFIG_CHANGED);
-                }
-            }
-        }
-    };
+    private final CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener =
+            (slotIndex, subId, carrierId, specificCarrierId) -> onCarrierConfigurationChanged(
+                    slotIndex);
 
     private boolean mSupportedByImsService = false;
     private boolean mValidSubscription = false;
@@ -144,8 +116,13 @@ public class CallWaitingController extends Handler {
     }
 
     private void initialize() {
-        mContext.registerReceiver(mReceiver, new IntentFilter(
-                CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        CarrierConfigManager ccm = mContext.getSystemService(CarrierConfigManager.class);
+        if (ccm != null) {
+            // Callback directly handle carrier config change should be executed in handler thread
+            ccm.registerCarrierConfigChangeListener(this::post, mCarrierConfigChangeListener);
+        } else {
+            loge("CarrierConfigLoader is not available.");
+        }
 
         int phoneId = mPhone.getPhoneId();
         int subId = mPhone.getSubId();
@@ -283,9 +260,6 @@ public class CallWaitingController extends Handler {
                 break;
             case EVENT_REGISTERED_TO_NETWORK:
                 onRegisteredToNetwork();
-                break;
-            case EVENT_CARRIER_CONFIG_CHANGED:
-                onCarrierConfigChanged();
                 break;
             default:
                 break;
@@ -453,7 +427,9 @@ public class CallWaitingController extends Handler {
                 obtainMessage(EVENT_GET_CALL_WAITING_DONE));
     }
 
-    private synchronized void onCarrierConfigChanged() {
+    private synchronized void onCarrierConfigurationChanged(int slotIndex) {
+        if (slotIndex != mPhone.getPhoneId()) return;
+
         int subId = mPhone.getSubId();
         if (!SubscriptionManager.isValidSubscriptionId(subId)) {
             logi("onCarrierConfigChanged invalid subId=" + subId);
@@ -463,10 +439,9 @@ public class CallWaitingController extends Handler {
             return;
         }
 
-        CarrierConfigManager configManager = mContext.getSystemService(CarrierConfigManager.class);
-        PersistableBundle b = configManager.getConfigForSubId(subId);
-
-        updateCarrierConfig(subId, b, false);
+        if (!updateCarrierConfig(subId, false /* ignoreSavedState */)) {
+            return;
+        }
 
         logi("onCarrierConfigChanged cs_enabled=" + mCsEnabled);
 
@@ -479,12 +454,20 @@ public class CallWaitingController extends Handler {
 
     /**
      * @param ignoreSavedState only used for test
+     * @return true when succeeded.
      */
     @VisibleForTesting
-    public void updateCarrierConfig(int subId, PersistableBundle b, boolean ignoreSavedState) {
+    public boolean updateCarrierConfig(int subId, boolean ignoreSavedState) {
         mValidSubscription = true;
 
-        if (b == null) return;
+        PersistableBundle b =
+                CarrierConfigManager.getCarrierConfigSubset(
+                        mContext,
+                        subId,
+                        KEY_UT_TERMINAL_BASED_SERVICES_INT_ARRAY,
+                        KEY_TERMINAL_BASED_CALL_WAITING_SYNC_TYPE_INT,
+                        KEY_TERMINAL_BASED_CALL_WAITING_DEFAULT_ENABLED_BOOL);
+        if (b.isEmpty()) return false;
 
         boolean supportsTerminalBased = false;
         int[] services = b.getIntArray(KEY_UT_TERMINAL_BASED_SERVICES_INT_ARRAY);
@@ -527,6 +510,7 @@ public class CallWaitingController extends Handler {
         }
 
         updateState(desiredState, syncPreference, ignoreSavedState);
+        return true;
     }
 
     private void updateState(int state) {
@@ -645,9 +629,12 @@ public class CallWaitingController extends Handler {
 
         if (supported) {
             initialize();
-            onCarrierConfigChanged();
+            onCarrierConfigurationChanged(mPhone.getPhoneId());
         } else {
-            mContext.unregisterReceiver(mReceiver);
+            CarrierConfigManager ccm = mContext.getSystemService(CarrierConfigManager.class);
+            if (ccm != null && mCarrierConfigChangeListener != null) {
+                ccm.unregisterCarrierConfigChangeListener(mCarrierConfigChangeListener);
+            }
             updateState(TERMINAL_BASED_NOT_SUPPORTED);
         }
     }
