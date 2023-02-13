@@ -3234,15 +3234,12 @@ public class SubscriptionManagerService extends ISub.Stub {
      *
      * @return The phone number, or an empty string if not available.
      *
-     * @throws IllegalArgumentException if {@code source} or {@code subId} is invalid.
+     * @throws IllegalArgumentException if {@code source} is invalid.
      * @throws SecurityException if the caller doesn't have permissions required.
      *
      * @see SubscriptionManager#PHONE_NUMBER_SOURCE_UICC
      * @see SubscriptionManager#PHONE_NUMBER_SOURCE_CARRIER
      * @see SubscriptionManager#PHONE_NUMBER_SOURCE_IMS
-     *
-     * @throws IllegalArgumentException if {@code subId} is invalid.
-     * @throws SecurityException if callers do not hold the required permission.
      */
     @Override
     @NonNull
@@ -3264,7 +3261,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                 .getSubscriptionInfoInternal(subId);
 
         if (subInfo == null) {
-            throw new IllegalArgumentException("Invalid sub id " + subId);
+            loge("Invalid sub id " + subId + ", callingPackage=" + callingPackage);
+            return "";
         }
 
         try {

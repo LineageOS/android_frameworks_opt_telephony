@@ -1809,4 +1809,17 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(2).isGroupDisabled())
                 .isFalse();
     }
+
+    @Test
+    public void testGetPhoneNumber() {
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        testSetPhoneNumber();
+        assertThat(mSubscriptionManagerServiceUT.getPhoneNumber(1,
+                SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER, CALLING_PACKAGE, CALLING_FEATURE))
+                .isEqualTo(FAKE_PHONE_NUMBER2);
+        assertThat(mSubscriptionManagerServiceUT.getPhoneNumber(
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER, CALLING_PACKAGE, CALLING_FEATURE))
+                .isEmpty();
+    }
 }
