@@ -5273,8 +5273,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     /**
      * Get maximum number of characters per text message on satellite.
-     * @param result - message object which contains maximum characters on success
-     *               and error code on failure.
+     * @param result The Message to send the result of the operation to.
      */
     public void getMaxCharactersPerSatelliteTextMessage(Message result) {
         mCi.getMaxCharactersPerSatelliteTextMessage(result);
@@ -5414,9 +5413,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Registers for satellite state change from satellite modem.
      *
-     * @param h - Handler for notification message.
-     * @param what - User-defined message code.
-     * @param obj - User object.
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
      */
     public void registerForSatelliteModemStateChange(@NonNull Handler h, int what,
             @Nullable Object obj) {
@@ -5426,7 +5425,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Unregisters for satellite state changes from satellite modem.
      *
-     * @param h - Handler to be removed from registrant list.
+     * @param h Handler to be removed from registrant list.
      */
     public void unregisterForSatelliteModemStateChange(@NonNull Handler h) {
         mCi.unregisterForSatelliteModeChanged(h);
@@ -5435,9 +5434,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Registers for pending message count info from satellite modem.
      *
-     * @param h - Handler for notification message.
-     * @param what - User-defined message code.
-     * @param obj - User object.
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
      */
     public void registerForPendingMessageCount(@NonNull Handler h, int what, @Nullable Object obj) {
         mCi.registerForPendingSatelliteMessageCount(h, what, obj);
@@ -5446,7 +5445,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Unregisters for pending message count info from satellite modem.
      *
-     * @param h - Handler to be removed from registrant list.
+     * @param h Handler to be removed from registrant list.
      */
     public void unregisterForPendingMessageCount(@NonNull Handler h) {
         mCi.unregisterForPendingSatelliteMessageCount(h);
@@ -5455,9 +5454,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Register to receive incoming datagrams over satellite.
      *
-     * @param h - Handler for notification message.
-     * @param what - User-defined message code.
-     * @param obj - User object.
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
      */
     public void registerForNewSatelliteDatagram(@NonNull Handler h, int what,
             @Nullable Object obj) {
@@ -5468,7 +5467,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Unregister to stop receiving incoming datagrams over satellite.
      *
-     * @param h - Handler to be removed from registrant list.
+     * @param h Handler to be removed from registrant list.
      */
     public void unregisterForNewSatelliteDatagram(@NonNull Handler h) {
         //mCi.unregisterForNewSatelliteDatagram(h);
@@ -5476,7 +5475,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     /**
      * Poll pending satellite datagrams over satellite.
-     * @param result - message object which informs if the request is successful or not.
+     * @param result The Message to send the result of the operation to.
      */
     public void pollPendingSatelliteDatagrams(Message result) {
         //mCi.pollPendingSatelliteDatagrams(result);
@@ -5484,11 +5483,27 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     /**
      * Send datagram over satellite.
-     * @param result - message object which informs if the request is successful or not
-     * @param datagram - datagram to send over satellite
+     * @param result The Message to send the result of the operation to.
+     * @param datagram Datagram to send over satellite.
      */
     public void sendSatelliteDatagram(Message result, SatelliteDatagram datagram) {
         //mCi.sendSatelliteDatagram(result, datagram, longitude, latitude);
+    }
+
+    /**
+     * Check whether satellite communication is allowed for the current location.
+     * @param result The Message to send the result of the operation to.
+     */
+    public void isSatelliteCommunicationAllowedForCurrentLocation(Message result) {
+        mCi.isSatelliteCommunicationAllowedForCurrentLocation(result);
+    }
+
+    /**
+     * Get the time after which the satellite will next be visible.
+     * @param result The Message to send the result of the operation to.
+     */
+    public void requestTimeForNextSatelliteVisibility(Message result) {
+        mCi.getTimeForNextSatelliteVisibility(result);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

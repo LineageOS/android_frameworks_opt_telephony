@@ -377,7 +377,6 @@ import android.telephony.ims.stub.ImsRegistrationImplBase.ImsDeregistrationReaso
 import android.telephony.satellite.PointingInfo;
 import android.telephony.satellite.SatelliteCapabilities;
 import android.telephony.satellite.SatelliteManager;
-import android.telephony.satellite.stub.SatelliteImplBase;
 import android.text.TextUtils;
 import android.util.ArraySet;
 import android.util.SparseArray;
@@ -5946,35 +5945,8 @@ public class RILUtils {
                 supportedRadioTechnologies.add(technology);
             }
         }
-
-        Set<Integer> supportedFeatures = new HashSet<>();
-        if (capabilities.supportedFeatures != null
-                && capabilities.supportedFeatures.length > 0) {
-            for (int feature : capabilities.supportedFeatures) {
-                supportedFeatures.add(feature);
-            }
-        }
         return new SatelliteCapabilities(supportedRadioTechnologies, capabilities.isAlwaysOn,
-                capabilities.needsPointingToSatellite, supportedFeatures,
-                capabilities.needsSeparateSimProfile);
-    }
-
-    /**
-     * Convert from android.hardware.radio.satellite.Feature to
-     * android.telephony.satellite.stub.SatelliteImplBase.Feature
-     */
-    public static int convertHalSatelliteFeature(int feature) {
-        switch (feature) {
-            case android.hardware.radio.satellite.SatelliteFeature.SOS_SMS:
-                return SatelliteImplBase.FEATURE_SOS_SMS;
-            case android.hardware.radio.satellite.SatelliteFeature.EMERGENCY_SMS:
-                return SatelliteImplBase.FEATURE_EMERGENCY_SMS;
-            case android.hardware.radio.satellite.SatelliteFeature.SMS:
-                return SatelliteImplBase.FEATURE_SMS;
-            case android.hardware.radio.satellite.SatelliteFeature.LOCATION_SHARING:
-                return SatelliteImplBase.FEATURE_LOCATION_SHARING;
-            default: return SatelliteImplBase.FEATURE_UNKNOWN;
-        }
+                capabilities.needsPointingToSatellite, capabilities.needsSeparateSimProfile);
     }
 
     /**
@@ -5986,18 +5958,6 @@ public class RILUtils {
         return new PointingInfo(pointingInfo.satelliteAzimuthDegrees,
                 pointingInfo.satelliteElevationDegrees, pointingInfo.antennaAzimuthDegrees,
                 pointingInfo.antennaPitchDegrees, pointingInfo.antennaRollDegrees);
-    }
-
-    /**
-     * Convert array of android.hardware.radio.satellite.Feature to
-     * array of android.telephony.satellite.stub.SatelliteImplBase.Feature
-     */
-    public static int[] convertHalSatelliteFeatures(int[] features) {
-        int[] convertedFeatrures = new int[features.length];
-        for (int i = 0; i < features.length; i++) {
-            convertedFeatrures[i] = convertHalSatelliteFeature(features[i]);
-        }
-        return convertedFeatrures;
     }
 
     /**
