@@ -688,8 +688,10 @@ public class SubscriptionInfoUpdater extends Handler {
     }
 
     private void restoreSimSpecificSettingsForPhone(int phoneId) {
-        SubscriptionManager subManager = SubscriptionManager.from(sContext);
-        subManager.restoreSimSpecificSettingsForIccIdFromBackup(sIccId[phoneId]);
+        sContext.getContentResolver().call(
+                SubscriptionManager.SIM_INFO_BACKUP_AND_RESTORE_CONTENT_URI,
+                SubscriptionManager.RESTORE_SIM_SPECIFIC_SETTINGS_METHOD_NAME,
+                sIccId[phoneId], null);
     }
 
     private void updateCarrierServices(int phoneId, String simState) {
