@@ -5355,28 +5355,29 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Provision the subscription with a satellite provider. This is needed to register the
-     * subscription if the provider allows dynamic registration.
+     * Provision the subscription with a satellite provider.
+     * This is needed to register the device/subscription if the provider allows dynamic
+     * registration.
      *
      * @param result Callback message to receive the result.
-     * @param token The security token of the device/subscription to be provisioned.
-     * @param imei IMEI of the SIM associated with the satellite modem.
-     * @param msisdn MSISDN of the SIM associated with the satellite modem.
-     * @param imsi IMSI of the SIM associated with the satellite modem.
+     * @param token The token of the device/subscription to be provisioned.
      */
-    public void provisionSatelliteService(Message result, String token, String imei, String msisdn,
-            String imsi) {
+    public void provisionSatelliteService(Message result, String token) {
         // TODO: update parameters in HAL
-        // mCi.provisionSatelliteService(result, token, imei, msisdn, imsi);
+        // mCi.provisionSatelliteService(result, token);
     }
 
     /**
-     * Cancel the ongoing provision satellite request of a subscription.
+     * Deprovision the device/subscription with a satellite provider.
+     * This is needed to unregister the device/subscription if the provider allows dynamic
+     * registration.
+     * If provisioning is in progress for the given SIM, cancel the request.
+     * If there is no request in progress, deprovision the given SIM.
      *
      * @param result Callback message to receive the result.
-     * @param imsi IMSI of the subscription whose provision request will be cancelled.
+     * @param token The token of the device/subscription to be deprovisioned.
      */
-    public void cancelProvisionSatelliteService(Message result, String imsi) {
+    public void deprovisionSatelliteService(Message result, String token) {
         //TODO (b/266126070): add implementation.
     }
 
