@@ -404,14 +404,6 @@ public class SubscriptionManagerService extends ISub.Stub {
 
         mBackgroundHandler = new Handler(backgroundThread.getLooper());
 
-        TelephonyServiceManager.ServiceRegisterer subscriptionServiceRegisterer =
-                TelephonyFrameworkInitializer
-                        .getTelephonyServiceManager()
-                        .getSubscriptionServiceRegisterer();
-        if (subscriptionServiceRegisterer.get() == null) {
-            subscriptionServiceRegisterer.register(this);
-        }
-
         mDefaultVoiceSubId = new WatchedInt(Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION,
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID)) {
@@ -538,6 +530,14 @@ public class SubscriptionManagerService extends ISub.Stub {
                 });
 
         updateDefaultSubId();
+
+        TelephonyServiceManager.ServiceRegisterer subscriptionServiceRegisterer =
+                TelephonyFrameworkInitializer
+                        .getTelephonyServiceManager()
+                        .getSubscriptionServiceRegisterer();
+        if (subscriptionServiceRegisterer.get() == null) {
+            subscriptionServiceRegisterer.register(this);
+        }
 
         mHandler.post(() -> {
             // EuiccController is created after SubscriptionManagerService. So we need to get
