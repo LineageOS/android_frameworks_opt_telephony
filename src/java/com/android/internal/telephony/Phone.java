@@ -5359,14 +5359,15 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * subscription if the provider allows dynamic registration.
      *
      * @param result Callback message to receive the result.
+     * @param token The security token of the device/subscription to be provisioned.
      * @param imei IMEI of the SIM associated with the satellite modem.
      * @param msisdn MSISDN of the SIM associated with the satellite modem.
      * @param imsi IMSI of the SIM associated with the satellite modem.
-     * @param features List of features to be provisioned.
      */
-    public void provisionSatelliteService(Message result, String imei, String msisdn, String imsi,
-            int[] features) {
-        mCi.provisionSatelliteService(result, imei, msisdn, imsi, features);
+    public void provisionSatelliteService(Message result, String token, String imei, String msisdn,
+            String imsi) {
+        // TODO: update parameters in HAL
+        // mCi.provisionSatelliteService(result, token, imei, msisdn, imsi);
     }
 
     /**
