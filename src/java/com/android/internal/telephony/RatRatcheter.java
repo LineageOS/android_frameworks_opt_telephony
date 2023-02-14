@@ -16,13 +16,7 @@
 package com.android.internal.telephony;
 
 import android.annotation.NonNull;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.pm.PackageManager;
 import android.os.PersistableBundle;
-import android.os.UserHandle;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.CarrierConfigManager;
@@ -80,16 +74,11 @@ public class RatRatcheter {
     /** Constructor */
     public RatRatcheter(Phone phone) {
         mPhone = phone;
-
-        IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        try {
-            Context contextAsUser = phone.getContext().createPackageContextAsUser(
-                phone.getContext().getPackageName(), 0, UserHandle.ALL);
-            contextAsUser.registerReceiver(mConfigChangedReceiver,
-                intentFilter, null /* broadcastPermission */, null);
-        } catch (PackageManager.NameNotFoundException e) {
-            Rlog.e(LOG_TAG, "Package name not found: " + e.getMessage());
+        CarrierConfigManager ccm = mPhone.getContext().getSystemService(CarrierConfigManager.class);
+        if (ccm != null) {
+            ccm.registerCarrierConfigChangeListener(
+                    mPhone.getContext().getMainExecutor(),
+                    (slotIndex, subId, carrierId, specificCarrierId) -> resetRatFamilyMap());
         }
         resetRatFamilyMap();
     }
@@ -183,25 +172,16 @@ public class RatRatcheter {
         }
     }
 
-    private BroadcastReceiver mConfigChangedReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            final String action = intent.getAction();
-            if (CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED.equals(action)) {
-                resetRatFamilyMap();
-            }
-        }
-    };
-
     private void resetRatFamilyMap() {
         synchronized(mRatFamilyMap) {
             mRatFamilyMap.clear();
 
-            final CarrierConfigManager configManager = (CarrierConfigManager)
-                    mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
-            if (configManager == null) return;
-            PersistableBundle b = configManager.getConfigForSubId(mPhone.getSubId());
-            if (b == null) return;
+            PersistableBundle b =
+                    CarrierConfigManager.getCarrierConfigSubset(
+                            mPhone.getContext(),
+                            mPhone.getSubId(),
+                            CarrierConfigManager.KEY_RATCHET_RAT_FAMILIES);
+            if (b == null || b.isEmpty()) return;
 
             // Reads an array of strings, eg:
             // ["GPRS, EDGE", "EVDO, EVDO_A, EVDO_B", "HSPA, HSDPA, HSUPA, HSPAP"]
