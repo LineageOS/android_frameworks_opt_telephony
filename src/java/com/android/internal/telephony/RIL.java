@@ -6313,6 +6313,25 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     /**
+     * Get whether satellite communication is allowed for the current location
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    @Override
+    public void isSatelliteCommunicationAllowedForCurrentLocation(Message result) {
+        // TODO: link to HAL implementation
+        if (RILJ_LOGD) {
+            Rlog.d(RILJ_LOG_TAG,
+                    "stopSendingSatellitePointingInfo: REQUEST_NOT_SUPPORTED");
+        }
+        if (result != null) {
+            AsyncResult.forMessage(result, null,
+                    CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+            result.sendToTarget();
+        }
+    }
+
+    /**
      * Get time for next visibility of satellite.
      *
      * @param result Message that will be sent back to the requester.

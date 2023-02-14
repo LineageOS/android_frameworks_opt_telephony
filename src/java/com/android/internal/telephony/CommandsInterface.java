@@ -3164,7 +3164,14 @@ public interface CommandsInterface {
     default void getMaxCharactersPerSatelliteTextMessage(Message result) {}
 
     /**
-     * Get time for next visibility of satellite.
+     * Get whether satellite communication is allowed for the current location.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    default void isSatelliteCommunicationAllowedForCurrentLocation(Message result) {}
+
+    /**
+     * Get the time after which the satellite will next be visible.
      *
      * @param result Message that will be sent back to the requester.
      */
