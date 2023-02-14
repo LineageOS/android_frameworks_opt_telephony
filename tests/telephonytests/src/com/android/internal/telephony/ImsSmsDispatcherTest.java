@@ -322,7 +322,10 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
     @Test
     public void testSendSmswithMessageRef() throws Exception {
         int token = mImsSmsDispatcher.mNextToken.get();
-        int messageRef = mImsSmsDispatcher.nextMessageRef() + 1;
+        int messageRef = mImsSmsDispatcher.nextMessageRef();
+        if (mImsSmsDispatcher.isMessageRefIncrementViaTelephony()) {
+            messageRef += 1;
+        }
 
         when(mImsManager.getSmsFormat()).thenReturn(SmsMessage.FORMAT_3GPP);
         when(mPhone.getPhoneType()).thenReturn(PhoneConstants.PHONE_TYPE_GSM);
@@ -338,7 +341,10 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
     @Test
     public void testFallbackGsmRetrywithMessageRef() throws Exception {
         int token = mImsSmsDispatcher.mNextToken.get();
-        int messageRef = mImsSmsDispatcher.nextMessageRef() + 1;
+        int messageRef = mImsSmsDispatcher.nextMessageRef();
+        if (mImsSmsDispatcher.isMessageRefIncrementViaTelephony()) {
+            messageRef += 1;
+        }
 
         when(mImsManager.getSmsFormat()).thenReturn(SmsMessage.FORMAT_3GPP);
         when(mPhone.getPhoneType()).thenReturn(PhoneConstants.PHONE_TYPE_GSM);
@@ -357,13 +363,21 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
         ArgumentCaptor<SMSDispatcher.SmsTracker> captor =
                 ArgumentCaptor.forClass(SMSDispatcher.SmsTracker.class);
         verify(mSmsDispatchersController).sendRetrySms(captor.capture());
-        assertTrue(messageRef + 1 == captor.getValue().mMessageRef);
+        if (mImsSmsDispatcher.isMessageRefIncrementViaTelephony()) {
+            assertTrue(messageRef + 1 == captor.getValue().mMessageRef);
+        } else {
+            assertTrue(messageRef == captor.getValue().mMessageRef);
+        }
     }
 
     @Test
     public void testErrorImsRetrywithMessageRef() throws Exception {
         int token = mImsSmsDispatcher.mNextToken.get();
-        int messageRef = mImsSmsDispatcher.nextMessageRef() + 1;
+        int messageRef = mImsSmsDispatcher.nextMessageRef();
+        if (mImsSmsDispatcher.isMessageRefIncrementViaTelephony()) {
+            messageRef += 1;
+        }
+
         mContextFixture.getCarrierConfigBundle().putInt(CarrierConfigManager.ImsSms
                                                 .KEY_SMS_OVER_IMS_SEND_RETRY_DELAY_MILLIS_INT,
                                                 2000);
@@ -399,7 +413,11 @@ public class ImsSmsDispatcherTest extends TelephonyTest {
     @Test
     public void testErrorImsRetrywithRetryConfig() throws Exception {
         int token = mImsSmsDispatcher.mNextToken.get();
-        int messageRef = mImsSmsDispatcher.nextMessageRef() + 1;
+        int messageRef = mImsSmsDispatcher.nextMessageRef();
+        if (mImsSmsDispatcher.isMessageRefIncrementViaTelephony()) {
+            messageRef += 1;
+        }
+
         mContextFixture.getCarrierConfigBundle().putInt(CarrierConfigManager.ImsSms
                                                 .KEY_SMS_OVER_IMS_SEND_RETRY_DELAY_MILLIS_INT,
                                                 3000);
