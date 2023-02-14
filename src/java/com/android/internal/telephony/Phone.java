@@ -5410,6 +5410,77 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         //TODO (b/266126070): add implementation.
     }
 
+    /**
+     * Registers for satellite state change from satellite modem.
+     *
+     * @param h - Handler for notification message.
+     * @param what - User-defined message code.
+     * @param obj - User object.
+     */
+    public void registerForSatelliteModemStateChange(@NonNull Handler h, int what,
+            @Nullable Object obj) {
+        mCi.registerForSatelliteModeChanged(h, what, obj);
+    }
+
+    /**
+     * Unregisters for satellite state changes from satellite modem.
+     *
+     * @param h - Handler to be removed from registrant list.
+     */
+    public void unregisterForSatelliteModemStateChange(@NonNull Handler h) {
+        mCi.unregisterForSatelliteModeChanged(h);
+    }
+
+    /**
+     * Registers for pending message count info from satellite modem.
+     *
+     * @param h - Handler for notification message.
+     * @param what - User-defined message code.
+     * @param obj - User object.
+     */
+    public void registerForPendingMessageCount(@NonNull Handler h, int what, @Nullable Object obj) {
+        mCi.registerForPendingSatelliteMessageCount(h, what, obj);
+    }
+
+    /**
+     * Unregisters for pending message count info from satellite modem.
+     *
+     * @param h - Handler to be removed from registrant list.
+     */
+    public void unregisterForPendingMessageCount(@NonNull Handler h) {
+        mCi.unregisterForPendingSatelliteMessageCount(h);
+    }
+
+    /**
+     * Register to receive incoming datagrams over satellite.
+     *
+     * @param h - Handler for notification message.
+     * @param what - User-defined message code.
+     * @param obj - User object.
+     */
+    public void registerForNewSatelliteDatagram(@NonNull Handler h, int what,
+            @Nullable Object obj) {
+        //mCi.registerForNewSatelliteDatagram(h, what, obj);
+    }
+
+
+    /**
+     * Unregister to stop receiving incoming datagrams over satellite.
+     *
+     * @param h - Handler to be removed from registrant list.
+     */
+    public void unregisterForNewSatelliteDatagram(@NonNull Handler h) {
+        //mCi.unregisterForNewSatelliteDatagram(h);
+    }
+
+    /**
+     * Poll pending satellite datagrams over satellite.
+     * @param result - message object which informs if the request is successful or not.
+     */
+    public void pollPendingSatelliteDatagrams(Message result) {
+        //mCi.pollPendingSatelliteDatagrams(result);
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Phone: subId=" + getSubId());
         pw.println(" mPhoneId=" + mPhoneId);
