@@ -926,6 +926,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                     mSlotIndexToSubId.remove(simSlotIndex);
                 });
         updateGroupDisabled();
+        logl("markSubscriptionsInactive: " + slotMappingToString());
     }
 
     /**
@@ -1272,6 +1273,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                 mSlotIndexToSubId.put(phoneId, subId);
                 // Update the SIM slot index. This will make the subscription active.
                 mSubscriptionDatabaseManager.setSimSlotIndex(subId, phoneId);
+                logl("updateSubscriptions: " + slotMappingToString());
             }
 
             // Update the card id.
@@ -1348,6 +1350,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         } else {
             log("updateSubscriptions: No ICCID available for phone " + phoneId);
             mSlotIndexToSubId.remove(phoneId);
+            logl("updateSubscriptions: " + slotMappingToString());
         }
 
         if (areAllSubscriptionsLoaded()) {
@@ -1914,6 +1917,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                 int subId = insertSubscriptionInfo(iccId, slotIndex, displayName, subscriptionType);
                 updateGroupDisabled();
                 mSlotIndexToSubId.put(slotIndex, subId);
+                logl("addSubInfo: " + slotMappingToString());
             } else {
                 // Record already exists.
                 loge("Subscription record already existed.");
@@ -3812,6 +3816,16 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
+     * @return The logical SIM slot/sub mapping to string.
+     */
+    @NonNull
+    private String slotMappingToString() {
+        return mSlotIndexToSubId.entrySet().stream()
+                .map(e -> "Slot " + e.getKey() + ": subId=" + e.getValue())
+                .collect(Collectors.joining(", "));
+    }
+
+    /**
      * Log debug messages.
      *
      * @param s debug messages
@@ -3864,6 +3878,12 @@ public class SubscriptionManagerService extends ISub.Stub {
         pw.increaseIndent();
         mSlotIndexToSubId.forEach((slotIndex, subId)
                 -> pw.println("Logical SIM slot " + slotIndex + ": subId=" + subId));
+        pw.decreaseIndent();
+        pw.println("ICCID:");
+        pw.increaseIndent();
+        for (int i = 0; i < mTelephonyManager.getActiveModemCount(); i++) {
+            pw.println("slot " + i + ": " + getIccId(i));
+        }
         pw.decreaseIndent();
         pw.println();
         pw.println("defaultSubId=" + getDefaultSubId());
