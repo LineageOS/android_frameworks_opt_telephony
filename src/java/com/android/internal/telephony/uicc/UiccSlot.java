@@ -666,7 +666,7 @@ public class UiccSlot extends Handler {
                 + isMultipleEnabledProfileSupported());
         pw.println(" mIsRemovable=" + mIsRemovable);
         pw.println(" mLastRadioState=" + mLastRadioState);
-        pw.println(" mIccIds=" + Rlog.pii(TAG, getPrintableIccIds()));
+        pw.println(" mIccIds=" + getPrintableIccIds());
         pw.println(" mPortIdxToPhoneId=" + mPortIdxToPhoneId);
         pw.println(" mEid=" + Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, mEid));
         pw.println(" mCardState=" + mCardState);

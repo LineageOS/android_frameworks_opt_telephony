@@ -852,7 +852,8 @@ public class SubscriptionInfoUpdater extends Handler {
         // If SIM is not absent, insert new record or update existing record.
         if (!ICCID_STRING_FOR_NO_SIM.equals(sIccId[phoneId]) && sIccId[phoneId] != null) {
             logd("updateSubscriptionInfoByIccId: adding subscription info record: iccid: "
-                    + Rlog.pii(LOG_TAG, sIccId[phoneId]) + ", phoneId:" + phoneId);
+                    + SubscriptionInfo.givePrintableIccid(sIccId[phoneId])
+                    + ", phoneId:" + phoneId);
             mSubscriptionManager.addSubscriptionInfoRecord(sIccId[phoneId], phoneId);
         }
 
