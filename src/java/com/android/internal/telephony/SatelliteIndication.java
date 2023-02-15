@@ -167,13 +167,14 @@ public class SatelliteIndication extends IRadioSatelliteIndication.Stub {
      * @param features List of Feature whose provision state has changed.
      */
     public void onProvisionStateChanged(int indicationType, boolean provisioned, int[] features) {
+        // TODO: remove features and update AsyncResult
         mRil.processIndication(HAL_SERVICE_SATELLITE, indicationType);
 
         if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_SATELLITE_PROVISION_STATE_CHANGED);
 
         if (mRil.mSatelliteProvisionStateChangedRegistrants != null) {
-            mRil.mSatelliteProvisionStateChangedRegistrants.notifyRegistrants(new AsyncResult(
-                    provisioned, RILUtils.convertHalSatelliteFeatures(features), null));
+            mRil.mSatelliteProvisionStateChangedRegistrants.notifyRegistrants(
+                    new AsyncResult(provisioned, null, null));
         }
     }
 }

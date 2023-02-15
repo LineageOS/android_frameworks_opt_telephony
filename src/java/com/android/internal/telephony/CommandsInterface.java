@@ -2115,10 +2115,28 @@ public interface CommandsInterface {
      *
      * Input parameters equivalent to TS 27.007 AT+CCHC command.
      *
+     * Starting with Android U, use {@link #iccCloseLogicalChannel(int, boolean, Message)}}
+     * API to close the logical channel if the channel was opened to perform ES10 operations.
+     *
      * @param channel Channel id. Id of the channel to be closed.
      * @param response Callback message.
      */
     public void iccCloseLogicalChannel(int channel, Message response);
+
+    /**
+     * Close a previously opened logical channel to the SIM.
+     *
+     * Input parameters equivalent to TS 27.007 AT+CCHC command.
+     *
+     * Per spec SGP.22 V3.0, ES10 commands needs to be sent over command port of MEP-A. In order
+     * to close proper logical channel, should pass information about whether the logical channel
+     * was opened for sending ES10 commands or not.
+     *
+     * @param channel Channel id. Id of the channel to be closed.
+     * @param isEs10  Whether the logical channel is opened to perform ES10 operations.
+     * @param response Callback message.
+     */
+    public void iccCloseLogicalChannel(int channel, boolean isEs10, Message response);
 
     /**
      * Exchange APDUs with the SIM on a logical channel.
@@ -3146,7 +3164,14 @@ public interface CommandsInterface {
     default void getMaxCharactersPerSatelliteTextMessage(Message result) {}
 
     /**
-     * Get time for next visibility of satellite.
+     * Get whether satellite communication is allowed for the current location.
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    default void isSatelliteCommunicationAllowedForCurrentLocation(Message result) {}
+
+    /**
+     * Get the time after which the satellite will next be visible.
      *
      * @param result Message that will be sent back to the requester.
      */

@@ -73,6 +73,7 @@ import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
+import android.telephony.satellite.SatelliteDatagram;
 import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Log;
@@ -5272,8 +5273,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     /**
      * Get maximum number of characters per text message on satellite.
-     * @param result - message object which contains maximum characters on success
-     *               and error code on failure.
+     * @param result The Message to send the result of the operation to.
      */
     public void getMaxCharactersPerSatelliteTextMessage(Message result) {
         mCi.getMaxCharactersPerSatelliteTextMessage(result);
@@ -5355,28 +5355,29 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Provision the subscription with a satellite provider. This is needed to register the
-     * subscription if the provider allows dynamic registration.
+     * Provision the subscription with a satellite provider.
+     * This is needed to register the device/subscription if the provider allows dynamic
+     * registration.
      *
      * @param result Callback message to receive the result.
-     * @param token The security token of the device/subscription to be provisioned.
-     * @param imei IMEI of the SIM associated with the satellite modem.
-     * @param msisdn MSISDN of the SIM associated with the satellite modem.
-     * @param imsi IMSI of the SIM associated with the satellite modem.
+     * @param token The token of the device/subscription to be provisioned.
      */
-    public void provisionSatelliteService(Message result, String token, String imei, String msisdn,
-            String imsi) {
+    public void provisionSatelliteService(Message result, String token) {
         // TODO: update parameters in HAL
-        // mCi.provisionSatelliteService(result, token, imei, msisdn, imsi);
+        // mCi.provisionSatelliteService(result, token);
     }
 
     /**
-     * Cancel the ongoing provision satellite request of a subscription.
+     * Deprovision the device/subscription with a satellite provider.
+     * This is needed to unregister the device/subscription if the provider allows dynamic
+     * registration.
+     * If provisioning is in progress for the given SIM, cancel the request.
+     * If there is no request in progress, deprovision the given SIM.
      *
      * @param result Callback message to receive the result.
-     * @param imsi IMSI of the subscription whose provision request will be cancelled.
+     * @param token The token of the device/subscription to be deprovisioned.
      */
-    public void cancelProvisionSatelliteService(Message result, String imsi) {
+    public void deprovisionSatelliteService(Message result, String token) {
         //TODO (b/266126070): add implementation.
     }
 
@@ -5407,6 +5408,102 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void getProvisionedSatelliteFeatures(Message result) {
         //TODO (b/266126070): add implementation.
+    }
+
+    /**
+     * Registers for satellite state change from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForSatelliteModemStateChange(@NonNull Handler h, int what,
+            @Nullable Object obj) {
+        mCi.registerForSatelliteModeChanged(h, what, obj);
+    }
+
+    /**
+     * Unregisters for satellite state changes from satellite modem.
+     *
+     * @param h Handler to be removed from registrant list.
+     */
+    public void unregisterForSatelliteModemStateChange(@NonNull Handler h) {
+        mCi.unregisterForSatelliteModeChanged(h);
+    }
+
+    /**
+     * Registers for pending message count info from satellite modem.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForPendingMessageCount(@NonNull Handler h, int what, @Nullable Object obj) {
+        mCi.registerForPendingSatelliteMessageCount(h, what, obj);
+    }
+
+    /**
+     * Unregisters for pending message count info from satellite modem.
+     *
+     * @param h Handler to be removed from registrant list.
+     */
+    public void unregisterForPendingMessageCount(@NonNull Handler h) {
+        mCi.unregisterForPendingSatelliteMessageCount(h);
+    }
+
+    /**
+     * Register to receive incoming datagrams over satellite.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForNewSatelliteDatagram(@NonNull Handler h, int what,
+            @Nullable Object obj) {
+        //mCi.registerForNewSatelliteDatagram(h, what, obj);
+    }
+
+
+    /**
+     * Unregister to stop receiving incoming datagrams over satellite.
+     *
+     * @param h Handler to be removed from registrant list.
+     */
+    public void unregisterForNewSatelliteDatagram(@NonNull Handler h) {
+        //mCi.unregisterForNewSatelliteDatagram(h);
+    }
+
+    /**
+     * Poll pending satellite datagrams over satellite.
+     * @param result The Message to send the result of the operation to.
+     */
+    public void pollPendingSatelliteDatagrams(Message result) {
+        //mCi.pollPendingSatelliteDatagrams(result);
+    }
+
+    /**
+     * Send datagram over satellite.
+     * @param result The Message to send the result of the operation to.
+     * @param datagram Datagram to send over satellite.
+     */
+    public void sendSatelliteDatagram(Message result, SatelliteDatagram datagram) {
+        //mCi.sendSatelliteDatagram(result, datagram, longitude, latitude);
+    }
+
+    /**
+     * Check whether satellite communication is allowed for the current location.
+     * @param result The Message to send the result of the operation to.
+     */
+    public void isSatelliteCommunicationAllowedForCurrentLocation(Message result) {
+        mCi.isSatelliteCommunicationAllowedForCurrentLocation(result);
+    }
+
+    /**
+     * Get the time after which the satellite will next be visible.
+     * @param result The Message to send the result of the operation to.
+     */
+    public void requestTimeForNextSatelliteVisibility(Message result) {
+        mCi.getTimeForNextSatelliteVisibility(result);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
