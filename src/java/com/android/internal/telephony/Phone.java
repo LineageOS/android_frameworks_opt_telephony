@@ -5500,7 +5500,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Get the time after which the satellite will next be visible.
+     * Get the time after which the satellite will be visible.
      * @param result The Message to send the result of the operation to.
      */
     public void requestTimeForNextSatelliteVisibility(Message result) {
