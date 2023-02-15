@@ -1817,4 +1817,45 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER, CALLING_PACKAGE, CALLING_FEATURE))
                 .isEmpty();
     }
+
+    @Test
+    public void testDeleteEsim() {
+        // pSIM
+        insertSubscription(FAKE_SUBSCRIPTION_INFO2);
+
+        EuiccProfileInfo profileInfo1 = new EuiccProfileInfo.Builder(FAKE_ICCID1)
+                .setIccid(FAKE_ICCID1)
+                .setNickname(FAKE_CARRIER_NAME1)
+                .setProfileClass(SubscriptionManager.PROFILE_CLASS_OPERATIONAL)
+                .setCarrierIdentifier(new CarrierIdentifier(FAKE_MCC1, FAKE_MNC1, null, null, null,
+                        null, FAKE_CARRIER_ID1, FAKE_CARRIER_ID1))
+                .setUiccAccessRule(Arrays.asList(UiccAccessRule.decodeRules(
+                        FAKE_NATIVE_ACCESS_RULES1)))
+                .build();
+
+        GetEuiccProfileInfoListResult result = new GetEuiccProfileInfoListResult(
+                EuiccService.RESULT_OK, new EuiccProfileInfo[]{profileInfo1}, false);
+        doReturn(result).when(mEuiccController).blockingGetEuiccProfileInfoList(eq(1));
+        doReturn(FAKE_ICCID1).when(mUiccController).convertToCardString(eq(1));
+
+        mSubscriptionManagerServiceUT.updateEmbeddedSubscriptions(List.of(1), null);
+        processAllMessages();
+
+        // Now we should have two subscriptions in the database. One for pSIM, one for eSIM.
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(1).isEmbedded()).isFalse();
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(2).isEmbedded()).isTrue();
+
+        // Delete the eSIM. blockingGetEuiccProfileInfoList will return an empty list.
+        result = new GetEuiccProfileInfoListResult(
+                EuiccService.RESULT_OK, new EuiccProfileInfo[0], false);
+        doReturn(result).when(mEuiccController).blockingGetEuiccProfileInfoList(eq(1));
+
+        mSubscriptionManagerServiceUT.updateEmbeddedSubscriptions(List.of(1), null);
+        processAllMessages();
+
+        // The original pSIM is still pSIM
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(1).isEmbedded()).isFalse();
+        // The original eSIM becomes removed pSIM ¯\_(ツ)_/¯
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(2).isEmbedded()).isFalse();
+    }
 }
