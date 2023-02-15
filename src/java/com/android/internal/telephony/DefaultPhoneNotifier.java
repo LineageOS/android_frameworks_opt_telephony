@@ -33,6 +33,8 @@ import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager.DataEnabledReason;
+import android.telephony.TelephonyManager.EmergencyCallbackModeStopReason;
+import android.telephony.TelephonyManager.EmergencyCallbackModeType;
 import android.telephony.TelephonyRegistryManager;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsCallSession;
@@ -284,6 +286,18 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
                 sender.getSubId(), linkCapacityEstimateList);
     }
 
+    @Override
+    public void notifyCallbackModeStarted(Phone sender, @EmergencyCallbackModeType int type) {
+        mTelephonyRegistryMgr.notifyCallBackModeStarted(sender.getPhoneId(),
+                sender.getSubId(), type);
+    }
+
+    @Override
+    public void notifyCallbackModeStopped(Phone sender, @EmergencyCallbackModeType int type,
+            @EmergencyCallbackModeStopReason int reason) {
+        mTelephonyRegistryMgr.notifyCallbackModeStopped(sender.getPhoneId(),
+                sender.getSubId(), type, reason);
+    }
     /**
      * Convert the {@link Call.State} enum into the PreciseCallState.PRECISE_CALL_STATE_* constants
      * for the public API.

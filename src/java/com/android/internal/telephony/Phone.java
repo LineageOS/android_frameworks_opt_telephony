@@ -5507,6 +5507,26 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mCi.getTimeForNextSatelliteVisibility(result);
     }
 
+    /**
+     * Start callback mode
+     * @param type for callback mode entry.
+     */
+    public void startCallbackMode(@TelephonyManager.EmergencyCallbackModeType int type) {
+        Rlog.d(LOG_TAG, "startCallbackMode:type=" + type);
+        mNotifier.notifyCallbackModeStarted(this, type);
+    }
+
+    /**
+     * Stop callback mode
+     * @param type for callback mode exit.
+     * @param reason for stopping callback mode.
+     */
+    public void stopCallbackMode(@TelephonyManager.EmergencyCallbackModeType int type,
+            @TelephonyManager.EmergencyCallbackModeStopReason int reason) {
+        Rlog.d(LOG_TAG, "stopCallbackMode:type=" + type + ", reason=" + reason);
+        mNotifier.notifyCallbackModeStopped(this, type, reason);
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Phone: subId=" + getSubId());
         pw.println(" mPhoneId=" + mPhoneId);

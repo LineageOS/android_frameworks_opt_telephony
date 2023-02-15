@@ -157,6 +157,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
                 TelephonyCallback.EVENT_VOICE_ACTIVATION_STATE_CHANGED);
         READ_PRIVILEGED_PHONE_STATE_EVENTS.add(
                 TelephonyCallback.EVENT_ALLOWED_NETWORK_TYPE_LIST_CHANGED);
+        READ_PRIVILEGED_PHONE_STATE_EVENTS.add(
+                TelephonyCallback.EVENT_EMERGENCY_CALLBACK_MODE_CHANGED);
     }
 
     // All events contribute to TelephonyRegistry#isActiveEmergencySessionPermissionRequired
