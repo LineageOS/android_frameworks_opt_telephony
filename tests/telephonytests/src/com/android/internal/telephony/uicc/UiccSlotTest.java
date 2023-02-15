@@ -554,8 +554,18 @@ public class UiccSlotTest extends TelephonyTest {
         mUiccSlot.update(null, iss, 0 /* slotIndex */);
 
         // assert on updated values
-        assertFalse(mUiccSlot.isMultipleEnabledProfileSupported());
+        assertTrue(mUiccSlot.isMultipleEnabledProfileSupported());
         assertEquals(IccSlotStatus.MultipleEnabledProfilesMode.MEP_A1,
+                mUiccSlot.getSupportedMepMode());
+
+        //update port info and MEP mode to test HAL version 2.0
+        iss.mSimPortInfos = new IccSimPortInfo[] {simPortInfo1, simPortInfo2};
+        iss.setMultipleEnabledProfilesMode(0); // Set MEP mode to NONE(assume modem sends)
+
+        // update port info and MEP mode
+        mUiccSlot.update(null, iss, 0 /* slotIndex */);
+        assertTrue(mUiccSlot.isMultipleEnabledProfileSupported());
+        assertEquals(IccSlotStatus.MultipleEnabledProfilesMode.MEP_B,
                 mUiccSlot.getSupportedMepMode());
     }
 }

@@ -51,6 +51,7 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccSlotPortMapping;
 import com.android.internal.telephony.uicc.IccSlotStatus;
+import com.android.internal.telephony.uicc.IccSlotStatus.MultipleEnabledProfilesMode;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.asn1.Asn1Node;
 import com.android.internal.telephony.uicc.asn1.InvalidAsn1DataException;
@@ -120,7 +121,7 @@ public class EuiccPortTest extends TelephonyTest {
         mMockIccCardStatus.mSlotPortMapping = new IccSlotPortMapping();
         mEuiccPort =
             new EuiccPort(mContext, mMockCi, mMockIccCardStatus,
-                0 /* phoneId */, new Object(), mEuiccCard, false,
+                0 /* phoneId */, new Object(), mEuiccCard,
                     IccSlotStatus.MultipleEnabledProfilesMode.NONE) {
                 @Override
                 protected byte[] getDeviceId() {
@@ -174,7 +175,7 @@ public class EuiccPortTest extends TelephonyTest {
                 "BF2D14A012E3105A0A896700000000004523019F7001019000");
 
         ResultCaptor<EuiccProfileInfo[]> resultCaptor = new ResultCaptor<>();
-        mEuiccPort.mIsSupportsMultipleEnabledProfiles = true; // MEP capable
+        mEuiccPort.mSupportedMepMode = MultipleEnabledProfilesMode.MEP_B; // MEP capable
         mEuiccPort.getAllProfiles(resultCaptor, mHandler);
         processAllMessages();
 
@@ -209,7 +210,7 @@ public class EuiccPortTest extends TelephonyTest {
                 "BF2D18A016E3145A0A896700000000004523019F7001009F2401019000");
 
         ResultCaptor<EuiccProfileInfo[]> resultCaptor = new ResultCaptor<>();
-        mEuiccPort.mIsSupportsMultipleEnabledProfiles = true; // MEP capable
+        mEuiccPort.mSupportedMepMode = MultipleEnabledProfilesMode.MEP_B; // MEP capable
         mEuiccPort.getAllProfiles(resultCaptor, mHandler);
         processAllMessages();
 
@@ -231,7 +232,7 @@ public class EuiccPortTest extends TelephonyTest {
                 "BF2D14A012E3105A0A896700000000004523FF9F7001009000");
 
         ResultCaptor<EuiccProfileInfo[]> resultCaptor = new ResultCaptor<>();
-        mEuiccPort.mIsSupportsMultipleEnabledProfiles = true; // MEP capable
+        mEuiccPort.mSupportedMepMode = MultipleEnabledProfilesMode.MEP_B; // MEP capable
         mEuiccPort.getAllProfiles(resultCaptor, mHandler);
         processAllMessages();
 
@@ -383,8 +384,7 @@ public class EuiccPortTest extends TelephonyTest {
 
         ResultCaptor<Void> resultCaptor = new ResultCaptor<>();
         mMockIccCardStatus.mSlotPortMapping.mPortIndex = 1;
-        mEuiccPort.updateSupportMepProperties(true,
-                IccSlotStatus.MultipleEnabledProfilesMode.MEP_A1);
+        mEuiccPort.updateSupportedMepMode(MultipleEnabledProfilesMode.MEP_A1);
         mEuiccPort.update(mContext, mMockCi, mMockIccCardStatus, mEuiccCard);
         mEuiccPort.switchToProfile("98760000000000543210", true, resultCaptor, mHandler);
         processAllMessages();
