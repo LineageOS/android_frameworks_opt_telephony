@@ -5432,22 +5432,23 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Registers for pending message count info from satellite modem.
+     * Registers for pending datagram count info from satellite modem.
      *
      * @param h Handler for notification message.
      * @param what User-defined message code.
      * @param obj User object.
      */
-    public void registerForPendingMessageCount(@NonNull Handler h, int what, @Nullable Object obj) {
+    public void registerForPendingDatagramCount(@NonNull Handler h, int what,
+            @Nullable Object obj) {
         mCi.registerForPendingSatelliteMessageCount(h, what, obj);
     }
 
     /**
-     * Unregisters for pending message count info from satellite modem.
+     * Unregisters for pending datagram count info from satellite modem.
      *
      * @param h Handler to be removed from registrant list.
      */
-    public void unregisterForPendingMessageCount(@NonNull Handler h) {
+    public void unregisterForPendingDatagramCount(@NonNull Handler h) {
         mCi.unregisterForPendingSatelliteMessageCount(h);
     }
 
@@ -5474,7 +5475,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Poll pending satellite datagrams over satellite.
+     * Poll pending datagrams over satellite.
      * @param result The Message to send the result of the operation to.
      */
     public void pollPendingSatelliteDatagrams(Message result) {
