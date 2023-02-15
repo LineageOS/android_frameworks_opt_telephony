@@ -49,6 +49,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
 import java.util.Collections;
+import java.util.concurrent.Executor;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -90,6 +91,7 @@ public class DisplayInfoControllerTest extends TelephonyTest {
         logd("DisplayInfoControllerTest setup!");
         super.setUp(getClass().getSimpleName());
 
+        doReturn((Executor) Runnable::run).when(mContext).getMainExecutor();
         mSstHandler = new ServiceStateTrackerTestHandler(getClass().getSimpleName());
         mSstHandler.start();
         waitUntilReady();

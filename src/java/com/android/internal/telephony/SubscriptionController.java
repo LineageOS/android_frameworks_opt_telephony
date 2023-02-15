@@ -26,6 +26,7 @@ import static android.telephony.UiccSlotInfo.CARD_STATE_INFO_PRESENT;
 import android.Manifest;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.annotation.RequiresPermission;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.app.compat.CompatChanges;
@@ -43,6 +44,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.ParcelUuid;
 import android.os.PersistableBundle;
@@ -4963,6 +4965,38 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public boolean isSubscriptionManagerServiceEnabled() {
         return false;
+    }
+
+    /**
+     * Called during setup wizard restore flow to attempt to restore the backed up sim-specific
+     * configs to device for all existing SIMs in the subscription database {@link SimInfo}.
+     * Internally, it will store the backup data in an internal file. This file will persist on
+     * device for device's lifetime and will be used later on when a SIM is inserted to restore that
+     * specific SIM's settings. End result is subscription database is modified to match any backed
+     * up configs for the appropriate inserted SIMs.
+     *
+     * <p>
+     * The {@link Uri} {@link SubscriptionManager#SIM_INFO_BACKUP_AND_RESTORE_CONTENT_URI} is
+     * notified if any {@link SimInfo} entry is updated as the result of this method call.
+     *
+     * @param data with the sim specific configs to be backed up.
+     */
+    @RequiresPermission(Manifest.permission.MODIFY_PHONE_STATE)
+    @Override
+    public void restoreAllSimSpecificSettingsFromBackup(@NonNull byte[] data) {
+        enforceModifyPhoneState("restoreAllSimSpecificSettingsFromBackup");
+
+        long token = Binder.clearCallingIdentity();
+        try {
+            Bundle bundle = new Bundle();
+            bundle.putByteArray(SubscriptionManager.KEY_SIM_SPECIFIC_SETTINGS_DATA, data);
+            mContext.getContentResolver().call(
+                    SubscriptionManager.SIM_INFO_BACKUP_AND_RESTORE_CONTENT_URI,
+                    SubscriptionManager.RESTORE_SIM_SPECIFIC_SETTINGS_METHOD_NAME,
+                    null, bundle);
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
     }
 
     /**

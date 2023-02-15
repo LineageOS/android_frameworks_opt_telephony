@@ -4122,6 +4122,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void iccCloseLogicalChannel(int channel, Message result) {
+        iccCloseLogicalChannel(channel, false, result);
+    }
+
+    @Override
+    public void iccCloseLogicalChannel(int channel, boolean isEs10, Message result) {
         RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
         if (!simProxy.isEmpty()) {
             RILRequest rr = obtainRequest(RIL_REQUEST_SIM_CLOSE_CHANNEL, result,
@@ -4129,11 +4134,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             if (RILJ_LOGD) {
                 riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
-                        + " channel = " + channel);
+                        + " channel = " + channel + " isEs10 = " + isEs10);
             }
-
             try {
-                simProxy.iccCloseLogicalChannel(rr.mSerial, channel);
+                simProxy.iccCloseLogicalChannel(rr.mSerial, channel, isEs10);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(HAL_SERVICE_SIM, "iccCloseLogicalChannel", e);
             }
@@ -6305,6 +6309,25 @@ public class RIL extends BaseCommands implements CommandsInterface {
                         CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
                 result.sendToTarget();
             }
+        }
+    }
+
+    /**
+     * Get whether satellite communication is allowed for the current location
+     *
+     * @param result Message that will be sent back to the requester.
+     */
+    @Override
+    public void isSatelliteCommunicationAllowedForCurrentLocation(Message result) {
+        // TODO: link to HAL implementation
+        if (RILJ_LOGD) {
+            Rlog.d(RILJ_LOG_TAG,
+                    "stopSendingSatellitePointingInfo: REQUEST_NOT_SUPPORTED");
+        }
+        if (result != null) {
+            AsyncResult.forMessage(result, null,
+                    CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+            result.sendToTarget();
         }
     }
 

@@ -350,4 +350,23 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
             assertThat(mDataStallRecoveryManager.getRecoveryAction()).isEqualTo(0);
         }
     }
+
+    @Test
+    public void testStartTimeNotZero() throws Exception {
+        sendOnInternetDataNetworkCallback(false);
+        doReturn(mSignalStrength).when(mPhone).getSignalStrength();
+        doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
+
+        logd("Sending validation failed callback");
+        sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_NOT_VALID);
+        processAllFutureMessages();
+
+        for (int i = 0; i < 2; i++) {
+            sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_NOT_VALID);
+            logd("Sending validation failed callback");
+            processAllMessages();
+            moveTimeForward(101);
+        }
+        assertThat(mDataStallRecoveryManager.mDataStallStartMs != 0).isTrue();
+    }
 }
