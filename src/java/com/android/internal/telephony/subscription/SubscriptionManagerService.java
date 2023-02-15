@@ -1027,6 +1027,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                 return;
             }
 
+            Set<Integer> embeddedSubs = new ArraySet<>();
             log("updateEmbeddedSubscriptions: start to get euicc profiles.");
             for (int cardId : cardIds) {
                 GetEuiccProfileInfoListResult result = mEuiccController
@@ -1103,11 +1104,27 @@ public class SubscriptionManagerService extends ISub.Stub {
                         builder.setCardString(mUiccController.convertToCardString(cardId));
                     }
 
+                    embeddedSubs.add(subInfo.getSubscriptionId());
                     subInfo = builder.build();
                     log("updateEmbeddedSubscriptions: update subscription " + subInfo);
                     mSubscriptionDatabaseManager.updateSubscription(subInfo);
                 }
             }
+
+            // embeddedSubs contains all the existing embedded subs queried from EuiccManager,
+            // including active or inactive. If there are any embedded subscription in the database
+            // that is not in embeddedSubs, mark them as non-embedded. These were deleted embedded
+            // subscriptions, so we treated them as non-embedded (pre-U behavior) and they don't
+            // show up in Settings SIM page.
+            mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                    .filter(SubscriptionInfoInternal::isEmbedded)
+                    .filter(subInfo -> !embeddedSubs.contains(subInfo.getSubscriptionId()))
+                    .forEach(subInfo -> {
+                        logl("updateEmbeddedSubscriptions: Mark the deleted sub "
+                                + subInfo.getSubscriptionId() + " as non-embedded.");
+                        mSubscriptionDatabaseManager.setEmbedded(
+                                subInfo.getSubscriptionId(), false);
+                    });
         });
         log("updateEmbeddedSubscriptions: Finished embedded subscription update.");
         if (callback != null) {
