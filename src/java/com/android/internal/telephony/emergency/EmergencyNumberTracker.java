@@ -54,7 +54,9 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.metrics.EmergencyNumberStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.nano.PersistAtomsProto;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.phone.ecc.nano.ProtobufEccData;
@@ -110,6 +112,7 @@ public class EmergencyNumberTracker extends Handler {
     private String mCountryIso;
     private String mLastKnownEmergencyCountryIso = "";
     private int mCurrentDatabaseVersion = INVALID_DATABASE_VERSION;
+    private int mCurrentOtaDatabaseVersion = INVALID_DATABASE_VERSION;
     private boolean mIsHalVersionLessThan1Dot4 = false;
     private Resources mResources = null;
     /**
@@ -572,20 +575,20 @@ public class EmergencyNumberTracker extends Handler {
         }
 
         // Cache OTA emergency number database
-        int otaDatabaseVersion = cacheOtaEmergencyNumberDatabase();
+        mCurrentOtaDatabaseVersion = cacheOtaEmergencyNumberDatabase();
 
         // Use a valid database that has higher version.
-        if (otaDatabaseVersion == INVALID_DATABASE_VERSION
+        if (mCurrentOtaDatabaseVersion == INVALID_DATABASE_VERSION
                 && assetsDatabaseVersion == INVALID_DATABASE_VERSION) {
             loge("No database available. Phone Id: " + mPhone.getPhoneId());
-        } else if (assetsDatabaseVersion > otaDatabaseVersion) {
+        } else if (assetsDatabaseVersion > mCurrentOtaDatabaseVersion) {
             logd("Using Asset Emergency database. Version: " + assetsDatabaseVersion);
             mCurrentDatabaseVersion = assetsDatabaseVersion;
             mEmergencyNumberListFromDatabase = updatedAssetEmergencyNumberList;
             mNormalRoutedNumbers.clear();
             mNormalRoutedNumbers = assetNormalRoutedNumbers;
         } else {
-            logd("Using Ota Emergency database. Version: " + otaDatabaseVersion);
+            logd("Using Ota Emergency database. Version: " + mCurrentOtaDatabaseVersion);
         }
     }
 
@@ -725,7 +728,8 @@ public class EmergencyNumberTracker extends Handler {
     private void updateOtaEmergencyNumberListDatabaseAndNotify() {
         logd("updateOtaEmergencyNumberListDatabaseAndNotify():"
                 + " receiving Emegency Number database OTA update");
-        if (cacheOtaEmergencyNumberDatabase() != INVALID_DATABASE_VERSION) {
+        mCurrentOtaDatabaseVersion = cacheOtaEmergencyNumberDatabase();
+        if (mCurrentOtaDatabaseVersion != INVALID_DATABASE_VERSION) {
             writeUpdatedEmergencyNumberListMetrics(mEmergencyNumberListFromDatabase);
             if (!DBG) {
                 mEmergencyNumberListDatabaseLocalLog.log(
@@ -1007,6 +1011,10 @@ public class EmergencyNumberTracker extends Handler {
 
     public int getEmergencyNumberDbVersion() {
         return mCurrentDatabaseVersion;
+    }
+
+    public int getEmergencyNumberOtaDbVersion() {
+        return mCurrentOtaDatabaseVersion;
     }
 
     private synchronized void updateEmergencyCountryIso(String countryIso) {
@@ -1358,6 +1366,21 @@ public class EmergencyNumberTracker extends Handler {
     public boolean shouldDeterminingOfUrnsAndCategoriesWhileMergingIgnored() {
         // TODO: Device config
         return false;
+    }
+
+    /**
+     * Captures the consolidated emergency numbers list and returns the array of
+     * {@link PersistAtomsProto.EmergencyNumber}.
+     */
+    public PersistAtomsProto.EmergencyNumbersInfo[] getEmergencyNumbersProtoArray() {
+        int otaVersion = Math.max(0, getEmergencyNumberOtaDbVersion());
+        int assetVersion = Math.max(0, getEmergencyNumberDbVersion());
+        boolean isDbRoutingIgnored = shouldEmergencyNumberRoutingFromDbBeIgnored();
+        List<EmergencyNumber> emergencyNumberList = getEmergencyNumberList();
+        logd("log emergency number list=" + emergencyNumberList + " for otaVersion=" + otaVersion
+                + ", assetVersion=" + assetVersion + ", isDbRoutingIgnored=" + isDbRoutingIgnored);
+        return EmergencyNumberStats.getInstance().convertEmergencyNumbersListToProto(
+                emergencyNumberList, assetVersion, otaVersion, isDbRoutingIgnored);
     }
 
     /**

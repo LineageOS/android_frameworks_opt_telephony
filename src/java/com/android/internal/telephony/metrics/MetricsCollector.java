@@ -21,6 +21,7 @@ import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_DATA_SER
 import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_SERVICE_STATE;
 import static com.android.internal.telephony.TelephonyStatsLog.DATA_CALL_SESSION;
 import static com.android.internal.telephony.TelephonyStatsLog.DEVICE_TELEPHONY_PROPERTIES;
+import static com.android.internal.telephony.TelephonyStatsLog.EMERGENCY_NUMBERS_INFO;
 import static com.android.internal.telephony.TelephonyStatsLog.GBA_EVENT;
 import static com.android.internal.telephony.TelephonyStatsLog.IMS_DEDICATED_BEARER_EVENT;
 import static com.android.internal.telephony.TelephonyStatsLog.IMS_DEDICATED_BEARER_LISTENER_EVENT;
@@ -57,10 +58,12 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyStatsLog;
+import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
 import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
+import com.android.internal.telephony.nano.PersistAtomsProto.EmergencyNumbersInfo;
 import com.android.internal.telephony.nano.PersistAtomsProto.GbaEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsDedicatedBearerEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsDedicatedBearerListenerEvent;
@@ -144,7 +147,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     /** Allows dependency injection. Used during unit tests. */
     @VisibleForTesting
     public MetricsCollector(Context context,
-                            PersistAtomsStorage storage) {
+            PersistAtomsStorage storage) {
         mStorage = storage;
         mStatsManager = (StatsManager) context.getSystemService(Context.STATS_MANAGER);
         if (mStatsManager != null) {
@@ -178,6 +181,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             registerAtom(GBA_EVENT);
             registerAtom(PER_SIM_STATUS);
             registerAtom(OUTGOING_SHORT_CODE_SMS);
+            registerAtom(EMERGENCY_NUMBERS_INFO);
             Rlog.d(TAG, "registered");
         } else {
             Rlog.e(TAG, "could not get StatsManager, atoms not registered");
@@ -254,6 +258,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 return pullPerSimStatus(data);
             case OUTGOING_SHORT_CODE_SMS:
                 return pullOutgoingShortCodeSms(data);
+            case EMERGENCY_NUMBERS_INFO:
+                return pullEmergencyNumbersInfo(data);
             default:
                 Rlog.e(TAG, String.format("unexpected atom ID %d", atomTag));
                 return StatsManager.PULL_SKIP;
@@ -760,6 +766,21 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         }
     }
 
+    private int pullEmergencyNumbersInfo(List<StatsEvent> data) {
+        boolean isDataLogged = false;
+        for (Phone phone : getPhonesIfAny()) {
+            if (phone != null) {
+                EmergencyNumberTracker tracker = phone.getEmergencyNumberTracker();
+                if (tracker != null) {
+                    EmergencyNumbersInfo[] numList = tracker.getEmergencyNumbersProtoArray();
+                    Arrays.stream(numList).forEach(number -> data.add(buildStatsEvent(number)));
+                    isDataLogged = true;
+                }
+            }
+        }
+        return isDataLogged ? StatsManager.PULL_SUCCESS : StatsManager.PULL_SKIP;
+    }
+
     /** Registers a pulled atom ID {@code atomId}. */
     private void registerAtom(int atomId) {
         mStatsManager.setPullAtomCallback(atomId, /* metadata= */ null,
@@ -1107,6 +1128,21 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 shortCodeSms.category,
                 shortCodeSms.xmlVersion,
                 shortCodeSms.shortCodeSmsCount);
+    }
+
+    private static StatsEvent buildStatsEvent(EmergencyNumbersInfo emergencyNumber) {
+        return TelephonyStatsLog.buildStatsEvent(
+                EMERGENCY_NUMBERS_INFO,
+                emergencyNumber.isDbVersionIgnored,
+                emergencyNumber.assetVersion,
+                emergencyNumber.otaVersion,
+                emergencyNumber.number,
+                emergencyNumber.countryIso,
+                emergencyNumber.mnc,
+                emergencyNumber.route,
+                emergencyNumber.urns,
+                emergencyNumber.serviceCategories,
+                emergencyNumber.sources);
     }
 
     /** Returns all phones in {@link PhoneFactory}, or an empty array if phones not made yet. */
