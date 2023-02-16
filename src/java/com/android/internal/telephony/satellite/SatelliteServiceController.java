@@ -831,7 +831,7 @@ public class SatelliteServiceController {
             case SatelliteModemState.SATELLITE_MODEM_STATE_LISTENING:
                 return SatelliteManager.SATELLITE_MODEM_STATE_LISTENING;
             case SatelliteModemState.SATELLITE_MODEM_STATE_MESSAGE_TRANSFERRING:
-                return SatelliteManager.SATELLITE_MODEM_STATE_MESSAGE_TRANSFERRING;
+                return SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING;
             case SatelliteModemState.SATELLITE_MODEM_STATE_OFF:
                 return SatelliteManager.SATELLITE_MODEM_STATE_OFF;
         }
