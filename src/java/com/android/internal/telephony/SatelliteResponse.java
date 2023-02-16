@@ -22,7 +22,6 @@ import android.hardware.radio.RadioError;
 import android.hardware.radio.RadioResponseInfo;
 import android.hardware.radio.satellite.IRadioSatelliteResponse;
 import android.telephony.satellite.SatelliteCapabilities;
-import android.telephony.satellite.stub.SatelliteImplBase;
 
 /**
  * Interface declaring response functions to solicited radio requests for Satellite APIs.
@@ -145,9 +144,7 @@ public class SatelliteResponse extends IRadioSatelliteResponse.Stub {
      * @param mode Current Mode of the satellite modem.
      * @param technology The current technology of the satellite modem.
      */
-    public void getSatelliteModeResponse(
-            RadioResponseInfo responseInfo, @SatelliteImplBase.Mode int mode,
-            @SatelliteImplBase.NTRadioTechnology int technology) {
+    public void getSatelliteModeResponse(RadioResponseInfo responseInfo, int mode, int technology) {
         RILRequest rr = mRil.processResponse(HAL_SERVICE_SATELLITE, responseInfo);
 
         if (rr != null) {
