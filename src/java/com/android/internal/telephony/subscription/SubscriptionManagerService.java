@@ -3972,5 +3972,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         mLocalLog.dump(fd, pw, args);
         pw.decreaseIndent();
         pw.decreaseIndent();
+        pw.println();
+        mSubscriptionDatabaseManager.dump(fd, pw, args);
     }
 }
