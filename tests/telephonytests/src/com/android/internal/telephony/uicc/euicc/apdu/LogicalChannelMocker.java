@@ -65,17 +65,6 @@ public final class LogicalChannelMocker {
     public static void mockSendToLogicalChannel(CommandsInterface mockCi, int channel,
             Object... responseObjects) {
         ArgumentCaptor<Message> response = ArgumentCaptor.forClass(Message.class);
-        doAnswer(new Answer() {
-            private int mIndex = 0;
-
-            @Override
-            public Object answer(InvocationOnMock invocation) throws Throwable {
-                Object responseObject = responseObjects[mIndex++];
-                mockIccTransmitApduLogicalChannelResponse(response, responseObject);
-                return null;
-            }
-        }).when(mockCi).iccTransmitApduLogicalChannel(eq(channel), anyInt(), anyInt(), anyInt(),
-                anyInt(), anyInt(), anyString(), response.capture());
 
         doAnswer(new Answer() {
             private int mIndex = 0;
