@@ -519,7 +519,11 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
 
     @Test
     public void testSendTextWithMessageRef() throws Exception {
-        int messageRef = mGsmSmsDispatcher.nextMessageRef() + 1;
+        int messageRef = mGsmSmsDispatcher.nextMessageRef();
+        if (mGsmSmsDispatcher.isMessageRefIncrementViaTelephony()) {
+            messageRef += 1;
+        }
+
         mGsmSmsDispatcher.sendText("111", "222" /*scAddr*/, TAG,
                 null, null, null, null, false, -1, false, -1, false, 0L);
 
@@ -536,7 +540,11 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         parts.add("segment1");
         parts.add("segment2");
         parts.add("segment3");
-        int messageRef = mGsmSmsDispatcher.nextMessageRef() + parts.size();
+
+        int messageRef = mGsmSmsDispatcher.nextMessageRef();
+        if (mGsmSmsDispatcher.isMessageRefIncrementViaTelephony()) {
+            messageRef += parts.size();
+        }
         mGsmSmsDispatcher.sendMultipartText("6501002000" /*destAddr*/, "222" /*scAddr*/, parts,
                 null, null, null, null, false, -1, false, -1, 0L);
         waitForMs(150);

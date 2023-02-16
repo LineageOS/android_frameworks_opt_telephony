@@ -42,6 +42,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.content.res.Resources.NotFoundException;
 import android.database.ContentObserver;
 import android.net.Uri;
 import android.os.AsyncResult;
@@ -513,15 +514,40 @@ public abstract class SMSDispatcher extends Handler {
     }
 
     /**
-     *  Returns the next TP message Reference value incremented by 1 for every sms sent .
-     *  once a max of 255 is reached TP message Reference is reset to 0.
+     * Returns the next TP message Reference value incremented by 1 for every sms sent .
+     * once a max of 255 is reached TP message Reference is reset to 0.
      *
-     *  @return messageRef TP message Reference value
+     * @return messageRef TP message Reference value
      */
     public int nextMessageRef() {
+        if (!isMessageRefIncrementViaTelephony()) {
+            return 0;
+        }
+
         mMessageRef = (mMessageRef + 1) % 256;
         updateTPMessageReference();
         return mMessageRef;
+    }
+
+    /**
+     * As modem is using the last used TP-MR value present in SIM card, increment of
+     * messageRef(TP-MR) value should be prevented (config_stk_sms_send_support set to false)
+     * at telephony framework. In future, config_stk_sms_send_support flag will be enabled
+     * so that messageRef(TP-MR) increment will be done at framework side only.
+     *
+     * TODO:- Need to have new flag to control writing TP-MR value to SIM or shared prefrence.
+     */
+    public boolean isMessageRefIncrementViaTelephony() {
+        boolean isMessageRefIncrementEnabled = false;
+        try {
+            isMessageRefIncrementEnabled = mContext.getResources().getBoolean(
+                    com.android.internal.R.bool.config_stk_sms_send_support);
+        } catch (NotFoundException e) {
+            Rlog.e(TAG, "isMessageRefIncrementViaTelephony NotFoundException Exception");
+        }
+
+        Rlog.i(TAG, "bool.config_stk_sms_send_support= " + isMessageRefIncrementEnabled);
+        return isMessageRefIncrementEnabled;
     }
 
     /**

@@ -28,7 +28,6 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SATELLITE_RA
 
 import android.hardware.radio.satellite.IRadioSatelliteIndication;
 import android.os.AsyncResult;
-import android.telephony.satellite.stub.SatelliteImplBase;
 
 /**
  * Interface declaring unsolicited radio indications for Satellite APIs.
@@ -129,7 +128,7 @@ public class SatelliteIndication extends IRadioSatelliteIndication.Stub {
      * @param indicationType Type of radio indication
      * @param mode The current mode of the satellite modem.
      */
-    public void onSatelliteModeChanged(int indicationType, @SatelliteImplBase.Mode int mode) {
+    public void onSatelliteModeChanged(int indicationType, int mode) {
         mRil.processIndication(HAL_SERVICE_SATELLITE, indicationType);
 
         if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_SATELLITE_MODE_CHANGED);
@@ -146,8 +145,7 @@ public class SatelliteIndication extends IRadioSatelliteIndication.Stub {
      * @param indicationType Type of radio indication
      * @param technology The current technology of the satellite modem.
      */
-    public void onSatelliteRadioTechnologyChanged(int indicationType,
-            @SatelliteImplBase.NTRadioTechnology int technology) {
+    public void onSatelliteRadioTechnologyChanged(int indicationType, int technology) {
         mRil.processIndication(HAL_SERVICE_SATELLITE, indicationType);
 
         if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_SATELLITE_RADIO_TECHNOLOGY_CHANGED);

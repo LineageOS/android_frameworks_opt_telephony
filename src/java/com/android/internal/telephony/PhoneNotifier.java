@@ -32,6 +32,8 @@ import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager.DataEnabledReason;
+import android.telephony.TelephonyManager.EmergencyCallbackModeStopReason;
+import android.telephony.TelephonyManager.EmergencyCallbackModeType;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.MediaQualityStatus;
@@ -140,4 +142,11 @@ public interface PhoneNotifier {
     /** Notify link capacity estimate has changed. */
     void notifyLinkCapacityEstimateChanged(Phone sender,
             List<LinkCapacityEstimate> linkCapacityEstimateList);
+
+    /** Notify callback mode started. */
+    void notifyCallbackModeStarted(Phone sender, @EmergencyCallbackModeType int type);
+
+    /** Notify callback mode stopped. */
+    void notifyCallbackModeStopped(Phone sender, @EmergencyCallbackModeType int type,
+            @EmergencyCallbackModeStopReason int reason);
 }

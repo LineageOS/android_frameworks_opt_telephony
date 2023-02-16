@@ -5432,22 +5432,23 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Registers for pending message count info from satellite modem.
+     * Registers for pending datagram count info from satellite modem.
      *
      * @param h Handler for notification message.
      * @param what User-defined message code.
      * @param obj User object.
      */
-    public void registerForPendingMessageCount(@NonNull Handler h, int what, @Nullable Object obj) {
+    public void registerForPendingDatagramCount(@NonNull Handler h, int what,
+            @Nullable Object obj) {
         mCi.registerForPendingSatelliteMessageCount(h, what, obj);
     }
 
     /**
-     * Unregisters for pending message count info from satellite modem.
+     * Unregisters for pending datagram count info from satellite modem.
      *
      * @param h Handler to be removed from registrant list.
      */
-    public void unregisterForPendingMessageCount(@NonNull Handler h) {
+    public void unregisterForPendingDatagramCount(@NonNull Handler h) {
         mCi.unregisterForPendingSatelliteMessageCount(h);
     }
 
@@ -5474,7 +5475,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Poll pending satellite datagrams over satellite.
+     * Poll pending datagrams over satellite.
      * @param result The Message to send the result of the operation to.
      */
     public void pollPendingSatelliteDatagrams(Message result) {
@@ -5499,11 +5500,31 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Get the time after which the satellite will next be visible.
+     * Get the time after which the satellite will be visible.
      * @param result The Message to send the result of the operation to.
      */
     public void requestTimeForNextSatelliteVisibility(Message result) {
         mCi.getTimeForNextSatelliteVisibility(result);
+    }
+
+    /**
+     * Start callback mode
+     * @param type for callback mode entry.
+     */
+    public void startCallbackMode(@TelephonyManager.EmergencyCallbackModeType int type) {
+        Rlog.d(LOG_TAG, "startCallbackMode:type=" + type);
+        mNotifier.notifyCallbackModeStarted(this, type);
+    }
+
+    /**
+     * Stop callback mode
+     * @param type for callback mode exit.
+     * @param reason for stopping callback mode.
+     */
+    public void stopCallbackMode(@TelephonyManager.EmergencyCallbackModeType int type,
+            @TelephonyManager.EmergencyCallbackModeStopReason int reason) {
+        Rlog.d(LOG_TAG, "stopCallbackMode:type=" + type + ", reason=" + reason);
+        mNotifier.notifyCallbackModeStopped(this, type, reason);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
