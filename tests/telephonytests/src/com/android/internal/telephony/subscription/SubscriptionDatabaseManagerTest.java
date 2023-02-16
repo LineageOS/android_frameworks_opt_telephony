@@ -355,6 +355,8 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("SubscriptionDatabaseManagerTest +Setup!");
         super.setUp(getClass().getSimpleName());
+        mContextFixture.putBooleanResource(com.android.internal.R.bool
+                .config_subscription_database_async_update, true);
         mSubscriptionDatabaseManagerCallback =
                 Mockito.mock(SubscriptionDatabaseManagerCallback.class);
         doAnswer(invocation -> {
