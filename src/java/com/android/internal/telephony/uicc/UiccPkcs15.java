@@ -81,7 +81,7 @@ public class UiccPkcs15 extends Handler {
         private void selectFile() {
             if (mChannelId >= 0) {
                 mUiccProfile.iccTransmitApduLogicalChannel(mChannelId, 0x00, 0xA4, 0x00, 0x04, 0x02,
-                        mFileId, obtainMessage(EVENT_SELECT_FILE_DONE));
+                        mFileId, false /*isEs10Command*/, obtainMessage(EVENT_SELECT_FILE_DONE));
             } else {
                 log("EF based");
             }
@@ -90,7 +90,7 @@ public class UiccPkcs15 extends Handler {
         private void readBinary() {
             if (mChannelId >=0 ) {
                 mUiccProfile.iccTransmitApduLogicalChannel(mChannelId, 0x00, 0xB0, 0x00, 0x00, 0x00,
-                        "", obtainMessage(EVENT_READ_BINARY_DONE));
+                        "",  false /*isEs10Command*/, obtainMessage(EVENT_READ_BINARY_DONE));
             } else {
                 log("EF based");
             }
@@ -281,8 +281,8 @@ public class UiccPkcs15 extends Handler {
     private void cleanUp() {
         log("cleanUp");
         if (mChannelId >= 0) {
-            mUiccProfile.iccCloseLogicalChannel(mChannelId, obtainMessage(
-                    EVENT_CLOSE_LOGICAL_CHANNEL_DONE));
+            mUiccProfile.iccCloseLogicalChannel(mChannelId, false /*isEs10*/,
+                    obtainMessage(EVENT_CLOSE_LOGICAL_CHANNEL_DONE));
             mChannelId = -1;
         }
         mLoadedCallback.sendToTarget();
