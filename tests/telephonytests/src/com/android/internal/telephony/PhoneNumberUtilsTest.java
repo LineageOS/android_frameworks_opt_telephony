@@ -216,6 +216,12 @@ public class PhoneNumberUtilsTest {
         assertNull(PhoneNumberUtils.toCallerIDMinMatch(null));
         assertNull(PhoneNumberUtils.getStrippedReversed(null));
         assertNull(PhoneNumberUtils.stringFromStringAndTOA(null, 1));
+
+        // Test for known potential bad extraction of post dial portion.
+        assertEquals(";123456",
+                PhoneNumberUtils.extractPostDialPortion("6281769222;123456"));
+        assertEquals("6281769222", PhoneNumberUtils.extractNetworkPortion(
+                "6281769222;123456"));
     }
 
     @SmallTest
