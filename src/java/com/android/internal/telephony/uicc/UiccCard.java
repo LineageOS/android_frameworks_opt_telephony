@@ -27,6 +27,7 @@ import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccSlotStatus.MultipleEnabledProfilesMode;
 import com.android.internal.telephony.uicc.euicc.EuiccCard;
 import com.android.internal.telephony.uicc.euicc.EuiccPort;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -221,7 +222,7 @@ public class UiccCard {
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("UiccCard:");
         pw.println(" mCardState=" + mCardState);
-        pw.println(" mCardId=" + Rlog.pii(LOG_TAG, mCardId));
+        pw.println(" mCardId=" + Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, mCardId));
         pw.println(" mNumberOfPorts=" + mUiccPorts.size());
         pw.println( "mIsSupportsMultipleEnabledProfiles=" + mIsSupportsMultipleEnabledProfiles);
         pw.println();

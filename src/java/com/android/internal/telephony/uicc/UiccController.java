@@ -40,6 +40,7 @@ import android.preference.PreferenceManager;
 import android.sysprop.TelephonyProperties;
 import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
+import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyManager.SimState;
@@ -67,6 +68,7 @@ import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.euicc.EuiccCard;
+import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
@@ -76,6 +78,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -1791,6 +1794,14 @@ public class UiccController extends Handler {
         sLocalLog.log(data);
     }
 
+    private List<String> getPrintableCardStrings() {
+        if (!ArrayUtils.isEmpty(mCardStrings)) {
+            return mCardStrings.stream().map(SubscriptionInfo::givePrintableIccid).collect(
+                    Collectors.toList());
+        }
+        return mCardStrings;
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("UiccController: " + this);
         pw.println(" mContext=" + mContext);
@@ -1805,7 +1816,7 @@ public class UiccController extends Handler {
         pw.println(" mIsCdmaSupported=" + isCdmaSupported(mContext));
         pw.println(" mHasBuiltInEuicc=" + mHasBuiltInEuicc);
         pw.println(" mHasActiveBuiltInEuicc=" + mHasActiveBuiltInEuicc);
-        pw.println(" mCardStrings=" + Rlog.pii(LOG_TAG, mCardStrings));
+        pw.println(" mCardStrings=" + getPrintableCardStrings());
         pw.println(" mDefaultEuiccCardId=" + mDefaultEuiccCardId);
         pw.println(" mPhoneIdToSlotId=" + Arrays.toString(mPhoneIdToSlotId));
         pw.println(" mUseRemovableEsimAsDefault=" + mUseRemovableEsimAsDefault);
