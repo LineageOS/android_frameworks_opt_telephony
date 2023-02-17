@@ -5334,23 +5334,25 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Registers for messages transfer complete from satellite modem.
+     * Registers for datagrams delivered events from satellite modem.
      *
      * @param h Handler for notification message.
      * @param what User-defined message code.
      * @param obj User object.
      */
-    public void registerForSatelliteMessagesTransferComplete(@NonNull Handler h,
+    public void registerForSatelliteDatagramsDelivered(@NonNull Handler h,
             int what, @Nullable Object obj) {
+        //TODO: Rename CommandsInterface and other modules when updating HAL APIs.
         mCi.registerForSatelliteMessagesTransferComplete(h, what, obj);
     }
 
     /**
-     * Unregisters for messages transfer complete from satellite modem.
+     * Unregisters for datagrams delivered events from satellite modem.
      *
      * @param h Handler to be removed from the registrant list.
      */
-    public void unregisterForSatelliteMessagesTransferComplete(@NonNull Handler h) {
+    public void unregisterForSatelliteDatagramsDelivered(@NonNull Handler h) {
+        //TODO: Rename CommandsInterface and other modules when updating HAL APIs.
         mCi.unregisterForSatelliteMessagesTransferComplete(h);
     }
 
