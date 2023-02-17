@@ -3899,7 +3899,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         pw.println("ICCID:");
         pw.increaseIndent();
         for (int i = 0; i < mTelephonyManager.getActiveModemCount(); i++) {
-            pw.println("slot " + i + ": " + getIccId(i));
+            pw.println("slot " + i + ": " + SubscriptionInfo.givePrintableIccid(getIccId(i)));
         }
         pw.decreaseIndent();
         pw.println();
