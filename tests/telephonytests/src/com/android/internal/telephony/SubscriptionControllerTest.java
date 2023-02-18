@@ -35,7 +35,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -126,6 +125,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        enableSubscriptionManagerService(false);
         mUiccSlot = mock(UiccSlot.class);
         mTelephonyRegistryMock = mock(ITelephonyRegistry.Stub.class);
         mMultiSimSettingControllerMock = mock(MultiSimSettingController.class);

@@ -101,6 +101,7 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.d2d.RtpTransport;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker.VtDataUsageProvider;
+import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -205,6 +206,9 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         doReturn(ImsFeature.STATE_READY).when(mImsManager).getImsServiceState();
         doReturn(mImsCallProfile).when(mImsManager).createCallProfile(anyInt(), anyInt());
         mContextFixture.addSystemFeature(PackageManager.FEATURE_TELEPHONY_IMS);
+
+        doReturn(new SubscriptionInfoInternal.Builder().setSimSlotIndex(0).setId(1).build())
+                .when(mSubscriptionManagerService).getSubscriptionInfoInternal(anyInt());
 
         doAnswer(invocation -> {
             mMmTelListener = (MmTelFeature.Listener) invocation.getArguments()[0];

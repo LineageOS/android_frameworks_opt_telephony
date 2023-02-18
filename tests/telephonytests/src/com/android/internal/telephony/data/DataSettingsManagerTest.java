@@ -34,6 +34,7 @@ import android.testing.TestableLooper;
 
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
+import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 
 import org.junit.After;
 import org.junit.Before;
@@ -66,6 +67,8 @@ public class DataSettingsManagerTest extends TelephonyTest {
         doReturn("").when(mSubscriptionController).getEnabledMobileDataPolicies(anyInt());
         doReturn(true).when(mSubscriptionController).setEnabledMobileDataPolicies(
                 anyInt(), anyString());
+        doReturn(new SubscriptionInfoInternal.Builder().setId(1).build())
+                .when(mSubscriptionManagerService).getSubscriptionInfoInternal(anyInt());
 
         mDataSettingsManagerUT = new DataSettingsManager(mPhone, mDataNetworkController,
                 Looper.myLooper(), mMockedDataSettingsManagerCallback);
@@ -105,8 +108,13 @@ public class DataSettingsManagerTest extends TelephonyTest {
         processAllMessages();
 
         ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
-        verify(mSubscriptionController, times(2))
-                .setEnabledMobileDataPolicies(anyInt(), stringArgumentCaptor.capture());
+        if (isSubscriptionManagerServiceEnabled()) {
+            verify(mSubscriptionManagerService, times(2))
+                    .setEnabledMobileDataPolicies(anyInt(), stringArgumentCaptor.capture());
+        } else {
+            verify(mSubscriptionController, times(2))
+                    .setEnabledMobileDataPolicies(anyInt(), stringArgumentCaptor.capture());
+        }
         assertEquals("1,2", stringArgumentCaptor.getValue());
     }
 

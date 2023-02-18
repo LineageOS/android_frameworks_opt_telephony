@@ -150,6 +150,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("SubscriptionManagerServiceTest +Setup!");
         super.setUp(getClass().getSimpleName());
+        enableSubscriptionManagerService(true);
         mContextFixture.putBooleanResource(com.android.internal.R.bool
                 .config_subscription_database_async_update, true);
         mContextFixture.putIntArrayResource(com.android.internal.R.array.sim_colors, new int[0]);
