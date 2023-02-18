@@ -126,12 +126,10 @@ public class EuiccPort extends UiccPort {
     private EuiccSpecVersion mSpecVersion;
     private volatile String mEid;
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
-    public boolean mIsSupportsMultipleEnabledProfiles;
-    private MultipleEnabledProfilesMode mSupportedMepMode;
+    public MultipleEnabledProfilesMode mSupportedMepMode;
 
     public EuiccPort(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId, Object lock,
-            UiccCard card, boolean isSupportsMultipleEnabledProfiles,
-            MultipleEnabledProfilesMode supportedMepMode) {
+            UiccCard card, MultipleEnabledProfilesMode supportedMepMode) {
         super(c, ci, ics, phoneId, lock, card);
         // TODO: Set supportExtendedApdu based on ATR.
         mApduSender = new ApduSender(ci, ISD_R_AID, false /* supportExtendedApdu */);
@@ -141,7 +139,6 @@ public class EuiccPort extends UiccPort {
             mEid = ics.eid;
             mCardId = ics.eid;
         }
-        mIsSupportsMultipleEnabledProfiles = isSupportsMultipleEnabledProfiles;
         mSupportedMepMode = supportedMepMode;
     }
 
@@ -170,13 +167,11 @@ public class EuiccPort extends UiccPort {
     }
 
     /**
-     * Updates MEP(Multiple Enabled Profile) support and mode flags.
+     * Updates MEP(Multiple Enabled Profile) supported mode flag.
      * The flag can be updated after the port creation.
      */
-    public void updateSupportMepProperties(boolean supported,
-            MultipleEnabledProfilesMode supportedMepMode) {
-        logd("updateSupportMultipleEnabledProfile");
-        mIsSupportsMultipleEnabledProfiles = supported;
+    public void updateSupportedMepMode(MultipleEnabledProfilesMode supportedMepMode) {
+        logd("updateSupportedMepMode");
         mSupportedMepMode = supportedMepMode;
     }
 
@@ -188,7 +183,7 @@ public class EuiccPort extends UiccPort {
      * @since 1.1.0 [GSMA SGP.22]
      */
     public void getAllProfiles(AsyncResultCallback<EuiccProfileInfo[]> callback, Handler handler) {
-        byte[] profileTags = mIsSupportsMultipleEnabledProfiles ? Tags.EUICC_PROFILE_MEP_TAGS
+        byte[] profileTags = mSupportedMepMode.isMepMode() ? Tags.EUICC_PROFILE_MEP_TAGS
                 : Tags.EUICC_PROFILE_TAGS;
         sendApdu(
                 newRequestProvider((RequestBuilder requestBuilder) ->
@@ -230,7 +225,7 @@ public class EuiccPort extends UiccPort {
      */
     public final void getProfile(String iccid, AsyncResultCallback<EuiccProfileInfo> callback,
             Handler handler) {
-        byte[] profileTags = mIsSupportsMultipleEnabledProfiles ? Tags.EUICC_PROFILE_MEP_TAGS
+        byte[] profileTags = mSupportedMepMode.isMepMode() ? Tags.EUICC_PROFILE_MEP_TAGS
                 : Tags.EUICC_PROFILE_TAGS;
         sendApdu(
                 newRequestProvider((RequestBuilder requestBuilder) ->
@@ -1432,6 +1427,6 @@ public class EuiccPort extends UiccPort {
         super.dump(fd, pw, args);
         pw.println("EuiccPort:");
         pw.println(" mEid=" + mEid);
-        pw.println(" mIsSupportsMultipleEnabledProfiles=" + mIsSupportsMultipleEnabledProfiles);
+        pw.println(" mSupportedMepMode=" + mSupportedMepMode);
     }
 }
