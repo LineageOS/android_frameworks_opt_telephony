@@ -729,6 +729,7 @@ public class SubscriptionDatabaseManager extends Handler {
         if (uri != null && uri.getLastPathSegment() != null) {
             int subId = Integer.parseInt(uri.getLastPathSegment());
             if (SubscriptionManager.isValidSubscriptionId(subId)) {
+                logv("insertNewRecordIntoDatabaseSync: contentValues=" + contentValues);
                 logl("insertNewRecordIntoDatabaseSync: Successfully added subscription. subId="
                         + uri.getLastPathSegment());
                 return subId;
@@ -1836,6 +1837,8 @@ public class SubscriptionDatabaseManager extends Handler {
 
                 logl("Loaded " + mAllSubscriptionInfoInternalCache.size()
                         + " records from the subscription database.");
+                mAllSubscriptionInfoInternalCache.forEach(
+                        (subId, subInfo) -> log("  " + subInfo.toString()));
             } finally {
                 mReadWriteLock.writeLock().unlock();
             }

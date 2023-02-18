@@ -5490,7 +5490,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param datagram Datagram to send over satellite.
      */
     public void sendSatelliteDatagram(Message result, SatelliteDatagram datagram) {
-        //mCi.sendSatelliteDatagram(result, datagram, longitude, latitude);
+        //mCi.sendSatelliteDatagram(result, datagram);
     }
 
     /**

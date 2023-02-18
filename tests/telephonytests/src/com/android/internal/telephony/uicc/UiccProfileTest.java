@@ -23,6 +23,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyString;
@@ -226,7 +227,7 @@ public class UiccProfileTest extends TelephonyTest {
                 anyInt(), isA(Message.class));
         verify(mSimulatedCommandsVerifier, times(2)).iccTransmitApduLogicalChannel(
                 anyInt(), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(), anyString(),
-                isA(Message.class)
+                anyBoolean(), isA(Message.class)
         );
     }
 

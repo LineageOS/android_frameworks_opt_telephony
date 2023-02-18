@@ -1618,13 +1618,11 @@ public class DataNetworkController extends Handler {
                         reason.isConditionBased());
         if (dataProfile == null) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.NO_SUITABLE_DATA_PROFILE);
-        } else if (reason == DataEvaluationReason.NEW_REQUEST
-                && (mDataRetryManager.isAnySetupRetryScheduled(dataProfile, transport)
-                || mDataRetryManager.isSimilarNetworkRequestRetryScheduled(
-                        networkRequest, transport))) {
-            // If this is a new request, check if there is any retry already scheduled. For all
-            // other evaluation reasons, since they are all condition changes, so if there is any
-            // retry scheduled, we still want to go ahead and setup the data network.
+        } else if (// Check for new requests if we already self-scheduled(as opposed to modem
+            // demanded) retry for similar requests.
+                reason == DataEvaluationReason.NEW_REQUEST
+                        &&  mDataRetryManager.isSimilarNetworkRequestRetryScheduled(
+                        networkRequest, transport)) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.RETRY_SCHEDULED);
         } else if (mDataRetryManager.isDataProfileThrottled(dataProfile, transport)) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_THROTTLED);

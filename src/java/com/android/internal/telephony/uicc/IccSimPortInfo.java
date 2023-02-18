@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.uicc;
 
+import android.telephony.SubscriptionInfo;
 import android.text.TextUtils;
 
 import java.util.Objects;
@@ -49,7 +50,9 @@ public class IccSimPortInfo {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("{").append("logicalSlotIndex=").append(mLogicalSlotIndex).append(",")
+        sb.append("{").append("iccid=")
+                .append(SubscriptionInfo.givePrintableIccid(mIccId)).append(",")
+                .append("logicalSlotIndex=").append(mLogicalSlotIndex).append(",")
                 .append("portActive=").append(mPortActive)
                 .append("}");
         return sb.toString();
