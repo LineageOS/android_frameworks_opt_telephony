@@ -1427,15 +1427,20 @@ public class DataRetryManager extends Handler {
             @TransportType int transport, @ElapsedRealtimeLong long expirationTime) {
         DataThrottlingEntry entry = new DataThrottlingEntry(dataProfile, networkRequestList,
                 dataNetwork, transport, retryType, expirationTime);
-        if (mDataThrottlingEntries.size() >= MAXIMUM_HISTORICAL_ENTRIES) {
-            mDataThrottlingEntries.remove(0);
-        }
-
-        // Remove previous entry that contains the same data profile.
+        // Remove previous entry that contains the same data profile. Therefore it should always
+        // contain at maximum all the distinct data profiles of the current subscription.
         mDataThrottlingEntries.removeIf(
                 throttlingEntry -> dataProfile.equals(throttlingEntry.dataProfile));
 
-
+        if (mDataThrottlingEntries.size() >= MAXIMUM_HISTORICAL_ENTRIES) {
+            // If we don't see the anomaly report after U release, we should remove this check for
+            // the commented reason above.
+            AnomalyReporter.reportAnomaly(
+                    UUID.fromString("24fd4d46-1d0f-4b13-b7d6-7bad70b8289b"),
+                    "DataRetryManager throttling more than 100 data profiles",
+                    mPhone.getCarrierId());
+            mDataThrottlingEntries.remove(0);
+        }
         logl("Add throttling entry " + entry);
         mDataThrottlingEntries.add(entry);
 
@@ -1470,11 +1475,11 @@ public class DataRetryManager extends Handler {
      * When this is set, {@code dataProfile} must be {@code null}.
      * @param transport The transport that this unthrottling request is on.
      * @param remove Whether to remove unthrottled entries from the list of entries.
-     * @param retry Whether schedule data setup retry after unthrottling.
+     * @param retry Whether schedule retry after unthrottling.
      */
     private void onDataProfileUnthrottled(@Nullable DataProfile dataProfile, @Nullable String apn,
             @TransportType int transport, boolean remove, boolean retry) {
-        log("onDataProfileUnthrottled: data profile=" + dataProfile + ", apn=" + apn
+        log("onDataProfileUnthrottled: dataProfile=" + dataProfile + ", apn=" + apn
                 + ", transport=" + AccessNetworkConstants.transportTypeToString(transport)
                 + ", remove=" + remove);
 
@@ -1486,7 +1491,6 @@ public class DataRetryManager extends Handler {
             // equal to the data profiles kept in data profile manager (due to some fields missing
             // in DataProfileInfo.aidl), so we need to get the equivalent data profile from data
             // profile manager.
-            log("onDataProfileUnthrottled: dataProfile=" + dataProfile);
             Stream<DataThrottlingEntry> stream = mDataThrottlingEntries.stream();
             stream = stream.filter(entry -> entry.expirationTimeMillis > now);
             if (dataProfile.getApnSetting() != null) {
@@ -1642,23 +1646,6 @@ public class DataRetryManager extends Handler {
     }
 
     /**
-     * Check if there is any data setup retry scheduled with specified data profile.
-     *
-     * @param dataProfile The data profile to retry.
-     * @param transport The transport that the request is on.
-     * @return {@code true} if there is retry scheduled for this data profile.
-     */
-    public boolean isAnySetupRetryScheduled(@NonNull DataProfile dataProfile,
-            @TransportType int transport) {
-        return mDataRetryEntries.stream()
-                .filter(DataSetupRetryEntry.class::isInstance)
-                .map(DataSetupRetryEntry.class::cast)
-                .anyMatch(entry -> entry.getState() == DataRetryEntry.RETRY_STATE_NOT_RETRIED
-                        && dataProfile.equals(entry.dataProfile)
-                        && entry.transport == transport);
-    }
-
-    /**
      * Check if a specific data profile is explicitly throttled by the network.
      *
      * @param dataProfile The data profile to check.
@@ -1693,12 +1680,10 @@ public class DataRetryManager extends Handler {
                         && ((DataHandoverRetryEntry) entry).dataNetwork == dataNetwork
                         && entry.getState() == DataRetryEntry.RETRY_STATE_NOT_RETRIED)
                 .forEach(entry -> entry.setState(DataRetryEntry.RETRY_STATE_CANCELLED));
-        mDataThrottlingEntries.removeIf(entry -> entry.dataNetwork == dataNetwork);
     }
 
     /**
      * Check if there is any data handover retry scheduled.
-     *
      *
      * @param dataNetwork The network network to retry handover.
      * @return {@code true} if there is retry scheduled for this network capability.

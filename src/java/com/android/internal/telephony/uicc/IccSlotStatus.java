@@ -58,6 +58,10 @@ public class IccSlotStatus {
         public boolean isMepA1Mode() {
             return this == MEP_A1;
         }
+
+        public boolean isMepMode() {
+            return this != NONE;
+        }
     }
 
     public IccCardStatus.CardState  cardState;

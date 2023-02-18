@@ -1281,7 +1281,7 @@ public class RILTest extends TelephonyTest {
     @Test
     public void testIccCloseLogicalChannel() throws Exception {
         int channel = 1;
-        mRILUnderTest.iccCloseLogicalChannel(channel, obtainMessage());
+        mRILUnderTest.iccCloseLogicalChannel(channel, false, obtainMessage());
         verify(mRadioProxy).iccCloseLogicalChannel(mSerialNumberCaptor.capture(), eq(channel));
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SIM_CLOSE_CHANNEL);

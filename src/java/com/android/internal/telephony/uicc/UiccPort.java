@@ -21,6 +21,7 @@ import android.content.Context;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.RemoteException;
+import android.telephony.SubscriptionInfo;
 
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
@@ -215,12 +216,12 @@ public class UiccPort {
     /**
      * Exposes {@link CommandsInterface#iccCloseLogicalChannel}
      * @deprecated Please use
-     * {@link UiccProfile#iccCloseLogicalChannel(int, Message)} instead.
+     * {@link UiccProfile#iccCloseLogicalChannel(int, boolean, Message)} instead.
      */
     @Deprecated
     public void iccCloseLogicalChannel(int channel, Message response) {
         if (mUiccProfile != null) {
-            mUiccProfile.iccCloseLogicalChannel(channel, response);
+            mUiccProfile.iccCloseLogicalChannel(channel, false /*isEs10*/, response);
         } else {
             loge("iccCloseLogicalChannel Failed!");
         }
@@ -229,15 +230,15 @@ public class UiccPort {
     /**
      * Exposes {@link CommandsInterface#iccTransmitApduLogicalChannel}
      * @deprecated Please use {@link
-     * UiccProfile#iccTransmitApduLogicalChannel(int, int, int, int, int, int, String, Message)}
-     * instead.
+     * UiccProfile#iccTransmitApduLogicalChannel(int, int, int, int, int, int, String,
+     * boolean, Message)} instead.
      */
     @Deprecated
     public void iccTransmitApduLogicalChannel(int channel, int cla, int command,
             int p1, int p2, int p3, String data, Message response) {
         if (mUiccProfile != null) {
             mUiccProfile.iccTransmitApduLogicalChannel(channel, cla, command, p1, p2, p3,
-                    data, response);
+                    data, false /*isEs10Command*/, response);
         } else {
             loge("iccTransmitApduLogicalChannel Failed!");
         }
@@ -362,6 +363,7 @@ public class UiccPort {
         pw.println(" this=" + this);
         pw.println(" mPortIdx=" + mPortIdx);
         pw.println(" mCi=" + mCi);
+        pw.println(" mIccid=" + SubscriptionInfo.givePrintableIccid(mIccid));
         pw.println(" mPhoneId=" + mPhoneId);
         pw.println(" mPhysicalSlotIndex=" + mPhysicalSlotIndex);
         synchronized (mOpenChannelRecords) {

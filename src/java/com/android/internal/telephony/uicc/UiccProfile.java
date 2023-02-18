@@ -1633,9 +1633,9 @@ public class UiccProfile extends IccCard {
     /**
      * Exposes {@link CommandsInterface#iccCloseLogicalChannel}
      */
-    public void iccCloseLogicalChannel(int channel, Message response) {
+    public void iccCloseLogicalChannel(int channel, boolean isEs10, Message response) {
         logWithLocalLog("iccCloseLogicalChannel: " + channel);
-        mCi.iccCloseLogicalChannel(channel,
+        mCi.iccCloseLogicalChannel(channel, isEs10,
                 mHandler.obtainMessage(EVENT_CLOSE_LOGICAL_CHANNEL_DONE, response));
     }
 
@@ -1643,9 +1643,9 @@ public class UiccProfile extends IccCard {
      * Exposes {@link CommandsInterface#iccTransmitApduLogicalChannel}
      */
     public void iccTransmitApduLogicalChannel(int channel, int cla, int command,
-            int p1, int p2, int p3, String data, Message response) {
-        mCi.iccTransmitApduLogicalChannel(channel, cla, command, p1, p2, p3,
-                data, mHandler.obtainMessage(EVENT_TRANSMIT_APDU_LOGICAL_CHANNEL_DONE, response));
+            int p1, int p2, int p3, String data, boolean isEs10Command, Message response) {
+        mCi.iccTransmitApduLogicalChannel(channel, cla, command, p1, p2, p3, data, isEs10Command,
+                mHandler.obtainMessage(EVENT_TRANSMIT_APDU_LOGICAL_CHANNEL_DONE, response));
     }
 
     /**
