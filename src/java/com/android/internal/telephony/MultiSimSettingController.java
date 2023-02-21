@@ -814,6 +814,7 @@ public class MultiSimSettingController extends Handler {
         @TelephonyManager.DefaultSubscriptionSelectType
         int simSelectDialogType = getSimSelectDialogType(
                 change, dataSelected, voiceSelected, smsSelected);
+        log("sendSubChangeNotificationIfNeeded: simSelectDialogType=" + simSelectDialogType);
         SimCombinationWarningParams simCombinationParams = getSimCombinationWarningParams(change);
 
         if (simSelectDialogType != EXTRA_DEFAULT_SUBSCRIPTION_SELECT_TYPE_NONE

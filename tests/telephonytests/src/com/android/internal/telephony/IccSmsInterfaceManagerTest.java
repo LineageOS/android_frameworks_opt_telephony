@@ -18,13 +18,6 @@ package com.android.internal.telephony;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
-import android.os.AsyncResult;
-import android.os.Message;
-import android.testing.AndroidTestingRunner;
-import android.testing.TestableLooper;
-
-import androidx.test.filters.SmallTest;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,6 +26,13 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import android.os.AsyncResult;
+import android.os.Message;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
+
+import androidx.test.filters.SmallTest;
 
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 
@@ -53,7 +53,6 @@ public class IccSmsInterfaceManagerTest extends TelephonyTest {
 
     // Mocked classes
     private SmsPermissions mMockSmsPermissions;
-    protected GsmCdmaPhone mPhone2;  // mPhone as phone 1 is already defined in TelephonyTest.
     protected EmergencyNumberTracker mEmergencyNumberTracker2;
     protected IccSmsInterfaceManager.PhoneFactoryProxy mPhoneFactoryProxy;
 
@@ -67,7 +66,6 @@ public class IccSmsInterfaceManagerTest extends TelephonyTest {
         mPhoneFactoryProxy = mock(IccSmsInterfaceManager.PhoneFactoryProxy.class);
         mIccSmsInterfaceManager.setPhoneFactoryProxy(mPhoneFactoryProxy);
 
-        mPhone2 = mock(GsmCdmaPhone.class);
         mEmergencyNumberTracker2 = mock(EmergencyNumberTracker.class);
         doReturn(mEmergencyNumberTracker2).when(mPhone2).getEmergencyNumberTracker();
     }

@@ -52,6 +52,7 @@ import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.cat.CatService;
+import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
 import org.junit.After;
@@ -579,6 +580,9 @@ public class UiccProfileTest extends TelephonyTest {
 
         doReturn(false).when(mSubscriptionController)
                 .checkPhoneIdAndIccIdMatch(anyInt(), anyString());
+        doReturn(new SubscriptionInfoInternal.Builder().setSimSlotIndex(0).setId(1)
+                .setIccId("98765").build()).when(mSubscriptionManagerService)
+                .getSubscriptionInfoInternal(anyInt());
         mUiccProfile.setOperatorBrandOverride(fakeBrand);
         String brandInSharedPreference = mContext.getSharedPreferences("file name", 0)
                 .getString("operator_branding_" + fakeIccId, null);
@@ -586,6 +590,9 @@ public class UiccProfileTest extends TelephonyTest {
 
         doReturn(true).when(mSubscriptionController)
                 .checkPhoneIdAndIccIdMatch(anyInt(), anyString());
+        doReturn(new SubscriptionInfoInternal.Builder().setSimSlotIndex(0).setId(1)
+                .setIccId(fakeIccId).build()).when(mSubscriptionManagerService)
+                .getSubscriptionInfoInternal(anyInt());
         mUiccProfile.setOperatorBrandOverride(fakeBrand);
         brandInSharedPreference = mContext.getSharedPreferences("file name", 0)
                 .getString("operator_branding_" + fakeIccId, null);
