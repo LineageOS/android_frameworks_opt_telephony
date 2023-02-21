@@ -95,6 +95,7 @@ import com.android.internal.R;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.data.DataNetworkController;
 import com.android.internal.telephony.metrics.ServiceStateStats;
+import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccRecords;
@@ -121,6 +122,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     private NetworkService mIwlanNetworkService;
     private INetworkService.Stub mIwlanNetworkServiceStub;
     private SubscriptionInfo mSubInfo;
+
+    private SubscriptionInfoInternal mSubInfoInternal;
     private ServiceStateStats mServiceStateStats;
 
     private CellularNetworkService mCellularNetworkService;
@@ -228,8 +231,13 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mIwlanNetworkService = Mockito.mock(NetworkService.class);
         mIwlanNetworkServiceStub = Mockito.mock(INetworkService.Stub.class);
         mSubInfo = Mockito.mock(SubscriptionInfo.class);
+        mSubInfoInternal = new SubscriptionInfoInternal.Builder().setId(1).build();
         mServiceStateStats = Mockito.mock(ServiceStateStats.class);
 
+        mContextFixture.putResource(R.string.kg_text_message_separator, " \u2014 ");
+
+        doReturn(mSubInfoInternal).when(mSubscriptionManagerService)
+                .getSubscriptionInfoInternal(anyInt());
         doReturn((Executor) Runnable::run).when(mContext).getMainExecutor();
         mContextFixture.putResource(R.string.config_wwan_network_service_package,
                 "com.android.phone");
@@ -1658,6 +1666,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         int otherSubId = 2;
         sst.mSubId = otherSubId;
         doReturn(subId).when(mSubInfo).getSubscriptionId();
+        doReturn(new SubscriptionInfoInternal.Builder().setId(2).setOpportunistic(1)
+                .setGroupUuid("fb767ff3-a395-4a53-bb17-3f853ae0eb87").build())
+                .when(mSubscriptionManagerService).getSubscriptionInfoInternal(anyInt());
 
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);

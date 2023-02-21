@@ -41,6 +41,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyChar;
 import static org.mockito.Matchers.anyInt;
@@ -98,6 +99,7 @@ import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.imsphone.ImsPhone.SS;
+import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 
 import org.junit.After;
 import org.junit.Before;
@@ -955,6 +957,9 @@ public class ImsPhoneTest extends TelephonyTest {
         SubscriptionInfo subInfo = mock(SubscriptionInfo.class);
         doReturn("gb").when(subInfo).getCountryIso();
         doReturn(subInfo).when(mSubscriptionController).getSubscriptionInfo(subId);
+        doReturn(new SubscriptionInfoInternal.Builder().setId(subId).setSimSlotIndex(0)
+                .setCountryIso("gb").build()).when(mSubscriptionManagerService)
+                .getSubscriptionInfoInternal(subId);
 
         // 1. Two valid phone number; 1st is set.
         Uri[] associatedUris = new Uri[] {
@@ -963,8 +968,12 @@ public class ImsPhoneTest extends TelephonyTest {
         };
         mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
 
-        verify(mSubscriptionController).setSubscriptionProperty(
-                subId, COLUMN_PHONE_NUMBER_SOURCE_IMS, "+447539447777");
+        if (isSubscriptionManagerServiceEnabled()) {
+            verify(mSubscriptionManagerService).setNumberFromIms(subId, "+447539447777");
+        } else {
+            verify(mSubscriptionController).setSubscriptionProperty(
+                    subId, COLUMN_PHONE_NUMBER_SOURCE_IMS, "+447539447777");
+        }
 
         // 2. 1st invalid and 2nd valid: 2nd is set.
         associatedUris = new Uri[] {
@@ -973,8 +982,12 @@ public class ImsPhoneTest extends TelephonyTest {
         };
         mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
 
-        verify(mSubscriptionController).setSubscriptionProperty(
-                subId, COLUMN_PHONE_NUMBER_SOURCE_IMS, "+447539446666");
+        if (isSubscriptionManagerServiceEnabled()) {
+            verify(mSubscriptionManagerService).setNumberFromIms(subId, "+447539446666");
+        } else {
+            verify(mSubscriptionController).setSubscriptionProperty(
+                    subId, COLUMN_PHONE_NUMBER_SOURCE_IMS, "+447539446666");
+        }
 
         // 3. 1st sip-uri is not phone number and 2nd valid: 2nd is set.
         associatedUris = new Uri[] {
@@ -984,8 +997,12 @@ public class ImsPhoneTest extends TelephonyTest {
         };
         mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
 
-        verify(mSubscriptionController).setSubscriptionProperty(
-                subId, COLUMN_PHONE_NUMBER_SOURCE_IMS, "+447539446677");
+        if (isSubscriptionManagerServiceEnabled()) {
+            verify(mSubscriptionManagerService).setNumberFromIms(subId, "+447539446677");
+        } else {
+            verify(mSubscriptionController).setSubscriptionProperty(
+                    subId, COLUMN_PHONE_NUMBER_SOURCE_IMS, "+447539446677");
+        }
 
         // Clean up
         mContextFixture.addCallingOrSelfPermission("");
@@ -1001,6 +1018,9 @@ public class ImsPhoneTest extends TelephonyTest {
         SubscriptionInfo subInfo = mock(SubscriptionInfo.class);
         doReturn("gb").when(subInfo).getCountryIso();
         doReturn(subInfo).when(mSubscriptionController).getSubscriptionInfo(subId);
+        doReturn(new SubscriptionInfoInternal.Builder().setId(subId).setSimSlotIndex(0)
+                .setCountryIso("gb").build()).when(mSubscriptionManagerService)
+                .getSubscriptionInfoInternal(0);
 
         // 1. No valid phone number; do not set
         Uri[] associatedUris = new Uri[] {
@@ -1009,28 +1029,44 @@ public class ImsPhoneTest extends TelephonyTest {
         };
         mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
 
-        verify(mSubscriptionController, never()).setSubscriptionProperty(
-                anyInt(), any(), any());
+        if (isSubscriptionManagerServiceEnabled()) {
+            verify(mSubscriptionManagerService, never()).setNumberFromIms(anyInt(), anyString());
+        } else {
+            verify(mSubscriptionController, never()).setSubscriptionProperty(
+                    anyInt(), any(), any());
+        }
 
         // 2. no URI; do not set
         associatedUris = new Uri[] {};
         mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
 
-        verify(mSubscriptionController, never()).setSubscriptionProperty(
-                anyInt(), any(), any());
+        if (isSubscriptionManagerServiceEnabled()) {
+            verify(mSubscriptionManagerService, never()).setNumberFromIms(anyInt(), anyString());
+        } else {
+            verify(mSubscriptionController, never()).setSubscriptionProperty(
+                    anyInt(), any(), any());
+        }
 
         // 3. null URI; do not set
         associatedUris = new Uri[] { null };
         mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
 
-        verify(mSubscriptionController, never()).setSubscriptionProperty(
-                anyInt(), any(), any());
+        if (isSubscriptionManagerServiceEnabled()) {
+            verify(mSubscriptionManagerService, never()).setNumberFromIms(anyInt(), anyString());
+        } else {
+            verify(mSubscriptionController, never()).setSubscriptionProperty(
+                    anyInt(), any(), any());
+        }
 
         // 4. null pointer; do not set
         mImsPhoneUT.setPhoneNumberForSourceIms(null);
 
-        verify(mSubscriptionController, never()).setSubscriptionProperty(
-                anyInt(), any(), any());
+        if (isSubscriptionManagerServiceEnabled()) {
+            verify(mSubscriptionManagerService, never()).setNumberFromIms(anyInt(), anyString());
+        } else {
+            verify(mSubscriptionController, never()).setSubscriptionProperty(
+                    anyInt(), any(), any());
+        }
 
         // Clean up
         mContextFixture.addCallingOrSelfPermission("");

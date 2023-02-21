@@ -26,7 +26,6 @@ import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import android.os.AsyncResult;
@@ -47,14 +46,11 @@ import org.mockito.ArgumentCaptor;
 @TestableLooper.RunWithLooper
 public class ProxyControllerTest extends TelephonyTest {
     // Mocked classes
-    Phone mPhone2;
-
     ProxyController mProxyController;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        mPhone2 = mock(Phone.class);
         replaceInstance(ProxyController.class, "sProxyController", null, null);
         mProxyController = ProxyController.getInstance(mContext);
     }

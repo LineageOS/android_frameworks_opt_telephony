@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
 
 import android.os.Handler;
 import android.os.Looper;
+
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 
 import org.junit.After;
@@ -42,7 +43,6 @@ public class ConnectionTest extends TelephonyTest {
 
     // Mocked classes
     protected Call mCall;
-    protected GsmCdmaPhone mPhone2;  // mPhone as phone 1 is already defined in TelephonyTest.
     protected EmergencyNumberTracker mEmergencyNumberTracker2;
     protected Connection.PhoneFactoryProxy mPhoneFactoryProxy;
     protected Connection mTestConnection;
@@ -127,7 +127,6 @@ public class ConnectionTest extends TelephonyTest {
         doReturn(mPhone).when(mCT).getPhone();
         replaceInstance(Handler.class, "mLooper", mCT, Looper.getMainLooper());
 
-        mPhone2 = mock(GsmCdmaPhone.class);
         mEmergencyNumberTracker2 = mock(EmergencyNumberTracker.class);
         doReturn(mEmergencyNumberTracker2).when(mPhone2).getEmergencyNumberTracker();
 

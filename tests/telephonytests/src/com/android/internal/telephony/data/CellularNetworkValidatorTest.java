@@ -48,6 +48,7 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 
 import org.junit.After;
 import org.junit.Before;
@@ -77,6 +78,8 @@ public class CellularNetworkValidatorTest extends TelephonyTest {
                 .getCurrentPhoneCapability();
         mValidatorUT = new CellularNetworkValidator(mContext);
         doReturn(true).when(mSubscriptionController).isActiveSubId(anyInt());
+        doReturn(new SubscriptionInfoInternal.Builder().setSimSlotIndex(0).setId(1).build())
+                .when(mSubscriptionManagerService).getSubscriptionInfoInternal(anyInt());
         processAllMessages();
         setCacheTtlInCarrierConfig(5000);
     }

@@ -50,7 +50,6 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.res.Resources;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -125,6 +124,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        enableSubscriptionManagerService(false);
         mUiccSlot = mock(UiccSlot.class);
         mTelephonyRegistryMock = mock(ITelephonyRegistry.Stub.class);
         mMultiSimSettingControllerMock = mock(MultiSimSettingController.class);
