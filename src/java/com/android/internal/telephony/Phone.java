@@ -5491,8 +5491,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Send datagram over satellite.
      * @param result The Message to send the result of the operation to.
      * @param datagram Datagram to send over satellite.
+     * @param needFullScreenPointingUI this is used to indicate pointingUI app to open in
+     *                                 full screen mode.
      */
-    public void sendSatelliteDatagram(Message result, SatelliteDatagram datagram) {
+    public void sendSatelliteDatagram(Message result, SatelliteDatagram datagram,
+            boolean needFullScreenPointingUI) {
         //mCi.sendSatelliteDatagram(result, datagram);
     }
 
