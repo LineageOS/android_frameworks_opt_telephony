@@ -24,18 +24,26 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import org.mockito.ArgumentCaptor;
+
+import android.content.IntentFilter;
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.emergency.EmergencyNumber;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -130,7 +138,8 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
         mShortNumberInfo = mock(ShortNumberInfo.class);
         mSubControllerMock = mock(SubscriptionController.class);
-        mContext = InstrumentationRegistry.getTargetContext();
+
+        mContext = new ContextWrapper(InstrumentationRegistry.getTargetContext());
         mMockContext = mock(Context.class);
         mResources = mock(Resources.class);
 
@@ -366,6 +375,18 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
                 mEmergencyNumberTrackerMock.getRadioEmergencyNumberList());
     }
 
+    @Test
+    public void testRegistrationForCountryChangeIntent() throws Exception {
+        EmergencyNumberTracker localEmergencyNumberTracker;
+        Context spyContext = spy(mContext);
+        doReturn(spyContext).when(mPhone).getContext();
+        ArgumentCaptor<IntentFilter> intentCaptor = ArgumentCaptor.forClass(IntentFilter.class);
+
+        localEmergencyNumberTracker = new EmergencyNumberTracker(mPhone, mSimulatedCommands);
+        verify(spyContext, times(1)).registerReceiver(any(), intentCaptor.capture());
+        IntentFilter ifilter = intentCaptor.getValue();
+        assertTrue(ifilter.hasAction(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED));
+    }
     @Test
     public void testUpdateEmergencyCountryIso() throws Exception {
         sendEmergencyNumberPrefix(mEmergencyNumberTrackerMock);
