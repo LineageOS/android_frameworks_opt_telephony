@@ -28,6 +28,7 @@ import android.os.Message;
 import android.telephony.TelephonyManager;
 import android.telephony.UiccAccessRule;
 import android.text.TextUtils;
+import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -693,16 +694,20 @@ public class UiccCarrierPrivilegeRules extends Handler {
     /**
      * Dumps info to Dumpsys - useful for debugging.
      */
-    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        pw.println("UiccCarrierPrivilegeRules: " + this);
-        pw.println(" mState=" + getStateString(mState.get()));
-        pw.println(" mStatusMessage=");
+    public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
+        IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
+        pw.println("UiccCarrierPrivilegeRules:");
+        pw.increaseIndent();
+        pw.println("mState=" + getStateString(mState.get()));
+        pw.println("mStatusMessage=");
         mStatusMessage.dump(fd, pw, args);
         if (mAccessRules != null) {
-            pw.println(" mAccessRules: ");
+            pw.println("mAccessRules: ");
+            pw.increaseIndent();
             for (UiccAccessRule ar : mAccessRules) {
                 pw.println("  rule='" + ar + "'");
             }
+            pw.decreaseIndent();
         } else {
             pw.println(" mAccessRules: null");
         }
@@ -712,6 +717,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
         } else {
             pw.println(" mUiccPkcs15: null");
         }
+        pw.decreaseIndent();
         pw.flush();
     }
 
