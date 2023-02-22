@@ -32,7 +32,6 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.ServiceState;
-import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.data.DataCallResponse;
@@ -134,20 +133,25 @@ public class NetworkTypeController extends StateMachine {
         @Override
         public void onReceive(Context context, Intent intent) {
             switch (intent.getAction()) {
-                case CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED:
-                    if (intent.getIntExtra(SubscriptionManager.EXTRA_SLOT_INDEX,
-                            SubscriptionManager.INVALID_PHONE_INDEX) == mPhone.getPhoneId()
-                            && !intent.getBooleanExtra(
-                                    CarrierConfigManager.EXTRA_REBROADCAST_ON_UNLOCK, false)) {
-                        sendMessage(EVENT_CARRIER_CONFIG_CHANGED);
-                    }
-                    break;
                 case PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED:
                     sendMessage(EVENT_DEVICE_IDLE_MODE_CHANGED);
                     break;
             }
         }
     };
+
+    private final @NonNull CarrierConfigManager.CarrierConfigChangeListener
+            mCarrierConfigChangeListener =
+            new CarrierConfigManager.CarrierConfigChangeListener() {
+                @Override
+                public void onCarrierConfigChanged(int slotIndex, int subId, int carrierId,
+                        int specificCarrierId) {
+                    // CarrierConfigChangeListener wouldn't send notification on device unlock
+                    if (slotIndex == mPhone.getPhoneId()) {
+                        sendMessage(EVENT_CARRIER_CONFIG_CHANGED);
+                    }
+                }
+            };
 
     private @NonNull Map<String, OverrideTimerRule> mOverrideTimerRules = new HashMap<>();
     private @NonNull String mLteEnhancedPattern = "";
@@ -250,9 +254,10 @@ public class NetworkTypeController extends StateMachine {
         mPhone.getDeviceStateMonitor().registerForPhysicalChannelConfigNotifChanged(getHandler(),
                 EVENT_PHYSICAL_CHANNEL_CONFIG_NOTIF_CHANGED, null);
         IntentFilter filter = new IntentFilter();
-        filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         filter.addAction(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED);
         mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
+        CarrierConfigManager ccm = mPhone.getContext().getSystemService(CarrierConfigManager.class);
+        ccm.registerCarrierConfigChangeListener(Runnable::run, mCarrierConfigChangeListener);
     }
 
     private void unRegisterForAllEvents() {
@@ -261,6 +266,10 @@ public class NetworkTypeController extends StateMachine {
         mPhone.getServiceStateTracker().unregisterForServiceStateChanged(getHandler());
         mPhone.getDeviceStateMonitor().unregisterForPhysicalChannelConfigNotifChanged(getHandler());
         mPhone.getContext().unregisterReceiver(mIntentReceiver);
+        CarrierConfigManager ccm = mPhone.getContext().getSystemService(CarrierConfigManager.class);
+        if (mCarrierConfigChangeListener != null) {
+            ccm.unregisterCarrierConfigChangeListener(mCarrierConfigChangeListener);
+        }
     }
 
     private void parseCarrierConfigs() {
