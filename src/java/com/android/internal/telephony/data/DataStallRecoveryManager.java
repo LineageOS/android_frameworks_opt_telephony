@@ -156,7 +156,8 @@ public class DataStallRecoveryManager extends Handler {
     /** Whether the result of last action(RADIO_RESTART) reported. */
     private boolean mLastActionReported;
     /** The real time for data stall start. */
-    private @ElapsedRealtimeLong long mDataStallStartMs;
+    @VisibleForTesting
+    public @ElapsedRealtimeLong long mDataStallStartMs;
     /** Last data stall recovery action. */
     private @RecoveryAction int mLastAction;
     /** Last radio power state. */
@@ -602,6 +603,8 @@ public class DataStallRecoveryManager extends Handler {
             isLogNeeded = true;
             mDataStalled = true;
             isFirstDataStall = true;
+            mDataStallStartMs = SystemClock.elapsedRealtime();
+            logl("data stall: start time = " + DataUtils.elapsedTimeToString(mDataStallStartMs));
         } else if (!mLastActionReported) {
             // When the first validation status appears, enter this block.
             isLogNeeded = true;
