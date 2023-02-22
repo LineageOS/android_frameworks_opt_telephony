@@ -111,11 +111,15 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -144,6 +148,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("SubscriptionManagerServiceTest +Setup!");
         super.setUp(getClass().getSimpleName());
+        enableSubscriptionManagerService(true);
         mContextFixture.putBooleanResource(com.android.internal.R.bool
                 .config_subscription_database_async_update, true);
         mContextFixture.putIntArrayResource(com.android.internal.R.array.sim_colors, new int[0]);
@@ -552,6 +557,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
 
         mSubscriptionManagerServiceUT.setDefaultVoiceSubId(1);
+        assertThat(mSubscriptionManagerServiceUT.getDefaultVoiceSubId()).isEqualTo(1);
 
         assertThat(Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION)).isEqualTo(1);
@@ -593,6 +599,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
 
         mSubscriptionManagerServiceUT.setDefaultDataSubId(1);
+        assertThat(mSubscriptionManagerServiceUT.getDefaultDataSubId()).isEqualTo(1);
 
         assertThat(Settings.Global.getInt(mContext.getContentResolver(),
                         Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION)).isEqualTo(1);
@@ -632,6 +639,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
 
         mSubscriptionManagerServiceUT.setDefaultSmsSubId(1);
+        assertThat(mSubscriptionManagerServiceUT.getDefaultSmsSubId()).isEqualTo(1);
 
         assertThat(Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION)).isEqualTo(1);
@@ -1766,6 +1774,11 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         mSubscriptionManagerServiceUT.updateSimState(
                 0, TelephonyManager.SIM_STATE_LOADED, null, null);
         processAllMessages();
+
+        assertThat(mSubscriptionManagerServiceUT.getSubId(0)).isEqualTo(1);
+        assertThat(mSubscriptionManagerServiceUT.getSlotIndex(1)).isEqualTo(0);
+        assertThat(mSubscriptionManagerServiceUT.getPhoneId(1)).isEqualTo(0);
+
         mSubscriptionManagerServiceUT.setCarrierId(1, FAKE_CARRIER_ID1);
         mSubscriptionManagerServiceUT.setDisplayNameUsingSrc(FAKE_CARRIER_NAME1, 1,
                 SubscriptionManager.NAME_SOURCE_SIM_SPN);
@@ -1902,5 +1915,54 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(subInfoList).hasSize(1);
         assertThat(subInfoList.get(0).isActive()).isTrue();
         assertThat(subInfoList.get(0).getIccId()).isEqualTo(FAKE_ICCID2);
+    }
+
+    @Test
+    public void testDump() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        insertSubscription(FAKE_SUBSCRIPTION_INFO2);
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        final StringWriter stringWriter = new StringWriter();
+        mSubscriptionManagerServiceUT.dump(new FileDescriptor(), new PrintWriter(stringWriter),
+                null);
+        assertThat(stringWriter.toString().length()).isGreaterThan(0);
+    }
+
+    @Test
+    public void testOnSubscriptionChanged() {
+        CountDownLatch latch = new CountDownLatch(1);
+        SubscriptionManagerServiceCallback callback =
+                new SubscriptionManagerServiceCallback(Runnable::run) {
+                    @Override
+                    public void onSubscriptionChanged(int subId) {
+                        latch.countDown();
+                        logd("testOnSubscriptionChanged: onSubscriptionChanged");
+                    }
+                };
+        mSubscriptionManagerServiceUT.registerCallback(callback);
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        processAllMessages();
+        assertThat(latch.getCount()).isEqualTo(0);
+    }
+
+    @Test
+    public void testOnUiccApplicationsEnabled() {
+        CountDownLatch latch = new CountDownLatch(1);
+        SubscriptionManagerServiceCallback callback =
+                new SubscriptionManagerServiceCallback(Runnable::run) {
+                    @Override
+                    public void onUiccApplicationsEnabled(int subId) {
+                        latch.countDown();
+                        logd("testOnSubscriptionChanged: onUiccApplicationsEnabled");
+                    }
+                };
+        mSubscriptionManagerServiceUT.registerCallback(callback);
+        int subId = insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+        mSubscriptionManagerServiceUT.setUiccApplicationsEnabled(false, subId);
+        processAllMessages();
+        assertThat(latch.getCount()).isEqualTo(0);
     }
 }

@@ -45,6 +45,8 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.UiccSlot;
 
 import org.junit.After;
@@ -84,15 +86,28 @@ public class PerSimStatusTest extends TelephonyTest {
         doReturn("6506953210")
                 .when(mSubscriptionController)
                 .getPhoneNumber(1, PHONE_NUMBER_SOURCE_UICC, null, null);
+        doReturn("6506953210")
+                .when(mSubscriptionManagerService)
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_UICC, null, null);
         doReturn("")
                 .when(mSubscriptionController)
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_CARRIER, null, null);
+        doReturn("")
+                .when(mSubscriptionManagerService)
                 .getPhoneNumber(1, PHONE_NUMBER_SOURCE_CARRIER, null, null);
         doReturn("+16506953210")
                 .when(mSubscriptionController)
                 .getPhoneNumber(1, PHONE_NUMBER_SOURCE_IMS, null, null);
+        doReturn("+16506953210")
+                .when(mSubscriptionManagerService)
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_IMS, null, null);
         SubscriptionInfo subscriptionInfo1 = mock(SubscriptionInfo.class);
         doReturn("us").when(subscriptionInfo1).getCountryIso();
         doReturn(subscriptionInfo1).when(mSubscriptionController).getSubscriptionInfo(1);
+        doReturn(new SubscriptionInfoInternal.Builder().setId(1).setSimSlotIndex(0)
+                .setCountryIso("us").build()).when(mSubscriptionManagerService)
+                .getSubscriptionInfoInternal(1);
+
         ImsManager imsManager = mContext.getSystemService(ImsManager.class);
         ImsMmTelManager imsMmTelManager1 = mock(ImsMmTelManager.class);
         doReturn(imsMmTelManager1).when(imsManager).getImsMmTelManager(1);
@@ -126,15 +141,28 @@ public class PerSimStatusTest extends TelephonyTest {
         doReturn("0123")
                 .when(mSubscriptionController)
                 .getPhoneNumber(2, PHONE_NUMBER_SOURCE_UICC, null, null);
+        doReturn("0123")
+                .when(mSubscriptionManagerService)
+                .getPhoneNumber(2, PHONE_NUMBER_SOURCE_UICC, null, null);
         doReturn("16506950123")
                 .when(mSubscriptionController)
+                .getPhoneNumber(2, PHONE_NUMBER_SOURCE_CARRIER, null, null);
+        doReturn("16506950123")
+                .when(mSubscriptionManagerService)
                 .getPhoneNumber(2, PHONE_NUMBER_SOURCE_CARRIER, null, null);
         doReturn("+16506950123")
                 .when(mSubscriptionController)
                 .getPhoneNumber(2, PHONE_NUMBER_SOURCE_IMS, null, null);
+        doReturn("+16506950123")
+                .when(mSubscriptionManagerService)
+                .getPhoneNumber(2, PHONE_NUMBER_SOURCE_IMS, null, null);
         SubscriptionInfo subscriptionInfo2 = mock(SubscriptionInfo.class);
         doReturn("us").when(subscriptionInfo2).getCountryIso();
         doReturn(subscriptionInfo2).when(mSubscriptionController).getSubscriptionInfo(2);
+        doReturn(new SubscriptionInfoInternal.Builder().setId(2).setSimSlotIndex(1)
+                .setCountryIso("us").build()).when(mSubscriptionManagerService)
+                .getSubscriptionInfoInternal(2);
+
         ImsMmTelManager imsMmTelManager2 = mock(ImsMmTelManager.class);
         doReturn(imsMmTelManager2).when(imsManager).getImsMmTelManager(2);
         doReturn(true).when(imsMmTelManager2).isAdvancedCallingSettingEnabled();
@@ -206,6 +234,7 @@ public class PerSimStatusTest extends TelephonyTest {
     @SmallTest
     public void onPullAtom_perSimStatus_noSubscriptionController() throws Exception {
         replaceInstance(SubscriptionController.class, "sInstance", null, null);
+        replaceInstance(SubscriptionManagerService.class, "sInstance", null, null);
 
         PerSimStatus perSimStatus = PerSimStatus.getCurrentState(mPhone);
 
@@ -221,15 +250,27 @@ public class PerSimStatusTest extends TelephonyTest {
         doReturn("6506953210")
                 .when(mSubscriptionController)
                 .getPhoneNumber(1, PHONE_NUMBER_SOURCE_UICC, null, null);
+        doReturn("6506953210")
+                .when(mSubscriptionManagerService)
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_UICC, null, null);
         doReturn("")
                 .when(mSubscriptionController)
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_CARRIER, null, null);
+        doReturn("")
+                .when(mSubscriptionManagerService)
                 .getPhoneNumber(1, PHONE_NUMBER_SOURCE_CARRIER, null, null);
         doReturn("+16506953210")
                 .when(mSubscriptionController)
                 .getPhoneNumber(1, PHONE_NUMBER_SOURCE_IMS, null, null);
+        doReturn("+16506953210")
+                .when(mSubscriptionManagerService)
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_IMS, null, null);
         SubscriptionInfo subscriptionInfo = mock(SubscriptionInfo.class);
         doReturn("us").when(subscriptionInfo).getCountryIso();
         doReturn(subscriptionInfo).when(mSubscriptionController).getSubscriptionInfo(1);
+        doReturn(new SubscriptionInfoInternal.Builder().setId(1).setSimSlotIndex(0)
+                .setCountryIso("us").build()).when(mSubscriptionManagerService)
+                .getSubscriptionInfoInternal(1);
         doReturn(null).when(mContext).getSystemService(ImsManager.class);
         doReturn(1L)
                 .when(mPhone)
@@ -276,15 +317,27 @@ public class PerSimStatusTest extends TelephonyTest {
         doReturn("6506953210")
                 .when(mSubscriptionController)
                 .getPhoneNumber(1, PHONE_NUMBER_SOURCE_UICC, null, null);
+        doReturn("6506953210")
+                .when(mSubscriptionManagerService)
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_UICC, null, null);
         doReturn("")
                 .when(mSubscriptionController)
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_CARRIER, null, null);
+        doReturn("")
+                .when(mSubscriptionManagerService)
                 .getPhoneNumber(1, PHONE_NUMBER_SOURCE_CARRIER, null, null);
         doReturn("+16506953210")
                 .when(mSubscriptionController)
                 .getPhoneNumber(1, PHONE_NUMBER_SOURCE_IMS, null, null);
+        doReturn("+16506953210")
+                .when(mSubscriptionManagerService)
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_IMS, null, null);
         SubscriptionInfo subscriptionInfo = mock(SubscriptionInfo.class);
         doReturn("us").when(subscriptionInfo).getCountryIso();
         doReturn(subscriptionInfo).when(mSubscriptionController).getSubscriptionInfo(1);
+        doReturn(new SubscriptionInfoInternal.Builder().setId(1).setSimSlotIndex(0)
+                .setCountryIso("us").build()).when(mSubscriptionManagerService)
+                .getSubscriptionInfoInternal(1);
         ImsManager imsManager = mContext.getSystemService(ImsManager.class);
         doThrow(new IllegalArgumentException()).when(imsManager).getImsMmTelManager(1);
         doReturn(false).when(mPhone).getDataRoamingEnabled();
@@ -333,15 +386,27 @@ public class PerSimStatusTest extends TelephonyTest {
         doReturn("6506953210")
                 .when(mSubscriptionController)
                 .getPhoneNumber(1, PHONE_NUMBER_SOURCE_UICC, null, null);
+        doReturn("6506953210")
+                .when(mSubscriptionManagerService)
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_UICC, null, null);
         doReturn("")
                 .when(mSubscriptionController)
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_CARRIER, null, null);
+        doReturn("")
+                .when(mSubscriptionManagerService)
                 .getPhoneNumber(1, PHONE_NUMBER_SOURCE_CARRIER, null, null);
         doReturn("+16506953210")
                 .when(mSubscriptionController)
                 .getPhoneNumber(1, PHONE_NUMBER_SOURCE_IMS, null, null);
+        doReturn("+16506953210")
+                .when(mSubscriptionManagerService)
+                .getPhoneNumber(1, PHONE_NUMBER_SOURCE_IMS, null, null);
         SubscriptionInfo subscriptionInfo = mock(SubscriptionInfo.class);
         doReturn("us").when(subscriptionInfo).getCountryIso();
         doReturn(subscriptionInfo).when(mSubscriptionController).getSubscriptionInfo(1);
+        doReturn(new SubscriptionInfoInternal.Builder().setId(1).setSimSlotIndex(0)
+                .setCountryIso("us").build()).when(mSubscriptionManagerService)
+                .getSubscriptionInfoInternal(1);
         doReturn(null).when(mContext).getSystemService(ImsManager.class);
         doReturn(1L)
                 .when(mPhone)
