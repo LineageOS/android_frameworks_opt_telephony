@@ -54,6 +54,7 @@ import android.telephony.Annotation.NetCapability;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.Annotation.ValidationStatus;
 import android.telephony.AnomalyReporter;
+import android.telephony.CarrierConfigManager;
 import android.telephony.DataFailCause;
 import android.telephony.DataSpecificRegistrationInfo;
 import android.telephony.LinkCapacityEstimate;
@@ -2590,11 +2591,12 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
-     * @return {@code true} if this is an IMS network and tear down should be delayed until call
-     * ends on this data network.
+     * @return {@code true} if we shall delay tear down this network because an active voice call is
+     * relying on it and
+     * {@link CarrierConfigManager#KEY_DELAY_IMS_TEAR_DOWN_UNTIL_CALL_END_BOOL} is enabled.
      */
     public boolean shouldDelayImsTearDownDueToInCall() {
-        return mDataConfigManager.isImsDelayTearDownEnabled()
+        return mDataConfigManager.isImsDelayTearDownUntilVoiceCallEndEnabled()
                 && mNetworkCapabilities != null
                 && mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL)
                 && mPhone.getImsPhone() != null
