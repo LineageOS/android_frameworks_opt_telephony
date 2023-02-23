@@ -22,6 +22,7 @@ import android.annotation.NonNull;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Environment;
@@ -199,6 +200,12 @@ public class EmergencyNumberTracker extends Handler {
                 configMgr.registerCarrierConfigChangeListener(this::post,
                         (slotIndex, subId, carrierId, specificCarrierId) ->
                                 onCarrierConfigUpdated(slotIndex));
+
+                //register country change listener
+                IntentFilter filter = new IntentFilter(
+                    TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED);
+                mPhone.getContext().registerReceiver(mIntentReceiver, filter);
+
             } else {
                 loge("CarrierConfigManager is null.");
             }
@@ -544,7 +551,7 @@ public class EmergencyNumberTracker extends Handler {
                     readInputStreamToByteArray(gzipInputStream));
             assetsDatabaseVersion = allEccMessages.revision;
             logd(countryIso + " asset emergency database is loaded. Ver: " + assetsDatabaseVersion
-                    + " Phone Id: " + mPhone.getPhoneId());
+                    + " Phone Id: " + mPhone.getPhoneId() + " countryIso: " + countryIso);
             for (ProtobufEccData.CountryInfo countryEccInfo : allEccMessages.countries) {
                 if (countryEccInfo.isoCode.equals(countryIso.toUpperCase(Locale.ROOT))) {
                     for (ProtobufEccData.EccInfo eccInfo : countryEccInfo.eccs) {
