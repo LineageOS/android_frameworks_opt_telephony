@@ -5319,8 +5319,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param what User-defined message code.
      * @param obj User object.
      */
-    public void registerForSatellitePointingInfoChanged(@NonNull Handler h,
+    public void registerForSatellitePositionInfoChanged(@NonNull Handler h,
             int what, @Nullable Object obj) {
+        //TODO: Rename CommandsInterface and other modules when updating HAL APIs.
         mCi.registerForSatellitePointingInfoChanged(h, what, obj);
     }
 
@@ -5329,7 +5330,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *
      * @param h Handler to be removed from the registrant list.
      */
-    public void unregisterForSatellitePointingInfoChanged(@NonNull Handler h) {
+    public void unregisterForSatellitePositionInfoChanged(@NonNull Handler h) {
+        //TODO: Rename CommandsInterface and other modules when updating HAL APIs.
         mCi.unregisterForSatellitePointingInfoChanged(h);
     }
 
@@ -5342,7 +5344,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void registerForSatelliteDatagramsDelivered(@NonNull Handler h,
             int what, @Nullable Object obj) {
-        //TODO: Rename CommandsInterface and other modules when updating HAL APIs.
+        //TODO: Remove.
         mCi.registerForSatelliteMessagesTransferComplete(h, what, obj);
     }
 
@@ -5352,7 +5354,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForSatelliteDatagramsDelivered(@NonNull Handler h) {
-        //TODO: Rename CommandsInterface and other modules when updating HAL APIs.
+        //TODO: Remove.
         mCi.unregisterForSatelliteMessagesTransferComplete(h);
     }
 
@@ -5413,23 +5415,23 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Registers for satellite state change from satellite modem.
+     * Registers for satellite state changed from satellite modem.
      *
      * @param h Handler for notification message.
      * @param what User-defined message code.
      * @param obj User object.
      */
-    public void registerForSatelliteModemStateChange(@NonNull Handler h, int what,
+    public void registerForSatelliteModemStateChanged(@NonNull Handler h, int what,
             @Nullable Object obj) {
         mCi.registerForSatelliteModeChanged(h, what, obj);
     }
 
     /**
-     * Unregisters for satellite state changes from satellite modem.
+     * Unregisters for satellite state changed from satellite modem.
      *
      * @param h Handler to be removed from registrant list.
      */
-    public void unregisterForSatelliteModemStateChange(@NonNull Handler h) {
+    public void unregisterForSatelliteModemStateChanged(@NonNull Handler h) {
         mCi.unregisterForSatelliteModeChanged(h);
     }
 
@@ -5461,19 +5463,20 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param what User-defined message code.
      * @param obj User object.
      */
-    public void registerForNewSatelliteDatagram(@NonNull Handler h, int what,
+    public void registerForSatelliteDatagramsReceived(@NonNull Handler h, int what,
             @Nullable Object obj) {
-        //mCi.registerForNewSatelliteDatagram(h, what, obj);
+        // TODO: rename
+        mCi.registerForNewSatelliteMessages(h, what, obj);
     }
-
 
     /**
      * Unregister to stop receiving incoming datagrams over satellite.
      *
      * @param h Handler to be removed from registrant list.
      */
-    public void unregisterForNewSatelliteDatagram(@NonNull Handler h) {
-        //mCi.unregisterForNewSatelliteDatagram(h);
+    public void unregisterForSatelliteDatagramsReceived(@NonNull Handler h) {
+        // TODO: rename
+        mCi.unregisterForNewSatelliteMessages(h);
     }
 
     /**
@@ -5488,8 +5491,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Send datagram over satellite.
      * @param result The Message to send the result of the operation to.
      * @param datagram Datagram to send over satellite.
+     * @param needFullScreenPointingUI this is used to indicate pointingUI app to open in
+     *                                 full screen mode.
      */
-    public void sendSatelliteDatagram(Message result, SatelliteDatagram datagram) {
+    public void sendSatelliteDatagram(Message result, SatelliteDatagram datagram,
+            boolean needFullScreenPointingUI) {
         //mCi.sendSatelliteDatagram(result, datagram);
     }
 

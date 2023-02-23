@@ -506,8 +506,8 @@ public class SubscriptionDatabaseManager extends Handler {
             new HashMap<>(16);
 
     /** Whether database has been initialized after boot up. */
-    @GuardedBy("mDatabaseInitialized")
-    private Boolean mDatabaseInitialized = false;
+    @GuardedBy("this")
+    private boolean mDatabaseInitialized = false;
 
     /**
      * This is the callback used for listening events from {@link SubscriptionDatabaseManager}.
@@ -759,7 +759,7 @@ public class SubscriptionDatabaseManager extends Handler {
                     + "insert. subInfo=" + subInfo);
         }
 
-        synchronized (mDatabaseInitialized) {
+        synchronized (this) {
             if (!mDatabaseInitialized) {
                 throw new IllegalStateException(
                         "Database has not been initialized. Can't insert new "
@@ -831,7 +831,7 @@ public class SubscriptionDatabaseManager extends Handler {
     private int updateDatabase(int subId, @NonNull ContentValues contentValues) {
         logv("updateDatabase: prepare to update sub " + subId);
 
-        synchronized (mDatabaseInitialized) {
+        synchronized (this) {
             if (!mDatabaseInitialized) {
                 logel("updateDatabase: Database has not been initialized. Can't update database at "
                         + "this point. contentValues=" + contentValues);
@@ -1852,7 +1852,7 @@ public class SubscriptionDatabaseManager extends Handler {
         if (mAsyncMode) {
             // Load the database asynchronously.
             post(() -> {
-                synchronized (mDatabaseInitialized) {
+                synchronized (this) {
                     loadDatabaseInternal();
                     mDatabaseInitialized = true;
                     mCallback.invokeFromExecutor(mCallback::onInitialized);
@@ -1860,7 +1860,7 @@ public class SubscriptionDatabaseManager extends Handler {
             });
         } else {
             // Load the database synchronously.
-            synchronized (mDatabaseInitialized) {
+            synchronized (this) {
                 loadDatabaseInternal();
                 mDatabaseInitialized = true;
                 mCallback.invokeFromExecutor(mCallback::onInitialized);
@@ -2120,7 +2120,7 @@ public class SubscriptionDatabaseManager extends Handler {
     }
 
     /**
-     * Dump the state of {@link SubscriptionManagerService}.
+     * Dump the state of {@link SubscriptionDatabaseManager}.
      *
      * @param fd File descriptor
      * @param printWriter Print writer
@@ -2129,11 +2129,27 @@ public class SubscriptionDatabaseManager extends Handler {
     public void dump(@NonNull FileDescriptor fd, @NonNull PrintWriter printWriter,
             @NonNull String[] args) {
         IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
-        pw.println(SubscriptionManagerService.class.getSimpleName() + ":");
+        pw.println(SubscriptionDatabaseManager.class.getSimpleName() + ":");
         pw.increaseIndent();
         pw.println("All subscriptions:");
         pw.increaseIndent();
-        mAllSubscriptionInfoInternalCache.forEach((subId, subInfo) -> pw.println(subInfo));
+        mReadWriteLock.readLock().lock();
+        try {
+            mAllSubscriptionInfoInternalCache.forEach((subId, subInfo) -> pw.println(subInfo));
+        } finally {
+            mReadWriteLock.readLock().unlock();
+        }
+        pw.decreaseIndent();
+        pw.println();
+        pw.println("mAsyncMode=" + mAsyncMode);
+        synchronized (this) {
+            pw.println("mDatabaseInitialized=" + mDatabaseInitialized);
+        }
+        pw.println("mReadWriteLock=" + mReadWriteLock);
+        pw.println();
+        pw.println("Local log:");
+        pw.increaseIndent();
+        mLocalLog.dump(fd, printWriter, args);
         pw.decreaseIndent();
         pw.decreaseIndent();
     }
