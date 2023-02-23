@@ -1298,6 +1298,24 @@ public class DataRetryManager extends Handler {
         }
     }
 
+    /**
+     * @param dataNetwork The data network to check.
+     * @return {@code true} if the data network had failed the maximum number of attempts for
+     * handover according to any retry rules.
+     */
+    public boolean isDataNetworkHandoverRetryStopped(@NonNull DataNetwork dataNetwork) {
+        // Matching the rule in configured order.
+        for (DataHandoverRetryRule retryRule : mDataHandoverRetryRuleList) {
+            int failedCount = getRetryFailedCount(dataNetwork, retryRule);
+            if (failedCount == retryRule.getMaxRetries()) {
+                log("Data handover retry failed for " + failedCount + " times. Stopped "
+                        + "handover retry.");
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Cancel all retries and throttling entries. */
     private void onReset(@RetryResetReason int reason) {
         logl("Remove all retry and throttling entries, reason=" + resetReasonToString(reason));
