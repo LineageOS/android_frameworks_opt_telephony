@@ -883,10 +883,12 @@ public class SatelliteServiceController {
      *
      * @param datagram Datagram to send in byte format.
      * @param isEmergency Whether this is an emergency datagram.
+     * @param needFullScreenPointingUI this is used to indicate pointingUI app to open in
+     *                                 full screen mode.
      * @param message The Message to send to result of the operation to.
      */
     public void sendSatelliteDatagram(@NonNull SatelliteDatagram datagram, boolean isEmergency,
-            @NonNull Message message) {
+            boolean needFullScreenPointingUI, @NonNull Message message) {
         if (mSatelliteService != null) {
             try {
                 mSatelliteService.sendSatelliteDatagram(
