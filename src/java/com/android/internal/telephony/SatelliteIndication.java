@@ -28,6 +28,8 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SATELLITE_RA
 
 import android.hardware.radio.satellite.IRadioSatelliteIndication;
 import android.os.AsyncResult;
+import android.telephony.satellite.SatelliteDatagram;
+import android.util.Pair;
 
 /**
  * Interface declaring unsolicited radio indications for Satellite APIs.
@@ -78,8 +80,13 @@ public class SatelliteIndication extends IRadioSatelliteIndication.Stub {
         if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_NEW_SATELLITE_MESSAGES);
 
         if (mRil.mNewSatelliteMessagesRegistrants != null) {
+            SatelliteDatagram[] datagrams = new SatelliteDatagram[messages.length];
+            for (int i = 0; i < messages.length; i++) {
+                datagrams[i] = new SatelliteDatagram(messages[i].getBytes());
+            }
+            // TODO: support pendingCount properly
             mRil.mNewSatelliteMessagesRegistrants.notifyRegistrants(
-                    new AsyncResult(null, messages, null));
+                    new AsyncResult(null, new Pair<>(datagrams, messages.length), null));
         }
     }
 

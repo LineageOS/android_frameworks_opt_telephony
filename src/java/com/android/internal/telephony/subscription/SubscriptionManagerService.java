@@ -2632,11 +2632,6 @@ public class SubscriptionManagerService extends ISub.Stub {
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID);
     }
 
-    @Override
-    public int[] getSubIds(int slotIndex) {
-        return new int[]{getSubId(slotIndex)};
-    }
-
     /**
      * Update default sub id.
      */
@@ -3972,5 +3967,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         mLocalLog.dump(fd, pw, args);
         pw.decreaseIndent();
         pw.decreaseIndent();
+        pw.println();
+        mSubscriptionDatabaseManager.dump(fd, pw, args);
     }
 }

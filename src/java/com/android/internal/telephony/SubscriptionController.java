@@ -2631,7 +2631,6 @@ public class SubscriptionController extends ISub.Stub {
      * @deprecated
      */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    @Override
     @Deprecated
     public int[] getSubIds(int slotIndex) {
         if (VDBG) printStackTrace("[getSubId]+ slotIndex=" + slotIndex);
