@@ -33,6 +33,7 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.IndentingPrintWriter;
 import android.util.Log;
 import android.view.WindowManager;
 
@@ -673,26 +674,34 @@ public class UiccSlot extends Handler {
     /**
      * Dump
      */
-    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        pw.println("UiccSlot:");
-        pw.println(" mActive=" + mActive);
-        pw.println(" mIsEuicc=" + mIsEuicc);
-        pw.println(" isEuiccSupportsMultipleEnabledProfiles="
-                + isMultipleEnabledProfileSupported());
-        pw.println(" mIsRemovable=" + mIsRemovable);
-        pw.println(" mLastRadioState=" + mLastRadioState);
-        pw.println(" mIccIds=" + getPrintableIccIds());
-        pw.println(" mPortIdxToPhoneId=" + mPortIdxToPhoneId);
-        pw.println(" mEid=" + Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, mEid));
-        pw.println(" mCardState=" + mCardState);
-        pw.println(" mSupportedMepMode=" + mSupportedMepMode);
+    public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
+        IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
+        pw.println("mActive=" + mActive);
+        pw.println("mIsEuicc=" + mIsEuicc);
+        pw.println("isEuiccSupportsMultipleEnabledProfiles=" + isMultipleEnabledProfileSupported());
+        pw.println("mIsRemovable=" + mIsRemovable);
+        pw.println("mLastRadioState=" + mLastRadioState);
+        pw.println("mIccIds=" + getPrintableIccIds());
+        pw.println("mPortIdxToPhoneId=" + mPortIdxToPhoneId);
+        pw.println("mEid=" + Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, mEid));
+        pw.println("mCardState=" + mCardState);
+        pw.println("mSupportedMepMode=" + mSupportedMepMode);
         if (mUiccCard != null) {
-            pw.println(" mUiccCard=" + mUiccCard);
+            pw.println("mUiccCard=");
             mUiccCard.dump(fd, pw, args);
         } else {
-            pw.println(" mUiccCard=null");
+            pw.println("mUiccCard=null");
         }
         pw.println();
         pw.flush();
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return "[UiccSlot: mActive=" + mActive + ", mIccId=" + getPrintableIccIds() + ", mIsEuicc="
+                + mIsEuicc + ", MEP=" + isMultipleEnabledProfileSupported() + ", mPortIdxToPhoneId="
+                + mPortIdxToPhoneId + ", mEid=" + Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, mEid)
+                + ", mCardState=" + mCardState + " mSupportedMepMode=" + mSupportedMepMode + "]";
     }
 }

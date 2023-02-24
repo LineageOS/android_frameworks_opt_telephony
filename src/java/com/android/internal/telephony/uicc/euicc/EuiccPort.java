@@ -28,6 +28,7 @@ import android.telephony.euicc.EuiccCardManager;
 import android.telephony.euicc.EuiccNotification;
 import android.telephony.euicc.EuiccRulesAuthTable;
 import android.text.TextUtils;
+import android.util.IndentingPrintWriter;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
@@ -1423,10 +1424,13 @@ public class EuiccPort extends UiccPort {
     }
 
     @Override
-    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        super.dump(fd, pw, args);
+    public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
+        super.dump(fd, printWriter, args);
+        IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         pw.println("EuiccPort:");
-        pw.println(" mEid=" + mEid);
-        pw.println(" mSupportedMepMode=" + mSupportedMepMode);
+        pw.increaseIndent();
+        pw.println("mEid=" + mEid);
+        pw.println("mSupportedMepMode=" + mSupportedMepMode);
+        pw.decreaseIndent();
     }
 }
