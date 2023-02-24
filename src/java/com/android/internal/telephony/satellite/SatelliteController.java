@@ -196,8 +196,8 @@ public class SatelliteController extends Handler {
                 }
             }
         };
-        requestIsSatelliteSupported(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
-                mSatelliteSupportedReceiver);
+        //requestIsSatelliteSupported(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+        //        mSatelliteSupportedReceiver);
     }
 
     private void internalInit() {
