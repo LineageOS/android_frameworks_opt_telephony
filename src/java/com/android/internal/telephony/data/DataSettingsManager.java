@@ -757,7 +757,7 @@ public class DataSettingsManager extends Handler {
         // mobile data policy : data during call
         if (isMobileDataPolicyEnabled(TelephonyManager
                 .MOBILE_DATA_POLICY_DATA_ON_NON_DEFAULT_DURING_VOICE_CALL)) {
-            overridden = isNonDds && mPhone.getState() != PhoneConstants.State.IDLE;
+            overridden = overridden || isNonDds && mPhone.getState() != PhoneConstants.State.IDLE;
         }
 
         // mobile data policy : auto data switch
@@ -776,7 +776,7 @@ public class DataSettingsManager extends Handler {
             if (defaultDataPhone == null) {
                 loge("isDataEnabledOverriddenForApn: unexpected defaultDataPhone is null");
             } else {
-                overridden = isNonDds && defaultDataPhone.isUserDataEnabled();
+                overridden = overridden || isNonDds && defaultDataPhone.isUserDataEnabled();
             }
         }
         return overridden;
