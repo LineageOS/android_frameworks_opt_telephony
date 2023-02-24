@@ -45,23 +45,28 @@ import android.util.Pair;
 import com.android.internal.telephony.ExponentialBackoff;
 import com.android.internal.telephony.IBooleanConsumer;
 import com.android.internal.telephony.IIntegerConsumer;
+import com.android.internal.telephony.Phone;
 
 import java.util.Arrays;
 import java.util.function.Consumer;
 
 /**
- * Satellite service controller to manage connections with the satellite service.
+ * Satellite modem interface to manage connections with the satellite service and HAL interface.
  */
-public class SatelliteServiceController {
-    private static final String TAG = "SatelliteServiceController";
+public class SatelliteModemInterface {
+    private static final String TAG = "SatelliteModemInterface";
     private static final long REBIND_INITIAL_DELAY = 2 * 1000; // 2 seconds
     private static final long REBIND_MAXIMUM_DELAY = 64 * 1000; // 1 minute
     private static final int REBIND_MULTIPLIER = 2;
 
-    @NonNull private static SatelliteServiceController sInstance;
+    @NonNull private static SatelliteModemInterface sInstance;
     @NonNull private final Context mContext;
     @NonNull private final ExponentialBackoff mExponentialBackoff;
     @NonNull private final Object mLock = new Object();
+    /**
+     * {@code true} to use the vendor satellite service and {@code false} to use the HAL.
+     */
+    private final boolean mIsSatelliteServiceSupported = false;
     @Nullable private ISatellite mSatelliteService;
     @Nullable private SatelliteServiceConnection mSatelliteServiceConnection;
     private boolean mIsBound;
@@ -80,8 +85,6 @@ public class SatelliteServiceController {
             new RegistrantList();
     @NonNull private final RegistrantList mSatelliteRadioTechnologyChangedRegistrants =
             new RegistrantList();
-
-    private boolean mIsSatelliteDemoModeEnabled = false;
 
     @NonNull private final ISatelliteListener mListener = new ISatelliteListener.Stub() {
         @Override
@@ -141,32 +144,34 @@ public class SatelliteServiceController {
     };
 
     /**
-     * @return The singleton instance of SatelliteServiceController.
+     * @return The singleton instance of SatelliteModemInterface.
      */
-    public static SatelliteServiceController getInstance() {
+    public static SatelliteModemInterface getInstance() {
         if (sInstance == null) {
-            loge("SatelliteServiceController was not yet initialized.");
+            loge("SatelliteModemInterface was not yet initialized.");
         }
         return sInstance;
     }
 
     /**
-     * Create the SatelliteServiceController singleton instance.
-     * @param context The Context to use to create the SatelliteServiceController.
+     * Create the SatelliteModemInterface singleton instance.
+     * @param context The Context to use to create the SatelliteModemInterface.
+     * @return The singleton instance of SatelliteModemInterface.
      */
-    public static void make(@NonNull Context context) {
+    public static SatelliteModemInterface make(@NonNull Context context) {
         if (sInstance == null) {
-            sInstance = new SatelliteServiceController(context, Looper.getMainLooper());
+            sInstance = new SatelliteModemInterface(context, Looper.getMainLooper());
         }
+        return sInstance;
     }
 
     /**
-     * Create a SatelliteServiceController to manage connections to the SatelliteService.
+     * Create a SatelliteModemInterface to manage connections to the SatelliteService.
      *
-     * @param context The Context for the SatelliteServiceController.
+     * @param context The Context for the SatelliteModemInterface.
      * @param looper The Looper to run binding retry on.
      */
-    private SatelliteServiceController(@NonNull Context context, @NonNull Looper looper) {
+    private SatelliteModemInterface(@NonNull Context context, @NonNull Looper looper) {
         mContext = context;
         mExponentialBackoff = new ExponentialBackoff(REBIND_INITIAL_DELAY, REBIND_MAXIMUM_DELAY,
                 REBIND_MULTIPLIER, looper, () -> {
@@ -185,7 +190,7 @@ public class SatelliteServiceController {
             bindService();
         });
         mExponentialBackoff.start();
-        logd("Created SatelliteServiceController. Attempting to bind to SatelliteService.");
+        logd("Created SatelliteModemInterface. Attempting to bind to SatelliteService.");
         bindService();
     }
 
@@ -464,7 +469,8 @@ public class SatelliteServiceController {
         if (mSatelliteService != null) {
             try {
                 mSatelliteService.requestSatelliteListeningEnabled(
-                        enable, mIsSatelliteDemoModeEnabled, new IIntegerConsumer.Stub() {
+                        enable, SatelliteController.getInstance().isSatelliteDemoModeEnabled(),
+                        new IIntegerConsumer.Stub() {
                             @Override
                             public void accept(int result) {
                                 int error = SatelliteServiceUtils.fromSatelliteError(result);
@@ -480,41 +486,6 @@ public class SatelliteServiceController {
         } else {
             loge("requestSatelliteListeningEnabled: Satellite service is unavailable.");
             sendMessageWithResult(message, null, SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED);
-        }
-    }
-
-    /**
-     * Request to enable or disable the satellite service demo mode.
-     *
-     * @param enable {@code true} to enable satellite demo mode and {@code false} to disable.
-     * @return The error code of the request.
-     */
-    @SatelliteManager.SatelliteError public int requestSatelliteDemoModeEnabled(boolean enable) {
-        if (mSatelliteService != null) {
-            logd("requestSatelliteDemoModeEnabled: " + enable);
-            mIsSatelliteDemoModeEnabled = enable;
-            return SatelliteManager.SATELLITE_ERROR_NONE;
-        } else {
-            loge("requestSatelliteDemoModeEnabled: Satellite service is unavailable.");
-            return SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED;
-        }
-    }
-
-    /**
-     * Request to get whether the satellite service demo mode is enabled.
-     *
-     * @param callback The callback to accept whether the satellite demo mode is enabled.
-     * @return The error code of the request.
-     */
-    @SatelliteManager.SatelliteError public int requestIsSatelliteDemoModeEnabled(
-            @NonNull Consumer<Boolean> callback) {
-        if (mSatelliteService != null) {
-            logd("requestIsSatelliteDemoModeEnabled: " + mIsSatelliteDemoModeEnabled);
-            callback.accept(mIsSatelliteDemoModeEnabled);
-            return SatelliteManager.SATELLITE_ERROR_NONE;
-        } else {
-            loge("requestIsSatelliteDemoModeEnabled: Satellite service is unavailable.");
-            return SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED;
         }
     }
 
@@ -893,7 +864,7 @@ public class SatelliteServiceController {
             try {
                 mSatelliteService.sendSatelliteDatagram(
                         SatelliteServiceUtils.toSatelliteDatagram(datagram),
-                        mIsSatelliteDemoModeEnabled, isEmergency,
+                        SatelliteController.getInstance().isSatelliteDemoModeEnabled(), isEmergency,
                         new IIntegerConsumer.Stub() {
                             @Override
                             public void accept(int result) {
@@ -1029,6 +1000,11 @@ public class SatelliteServiceController {
             loge("requestTimeForNextSatelliteVisibility: Satellite service is unavailable.");
             sendMessageWithResult(message, null, SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED);
         }
+    }
+
+    public boolean isSatelliteServiceSupported() {
+        // TODO: update this method
+        return mIsSatelliteServiceSupported;
     }
 
     private static void sendMessageWithResult(@NonNull Message message, @Nullable Object result,
