@@ -1746,9 +1746,20 @@ public class DataNetworkControllerTest extends TelephonyTest {
         // Verify internet connection
         verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_INTERNET);
 
-        // Disable auto data switch mobile policy
+        // Disable auto data switch mobile policy, but enabled data during call
         mDataNetworkControllerUT.getDataSettingsManager().setMobileDataPolicy(TelephonyManager
                 .MOBILE_DATA_POLICY_AUTO_DATA_SWITCH, false);
+        mDataNetworkControllerUT.getDataSettingsManager().setMobileDataPolicy(TelephonyManager
+                .MOBILE_DATA_POLICY_DATA_ON_NON_DEFAULT_DURING_VOICE_CALL, true);
+        doReturn(PhoneConstants.State.RINGING).when(phone2).getState();
+        processAllMessages();
+
+        // Verify internet connection
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+
+        // Disable data during call
+        mDataNetworkControllerUT.getDataSettingsManager().setMobileDataPolicy(TelephonyManager
+                .MOBILE_DATA_POLICY_DATA_ON_NON_DEFAULT_DURING_VOICE_CALL, false);
         processAllMessages();
 
         // Verify no internet connection
