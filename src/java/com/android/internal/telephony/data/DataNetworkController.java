@@ -894,24 +894,7 @@ public class DataNetworkController extends Handler {
                     public void onDataNetworkHandoverRetryStopped(
                             @NonNull DataNetwork dataNetwork) {
                         Objects.requireNonNull(dataNetwork);
-                        int preferredTransport = mAccessNetworksManager
-                                .getPreferredTransportByNetworkCapability(
-                                        dataNetwork.getApnTypeNetworkCapability());
-                        if (dataNetwork.getTransport() == preferredTransport) {
-                            log("onDataNetworkHandoverRetryStopped: " + dataNetwork + " is already "
-                                    + "on the preferred transport "
-                                    + AccessNetworkConstants.transportTypeToString(
-                                            preferredTransport));
-                            return;
-                        }
-                        if (dataNetwork.shouldDelayImsTearDownDueToInCall()) {
-                            log("onDataNetworkHandoverRetryStopped: Delay IMS tear down until call "
-                                    + "ends. " + dataNetwork);
-                            return;
-                        }
-
-                        tearDownGracefully(dataNetwork,
-                                DataNetwork.TEAR_DOWN_REASON_HANDOVER_FAILED);
+                        DataNetworkController.this.onDataNetworkHandoverRetryStopped(dataNetwork);
                     }
                 });
         mImsManager = mPhone.getContext().getSystemService(ImsManager.class);
@@ -1747,15 +1730,20 @@ public class DataNetworkController extends Handler {
             }
         }
 
-        boolean isMmtel = false;
-        // If the data network is IMS that supports voice call, and has MMTEL request (client
-        // specified VoPS is required.)
-        if (dataNetwork.getAttachedNetworkRequestList().get(
-                new int[]{NetworkCapabilities.NET_CAPABILITY_MMTEL}) != null) {
-            // When reaching here, it means the network supports MMTEL, and also has MMTEL request
-            // attached to it.
-            isMmtel = true;
-            if (!dataNetwork.shouldDelayImsTearDownDueToInCall()) {
+        boolean vopsIsRequired = dataNetwork.hasNetworkCapabilityInNetworkRequests(
+                NetworkCapabilities.NET_CAPABILITY_MMTEL);
+
+        // Check an active call relying on this network and config for "delay tear down due to vops
+        // call" is enabled.
+        if (dataNetwork.shouldDelayImsTearDownDueToInCall()) {
+            if (vopsIsRequired) {
+                log("Ignored VoPS check due to delay IMS tear down until call ends.");
+            }
+        } else {
+            // Reach here means we should ignore active calls even if there are any.
+
+            // Check if VoPS requirement is met.
+            if (vopsIsRequired) {
                 if (dataNetwork.getTransport() == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
                     NetworkRegistrationInfo nri = mServiceState.getNetworkRegistrationInfo(
                             NetworkRegistrationInfo.DOMAIN_PS,
@@ -1770,8 +1758,15 @@ public class DataNetworkController extends Handler {
                         }
                     }
                 }
-            } else {
-                log("Ignored VoPS check due to delay IMS tear down until call ends.");
+            }
+
+            // Check if handover retry stopped and preferred transport still not matched.
+            int preferredTransport = mAccessNetworksManager
+                    .getPreferredTransportByNetworkCapability(
+                            dataNetwork.getApnTypeNetworkCapability());
+            if (preferredTransport != dataNetwork.getTransport()
+                    && mDataRetryManager.isDataNetworkHandoverRetryStopped(dataNetwork)) {
+                evaluation.addDataDisallowedReason(DataDisallowedReason.HANDOVER_RETRY_STOPPED);
             }
         }
 
@@ -1802,9 +1797,7 @@ public class DataNetworkController extends Handler {
             // Sometimes network temporarily OOS and network type becomes UNKNOWN. We don't
             // tear down network in that case.
             if (networkType != TelephonyManager.NETWORK_TYPE_UNKNOWN
-                    && !dataProfile.getApnSetting().canSupportLingeringNetworkType(networkType)
-                    // delay IMS tear down if SRVCC in progress
-                    && !(isMmtel && mIsSrvccHandoverInProcess)) {
+                    && !dataProfile.getApnSetting().canSupportLingeringNetworkType(networkType)) {
                 log("networkType=" + TelephonyManager.getNetworkTypeName(networkType)
                         + ", networkTypeBitmask="
                         + TelephonyManager.convertNetworkTypeBitmaskToString(
@@ -1864,6 +1857,15 @@ public class DataNetworkController extends Handler {
                     evaluation.addDataAllowedReason(DataAllowedReason.UNMETERED_USAGE);
                 }
             }
+        }
+
+        // Check if we allow additional lingering for active VoPS call network if
+        // a. this network is SRVCC handover in progress
+        // or b. "delay tear down due to active VoPS call" is enabled
+        boolean isInSrvcc = vopsIsRequired && mIsSrvccHandoverInProcess;
+        if (evaluation.containsOnly(DataDisallowedReason.DATA_NETWORK_TYPE_NOT_ALLOWED)
+                && (dataNetwork.shouldDelayImsTearDownDueToInCall() || isInSrvcc)) {
+            evaluation.addDataAllowedReason(DataAllowedReason.IN_VOICE_CALL);
         }
 
         log("Evaluated " + dataNetwork + ", " + evaluation);
@@ -2058,6 +2060,8 @@ public class DataNetworkController extends Handler {
                     return DataNetwork.TEAR_DOWN_REASON_VOPS_NOT_SUPPORTED;
                 case ONLY_ALLOWED_SINGLE_NETWORK:
                     return DataNetwork.TEAR_DOWN_REASON_ONLY_ALLOWED_SINGLE_NETWORK;
+                case HANDOVER_RETRY_STOPPED:
+                    return DataNetwork.TEAR_DOWN_REASON_HANDOVER_FAILED;
             }
         }
         return DataNetwork.TEAR_DOWN_REASON_NONE;
@@ -2768,6 +2772,32 @@ public class DataNetworkController extends Handler {
     }
 
     /**
+     * Called when data network reached max handover retry count.
+     *
+     * @param dataNetwork The data network.
+     */
+    private void onDataNetworkHandoverRetryStopped(@NonNull DataNetwork dataNetwork) {
+        int preferredTransport = mAccessNetworksManager
+                .getPreferredTransportByNetworkCapability(
+                        dataNetwork.getApnTypeNetworkCapability());
+        if (dataNetwork.getTransport() == preferredTransport) {
+            log("onDataNetworkHandoverRetryStopped: " + dataNetwork + " is already "
+                    + "on the preferred transport "
+                    + AccessNetworkConstants.transportTypeToString(
+                    preferredTransport));
+            return;
+        }
+        if (dataNetwork.shouldDelayImsTearDownDueToInCall()) {
+            log("onDataNetworkHandoverRetryStopped: Delay IMS tear down until call "
+                    + "ends. " + dataNetwork);
+            return;
+        }
+
+        tearDownGracefully(dataNetwork,
+                DataNetwork.TEAR_DOWN_REASON_HANDOVER_FAILED);
+    }
+
+    /**
      * Called when data network validation status changed.
      *
      * @param status one of {@link NetworkAgent#VALIDATION_STATUS_VALID} or
@@ -3103,6 +3133,16 @@ public class DataNetworkController extends Handler {
             logl("Start handover " + dataNetwork + " to "
                     + AccessNetworkConstants.transportTypeToString(targetTransport));
             dataNetwork.startHandover(targetTransport, dataHandoverRetryEntry);
+        } else if (dataEvaluation.containsOnly(DataDisallowedReason.NOT_IN_SERVICE)
+                && dataNetwork.shouldDelayImsTearDownDueToInCall()) {
+            // We try to preserve voice call in the case of temporary preferred transport mismatch
+            if (dataHandoverRetryEntry != null) {
+                dataHandoverRetryEntry.setState(DataRetryEntry.RETRY_STATE_FAILED);
+            }
+            mDataRetryManager.evaluateDataHandoverRetry(dataNetwork,
+                    DataFailCause.HANDOVER_FAILED,
+                    DataCallResponse.RETRY_DURATION_UNDEFINED /* retry mills */);
+            logl("tryHandoverDataNetwork: Scheduled retry due to in voice call and target OOS");
         } else if (dataEvaluation.containsAny(DataDisallowedReason.NOT_ALLOWED_BY_POLICY,
                 DataDisallowedReason.NOT_IN_SERVICE,
                 DataDisallowedReason.VOPS_NOT_SUPPORTED)) {

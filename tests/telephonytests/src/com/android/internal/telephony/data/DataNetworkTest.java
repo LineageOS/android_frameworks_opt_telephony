@@ -340,7 +340,6 @@ public class DataNetworkTest extends TelephonyTest {
         doReturn(true).when(mDataConfigManager).isTempNotMeteredSupportedByCarrier();
         doReturn(true).when(mDataConfigManager).isNetworkTypeUnmetered(
                 any(TelephonyDisplayInfo.class), any(ServiceState.class));
-        doReturn(true).when(mDataConfigManager).isImsDelayTearDownEnabled();
         doReturn(DEFAULT_MTU).when(mDataConfigManager).getDefaultMtu();
         doReturn(FAKE_IMSI).when(mPhone).getSubscriberId();
         doReturn(true).when(mDataNetworkController)

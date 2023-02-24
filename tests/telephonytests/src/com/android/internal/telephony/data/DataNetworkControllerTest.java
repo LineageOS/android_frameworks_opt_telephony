@@ -2455,6 +2455,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
     public void testHandoverDataNetworkRetryReachedMaximum() throws Exception {
         testSetupImsDataNetwork();
 
+        // 1. Normal case
         setFailedSetupDataResponse(mMockedWlanDataServiceManager,
                 DataFailCause.HANDOVER_FAILED, -1, true);
         updateTransport(NetworkCapabilities.NET_CAPABILITY_IMS,
@@ -2475,6 +2476,30 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verify(mMockedWlanDataServiceManager).setupDataCall(anyInt(), any(DataProfile.class),
                 anyBoolean(), anyBoolean(), eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(),
                 any(), any(), anyBoolean(), any(Message.class));
+
+        // 2. Active VoPS call, should delay tear down
+        doReturn(PhoneConstants.State.RINGING).when(mCT).getState();
+        mCarrierConfig.putBoolean(CarrierConfigManager.KEY_DELAY_IMS_TEAR_DOWN_UNTIL_CALL_END_BOOL,
+                true);
+        carrierConfigChanged();
+
+        setFailedSetupDataResponse(mMockedWwanDataServiceManager,
+                DataFailCause.HANDOVER_FAILED, -1, true);
+        updateTransport(NetworkCapabilities.NET_CAPABILITY_IMS,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        processAllFutureMessages();
+
+        // Verify the network wasn't torn down
+        verify(mMockedWlanDataServiceManager, never()).deactivateDataCall(anyInt(),
+                eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
+
+        // Verify tear down after call ends
+        doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
+        mDataNetworkControllerUT.obtainMessage(18/*EVENT_VOICE_CALL_ENDED*/).sendToTarget();
+        processAllFutureMessages();
+
+        verify(mMockedWlanDataServiceManager).deactivateDataCall(anyInt(),
+                eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
     }
 
     @Test
@@ -3567,38 +3592,63 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
     @Test
     public void testHandoverDataNetworkOos() throws Exception {
-        ServiceState ss = new ServiceState();
-        ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
-                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
-                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
-                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
-                .build());
+        // Config delay IMS tear down enabled
+        mCarrierConfig.putBoolean(CarrierConfigManager.KEY_DELAY_IMS_TEAR_DOWN_UNTIL_CALL_END_BOOL,
+                true);
+        carrierConfigChanged();
 
-        ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
-                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
-                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_IWLAN)
-                .setRegistrationState(
-                        NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING)
-                .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
-                .build());
-
-        ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
-                .setTransportType(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
-                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
-                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
-                .setDomain(NetworkRegistrationInfo.DOMAIN_CS)
-                .build());
-        processServiceStateRegStateForTest(ss);
-        doReturn(ss).when(mSST).getServiceState();
-        doReturn(ss).when(mPhone).getServiceState();
-
-        mDataNetworkControllerUT.obtainMessage(17/*EVENT_SERVICE_STATE_CHANGED*/).sendToTarget();
-        processAllMessages();
+        // VoPS supported
+        DataSpecificRegistrationInfo dsri = new DataSpecificRegistrationInfo.Builder(8)
+                .setNrAvailable(true)
+                .setEnDcAvailable(true)
+                .setVopsSupportInfo(new LteVopsSupportInfo(
+                        LteVopsSupportInfo.LTE_STATUS_SUPPORTED,
+                        LteVopsSupportInfo.LTE_STATUS_SUPPORTED))
+                .build();
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME /*data*/,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME /*voice*/,
+                NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING /*iwlan*/,
+                dsri);
 
         testSetupImsDataNetwork();
+        DataNetwork dataNetwork = getDataNetworks().get(0);
+
+        // 1. Active VoPS call, mock target IWLAN OOS, should schedule retry
+        doReturn(PhoneConstants.State.RINGING).when(mCT).getState();
         updateTransport(NetworkCapabilities.NET_CAPABILITY_IMS,
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+        // Process DRM event to schedule retry
+        processAllMessages();
+
+        // Verify scheduled new handover retry
+        assertTrue(mDataNetworkControllerUT.getDataRetryManager()
+                .isAnyHandoverRetryScheduled(dataNetwork));
+        // Verify the network wasn't torn down
+        verify(mMockedWwanDataServiceManager, never()).deactivateDataCall(anyInt(),
+                eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
+
+        // Get the scheduled retry
+        Field field = DataRetryManager.class.getDeclaredField("mDataRetryEntries");
+        field.setAccessible(true);
+        DataRetryManager.DataHandoverRetryEntry dataRetryEntry =
+                (DataRetryManager.DataHandoverRetryEntry) ((List<DataRetryManager.DataRetryEntry>)
+                        field.get(mDataNetworkControllerUT.getDataRetryManager())).get(0);
+
+        // Process the retry
+        moveTimeForward(1000 /*The retry delay of the first attempt*/);
+        processAllMessages();
+
+        // Verify the previous retry is set to FAILED
+        assertEquals(DataRetryManager.DataRetryEntry.RETRY_STATE_FAILED, dataRetryEntry.getState());
+        // Verify a new retry is scheduled
+        assertTrue(mDataNetworkControllerUT.getDataRetryManager()
+                .isAnyHandoverRetryScheduled(dataNetwork));
+
+        // 2. Normal case (call ended), should tear down
+        doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
+        mDataNetworkControllerUT.obtainMessage(18/*EVENT_VOICE_CALL_ENDED*/).sendToTarget();
+        processAllFutureMessages();
 
         // Verify that handover is not performed.
         verify(mMockedWlanDataServiceManager, never()).setupDataCall(anyInt(),
@@ -3606,7 +3656,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 eq(DataService.REQUEST_REASON_NORMAL), any(), anyInt(), any(), any(), anyBoolean(),
                 any(Message.class));
 
-        // IMS network should be torn down.
+        // Verify IMS network should be torn down.
         verifyAllDataDisconnected();
     }
 
