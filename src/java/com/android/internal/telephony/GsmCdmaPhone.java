@@ -247,7 +247,8 @@ public class GsmCdmaPhone extends Phone {
     private String mVmNumber;
     private int mImeiType = IMEI_TYPE_UNKNOWN;
 
-    CellBroadcastConfigTracker mCellBroadcastConfigTracker =
+    @VisibleForTesting
+    public CellBroadcastConfigTracker mCellBroadcastConfigTracker =
             CellBroadcastConfigTracker.make(this, null);
 
     private boolean mIsNullCipherAndIntegritySupported = false;

@@ -1921,8 +1921,8 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void setCdmaBroadcastActivation(boolean activate, Message response) {
-        unimplemented(response);
-
+        SimulatedCommandsVerifier.getInstance().setCdmaBroadcastActivation(activate, response);
+        resultSuccess(response, null);
     }
 
     @Override
@@ -1933,7 +1933,8 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void setCdmaBroadcastConfig(CdmaSmsBroadcastConfigInfo[] configs, Message response) {
-        unimplemented(response);
+        SimulatedCommandsVerifier.getInstance().setCdmaBroadcastConfig(configs, response);
+        resultSuccess(response, null);
     }
 
     public void forceDataDormancy(Message response) {
@@ -1943,7 +1944,8 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void setGsmBroadcastActivation(boolean activate, Message response) {
-        unimplemented(response);
+        SimulatedCommandsVerifier.getInstance().setGsmBroadcastActivation(activate, response);
+        resultSuccess(response, null);
     }
 
 
@@ -1951,7 +1953,7 @@ public class SimulatedCommands extends BaseCommands
     public void setGsmBroadcastConfig(SmsBroadcastConfigInfo[] config, Message response) {
         SimulatedCommandsVerifier.getInstance().setGsmBroadcastConfig(config, response);
         if (mSendSetGsmBroadcastConfigResponse) {
-            unimplemented(response);
+            resultSuccess(response, null);
         }
     }
 
