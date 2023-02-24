@@ -21,6 +21,7 @@ import android.content.Context;
 import android.os.Build;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.IndentingPrintWriter;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
@@ -213,15 +214,20 @@ public class UiccCard {
         Rlog.e(LOG_TAG, msg);
     }
 
-    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+    public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
+        IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         pw.println("UiccCard:");
-        pw.println(" mCardState=" + mCardState);
-        pw.println(" mCardId=" + Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, mCardId));
-        pw.println(" mNumberOfPorts=" + mUiccPorts.size());
-        pw.println(" mSupportedMepMode=" + mSupportedMepMode);
-        pw.println();
+        pw.increaseIndent();
+        pw.println("mCardState=" + mCardState);
+        pw.println("mCardId=" + Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, mCardId));
+        pw.println("mNumberOfPorts=" + mUiccPorts.size());
+        pw.println("mSupportedMepMode=" + mSupportedMepMode);
+        pw.println("mUiccPorts= size=" + mUiccPorts.size());
+        pw.increaseIndent();
         for (UiccPort uiccPort : mUiccPorts.values()) {
             uiccPort.dump(fd, pw, args);
         }
+        pw.decreaseIndent();
+        pw.decreaseIndent();
     }
 }
