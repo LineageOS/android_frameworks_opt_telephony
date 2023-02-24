@@ -97,4 +97,10 @@ public class UiccCardTest extends TelephonyTest {
         assertNull(mUiccCard.getUiccPort(INVALID_PORT_ID));
         assertNotNull(mUiccCard.getUiccPort(TelephonyManager.DEFAULT_PORT_INDEX));
     }
+
+    @Test
+    @SmallTest
+    public void testGetCardId() {
+        assertNull(mUiccCard.getCardId());
+    }
 }
