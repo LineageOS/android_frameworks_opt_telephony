@@ -80,13 +80,11 @@ public class SatelliteIndication extends IRadioSatelliteIndication.Stub {
         if (mRil.isLogOrTrace()) mRil.unsljLog(RIL_UNSOL_NEW_SATELLITE_MESSAGES);
 
         if (mRil.mNewSatelliteMessagesRegistrants != null) {
-            SatelliteDatagram[] datagrams = new SatelliteDatagram[messages.length];
             for (int i = 0; i < messages.length; i++) {
-                datagrams[i] = new SatelliteDatagram(messages[i].getBytes());
+                SatelliteDatagram datagram = new SatelliteDatagram(messages[i].getBytes());
+                mRil.mNewSatelliteMessagesRegistrants.notifyRegistrants(
+                        new AsyncResult(null, new Pair<>(datagram, messages.length - i - 1), null));
             }
-            // TODO: support pendingCount properly
-            mRil.mNewSatelliteMessagesRegistrants.notifyRegistrants(
-                    new AsyncResult(null, new Pair<>(datagrams, messages.length), null));
         }
     }
 
