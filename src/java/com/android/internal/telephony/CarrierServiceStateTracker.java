@@ -590,7 +590,7 @@ public class CarrierServiceStateTracker extends Handler {
                     .setContentTitle(title)
                     .setStyle(new Notification.BigTextStyle().bigText(details))
                     .setContentText(details)
-                    .setFlag(Notification.FLAG_NO_CLEAR, true)
+                    .setOngoing(true)
                     .setChannelId(NotificationChannelController.CHANNEL_ID_WFC);
         }
     }
