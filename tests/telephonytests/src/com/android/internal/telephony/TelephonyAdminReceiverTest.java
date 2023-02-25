@@ -29,6 +29,7 @@ import android.os.UserManager;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -42,6 +43,11 @@ public class TelephonyAdminReceiverTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         mTelephonyAdminReceiver = new TelephonyAdminReceiver(mContext, mPhone);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        super.tearDown();
     }
 
     @Test
