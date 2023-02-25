@@ -34,7 +34,6 @@ import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
-import android.os.Registrant;
 import android.os.RegistrantList;
 import android.preference.PreferenceManager;
 import android.sysprop.TelephonyProperties;
@@ -49,6 +48,7 @@ import android.telephony.UiccPortInfo;
 import android.telephony.UiccSlotMapping;
 import android.telephony.data.ApnSetting;
 import android.text.TextUtils;
+import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 import android.util.Log;
 
@@ -1802,35 +1802,32 @@ public class UiccController extends Handler {
         return mCardStrings;
     }
 
-    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        pw.println("UiccController: " + this);
-        pw.println(" mContext=" + mContext);
-        pw.println(" mInstance=" + mInstance);
-        pw.println(" mIccChangedRegistrants: size=" + mIccChangedRegistrants.size());
-        for (int i = 0; i < mIccChangedRegistrants.size(); i++) {
-            pw.println("  mIccChangedRegistrants[" + i + "]="
-                    + ((Registrant)mIccChangedRegistrants.get(i)).getHandler());
-        }
-        pw.println();
-        pw.flush();
-        pw.println(" mIsCdmaSupported=" + isCdmaSupported(mContext));
-        pw.println(" mHasBuiltInEuicc=" + mHasBuiltInEuicc);
-        pw.println(" mHasActiveBuiltInEuicc=" + mHasActiveBuiltInEuicc);
-        pw.println(" mCardStrings=" + getPrintableCardStrings());
-        pw.println(" mDefaultEuiccCardId=" + mDefaultEuiccCardId);
-        pw.println(" mPhoneIdToSlotId=" + Arrays.toString(mPhoneIdToSlotId));
-        pw.println(" mUseRemovableEsimAsDefault=" + mUseRemovableEsimAsDefault);
-        pw.println(" mUiccSlots: size=" + mUiccSlots.length);
+    public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
+        IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
+        pw.println("mIsCdmaSupported=" + isCdmaSupported(mContext));
+        pw.println("mHasBuiltInEuicc=" + mHasBuiltInEuicc);
+        pw.println("mHasActiveBuiltInEuicc=" + mHasActiveBuiltInEuicc);
+        pw.println("mCardStrings=" + getPrintableCardStrings());
+        pw.println("mDefaultEuiccCardId=" + mDefaultEuiccCardId);
+        pw.println("mPhoneIdToSlotId=" + Arrays.toString(mPhoneIdToSlotId));
+        pw.println("mUseRemovableEsimAsDefault=" + mUseRemovableEsimAsDefault);
+        pw.println("mUiccSlots: size=" + mUiccSlots.length);
+        pw.increaseIndent();
         for (int i = 0; i < mUiccSlots.length; i++) {
             if (mUiccSlots[i] == null) {
-                pw.println("  mUiccSlots[" + i + "]=null");
+                pw.println("mUiccSlots[" + i + "]=null");
             } else {
-                pw.println("  mUiccSlots[" + i + "]=" + mUiccSlots[i]);
+                pw.println("mUiccSlots[" + i + "]:");
+                pw.increaseIndent();
                 mUiccSlots[i].dump(fd, pw, args);
+                pw.decreaseIndent();
             }
         }
-        pw.println(" sLocalLog= ");
-        sLocalLog.dump(fd, pw, args);
+        pw.decreaseIndent();
+        pw.println();
+        pw.println("sLocalLog= ");
+        pw.increaseIndent();
         mPinStorage.dump(fd, pw, args);
+        sLocalLog.dump(fd, pw, args);
     }
 }
