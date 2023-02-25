@@ -57,8 +57,9 @@ public class InboundSmsTrackerTest extends TelephonyTest {
     }
 
     @After
-    public void tearDown() {
+    public void tearDown() throws Exception {
         mInboundSmsTracker = null;
+        super.tearDown();
     }
 
     public static MatrixCursor createFakeCursor() {
