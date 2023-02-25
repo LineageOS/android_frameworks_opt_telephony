@@ -22,6 +22,7 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.RemoteException;
 import android.telephony.SubscriptionInfo;
+import android.util.IndentingPrintWriter;
 
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
@@ -358,18 +359,19 @@ public class UiccPort {
         Rlog.e(LOG_TAG, msg);
     }
 
-    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+    public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
+        IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         pw.println("UiccPort:");
-        pw.println(" this=" + this);
-        pw.println(" mPortIdx=" + mPortIdx);
-        pw.println(" mCi=" + mCi);
-        pw.println(" mIccid=" + SubscriptionInfo.givePrintableIccid(mIccid));
-        pw.println(" mPhoneId=" + mPhoneId);
-        pw.println(" mPhysicalSlotIndex=" + mPhysicalSlotIndex);
+        pw.increaseIndent();
+        pw.println("mPortIdx=" + mPortIdx);
+        pw.println("mCi=" + mCi);
+        pw.println("mIccid=" + SubscriptionInfo.givePrintableIccid(mIccid));
+        pw.println("mPhoneId=" + mPhoneId);
+        pw.println("mPhysicalSlotIndex=" + mPhysicalSlotIndex);
         synchronized (mOpenChannelRecords) {
-            pw.println(" mOpenChannelRecords=" + mOpenChannelRecords);
+            pw.println("mOpenChannelRecords=" + mOpenChannelRecords);
         }
-        pw.println();
+        pw.println("mUiccProfile");
         if (mUiccProfile != null) {
             mUiccProfile.dump(fd, pw, args);
         }
