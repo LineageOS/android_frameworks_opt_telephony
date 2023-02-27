@@ -712,8 +712,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(true).when(mSST).getPowerStateFromCarrier();
         doReturn(true).when(mSST).isConcurrentVoiceAndDataAllowed();
         doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
-        doReturn("").when(mSubscriptionController).getDataEnabledOverrideRules(anyInt());
-        doReturn(true).when(mSubscriptionController).setDataEnabledOverrideRules(
+        doReturn("").when(mSubscriptionController).getEnabledMobileDataPolicies(anyInt());
+        doReturn(true).when(mSubscriptionController).setEnabledMobileDataPolicies(
                 anyInt(), anyString());
 
         List<SubscriptionInfo> infoList = new ArrayList<>();
@@ -1577,7 +1577,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
                 TelephonyManager.DATA_ENABLED_REASON_USER, false, mContext.getOpPackageName());
         // Always allow MMS
-        mDataNetworkControllerUT.getDataSettingsManager().setAlwaysAllowMmsData(true);
+        mDataNetworkControllerUT.getDataSettingsManager().setMobileDataPolicy(TelephonyManager
+                .MOBILE_DATA_POLICY_MMS_ALWAYS_ALLOWED, true);
         processAllMessages();
         mDataNetworkControllerUT.addNetworkRequest(
                 createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_MMS));
@@ -1590,7 +1591,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
 
         // Remove MMS data enabled override
-        mDataNetworkControllerUT.getDataSettingsManager().setAlwaysAllowMmsData(false);
+        mDataNetworkControllerUT.getDataSettingsManager().setMobileDataPolicy(TelephonyManager
+                .MOBILE_DATA_POLICY_MMS_ALWAYS_ALLOWED, false);
         processAllMessages();
 
         // Make sure MMS is torn down when the override is disabled.
@@ -1608,7 +1610,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
         // Always allow MMS
-        mDataNetworkControllerUT.getDataSettingsManager().setAlwaysAllowMmsData(true);
+        mDataNetworkControllerUT.getDataSettingsManager().setMobileDataPolicy(TelephonyManager
+                .MOBILE_DATA_POLICY_MMS_ALWAYS_ALLOWED, true);
         processAllMessages();
 
         mDataNetworkControllerUT.addNetworkRequest(
@@ -1618,6 +1621,37 @@ public class DataNetworkControllerTest extends TelephonyTest {
         // Make sure MMS is not allowed. MMS always allowed should be only applicable to data
         // disabled case.
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+    }
+
+    @Test
+    public void testIsDataEnabledOverriddenForApn_dataDuringCall() throws Exception {
+        // Note: we don't check phone call status in DSMGR as the check should already been done in
+        // PhoneSwitcher when routing requests.
+        doReturn(1).when(mPhone).getSubId();
+        doReturn(2).when(mSubscriptionController).getDefaultDataSubId();
+        // Data disabled
+        mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
+                TelephonyManager.DATA_ENABLED_REASON_USER, false, mContext.getOpPackageName());
+
+        // Enable during data call mobile policy
+        mDataNetworkControllerUT.getDataSettingsManager().setMobileDataPolicy(TelephonyManager
+                .MOBILE_DATA_POLICY_DATA_ON_NON_DEFAULT_DURING_VOICE_CALL, true);
+        processAllMessages();
+
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        processAllMessages();
+
+        // Verify internet connection
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+
+        // Disable during data call mobile policy
+        mDataNetworkControllerUT.getDataSettingsManager().setMobileDataPolicy(TelephonyManager
+                .MOBILE_DATA_POLICY_DATA_ON_NON_DEFAULT_DURING_VOICE_CALL, false);
+        processAllMessages();
+
+        // Verify no internet connection
+        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
     }
 
     @Test
