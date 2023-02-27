@@ -171,8 +171,11 @@ public class UiccCard {
         if (!TextUtils.isEmpty(mCardId)) {
             return mCardId;
         } else {
-            UiccProfile uiccProfile = mUiccPorts.get(TelephonyManager.DEFAULT_PORT_INDEX)
-                    .getUiccProfile();
+            UiccPort uiccPort = mUiccPorts.get(TelephonyManager.DEFAULT_PORT_INDEX);
+            if (uiccPort == null) {
+                return null;
+            }
+            UiccProfile uiccProfile = uiccPort.getUiccProfile();
             return uiccProfile == null ? null : uiccProfile.getIccId();
         }
     }
