@@ -24,6 +24,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.never;
@@ -66,7 +67,7 @@ public final class CellBroadcastConfigTrackerTest extends TelephonyTest {
         mSpyCi = spy(mSimulatedCommands);
         mPhone = new GsmCdmaPhone(mContext, mSpyCi, mNotifier, true, 0,
             PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory, (c, p) -> mImsManager);
-        mTracker = CellBroadcastConfigTracker.make(mPhone, mPhone);
+        mTracker = CellBroadcastConfigTracker.make(mPhone, mPhone, true);
         mPhone.mCellBroadcastConfigTracker = mTracker;
         processAllMessages();
     }
@@ -485,6 +486,31 @@ public final class CellBroadcastConfigTrackerTest extends TelephonyTest {
 
         assertThrows(IllegalArgumentException.class, () ->
                 mergeRangesAsNeeded(ranges2));
+    }
+
+    @Test
+    public void testMakeCellBroadcastConfigTracker() {
+        Phone phone = spy(mPhone);
+        CellBroadcastConfigTracker tracker = CellBroadcastConfigTracker.make(phone, phone, false);
+        processAllMessages();
+
+        verify(phone, never()).registerForRadioOffOrNotAvailable(any(), anyInt(), any());
+        verify(mSubscriptionManager, never()).addOnSubscriptionsChangedListener(
+                any(), eq(tracker.mSubChangedListener));
+
+        tracker.start();
+        processAllMessages();
+
+        verify(phone, times(1)).registerForRadioOffOrNotAvailable(any(), anyInt(), any());
+        verify(mSubscriptionManager, times(1)).addOnSubscriptionsChangedListener(
+                any(), eq(tracker.mSubChangedListener));
+
+        tracker = CellBroadcastConfigTracker.make(phone, phone, true);
+        processAllMessages();
+
+        verify(phone, times(2)).registerForRadioOffOrNotAvailable(any(), anyInt(), any());
+        verify(mSubscriptionManager, times(1)).addOnSubscriptionsChangedListener(
+                any(), eq(tracker.mSubChangedListener));
     }
 
     private void mockCommandInterface() {
