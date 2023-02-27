@@ -45,10 +45,8 @@ import android.util.Pair;
 import com.android.internal.telephony.ExponentialBackoff;
 import com.android.internal.telephony.IBooleanConsumer;
 import com.android.internal.telephony.IIntegerConsumer;
-import com.android.internal.telephony.Phone;
 
 import java.util.Arrays;
-import java.util.function.Consumer;
 
 /**
  * Satellite modem interface to manage connections with the satellite service and HAL interface.
@@ -129,8 +127,8 @@ public class SatelliteModemInterface {
                             SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING;
                     break;
                 case SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_RETRYING:
-                    datagramTransferState =
-                            SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RETRYING;
+                    // keep previous state as this could be retrying sending or receiving
+                    break;
             }
             // TODO: properly notify the rest of the datagram transfer state changed parameters
             mDatagramTransferStateChangedRegistrants.notifyResult(datagramTransferState);
