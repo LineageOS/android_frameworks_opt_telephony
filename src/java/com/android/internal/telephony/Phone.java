@@ -82,6 +82,7 @@ import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.metrics.SmsStats;
 import com.android.internal.telephony.metrics.VoiceCallSessionStats;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccFileHandler;
@@ -354,6 +355,12 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private int mUsageSettingFromModem = SubscriptionManager.USAGE_SETTING_UNKNOWN;
     private boolean mIsUsageSettingSupported = true;
 
+    /**
+     * {@code true} if the new SubscriptionManagerService is enabled, otherwise the old
+     * SubscriptionController is used.
+     */
+    private boolean mIsSubscriptionManagerServiceEnabled = false;
+
     //IMS
     /**
      * {@link CallStateException} message text used to indicate that an IMS call has failed because
@@ -557,10 +564,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 .makeAppSmsManager(context);
         mLocalLog = new LocalLog(64);
 
-        if (TelephonyUtils.IS_DEBUGGABLE) {
-            mTelephonyTester = new TelephonyTester(this);
-        }
-
         setUnitTestMode(unitTestMode);
 
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
@@ -599,6 +602,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         if (getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             return;
         }
+
+        if (TelephonyUtils.IS_DEBUGGABLE) {
+            mTelephonyTester = new TelephonyTester(this);
+        }
+
+        mIsSubscriptionManagerServiceEnabled = mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_using_subscription_manager_service);
 
         // Initialize device storage and outgoing SMS usage monitors for SMSDispatchers.
         mTelephonyComponentFactory = telephonyComponentFactory;
@@ -4842,6 +4852,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     @VisibleForTesting
     public boolean isAllowedNetworkTypesLoadedFromDb() {
         return mIsAllowedNetworkTypesLoadedFromDb;
+    }
+
+    /**
+     * @return {@code true} if the new {@link SubscriptionManagerService} is enabled, otherwise the
+     * old {@link SubscriptionController} is used.
+     */
+    public boolean isSubscriptionManagerServiceEnabled() {
+        return mIsSubscriptionManagerServiceEnabled;
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

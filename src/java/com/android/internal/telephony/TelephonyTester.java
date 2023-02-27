@@ -62,7 +62,6 @@ import java.util.List;
  *
  */
 public class TelephonyTester {
-    private static final String LOG_TAG = "TelephonyTester";
     private static final boolean DBG = true;
 
     /**
@@ -144,6 +143,7 @@ public class TelephonyTester {
             "com.android.internal.telephony.TestServiceState";
 
     private static final String EXTRA_ACTION = "action";
+    private static final String EXTRA_PHONE_ID = "phone_id";
     private static final String EXTRA_VOICE_RAT = "voice_rat";
     private static final String EXTRA_DATA_RAT = "data_rat";
     private static final String EXTRA_VOICE_REG_STATE = "voice_reg_state";
@@ -156,6 +156,8 @@ public class TelephonyTester {
     private static final String EXTRA_OPERATOR_RAW = "operator_raw";
 
     private static final String ACTION_RESET = "reset";
+
+    private String mLogTag;
 
     private static List<ImsExternalCallState> mImsExternalCallStates = null;
 
@@ -216,7 +218,7 @@ public class TelephonyTester {
                     if (DBG) log("onReceive: unknown action=" + action);
                 }
             } catch (BadParcelableException e) {
-                Rlog.w(LOG_TAG, e);
+                Rlog.w(mLogTag, e);
             }
         }
     };
@@ -225,6 +227,7 @@ public class TelephonyTester {
         mPhone = phone;
 
         if (TelephonyUtils.IS_DEBUGGABLE) {
+            mLogTag = "TelephonyTester-" + mPhone.getPhoneId();
             IntentFilter filter = new IntentFilter();
 
             filter.addAction(mPhone.getActionDetached());
@@ -261,8 +264,8 @@ public class TelephonyTester {
         }
     }
 
-    private static void log(String s) {
-        Rlog.d(LOG_TAG, s);
+    private void log(String s) {
+        Rlog.d(mLogTag, s);
     }
 
     private void handleSuppServiceFailedIntent(Intent intent) {
@@ -387,6 +390,10 @@ public class TelephonyTester {
 
     void overrideServiceState(ServiceState ss) {
         if (mServiceStateTestIntent == null || ss == null) return;
+        if (mPhone.getPhoneId() != mServiceStateTestIntent.getIntExtra(
+                EXTRA_PHONE_ID, mPhone.getPhoneId())) {
+            return;
+        }
         if (mServiceStateTestIntent.hasExtra(EXTRA_ACTION)
                 && ACTION_RESET.equals(mServiceStateTestIntent.getStringExtra(EXTRA_ACTION))) {
             log("Service state override reset");

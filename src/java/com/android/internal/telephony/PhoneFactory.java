@@ -50,6 +50,7 @@ import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneFactory;
 import com.android.internal.telephony.metrics.MetricsCollector;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.util.NotificationChannelController;
 import com.android.internal.util.IndentingPrintWriter;
@@ -83,6 +84,7 @@ public class PhoneFactory {
     private static IntentBroadcaster sIntentBroadcaster;
     private static @Nullable EuiccController sEuiccController;
     private static @Nullable EuiccCardController sEuiccCardController;
+    private static SubscriptionManagerService sSubscriptionManagerService;
 
     static private SubscriptionInfoUpdater sSubInfoRecordUpdater = null;
 
@@ -194,9 +196,15 @@ public class PhoneFactory {
                 // call getInstance()
                 sUiccController = UiccController.make(context);
 
-                Rlog.i(LOG_TAG, "Creating SubscriptionController");
-                TelephonyComponentFactory.getInstance().inject(SubscriptionController.class.
-                        getName()).initSubscriptionController(context);
+                if (sContext.getResources().getBoolean(
+                        com.android.internal.R.bool.config_using_subscription_manager_service)) {
+                    Rlog.i(LOG_TAG, "Creating SubscriptionManagerService");
+                    sSubscriptionManagerService = new SubscriptionManagerService(context);
+                } else {
+                    Rlog.i(LOG_TAG, "Creating SubscriptionController");
+                    TelephonyComponentFactory.getInstance().inject(SubscriptionController.class
+                            .getName()).initSubscriptionController(context);
+                }
                 TelephonyComponentFactory.getInstance().inject(MultiSimSettingController.class.
                         getName()).initMultiSimSettingController(context,
                         SubscriptionController.getInstance());
