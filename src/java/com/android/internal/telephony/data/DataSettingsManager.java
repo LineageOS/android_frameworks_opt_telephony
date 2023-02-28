@@ -48,6 +48,7 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SettingsObserver;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.data.DataConfigManager.DataConfigManagerCallback;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -618,7 +619,7 @@ public class DataSettingsManager extends Handler {
                 .collect(Collectors.joining(","));
         if (SubscriptionController.getInstance().setEnabledMobileDataPolicies(
                 mSubId, enabledMobileDataPolicies)) {
-            logl(DataUtils.mobileDataPolicyToString(mobileDataPolicy) + " changed to "
+            logl(TelephonyUtils.mobileDataPolicyToString(mobileDataPolicy) + " changed to "
                     + enable);
             updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_OVERRIDE);
             notifyDataEnabledOverrideChanged(enable, mobileDataPolicy);
@@ -761,7 +762,7 @@ public class DataSettingsManager extends Handler {
                 + ", mIsDataEnabled=" + mIsDataEnabled
                 + ", mDataEnabledSettings=" + mDataEnabledSettings
                 + ", mEnabledMobileDataPolicy=" + mEnabledMobileDataPolicy.stream()
-                .map(DataUtils::mobileDataPolicyToString).collect(Collectors.joining(","))
+                .map(TelephonyUtils::mobileDataPolicyToString).collect(Collectors.joining(","))
                 + "]";
     }
 
@@ -818,7 +819,7 @@ public class DataSettingsManager extends Handler {
                         dataEnabledChangedReasonToString(entry.getKey()) + "=" + entry.getValue())
                 .collect(Collectors.joining(", ")));
         pw.println("mEnabledMobileDataPolicy=" + mEnabledMobileDataPolicy.stream()
-                .map(DataUtils::mobileDataPolicyToString).collect(Collectors.joining(",")));
+                .map(TelephonyUtils::mobileDataPolicyToString).collect(Collectors.joining(",")));
         pw.println("Local logs:");
         pw.increaseIndent();
         mLocalLog.dump(fd, pw, args);

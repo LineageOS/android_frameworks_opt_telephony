@@ -19,6 +19,7 @@ package com.android.internal.telephony.subscription;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
+import android.os.HandlerThread;
 import android.os.ParcelUuid;
 import android.os.TelephonyServiceManager;
 import android.telephony.SubscriptionInfo;
@@ -54,6 +55,9 @@ public class SubscriptionManagerService extends ISub.Stub {
     /** Local log for most important debug messages. */
     private final LocalLog mLocalLog = new LocalLog(128);
 
+    /** The subscription database manager. */
+    private final SubscriptionDatabaseManager mSubscriptionDatabaseManager;
+
     /**
      * The constructor
      *
@@ -66,6 +70,13 @@ public class SubscriptionManagerService extends ISub.Stub {
                         .getTelephonyServiceManager()
                         .getSubscriptionServiceRegisterer();
         subscriptionServiceRegisterer.register(this);
+
+        // Create a separate thread for subscription database manager. The database will be updated
+        // from a different thread.
+        HandlerThread handlerThread = new HandlerThread(LOG_TAG);
+        handlerThread.start();
+        mSubscriptionDatabaseManager = new SubscriptionDatabaseManager(context,
+                handlerThread.getLooper());
     }
 
     /**
