@@ -249,7 +249,7 @@ public class GsmCdmaPhone extends Phone {
 
     @VisibleForTesting
     public CellBroadcastConfigTracker mCellBroadcastConfigTracker =
-            CellBroadcastConfigTracker.make(this, null);
+            CellBroadcastConfigTracker.make(this, null, true);
 
     private boolean mIsNullCipherAndIntegritySupported = false;
 
