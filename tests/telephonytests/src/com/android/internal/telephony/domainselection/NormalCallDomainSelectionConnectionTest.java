@@ -101,7 +101,7 @@ public class NormalCallDomainSelectionConnectionTest extends TelephonyTest {
 
         verify(mMockDomainSelectionController).selectDomain(any(), any());
 
-        mTransportCallback.onWlanSelected();
+        mTransportCallback.onWlanSelected(false);
 
         assertTrue(future.isDone());
         assertEquals((long) DOMAIN_PS, (long) future.get());
@@ -126,7 +126,7 @@ public class NormalCallDomainSelectionConnectionTest extends TelephonyTest {
         WwanSelectorCallback wwanCallback = mTransportCallback.onWwanSelected();
 
         assertFalse(future.isDone());
-        wwanCallback.onDomainSelected(DOMAIN_CS);
+        wwanCallback.onDomainSelected(DOMAIN_CS, false);
 
         assertTrue(future.isDone());
         assertEquals((long) DOMAIN_CS, (long) future.get());
@@ -151,7 +151,7 @@ public class NormalCallDomainSelectionConnectionTest extends TelephonyTest {
         WwanSelectorCallback wwanCallback = mTransportCallback.onWwanSelected();
 
         assertFalse(future.isDone());
-        wwanCallback.onDomainSelected(DOMAIN_PS);
+        wwanCallback.onDomainSelected(DOMAIN_PS, false);
 
         assertTrue(future.isDone());
         assertEquals((long) DOMAIN_PS, (long) future.get());

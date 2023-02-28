@@ -79,8 +79,8 @@ public class DomainSelectionConnection {
         }
 
         @Override
-        public void onWlanSelected() {
-            DomainSelectionConnection.this.onWlanSelected();
+        public void onWlanSelected(boolean useEmergencyPdn) {
+            DomainSelectionConnection.this.onWlanSelected(useEmergencyPdn);
         }
 
         @Override
@@ -128,8 +128,9 @@ public class DomainSelectionConnection {
         }
 
         @Override
-        public void onDomainSelected(@NetworkRegistrationInfo.Domain int domain) {
-            DomainSelectionConnection.this.onDomainSelected(domain);
+        public void onDomainSelected(@NetworkRegistrationInfo.Domain int domain,
+                boolean useEmergencyPdn) {
+            DomainSelectionConnection.this.onDomainSelected(domain, useEmergencyPdn);
         }
 
         @Override
@@ -287,6 +288,16 @@ public class DomainSelectionConnection {
     }
 
     /**
+     * Notifies that WLAN transport has been selected.
+     *
+     * @param useEmergencyPdn Indicates whether Wi-Fi emergency services use emergency PDN or not.
+     */
+    public void onWlanSelected(boolean useEmergencyPdn) {
+        // Can be overridden.
+        onWlanSelected();
+    }
+
+    /**
      * Notifies that WWAN transport has been selected.
      */
     public void onWwanSelected() {
@@ -324,12 +335,25 @@ public class DomainSelectionConnection {
 
     /**
      * Notifies the domain selected.
+     *
      * @param domain The selected domain.
      */
     public void onDomainSelected(@NetworkRegistrationInfo.Domain int domain) {
         // Can be overridden if required
         CompletableFuture<Integer> future = getCompletableFuture();
         future.complete(domain);
+    }
+
+    /**
+     * Notifies the domain selected.
+     *
+     * @param domain The selected domain.
+     * @param useEmergencyPdn Indicates whether emergency services use emergency PDN or not.
+     */
+    public void onDomainSelected(@NetworkRegistrationInfo.Domain int domain,
+            boolean useEmergencyPdn) {
+        // Can be overridden if required
+        onDomainSelected(domain);
     }
 
     /**
