@@ -95,7 +95,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
             .setSimSlotIndex(0)
             .setDisplayName("T-mobile")
             .setCarrierName("T-mobile")
-            .setNameSource(SubscriptionManager.NAME_SOURCE_CARRIER)
+            .setDisplayNameSource(SubscriptionManager.NAME_SOURCE_CARRIER)
             .setIconTint(255)
             .setNumber("12345")
             .setMcc("310")

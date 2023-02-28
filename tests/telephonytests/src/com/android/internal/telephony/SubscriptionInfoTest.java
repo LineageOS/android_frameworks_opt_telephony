@@ -43,7 +43,7 @@ public class SubscriptionInfoTest {
                 .setSimSlotIndex(0)
                 .setDisplayName("T-mobile")
                 .setCarrierName("T-mobile")
-                .setNameSource(SubscriptionManager.NAME_SOURCE_CARRIER_ID)
+                .setDisplayNameSource(SubscriptionManager.NAME_SOURCE_CARRIER_ID)
                 .setIconTint(255)
                 .setNumber("12345")
                 .setDataRoaming(SubscriptionManager.DATA_ROAMING_DISABLE)
@@ -67,7 +67,7 @@ public class SubscriptionInfoTest {
         assertThat(mSubscriptionInfoUT.getCarrierName().toString()).isEqualTo("T-mobile");
         assertThat(mSubscriptionInfoUT.getCountryIso()).isEqualTo("us");
         assertThat(mSubscriptionInfoUT.getIconTint()).isEqualTo(255);
-        assertThat(mSubscriptionInfoUT.getNameSource()).isEqualTo(0);
+        assertThat(mSubscriptionInfoUT.getDisplayNameSource()).isEqualTo(0);
         assertThat(mSubscriptionInfoUT.getSubscriptionId()).isEqualTo(1);
         assertThat(mSubscriptionInfoUT.getSimSlotIndex()).isEqualTo(0);
         assertThat(mSubscriptionInfoUT.getIccId()).isEqualTo("890126042XXXXXXXXXXX");

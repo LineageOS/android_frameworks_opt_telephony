@@ -1657,7 +1657,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 .setSimSlotIndex(1)
                 .setDisplayName("Android Test")
                 .setDisplayName("Android Test")
-                .setNameSource(SubscriptionManager.NAME_SOURCE_CARRIER)
+                .setDisplayNameSource(SubscriptionManager.NAME_SOURCE_CARRIER)
                 .setNumber("8675309")
                 .setMcc("001")
                 .setMnc("01")
