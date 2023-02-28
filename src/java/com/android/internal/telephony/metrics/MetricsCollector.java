@@ -82,6 +82,8 @@ import com.android.internal.telephony.nano.PersistAtomsProto.SipTransportSession
 import com.android.internal.telephony.nano.PersistAtomsProto.UceEventStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallRatUsage;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
+import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.UiccSlot;
 import com.android.internal.util.ConcurrentUtils;
 import com.android.telephony.Rlog;
 
@@ -337,7 +339,9 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                         SIM_SLOT_STATE,
                         state.numActiveSlots,
                         state.numActiveSims,
-                        state.numActiveEsims));
+                        state.numActiveEsims,
+                        state.numActiveEsimSlots,
+                        state.numActiveMepSlots));
         return StatsManager.PULL_SUCCESS;
     }
 
@@ -526,9 +530,14 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         boolean hasDedicatedManagedProfileSub = Arrays.stream(phones)
                 .anyMatch(Phone::isManagedProfile);
 
+        UiccSlot[] slots = UiccController.getInstance().getUiccSlots();
+        int mepSupportedSlotCount = (int) Arrays.stream(slots)
+                .filter(UiccSlot::isMultipleEnabledProfileSupported)
+                .count();
+
         data.add(TelephonyStatsLog.buildStatsEvent(DEVICE_TELEPHONY_PROPERTIES, true,
                 isAutoDataSwitchOn, mStorage.getAutoDataSwitchToggleCount(),
-                hasDedicatedManagedProfileSub));
+                hasDedicatedManagedProfileSub, mepSupportedSlotCount));
         return StatsManager.PULL_SUCCESS;
     }
 

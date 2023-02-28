@@ -51,6 +51,7 @@ import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccPort;
+import com.android.internal.telephony.uicc.UiccProfile;
 import com.android.internal.telephony.uicc.UiccSlot;
 
 import org.junit.After;
@@ -119,6 +120,9 @@ public class MetricsCollectorTest extends TelephonyTest {
     @SmallTest
     public void onPullAtom_simSlotState_bothSimPresent() {
         // these have been tested extensively in SimSlotStateTest, here we verify atom generation
+        UiccProfile activeProfile = mock(UiccProfile.class);
+        doReturn(4).when(activeProfile).getNumApplications();
+        doReturn(activeProfile).when(mActivePort).getUiccProfile();
         doReturn(true).when(mPhysicalSlot).isActive();
         doReturn(CardState.CARDSTATE_PRESENT).when(mPhysicalSlot).getCardState();
         doReturn(false).when(mPhysicalSlot).isEuicc();
@@ -126,7 +130,6 @@ public class MetricsCollectorTest extends TelephonyTest {
         doReturn(CardState.CARDSTATE_PRESENT).when(mEsimSlot).getCardState();
         doReturn(true).when(mEsimSlot).isEuicc();
         doReturn(mActiveCard).when(mEsimSlot).getUiccCard();
-        doReturn(4).when(mActivePort).getNumApplications();
         doReturn(new UiccPort[] {mActivePort}).when(mActiveCard).getUiccPortList();
         doReturn(new UiccSlot[] {mPhysicalSlot, mEsimSlot}).when(mUiccController).getUiccSlots();
         doReturn(mPhysicalSlot).when(mUiccController).getUiccSlot(eq(0));
