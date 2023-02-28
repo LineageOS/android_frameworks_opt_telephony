@@ -84,14 +84,16 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
 
     /** {@inheritDoc} */
     @Override
-    public void onWlanSelected() {
+    public void onWlanSelected(boolean useEmergencyPdn) {
         mEmergencyStateTracker.onEmergencyTransportChanged(MODE_EMERGENCY_WLAN);
-        AccessNetworksManager anm = mPhone.getAccessNetworksManager();
-        int transportType = anm.getPreferredTransport(ApnSetting.TYPE_EMERGENCY);
-        logi("onWlanSelected curTransportType=" + transportType);
-        if (transportType != TRANSPORT_TYPE_WLAN) {
-            changePreferredTransport(TRANSPORT_TYPE_WLAN);
-            return;
+        if (useEmergencyPdn) {
+            AccessNetworksManager anm = mPhone.getAccessNetworksManager();
+            int transportType = anm.getPreferredTransport(ApnSetting.TYPE_EMERGENCY);
+            logi("onWlanSelected curTransportType=" + transportType);
+            if (transportType != TRANSPORT_TYPE_WLAN) {
+                changePreferredTransport(TRANSPORT_TYPE_WLAN);
+                return;
+            }
         }
 
         CompletableFuture<Integer> future = getCompletableFuture();
@@ -112,8 +114,9 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
 
     /** {@inheritDoc} */
     @Override
-    public void onDomainSelected(@NetworkRegistrationInfo.Domain int domain) {
-        if (domain == DOMAIN_PS) {
+    public void onDomainSelected(@NetworkRegistrationInfo.Domain int domain,
+            boolean useEmergencyPdn) {
+        if (domain == DOMAIN_PS && useEmergencyPdn) {
             AccessNetworksManager anm = mPhone.getAccessNetworksManager();
             int transportType = anm.getPreferredTransport(ApnSetting.TYPE_EMERGENCY);
             logi("onDomainSelected curTransportType=" + transportType);
@@ -122,7 +125,7 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
                 return;
             }
         }
-        super.onDomainSelected(domain);
+        super.onDomainSelected(domain, useEmergencyPdn);
     }
 
     /**
