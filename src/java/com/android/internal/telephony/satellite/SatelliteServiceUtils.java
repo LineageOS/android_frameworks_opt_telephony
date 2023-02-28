@@ -128,6 +128,8 @@ public class SatelliteServiceUtils {
                 return SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_RETRYING;
             case SatelliteModemState.SATELLITE_MODEM_STATE_OFF:
                 return SatelliteManager.SATELLITE_MODEM_STATE_OFF;
+            case SatelliteModemState.SATELLITE_MODEM_STATE_UNAVAILABLE:
+                return SatelliteManager.SATELLITE_MODEM_STATE_UNAVAILABLE;
             default:
                 loge("Received invalid modem state: " + modemState);
                 return SatelliteManager.SATELLITE_MODEM_STATE_UNKNOWN;
@@ -175,20 +177,6 @@ public class SatelliteServiceUtils {
         if (datagram == null) return null;
         byte[] data = datagram.data == null ? new byte[0] : datagram.data;
         return new SatelliteDatagram(data);
-    }
-
-    /**
-     * Convert SatelliteDatagram[] from service definition to framework definition.
-     * @param datagrams The SatelliteDatagram[] from the satellite service.
-     * @return The converted SatelliteDatagram[] for the framework.
-     */
-    @Nullable public static SatelliteDatagram[] fromSatelliteDatagrams(
-            android.telephony.satellite.stub.SatelliteDatagram[] datagrams) {
-        SatelliteDatagram[] array = new SatelliteDatagram[datagrams.length];
-        for (int i = 0; i < datagrams.length; i++) {
-            array[i] = fromSatelliteDatagram(datagrams[i]);
-        }
-        return array;
     }
 
     /**
