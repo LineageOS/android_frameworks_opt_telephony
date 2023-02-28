@@ -151,6 +151,8 @@ public class DataStallRecoveryManager extends Handler {
     private @ElapsedRealtimeLong long mTimeLastRecoveryStartMs;
     /** Whether current network is good or not */
     private boolean mIsValidNetwork;
+    /** Whether data stall recovery is triggered or not */
+    private boolean mRecoveryTriggered = false;
     /** Whether data stall happened or not. */
     private boolean mDataStalled;
     /** Whether the result of last action(RADIO_RESTART) reported. */
@@ -352,6 +354,7 @@ public class DataStallRecoveryManager extends Handler {
      */
     private void reset() {
         mIsValidNetwork = true;
+        mRecoveryTriggered = false;
         mIsAttemptedAllSteps = false;
         mRadioStateChangedDuringDataStall = false;
         mIsAirPlaneModeEnableDuringDataStall = false;
@@ -373,15 +376,12 @@ public class DataStallRecoveryManager extends Handler {
         setNetworkValidationState(isValid);
         if (isValid) {
             reset();
-        } else {
-            if (mIsValidNetwork || isRecoveryAlreadyStarted()) {
-                mIsValidNetwork = false;
-                if (isRecoveryNeeded(true)) {
-                    log("trigger data stall recovery");
-                    mTimeLastRecoveryStartMs = SystemClock.elapsedRealtime();
-                    sendMessage(obtainMessage(EVENT_DO_RECOVERY));
-                }
-            }
+        } else if (isRecoveryNeeded(true)) {
+            // Set the network as invalid, because recovery is needed
+            mIsValidNetwork = false;
+            log("trigger data stall recovery");
+            mTimeLastRecoveryStartMs = SystemClock.elapsedRealtime();
+            sendMessage(obtainMessage(EVENT_DO_RECOVERY));
         }
     }
 
@@ -455,7 +455,7 @@ public class DataStallRecoveryManager extends Handler {
      * @return {@code true} if recovery already started, {@code false} recovery not started.
      */
     private boolean isRecoveryAlreadyStarted() {
-        return getRecoveryAction() != RECOVERY_ACTION_GET_DATA_CALL_LIST;
+        return getRecoveryAction() != RECOVERY_ACTION_GET_DATA_CALL_LIST || mRecoveryTriggered;
     }
 
     /**
@@ -542,6 +542,12 @@ public class DataStallRecoveryManager extends Handler {
     private boolean isRecoveryNeeded(boolean isNeedToCheckTimer) {
         logv("enter: isRecoveryNeeded()");
 
+        // Skip if network is invalid and recovery was not started yet
+        if (!mIsValidNetwork && !isRecoveryAlreadyStarted()) {
+            logl("skip when network still remains invalid and recovery was not started yet");
+            return false;
+        }
+
         // Skip recovery if we have already attempted all steps.
         if (mIsAttemptedAllSteps) {
             logl("skip retrying continue recovery action");
@@ -577,7 +583,6 @@ public class DataStallRecoveryManager extends Handler {
             logl("skip data stall recovery as data not connected");
             return false;
         }
-
         return true;
     }
 
@@ -652,6 +657,7 @@ public class DataStallRecoveryManager extends Handler {
     private void doRecovery() {
         @RecoveryAction final int recoveryAction = getRecoveryAction();
         final int signalStrength = mPhone.getSignalStrength().getLevel();
+        mRecoveryTriggered = true;
 
         // DSRM used sendMessageDelayed to process the next event EVENT_DO_RECOVERY, so it need
         // to check the condition if DSRM need to process the recovery action.
