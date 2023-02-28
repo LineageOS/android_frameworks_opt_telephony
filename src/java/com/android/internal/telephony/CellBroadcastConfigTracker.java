@@ -116,6 +116,21 @@ public final class CellBroadcastConfigTracker extends StateMachine {
      */
     private class DefaultState extends State {
         @Override
+        public void enter() {
+            mPhone.registerForRadioOffOrNotAvailable(getHandler(), EVENT_RADIO_OFF, null);
+            mPhone.getContext().getSystemService(SubscriptionManager.class)
+                    .addOnSubscriptionsChangedListener(new HandlerExecutor(getHandler()),
+                            mSubChangedListener);
+        }
+
+        @Override
+        public void exit() {
+            mPhone.unregisterForRadioOffOrNotAvailable(getHandler());
+            mPhone.getContext().getSystemService(SubscriptionManager.class)
+                    .removeOnSubscriptionsChangedListener(mSubChangedListener);
+        }
+
+        @Override
         public boolean processMessage(Message msg) {
             boolean retVal = HANDLED;
             if (DBG) {
@@ -384,11 +399,6 @@ public final class CellBroadcastConfigTracker extends StateMachine {
         mPhone = phone;
         mSubId = mPhone.getSubId();
 
-        mPhone.registerForRadioOffOrNotAvailable(getHandler(), EVENT_RADIO_OFF, null);
-        mPhone.getContext().getSystemService(SubscriptionManager.class)
-                .addOnSubscriptionsChangedListener(new HandlerExecutor(getHandler()),
-                        mSubChangedListener);
-
         addState(mDefaultState);
         addState(mIdleState, mDefaultState);
         addState(mGsmConfiguringState, mDefaultState);
@@ -401,11 +411,14 @@ public final class CellBroadcastConfigTracker extends StateMachine {
     /**
      * create a CellBroadcastConfigTracker instance for the phone
      */
-    public static CellBroadcastConfigTracker make(Phone phone, Handler handler) {
+    public static CellBroadcastConfigTracker make(Phone phone, Handler handler,
+            boolean shouldStart) {
         CellBroadcastConfigTracker tracker = handler == null
                 ? new CellBroadcastConfigTracker(phone)
                 : new CellBroadcastConfigTracker(phone, handler);
-        tracker.start();
+        if (shouldStart) {
+            tracker.start();
+        }
         return tracker;
     }
 
