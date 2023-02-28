@@ -91,10 +91,10 @@ public class SatelliteModemInterface {
         }
 
         @Override
-        public void onSatelliteDatagramsReceived(
-                android.telephony.satellite.stub.SatelliteDatagram[] datagrams, int pendingCount) {
+        public void onSatelliteDatagramReceived(
+                android.telephony.satellite.stub.SatelliteDatagram datagram, int pendingCount) {
             mSatelliteDatagramsReceivedRegistrants.notifyResult(new Pair<>(
-                    SatelliteServiceUtils.fromSatelliteDatagrams(datagrams), pendingCount));
+                    SatelliteServiceUtils.fromSatelliteDatagram(datagram), pendingCount));
         }
 
         @Override
@@ -271,16 +271,7 @@ public class SatelliteModemInterface {
             mSatelliteService = ISatellite.Stub.asInterface(service);
             mExponentialBackoff.stop();
             try {
-                mSatelliteService.setSatelliteListener(mListener, new IIntegerConsumer.Stub() {
-                    @Override
-                    public void accept(int result) {
-                        int error = SatelliteServiceUtils.fromSatelliteError(result);
-                        if (error != SatelliteManager.SATELLITE_ERROR_NONE) {
-                            // TODO: Retry setSatelliteListener
-                        }
-                        logd("setSatelliteListener: " + error);
-                    }
-                });
+                mSatelliteService.setSatelliteListener(mListener);
             } catch (RemoteException e) {
                 // TODO: Retry setSatelliteListener
                 logd("setSatelliteListener: RemoteException " + e);
@@ -461,14 +452,17 @@ public class SatelliteModemInterface {
      * Listening mode allows the satellite service to listen for incoming pages.
      *
      * @param enable True to enable satellite listening mode and false to disable.
+     * @param timeout How long the satellite modem should wait for the next incoming page before
+     *                disabling listening mode.
      * @param message The Message to send to result of the operation to.
      */
-    public void requestSatelliteListeningEnabled(boolean enable, @NonNull Message message) {
+    public void requestSatelliteListeningEnabled(boolean enable, int timeout,
+            @NonNull Message message) {
         if (mSatelliteService != null) {
             try {
                 mSatelliteService.requestSatelliteListeningEnabled(
                         enable, SatelliteController.getInstance().isSatelliteDemoModeEnabled(),
-                        new IIntegerConsumer.Stub() {
+                        timeout, new IIntegerConsumer.Stub() {
                             @Override
                             public void accept(int result) {
                                 int error = SatelliteServiceUtils.fromSatelliteError(result);

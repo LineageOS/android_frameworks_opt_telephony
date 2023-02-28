@@ -218,6 +218,16 @@ public class SatelliteController extends Handler {
         }
     }
 
+    private static final class RequestSatelliteEnabledArgument {
+        public boolean enabled;
+        public @NonNull Consumer<Integer> callback;
+
+        RequestSatelliteEnabledArgument(boolean enabled, Consumer<Integer> callback) {
+            this.enabled = enabled;
+            this.callback = callback;
+        }
+    }
+
     private static final class ProvisionSatelliteServiceArgument {
         public @NonNull String token;
         public @NonNull Consumer<Integer> callback;
@@ -687,20 +697,19 @@ public class SatelliteController extends Handler {
 
             case CMD_SET_SATELLITE_ENABLED: {
                 request = (SatelliteControllerHandlerRequest) msg.obj;
-                Pair<Boolean, Consumer<Integer>> argument =
-                        (Pair<Boolean, Consumer<Integer>>) request.argument;
+                RequestSatelliteEnabledArgument argument =
+                        (RequestSatelliteEnabledArgument) request.argument;
                 onCompleted = obtainMessage(EVENT_SET_SATELLITE_ENABLED_DONE, request);
                 if (mSatelliteModemInterface.isSatelliteServiceSupported()) {
-                    mSatelliteModemInterface
-                            .requestSatelliteEnabled(argument.first, onCompleted);
+                    mSatelliteModemInterface.requestSatelliteEnabled(argument.enabled, onCompleted);
                     break;
                 }
                 Phone phone = request.phone;
                 if (phone != null) {
-                    phone.setSatellitePower(onCompleted, argument.first);
+                    phone.setSatellitePower(onCompleted, argument.enabled);
                 } else {
                     loge("requestSatelliteEnabled: No phone object");
-                    argument.second.accept(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
+                    argument.callback.accept(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
                 }
                 break;
             }
@@ -708,10 +717,11 @@ public class SatelliteController extends Handler {
             case EVENT_SET_SATELLITE_ENABLED_DONE: {
                 ar = (AsyncResult) msg.obj;
                 request = (SatelliteControllerHandlerRequest) ar.userObj;
-                Pair<Boolean, Consumer<Integer>> argument =
-                        (Pair<Boolean, Consumer<Integer>>) request.argument;
+                RequestSatelliteEnabledArgument argument =
+                        (RequestSatelliteEnabledArgument) request.argument;
                 int error = getSatelliteError(ar, "setSatelliteEnabled", false);
-                argument.second.accept(error);
+                argument.callback.accept(error);
+                // TODO: if error is ERROR_NONE, request satellite capabilities
                 break;
             }
 
@@ -1001,8 +1011,8 @@ public class SatelliteController extends Handler {
         }
 
         Phone phone = getPhoneOrDefault(validSubId, "requestSatelliteEnabled");
-        Pair<Boolean, Consumer<Integer>> arg = new Pair<>(enable, result);
-        sendRequestAsync(CMD_SET_SATELLITE_ENABLED, arg, phone);
+        sendRequestAsync(CMD_SET_SATELLITE_ENABLED,
+                new RequestSatelliteEnabledArgument(enable, result), phone);
     }
 
     /**
