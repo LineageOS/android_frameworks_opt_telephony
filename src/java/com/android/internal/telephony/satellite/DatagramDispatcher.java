@@ -17,29 +17,56 @@
 package com.android.internal.telephony.satellite;
 
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.content.Context;
-import android.os.Looper;
+import android.os.AsyncResult;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.os.ResultReceiver;
 import android.telephony.Rlog;
+import android.telephony.satellite.SatelliteDatagram;
+import android.telephony.satellite.SatelliteManager;
+
+import com.android.internal.annotations.GuardedBy;
+import com.android.internal.telephony.Phone;
+
+import java.util.LinkedHashMap;
+import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * Datagram dispatcher used to send satellite datagrams.
  */
-public class DatagramDispatcher {
+public class DatagramDispatcher extends Handler {
     private static final String TAG = "DatagramDispatcher";
 
-    @NonNull
-    private static DatagramDispatcher sInstance;
+    private static final int CMD_SEND_SATELLITE_DATAGRAM = 1;
+    private static final int EVENT_SEND_SATELLITE_DATAGRAM_DONE = 2;
+
+    @NonNull private static DatagramDispatcher sInstance;
     @NonNull private final Context mContext;
 
+    private final Object mLock = new Object();
+
+    @GuardedBy("mLock")
+    private boolean mSendingDatagramInProgress;
+
     /**
-     * @return The singleton instance of DatagramDispatcher.
+     * Map key: datagramId, value: SendSatelliteDatagramArgument to retry sending emergency
+     * datagrams.
      */
-    public static DatagramDispatcher getInstance() {
-        if (sInstance == null) {
-            loge("DatagramDispatcher was not yet initialized.");
-        }
-        return sInstance;
-    }
+    @GuardedBy("mLock")
+    private final LinkedHashMap<Long, SendSatelliteDatagramArgument>
+            mPendingEmergencyDatagramsMap = new LinkedHashMap<>();
+
+    /**
+     * Map key: datagramId, value: SendSatelliteDatagramArgument to retry sending non-emergency
+     * datagrams.
+     */
+    @GuardedBy("mLock")
+    private final LinkedHashMap<Long, SendSatelliteDatagramArgument>
+            mPendingNonEmergencyDatagramsMap = new LinkedHashMap<>();
 
     /**
      * Create the DatagramDispatcher singleton instance.
@@ -59,7 +86,192 @@ public class DatagramDispatcher {
      * @param context The Context for the DatagramDispatcher.
      */
     private DatagramDispatcher(@NonNull Context context) {
+        super(context.getMainLooper());
         mContext = context;
+        synchronized (mLock) {
+            mSendingDatagramInProgress = false;
+        }
+    }
+
+    private static final class DatagramDispatcherHandlerRequest {
+        /** The argument to use for the request */
+        public @NonNull Object argument;
+        /** The caller needs to specify the phone to be used for the request */
+        public @NonNull Phone phone;
+        /** The result of the request that is run on the main thread */
+        public @Nullable Object result;
+
+        DatagramDispatcherHandlerRequest(Object argument, Phone phone) {
+            this.argument = argument;
+            this.phone = phone;
+        }
+    }
+
+    private static final class SendSatelliteDatagramArgument {
+        public long datagramId;
+        public @SatelliteManager.DatagramType int datagramType;
+        public @NonNull SatelliteDatagram datagram;
+        public boolean needFullScreenPointingUI;
+        public boolean isSatelliteDemoModeEnabled;
+        public @NonNull ResultReceiver result;
+
+        SendSatelliteDatagramArgument(long datagramId,
+                @SatelliteManager.DatagramType int datagramType,
+                SatelliteDatagram datagram, boolean needFullScreenPointingUI,
+                boolean isSatelliteDemoModeEnabled, ResultReceiver result) {
+            this.datagramId = datagramId;
+            this.datagramType = datagramType;
+            this.datagram = datagram;
+            this.needFullScreenPointingUI = needFullScreenPointingUI;
+            this.isSatelliteDemoModeEnabled = isSatelliteDemoModeEnabled;
+            this.result = result;
+        }
+    }
+
+    @Override
+    public void handleMessage(Message msg) {
+        DatagramDispatcherHandlerRequest request;
+        Message onCompleted;
+        AsyncResult ar;
+
+        switch(msg.what) {
+            case CMD_SEND_SATELLITE_DATAGRAM: {
+                request = (DatagramDispatcherHandlerRequest) msg.obj;
+                SendSatelliteDatagramArgument argument =
+                        (SendSatelliteDatagramArgument) request.argument;
+                onCompleted = obtainMessage(EVENT_SEND_SATELLITE_DATAGRAM_DONE, request);
+                if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
+                    SatelliteModemInterface.getInstance().sendSatelliteDatagram(argument.datagram,
+                            argument.datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE,
+                            argument.needFullScreenPointingUI, argument.isSatelliteDemoModeEnabled,
+                            onCompleted);
+                    break;
+                }
+                Phone phone = request.phone;
+                if (phone != null) {
+                    phone.sendSatelliteDatagram(onCompleted, argument.datagram,
+                            argument.needFullScreenPointingUI);
+                } else {
+                    loge("sendSatelliteDatagram: No phone object");
+                    argument.result.send(
+                            SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE, null);
+                }
+                break;
+            }
+
+            case EVENT_SEND_SATELLITE_DATAGRAM_DONE: {
+                ar = (AsyncResult) msg.obj;
+                request = (DatagramDispatcherHandlerRequest) ar.userObj;
+                int error = SatelliteServiceUtils.getSatelliteError(ar,
+                        "sendSatelliteDatagram", false);
+                SendSatelliteDatagramArgument argument =
+                        (SendSatelliteDatagramArgument) request.argument;
+                synchronized (mLock) {
+                    mSendingDatagramInProgress = false;
+                }
+                Bundle bundle = new Bundle();
+                if (error == SatelliteManager.SATELLITE_ERROR_NONE) {
+                    // TODO: set modemTransferState = SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_SUCCESS
+                    bundle.putLong(SatelliteManager.KEY_SEND_SATELLITE_DATAGRAM,
+                            argument.datagramId);
+                    synchronized (mLock) {
+                        if (argument.datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE) {
+                            mPendingEmergencyDatagramsMap.remove(argument.datagramId);
+                        } else {
+                            mPendingNonEmergencyDatagramsMap.remove(argument.datagramId);
+                        }
+                    }
+                    sendPendingDatagrams();
+                } else {
+                    // TODO: set modemTransferState = SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_FAILED.
+                    // TODO: send error code for all pending messages
+                }
+                argument.result.send(error, bundle);
+                break;
+            }
+
+            default:
+                logw("DatagramDispatcherHandler: unexpected message code: " + msg.what);
+                break;
+        }
+    }
+
+    /**
+     * Send datagram over satellite.
+     *
+     * Gateway encodes SOS message or location sharing message into a datagram and passes it as
+     * input to this method. Datagram received here will be passed down to modem without any
+     * encoding or encryption.
+     *
+     * @param datagramId An id that uniquely identifies datagram requested to be sent.
+     * @param datagramType datagram type indicating whether the datagram is of type
+     *                     SOS_SMS or LOCATION_SHARING.
+     * @param datagram encoded gateway datagram which is encrypted by the caller.
+     *                 Datagram will be passed down to modem without any encoding or encryption.
+     * @param needFullScreenPointingUI this is used to indicate pointingUI app to open in
+     *                                 full screen mode.
+     * @param isSatelliteDemoModeEnabled True if satellite demo mode is enabled
+     * @param result The result receiver that returns datagramId if datagram is sent successfully
+     *               or {@link SatelliteManager.SatelliteError} of the request if it is failed.
+     */
+    public void sendSatelliteDatagram(long datagramId,
+            @SatelliteManager.DatagramType int datagramType, @NonNull SatelliteDatagram datagram,
+            boolean needFullScreenPointingUI, boolean isSatelliteDemoModeEnabled,
+            @NonNull ResultReceiver result) {
+        Phone phone = SatelliteServiceUtils.getPhone();
+
+        SendSatelliteDatagramArgument datagramArgs = new SendSatelliteDatagramArgument(datagramId,
+                datagramType, datagram, needFullScreenPointingUI, isSatelliteDemoModeEnabled,
+                result);
+
+        synchronized (mLock) {
+            if (datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE) {
+                mPendingEmergencyDatagramsMap.put(datagramId, datagramArgs);
+            } else {
+                mPendingNonEmergencyDatagramsMap.put(datagramId, datagramArgs);
+            }
+
+            if (!mSendingDatagramInProgress) {
+                mSendingDatagramInProgress = true;
+                sendRequestAsync(CMD_SEND_SATELLITE_DATAGRAM, datagramArgs, phone);
+            }
+        }
+    }
+
+    /**
+     * Send pending satellite datagrams. Emergency datagrams are given priority over
+     * non-emergency datagrams.
+     */
+    private void sendPendingDatagrams() {
+        Phone phone = SatelliteServiceUtils.getPhone();
+        Set<Entry<Long, SendSatelliteDatagramArgument>> pendingDatagram = null;
+        synchronized (mLock) {
+            if (!mSendingDatagramInProgress && !mPendingEmergencyDatagramsMap.isEmpty()) {
+                pendingDatagram = mPendingEmergencyDatagramsMap.entrySet();
+            } else if (!mSendingDatagramInProgress && !mPendingNonEmergencyDatagramsMap.isEmpty()) {
+                pendingDatagram = mPendingNonEmergencyDatagramsMap.entrySet();
+            }
+
+            if ((pendingDatagram != null) && pendingDatagram.iterator().hasNext()) {
+                mSendingDatagramInProgress = true;
+                sendRequestAsync(CMD_SEND_SATELLITE_DATAGRAM,
+                        pendingDatagram.iterator().next().getValue(), phone);
+            }
+        }
+    }
+
+    /**
+     * Posts the specified command to be executed on the main thread and returns immediately.
+     *
+     * @param command command to be executed on the main thread
+     * @param argument additional parameters required to perform of the operation
+     * @param phone phone object used to perform the operation.
+     */
+    private void sendRequestAsync(int command, @NonNull Object argument, @Nullable Phone phone) {
+        DatagramDispatcherHandlerRequest request = new DatagramDispatcherHandlerRequest(
+                argument, phone);
+        Message msg = this.obtainMessage(command, request);
+        msg.sendToTarget();
     }
 
     private static void logd(@NonNull String log) {
@@ -69,4 +281,6 @@ public class DatagramDispatcher {
     private static void loge(@NonNull String log) {
         Rlog.e(TAG, log);
     }
+
+    private static void logw(@NonNull String log) { Rlog.w(TAG, log); }
 }

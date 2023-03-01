@@ -18,7 +18,9 @@ package com.android.internal.telephony.satellite;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.os.AsyncResult;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
 import android.telephony.satellite.PointingInfo;
 import android.telephony.satellite.SatelliteCapabilities;
 import android.telephony.satellite.SatelliteDatagram;
@@ -26,6 +28,11 @@ import android.telephony.satellite.SatelliteManager;
 import android.telephony.satellite.stub.NTRadioTechnology;
 import android.telephony.satellite.stub.SatelliteError;
 import android.telephony.satellite.stub.SatelliteModemState;
+
+import com.android.internal.telephony.CommandException;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.RILUtils;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -190,6 +197,53 @@ public class SatelliteServiceUtils {
                 new android.telephony.satellite.stub.SatelliteDatagram();
         converted.data = datagram.getSatelliteDatagram();
         return converted;
+    }
+
+    /**
+     * Get the {@link SatelliteManager.SatelliteError} from the provided result.
+     *
+     * @param ar AsyncResult used to determine the error code.
+     * @param caller The satellite request.
+     * @param checkResult Whether to check if the result exists.
+     *
+     * @return The {@link SatelliteManager.SatelliteError} error code from the request.
+     */
+    @SatelliteManager.SatelliteError public static int getSatelliteError(@NonNull AsyncResult ar,
+            @NonNull String caller, boolean checkResult) {
+        int errorCode;
+        if (ar.exception == null) {
+            errorCode = SatelliteManager.SATELLITE_ERROR_NONE;
+            if (checkResult && ar.result == null) {
+                // TODO: Move this out of this method.
+                loge(caller + ": result is null");
+                errorCode = SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE;
+            }
+        } else {
+            errorCode = SatelliteManager.SATELLITE_ERROR;
+            if (ar.exception instanceof CommandException) {
+                CommandException.Error error =
+                        ((CommandException) (ar.exception)).getCommandError();
+                errorCode = RILUtils.convertToSatelliteError(error);
+                loge(caller + " CommandException: " + ar.exception);
+            } else {
+                loge(caller + " unknown exception: " + ar.exception);
+            }
+        }
+        logd(caller + " error: " + errorCode);
+        return errorCode;
+    }
+
+    /**
+     * Return phone associated with phoneId 0.
+     *
+     * @return phone associated with phoneId 0 or {@code null} if it doesn't exist.
+     */
+    public static @Nullable Phone getPhone() {
+        return PhoneFactory.getPhone(0);
+    }
+
+    private static void logd(@NonNull String log) {
+        Rlog.d(TAG, log);
     }
 
     private static void loge(@NonNull String log) {
