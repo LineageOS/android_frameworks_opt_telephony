@@ -22,9 +22,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -32,16 +32,16 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import org.mockito.ArgumentCaptor;
-
-import android.content.IntentFilter;
 import android.content.Context;
 import android.content.ContextWrapper;
+import android.content.IntentFilter;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
+import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.emergency.EmergencyNumber;
@@ -62,6 +62,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -117,6 +119,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     private ParcelFileDescriptor mOtaParcelFileDescriptor = null;
     // Mocked classes
     private SubscriptionController mSubControllerMock;
+    private CarrierConfigManager mCarrierConfigManagerMock;
 
     // mEmergencyNumberTrackerMock for mPhone
     private EmergencyNumberTracker mEmergencyNumberTrackerMock;
@@ -138,6 +141,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
         mShortNumberInfo = mock(ShortNumberInfo.class);
         mSubControllerMock = mock(SubscriptionController.class);
+        mCarrierConfigManagerMock = mock(CarrierConfigManager.class);
 
         mContext = new ContextWrapper(InstrumentationRegistry.getTargetContext());
         mMockContext = mock(Context.class);
@@ -871,5 +875,43 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         Collections.sort(resultFromRadio);
 
         assertEquals(resultToVerify, resultFromRadio);
+    }
+
+    @Test
+    public void testOverridingEmergencyNumberPrefixCarrierConfig() throws Exception {
+        // Capture CarrierConfigChangeListener to emulate the carrier config change notification
+        doReturn(mMockContext).when(mPhone).getContext();
+        doReturn(Context.CARRIER_CONFIG_SERVICE)
+                .when(mMockContext)
+                .getSystemService(CarrierConfigManager.class);
+        doReturn(mCarrierConfigManagerMock)
+                .when(mMockContext)
+                .getSystemService(eq(Context.CARRIER_CONFIG_SERVICE));
+        ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
+                ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
+        EmergencyNumberTracker localEmergencyNumberTracker =
+                new EmergencyNumberTracker(mPhone, mSimulatedCommands);
+        verify(mCarrierConfigManagerMock)
+                .registerCarrierConfigChangeListener(any(), listenerArgumentCaptor.capture());
+        CarrierConfigManager.CarrierConfigChangeListener carrierConfigChangeListener =
+                listenerArgumentCaptor.getAllValues().get(0);
+
+        assertFalse(localEmergencyNumberTracker.isEmergencyNumber("*272911"));
+
+        PersistableBundle bundle = new PersistableBundle();
+        bundle.putStringArray(
+                CarrierConfigManager.KEY_EMERGENCY_NUMBER_PREFIX_STRING_ARRAY,
+                new String[] {"*272"});
+        doReturn(bundle)
+                .when(mCarrierConfigManagerMock)
+                .getConfigForSubId(eq(SUB_ID_PHONE_1), any());
+        carrierConfigChangeListener.onCarrierConfigChanged(
+                mPhone.getPhoneId(),
+                mPhone.getSubId(),
+                TelephonyManager.UNKNOWN_CARRIER_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID);
+        processAllMessages();
+
+        assertTrue(localEmergencyNumberTracker.isEmergencyNumber("*272911"));
     }
 }
