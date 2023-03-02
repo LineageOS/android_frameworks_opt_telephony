@@ -319,6 +319,8 @@ public class DataConfigManager extends Handler {
     private @NonNull final List<HandoverRule> mHandoverRuleList = new ArrayList<>();
     /** {@code True} keep IMS network in case of moving to non VOPS area; {@code false} otherwise.*/
     private boolean mShouldKeepNetworkUpInNonVops = false;
+    /** {@code True} requires ping test before switching preferred modem; {@code false} otherwise.*/
+    private boolean mPingTestBeforeDataSwitch = true;
 
     /**
      * Constructor
@@ -472,6 +474,7 @@ public class DataConfigManager extends Handler {
         updateMeteredApnTypes();
         updateSingleDataNetworkTypeAndCapabilityExemption();
         updateVopsConfig();
+        updateDataSwitchConfig();
         updateUnmeteredNetworkTypes();
         updateBandwidths();
         updateTcpBuffers();
@@ -693,6 +696,16 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * Update preferred modem switch(opportunistic network or visible subscription) carrier config.
+     */
+    private void updateDataSwitchConfig() {
+        synchronized (this) {
+            mPingTestBeforeDataSwitch = mCarrierConfig.getBoolean(CarrierConfigManager
+                    .KEY_PING_TEST_BEFORE_DATA_SWITCH_BOOL, true);
+        }
+    }
+
+    /**
      * @return The list of {@link NetworkType} that only supports single data networks
      */
     public @NonNull @NetworkType List<Integer> getNetworkTypesOnlySupportSingleDataNetwork() {
@@ -710,6 +723,11 @@ public class DataConfigManager extends Handler {
     /** {@code True} keep IMS network in case of moving to non VOPS area; {@code false} otherwise.*/
     public boolean shouldKeepNetworkUpInNonVops() {
         return mShouldKeepNetworkUpInNonVops;
+    }
+
+    /** {@code True} keep IMS network in case of moving to non VOPS area; {@code false} otherwise.*/
+    public boolean requirePingTestBeforeDataSwitch() {
+        return mPingTestBeforeDataSwitch;
     }
 
     /**
@@ -1344,6 +1362,7 @@ public class DataConfigManager extends Handler {
                 .stream().map(DataUtils::networkCapabilityToString)
                 .collect(Collectors.joining(",")));
         pw.println("mShouldKeepNetworkUpInNoVops=" + mShouldKeepNetworkUpInNonVops);
+        pw.println("mPingTestBeforeDataSwitch=" + mPingTestBeforeDataSwitch);
         pw.println("Unmetered network types=" + String.join(",", mUnmeteredNetworkTypes));
         pw.println("Roaming unmetered network types="
                 + String.join(",", mRoamingUnmeteredNetworkTypes));
