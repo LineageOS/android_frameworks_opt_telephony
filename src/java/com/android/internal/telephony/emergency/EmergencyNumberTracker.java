@@ -189,7 +189,7 @@ public class EmergencyNumberTracker extends Handler {
             if (configMgr != null) {
                 PersistableBundle b = CarrierConfigManager.getCarrierConfigSubset(
                         mPhone.getContext(),
-                        mPhoneId,
+                        mPhone.getSubId(),
                         CarrierConfigManager.KEY_EMERGENCY_NUMBER_PREFIX_STRING_ARRAY);
                 if (!b.isEmpty()) {
                     mEmergencyNumberPrefix = b.getStringArray(
@@ -366,7 +366,7 @@ public class EmergencyNumberTracker extends Handler {
             PersistableBundle b =
                     CarrierConfigManager.getCarrierConfigSubset(
                             mPhone.getContext(),
-                            mPhone.getPhoneId(),
+                            mPhone.getSubId(),
                             CarrierConfigManager.KEY_EMERGENCY_NUMBER_PREFIX_STRING_ARRAY);
             if (!b.isEmpty()) {
                 String[] emergencyNumberPrefix =
