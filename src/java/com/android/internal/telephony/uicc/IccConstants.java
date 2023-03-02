@@ -46,6 +46,7 @@ public interface IccConstants {
     static final int EF_CFIS = 0x6FCB;
     static final int EF_IMG = 0x4F20;
     static final int EF_PSISMSC = 0x6FE5;
+    static final int EF_SMSS = 0x6F43;
 
     // USIM SIM file ids from TS 131.102
     public static final int EF_PBR = 0x4F30;
