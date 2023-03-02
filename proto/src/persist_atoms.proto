@@ -23,7 +23,7 @@ option java_outer_classname = "PersistAtomsProto";
 
 // Holds atoms to store on persist storage in case of power cycle or process crash.
 // NOTE: using int64 rather than google.protobuf.Timestamp for timestamps simplifies implementation.
-// Next id: 53
+// Next id: 58
 message PersistAtoms {
     /* Aggregated RAT usage during the call. */
     repeated VoiceCallRatUsage voice_call_rat_usage = 1;
@@ -189,6 +189,12 @@ message PersistAtoms {
 
     /* Number of time the user toggled the data switch feature since the last collection. */
     optional int32 auto_data_switch_toggle_count = 55;
+
+    /* Consolidated emergency numbers list information. */
+    repeated EmergencyNumbersInfo emergency_numbers_info = 56;
+
+    /* Timestamp of last emergency number pull. */
+    optional int64 emergency_number_pull_timestamp_millis = 57;
 }
 
 // The canonical versions of the following enums live in:
@@ -537,4 +543,39 @@ message OutgoingShortCodeSms {
     optional int32 category = 1;
     optional int32 xml_version = 2;
     optional int32 short_code_sms_count = 3;
+}
+
+message EmergencyNumbersInfo {
+    enum ServiceCategory {
+        EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED = 0;
+        EMERGENCY_SERVICE_CATEGORY_POLICE = 1;
+        EMERGENCY_SERVICE_CATEGORY_AMBULANCE = 2;
+        EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE = 3;
+        EMERGENCY_SERVICE_CATEGORY_MARINE_GUARD = 4;
+        EMERGENCY_SERVICE_CATEGORY_MOUNTAIN_RESCUE = 5;
+        EMERGENCY_SERVICE_CATEGORY_MIEC = 6;
+        EMERGENCY_SERVICE_CATEGORY_AIEC = 7;
+    }
+    enum Source {
+        EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING = 0;
+        EMERGENCY_NUMBER_SOURCE_SIM = 1;
+        EMERGENCY_NUMBER_SOURCE_DATABASE = 2;
+        EMERGENCY_NUMBER_SOURCE_MODEM_CONFIG = 3;
+        EMERGENCY_NUMBER_SOURCE_DEFAULT = 4;
+    }
+    enum CallRoute {
+        EMERGENCY_CALL_ROUTE_UNKNOWN = 0;
+        EMERGENCY_CALL_ROUTE_EMERGENCY = 1;
+        EMERGENCY_CALL_ROUTE_NORMAL = 2;
+    }
+    optional bool is_db_version_ignored = 1;
+    optional int32 asset_version = 2;
+    optional int32 ota_version = 3;
+    optional string number = 4;
+    optional string country_iso = 5;
+    optional string mnc = 6;
+    optional CallRoute route = 7;
+    repeated string urns = 8;
+    repeated ServiceCategory service_categories = 9;
+    repeated Source sources = 10;
 }
