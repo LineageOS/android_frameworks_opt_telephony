@@ -408,4 +408,72 @@ public class SIMRecordsTest extends TelephonyTest {
 
         return data;
     }
+
+    @Test
+    public void testGetPsiSmscTelValue() {
+        // Testing smsc successfully reading case
+        String smscTest = "tel:+13123149810";
+        String hexSmsc =
+                "801074656C3A2B3133313233313439383130FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+                        + "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
+        byte[] smscBytes = getStringToByte(hexSmsc);
+        Message message = mSIMRecordsUT.obtainMessage(
+                SIMRecords.EVENT_GET_PSISMSC_DONE, smscBytes);
+        AsyncResult ar = AsyncResult.forMessage(message, smscBytes, null);
+        mSIMRecordsUT.handleMessage(message);
+        assertEquals(smscTest, mSIMRecordsUT.getSmscIdentity());
+    }
+
+    private byte[] getStringToByte(String hexSmsc) {
+        byte[] smscBytes = IccUtils.hexStringToBytes(hexSmsc);
+        return smscBytes;
+    }
+
+    @Test
+    public void testGetPsiSmscSipValue() {
+        // Testing smsc successfully reading case
+        String smscTest = "sip:+12063130004@msg.pc.t-mobile.com;user=phone";
+        byte[] smscBytes = getStringToByte(
+                "802F7369703A2B3132303633313330303034406D73672E70632E742D6D6F62696C6"
+                        + "52E636F6D3B757365723D70686F6E65FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+                        + "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+                        + "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+        Message message = mSIMRecordsUT.obtainMessage(
+                SIMRecords.EVENT_GET_PSISMSC_DONE, smscBytes);
+        AsyncResult ar = AsyncResult.forMessage(message, smscBytes, null);
+        mSIMRecordsUT.handleMessage(message);
+        assertEquals(smscTest, mSIMRecordsUT.getSmscIdentity());
+    }
+
+    @Test
+    public void testGetPsiSmscException() {
+        // Testing smsc exception handling case
+        String hexSmsc =
+                "801074656C3A2B3133313233313439383130FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+                        + "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
+        byte[] smscBytes = getStringToByte(hexSmsc);
+        Message message = mSIMRecordsUT.obtainMessage(
+                SIMRecords.EVENT_GET_PSISMSC_DONE, smscBytes);
+        AsyncResult ar = AsyncResult.forMessage(message, smscBytes,
+                new CommandException(
+                        CommandException.Error.OPERATION_NOT_ALLOWED));
+        mSIMRecordsUT.handleMessage(message);
+        assertTrue(ar.exception instanceof CommandException);
+        assertEquals(null, mSIMRecordsUT.getSmscIdentity());
+    }
+
+    @Test
+    public void testGetPsiSmscValueInvalidObject() {
+        // Testing smsc invalid data handling case
+        String smscTest = "tel:+13123149810";
+        byte[] smscBytes = GsmAlphabet.stringToGsm8BitPacked(smscTest);
+        Message message = mSIMRecordsUT.obtainMessage(
+                SIMRecords.EVENT_GET_PSISMSC_DONE, smscBytes);
+        AsyncResult ar = AsyncResult.forMessage(message, smscBytes,
+                new CommandException(
+                        CommandException.Error.OPERATION_NOT_ALLOWED));
+        mSIMRecordsUT.handleMessage(message);
+        assertEquals(null, mSIMRecordsUT.getSmscIdentity());
+        assertTrue(ar.exception instanceof CommandException);
+    }
 }
