@@ -454,14 +454,15 @@ public class SatelliteModemInterface {
      * @param enable True to enable satellite listening mode and false to disable.
      * @param timeout How long the satellite modem should wait for the next incoming page before
      *                disabling listening mode.
+     * @param isSatelliteDemoModeEnabled True if satellite demo mode is enabled
      * @param message The Message to send to result of the operation to.
      */
     public void requestSatelliteListeningEnabled(boolean enable, int timeout,
-            @NonNull Message message) {
+            boolean isSatelliteDemoModeEnabled, @NonNull Message message) {
         if (mSatelliteService != null) {
             try {
                 mSatelliteService.requestSatelliteListeningEnabled(
-                        enable, SatelliteController.getInstance().isSatelliteDemoModeEnabled(),
+                        enable, isSatelliteDemoModeEnabled,
                         timeout, new IIntegerConsumer.Stub() {
                             @Override
                             public void accept(int result) {
@@ -848,15 +849,17 @@ public class SatelliteModemInterface {
      * @param isEmergency Whether this is an emergency datagram.
      * @param needFullScreenPointingUI this is used to indicate pointingUI app to open in
      *                                 full screen mode.
+     * @param isSatelliteDemoModeEnabled True if satellite demo mode is enabled
      * @param message The Message to send to result of the operation to.
      */
     public void sendSatelliteDatagram(@NonNull SatelliteDatagram datagram, boolean isEmergency,
-            boolean needFullScreenPointingUI, @NonNull Message message) {
+            boolean needFullScreenPointingUI, boolean isSatelliteDemoModeEnabled,
+            @NonNull Message message) {
         if (mSatelliteService != null) {
             try {
                 mSatelliteService.sendSatelliteDatagram(
                         SatelliteServiceUtils.toSatelliteDatagram(datagram),
-                        SatelliteController.getInstance().isSatelliteDemoModeEnabled(), isEmergency,
+                        isSatelliteDemoModeEnabled, isEmergency,
                         new IIntegerConsumer.Stub() {
                             @Override
                             public void accept(int result) {
