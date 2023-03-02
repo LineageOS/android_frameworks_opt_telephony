@@ -19,6 +19,7 @@ import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_REMOTE_SE
 
 import static com.android.internal.telephony.SubscriptionController.REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID;
 import static com.android.internal.telephony.uicc.IccCardStatus.CardState.CARDSTATE_PRESENT;
+import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -2107,5 +2108,75 @@ public class SubscriptionControllerTest extends TelephonyTest {
         SubscriptionController.getInstance().updateMessageRef(subId, 201);
         int messageRef = SubscriptionController.getInstance().getMessageRef(subId);
         assertTrue("201 :", messageRef == 201);
+    }
+
+    @Test
+    public void setUserHandle_withoutPermission() {
+        testInsertSim();
+        /* Get SUB ID */
+        int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
+        assertTrue(subIds != null && subIds.length != 0);
+        final int subId = subIds[0];
+        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
+
+        assertThrows(SecurityException.class,
+                () -> mSubscriptionControllerUT.setUserHandle(UserHandle.of(UserHandle.USER_SYSTEM),
+                        subId, mCallingPackage));
+    }
+
+    @Test
+    public void setGetUserHandle_userHandleNull() {
+        testInsertSim();
+        /* Get SUB ID */
+        int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
+        assertTrue(subIds != null && subIds.length != 0);
+        final int subId = subIds[0];
+
+        mSubscriptionControllerUT.setUserHandle(null, subId, mCallingPackage);
+
+        assertThat(mSubscriptionControllerUT.getUserHandle(subId, mCallingPackage))
+                .isEqualTo(null);
+    }
+
+    @Test
+    public void setUserHandle_invalidSubId() {
+        assertThrows(IllegalArgumentException.class,
+                () -> mSubscriptionControllerUT.setUserHandle(UserHandle.of(UserHandle.USER_SYSTEM),
+                        SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, mCallingPackage));
+    }
+
+    @Test
+    public void setGetUserHandle_withValidUserHandleAndSubId() {
+        testInsertSim();
+        /* Get SUB ID */
+        int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
+        assertTrue(subIds != null && subIds.length != 0);
+        final int subId = subIds[0];
+
+        mSubscriptionControllerUT.setUserHandle(UserHandle.of(UserHandle.USER_SYSTEM), subId,
+                mCallingPackage);
+
+        assertThat(mSubscriptionControllerUT.getUserHandle(subId, mCallingPackage))
+                .isEqualTo(UserHandle.of(UserHandle.USER_SYSTEM));
+    }
+
+    @Test
+    public void getUserHandle_withoutPermission() {
+        testInsertSim();
+        /* Get SUB ID */
+        int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
+        assertTrue(subIds != null && subIds.length != 0);
+        final int subId = subIds[0];
+        mContextFixture.removeCallingOrSelfPermission(ContextFixture.PERMISSION_ENABLE_ALL);
+
+        assertThrows(SecurityException.class,
+                () -> mSubscriptionControllerUT.getUserHandle(subId, mCallingPackage));
+    }
+
+    @Test
+    public void getUserHandle_invalidSubId() {
+        assertThrows(IllegalArgumentException.class,
+                () -> mSubscriptionControllerUT.getUserHandle(
+                        SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, mCallingPackage));
     }
 }

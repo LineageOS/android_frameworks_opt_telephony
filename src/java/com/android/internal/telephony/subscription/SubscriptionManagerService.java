@@ -22,6 +22,7 @@ import android.content.Context;
 import android.os.HandlerThread;
 import android.os.ParcelUuid;
 import android.os.TelephonyServiceManager;
+import android.os.UserHandle;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
@@ -563,6 +564,40 @@ public class SubscriptionManagerService extends ISub.Stub {
     @Override
     public int setUsageSetting(int usageSetting, int subId, @NonNull String callingPackage) {
         return 0;
+    }
+
+    /**
+     * Set UserHandle for this subscription
+     *
+     * @param userHandle the userHandle associated with the subscription
+     * Pass {@code null} user handle to clear the association
+     * @param subId the unique SubscriptionInfo index in database
+     * @param callingPackage the package making the IPC
+     * @return the number of records updated.
+     *
+     * @throws SecurityException if doesn't have required permission.
+     * @throws IllegalArgumentException if subId is invalid.
+     */
+    @Override
+    public int setUserHandle(@Nullable UserHandle userHandle, int subId,
+            @NonNull String callingPackage) {
+        return 0;
+    }
+
+    /**
+     * Get UserHandle of this subscription.
+     *
+     * @param subId the unique SubscriptionInfo index in database
+     * @param callingPackage the package making the IPC
+     * @return userHandle associated with this subscription
+     * or {@code null} if subscription is not associated with any user.
+     *
+     * @throws SecurityException if doesn't have required permission.
+     * @throws IllegalArgumentException if subId is invalid.
+     */
+    @Override
+    public UserHandle getUserHandle(int subId, @NonNull String callingPackage) {
+        return null;
     }
 
     /**
