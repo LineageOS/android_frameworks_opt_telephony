@@ -313,7 +313,8 @@ public class SubscriptionController extends ISub.Stub {
             SubscriptionManager.UICC_APPLICATIONS_ENABLED,
             SubscriptionManager.IMS_RCS_UCE_ENABLED,
             SubscriptionManager.CROSS_SIM_CALLING_ENABLED,
-            SubscriptionManager.NR_ADVANCED_CALLING_ENABLED
+            SubscriptionManager.NR_ADVANCED_CALLING_ENABLED,
+            SubscriptionManager.USER_HANDLE
     ));
 
     public static SubscriptionController init(Context c) {
@@ -462,6 +463,11 @@ public class SubscriptionController extends ISub.Stub {
     private void enforceReadPrivilegedPhoneState(String message) {
         mContext.enforceCallingOrSelfPermission(
                 Manifest.permission.READ_PRIVILEGED_PHONE_STATE, message);
+    }
+
+    private void enforceManageSubscriptionUserAssociation(String message) {
+        mContext.enforceCallingOrSelfPermission(
+                Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION, message);
     }
 
     /**
@@ -2311,6 +2317,7 @@ public class SubscriptionController extends ISub.Stub {
             case SubscriptionManager.IMS_RCS_UCE_ENABLED:
             case SubscriptionManager.CROSS_SIM_CALLING_ENABLED:
             case SubscriptionManager.NR_ADVANCED_CALLING_ENABLED:
+            case SubscriptionManager.USER_HANDLE:
                 values.put(propKey, cursor.getInt(columnIndex));
                 break;
             case SubscriptionManager.DISPLAY_NAME:
@@ -3264,6 +3271,7 @@ public class SubscriptionController extends ISub.Stub {
             case SubscriptionManager.VOIMS_OPT_IN_STATUS:
             case SubscriptionManager.NR_ADVANCED_CALLING_ENABLED:
             case SubscriptionManager.USAGE_SETTING:
+            case SubscriptionManager.USER_HANDLE:
                 value.put(propKey, Integer.parseInt(propValue));
                 break;
             case SubscriptionManager.ALLOWED_NETWORK_TYPES:
@@ -3360,6 +3368,7 @@ public class SubscriptionController extends ISub.Stub {
                         case SimInfo.COLUMN_PHONE_NUMBER_SOURCE_CARRIER:
                         case SimInfo.COLUMN_PHONE_NUMBER_SOURCE_IMS:
                         case SubscriptionManager.USAGE_SETTING:
+                        case SubscriptionManager.USER_HANDLE:
                             resultValue = cursor.getString(0);
                             break;
                         default:
@@ -4763,6 +4772,131 @@ public class SubscriptionController extends ISub.Stub {
             // FIXME(b/205726099) return void
         }
         return ret;
+    }
+
+    /**
+     * Querying last used TP - MessageRef for particular subId from SIMInfo table.
+     * @return messageRef
+     */
+    public int getMessageRef(int subId) {
+        try (Cursor cursor = mContext.getContentResolver().query(SubscriptionManager.CONTENT_URI,
+                new String[]{SubscriptionManager.TP_MESSAGE_REF},
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=\"" + subId
+                        + "\"", null, null)) {
+            try {
+                if (cursor != null && cursor.moveToFirst()) {
+                    do {
+                        return cursor.getInt(cursor.getColumnIndexOrThrow(
+                                SubscriptionManager.TP_MESSAGE_REF));
+                    } while (cursor.moveToNext());
+                } else {
+                    if (DBG) logd("Valid row not present in db");
+                }
+            } catch (Exception e) {
+                if (DBG) logd("Query failed " + e.getMessage());
+            } finally {
+                if (cursor != null) {
+                    cursor.close();
+                }
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Update the TP - Message Reference value for every SMS Sent
+     * @param messageRef
+     * @param subId
+     */
+    public void updateMessageRef(int subId, int messageRef) {
+        TelephonyPermissions.enforceCallingOrSelfModifyPermissionOrCarrierPrivilege(
+                mContext, subId, mContext.getOpPackageName());
+
+        if (mContext == null) {
+            logel("[updateMessageRef] mContext is null");
+            return;
+        }
+        try {
+            if (SubscriptionManager.CONTENT_URI != null) {
+                ContentValues values = new ContentValues(1);
+                values.put(SubscriptionManager.TP_MESSAGE_REF, messageRef);
+                mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, values,
+                        SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=\"" + subId
+                                + "\"", null);
+            } else {
+                if (DBG) logd("TP - Message reference value not updated to DB");
+            }
+        } finally {
+            if (DBG) logd("TP - Message reference updated to DB Successfully :" + messageRef);
+        }
+    }
+
+    /**
+     * Set UserHandle for this subscription
+     *
+     * @param userHandle the userHandle associated with the subscription
+     * Pass {@code null} user handle to clear the association
+     * @param subId the unique SubscriptionInfo index in database
+     * @param callingPackage the package making the IPC
+     * @return the number of records updated.
+     *
+     * @throws SecurityException if doesn't have required permission.
+     * @throws IllegalArgumentException if subId is invalid.
+     */
+    @Override
+    public int setUserHandle(@Nullable UserHandle userHandle, int subId,
+            @NonNull String callingPackage) {
+        enforceManageSubscriptionUserAssociation("setUserHandle");
+
+        if (userHandle == null) {
+            userHandle = UserHandle.of(UserHandle.USER_NULL);
+        }
+
+        long token = Binder.clearCallingIdentity();
+        try {
+            int ret = setSubscriptionProperty(subId, SubscriptionManager.USER_HANDLE,
+                    String.valueOf(userHandle.getIdentifier()));
+            // ret is the number of records updated in the DB
+            if (ret != 0) {
+                notifySubscriptionInfoChanged();
+            } else {
+                throw new IllegalArgumentException("[setUserHandle]: Invalid subId: " + subId);
+            }
+            return ret;
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
+    /**
+     * Get UserHandle of this subscription.
+     *
+     * @param subId the unique SubscriptionInfo index in database
+     * @param callingPackage the package making the IPC
+     * @return userHandle associated with this subscription
+     * or {@code null} if subscription is not associated with any user.
+     *
+     * @throws SecurityException if doesn't have required permission.
+     * @throws IllegalArgumentException if subId is invalid.
+     */
+    @Override
+    public UserHandle getUserHandle(int subId, @NonNull String callingPackage) {
+        enforceManageSubscriptionUserAssociation("getUserHandle");
+
+        long token = Binder.clearCallingIdentity();
+        try {
+            String userHandleStr = getSubscriptionProperty(subId, SubscriptionManager.USER_HANDLE);
+            if (userHandleStr == null) {
+                throw new IllegalArgumentException("[getUserHandle]: Invalid subId: " + subId);
+            }
+            UserHandle userHandle = UserHandle.of(Integer.parseInt(userHandleStr));
+            if (userHandle.getIdentifier() == UserHandle.USER_NULL) {
+                return null;
+            }
+            return userHandle;
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
     }
 
     /**

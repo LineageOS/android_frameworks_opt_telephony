@@ -45,6 +45,8 @@ public interface IccConstants {
     static final int EF_SST = 0x6F38;
     static final int EF_CFIS = 0x6FCB;
     static final int EF_IMG = 0x4F20;
+    static final int EF_PSISMSC = 0x6FE5;
+    static final int EF_SMSS = 0x6F43;
 
     // USIM SIM file ids from TS 131.102
     public static final int EF_PBR = 0x4F30;
@@ -84,7 +86,6 @@ public interface IccConstants {
     static final int EF_DOMAIN = 0x6F03;
     static final int EF_IST = 0x6F07;
     static final int EF_PCSCF = 0x6F09;
-    static final int EF_PSI = 0x6FE5;
 
     //PLMN Selection Information w/ Access Technology TS 131.102
     static final int EF_PLMN_W_ACT = 0x6F60;

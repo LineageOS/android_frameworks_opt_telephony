@@ -503,7 +503,8 @@ public class SmsDispatchersController extends Handler {
                             scAddr, destAddr, text, (tracker.mDeliveryIntent != null), null);
                 } else {
                     pdu = com.android.internal.telephony.gsm.SmsMessage.getSubmitPdu(
-                            scAddr, destAddr, text, (tracker.mDeliveryIntent != null), null);
+                            scAddr, destAddr, text, (tracker.mDeliveryIntent != null), null,
+                            0, 0, 0, -1, tracker.mMessageRef);
                 }
             } else if (map.containsKey("data")) {
                 byte[] data = (byte[]) map.get("data");
@@ -518,7 +519,7 @@ public class SmsDispatchersController extends Handler {
                 } else {
                     pdu = com.android.internal.telephony.gsm.SmsMessage.getSubmitPdu(
                             scAddr, destAddr, destPort.intValue(), data,
-                            (tracker.mDeliveryIntent != null));
+                            (tracker.mDeliveryIntent != null), tracker.mMessageRef);
                 }
             }
 
