@@ -108,6 +108,7 @@ public class EmergencySmsDomainSelectionConnectionTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void testOnWlanSelected() throws Exception {
         when(mAnm.getPreferredTransport(anyInt()))
                 .thenReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
@@ -121,11 +122,13 @@ public class EmergencySmsDomainSelectionConnectionTest extends TelephonyTest {
         processAllMessages();
 
         assertTrue(future.isDone());
-        verify(mEmergencyStateTracker).onEmergencyTransportChanged(eq(MODE_EMERGENCY_WLAN));
+        verify(mEmergencyStateTracker).onEmergencyTransportChanged(
+                eq(EmergencyStateTracker.EMERGENCY_TYPE_SMS), eq(MODE_EMERGENCY_WLAN));
     }
 
     @Test
     @SmallTest
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void testOnWlanSelectedWithDifferentTransportType() throws Exception {
         when(mAnm.getPreferredTransport(anyInt())).thenReturn(
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
@@ -141,7 +144,8 @@ public class EmergencySmsDomainSelectionConnectionTest extends TelephonyTest {
 
         ArgumentCaptor<Handler> handlerCaptor = ArgumentCaptor.forClass(Handler.class);
         ArgumentCaptor<Integer> msgCaptor = ArgumentCaptor.forClass(Integer.class);
-        verify(mEmergencyStateTracker).onEmergencyTransportChanged(eq(MODE_EMERGENCY_WLAN));
+        verify(mEmergencyStateTracker).onEmergencyTransportChanged(
+                eq(EmergencyStateTracker.EMERGENCY_TYPE_SMS), eq(MODE_EMERGENCY_WLAN));
         verify(mAnm).registerForQualifiedNetworksChanged(
                 handlerCaptor.capture(), msgCaptor.capture());
         verify(mPhone).notifyEmergencyDomainSelected(
@@ -158,6 +162,7 @@ public class EmergencySmsDomainSelectionConnectionTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void testOnWlanSelectedWithDifferentTransportTypeWhilePreferredTransportChanged()
             throws Exception {
         when(mAnm.getPreferredTransport(anyInt())).thenReturn(
@@ -178,7 +183,8 @@ public class EmergencySmsDomainSelectionConnectionTest extends TelephonyTest {
 
         ArgumentCaptor<Handler> handlerCaptor = ArgumentCaptor.forClass(Handler.class);
         ArgumentCaptor<Integer> msgCaptor = ArgumentCaptor.forClass(Integer.class);
-        verify(mEmergencyStateTracker).onEmergencyTransportChanged(eq(MODE_EMERGENCY_WLAN));
+        verify(mEmergencyStateTracker).onEmergencyTransportChanged(
+                eq(EmergencyStateTracker.EMERGENCY_TYPE_SMS), eq(MODE_EMERGENCY_WLAN));
         verify(mAnm).registerForQualifiedNetworksChanged(
                 handlerCaptor.capture(), msgCaptor.capture());
         verify(mPhone).notifyEmergencyDomainSelected(
@@ -198,11 +204,13 @@ public class EmergencySmsDomainSelectionConnectionTest extends TelephonyTest {
     public void testOnWwanSelected() throws Exception {
         mDsConnection.onWwanSelected();
 
-        verify(mEmergencyStateTracker).onEmergencyTransportChanged(eq(MODE_EMERGENCY_WWAN));
+        verify(mEmergencyStateTracker).onEmergencyTransportChanged(
+                eq(EmergencyStateTracker.EMERGENCY_TYPE_SMS), eq(MODE_EMERGENCY_WWAN));
     }
 
     @Test
     @SmallTest
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void testOnDomainSelectedPs() throws Exception {
         when(mAnm.getPreferredTransport(anyInt()))
                 .thenReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
@@ -220,6 +228,7 @@ public class EmergencySmsDomainSelectionConnectionTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void testOnDomainSelectedPsWithDifferentTransportType() throws Exception {
         when(mAnm.getPreferredTransport(anyInt())).thenReturn(
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
@@ -251,6 +260,7 @@ public class EmergencySmsDomainSelectionConnectionTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void testOnDomainSelectedPsWithDifferentTransportTypeAndNotChanged() throws Exception {
         when(mAnm.getPreferredTransport(anyInt())).thenReturn(
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
@@ -282,6 +292,7 @@ public class EmergencySmsDomainSelectionConnectionTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void testOnDomainSelectedPsWithDifferentTransportTypeWhilePreferredTransportChanged()
             throws Exception {
         when(mAnm.getPreferredTransport(anyInt())).thenReturn(
@@ -318,6 +329,7 @@ public class EmergencySmsDomainSelectionConnectionTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void testOnDomainSelectedCs() throws Exception {
         when(mAnm.getPreferredTransport(anyInt()))
                 .thenReturn(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
@@ -335,6 +347,7 @@ public class EmergencySmsDomainSelectionConnectionTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void testFinishSelection() throws Exception {
         when(mAnm.getPreferredTransport(anyInt())).thenReturn(
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
@@ -365,6 +378,7 @@ public class EmergencySmsDomainSelectionConnectionTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void testFinishSelectionAfterDomainSelectionCompleted() throws Exception {
         when(mAnm.getPreferredTransport(anyInt())).thenReturn(
                 AccessNetworkConstants.TRANSPORT_TYPE_WLAN,
