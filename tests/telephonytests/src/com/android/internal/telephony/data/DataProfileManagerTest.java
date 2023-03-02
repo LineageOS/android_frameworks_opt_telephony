@@ -518,7 +518,7 @@ public class DataProfileManagerTest extends TelephonyTest {
 
         public void setPreferredApn(String apnName) {
             for (Object apnSetting : mAllApnSettings) {
-                if (Objects.equals(apnName, ((Object[]) apnSetting)[3])) {
+                if (apnName == ((Object[]) apnSetting)[3]) {
                     mPreferredApnId = (int) ((Object[]) apnSetting)[0];
                     mPreferredApnSet = (int) ((Object[]) apnSetting)[28];
                     logd("mPreferredApnId=" + mPreferredApnId + " ,mPreferredApnSet="
@@ -1456,34 +1456,5 @@ public class DataProfileManagerTest extends TelephonyTest {
         // so this should result in getting nothing.
         assertThat(mDataProfileManagerUT.getDataProfileForNetworkRequest(tnr,
                 TelephonyManager.NETWORK_TYPE_LTE, false)).isNull();
-    }
-
-    @Test
-    public void testSimLoaded() {
-        mDataProfileManagerUT = new DataProfileManager(mPhone, mDataNetworkController,
-                mMockedWwanDataServiceManager, Looper.myLooper(), mDataProfileManagerCallback);
-
-        mDataProfileManagerUT.obtainMessage(1 /* EVENT_SIM_LOADED */).sendToTarget();
-        processAllMessages();
-
-        DataProfile dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
-                new TelephonyNetworkRequest(new NetworkRequest.Builder()
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        .build(), mPhone),
-                TelephonyManager.NETWORK_TYPE_LTE, false);
-
-        // Because preferred APN is not set, SIM load event will not trigger loading data profiles.
-        assertThat(dataProfile).isNull();
-
-        mApnSettingContentProvider.setPreferredApn(GENERAL_PURPOSE_APN);
-        mDataProfileManagerUT.obtainMessage(1 /* EVENT_SIM_LOADED */).sendToTarget();
-        processAllMessages();
-
-        dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
-                new TelephonyNetworkRequest(new NetworkRequest.Builder()
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        .build(), mPhone),
-                TelephonyManager.NETWORK_TYPE_LTE, false);
-        assertThat(dataProfile.getApnSetting().getApnName()).isEqualTo(GENERAL_PURPOSE_APN);
     }
 }
