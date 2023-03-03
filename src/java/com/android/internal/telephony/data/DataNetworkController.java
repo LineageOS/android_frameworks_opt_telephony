@@ -2150,16 +2150,19 @@ public class DataNetworkController extends Handler {
     }
 
     /**
-     * Check if there are existing networks having the same interface name.
+     * Get data network by interface name.
      *
-     * @param interfaceName The interface name to check.
-     * @return {@code true} if the existing network has the same interface name.
+     * @param interfaceName The network interface name.
+     * @return The data network if found.
      */
-    public boolean isNetworkInterfaceExisting(@NonNull String interfaceName) {
+    @Nullable
+    DataNetwork getDataNetworkByInterface(@NonNull String interfaceName) {
         return mDataNetworkList.stream()
                 .filter(dataNetwork -> !dataNetwork.isDisconnecting())
-                .anyMatch(dataNetwork -> interfaceName.equals(
-                        dataNetwork.getLinkProperties().getInterfaceName()));
+                .filter(dataNetwork -> interfaceName.equals(
+                        dataNetwork.getLinkProperties().getInterfaceName()))
+                .findFirst()
+                .orElse(null);
     }
 
     /**
