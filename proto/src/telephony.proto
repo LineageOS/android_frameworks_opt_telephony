@@ -931,6 +931,9 @@ message TelephonyEvent {
 
       /** Data switch caused by CBRS switch. */
       DATA_SWITCH_REASON_CBRS = 3;
+
+      /** Data switch caused by non-default SIM having better availability(e.g.signal). */
+      DATA_SWITCH_REASON_AUTO = 4;
     }
 
     /** The reason for data switch. */
