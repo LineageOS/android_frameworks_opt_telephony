@@ -4947,9 +4947,10 @@ public class ServiceStateTracker extends Handler {
      *
      * @param h handler to notify
      * @param what what code of message when delivered
+     * @param userobj the user obj that will be passed back when notify
      */
-    public void registerForServiceStateChanged(Handler h, int what) {
-        mServiceStateChangedRegistrants.addUnique(h, what, null);
+    public void registerForServiceStateChanged(Handler h, int what, Object userobj) {
+        mServiceStateChangedRegistrants.addUnique(h, what, userobj);
     }
 
     /**

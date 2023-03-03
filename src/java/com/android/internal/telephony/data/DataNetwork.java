@@ -1024,7 +1024,7 @@ public class DataNetwork extends StateMachine {
             mPhone.getDisplayInfoController().registerForTelephonyDisplayInfoChanged(
                     getHandler(), EVENT_DISPLAY_INFO_CHANGED, null);
             mPhone.getServiceStateTracker().registerForServiceStateChanged(getHandler(),
-                    EVENT_SERVICE_STATE_CHANGED);
+                    EVENT_SERVICE_STATE_CHANGED, null);
             for (int transport : mAccessNetworksManager.getAvailableTransports()) {
                 mDataServiceManagers.get(transport)
                         .registerForDataCallListChanged(getHandler(), EVENT_DATA_STATE_CHANGED);
