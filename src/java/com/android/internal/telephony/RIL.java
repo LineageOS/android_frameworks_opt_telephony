@@ -2178,8 +2178,21 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 dataProxy.setupDataCall(rr.mSerial, mPhoneId, accessNetworkType, dataProfile,
                         isRoaming, allowRoaming, reason, linkProperties, pduSessionId, sliceInfo,
                         trafficDescriptor, matchAllRuleAllowed);
-            } catch (RemoteException | RuntimeException e) {
+            } catch (RemoteException e) {
                 handleRadioProxyExceptionForRR(HAL_SERVICE_DATA, "setupDataCall", e);
+            } catch (RuntimeException e) {
+                riljLoge("setupDataCall RuntimeException: " + e);
+                int error = RadioError.SYSTEM_ERR;
+                int responseType = RadioResponseType.SOLICITED;
+                processResponseInternal(HAL_SERVICE_DATA, rr.mSerial, error, responseType);
+                processResponseDoneInternal(rr, error, responseType, null);
+            }
+        } else {
+            riljLoge("setupDataCall: DataProxy is empty");
+            if (result != null) {
+                AsyncResult.forMessage(result, null,
+                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
+                result.sendToTarget();
             }
         }
     }
