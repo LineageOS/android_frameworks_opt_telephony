@@ -20,7 +20,6 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.os.AsyncResult;
 import android.telephony.Rlog;
-import android.telephony.SubscriptionManager;
 import android.telephony.satellite.PointingInfo;
 import android.telephony.satellite.SatelliteCapabilities;
 import android.telephony.satellite.SatelliteDatagram;
@@ -221,10 +220,12 @@ public class SatelliteServiceUtils {
         } else {
             errorCode = SatelliteManager.SATELLITE_ERROR;
             if (ar.exception instanceof CommandException) {
-                CommandException.Error error =
-                        ((CommandException) (ar.exception)).getCommandError();
+                CommandException.Error error = ((CommandException) ar.exception).getCommandError();
                 errorCode = RILUtils.convertToSatelliteError(error);
                 loge(caller + " CommandException: " + ar.exception);
+            } else if (ar.exception instanceof SatelliteManager.SatelliteException) {
+                errorCode = ((SatelliteManager.SatelliteException) ar.exception).getErrorCode();
+                loge(caller + " SatelliteException: " + ar.exception);
             } else {
                 loge(caller + " unknown exception: " + ar.exception);
             }
