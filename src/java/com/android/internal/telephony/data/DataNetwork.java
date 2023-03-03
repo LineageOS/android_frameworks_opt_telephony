@@ -2372,9 +2372,11 @@ public class DataNetwork extends StateMachine {
         mFailCause = getFailCauseFromDataCallResponse(resultCode, response);
         validateDataCallResponse(response);
         if (mFailCause == DataFailCause.NONE) {
-            if (mDataNetworkController.isNetworkInterfaceExisting(response.getInterfaceName())) {
-                logl("Interface " + response.getInterfaceName() + " already existing. Silently "
-                        + "tear down now.");
+            DataNetwork dataNetwork = mDataNetworkController.getDataNetworkByInterface(
+                    response.getInterfaceName());
+            if (dataNetwork != null) {
+                logl("Interface " + response.getInterfaceName() + " has been already used by "
+                        + dataNetwork + ". Silently tear down now.");
                 // If this is a pre-5G data setup, that means APN database has some problems. For
                 // example, different APN settings have the same APN name.
                 if (response.getTrafficDescriptors().isEmpty()) {
