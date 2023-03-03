@@ -823,6 +823,21 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     }
 
     @Test
+    public void testUpdateEmbeddedSubscriptionsNullResult() {
+        // Grant READ_PHONE_STATE permission.
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
+
+        doReturn(null).when(mEuiccController).blockingGetEuiccProfileInfoList(anyInt());
+
+        mSubscriptionManagerServiceUT.updateEmbeddedSubscriptions(List.of(1, 2), null);
+        processAllMessages();
+
+        List<SubscriptionInfo> subInfoList = mSubscriptionManagerServiceUT
+                .getAllSubInfoList(CALLING_PACKAGE, CALLING_FEATURE);
+        assertThat(subInfoList).isEmpty();
+    }
+
+    @Test
     public void testGetActiveSubscriptionInfo() {
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
 
