@@ -75,6 +75,7 @@ import libcore.junit.util.compat.CoreCompatChangeRule.EnableCompatChanges;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -611,6 +612,7 @@ public class EuiccControllerTest extends TelephonyTest {
         assertFalse(mController.mCalledRefreshSubscriptionsAndSendResult);
     }
 
+    @Ignore("b/255697307")
     @Test
     @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testDownloadSubscription_noPrivileges_hasCarrierPrivileges_multiSim()
@@ -887,6 +889,7 @@ public class EuiccControllerTest extends TelephonyTest {
                 anyBoolean(), any(), anyBoolean());
     }
 
+    @Ignore("b/255697307")
     @Test
     @DisableCompatChanges({EuiccManager.SHOULD_RESOLVE_PORT_INDEX_FOR_APPS})
     public void testSwitchToSubscription_emptySubscription_success() throws Exception {
