@@ -17,9 +17,25 @@
 package com.android.internal.telephony.satellite;
 
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.content.Context;
+import android.content.Intent;
+import android.os.AsyncResult;
+import android.os.Handler;
+import android.os.IBinder;
 import android.os.Looper;
+import android.os.Message;
+import android.os.RemoteException;
 import android.telephony.Rlog;
+import android.telephony.satellite.ISatellitePositionUpdateCallback;
+import android.telephony.satellite.PointingInfo;
+import android.telephony.satellite.SatelliteManager;
+import android.text.TextUtils;
+
+import com.android.internal.telephony.Phone;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 /**
  * PointingApp controller to manage interactions with PointingUI app.
@@ -30,6 +46,13 @@ public class PointingAppController {
     @NonNull
     private static PointingAppController sInstance;
     @NonNull private final Context mContext;
+    private boolean mStartedSatellitePositionUpdates;
+
+    /**
+     * Map key: subId, value: SatellitePositionUpdateHandler to notify registrants.
+     */
+    private final ConcurrentHashMap<Integer, SatellitePositionUpdateHandler>
+            mSatellitePositionUpdateHandlers = new ConcurrentHashMap<>();
 
     /**
      * @return The singleton instance of PointingAppController.
@@ -60,6 +83,211 @@ public class PointingAppController {
      */
     private PointingAppController(@NonNull Context context) {
         mContext = context;
+        mStartedSatellitePositionUpdates = false;
+    }
+
+    /**
+     * set the flag mStartedSatellitePositionUpdates to true or false based on the state of
+     * position updates
+     * @param startedSatellitePositionUpdates boolean to set the flag
+     */
+    public void setStartedSatellitePositionUpdates(boolean startedSatellitePositionUpdates) {
+        mStartedSatellitePositionUpdates = startedSatellitePositionUpdates;
+    }
+
+    private static final class SatellitePositionUpdateHandler extends Handler {
+        public static final int EVENT_POSITION_INFO_CHANGED = 1;
+        public static final int EVENT_DATAGRAM_TRANSFER_STATE_CHANGED = 2;
+
+        private final ConcurrentHashMap<IBinder, ISatellitePositionUpdateCallback> mListeners;
+        SatellitePositionUpdateHandler(Looper looper) {
+            super(looper);
+            mListeners = new ConcurrentHashMap<>();
+        }
+
+        public void addListener(ISatellitePositionUpdateCallback listener) {
+            mListeners.put(listener.asBinder(), listener);
+        }
+
+        public void removeListener(ISatellitePositionUpdateCallback listener) {
+            mListeners.remove(listener.asBinder());
+        }
+
+        public boolean hasListeners() {
+            return !mListeners.isEmpty();
+        }
+
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            switch (msg.what) {
+                case EVENT_POSITION_INFO_CHANGED: {
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    PointingInfo pointingInfo = (PointingInfo) ar.result;
+                    mListeners.values().forEach(listener -> {
+                        try {
+                            listener.onSatellitePositionChanged(pointingInfo);
+                        } catch (RemoteException e) {
+                            logd("EVENT_POSITION_INFO_CHANGED RemoteException: " + e);
+                        }
+                    });
+                    break;
+                }
+                case EVENT_DATAGRAM_TRANSFER_STATE_CHANGED: {
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    int result = (int) ar.result;
+                    mListeners.values().forEach(listener -> {
+                        try {
+                            // TODO: process and return the rest of the values correctly
+                            listener.onDatagramTransferStateChanged(result, 0, 0, 0);
+                        } catch (RemoteException e) {
+                            logd("EVENT_DATAGRAM_TRANSFER_STATE_CHANGED RemoteException: " + e);
+                        }
+                    });
+                    break;
+                }
+                default:
+                    loge("SatellitePositionUpdateHandler unknown event: " + msg.what);
+            }
+        }
+    }
+
+    /**
+     * register to start receiving Updates on Satellite Position and Datagram transfer state
+     * @param subId The subId of the subscription to register for receiving the updates.
+     * @param callback The callback to notify of changes in satellite position.
+     * @param phone The Phone Object to unregister for receiving the updates
+     */
+    public void registerForSatellitePositionUpdates(int subId,
+            ISatellitePositionUpdateCallback callback, Phone phone) {
+        SatellitePositionUpdateHandler handler = mSatellitePositionUpdateHandlers.get(subId);
+        if (handler != null) {
+            handler.addListener(callback);
+            return;
+        } else {
+            handler = new SatellitePositionUpdateHandler(Looper.getMainLooper());
+            handler.addListener(callback);
+            mSatellitePositionUpdateHandlers.put(subId, handler);
+            if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
+                SatelliteModemInterface.getInstance().registerForSatellitePositionInfoChanged(
+                        handler, SatellitePositionUpdateHandler.EVENT_POSITION_INFO_CHANGED, null);
+                /**
+                 * TODO: Need to remove this call, Datagram transfer state should come from the
+                 * DatagramController based upon Transfer state.
+                 * Modem won't be able to provide this info
+                 */
+                SatelliteModemInterface.getInstance().registerForDatagramTransferStateChanged(
+                        handler,
+                        SatellitePositionUpdateHandler.EVENT_DATAGRAM_TRANSFER_STATE_CHANGED, null);
+            } else {
+                phone.registerForSatellitePositionInfoChanged(handler,
+                        SatellitePositionUpdateHandler.EVENT_POSITION_INFO_CHANGED, null);
+                // TODO: registerForDatagramTransferStateChanged through SatelliteController
+            }
+        }
+    }
+
+    /**
+     * Unregister to stop receiving Updates on Satellite Position and Datagram transfer state
+     * If the callback was not registered before, it is ignored
+     * @param subId The subId of the subscription to unregister for receiving the updates.
+     * @param result The callback to get the error code in case of failure
+     * @param callback The callback that was passed to
+     * * {@link registerForSatellitePositionUpdateEvents}
+     * @param phone The Phone Object to unregister for receiving the updates
+     */
+    public void unregisterForSatellitePositionUpdates(int subId, Consumer<Integer> result,
+            ISatellitePositionUpdateCallback callback, Phone phone) {
+        SatellitePositionUpdateHandler handler = mSatellitePositionUpdateHandlers.get(subId);
+        if (handler != null) {
+            handler.removeListener(callback);
+
+            if (handler.hasListeners()) {
+                /**
+                 * TODO (b/269194948): If the calling apps crash, the handler will always have some
+                 * listener. That is, we will not request modem to stop position update and
+                 * cleaning our resources. We need to monitor the calling apps and clean up the
+                 * resources when the apps die. We need to do this for other satellite callbacks
+                 * as well.
+                 */
+                result.accept(SatelliteManager.SATELLITE_ERROR_NONE);
+                return;
+            }
+
+            mSatellitePositionUpdateHandlers.remove(subId);
+            if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
+                SatelliteModemInterface.getInstance().unregisterForSatellitePositionInfoChanged(
+                        handler);
+                SatelliteModemInterface.getInstance().unregisterForDatagramTransferStateChanged(
+                        handler);
+            } else {
+                if (phone == null) {
+                    result.accept(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
+                    return;
+                }
+                phone.unregisterForSatellitePositionInfoChanged(handler);
+                // TODO: unregisterForDatagramTransferStateChanged through SatelliteController
+            }
+        }
+    }
+
+    /**
+     * Start receiving satellite position updates.
+     * This can be called by the pointing UI when the user starts pointing to the satellite.
+     * Modem should continue to report the pointing input as the device or satellite moves.
+     * The Position updates will be received via
+     * {@link android.telephony.satellite.SatellitePositionUpdateCallback#onSatellitePositionChanged(
+     * pointingInfo)}
+     */
+    public void startSatellitePositionUpdates(@NonNull Message message, @Nullable Phone phone) {
+        if (mStartedSatellitePositionUpdates) {
+            logd("startSatellitePositionUpdates: already started");
+            return;
+        }
+        if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
+            SatelliteModemInterface.getInstance().startSendingSatellitePointingInfo(message);
+            mStartedSatellitePositionUpdates = true;
+            return;
+        }
+        if (phone != null) {
+            phone.startSatellitePositionUpdates(message);
+            mStartedSatellitePositionUpdates = true;
+        } else {
+            loge("startSatellitePositionUpdates: No phone object");
+            AsyncResult.forMessage(message, null, new SatelliteManager.SatelliteException(
+                    SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE));
+            message.sendToTarget();
+        }
+    }
+
+    /**
+     * Stop receiving satellite position updates.
+     * This can be called by the pointing UI when the user stops pointing to the satellite.
+     */
+    public void stopSatellitePositionUpdates(@NonNull Message message, @Nullable Phone phone) {
+        if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
+            SatelliteModemInterface.getInstance().stopSendingSatellitePointingInfo(message);
+            return;
+        }
+        if (phone != null) {
+            phone.stopSatellitePositionUpdates(message);
+        } else {
+            loge("startSatellitePositionUpdates: No phone object");
+            AsyncResult.forMessage(message, null, new SatelliteManager.SatelliteException(
+                    SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE));
+            message.sendToTarget();
+        }
+    }
+
+    /**
+     * Check if Pointing is needed and Launch Pointing UI
+     * @param needFullScreenPointingUI if pointing UI has to be launchd with Full screen
+     */
+    public void startPointingUI(boolean needFullScreenPointingUI) {
+        String packageName = TextUtils.emptyIfNull(mContext.getResources()
+                .getString(com.android.internal.R.string.config_pointing_ui_package));
+        Intent launchIntent = mContext.getPackageManager().getLaunchIntentForPackage(packageName);
+        launchIntent.putExtra("needFullScreen", needFullScreenPointingUI);
+        mContext.startActivity(launchIntent);
     }
 
     private static void logd(@NonNull String log) {
@@ -69,11 +297,8 @@ public class PointingAppController {
     private static void loge(@NonNull String log) {
         Rlog.e(TAG, log);
     }
-
     /**
      * TODO: The following needs to be added in this class:
-     * - SatellitePositionUpdateHandler
-     * - startPointingUI
      * - check if pointingUI crashes - then restart it
      */
 }
