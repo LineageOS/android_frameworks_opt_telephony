@@ -998,13 +998,15 @@ public class SatelliteModemInterface {
     }
 
     public boolean isSatelliteServiceSupported() {
-        // TODO: update this method
+        // TODO: update this method to check a device config instead
         return mIsSatelliteServiceSupported;
     }
 
     private static void sendMessageWithResult(@NonNull Message message, @Nullable Object result,
             @SatelliteManager.SatelliteError int error) {
-        AsyncResult.forMessage(message, result, new SatelliteException(error));
+        SatelliteException exception = error == SatelliteManager.SATELLITE_ERROR_NONE
+                ? null : new SatelliteException(error);
+        AsyncResult.forMessage(message, result, exception);
         message.sendToTarget();
     }
 
