@@ -675,20 +675,6 @@ public class EmergencyStateTracker {
     /**
      * Handles emergency transport change by setting new emergency mode.
      *
-     * @param mode the new emergency mode
-     */
-    public void onEmergencyTransportChanged(@EmergencyConstants.EmergencyMode int mode) {
-        // The phone for call is prioritized.
-        if (mPhone != null && mOngoingCallId != null) {
-            onEmergencyTransportChanged(EMERGENCY_TYPE_CALL, mode);
-        } else if (mSmsPhone != null) {
-            onEmergencyTransportChanged(EMERGENCY_TYPE_SMS, mode);
-        }
-    }
-
-    /**
-     * Handles emergency transport change by setting new emergency mode.
-     *
      * @param emergencyType the emergency type to identify an emergency call or SMS
      * @param mode the new emergency mode
      */

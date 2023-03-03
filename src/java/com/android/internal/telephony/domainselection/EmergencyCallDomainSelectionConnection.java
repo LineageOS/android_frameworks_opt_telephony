@@ -85,7 +85,8 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
     /** {@inheritDoc} */
     @Override
     public void onWlanSelected(boolean useEmergencyPdn) {
-        mEmergencyStateTracker.onEmergencyTransportChanged(MODE_EMERGENCY_WLAN);
+        mEmergencyStateTracker.onEmergencyTransportChanged(
+                EmergencyStateTracker.EMERGENCY_TYPE_CALL, MODE_EMERGENCY_WLAN);
         if (useEmergencyPdn) {
             AccessNetworksManager anm = mPhone.getAccessNetworksManager();
             int transportType = anm.getPreferredTransport(ApnSetting.TYPE_EMERGENCY);
@@ -103,7 +104,8 @@ public class EmergencyCallDomainSelectionConnection extends DomainSelectionConne
     /** {@inheritDoc} */
     @Override
     public void onWwanSelected() {
-        mEmergencyStateTracker.onEmergencyTransportChanged(MODE_EMERGENCY_WWAN);
+        mEmergencyStateTracker.onEmergencyTransportChanged(
+                EmergencyStateTracker.EMERGENCY_TYPE_CALL, MODE_EMERGENCY_WWAN);
     }
 
     /** {@inheritDoc} */
