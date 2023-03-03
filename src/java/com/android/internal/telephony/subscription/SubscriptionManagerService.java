@@ -1025,7 +1025,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         mBackgroundHandler.post(() -> {
             // Do nothing if eUICCs are disabled. (Previous entries may remain in the cache, but
             // they are filtered out of list calls as long as EuiccManager.isEnabled returns false).
-            if (mEuiccManager == null || !mEuiccManager.isEnabled()) {
+            if (mEuiccManager == null || !mEuiccManager.isEnabled() || mEuiccController == null) {
                 loge("updateEmbeddedSubscriptions: eUICC not enabled");
                 if (callback != null) {
                     callback.run();
@@ -1038,7 +1038,7 @@ public class SubscriptionManagerService extends ISub.Stub {
 
             for (UiccSlot slot : mUiccController.getUiccSlots()) {
                 if (slot != null) {
-                    log("  " + slot.toString());
+                    log("  " + slot);
                 }
             }
 
@@ -1046,6 +1046,11 @@ public class SubscriptionManagerService extends ISub.Stub {
                 GetEuiccProfileInfoListResult result = mEuiccController
                         .blockingGetEuiccProfileInfoList(cardId);
                 logl("updateEmbeddedSubscriptions: cardId=" + cardId + ", result=" + result);
+                if (result == null) {
+                    //TODO: Add back-off retry in the future if needed.
+                    loge("Failed to get euicc profiles.");
+                    continue;
+                }
 
                 if (result.getResult() != EuiccService.RESULT_OK) {
                     loge("Failed to get euicc profile info. result="
