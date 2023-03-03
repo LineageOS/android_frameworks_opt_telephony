@@ -969,7 +969,7 @@ public class DataNetworkController extends Handler {
         });
 
         mPhone.getServiceStateTracker().registerForServiceStateChanged(this,
-                EVENT_SERVICE_STATE_CHANGED);
+                EVENT_SERVICE_STATE_CHANGED, null);
         mDataConfigManager.registerCallback(new DataConfigManagerCallback(this::post) {
             @Override
             public void onCarrierConfigChanged() {
@@ -991,7 +991,7 @@ public class DataNetworkController extends Handler {
 
         if (!mAccessNetworksManager.isInLegacyMode()) {
             mPhone.getServiceStateTracker().registerForServiceStateChanged(this,
-                    EVENT_SERVICE_STATE_CHANGED);
+                    EVENT_SERVICE_STATE_CHANGED, null);
             mDataServiceManagers.get(AccessNetworkConstants.TRANSPORT_TYPE_WLAN)
                     .registerForServiceBindingChanged(this, EVENT_DATA_SERVICE_BINDING_CHANGED);
         }
