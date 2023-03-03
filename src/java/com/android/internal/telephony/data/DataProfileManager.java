@@ -19,12 +19,8 @@ package com.android.internal.telephony.data;
 import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
-import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.ContentValues;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.NetworkCapabilities;
@@ -70,9 +66,6 @@ import java.util.stream.Collectors;
  */
 public class DataProfileManager extends Handler {
     private static final boolean VDBG = true;
-
-    /** Event for SIM loaded. */
-    private static final int EVENT_SIM_LOADED = 1;
 
     /** Event for APN database changed. */
     private static final int EVENT_APN_DATABASE_CHANGED = 2;
@@ -163,60 +156,7 @@ public class DataProfileManager extends Handler {
         mWwanDataServiceManager = dataServiceManager;
         mDataConfigManager = dataNetworkController.getDataConfigManager();
         mDataProfileManagerCallbacks.add(callback);
-
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
-        mPhone.getContext().registerReceiver(new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (intent.getAction().equals(
-                        TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED)) {
-                    if (mPhone.getPhoneId() == intent.getIntExtra(
-                            CarrierConfigManager.EXTRA_SLOT_INDEX,
-                            SubscriptionManager.INVALID_SIM_SLOT_INDEX)) {
-                        sendMessageAtFrontOfQueue(obtainMessage(EVENT_SIM_LOADED));
-                    }
-                }
-            }
-        }, filter, null, mPhone);
-
         registerAllEvents();
-        log("created.");
-    }
-
-    /**
-     * Called when SIM loaded.
-     */
-    private void onSimLoaded() {
-        // Below is for boot up camping optimization purpose. We do not need to wait until carrier
-        // config ready to load the profiles. Although preferred data profile might be affected by
-        // the carrier config, that's only for the first time boot up. In that case, the preferred
-        // data profile from the db would be empty, and we can wait until carrier config ready to
-        // determine the preferred data profile. By just loading the essential profiles when SIM
-        // loaded, the boot up camping time is slightly improved.
-        //
-        // The default (i.e. framework generated) data profiles for enterprise, emergency, and IMS
-        // will also be added at that time if they are missing from all profiles.
-        log("onSimLoaded: subId=" + mPhone.getSubId());
-        if (SubscriptionManager.isValidSubscriptionId(mPhone.getSubId())) {
-            int preferredProfileId = getPreferredDataProfileIdFromDb();
-            if (preferredProfileId < 0) {
-                // Preferred data profile does not exist. This might be the first time boot up.
-                // Deferred until carrier config loaded so we can determine the correct preferred
-                // data profile. It is intended to bail out here. If we load all the data profiles
-                // without knowing the preferred data profile, we might end up with setting up
-                // with the wrong one.
-                log("onSimLoaded: Preferred data profile does not exist.");
-                return;
-            }
-            mPreferredDataProfile = getPreferredDataProfileFromDb();
-            mPreferredDataProfileSetId = getPreferredDataProfileSetId();
-            log("onSimLoaded: mPreferredDataProfileSetId=" + mPreferredDataProfileSetId);
-
-            mAllDataProfiles.clear();
-            mAllDataProfiles.addAll(loadDataProfilesFromDatabase());
-            log("onSimLoaded: Loaded " + mAllDataProfiles);
-        }
     }
 
     /**
@@ -251,9 +191,6 @@ public class DataProfileManager extends Handler {
     @Override
     public void handleMessage(Message msg) {
         switch (msg.what) {
-            case EVENT_SIM_LOADED:
-                onSimLoaded();
-                break;
             case EVENT_SIM_REFRESH:
                 log("Update data profiles due to SIM refresh.");
                 updateDataProfiles(FORCED_UPDATE_IA);
@@ -308,52 +245,6 @@ public class DataProfileManager extends Handler {
         cursor.close();
         return dataProfile;
     }
-
-    /**
-     * Load all data profiles associated with the current SIM from the database.
-     *
-     * @return The loaded profiles. Empty list if not found.
-     */
-    private @NonNull List<DataProfile> loadDataProfilesFromDatabase() {
-        log("loadDataProfilesFromDatabase: subId=" + mPhone.getSubId());
-        List<DataProfile> profiles = new ArrayList<>();
-        Cursor cursor = mPhone.getContext().getContentResolver().query(
-                Uri.withAppendedPath(Telephony.Carriers.SIM_APN_URI, "filtered/subId/"
-                        + mPhone.getSubId()), null, null, null, Telephony.Carriers._ID);
-        if (cursor == null) {
-            loge("Cannot access APN database through telephony provider.");
-            return new ArrayList<>();
-        }
-        boolean isInternetSupported = false;
-        while (cursor.moveToNext()) {
-            ApnSetting apn = ApnSetting.makeApnSetting(cursor);
-            if (apn != null) {
-                DataProfile dataProfile = new DataProfile.Builder()
-                        .setApnSetting(apn)
-                        .setTrafficDescriptor(new TrafficDescriptor(apn.getApnName(), null))
-                        .setPreferred(false)
-                        .build();
-                profiles.add(dataProfile);
-                log("Added " + dataProfile);
-
-                isInternetSupported |= apn.canHandleType(ApnSetting.TYPE_DEFAULT);
-                if (mDataConfigManager.isApnConfigAnomalyReportEnabled()) {
-                    checkApnSetting(apn);
-                }
-            }
-        }
-        cursor.close();
-
-        if (!isInternetSupported
-                && !profiles.isEmpty() // APN database has been read successfully
-                && mDataConfigManager.isApnConfigAnomalyReportEnabled()) {
-            reportAnomaly("Carrier doesn't support internet.",
-                    "9af73e18-b523-4dc5-adab-363eb6613305");
-        }
-
-        return profiles;
-    }
-
     /**
      * Update all data profiles, including preferred data profile, and initial attach data profile.
      * Also send those profiles down to the modem if needed.
@@ -361,7 +252,42 @@ public class DataProfileManager extends Handler {
      * @param forceUpdateIa If {@code true}, we should always send IA again to modem.
      */
     private void updateDataProfiles(boolean forceUpdateIa) {
-        List<DataProfile> profiles = loadDataProfilesFromDatabase();
+        List<DataProfile> profiles = new ArrayList<>();
+        if (mDataConfigManager.isConfigCarrierSpecific()) {
+            Cursor cursor = mPhone.getContext().getContentResolver().query(
+                    Uri.withAppendedPath(Telephony.Carriers.SIM_APN_URI, "filtered/subId/"
+                            + mPhone.getSubId()), null, null, null, Telephony.Carriers._ID);
+            if (cursor == null) {
+                loge("Cannot access APN database through telephony provider.");
+                return;
+            }
+            boolean isInternetSupported = false;
+            while (cursor.moveToNext()) {
+                ApnSetting apn = ApnSetting.makeApnSetting(cursor);
+                if (apn != null) {
+                    DataProfile dataProfile = new DataProfile.Builder()
+                            .setApnSetting(apn)
+                            .setTrafficDescriptor(new TrafficDescriptor(apn.getApnName(), null))
+                            .setPreferred(false)
+                            .build();
+                    profiles.add(dataProfile);
+                    log("Added " + dataProfile);
+
+                    isInternetSupported |= apn.canHandleType(ApnSetting.TYPE_DEFAULT);
+                    if (mDataConfigManager.isApnConfigAnomalyReportEnabled()) {
+                        checkApnSetting(apn);
+                    }
+                }
+            }
+            cursor.close();
+
+            if (!isInternetSupported
+                    && !profiles.isEmpty() // APN database has been read successfully
+                    && mDataConfigManager.isApnConfigAnomalyReportEnabled()) {
+                reportAnomaly("Carrier doesn't support internet.",
+                        "9af73e18-b523-4dc5-adab-363eb6613305");
+            }
+        }
 
         DataProfile dataProfile;
 
@@ -500,39 +426,28 @@ public class DataProfileManager extends Handler {
     }
 
     /**
-     * @return The preferred data profile id. {@code -1} if not found.
-     */
-    private int getPreferredDataProfileIdFromDb() {
-        try (Cursor cursor = mPhone.getContext().getContentResolver().query(
-                Uri.withAppendedPath(Telephony.Carriers.PREFERRED_APN_URI,
-                        String.valueOf(mPhone.getSubId())), null, null, null,
-                Telephony.Carriers.DEFAULT_SORT_ORDER)) {
-            if (cursor != null) {
-                if (cursor.getCount() > 0) {
-                    cursor.moveToFirst();
-                    return cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers._ID));
-                }
-            }
-        }
-        return -1;
-    }
-
-    /**
      * Get the preferred data profile for internet data.
      *
      * @return The preferred data profile.
      */
     private @Nullable DataProfile getPreferredDataProfileFromDb() {
-        int preferredDataProfileId = getPreferredDataProfileIdFromDb();
-        if (preferredDataProfileId < 0) {
-            log("getPreferredDataProfileFromDb: null");
-            return null;
+        Cursor cursor = mPhone.getContext().getContentResolver().query(
+                Uri.withAppendedPath(Telephony.Carriers.PREFERRED_APN_URI,
+                        String.valueOf(mPhone.getSubId())), null, null, null,
+                Telephony.Carriers.DEFAULT_SORT_ORDER);
+        DataProfile dataProfile = null;
+        if (cursor != null) {
+            if (cursor.getCount() > 0) {
+                cursor.moveToFirst();
+                int apnId = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers._ID));
+                dataProfile = mAllDataProfiles.stream()
+                        .filter(dp -> dp.getApnSetting() != null
+                                && dp.getApnSetting().getId() == apnId)
+                        .findFirst()
+                        .orElse(null);
+            }
+            cursor.close();
         }
-        DataProfile dataProfile = mAllDataProfiles.stream()
-                .filter(dp -> dp.getApnSetting() != null
-                        && dp.getApnSetting().getId() == preferredDataProfileId)
-                .findFirst()
-                .orElse(null);
         log("getPreferredDataProfileFromDb: " + dataProfile);
         return dataProfile;
     }
