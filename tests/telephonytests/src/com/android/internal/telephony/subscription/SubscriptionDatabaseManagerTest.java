@@ -62,52 +62,52 @@ import java.util.Map;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class SubscriptionDatabaseManagerTest extends TelephonyTest {
-    private static final String FAKE_ICCID1 = "123456";
-    private static final String FAKE_ICCID2 = "456789";
-    private static final String FAKE_PHONE_NUMBER1 = "6502530000";
-    private static final String FAKE_PHONE_NUMBER2 = "4089961010";
-    private static final String FAKE_CARRIER_NAME1 = "A-Mobile";
-    private static final String FAKE_CARRIER_NAME2 = "B-Mobile";
-    private static final int FAKE_COLOR1 = 1;
-    private static final int FAKE_COLOR2 = 3;
-    private static final int FAKE_CARRIER_ID1 = 1234;
-    private static final int FAKE_CARRIER_ID2 = 5678;
-    private static final String FAKE_COUNTRY_CODE1 = "TW";
-    private static final String FAKE_COUNTRY_CODE2 = "US";
-    private static final String FAKE_MCC1 = "466";
-    private static final String FAKE_MCC2 = "310";
-    private static final String FAKE_MNC1 = "01";
-    private static final String FAKE_MNC2 = "410";
-    private static final String FAKE_EHPLMNS1 = "46602,46603";
-    private static final String FAKE_EHPLMNS2 = "310411,310412";
-    private static final String FAKE_HPLMNS1 = "46601,46604";
-    private static final String FAKE_HPLMNS2 = "310410,310413";
-    private static final byte[] FAKE_NATIVE_ACCESS_RULES1 = UiccAccessRule.encodeRules(
+    static final String FAKE_ICCID1 = "123456";
+    static final String FAKE_ICCID2 = "456789";
+    static final String FAKE_PHONE_NUMBER1 = "6502530000";
+    static final String FAKE_PHONE_NUMBER2 = "4089961010";
+    static final String FAKE_CARRIER_NAME1 = "A-Mobile";
+    static final String FAKE_CARRIER_NAME2 = "B-Mobile";
+    static final int FAKE_COLOR1 = 1;
+    static final int FAKE_COLOR2 = 3;
+    static final int FAKE_CARRIER_ID1 = 1234;
+    static final int FAKE_CARRIER_ID2 = 5678;
+    static final String FAKE_COUNTRY_CODE1 = "TW";
+    static final String FAKE_COUNTRY_CODE2 = "US";
+    static final String FAKE_MCC1 = "466";
+    static final String FAKE_MCC2 = "310";
+    static final String FAKE_MNC1 = "01";
+    static final String FAKE_MNC2 = "410";
+    static final String FAKE_EHPLMNS1 = "46602,46603";
+    static final String FAKE_EHPLMNS2 = "310411,310412";
+    static final String FAKE_HPLMNS1 = "46601,46604";
+    static final String FAKE_HPLMNS2 = "310410,310413";
+    static final byte[] FAKE_NATIVE_ACCESS_RULES1 = UiccAccessRule.encodeRules(
             new UiccAccessRule[]{new UiccAccessRule(new byte[] {}, "package1", 12345L)});
-    private static final byte[] FAKE_NATIVE_ACCESS_RULES2 = UiccAccessRule.encodeRules(
+    static final byte[] FAKE_NATIVE_ACCESS_RULES2 = UiccAccessRule.encodeRules(
             new UiccAccessRule[]{new UiccAccessRule(new byte[] {}, "package2", 45678L)});
-    private static final byte[] FAKE_CARRIER_CONFIG_ACCESS_RULES1 = UiccAccessRule.encodeRules(
+    static final byte[] FAKE_CARRIER_CONFIG_ACCESS_RULES1 = UiccAccessRule.encodeRules(
             new UiccAccessRule[]{new UiccAccessRule(new byte[] {}, "package1", 54321L)});
-    private static final byte[] FAKE_CARRIER_CONFIG_ACCESS_RULES2 = UiccAccessRule.encodeRules(
+    static final byte[] FAKE_CARRIER_CONFIG_ACCESS_RULES2 = UiccAccessRule.encodeRules(
             new UiccAccessRule[]{new UiccAccessRule(new byte[] {}, "package2", 84954L)});
-    private static final String FAKE_UUID1 = "a684e31a-5998-4670-abdd-0561252c58a5";
-    private static final String FAKE_UUID2 = "cf6d7a9d-e712-4b3c-a600-7a2d4961b5b9";
-    private static final String FAKE_OWNER1 = "owner1";
-    private static final String FAKE_OWNER2 = "owner2";
-    private static final String FAKE_MOBILE_DATA_POLICY1 = "1,2";
-    private static final String FAKE_MOBILE_DATA_POLICY2 = "1";
-    private static final String FAKE_IMSI1 = "1234";
-    private static final String FAKE_IMSI2 = "5678";
-    private static final byte[] FAKE_RCS_CONFIG1 = new byte[]{0x01, 0x02, 0x03};
-    private static final byte[] FAKE_RCS_CONFIG2 = new byte[]{0x04, 0x05, 0x06};
-    private static final String FAKE_ALLOWED_NETWORK_TYPES_FOR_REASONS1 = "carrier=123456, power=3";
-    private static final String FAKE_ALLOWED_NETWORK_TYPES_FOR_REASONS2 = "user=1256, enable_2g=3";
-    private static final String FAKE_CONTACT1 = "John Smith, Tesla Forrest";
-    private static final String FAKE_CONTACT2 = "Mary Jane, Teresa Mill";
-    private static final int FAKE_TP_MESSAGE_REFERENCE1 = 123;
-    private static final int FAKE_TP_MESSAGE_REFERENCE2 = 456;
-    private static final int FAKE_USER_ID1 = 10;
-    private static final int FAKE_USER_ID2 = 11;
+    static final String FAKE_UUID1 = "a684e31a-5998-4670-abdd-0561252c58a5";
+    static final String FAKE_UUID2 = "cf6d7a9d-e712-4b3c-a600-7a2d4961b5b9";
+    static final String FAKE_OWNER1 = "owner1";
+    static final String FAKE_OWNER2 = "owner2";
+    static final String FAKE_MOBILE_DATA_POLICY1 = "1,2";
+    static final String FAKE_MOBILE_DATA_POLICY2 = "1";
+    static final String FAKE_IMSI1 = "1234";
+    static final String FAKE_IMSI2 = "5678";
+    static final byte[] FAKE_RCS_CONFIG1 = new byte[]{0x01, 0x02, 0x03};
+    static final byte[] FAKE_RCS_CONFIG2 = new byte[]{0x04, 0x05, 0x06};
+    static final String FAKE_ALLOWED_NETWORK_TYPES_FOR_REASONS1 = "carrier=123456, power=3";
+    static final String FAKE_ALLOWED_NETWORK_TYPES_FOR_REASONS2 = "user=1256, enable_2g=3";
+    static final String FAKE_CONTACT1 = "John Smith, Tesla Forrest";
+    static final String FAKE_CONTACT2 = "Mary Jane, Teresa Mill";
+    static final int FAKE_TP_MESSAGE_REFERENCE1 = 123;
+    static final int FAKE_TP_MESSAGE_REFERENCE2 = 456;
+    static final int FAKE_USER_ID1 = 10;
+    static final int FAKE_USER_ID2 = 11;
 
     private static final SubscriptionInfoInternal FAKE_SUBSCRIPTION_INFO1 =
             new SubscriptionInfoInternal.Builder()
