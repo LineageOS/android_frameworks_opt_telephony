@@ -21,7 +21,6 @@ import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
-import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -317,6 +316,27 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
+     * Set MCC/MNC by subscription id.
+     *
+     * @param mccMnc MCC/MNC associated with the subscription.
+     * @param subId The subscription id.
+     */
+    public void setMccMnc(int subId, @NonNull String mccMnc) {
+        mSubscriptionDatabaseManager.setMcc(subId, mccMnc.substring(0, 3));
+        mSubscriptionDatabaseManager.setMnc(subId, mccMnc.substring(3));
+    }
+
+    /**
+     * Set ISO country code by subscription id.
+     *
+     * @param iso ISO country code associated with the subscription.
+     * @param subId The subscription id.
+     */
+    public void setCountryIso(int subId, @NonNull String iso) {
+        mSubscriptionDatabaseManager.setCountryIso(subId, iso);
+    }
+
+    /**
      * @param callingPackage The package making the call.
      * @param callingFeatureId The feature in the package
      * @return a list of all subscriptions in the database, this includes
@@ -478,20 +498,6 @@ public class SubscriptionManagerService extends ISub.Stub {
                 return -1;
             }
 
-            if (subscriptionType != SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM
-                    || !mContext.getPackageManager().hasSystemFeature(
-                            PackageManager.FEATURE_AUTOMOTIVE)) {
-                loge("addSubInfo: remote SIM is only supported when FEATURE_AUTOMOTIVE is "
-                        + "enabled.");
-                return -1;
-            }
-
-            if (slotIndex != SubscriptionManager.SLOT_INDEX_FOR_REMOTE_SIM_SUB) {
-                loge("addSubInfo: This API can only be used for remote SIM. slotIndex="
-                        + slotIndex);
-                return -1;
-            }
-
             iccId = IccUtils.stripTrailingFs(iccId);
             SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
                     .getSubscriptionInfoInternalByIccId(iccId);
@@ -504,7 +510,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                                 .setIccId(iccId)
                                 .setSimSlotIndex(slotIndex)
                                 .setDisplayName(displayName)
-                                .setType(SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM)
+                                .setType(subscriptionType)
                                 .build()
                 );
             } else {
