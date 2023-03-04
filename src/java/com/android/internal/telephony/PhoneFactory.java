@@ -199,7 +199,8 @@ public class PhoneFactory {
                 if (sContext.getResources().getBoolean(
                         com.android.internal.R.bool.config_using_subscription_manager_service)) {
                     Rlog.i(LOG_TAG, "Creating SubscriptionManagerService");
-                    sSubscriptionManagerService = new SubscriptionManagerService(context);
+                    sSubscriptionManagerService = new SubscriptionManagerService(context,
+                            Looper.myLooper());
                 } else {
                     Rlog.i(LOG_TAG, "Creating SubscriptionController");
                     TelephonyComponentFactory.getInstance().inject(SubscriptionController.class
