@@ -115,7 +115,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
 
     private NetworkCapabilities makeNetworkFilter(SubscriptionController subscriptionController,
             int phoneId) {
-        final int subscriptionId = subscriptionController.getSubIdUsingPhoneId(phoneId);
+        final int subscriptionId = subscriptionController.getSubId(phoneId);
         return makeNetworkFilter(subscriptionId);
     }
 
@@ -238,7 +238,7 @@ public class TelephonyNetworkFactory extends NetworkFactory {
     // watch for phone->subId changes, reapply new filter and let
     // that flow through to apply/revoke of requests
     private void onSubIdChange() {
-        final int newSubscriptionId = mSubscriptionController.getSubIdUsingPhoneId(
+        final int newSubscriptionId = mSubscriptionController.getSubId(
                 mPhone.getPhoneId());
         if (mSubscriptionId != newSubscriptionId) {
             if (DBG) logl("onSubIdChange " + mSubscriptionId + "->" + newSubscriptionId);

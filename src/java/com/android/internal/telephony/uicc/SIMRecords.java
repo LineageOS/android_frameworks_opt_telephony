@@ -1053,7 +1053,7 @@ public class SIMRecords extends IccRecords {
                                     mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
                             if (ar.exception != null && configManager != null) {
                                 PersistableBundle b = configManager.getConfigForSubId(
-                                        SubscriptionController.getInstance().getSubIdUsingPhoneId(
+                                        SubscriptionController.getInstance().getSubId(
                                                 mParentApp.getPhoneId()));
                                 if (b != null && b.getBoolean(
                                         CarrierConfigManager.KEY_EDITABLE_VOICEMAIL_NUMBER_BOOL)) {

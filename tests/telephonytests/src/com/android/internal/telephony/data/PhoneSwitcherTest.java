@@ -1990,7 +1990,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
             } else {
                 return mSlotIndexToSubId[phoneId][0];
             }
-        }).when(mSubscriptionController).getSubIdUsingPhoneId(anyInt());
+        }).when(mSubscriptionController).getSubId(anyInt());
 
         doAnswer(invocation -> {
             int subId = (int) invocation.getArguments()[0];
