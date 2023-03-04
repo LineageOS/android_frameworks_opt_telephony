@@ -4058,7 +4058,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             Rlog.e(LOG_TAG, "SubscriptionController.getInstance = null! Returning default subId");
             return SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
         }
-        return SubscriptionController.getInstance().getSubIdUsingPhoneId(mPhoneId);
+        return SubscriptionController.getInstance().getSubId(mPhoneId);
     }
 
     /**
