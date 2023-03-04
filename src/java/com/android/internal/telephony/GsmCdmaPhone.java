@@ -506,7 +506,11 @@ public class GsmCdmaPhone extends Phone {
                 logd("update icc_operator_numeric=" + operatorNumeric);
                 tm.setSimOperatorNumericForPhone(mPhoneId, operatorNumeric);
 
-                SubscriptionController.getInstance().setMccMnc(operatorNumeric, getSubId());
+                if (isSubscriptionManagerServiceEnabled()) {
+                    mSubscriptionManagerService.setMccMnc(getSubId(), operatorNumeric);
+                } else {
+                    SubscriptionController.getInstance().setMccMnc(operatorNumeric, getSubId());
+                }
 
                 // Sets iso country property by retrieving from build-time system property
                 String iso = "";
@@ -518,7 +522,11 @@ public class GsmCdmaPhone extends Phone {
 
                 logd("init: set 'gsm.sim.operator.iso-country' to iso=" + iso);
                 tm.setSimCountryIsoForPhone(mPhoneId, iso);
-                SubscriptionController.getInstance().setCountryIso(iso, getSubId());
+                if (isSubscriptionManagerServiceEnabled()) {
+                    mSubscriptionManagerService.setCountryIso(getSubId(), iso);
+                } else {
+                    SubscriptionController.getInstance().setCountryIso(iso, getSubId());
+                }
 
                 // Updates MCC MNC device configuration information
                 logd("update mccmnc=" + operatorNumeric);
@@ -916,14 +924,6 @@ public class GsmCdmaPhone extends Phone {
             // three way calls in CDMA will be handled by feature codes
             loge("conference: not possible in CDMA");
         }
-    }
-
-    @Override
-    public void dispose() {
-        // Note: this API is currently never called. We are defining actions here in case
-        // we need to dispose GsmCdmaPhone/Phone object.
-        super.dispose();
-        SubscriptionController.getInstance().unregisterForUiccAppsEnabled(this);
     }
 
     @Override
