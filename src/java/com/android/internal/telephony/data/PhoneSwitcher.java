@@ -406,7 +406,9 @@ public class PhoneSwitcher extends Handler {
         @Override
         public void onLost(Network network) {
             // try find an active sub to switch to
-            scheduleAutoSwitchEvaluation();
+            if (!hasMessages(EVENT_EVALUATE_AUTO_SWITCH)) {
+                sendEmptyMessage(EVENT_EVALUATE_AUTO_SWITCH);
+            }
         }
     }
 
@@ -1100,7 +1102,9 @@ public class PhoneSwitcher extends Handler {
                 mPhoneStates[phoneId].dataRegState = newRegState;
                 logl("onServiceStateChanged:phoneId:" + phoneId + " dataReg-> "
                         + NetworkRegistrationInfo.registrationStateToString(newRegState));
-                evaluateIfAutoSwitchIsNeeded();
+                if (!hasMessages(EVENT_EVALUATE_AUTO_SWITCH)) {
+                    sendEmptyMessage(EVENT_EVALUATE_AUTO_SWITCH);
+                }
             }
         }
     }
@@ -1111,6 +1115,7 @@ public class PhoneSwitcher extends Handler {
     private void evaluateIfAutoSwitchIsNeeded() {
         // auto data switch feature is disabled from server
         if (mAutoDataSwitchAvailabilityStabilityTimeThreshold < 0) return;
+        // check is valid DSDS
         if (!mSubscriptionController.isActiveSubId(mPrimaryDataSubId)
                 || mSubscriptionController.getActiveSubIdList(true).length <= 1) {
             return;
@@ -1722,7 +1727,7 @@ public class PhoneSwitcher extends Handler {
      */
     private void validate(int subId, boolean needValidation, int switchReason,
             @Nullable ISetOpportunisticDataCallback callback) {
-        logl("Validate " + subId + " due to " + switchReasonToString(switchReason)
+        logl("Validate subId " + subId + " due to " + switchReasonToString(switchReason)
                 + " needValidation=" + needValidation);
         int subIdToValidate = (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID)
                 ? mPrimaryDataSubId : subId;
@@ -1831,7 +1836,7 @@ public class PhoneSwitcher extends Handler {
 
             // retry for auto data switch validation failure
             if (mLastAutoSelectedSwitchReason == DataSwitch.Reason.DATA_SWITCH_REASON_AUTO) {
-                scheduleAutoSwitchEvaluation();
+                scheduleAutoSwitchRetryEvaluation();
                 mAutoSwitchRetryFailedCount++;
             }
         } else {
@@ -1853,7 +1858,7 @@ public class PhoneSwitcher extends Handler {
     /**
      * Schedule auto data switch evaluation retry if haven't reached the max retry count.
      */
-    private void scheduleAutoSwitchEvaluation() {
+    private void scheduleAutoSwitchRetryEvaluation() {
         if (mAutoSwitchRetryFailedCount < mAutoDataSwitchValidationMaxRetry) {
             if (!hasMessages(EVENT_EVALUATE_AUTO_SWITCH)) {
                 sendMessageDelayed(obtainMessage(EVENT_EVALUATE_AUTO_SWITCH),
