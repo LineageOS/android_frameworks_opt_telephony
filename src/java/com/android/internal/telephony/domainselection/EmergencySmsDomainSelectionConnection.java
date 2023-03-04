@@ -60,7 +60,8 @@ public class EmergencySmsDomainSelectionConnection extends SmsDomainSelectionCon
                 return;
             }
 
-            mEmergencyStateTracker.onEmergencyTransportChanged(MODE_EMERGENCY_WLAN);
+            mEmergencyStateTracker.onEmergencyTransportChanged(
+                    EmergencyStateTracker.EMERGENCY_TYPE_SMS, MODE_EMERGENCY_WLAN);
 
             // Change the transport type if the current preferred transport type for an emergency
             // is not {@link AccessNetworkConstants#TRANSPORT_TYPE_WLAN}.
@@ -79,7 +80,8 @@ public class EmergencySmsDomainSelectionConnection extends SmsDomainSelectionCon
 
     @Override
     public void onWwanSelected() {
-        mEmergencyStateTracker.onEmergencyTransportChanged(MODE_EMERGENCY_WWAN);
+        mEmergencyStateTracker.onEmergencyTransportChanged(
+                EmergencyStateTracker.EMERGENCY_TYPE_SMS, MODE_EMERGENCY_WWAN);
     }
 
     @Override
