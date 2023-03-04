@@ -212,8 +212,8 @@ public class PhoneSwitcher extends Handler {
     @VisibleForTesting
     protected final CellularNetworkValidator mValidator;
     private int mPendingSwitchSubId = INVALID_SUBSCRIPTION_ID;
-    /** The last reason for auto switch (e.g. CBRS) **/
-    private int mLastAutoSelectedSwitchReason = -1;
+    /** The reason for the last time changing preferred data sub **/
+    private int mLastSwitchPreferredDataReason = -1;
     /** {@code true} if we've displayed the notification the first time auto switch occurs **/
     private boolean mDisplayedAutoSwitchNotification = false;
     private boolean mPendingSwitchNeedValidation;
@@ -579,8 +579,6 @@ public class PhoneSwitcher extends Handler {
                                     @TelephonyManager.DataEnabledChangedReason int reason,
                                     @NonNull String callingPackage) {
                                 logl("user changed data settings");
-                                evaluateIfImmediateDataSwitchIsNeeded("user changed data settings",
-                                        DataSwitch.Reason.DATA_SWITCH_REASON_IN_CALL);
                                 evaluateIfAutoSwitchIsNeeded();
                             }});
                 phone.getDataSettingsManager().registerCallback(
@@ -1130,6 +1128,15 @@ public class PhoneSwitcher extends Handler {
 
             if (mPreferredDataPhoneId == primaryPhoneId) {
                 // on primary data sub
+
+                if (isAnyVoiceCallActiveOnDevice()) {
+                    // if on voice call, switch immediately
+                    evaluateIfImmediateDataSwitchIsNeeded(
+                            "user updates data settings during voice call",
+                            DataSwitch.Reason.DATA_SWITCH_REASON_IN_CALL);
+                    return;
+                }
+
                 int candidateSubId = getAutoSwitchTargetSubIdIfExists();
                 if (candidateSubId != INVALID_SUBSCRIPTION_ID) {
                     startAutoDataSwitchStabilityCheck(candidateSubId, true);
@@ -1144,7 +1151,7 @@ public class PhoneSwitcher extends Handler {
                     // immediately switch back if user setting changes
                     mAutoSelectedDataSubId = DEFAULT_SUBSCRIPTION_ID;
                     evaluateIfImmediateDataSwitchIsNeeded("User disabled data settings",
-                            DataSwitch.Reason.DATA_SWITCH_REASON_AUTO);
+                            DataSwitch.Reason.DATA_SWITCH_REASON_MANUAL);
                     return;
                 }
 
@@ -1259,6 +1266,7 @@ public class PhoneSwitcher extends Handler {
                 // the alternative phone must have HOME availability
                 if (mPhoneStates[phoneId].dataRegState
                         == NetworkRegistrationInfo.REGISTRATION_STATE_HOME) {
+                    log("getAutoSwitchTargetSubId: found phone " + phoneId + " in HOME service");
                     Phone secondaryDataPhone = findPhoneById(phoneId);
                     if (secondaryDataPhone != null && // check auto switch feature enabled
                             secondaryDataPhone.isDataAllowed()) {
@@ -1297,6 +1305,7 @@ public class PhoneSwitcher extends Handler {
             sb.append(" mPrimaryDataSubId ").append(mPrimaryDataSubId).append("->")
                 .append(primaryDataSubId);
             mPrimaryDataSubId = primaryDataSubId;
+            mLastSwitchPreferredDataReason = DataSwitch.Reason.DATA_SWITCH_REASON_MANUAL;
         }
 
         // Check to see if there is any active subscription on any phone
@@ -1595,11 +1604,13 @@ public class PhoneSwitcher extends Handler {
             logl("updatePreferredDataPhoneId: preferred data overridden for emergency."
                     + " phoneId = " + mEmergencyOverride.mPhoneId);
             mPreferredDataPhoneId = mEmergencyOverride.mPhoneId;
+            mLastSwitchPreferredDataReason = DataSwitch.Reason.DATA_SWITCH_REASON_UNKNOWN;
         } else if (isDataEnabled) {
             // If a phone is in call and user enabled its mobile data, we
             // should switch internet connection to it. Because the other modem
             // will lose data connection anyway.
             mPreferredDataPhoneId = mPhoneIdInVoiceCall;
+            mLastSwitchPreferredDataReason = DataSwitch.Reason.DATA_SWITCH_REASON_IN_CALL;
         } else {
             int subId = getSubIdForDefaultNetworkRequests();
             int phoneId = SubscriptionManager.INVALID_PHONE_INDEX;
@@ -1760,7 +1771,7 @@ public class PhoneSwitcher extends Handler {
             return;
         }
 
-        mLastAutoSelectedSwitchReason = switchReason;
+        mLastSwitchPreferredDataReason = switchReason;
         logDataSwitchEvent(subIdToValidate,
                 TelephonyEvent.EventState.EVENT_STATE_START,
                 switchReason);
@@ -1820,7 +1831,7 @@ public class PhoneSwitcher extends Handler {
     private void setAutoSelectedDataSubIdInternal(int subId) {
         if (mAutoSelectedDataSubId != subId) {
             mAutoSelectedDataSubId = subId;
-            onEvaluate(REQUESTS_UNCHANGED, switchReasonToString(mLastAutoSelectedSwitchReason));
+            onEvaluate(REQUESTS_UNCHANGED, switchReasonToString(mLastSwitchPreferredDataReason));
         }
     }
 
@@ -1835,7 +1846,7 @@ public class PhoneSwitcher extends Handler {
             resultForCallBack = SET_OPPORTUNISTIC_SUB_VALIDATION_FAILED;
 
             // retry for auto data switch validation failure
-            if (mLastAutoSelectedSwitchReason == DataSwitch.Reason.DATA_SWITCH_REASON_AUTO) {
+            if (mLastSwitchPreferredDataReason == DataSwitch.Reason.DATA_SWITCH_REASON_AUTO) {
                 scheduleAutoSwitchRetryEvaluation();
                 mAutoSwitchRetryFailedCount++;
             }
@@ -2078,6 +2089,9 @@ public class PhoneSwitcher extends Handler {
         pw.println("mAutoDataSwitchAvailabilityStabilityTimeThreshold="
                 + mAutoDataSwitchAvailabilityStabilityTimeThreshold);
         pw.println("mAutoDataSwitchValidationMaxRetry=" + mAutoDataSwitchValidationMaxRetry);
+        pw.println("mLastSwitchPreferredDataReason="
+                + switchReasonToString(mLastSwitchPreferredDataReason));
+        pw.println("mDisplayedAutoSwitchNotification=" + mDisplayedAutoSwitchNotification);
         pw.println("Local logs:");
         pw.increaseIndent();
         mLocalLog.dump(fd, pw, args);
@@ -2137,35 +2151,32 @@ public class PhoneSwitcher extends Handler {
 
         if (mDisplayedAutoSwitchNotification) {
             // cancel posted notification if any exist
-            if (VDBG) {
-                log("displayAutoDataSwitchNotification: canceling any notifications for subId "
-                        + mAutoSelectedDataSubId);
-            }
+            log("displayAutoDataSwitchNotification: canceling any notifications for subId "
+                    + mAutoSelectedDataSubId);
             notificationManager.cancel(AUTO_DATA_SWITCH_NOTIFICATION_TAG,
                     AUTO_DATA_SWITCH_NOTIFICATION_ID);
             return;
         }
-        // proceed only the first time auto data switch occurs
-        if (mLastAutoSelectedSwitchReason != DataSwitch.Reason.DATA_SWITCH_REASON_AUTO) {
-            if (VDBG) {
-                log("displayAutoDataSwitchNotification: Ignore DDS switch due to "
-                        + switchReasonToString(mLastAutoSelectedSwitchReason));
-            }
+        // proceed only the first time auto data switch occurs, which includes data during call
+        if (mLastSwitchPreferredDataReason != DataSwitch.Reason.DATA_SWITCH_REASON_AUTO) {
+            log("displayAutoDataSwitchNotification: Ignore DDS switch due to "
+                    + switchReasonToString(mLastSwitchPreferredDataReason));
             return;
         }
         SubscriptionInfo subInfo = mSubscriptionController.getSubscriptionInfo(
                 mAutoSelectedDataSubId);
         if (subInfo == null || subInfo.isOpportunistic()) {
-            loge("displayAutoDataSwitchNotification: unexpected " + subInfo);
+            loge("displayAutoDataSwitchNotification:mAutoSelectedDataSubId="
+                    + mAutoSelectedDataSubId + " unexpected subInfo " + subInfo);
             return;
         }
-        log("displayAutoDataSwitchNotification: displaying for subId=" + mAutoSelectedDataSubId);
+        logl("displayAutoDataSwitchNotification: display for subId=" + mAutoSelectedDataSubId);
         // "Mobile network settings" screen / dialog
         Intent intent = new Intent(Settings.ACTION_NETWORK_OPERATOR_SETTINGS);
         final Bundle fragmentArgs = new Bundle();
         // Special contract for Settings to highlight permission row
         fragmentArgs.putString(SETTINGS_EXTRA_FRAGMENT_ARG_KEY, AUTO_DATA_SWITCH_SETTING_R_ID);
-        fragmentArgs.putInt(Settings.EXTRA_SUB_ID, mAutoSelectedDataSubId);
+        intent.putExtra(Settings.EXTRA_SUB_ID, mAutoSelectedDataSubId);
         intent.putExtra(SETTINGS_EXTRA_SHOW_FRAGMENT_ARGUMENTS, fragmentArgs);
         PendingIntent contentIntent = PendingIntent.getActivity(
                 mContext, mAutoSelectedDataSubId, intent, PendingIntent.FLAG_IMMUTABLE);
