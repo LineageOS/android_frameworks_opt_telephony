@@ -330,19 +330,6 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
-     * Add a new subscription record to subscription database if needed.
-     *
-     * @param iccId the IccId of the SIM card
-     * @param slotIndex the slot which the SIM is inserted
-     *
-     * @return 0 if success, negative if failed.
-     */
-    @Override
-    public int addSubInfoRecord(@NonNull String iccId, int slotIndex) {
-        return 0;
-    }
-
-    /**
      * Add a new subscription info record, if needed.
      *
      * @param uniqueId This is the unique identifier for the subscription within the specific
