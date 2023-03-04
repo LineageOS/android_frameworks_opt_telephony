@@ -205,7 +205,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         doAnswer(invocation -> {
             final NetworkCapabilities capabilitiesFilter =
                     mTelephonyNetworkFactoryUT.makeNetworkFilter(
-                            mSubscriptionController.getSubIdUsingPhoneId(0));
+                            mSubscriptionController.getSubId(0));
             for (final TelephonyNetworkRequest request : mAllNetworkRequestSet) {
                 final int message = request.canBeSatisfiedBy(capabilitiesFilter)
                         ? CMD_REQUEST_NETWORK : CMD_CANCEL_REQUEST;
@@ -230,7 +230,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         createMockedTelephonyComponents();
 
         doReturn(false).when(mPhoneSwitcher).shouldApplyNetworkRequest(any(), anyInt());
-        doReturn(subId).when(mSubscriptionController).getSubIdUsingPhoneId(phoneId);
+        doReturn(subId).when(mSubscriptionController).getSubId(phoneId);
         // fake onSubscriptionChangedListener being triggered.
         mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
                 TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
@@ -303,7 +303,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
 
         createMockedTelephonyComponents();
 
-        doReturn(subId).when(mSubscriptionController).getSubIdUsingPhoneId(phoneId);
+        doReturn(subId).when(mSubscriptionController).getSubId(phoneId);
         mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
                 TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
         processAllMessages();
@@ -317,7 +317,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         processAllMessages();
         assertEquals(1, mNetworkRequestList.size());
 
-        doReturn(altSubId).when(mSubscriptionController).getSubIdUsingPhoneId(altPhoneId);
+        doReturn(altSubId).when(mSubscriptionController).getSubId(altPhoneId);
         processAllMessages();
         assertEquals(1, mNetworkRequestList.size());
 
@@ -332,7 +332,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         processAllMessages();
         assertEquals(1, mNetworkRequestList.size());
 
-        doReturn(unusedSubId).when(mSubscriptionController).getSubIdUsingPhoneId(phoneId);
+        doReturn(unusedSubId).when(mSubscriptionController).getSubId(phoneId);
         mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
                 TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
         processAllMessages();
@@ -342,7 +342,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
         processAllMessages();
         assertEquals(0, mNetworkRequestList.size());
 
-        doReturn(subId).when(mSubscriptionController).getSubIdUsingPhoneId(phoneId);
+        doReturn(subId).when(mSubscriptionController).getSubId(phoneId);
         mTelephonyNetworkFactoryUT.mInternalHandler.sendEmptyMessage(
                 TelephonyNetworkFactory.EVENT_SUBSCRIPTION_CHANGED);
         processAllMessages();

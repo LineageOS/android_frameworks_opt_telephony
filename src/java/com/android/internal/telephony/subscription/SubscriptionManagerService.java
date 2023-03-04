@@ -402,7 +402,7 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     @Override
-    public int[] getSubId(int slotIndex) {
+    public int[] getSubIds(int slotIndex) {
         return null;
     }
 
