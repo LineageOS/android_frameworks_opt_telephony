@@ -151,7 +151,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
                 });
 
         doReturn(mUserInfo).when(mIActivityManager).getCurrentUser();
-        doReturn(new int[]{FAKE_SUB_ID_1}).when(mSubscriptionController).getSubIds(0);
+        doReturn(FAKE_SUB_ID_1).when(mSubscriptionController).getSubId(0);
         doReturn(new int[]{FAKE_SUB_ID_1}).when(mSubscriptionManager).getActiveSubscriptionIdList();
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
                 SubscriptionManager.CONTENT_URI.getAuthority(),
