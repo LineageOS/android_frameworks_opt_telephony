@@ -82,6 +82,7 @@ import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.metrics.SmsStats;
 import com.android.internal.telephony.metrics.VoiceCallSessionStats;
+import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
@@ -4377,7 +4378,16 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     private int getResolvedUsageSetting(int subId) {
-        SubscriptionInfo subInfo = SubscriptionController.getInstance().getSubscriptionInfo(subId);
+        SubscriptionInfo subInfo = null;
+        if (isSubscriptionManagerServiceEnabled()) {
+            SubscriptionInfoInternal subInfoInternal = mSubscriptionManagerService
+                    .getSubscriptionInfoInternal(subId);
+            if (subInfoInternal != null) {
+                subInfo = subInfoInternal.toSubscriptionInfo();
+            }
+        } else {
+            subInfo = SubscriptionController.getInstance().getSubscriptionInfo(subId);
+        }
 
         if (subInfo == null
                 || subInfo.getUsageSetting() == SubscriptionManager.USAGE_SETTING_UNKNOWN) {

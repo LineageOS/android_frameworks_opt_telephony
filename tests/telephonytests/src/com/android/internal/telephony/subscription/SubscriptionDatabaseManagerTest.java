@@ -198,7 +198,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                     .setCountryIso(FAKE_COUNTRY_CODE2)
                     .setCarrierId(FAKE_CARRIER_ID2)
                     .setProfileClass(SubscriptionManager.PROFILE_CLASS_PROVISIONING)
-                    .setType(SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM)
+                    .setType(SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM)
                     .setGroupOwner(FAKE_OWNER2)
                     .setEnabledMobileDataPolicies(FAKE_MOBILE_DATA_POLICY2)
                     .setImsi(FAKE_IMSI2)
