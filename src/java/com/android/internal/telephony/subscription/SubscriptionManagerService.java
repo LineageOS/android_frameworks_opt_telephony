@@ -561,6 +561,29 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
+     * Set the name displayed to the user that identifies subscription provider name. This name
+     * is the SPN displayed in status bar and many other places. Can't be renamed by the user.
+     *
+     * @param subId Subscription id.
+     * @param carrierName The carrier name.
+     */
+    public void setCarrierName(int subId, @NonNull String carrierName) {
+        mSubscriptionDatabaseManager.setCarrierName(subId, carrierName);
+    }
+
+    /**
+     * Mark all subscriptions on this SIM slot index inactive.
+     *
+     * @param simSlotIndex The SIM slot index.
+     */
+    public void markSubscriptionsInactive(int simSlotIndex) {
+        mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                .filter(subInfo -> subInfo.getSimSlotIndex() == simSlotIndex)
+                .forEach(subInfo -> mSubscriptionDatabaseManager.setSimSlotIndex(
+                        subInfo.getSubscriptionId(), SubscriptionManager.INVALID_SIM_SLOT_INDEX));
+    }
+
+    /**
      * Get all subscription info records from SIMs that are inserted now or were inserted before.
      *
      * <p>
@@ -1265,8 +1288,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         final long token = Binder.clearCallingIdentity();
         try {
             return mSubscriptionDatabaseManager.getAllSubscriptions().stream()
-                    .filter(subInfo -> subInfo.isActive() && (!visibleOnly
-                            || (subInfo.getGroupUuid().isEmpty() || !subInfo.isOpportunistic())))
+                    .filter(subInfo -> subInfo.isActive() && (!visibleOnly || subInfo.isVisible()))
                     .mapToInt(SubscriptionInfoInternal::getSubscriptionId)
                     .toArray();
         } finally {
@@ -1306,10 +1328,35 @@ public class SubscriptionManagerService extends ISub.Stub {
         return 0;
     }
 
+    /**
+     * Check if a subscription is active.
+     *
+     * @param subId The subscription id.
+     * @param callingPackage The package making the call.
+     * @param callingFeatureId The feature in the package.
+     *
+     * @return {@code true} if the subscription is active.
+     */
     @Override
+    @RequiresPermission(anyOf = {
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.READ_PRIVILEGED_PHONE_STATE,
+            "carrier privileges",
+    })
     public boolean isActiveSubId(int subId, @NonNull String callingPackage,
             @Nullable String callingFeatureId) {
-        return true;
+        if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext, subId, callingPackage,
+                callingFeatureId, "isActiveSubId")) {
+            throw new SecurityException("Requires READ_PHONE_STATE permission.");
+        }
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
+                    .getSubscriptionInfoInternal(subId);
+            return subInfo != null && subInfo.isActive();
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     @Override
@@ -1514,5 +1561,14 @@ public class SubscriptionManagerService extends ISub.Stub {
             @NonNull String[] args) {
         IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         pw.println(SubscriptionManagerService.class.getSimpleName() + ":");
+        pw.println("All subscriptions:");
+        pw.increaseIndent();
+        mSubscriptionDatabaseManager.getAllSubscriptions().forEach(pw::println);
+        pw.decreaseIndent();
+        pw.println("defaultSubId=" + getDefaultSubId());
+        pw.println("defaultVoiceSubId=" + getDefaultVoiceSubId());
+        pw.println("defaultDataSubId" + getDefaultDataSubId());
+        pw.println("defaultSmsSubId" + getDefaultSmsSubId());
+        pw.decreaseIndent();
     }
 }
