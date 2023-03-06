@@ -413,6 +413,71 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
+     * Sync the settings from specified subscription to all groupped subscriptions.
+     *
+     * @param subId The subscription id of the referenced subscription.
+     */
+    public void syncGroupedSetting(int subId) {
+        mHandler.post(() -> {
+            SubscriptionInfoInternal reference = mSubscriptionDatabaseManager
+                    .getSubscriptionInfoInternal(subId);
+            if (reference == null) {
+                loge("syncSettings: Can't find subscription info for sub " + subId);
+                return;
+            }
+
+            if (reference.getGroupUuid().isEmpty()) {
+                // The reference subscription is not in a group. No need to sync.
+                return;
+            }
+
+            for (SubscriptionInfoInternal subInfo : mSubscriptionDatabaseManager
+                    .getAllSubscriptions()) {
+                if (subInfo.getSubscriptionId() != subId
+                        && subInfo.getGroupUuid().equals(reference.getGroupUuid())) {
+                    // Copy all settings from reference sub to the grouped subscriptions.
+                    SubscriptionInfoInternal newSubInfo = new SubscriptionInfoInternal
+                            .Builder(subInfo)
+                            .setEnhanced4GModeEnabled(reference.getEnhanced4GModeEnabled())
+                            .setVideoTelephonyEnabled(reference.getVideoTelephonyEnabled())
+                            .setWifiCallingEnabled(reference.getWifiCallingEnabled())
+                            .setWifiCallingModeForRoaming(reference.getWifiCallingModeForRoaming())
+                            .setWifiCallingMode(reference.getWifiCallingMode())
+                            .setWifiCallingEnabledForRoaming(
+                                    reference.getWifiCallingEnabledForRoaming())
+                            .setDataRoaming(reference.getDataRoaming())
+                            .setDisplayName(reference.getDisplayName())
+                            .setEnabledMobileDataPolicies(reference.getEnabledMobileDataPolicies())
+                            .setUiccApplicationsEnabled(reference.getUiccApplicationsEnabled())
+                            .setRcsUceEnabled(reference.getRcsUceEnabled())
+                            .setCrossSimCallingEnabled(reference.getCrossSimCallingEnabled())
+                            .setNrAdvancedCallingEnabled(reference.getNrAdvancedCallingEnabled())
+                            .setUserId(reference.getUserId())
+                            .build();
+                    mSubscriptionDatabaseManager.updateSubscription(newSubInfo);
+                    log("Synced settings from sub " + subId + " to sub "
+                            + newSubInfo.getSubscriptionId());
+                }
+            }
+        });
+    }
+
+    /**
+     * Validate the passed in subscription id.
+     *
+     * @param subId The subscription id to validate.
+     *
+     * @throws IllegalArgumentException if the subscription is not valid.
+     */
+    private void validateSubId(int subId) {
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+            throw new IllegalArgumentException("Invalid sub id passed as parameter");
+        } else if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
+            throw new IllegalArgumentException("Default sub id passed as parameter");
+        }
+    }
+
+    /**
      * Check whether the {@code callingPackage} has access to the phone number on the specified
      * {@code subId} or not.
      *
@@ -607,6 +672,11 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     @Override
     @NonNull
+    @RequiresPermission(anyOf = {
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.READ_PRIVILEGED_PHONE_STATE,
+            "carrier privileges",
+    })
     public List<SubscriptionInfo> getAllSubInfoList(@NonNull String callingPackage,
             @Nullable String callingFeatureId) {
         // Verify that the callingPackage belongs to the calling UID
@@ -699,9 +769,44 @@ public class SubscriptionManagerService extends ISub.Stub {
      * device.
      */
     @Override
+    @NonNull
+    @RequiresPermission(anyOf = {
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.READ_PRIVILEGED_PHONE_STATE,
+            "carrier privileges",
+    })
     public List<SubscriptionInfo> getActiveSubscriptionInfoList(@NonNull String callingPackage,
             @Nullable String callingFeatureId) {
-        return null;
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
+        // Check if the caller has READ_PHONE_STATE, READ_PRIVILEGED_PHONE_STATE, or carrier
+        // privilege on any active subscription. The carrier app will get full subscription infos
+        // on the subs it has carrier privilege.
+        if (!TelephonyPermissions.checkReadPhoneStateOnAnyActiveSub(mContext,
+                Binder.getCallingPid(), Binder.getCallingUid(), callingPackage, callingFeatureId,
+                "getAllSubInfoList")) {
+            throw new SecurityException("Need READ_PHONE_STATE, READ_PRIVILEGED_PHONE_STATE, or "
+                    + "carrier privilege to call getAllSubInfoList");
+        }
+
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            return mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                    .filter(SubscriptionInfoInternal::isActive)
+                    // Remove the identifier if the caller does not have sufficient permission.
+                    // carrier apps will get full subscription info on the subscriptions associated
+                    // to them.
+                    .map(subInfo -> conditionallyRemoveIdentifiers(subInfo.toSubscriptionInfo(),
+                            callingPackage, callingFeatureId, "getAllSubInfoList"))
+                    .sorted(Comparator.comparing(SubscriptionInfo::getSimSlotIndex)
+                            .thenComparing(SubscriptionInfo::getSubscriptionId))
+                    .collect(Collectors.toList());
+
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     /**
@@ -722,7 +827,7 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     @Override
     public int getActiveSubInfoCountMax() {
-        return 0;
+        return mTelephonyManager.getSimCount();
     }
 
     /**
@@ -897,7 +1002,21 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     @Override
     public int setDataRoaming(int roaming, int subId) {
-        return 0;
+        enforcePermissions("setDataRoaming", Manifest.permission.MODIFY_PHONE_STATE);
+
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            validateSubId(subId);
+            if (roaming < 0) {
+                throw new IllegalArgumentException("Invalid roaming value" + roaming);
+            }
+
+            mSubscriptionDatabaseManager.setDataRoaming(subId, roaming);
+            return 1;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     /**
@@ -1136,9 +1255,10 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     @Override
-
     public int getPhoneId(int subId) {
-        return 0;
+        // slot index and phone id are equivalent in the current implementation.
+        // It is intended NOT to return DEFAULT_PHONE_INDEX any more from this method.
+        return getSlotIndex(subId);
     }
 
     /**
@@ -1502,7 +1622,7 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
-     * Get the subscription info by subscription id.
+     * Get the {@link SubscriptionInfoInternal} by subscription id.
      *
      * @param subId The subscription id.
      *
@@ -1511,6 +1631,20 @@ public class SubscriptionManagerService extends ISub.Stub {
     @Nullable
     public SubscriptionInfoInternal getSubscriptionInfoInternal(int subId) {
         return mSubscriptionDatabaseManager.getSubscriptionInfoInternal(subId);
+    }
+
+    /**
+     * Get the {@link SubscriptionInfo} by subscription id.
+     *
+     * @param subId The subscription id.
+     *
+     * @return The subscription info. {@code null} if not found.
+     */
+    @Nullable
+    public SubscriptionInfo getSubscriptionInfo(int subId) {
+        SubscriptionInfoInternal subscriptionInfoInternal = getSubscriptionInfoInternal(subId);
+        return subscriptionInfoInternal != null
+                ? subscriptionInfoInternal.toSubscriptionInfo() : null;
     }
 
     /**
