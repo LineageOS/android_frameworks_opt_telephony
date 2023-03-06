@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.satellite;
 
+import static com.android.internal.telephony.satellite.DatagramController.ROUNDING_UNIT;
+
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.ContentResolver;
@@ -42,6 +44,7 @@ import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.ILongConsumer;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.metrics.SatelliteStats;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -66,6 +69,8 @@ public class DatagramReceiver extends Handler {
     @NonNull private final ContentResolver mContentResolver;
     @NonNull private SharedPreferences mSharedPreferences = null;
     @NonNull private final DatagramController mDatagramController;
+
+    private long mDatagramTransferStartTime = 0;
 
     /**
      * The background handler to perform database operations. This is running on a separate thread.
@@ -344,6 +349,10 @@ public class DatagramReceiver extends Handler {
                                 SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE,
                                 pendingCount, SatelliteManager.SATELLITE_ERROR_NONE);
                     }
+
+                    // Send the captured data about incoming datagram to metric
+                    sInstance.reportMetrics(
+                            satelliteDatagram, SatelliteManager.SATELLITE_ERROR_NONE);
                     break;
                 }
 
@@ -374,7 +383,7 @@ public class DatagramReceiver extends Handler {
         Message onCompleted;
         AsyncResult ar;
 
-        switch(msg.what) {
+        switch (msg.what) {
             case CMD_POLL_PENDING_SATELLITE_DATAGRAMS: {
                 request = (DatagramReceiverHandlerRequest) msg.obj;
                 onCompleted =
@@ -402,6 +411,9 @@ public class DatagramReceiver extends Handler {
                             SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE,
                             mDatagramController.getReceivePendingCount(),
                             SatelliteManager.SATELLITE_ERROR_NONE);
+
+                    // report not able to poll pending datagrams
+                    reportMetrics(null, SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
                 }
                 break;
             }
@@ -418,6 +430,7 @@ public class DatagramReceiver extends Handler {
                     mDatagramController.updateReceiveStatus(request.subId,
                             SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_FAILED,
                             mDatagramController.getReceivePendingCount(), error);
+                    reportMetrics(null, error);
                 }
                 break;
             }
@@ -510,6 +523,7 @@ public class DatagramReceiver extends Handler {
                 mDatagramController.getReceivePendingCount(),
                 SatelliteManager.SATELLITE_ERROR_NONE);
 
+        mDatagramTransferStartTime = System.currentTimeMillis();
         Phone phone = SatelliteServiceUtils.getPhone();
         sendRequestAsync(CMD_POLL_PENDING_SATELLITE_DATAGRAMS, callback, phone, subId);
     }
@@ -528,6 +542,31 @@ public class DatagramReceiver extends Handler {
                 argument, phone, subId);
         Message msg = this.obtainMessage(command, request);
         msg.sendToTarget();
+    }
+
+    /** Report incoming datagram related metrics */
+    private void reportMetrics(@Nullable SatelliteDatagram satelliteDatagram,
+            @NonNull @SatelliteManager.SatelliteError int resultCode) {
+        int datagramSizeRoundedBytes = -1;
+        int datagramTransferTime = 0;
+
+        if (satelliteDatagram != null) {
+            if (satelliteDatagram.getSatelliteDatagram() != null) {
+                int sizeBytes = satelliteDatagram.getSatelliteDatagram().length;
+                // rounded by 10 bytes
+                datagramSizeRoundedBytes =
+                        (int) (Math.round((double) sizeBytes / ROUNDING_UNIT) * ROUNDING_UNIT);
+            }
+            datagramTransferTime = (int) (System.currentTimeMillis() - mDatagramTransferStartTime);
+            mDatagramTransferStartTime = 0;
+        }
+
+        SatelliteStats.getInstance().onSatelliteIncomingDatagramMetrics(
+                new SatelliteStats.SatelliteIncomingDatagramParams.Builder()
+                        .setResultCode(resultCode)
+                        .setDatagramSizeBytes(datagramSizeRoundedBytes)
+                        .setDatagramTransferTimeMillis(datagramTransferTime)
+                        .build());
     }
 
     /**
