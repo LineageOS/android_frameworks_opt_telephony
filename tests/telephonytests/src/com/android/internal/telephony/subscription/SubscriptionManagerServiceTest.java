@@ -602,4 +602,39 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(mSubscriptionManagerServiceUT.isActiveSubId(
                 2, CALLING_PACKAGE, CALLING_FEATURE)).isFalse();
     }
+
+    @Test
+    public void testGetActiveSubscriptionInfoList() {
+        doReturn(new int[]{1}).when(mSubscriptionManager).getCompleteActiveSubscriptionIdList();
+        // Grant MODIFY_PHONE_STATE permission for insertion.
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        insertSubscription(new SubscriptionInfoInternal.Builder(FAKE_SUBSCRIPTION_INFO2)
+                .setSimSlotIndex(SubscriptionManager.INVALID_SIM_SLOT_INDEX).build());
+        // Remove MODIFY_PHONE_STATE
+        mContextFixture.removeCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // Should fail without READ_PHONE_STATE
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .getActiveSubscriptionInfoList(CALLING_PACKAGE, CALLING_FEATURE));
+
+        // Grant READ_PHONE_STATE permission for insertion.
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PHONE_STATE);
+
+        List<SubscriptionInfo> subInfos = mSubscriptionManagerServiceUT
+                .getActiveSubscriptionInfoList(CALLING_PACKAGE, CALLING_FEATURE);
+        assertThat(subInfos).hasSize(1);
+        assertThat(subInfos.get(0).getIccId()).isEmpty();
+        assertThat(subInfos.get(0).getCardString()).isEmpty();
+        assertThat(subInfos.get(0).getNumber()).isEmpty();
+        assertThat(subInfos.get(0).getGroupUuid()).isNull();
+
+        // Grant carrier privilege
+        setCarrierPrivilegesForSubId(true, 1);
+
+        subInfos = mSubscriptionManagerServiceUT
+                .getActiveSubscriptionInfoList(CALLING_PACKAGE, CALLING_FEATURE);
+        assertThat(subInfos).hasSize(1);
+        assertThat(subInfos.get(0)).isEqualTo(FAKE_SUBSCRIPTION_INFO1.toSubscriptionInfo());
+    }
 }

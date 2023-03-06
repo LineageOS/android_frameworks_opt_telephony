@@ -34,6 +34,7 @@ import android.telephony.SubscriptionManager;
 import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
 import com.android.internal.telephony.gsm.GsmInboundSmsHandler;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.telephony.Rlog;
 
 import java.util.HashMap;
@@ -261,8 +262,13 @@ public class SmsBroadcastUndelivered {
     private static void broadcastSms(InboundSmsTracker tracker) {
         InboundSmsHandler handler;
         int subId = tracker.getSubId();
-        // TODO consider other subs in this subId's group as well
-        int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
+        int phoneId;
+        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
+            phoneId = SubscriptionManagerService.getInstance().getPhoneId(subId);
+        } else {
+            // TODO consider other subs in this subId's group as well
+            phoneId = SubscriptionController.getInstance().getPhoneId(subId);
+        }
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {
             Rlog.e(TAG, "broadcastSms: ignoring message; no phone found for subId " + subId);
             return;
