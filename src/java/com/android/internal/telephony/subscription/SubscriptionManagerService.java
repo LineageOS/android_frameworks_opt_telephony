@@ -20,8 +20,12 @@ import android.Manifest;
 import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.app.compat.CompatChanges;
+import android.compat.annotation.ChangeId;
+import android.compat.annotation.EnabledSince;
 import android.content.Context;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
@@ -38,6 +42,7 @@ import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
 import android.text.TextUtils;
 import android.util.ArraySet;
+import android.util.EventLog;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
@@ -71,6 +76,15 @@ public class SubscriptionManagerService extends ISub.Stub {
     /** Whether enabling verbose debugging message or not. */
     private static final boolean VDBG = false;
 
+    /**
+     * Apps targeting on Android T and beyond will get exception if there is no access to device
+     * identifiers nor has carrier privileges when calling
+     * {@link SubscriptionManager#getSubscriptionsInGroup}.
+     */
+    @ChangeId
+    @EnabledSince(targetSdkVersion = Build.VERSION_CODES.TIRAMISU)
+    public static final long REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID = 213902861L;
+
     /** Instance of subscription manager service. */
     @NonNull
     private static SubscriptionManagerService sInstance;
@@ -81,6 +95,9 @@ public class SubscriptionManagerService extends ISub.Stub {
 
     /** Telephony manager instance. */
     private final TelephonyManager mTelephonyManager;
+
+    /** Subscription manager instance. */
+    private final SubscriptionManager mSubscriptionManager;
 
     /** The main handler of subscription manager service. */
     @NonNull
@@ -234,6 +251,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         sInstance = this;
         mContext = context;
         mTelephonyManager = context.getSystemService(TelephonyManager.class);
+        mSubscriptionManager = context.getSystemService(SubscriptionManager.class);
         mHandler = new Handler(looper);
         TelephonyServiceManager.ServiceRegisterer subscriptionServiceRegisterer =
                 TelephonyFrameworkInitializer
@@ -344,8 +362,8 @@ public class SubscriptionManagerService extends ISub.Stub {
      *
      * @return {@code true} if the caller has identifier access.
      */
-    private boolean hasSubscriberIdentifierAccess(int subId, String callingPackage,
-            String callingFeatureId, String message, boolean reportFailure) {
+    private boolean hasSubscriberIdentifierAccess(int subId, @NonNull String callingPackage,
+            @Nullable String callingFeatureId, @Nullable String message, boolean reportFailure) {
         try {
             return TelephonyPermissions.checkCallingOrSelfReadSubscriberIdentifiers(mContext, subId,
                     callingPackage, callingFeatureId, message, reportFailure);
@@ -360,7 +378,7 @@ public class SubscriptionManagerService extends ISub.Stub {
     /**
      * Conditionally removes identifiers from the provided {@link SubscriptionInfo} if the {@code
      * callingPackage} does not meet the access requirements for identifiers and returns the
-     * potentially modified object..
+     * potentially modified object.
      *
      * <p>
      * If the caller does not have {@link Manifest.permission#READ_PHONE_NUMBERS} permission,
@@ -809,10 +827,64 @@ public class SubscriptionManagerService extends ISub.Stub {
             @NonNull String callingPackage) {
     }
 
+    /**
+     * Get subscriptionInfo list of subscriptions that are in the same group of given subId.
+     * See {@link #createSubscriptionGroup(int[], String)} for more details.
+     *
+     * Caller must have {@link android.Manifest.permission#READ_PHONE_STATE}
+     * or carrier privilege permission on the subscription.
+     *
+     * <p>Starting with API level 33, the caller also needs permission to access device identifiers
+     * to get the list of subscriptions associated with a group UUID.
+     * This method can be invoked if one of the following requirements is met:
+     * <ul>
+     *     <li>If the app has carrier privilege permission.
+     *     {@link TelephonyManager#hasCarrierPrivileges()}
+     *     <li>If the app has {@link android.Manifest.permission#READ_PHONE_STATE} permission and
+     *     access to device identifiers.
+     * </ul>
+     *
+     * @param groupUuid of which list of subInfo will be returned.
+     * @param callingPackage The package making the call.
+     * @param callingFeatureId The feature in the package.
+     *
+     * @return List of {@link SubscriptionInfo} that belong to the same group, including the given
+     * subscription itself. It will return an empty list if no subscription belongs to the group.
+     *
+     * @throws SecurityException if the caller doesn't meet the requirements outlined above.
+     *
+     */
     @Override
+    @NonNull
     public List<SubscriptionInfo> getSubscriptionsInGroup(@NonNull ParcelUuid groupUuid,
             @NonNull String callingPackage, @Nullable String callingFeatureId) {
-        return null;
+        // If the calling app neither has carrier privileges nor READ_PHONE_STATE and access to
+        // device identifiers, it will throw a SecurityException.
+        if (CompatChanges.isChangeEnabled(REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID,
+                Binder.getCallingUid())) {
+            try {
+                if (!TelephonyPermissions.checkCallingOrSelfReadDeviceIdentifiers(mContext,
+                        callingPackage, callingFeatureId, "getSubscriptionsInGroup")) {
+                    EventLog.writeEvent(0x534e4554, "213902861", Binder.getCallingUid());
+                    throw new SecurityException("Need to have carrier privileges or access to "
+                            + "device identifiers to call getSubscriptionsInGroup");
+                }
+            } catch (SecurityException e) {
+                EventLog.writeEvent(0x534e4554, "213902861", Binder.getCallingUid());
+                throw e;
+            }
+        }
+
+        return mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                .map(SubscriptionInfoInternal::toSubscriptionInfo)
+                .filter(info -> groupUuid.equals(info.getGroupUuid())
+                        && (mSubscriptionManager.canManageSubscription(info, callingPackage)
+                        || TelephonyPermissions.checkCallingOrSelfReadPhoneState(
+                                mContext, info.getSubscriptionId(), callingPackage,
+                        callingFeatureId, "getSubscriptionsInGroup")))
+                .map(subscriptionInfo -> conditionallyRemoveIdentifiers(subscriptionInfo,
+                        callingPackage, callingFeatureId, "getSubscriptionsInGroup"))
+                .collect(Collectors.toList());
     }
 
     @Override
