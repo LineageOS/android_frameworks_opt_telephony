@@ -580,4 +580,26 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(b.containsKey(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX)).isTrue();
         assertThat(b.getInt(SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX)).isEqualTo(1);
     }
+
+    @Test
+    public void testIsActiveSubId() {
+        // Grant MODIFY_PHONE_STATE permission for insertion.
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        insertSubscription(new SubscriptionInfoInternal.Builder(FAKE_SUBSCRIPTION_INFO2)
+                .setSimSlotIndex(SubscriptionManager.INVALID_SIM_SLOT_INDEX).build());
+        // Remove MODIFY_PHONE_STATE
+        mContextFixture.removeCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // Should fail without READ_PHONE_STATE
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .isActiveSubId(1, CALLING_PACKAGE, CALLING_FEATURE));
+
+        // Grant READ_PRIVILEGED_PHONE_STATE permission for insertion.
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        assertThat(mSubscriptionManagerServiceUT.isActiveSubId(
+                1, CALLING_PACKAGE, CALLING_FEATURE)).isTrue();
+        assertThat(mSubscriptionManagerServiceUT.isActiveSubId(
+                2, CALLING_PACKAGE, CALLING_FEATURE)).isFalse();
+    }
 }

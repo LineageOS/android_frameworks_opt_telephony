@@ -905,7 +905,7 @@ public class MultiSimSettingController extends Handler {
      */
     private void setRoamingDataEnabledForGroup(int subId, boolean enable) {
         List<SubscriptionInfo> infoList;
-        if (PhoneFactory.getDefaultPhone().isSubscriptionManagerServiceEnabled()) {
+        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
             infoList = SubscriptionManagerService.getInstance().getSubscriptionsInGroup(
                     mSubController.getGroupUuid(subId), mContext.getOpPackageName(),
                     mContext.getAttributionTag());
