@@ -100,6 +100,7 @@ import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.imsphone.ImsPhoneMmiCode;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.metrics.VoiceCallSessionStats;
+import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService.SubscriptionManagerServiceCallback;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
@@ -4652,28 +4653,34 @@ public class GsmCdmaPhone extends Phone {
 
         boolean mIsVonrEnabledByCarrier =
                 config.getBoolean(CarrierConfigManager.KEY_VONR_ENABLED_BOOL);
-
-        String result = SubscriptionController.getInstance().getSubscriptionProperty(
-                getSubId(),
-                SubscriptionManager.NR_ADVANCED_CALLING_ENABLED);
+        boolean mDefaultVonr =
+                config.getBoolean(CarrierConfigManager.KEY_VONR_ON_BY_DEFAULT_BOOL);
 
         int setting = -1;
-        if (result != null) {
-            setting = Integer.parseInt(result);
+        if (isSubscriptionManagerServiceEnabled()) {
+            SubscriptionInfoInternal subInfo = mSubscriptionManagerService
+                    .getSubscriptionInfoInternal(getSubId());
+            if (subInfo != null) {
+                setting = subInfo.getNrAdvancedCallingEnabled();
+            }
+        } else {
+            String result = SubscriptionController.getInstance().getSubscriptionProperty(
+                    getSubId(), SubscriptionManager.NR_ADVANCED_CALLING_ENABLED);
+            if (result != null) {
+                setting = Integer.parseInt(result);
+            }
         }
 
         logd("VoNR setting from telephony.db:"
                 + setting
                 + " ,vonr_enabled_bool:"
-                + mIsVonrEnabledByCarrier);
+                + mIsVonrEnabledByCarrier
+                + " ,vonr_on_by_default_bool:"
+                + mDefaultVonr);
 
-        if (!mIsVonrEnabledByCarrier) {
-            mCi.setVoNrEnabled(false, obtainMessage(EVENT_SET_VONR_ENABLED_DONE), null);
-        } else if (setting == 1 || setting == -1) {
-            mCi.setVoNrEnabled(true, obtainMessage(EVENT_SET_VONR_ENABLED_DONE), null);
-        } else if (setting == 0) {
-            mCi.setVoNrEnabled(false, obtainMessage(EVENT_SET_VONR_ENABLED_DONE), null);
-        }
+        boolean enbleVonr = mIsVonrEnabledByCarrier
+                && (setting == 1 || (setting == -1 && mDefaultVonr));
+        mCi.setVoNrEnabled(enbleVonr, obtainMessage(EVENT_SET_VONR_ENABLED_DONE), null);
     }
 
     private void updateCdmaRoamingSettingsAfterCarrierConfigChanged(PersistableBundle config) {

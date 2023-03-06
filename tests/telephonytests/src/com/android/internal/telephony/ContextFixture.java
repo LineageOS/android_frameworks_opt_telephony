@@ -349,6 +349,8 @@ public class ContextFixture implements TestFixture<Context> {
                 return Context.NETWORK_POLICY_SERVICE;
             } else if (serviceClass == PowerManager.class) {
                 return Context.POWER_SERVICE;
+            } else if (serviceClass == EuiccManager.class) {
+                return Context.EUICC_SERVICE;
             }
             return super.getSystemServiceName(serviceClass);
         }

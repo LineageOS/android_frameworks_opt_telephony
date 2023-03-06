@@ -20,9 +20,11 @@ import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -111,6 +113,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     static final SubscriptionInfoInternal FAKE_SUBSCRIPTION_INFO1 =
             new SubscriptionInfoInternal.Builder()
+                    .setId(1)
                     .setIccId(FAKE_ICCID1)
                     .setSimSlotIndex(0)
                     .setDisplayName(FAKE_CARRIER_NAME1)
@@ -165,6 +168,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
     static final SubscriptionInfoInternal FAKE_SUBSCRIPTION_INFO2 =
             new SubscriptionInfoInternal.Builder()
+                    .setId(2)
                     .setIccId(FAKE_ICCID2)
                     .setSimSlotIndex(1)
                     .setDisplayName(FAKE_CARRIER_NAME2)
@@ -364,9 +368,10 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
      */
     private SubscriptionInfoInternal insertSubscriptionAndVerify(
             @NonNull SubscriptionInfoInternal subInfo) throws Exception {
-        assertThat(subInfo.getSubscriptionId()).isEqualTo(
-                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
-        int subId = mDatabaseManagerUT.insertSubscriptionInfo(subInfo);
+        int subId = mDatabaseManagerUT.insertSubscriptionInfo(
+                new SubscriptionInfoInternal.Builder(subInfo)
+                        .setId(SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+                        .build());
         assertThat(SubscriptionManager.isValidSubscriptionId(subId)).isTrue();
 
         subInfo = new SubscriptionInfoInternal.Builder(subInfo).setId(subId).build();
@@ -414,6 +419,11 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         processAllMessages();
         verifySubscription(subInfo);
         verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+        Mockito.clearInvocations(mSubscriptionDatabaseManagerCallback);
+
+        // Same sub info again. Should not trigger callback
+        mDatabaseManagerUT.updateSubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, never()).onSubscriptionChanged(anyInt());
     }
 
     @Test
