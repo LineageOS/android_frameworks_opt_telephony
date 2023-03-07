@@ -648,6 +648,21 @@ public class ImsPhoneTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testEcbmWhenDomainSelectionEnabled() {
+        DomainSelectionResolver dsResolver = mock(DomainSelectionResolver.class);
+        doReturn(true).when(dsResolver).isDomainSelectionSupported();
+        DomainSelectionResolver.setDomainSelectionResolver(dsResolver);
+
+        ImsEcbmStateListener imsEcbmStateListener = mImsPhoneUT.getImsEcbmStateListener();
+        imsEcbmStateListener.onECBMEntered();
+        imsEcbmStateListener.onECBMExited();
+
+        verify(mPhone, never()).setIsInEcm(anyBoolean());
+        verify(mContext, never()).sendStickyBroadcastAsUser(any(), any());
+    }
+
+    @Test
+    @SmallTest
     public void testProcessDisconnectReason() throws Exception {
         // set up CarrierConfig
         mBundle.putStringArray(CarrierConfigManager.KEY_WFC_OPERATOR_ERROR_CODES_STRING_ARRAY,
