@@ -105,6 +105,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -130,6 +131,7 @@ import android.net.InetAddresses;
 import android.net.LinkAddress;
 import android.os.AsyncResult;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.IPowerManager;
 import android.os.IThermalService;
 import android.os.Looper;
@@ -199,6 +201,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 @RunWith(AndroidTestingRunner.class)
@@ -2967,4 +2971,72 @@ public class RILTest extends TelephonyTest {
         Assert.assertNotNull(ar.exception.getMessage());
         Assert.assertEquals("REQUEST_NOT_SUPPORTED", ar.exception.getMessage());
     }
+
+    class RilErrorHandler extends Handler {
+        RilErrorHandler(Looper looper) {
+            super(looper);
+            mLatchErrRadioNotAvailable = new CountDownLatch(0);
+            mLatchErrSystem = new CountDownLatch(0);
+        }
+
+        void setLatchForRadioNotAvailableError(CountDownLatch latch) {
+            mLatchErrRadioNotAvailable = latch;
+        }
+
+        void setLatchForSystemError(CountDownLatch latch) {
+            mLatchErrRadioNotAvailable = latch;
+        }
+
+        CountDownLatch mLatchErrRadioNotAvailable;
+        CountDownLatch mLatchErrSystem;
+
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            AsyncResult ar = (AsyncResult) msg.obj;
+            if (ar != null && ar.exception != null) {
+                CommandException.Error err = null;
+                if (ar.exception instanceof CommandException) {
+                    err = ((CommandException) (ar.exception)).getCommandError();
+                    if (err == CommandException.Error.RADIO_NOT_AVAILABLE) {
+                        mLatchErrRadioNotAvailable.countDown();
+                    }
+                    if (err == CommandException.Error.SYSTEM_ERR) {
+                        mLatchErrSystem.countDown();
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testRadioServiceInvokeHelper() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        HandlerThread handlerThread = new HandlerThread("testRilServiceInvokeHelper");
+        handlerThread.start();
+        Handler handler = new Handler(handlerThread.getLooper()) {
+            public void handleMessage(Message msg) {
+                AsyncResult ar = (AsyncResult) msg.obj;
+                if (ar != null && ar.exception != null
+                        && ar.exception instanceof CommandException) {
+                    CommandException.Error err =
+                            ((CommandException) (ar.exception)).getCommandError();
+                    if (err == CommandException.Error.SYSTEM_ERR) {
+                        latch.countDown();
+                    }
+                }
+            }
+        };
+
+        // RuntimeException
+        doThrow(new RuntimeException()).when(mDataProxy).getDataCallList(anyInt());
+        mRILUnderTest.getDataCallList(handler.obtainMessage());
+        assertTrue(latch.await(3, TimeUnit.SECONDS));
+
+        // RemoteException
+        doThrow(new RemoteException()).when(mDataProxy).getDataCallList(anyInt());
+        mRILUnderTest.getDataCallList(handler.obtainMessage());
+        assertEquals(mRILUnderTest.getRadioState(), TelephonyManager.RADIO_POWER_UNAVAILABLE);
+    }
+
 }
