@@ -106,6 +106,7 @@ import com.android.internal.telephony.data.DataNetworkController;
 import com.android.internal.telephony.data.LinkBandwidthEstimator;
 import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
+import com.android.internal.telephony.emergency.EmergencyStateTracker;
 import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.gsm.SsData;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
@@ -517,8 +518,12 @@ public class GsmCdmaPhone extends Phone {
             // This is needed to handle phone process crashes
             mIsPhoneInEcmState = getInEcmMode();
             if (mIsPhoneInEcmState) {
-                // Send a message which will invoke handleExitEmergencyCallbackMode
-                mCi.exitEmergencyCallbackMode(null);
+                if (DomainSelectionResolver.getInstance().isDomainSelectionSupported()) {
+                    EmergencyStateTracker.getInstance().exitEmergencyCallbackMode();
+                } else {
+                    // Send a message which will invoke handleExitEmergencyCallbackMode
+                    mCi.exitEmergencyCallbackMode(null);
+                }
             }
 
             mCi.setPhoneType(PhoneConstants.PHONE_TYPE_CDMA);
@@ -3135,12 +3140,16 @@ public class GsmCdmaPhone extends Phone {
                 logd("Event EVENT_MODEM_RESET Received" + " isInEcm = " + isInEcm()
                         + " isPhoneTypeGsm = " + isPhoneTypeGsm() + " mImsPhone = " + mImsPhone);
                 if (isInEcm()) {
-                    if (isPhoneTypeGsm()) {
-                        if (mImsPhone != null) {
-                            mImsPhone.handleExitEmergencyCallbackMode();
-                        }
+                    if (DomainSelectionResolver.getInstance().isDomainSelectionSupported()) {
+                        EmergencyStateTracker.getInstance().exitEmergencyCallbackMode();
                     } else {
-                        handleExitEmergencyCallbackMode(msg);
+                        if (isPhoneTypeGsm()) {
+                            if (mImsPhone != null) {
+                                mImsPhone.handleExitEmergencyCallbackMode();
+                            }
+                        } else {
+                            handleExitEmergencyCallbackMode(msg);
+                        }
                     }
                 }
             }
@@ -3913,6 +3922,10 @@ public class GsmCdmaPhone extends Phone {
 
     //CDMA
     private void handleEnterEmergencyCallbackMode(Message msg) {
+        if (DomainSelectionResolver.getInstance().isDomainSelectionSupported()) {
+            Rlog.d(LOG_TAG, "DomainSelection enabled: ignore ECBM enter event.");
+            return;
+        }
         if (DBG) {
             Rlog.d(LOG_TAG, "handleEnterEmergencyCallbackMode, isInEcm()="
                     + isInEcm());
@@ -3936,6 +3949,10 @@ public class GsmCdmaPhone extends Phone {
 
     //CDMA
     private void handleExitEmergencyCallbackMode(Message msg) {
+        if (DomainSelectionResolver.getInstance().isDomainSelectionSupported()) {
+            Rlog.d(LOG_TAG, "DomainSelection enabled: ignore ECBM exit event.");
+            return;
+        }
         AsyncResult ar = (AsyncResult)msg.obj;
         if (DBG) {
             Rlog.d(LOG_TAG, "handleExitEmergencyCallbackMode,ar.exception , isInEcm="
