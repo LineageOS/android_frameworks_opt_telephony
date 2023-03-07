@@ -131,6 +131,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
     private Messenger mNetworkProviderMessenger = null;
     private Map<Integer, DataSettingsManager.DataSettingsManagerCallback>
             mDataSettingsManagerCallbacks;
+    private DataConfigManager.DataConfigManagerCallback mDataConfigManagerCallback;
     private int mDefaultDataSub = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     private int[][] mSlotIndexToSubId;
     private boolean[] mDataAllowed;
@@ -562,7 +563,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testAutoDataSwitchRetry() throws Exception {
+    public void testAutoDataSwitch_retry() throws Exception {
         initialize();
         // Phone 0 has sub 1, phone 1 has sub 2.
         // Sub 1 is default data sub.
@@ -590,7 +591,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testAutoDataSwitchSetNotification() throws Exception {
+    public void testAutoDataSwitch_setNotification() throws Exception {
         SubscriptionInfo mockedInfo = mock(SubscriptionInfo.class);
         doReturn(false).when(mockedInfo).isOpportunistic();
         doReturn(mockedInfo).when(mSubscriptionController).getSubscriptionInfo(anyInt());
@@ -634,6 +635,41 @@ public class PhoneSwitcherTest extends TelephonyTest {
         } else {
             verify(mSubscriptionController, never()).getSubscriptionInfo(2);
         }
+    }
+
+    @Test
+    @SmallTest
+    public void testAutoDataSwitch_exemptPingTest() throws Exception {
+        initialize();
+        // Phone 0 has sub 1, phone 1 has sub 2.
+        // Sub 1 is default data sub.
+        setSlotIndexToSubId(0, 1);
+        setSlotIndexToSubId(1, 2);
+        setDefaultDataSubId(1);
+
+        doReturn(false).when(mDataConfigManager).requirePingTestBeforeDataSwitch();
+        mDataConfigManagerCallback.onCarrierConfigChanged();
+
+        //1. Attempting to switch to nDDS, switch even if validation failed
+        prepareIdealAutoSwitchCondition();
+        processAllFutureMessages();
+
+        verify(mCellularNetworkValidator).validate(eq(2), anyLong(), eq(false),
+                eq(mPhoneSwitcherUT.mValidationCallback));
+        mPhoneSwitcherUT.mValidationCallback.onValidationDone(false, 2);
+        processAllMessages();
+
+        assertEquals(2, mPhoneSwitcherUT.getActiveDataSubId()); // switch succeeds
+
+        //2. Attempting to switch back to DDS, switch even if validation failed
+        serviceStateChanged(0, NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
+        processAllFutureMessages();
+        verify(mCellularNetworkValidator).validate(eq(1), anyLong(), eq(false),
+                eq(mPhoneSwitcherUT.mValidationCallback));
+        mPhoneSwitcherUT.mValidationCallback.onValidationDone(false, 1);
+        processAllMessages();
+
+        assertEquals(1, mPhoneSwitcherUT.getActiveDataSubId()); // switch succeeds
     }
 
     /**
@@ -1964,7 +2000,6 @@ public class PhoneSwitcherTest extends TelephonyTest {
         initializeConnManagerMock();
 
         mPhoneSwitcherUT = new PhoneSwitcher(mMaxDataAttachModemCount, mContext, Looper.myLooper());
-        processAllMessages();
 
         Field field = PhoneSwitcher.class.getDeclaredField("mDataSettingsManagerCallbacks");
         field.setAccessible(true);
@@ -1972,11 +2007,22 @@ public class PhoneSwitcherTest extends TelephonyTest {
                 (Map<Integer, DataSettingsManager.DataSettingsManagerCallback>)
                         field.get(mPhoneSwitcherUT);
 
-        int deviceConfigValue = 10000;
-        field = PhoneSwitcher.class.getDeclaredField(
-                "mAutoDataSwitchAvailabilityStabilityTimeThreshold");
+        field = PhoneSwitcher.class.getDeclaredField("mDataConfigManagerCallback");
         field.setAccessible(true);
-        field.setInt(mPhoneSwitcherUT, deviceConfigValue);
+        mDataConfigManagerCallback =
+                (DataConfigManager.DataConfigManagerCallback) field.get(mPhoneSwitcherUT);
+
+        doReturn(mDataNetworkController).when(mPhone).getDataNetworkController();
+        doReturn(mDataConfigManager).when(mDataNetworkController).getDataConfigManager();
+        doReturn(1000L).when(mDataConfigManager)
+                .getAutoDataSwitchAvailabilityStabilityTimeThreshold();
+        doReturn(7).when(mDataConfigManager).getAutoDataSwitchValidationMaxRetry();
+        doReturn(true).when(mDataConfigManager).requirePingTestBeforeDataSwitch();
+
+        mDataConfigManagerCallback.onCarrierConfigChanged();
+        mDataConfigManagerCallback.onDeviceConfigChanged();
+
+        processAllMessages();
 
         verify(mTelephonyRegistryManager).addOnSubscriptionsChangedListener(any(), any());
     }
