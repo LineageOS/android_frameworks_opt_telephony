@@ -637,6 +637,27 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
+     * Set last used TP message reference.
+     *
+     * @param subId Subscription id.
+     * @param lastUsedTPMessageReference Last used TP message reference.
+     */
+    public void setLastUsedTPMessageReference(int subId, int lastUsedTPMessageReference) {
+        mSubscriptionDatabaseManager.setLastUsedTPMessageReference(
+                subId, lastUsedTPMessageReference);
+    }
+
+    /**
+     * Set the enabled mobile data policies.
+     *
+     * @param subId Subscription id.
+     * @param enabledMobileDataPolicies The enabled mobile data policies.
+     */
+    public void setEnabledMobileDataPolicies(int subId, @NonNull String enabledMobileDataPolicies) {
+        mSubscriptionDatabaseManager.setEnabledMobileDataPolicies(subId, enabledMobileDataPolicies);
+    }
+
+    /**
      * Mark all subscriptions on this SIM slot index inactive.
      *
      * @param simSlotIndex The SIM slot index.
