@@ -34,6 +34,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.test.TestLooper;
+import android.util.Log;
 
 import androidx.test.runner.AndroidJUnit4;
 
@@ -47,13 +48,13 @@ import com.android.telephony.Rlog;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -65,6 +66,7 @@ public class SIMRecordsTest extends TelephonyTest {
     private static final List<String> EMPTY_FPLMN_LIST = new ArrayList<>();
     private static final int EF_SIZE = 12;
     private static final int MAX_NUM_FPLMN = 4;
+    private static final int SET_VOICE_MAIL_TIMEOUT = 1000;
 
     // Mocked classes
     private IccFileHandler mFhMock;
@@ -724,45 +726,36 @@ public class SIMRecordsTest extends TelephonyTest {
     }
 
     @Test
-    @Ignore("b/256282468")
     public void testSetVoiceMailNumber() throws InterruptedException {
-
         String voiceMailNumber = "1234567890";
         String alphaTag = "Voicemail";
         final CountDownLatch latch = new CountDownLatch(2);
-        doAnswer(
-                invocation -> {
-                    int[] result = new int[3];
-                    result[0] = 32;
-                    result[1] = 32;
-                    result[2] = 1;
-                    Rlog.d("SIMRecordsTest", "Executing the test invocation1");
-                    Message response = invocation.getArgument(2);
-                    AsyncResult.forMessage(response, result, null);
-                    response.sendToTarget();
-                    latch.countDown();
-                    return null;
-                })
-                .when(mFhMock)
-                .getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
+        doAnswer(invocation -> {
+            int[] result = new int[3];
+            result[0] = 32;
+            result[1] = 32;
+            result[2] = 1;
+            Rlog.d("SIMRecordsTest", "Executing the first invocation");
+            Message response = invocation.getArgument(2);
+            AsyncResult.forMessage(response, result, null);
+            response.sendToTarget();
+            latch.countDown();
+            return null;
+        }).when(mFhMock).getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
 
-        doAnswer(
-                invocation -> {
-                    int[] result = new int[3];
-                    result[0] = 32;
-                    result[1] = 32;
-                    result[2] = 1;
-                    Rlog.d("SIMRecordsTest", "Executing the test invocation2");
-                    Message response = invocation.getArgument(5);
-                    AsyncResult.forMessage(response, result, null);
-                    response.sendToTarget();
-                    latch.countDown();
-                    return null;
-                })
-                .when(mFhMock)
-                .updateEFLinearFixed(anyInt(), eq(null), anyInt(), any(byte[].class),
-                        eq(null), any(Message.class));
-
+        doAnswer(invocation -> {
+            int[] result = new int[3];
+            result[0] = 32;
+            result[1] = 32;
+            result[2] = 1;
+            Rlog.d("SIMRecordsTest", "Executing the second invocation");
+            Message response = invocation.getArgument(5);
+            AsyncResult.forMessage(response, result, null);
+            response.sendToTarget();
+            latch.countDown();
+            return null;
+        }).when(mFhMock).updateEFLinearFixed(anyInt(), eq(null), anyInt(), any(byte[].class),
+                eq(null), any(Message.class));
 
         mSIMRecordsUT.setMailboxIndex(1);
         Message message = Message.obtain(mTestHandler);
@@ -770,53 +763,54 @@ public class SIMRecordsTest extends TelephonyTest {
         latch.await(5, TimeUnit.SECONDS);
         mTestLooper.startAutoDispatch();
         verify(mFhMock, times(1)).getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
-        verify(mFhMock, times(1)).updateEFLinearFixed(anyInt(), eq(null),
-                anyInt(), any(byte[].class), eq(null), any(Message.class));
+        verify(mFhMock, times(1)).updateEFLinearFixed(anyInt(), eq(null), anyInt(),
+                any(byte[].class), eq(null), any(Message.class));
+        waitUntilConditionIsTrueOrTimeout(new Condition() {
+            @Override
+            public Object expected() {
+                return true;
+            }
 
+            @Override
+            public Object actual() {
+                return mSIMRecordsUT.getVoiceMailNumber() != null;
+            }
+        });
         assertEquals(voiceMailNumber, mSIMRecordsUT.getVoiceMailNumber());
         assertEquals(alphaTag, mSIMRecordsUT.getVoiceMailAlphaTag());
     }
 
     @Test
-    @Ignore("b/256282468")
     public void testSetVoiceMailNumberBigAlphatag() throws InterruptedException {
-
         String voiceMailNumber = "1234567890";
         String alphaTag = "VoicemailAlphaTag-VoicemailAlphaTag";
         final CountDownLatch latch = new CountDownLatch(2);
-        doAnswer(
-                invocation -> {
-                    int[] result = new int[3];
-                    result[0] = 32;
-                    result[1] = 32;
-                    result[2] = 1;
-                    Rlog.d("SIMRecordsTest", "Executing the test invocation1");
-                    Message response = invocation.getArgument(2);
-                    AsyncResult.forMessage(response, result, null);
-                    response.sendToTarget();
-                    latch.countDown();
-                    return null;
-                })
-                .when(mFhMock)
-                .getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
+        doAnswer(invocation -> {
+            int[] result = new int[3];
+            result[0] = 32;
+            result[1] = 32;
+            result[2] = 1;
+            Rlog.d("SIMRecordsTest", "Executing the first invocation");
+            Message response = invocation.getArgument(2);
+            AsyncResult.forMessage(response, result, null);
+            response.sendToTarget();
+            latch.countDown();
+            return null;
+        }).when(mFhMock).getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
 
-        doAnswer(
-                invocation -> {
-                    int[] result = new int[3];
-                    result[0] = 32;
-                    result[1] = 32;
-                    result[2] = 1;
-                    Rlog.d("SIMRecordsTest", "Executing the test invocation2");
-                    Message response = invocation.getArgument(5);
-                    AsyncResult.forMessage(response, result, null);
-                    response.sendToTarget();
-                    latch.countDown();
-                    return null;
-                })
-                .when(mFhMock)
-                .updateEFLinearFixed(anyInt(), eq(null), anyInt(), any(byte[].class),
-                        eq(null), any(Message.class));
-
+        doAnswer(invocation -> {
+            int[] result = new int[3];
+            result[0] = 32;
+            result[1] = 32;
+            result[2] = 1;
+            Rlog.d("SIMRecordsTest", "Executing the second invocation");
+            Message response = invocation.getArgument(5);
+            AsyncResult.forMessage(response, result, null);
+            response.sendToTarget();
+            latch.countDown();
+            return null;
+        }).when(mFhMock).updateEFLinearFixed(anyInt(), eq(null), anyInt(), any(byte[].class),
+                eq(null), any(Message.class));
 
         mSIMRecordsUT.setMailboxIndex(1);
         Message message = Message.obtain(mTestHandler);
@@ -824,109 +818,112 @@ public class SIMRecordsTest extends TelephonyTest {
         latch.await(8, TimeUnit.SECONDS);
         mTestLooper.startAutoDispatch();
         verify(mFhMock, times(1)).getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
-        verify(mFhMock, times(1)).updateEFLinearFixed(anyInt(), eq(null),
-                anyInt(), any(byte[].class), eq(null), any(Message.class));
-
+        verify(mFhMock, times(1)).updateEFLinearFixed(anyInt(), eq(null), anyInt(),
+                any(byte[].class), eq(null), any(Message.class));
         //if attempt to save bugAlphatag which sim don't support so we will make it null
+        waitUntilConditionIsTrueOrTimeout(new Condition() {
+            @Override
+            public Object expected() {
+                return true;
+            }
+
+            @Override
+            public Object actual() {
+                return mSIMRecordsUT.getVoiceMailNumber() != null;
+            }
+        });
         assertEquals(null, mSIMRecordsUT.getVoiceMailAlphaTag());
         assertEquals(voiceMailNumber, mSIMRecordsUT.getVoiceMailNumber());
     }
 
     @Test
-    @Ignore("b/256282468")
     public void testSetVoiceMailNumberUtf16Alphatag() throws InterruptedException {
-
         String voiceMailNumber = "1234567890";
         String alphaTag = "หมายเลขข้อความเสียง"; // Messagerie vocale
         final CountDownLatch latch = new CountDownLatch(2);
-        doAnswer(
-                invocation -> {
-                    int[] result = new int[3];
-                    result[0] = 32;
-                    result[1] = 32;
-                    result[2] = 1;
-                    Rlog.d("SIMRecordsTest", "Executing the test invocation1");
-                    Message response = invocation.getArgument(2);
-                    AsyncResult.forMessage(response, result, null);
-                    response.sendToTarget();
-                    latch.countDown();
-                    return null;
-                })
-                .when(mFhMock)
-                .getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
+        doAnswer(invocation -> {
+            int[] result = new int[3];
+            result[0] = 32;
+            result[1] = 32;
+            result[2] = 1;
+            Rlog.d("SIMRecordsTest", "Executing the first invocation");
+            Message response = invocation.getArgument(2);
+            AsyncResult.forMessage(response, result, null);
+            response.sendToTarget();
+            latch.countDown();
+            return null;
+        }).when(mFhMock).getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
 
-        doAnswer(
-                invocation -> {
-                    int[] result = new int[3];
-                    result[0] = 32;
-                    result[1] = 32;
-                    result[2] = 1;
-                    Rlog.d("SIMRecordsTest", "Executing the test invocation2");
-                    Message response = invocation.getArgument(5);
-                    AsyncResult.forMessage(response, result, null);
-                    response.sendToTarget();
-                    latch.countDown();
-                    return null;
-                })
-                .when(mFhMock)
-                .updateEFLinearFixed(anyInt(), eq(null), anyInt(), any(byte[].class),
-                        eq(null), any(Message.class));
-
+        doAnswer(invocation -> {
+            int[] result = new int[3];
+            result[0] = 32;
+            result[1] = 32;
+            result[2] = 1;
+            Rlog.d("SIMRecordsTest", "Executing the second invocation");
+            Message response = invocation.getArgument(5);
+            AsyncResult.forMessage(response, result, null);
+            response.sendToTarget();
+            latch.countDown();
+            return null;
+        }).when(mFhMock).updateEFLinearFixed(anyInt(), eq(null), anyInt(), any(byte[].class),
+                eq(null), any(Message.class));
 
         mSIMRecordsUT.setMailboxIndex(1);
         Message message = Message.obtain(mTestHandler);
         mSIMRecordsUT.setVoiceMailNumber(alphaTag, voiceMailNumber, message);
         latch.await(5, TimeUnit.SECONDS);
+
         mTestLooper.startAutoDispatch();
         verify(mFhMock, times(1)).getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
-        verify(mFhMock, times(1)).updateEFLinearFixed(anyInt(), eq(null),
-                anyInt(), any(byte[].class), eq(null), any(Message.class));
+        verify(mFhMock, times(1)).updateEFLinearFixed(anyInt(), eq(null), anyInt(),
+                any(byte[].class), eq(null), any(Message.class));
+        waitUntilConditionIsTrueOrTimeout(new Condition() {
+            @Override
+            public Object expected() {
+                return true;
+            }
 
+            @Override
+            public Object actual() {
+                return mSIMRecordsUT.getVoiceMailNumber() != null;
+            }
+        });
         assertEquals(voiceMailNumber, mSIMRecordsUT.getVoiceMailNumber());
         //if attempt to save bugAlphatag which sim don't support so we will make it null
         assertEquals(null, mSIMRecordsUT.getVoiceMailAlphaTag());
     }
 
     @Test
-    @Ignore("b/256282468")
     public void testSetVoiceMailNullNumber() throws InterruptedException {
-
         String voiceMailNumber = null;
         String alphaTag = "VoicemailAlphaTag"; // Messagerie vocale
         final CountDownLatch latch = new CountDownLatch(2);
-        doAnswer(
-                invocation -> {
-                    int[] result = new int[3];
-                    result[0] = 32;
-                    result[1] = 32;
-                    result[2] = 1;
-                    Rlog.d("SIMRecordsTest", "Executing the test invocation1");
-                    Message response = invocation.getArgument(2);
-                    AsyncResult.forMessage(response, result, null);
-                    response.sendToTarget();
-                    latch.countDown();
-                    return null;
-                })
-                .when(mFhMock)
-                .getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
+        doAnswer(invocation -> {
+            int[] result = new int[3];
+            result[0] = 32;
+            result[1] = 32;
+            result[2] = 1;
+            Rlog.d("SIMRecordsTest", "Executing the first invocation");
+            Message response = invocation.getArgument(2);
+            AsyncResult.forMessage(response, result, null);
+            response.sendToTarget();
+            latch.countDown();
+            return null;
+        }).when(mFhMock).getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
 
-        doAnswer(
-                invocation -> {
-                    int[] result = new int[3];
-                    result[0] = 32;
-                    result[1] = 32;
-                    result[2] = 1;
-                    Rlog.d("SIMRecordsTest", "Executing the test invocation2");
-                    Message response = invocation.getArgument(5);
-                    AsyncResult.forMessage(response, result, null);
-                    response.sendToTarget();
-                    latch.countDown();
-                    return null;
-                })
-                .when(mFhMock)
-                .updateEFLinearFixed(anyInt(), eq(null), anyInt(), any(byte[].class),
-                        eq(null), any(Message.class));
-
+        doAnswer(invocation -> {
+            int[] result = new int[3];
+            result[0] = 32;
+            result[1] = 32;
+            result[2] = 1;
+            Rlog.d("SIMRecordsTest", "Executing the second invocation");
+            Message response = invocation.getArgument(5);
+            AsyncResult.forMessage(response, result, null);
+            response.sendToTarget();
+            latch.countDown();
+            return null;
+        }).when(mFhMock).updateEFLinearFixed(anyInt(), eq(null), anyInt(), any(byte[].class),
+                eq(null), any(Message.class));
 
         mSIMRecordsUT.setMailboxIndex(1);
         Message message = Message.obtain(mTestHandler);
@@ -934,10 +931,44 @@ public class SIMRecordsTest extends TelephonyTest {
         latch.await(5, TimeUnit.SECONDS);
         mTestLooper.startAutoDispatch();
         verify(mFhMock, times(1)).getEFLinearRecordSize(anyInt(), isNull(), any(Message.class));
-        verify(mFhMock, times(1)).updateEFLinearFixed(anyInt(), eq(null),
-                anyInt(), any(byte[].class), eq(null), any(Message.class));
+        verify(mFhMock, times(1)).updateEFLinearFixed(anyInt(), eq(null), anyInt(),
+                any(byte[].class), eq(null), any(Message.class));
+        waitUntilConditionIsTrueOrTimeout(new Condition() {
+            @Override
+            public Object expected() {
+                return true;
+            }
 
+            @Override
+            public Object actual() {
+                return mSIMRecordsUT.getVoiceMailAlphaTag() != null;
+            }
+        });
         assertEquals(null, mSIMRecordsUT.getVoiceMailNumber());
         assertEquals(alphaTag, mSIMRecordsUT.getVoiceMailAlphaTag());
+    }
+
+    public interface Condition {
+        Object expected();
+
+        Object actual();
+    }
+
+    protected void sleep(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (Exception e) {
+            Log.d(TAG, "InterruptedException");
+        }
+    }
+
+    protected void waitUntilConditionIsTrueOrTimeout(Condition condition) {
+        final long start = System.currentTimeMillis();
+        while (!Objects.equals(condition.expected(), condition.actual())
+                && System.currentTimeMillis() - start
+                < (long) SIMRecordsTest.SET_VOICE_MAIL_TIMEOUT) {
+            sleep(50);
+        }
+        assertEquals("Service Unbound", condition.expected(), condition.actual());
     }
 }
