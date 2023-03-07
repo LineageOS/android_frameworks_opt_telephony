@@ -2379,17 +2379,29 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Loads the allowed network type from subscription database.
      */
     public void loadAllowedNetworksFromSubscriptionDatabase() {
-        // Try to load ALLOWED_NETWORK_TYPES from SIMINFO.
-        if (SubscriptionController.getInstance() == null) {
-            return;
+        String result = null;
+        if (isSubscriptionManagerServiceEnabled()) {
+            SubscriptionInfoInternal subInfo = mSubscriptionManagerService
+                    .getSubscriptionInfoInternal(getSubId());
+            if (subInfo != null) {
+                result = subInfo.getAllowedNetworkTypesForReasons();
+            }
+        } else {
+            // Try to load ALLOWED_NETWORK_TYPES from SIMINFO.
+            if (SubscriptionController.getInstance() == null) {
+                return;
+            }
+
+            result = SubscriptionController.getInstance().getSubscriptionProperty(
+                    getSubId(),
+                    SubscriptionManager.ALLOWED_NETWORK_TYPES);
         }
 
-        String result = SubscriptionController.getInstance().getSubscriptionProperty(
-                getSubId(),
-                SubscriptionManager.ALLOWED_NETWORK_TYPES);
         // After fw load network type from DB, do unlock if subId is valid.
-        mIsAllowedNetworkTypesLoadedFromDb = SubscriptionManager.isValidSubscriptionId(getSubId());
-        if (result == null) {
+        mIsAllowedNetworkTypesLoadedFromDb = SubscriptionManager.isValidSubscriptionId(
+                getSubId());
+
+        if (TextUtils.isEmpty(result)) {
             return;
         }
 
@@ -4057,6 +4069,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     @UnsupportedAppUsage
     public int getSubId() {
+        if (isSubscriptionManagerServiceEnabled()) {
+            return mSubscriptionManagerService.getSubId(mPhoneId);
+        }
         if (SubscriptionController.getInstance() == null) {
             // TODO b/78359408 getInstance sometimes returns null in Treehugger tests, which causes
             // flakiness. Even though we haven't seen this crash in the wild we should keep this
