@@ -2059,6 +2059,10 @@ public class ImsPhone extends ImsPhoneBase {
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void handleEnterEmergencyCallbackMode() {
+        if (DomainSelectionResolver.getInstance().isDomainSelectionSupported()) {
+            logd("DomainSelection enabled: ignore ECBM enter event.");
+            return;
+        }
         if (DBG) logd("handleEnterEmergencyCallbackMode,mIsPhoneInEcmState= " + isInEcm());
         // if phone is not in Ecm mode, and it's changed to Ecm mode
         if (!isInEcm()) {
@@ -2080,6 +2084,10 @@ public class ImsPhone extends ImsPhoneBase {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @Override
     protected void handleExitEmergencyCallbackMode() {
+        if (DomainSelectionResolver.getInstance().isDomainSelectionSupported()) {
+            logd("DomainSelection enabled: ignore ECBM exit event.");
+            return;
+        }
         if (DBG) logd("handleExitEmergencyCallbackMode: mIsPhoneInEcmState = " + isInEcm());
 
         if (isInEcm()) {
