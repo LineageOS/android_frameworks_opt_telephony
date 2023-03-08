@@ -18,8 +18,11 @@ package com.android.internal.telephony.satellite;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.content.Context;
 import android.os.AsyncResult;
+import android.os.Binder;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
 import android.telephony.satellite.PointingInfo;
 import android.telephony.satellite.SatelliteCapabilities;
 import android.telephony.satellite.SatelliteDatagram;
@@ -32,6 +35,8 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RILUtils;
+import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -203,20 +208,14 @@ public class SatelliteServiceUtils {
      *
      * @param ar AsyncResult used to determine the error code.
      * @param caller The satellite request.
-     * @param checkResult Whether to check if the result exists.
      *
      * @return The {@link SatelliteManager.SatelliteError} error code from the request.
      */
     @SatelliteManager.SatelliteError public static int getSatelliteError(@NonNull AsyncResult ar,
-            @NonNull String caller, boolean checkResult) {
+            @NonNull String caller) {
         int errorCode;
         if (ar.exception == null) {
             errorCode = SatelliteManager.SATELLITE_ERROR_NONE;
-            if (checkResult && ar.result == null) {
-                // TODO: Move this out of this method.
-                loge(caller + ": result is null");
-                errorCode = SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE;
-            }
         } else {
             errorCode = SatelliteManager.SATELLITE_ERROR;
             if (ar.exception instanceof CommandException) {
@@ -232,6 +231,34 @@ public class SatelliteServiceUtils {
         }
         logd(caller + " error: " + errorCode);
         return errorCode;
+    }
+
+    /**
+     * Get valid subscription id for satellite communication.
+     *
+     * @param subId The subscription id.
+     * @return input subId if the subscription is active else return default subscription id.
+     */
+    public static int getValidSatelliteSubId(int subId, @NonNull Context context) {
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            boolean isActive;
+            if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
+                isActive = SubscriptionManagerService.getInstance().isActiveSubId(subId,
+                        context.getOpPackageName(), context.getAttributionTag());
+            } else {
+                isActive = SubscriptionController.getInstance().isActiveSubId(subId,
+                        context.getOpPackageName(), context.getAttributionTag());
+            }
+
+            if (isActive) {
+                return subId;
+            }
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+        logd("getValidSatelliteSubId: use DEFAULT_SUBSCRIPTION_ID for subId=" + subId);
+        return SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
     }
 
     /**

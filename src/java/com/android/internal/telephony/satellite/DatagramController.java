@@ -19,14 +19,16 @@ package com.android.internal.telephony.satellite;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
+import android.os.Looper;
 import android.os.Message;
-import android.os.ResultReceiver;
 import android.telephony.Rlog;
 import android.telephony.satellite.ISatelliteDatagramCallback;
 import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
 
 import com.android.internal.telephony.Phone;
+
+import java.util.function.Consumer;
 
 /**
  * Datagram controller used for sending and receiving satellite datagrams.
@@ -38,6 +40,7 @@ public class DatagramController {
     @NonNull private final Context mContext;
     @NonNull private final DatagramDispatcher mDatagramDispatcher;
     @NonNull private final DatagramReceiver mDatagramReceiver;
+    public static final long MAX_DATAGRAM_ID = (long) Math.pow(2, 16);
 
     /**
      * @return The singleton instance of DatagramController.
@@ -52,11 +55,12 @@ public class DatagramController {
     /**
      * Create the DatagramController singleton instance.
      * @param context The Context to use to create the DatagramController.
+     * @param looper The looper for the handler.
      * @return The singleton instance of DatagramController.
      */
-    public static DatagramController make(@NonNull Context context) {
+    public static DatagramController make(@NonNull Context context, @NonNull Looper looper) {
         if (sInstance == null) {
-            sInstance = new DatagramController(context);
+            sInstance = new DatagramController(context, looper);
         }
         return sInstance;
     }
@@ -65,16 +69,17 @@ public class DatagramController {
      * Create a DatagramController to send and receive satellite datagrams.
      *
      * @param context The Context for the DatagramController.
+     * @param looper The looper for the handler.
      */
-    private DatagramController(@NonNull Context context) {
+    private DatagramController(@NonNull Context context, @NonNull Looper  looper) {
         mContext = context;
         // Create the DatagramDispatcher singleton,
         // which is used to send satellite datagrams.
-        mDatagramDispatcher = DatagramDispatcher.make(mContext);
+        mDatagramDispatcher = DatagramDispatcher.make(mContext, looper);
 
         // Create the DatagramReceiver singleton,
         // which is used to receive satellite datagrams.
-        mDatagramReceiver = DatagramReceiver.make(mContext);
+        mDatagramReceiver = DatagramReceiver.make(mContext, looper);
     }
 
     /**
@@ -112,7 +117,7 @@ public class DatagramController {
      * This method requests modem to check if there are any pending datagrams to be received over
      * satellite. If there are any incoming datagrams, they will be received via
      * {@link android.telephony.satellite.SatelliteDatagramCallback
-     * #onSatelliteDatagramReceived(long, SatelliteDatagram, int, ISatelliteDatagramReceiverAck)}
+     * #onSatelliteDatagramReceived(long, SatelliteDatagram, int, ILongConsumer)}
      *
      */
     public void pollPendingSatelliteDatagrams(@NonNull Message message, @Nullable Phone phone) {
@@ -127,7 +132,6 @@ public class DatagramController {
      * input to this method. Datagram received here will be passed down to modem without any
      * encoding or encryption.
      *
-     * @param datagramId An id that uniquely identifies datagram requested to be sent.
      * @param datagramType datagram type indicating whether the datagram is of type
      *                     SOS_SMS or LOCATION_SHARING.
      * @param datagram encoded gateway datagram which is encrypted by the caller.
@@ -135,16 +139,14 @@ public class DatagramController {
      * @param needFullScreenPointingUI this is used to indicate pointingUI app to open in
      *                                 full screen mode.
      * @param isSatelliteDemoModeEnabled True if satellite demo mode is enabled
-     * @param result The result receiver that returns datagramId if datagram is sent successfully
-     *               or {@link SatelliteManager.SatelliteError} of the request if it is failed.
+     * @param callback The callback to get {@link SatelliteManager.SatelliteError} of the request.
      */
-    public void sendSatelliteDatagram(long datagramId,
-            @SatelliteManager.DatagramType int datagramType, @NonNull SatelliteDatagram datagram,
-            boolean needFullScreenPointingUI, boolean isSatelliteDemoModeEnabled,
-            @NonNull ResultReceiver result) {
+    public void sendSatelliteDatagram(@SatelliteManager.DatagramType int datagramType,
+            @NonNull SatelliteDatagram datagram, boolean needFullScreenPointingUI,
+            boolean isSatelliteDemoModeEnabled, @NonNull Consumer<Integer> callback) {
         // TODO: set modemTransferState = SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING
-        mDatagramDispatcher.sendSatelliteDatagram(datagramId, datagramType, datagram,
-                needFullScreenPointingUI, isSatelliteDemoModeEnabled, result);
+        mDatagramDispatcher.sendSatelliteDatagram(datagramType, datagram,
+                needFullScreenPointingUI, isSatelliteDemoModeEnabled, callback);
     }
 
     private static void logd(@NonNull String log) {
