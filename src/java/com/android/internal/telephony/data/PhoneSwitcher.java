@@ -295,11 +295,6 @@ public class PhoneSwitcher extends Handler {
     /** Data config manager callback for updating device config. **/
     private final DataConfigManager.DataConfigManagerCallback mDataConfigManagerCallback =
             new DataConfigManager.DataConfigManagerCallback(this::post) {
-        @Override
-        public void onDeviceConfigChanged() {
-            log("onDeviceConfigChanged");
-            PhoneSwitcher.this.updateDeviceConfig();
-        }
 
         @Override
         public void onCarrierConfigChanged() {
@@ -383,8 +378,7 @@ public class PhoneSwitcher extends Handler {
     /**
      * The maximum number of retries when a validation for switching failed.
      */
-    private int mAutoDataSwitchValidationMaxRetry =
-            DataConfigManager.DEFAULT_AUTO_DATA_SWITCH_MAX_RETRY;
+    private int mAutoDataSwitchValidationMaxRetry;
 
     /** Data settings manager callback. Key is the phone id. */
     private final @NonNull Map<Integer, DataSettingsManagerCallback> mDataSettingsManagerCallbacks =
@@ -937,29 +931,15 @@ public class PhoneSwitcher extends Handler {
     }
 
     /**
-     * Register for device config change on the primary data phone.
+     * Register for config change on the primary data phone.
      */
     private void registerConfigChange() {
         Phone phone = getPhoneBySubId(mPrimaryDataSubId);
         if (phone != null) {
             DataConfigManager dataConfig = phone.getDataNetworkController().getDataConfigManager();
             dataConfig.registerCallback(mDataConfigManagerCallback);
-            updateDeviceConfig();
+            updateCarrierConfig();
             sendEmptyMessage(EVENT_EVALUATE_AUTO_SWITCH);
-        }
-    }
-
-    /**
-     * Update device config.
-     */
-    private void updateDeviceConfig() {
-        Phone phone = getPhoneBySubId(mPrimaryDataSubId);
-        if (phone != null) {
-            DataConfigManager dataConfig = phone.getDataNetworkController().getDataConfigManager();
-            mAutoDataSwitchAvailabilityStabilityTimeThreshold =
-                    dataConfig.getAutoDataSwitchAvailabilityStabilityTimeThreshold();
-            mAutoDataSwitchValidationMaxRetry =
-                    dataConfig.getAutoDataSwitchValidationMaxRetry();
         }
     }
 
@@ -971,6 +951,10 @@ public class PhoneSwitcher extends Handler {
         if (phone != null) {
             DataConfigManager dataConfig = phone.getDataNetworkController().getDataConfigManager();
             mRequirePingTestBeforeDataSwitch = dataConfig.requirePingTestBeforeDataSwitch();
+            mAutoDataSwitchAvailabilityStabilityTimeThreshold =
+                    dataConfig.getAutoDataSwitchAvailabilityStabilityTimeThreshold();
+            mAutoDataSwitchValidationMaxRetry =
+                    dataConfig.getAutoDataSwitchValidationMaxRetry();
         }
     }
 
