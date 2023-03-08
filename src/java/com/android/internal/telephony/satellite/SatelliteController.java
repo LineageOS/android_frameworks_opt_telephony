@@ -18,7 +18,10 @@ package com.android.internal.telephony.satellite;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
+import android.content.Intent;
+import android.net.wifi.WifiManager;
 import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Bundle;
@@ -95,7 +98,10 @@ public class SatelliteController extends Handler {
     @NonNull private final PointingAppController mPointingAppController;
     @NonNull private final DatagramController mDatagramController;
 
-
+    BluetoothAdapter mBluetoothAdapter = null;
+    WifiManager mWifiManager = null;
+    boolean mDisabledBTFlag = false;
+    boolean mDisabledWifiFlag = false;
     /**
      * Map key: subId, value: callback to get error code of the provision request.
      */
@@ -524,6 +530,24 @@ public class SatelliteController extends Handler {
                 RequestSatelliteEnabledArgument argument =
                         (RequestSatelliteEnabledArgument) request.argument;
                 onCompleted = obtainMessage(EVENT_SET_SATELLITE_ENABLED_DONE, request);
+                if (argument.enabled) {
+                    if (mBluetoothAdapter == null) {
+                        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                    }
+                    if (mWifiManager == null) {
+                        mWifiManager = mContext.getSystemService(WifiManager.class);
+                    }
+                    if (mBluetoothAdapter.isEnabled()) {
+                        if (DBG) logd("disabling Bluetooth");
+                        mBluetoothAdapter.disable();
+                        mDisabledBTFlag = true;
+                    }
+                    if (mWifiManager.isWifiEnabled()) {
+                        if (DBG) logd("disabling Wifi");
+                        mWifiManager.setWifiEnabled(false);
+                        mDisabledWifiFlag = true;
+                    }
+                }
                 if (mSatelliteModemInterface.isSatelliteServiceSupported()) {
                     mSatelliteModemInterface.requestSatelliteEnabled(argument.enabled, onCompleted);
                     break;
@@ -546,6 +570,22 @@ public class SatelliteController extends Handler {
                 int error =  SatelliteServiceUtils.getSatelliteError(ar,
                         "setSatelliteEnabled", false);
                 if (error == SatelliteManager.SATELLITE_ERROR_NONE) {
+                    if (!argument.enabled) {
+                        if (mBluetoothAdapter == null) {
+                            mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                        }
+                        if (mWifiManager == null) {
+                            mWifiManager = mContext.getSystemService(WifiManager.class);
+                        }
+                        if (!mBluetoothAdapter.isEnabled() && mDisabledBTFlag) {
+                            if (DBG) logd("Enabling Bluetooth");
+                            mBluetoothAdapter.enable();
+                        }
+                        if (!mWifiManager.isWifiEnabled() && mDisabledWifiFlag) {
+                            if (DBG) logd("Enabling Wifi");
+                            mWifiManager.setWifiEnabled(true);
+                        }
+                    }
                     /**
                      * TODO: check if Satellite is Acquired.
                      * Also need to call requestSatelliteCapabilities() if Satellite is enabled
