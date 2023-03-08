@@ -221,8 +221,9 @@ public class ServiceStateTracker extends Handler {
     private final RegistrantList mAirplaneModeChangedRegistrants = new RegistrantList();
     private final RegistrantList mAreaCodeChangedRegistrants = new RegistrantList();
 
-    /* Radio power off pending flag and tag counter */
-    private boolean mPendingRadioPowerOffAfterDataOff = false;
+    /* Radio power off pending flag */
+    // @GuardedBy("this")
+    private volatile boolean mPendingRadioPowerOffAfterDataOff = false;
 
     /** Waiting period before recheck gprs and voice registration. */
     public static final int DEFAULT_GPRS_CHECK_PERIOD_MILLIS = 60 * 1000;
@@ -1458,24 +1459,26 @@ public class ServiceStateTracker extends Handler {
 
             case EVENT_ALL_DATA_DISCONNECTED:
                 log("EVENT_ALL_DATA_DISCONNECTED");
-                if (!mPendingRadioPowerOffAfterDataOff) return;
-                boolean areAllDataDisconnectedOnAllPhones = true;
-                for (Phone phone : PhoneFactory.getPhones()) {
-                    if (phone.getDataNetworkController().areAllDataDisconnected()) {
-                        phone.getDataNetworkController()
+                synchronized (this) {
+                    if (!mPendingRadioPowerOffAfterDataOff) return;
+                    boolean areAllDataDisconnectedOnAllPhones = true;
+                    for (Phone phone : PhoneFactory.getPhones()) {
+                        if (phone.getDataNetworkController().areAllDataDisconnected()) {
+                            phone.getDataNetworkController()
                                 .unregisterDataNetworkControllerCallback(
                                         mDataDisconnectedCallback);
-                    } else {
-                        log("Still waiting for all data disconnected on phone: "
-                                + phone.getSubId());
-                        areAllDataDisconnectedOnAllPhones = false;
+                        } else {
+                            log("Still waiting for all data disconnected on phone: "
+                                    + phone.getSubId());
+                            areAllDataDisconnectedOnAllPhones = false;
+                        }
                     }
-                }
-                if (areAllDataDisconnectedOnAllPhones) {
-                    mPendingRadioPowerOffAfterDataOff = false;
-                    removeMessages(EVENT_SET_RADIO_POWER_OFF);
-                    if (DBG) log("Data disconnected for all phones, turn radio off now.");
-                    hangupAndPowerOff();
+                    if (areAllDataDisconnectedOnAllPhones) {
+                        mPendingRadioPowerOffAfterDataOff = false;
+                        removeMessages(EVENT_SET_RADIO_POWER_OFF);
+                        if (DBG) log("Data disconnected for all phones, turn radio off now.");
+                        hangupAndPowerOff();
+                    }
                 }
                 break;
 
