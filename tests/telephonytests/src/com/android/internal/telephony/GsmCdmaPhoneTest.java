@@ -87,6 +87,7 @@ import android.util.Log;
 import androidx.test.filters.FlakyTest;
 
 import com.android.internal.telephony.domainselection.DomainSelectionResolver;
+import com.android.internal.telephony.emergency.EmergencyStateTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
@@ -2478,5 +2479,99 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 captureBitMask.capture(),
                 nullable(Message.class));
         assertEquals(0, captureBitMask.getValue() & TelephonyManager.NETWORK_CLASS_BITMASK_2G);
+    }
+
+    @Test
+    @SmallTest
+    public void testEcbm() throws Exception {
+        assertFalse(mPhoneUT.isInEcm());
+
+        mPhoneUT.handleMessage(mPhoneUT.obtainMessage(
+                GsmCdmaPhone.EVENT_EMERGENCY_CALLBACK_MODE_ENTER));
+
+        assertTrue(mPhoneUT.isInEcm());
+        verifyEcbmIntentWasSent(1 /*times*/, true /*inEcm*/);
+        // verify that wakeLock is acquired in ECM
+        assertTrue(mPhoneUT.getWakeLock().isHeld());
+
+        boolean isTestingEmergencyCallbackMode = true;
+        replaceInstance(GsmCdmaPhone.class, "mIsTestingEmergencyCallbackMode", mPhoneUT,
+                isTestingEmergencyCallbackMode);
+        mPhoneUT.exitEmergencyCallbackMode();
+        processAllMessages();
+
+        assertFalse(mPhoneUT.isInEcm());
+        verifyEcbmIntentWasSent(2/*times*/, false /*inEcm*/);
+        // verify wakeLock released
+        assertFalse(mPhoneUT.getWakeLock().isHeld());
+    }
+
+    private void verifyEcbmIntentWasSent(int times, boolean isInEcm) throws Exception {
+        // verify ACTION_EMERGENCY_CALLBACK_MODE_CHANGED
+        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, atLeast(times)).sendStickyBroadcastAsUser(intentArgumentCaptor.capture(),
+                any());
+
+        Intent intent = intentArgumentCaptor.getValue();
+        assertNotNull(intent);
+        assertEquals(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED, intent.getAction());
+        assertEquals(isInEcm, intent.getBooleanExtra(
+                TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, false));
+    }
+
+    @Test
+    @SmallTest
+    public void testEcbmWhenDomainSelectionEnabled() throws Exception {
+        DomainSelectionResolver dsResolver = Mockito.mock(DomainSelectionResolver.class);
+        doReturn(true).when(dsResolver).isDomainSelectionSupported();
+        DomainSelectionResolver.setDomainSelectionResolver(dsResolver);
+
+        mPhoneUT.handleMessage(mPhoneUT.obtainMessage(
+                GsmCdmaPhone.EVENT_EMERGENCY_CALLBACK_MODE_ENTER));
+
+        boolean isTestingEmergencyCallbackMode = true;
+        replaceInstance(GsmCdmaPhone.class, "mIsTestingEmergencyCallbackMode", mPhoneUT,
+                isTestingEmergencyCallbackMode);
+        mPhoneUT.exitEmergencyCallbackMode();
+        processAllMessages();
+
+        verify(mContext, never()).sendStickyBroadcastAsUser(any(), any());
+    }
+
+    @Test
+    @SmallTest
+    public void testEcbmOnModemResetForNonGsmPhone() throws Exception {
+        switchToCdma();
+        assertFalse(mPhoneUT.isInEcm());
+
+        mPhoneUT.handleMessage(mPhoneUT.obtainMessage(
+                GsmCdmaPhone.EVENT_EMERGENCY_CALLBACK_MODE_ENTER));
+
+        assertTrue(mPhoneUT.isInEcm());
+
+        Message m = mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_MODEM_RESET);
+        AsyncResult.forMessage(m);
+        mPhoneUT.handleMessage(m);
+
+        assertFalse(mPhoneUT.isInEcm());
+        verifyEcbmIntentWasSent(2 /*times*/, false /*inEcm*/);
+    }
+
+    @Test
+    @SmallTest
+    public void testEcbmOnModemResetWhenDomainSelectionEnabled() throws Exception {
+        DomainSelectionResolver dsResolver = Mockito.mock(DomainSelectionResolver.class);
+        doReturn(true).when(dsResolver).isDomainSelectionSupported();
+        DomainSelectionResolver.setDomainSelectionResolver(dsResolver);
+
+        EmergencyStateTracker est = Mockito.mock(EmergencyStateTracker.class);
+        doReturn(true).when(est).isInEcm();
+        replaceInstance(EmergencyStateTracker.class, "INSTANCE", null, est);
+
+        GsmCdmaPhone spyPhone = spy(mPhoneUT);
+        doReturn(true).when(spyPhone).isInEcm();
+        mPhoneUT.handleMessage(mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_MODEM_RESET));
+
+        verify(est).exitEmergencyCallbackMode();
     }
 }

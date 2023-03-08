@@ -40,13 +40,11 @@ import android.telephony.satellite.SatelliteCapabilities;
 import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
 import android.util.Log;
-import android.util.Pair;
 
-import com.android.internal.telephony.CommandException;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.IIntegerConsumer;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
-import com.android.internal.telephony.RILUtils;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.util.FunctionalUtils;
@@ -149,7 +147,8 @@ public class SatelliteController extends Handler {
      *
      * @param context The Context for the SatelliteController.
      */
-    private SatelliteController(@NonNull Context context) {
+    @VisibleForTesting
+    protected SatelliteController(@NonNull Context context) {
         super(context.getMainLooper());
         mContext = context;
 
@@ -1094,7 +1093,35 @@ public class SatelliteController extends Handler {
      */
     @SatelliteManager.SatelliteError public int registerForSatelliteProvisionStateChanged(int subId,
             @NonNull ISatelliteProvisionStateCallback callback) {
-        return registerForSatelliteProvisionStateChangedInternal(subId, callback);
+        if (!isSatelliteSupported()) {
+            return SatelliteManager.SATELLITE_NOT_SUPPORTED;
+        }
+
+        final int validSubId = getValidSatelliteSubId(subId);
+        Phone phone = SatelliteServiceUtils.getPhone();
+
+        SatelliteProvisionStateChangedHandler satelliteProvisionStateChangedHandler =
+                mSatelliteProvisionStateChangedHandlers.get(validSubId);
+        if (satelliteProvisionStateChangedHandler == null) {
+            satelliteProvisionStateChangedHandler = new SatelliteProvisionStateChangedHandler(
+                    Looper.getMainLooper(), validSubId);
+            if (mSatelliteModemInterface.isSatelliteServiceSupported()) {
+                mSatelliteModemInterface.registerForSatelliteProvisionStateChanged(
+                        satelliteProvisionStateChangedHandler,
+                        SatelliteProvisionStateChangedHandler.EVENT_PROVISION_STATE_CHANGED, null);
+            } else {
+                phone.registerForSatelliteProvisionStateChanged(
+                        satelliteProvisionStateChangedHandler,
+                        SatelliteProvisionStateChangedHandler.EVENT_PROVISION_STATE_CHANGED, null);
+            }
+        }
+
+        if (callback != null) {
+            satelliteProvisionStateChangedHandler.addListener(callback);
+        }
+        mSatelliteProvisionStateChangedHandlers.put(
+                validSubId, satelliteProvisionStateChangedHandler);
+        return SatelliteManager.SATELLITE_ERROR_NONE;
     }
 
     /**
@@ -1312,12 +1339,6 @@ public class SatelliteController extends Handler {
             return;
         }
 
-        final int validSubId = getValidSatelliteSubId(subId);
-        if (!isSatelliteProvisioned(validSubId)) {
-            result.send(SatelliteManager.SATELLITE_SERVICE_NOT_PROVISIONED, null);
-            return;
-        }
-
         Phone phone = SatelliteServiceUtils.getPhone();
         sendRequest(CMD_IS_SATELLITE_COMMUNICATION_ALLOWED, result, phone);
     }
@@ -1367,7 +1388,7 @@ public class SatelliteController extends Handler {
          * or SatelliteController.
          * TODO (b/267826133) we need to do this for all subscriptions on the device.
          */
-        registerForSatelliteProvisionStateChangedInternal(arg.subId, null);
+        registerForSatelliteProvisionStateChanged(arg.subId, null);
     }
 
     private void handleEventDeprovisionSatelliteServiceDone(
@@ -1387,47 +1408,6 @@ public class SatelliteController extends Handler {
         if (result == SatelliteManager.SATELLITE_ERROR_NONE) {
             setSatelliteProvisioned(arg.subId, false);
         }
-    }
-
-    /**
-     * Registers for the satellite provision state changed.
-     *
-     * @param subId The subId of the subscription associated with the satellite service.
-     * @param callback The callback to handle the satellite provision state changed event.
-     *
-     * @return The {@link SatelliteManager.SatelliteError} result of the operation.
-     */
-    @SatelliteManager.SatelliteError private int registerForSatelliteProvisionStateChangedInternal(
-            int subId, @Nullable ISatelliteProvisionStateCallback callback) {
-        if (!isSatelliteSupported()) {
-            return SatelliteManager.SATELLITE_NOT_SUPPORTED;
-        }
-
-        final int validSubId = getValidSatelliteSubId(subId);
-        Phone phone = SatelliteServiceUtils.getPhone();
-
-        SatelliteProvisionStateChangedHandler satelliteProvisionStateChangedHandler =
-                mSatelliteProvisionStateChangedHandlers.get(validSubId);
-        if (satelliteProvisionStateChangedHandler == null) {
-            satelliteProvisionStateChangedHandler = new SatelliteProvisionStateChangedHandler(
-                    Looper.getMainLooper(), validSubId);
-            if (mSatelliteModemInterface.isSatelliteServiceSupported()) {
-                mSatelliteModemInterface.registerForSatelliteProvisionStateChanged(
-                        satelliteProvisionStateChangedHandler,
-                        SatelliteProvisionStateChangedHandler.EVENT_PROVISION_STATE_CHANGED, null);
-            } else {
-                phone.registerForSatelliteProvisionStateChanged(
-                        satelliteProvisionStateChangedHandler,
-                        SatelliteProvisionStateChangedHandler.EVENT_PROVISION_STATE_CHANGED, null);
-            }
-        }
-
-        if (callback != null) {
-            satelliteProvisionStateChangedHandler.addListener(callback);
-        }
-        mSatelliteProvisionStateChangedHandlers.put(
-                validSubId, satelliteProvisionStateChangedHandler);
-        return SatelliteManager.SATELLITE_ERROR_NONE;
     }
 
     private void handleStartSatellitePositionUpdatesDone(@NonNull AsyncResult ar) {
@@ -1568,7 +1548,8 @@ public class SatelliteController extends Handler {
      * @param subId The subscription id.
      * @return true if satellite is provisioned on the given subscription else return false.
      */
-    public boolean isSatelliteProvisioned(int subId) {
+    @VisibleForTesting
+    protected boolean isSatelliteProvisioned(int subId) {
         final long identity = Binder.clearCallingIdentity();
         try {
             if (subId != SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {

@@ -287,16 +287,17 @@ public class CarrierInfoManager {
             return;
         }
         mLastAccessResetCarrierKey = now;
-        int[] subIds = context.getSystemService(SubscriptionManager.class)
-                .getSubscriptionIds(mPhoneId);
-        if (subIds == null || subIds.length < 1) {
+
+        int subId = SubscriptionManager.getSubscriptionId(mPhoneId);
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
             Log.e(LOG_TAG, "Could not reset carrier keys, subscription for mPhoneId=" + mPhoneId);
             return;
         }
+
         final TelephonyManager telephonyManager = context.getSystemService(TelephonyManager.class)
-                .createForSubscriptionId(subIds[0]);
+                .createForSubscriptionId(subId);
         int carrierId = telephonyManager.getSimCarrierId();
-        deleteCarrierInfoForImsiEncryption(context, subIds[0], carrierId);
+        deleteCarrierInfoForImsiEncryption(context, subId, carrierId);
         Intent resetIntent = new Intent(TelephonyIntents.ACTION_CARRIER_CERTIFICATE_DOWNLOAD);
         SubscriptionManager.putPhoneIdAndSubIdExtra(resetIntent, mPhoneId);
         context.sendBroadcastAsUser(resetIntent, UserHandle.ALL);
