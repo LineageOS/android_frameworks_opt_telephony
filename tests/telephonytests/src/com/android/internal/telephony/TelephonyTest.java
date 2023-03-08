@@ -534,6 +534,7 @@ public abstract class TelephonyTest {
                 .queryLocalInterface(anyString());
 
         mPhone.mCi = mSimulatedCommands;
+        mPhone.mCT = mCT;
         mCT.mCi = mSimulatedCommands;
         doReturn(mUiccCard).when(mPhone).getUiccCard();
         doReturn(mUiccCard).when(mUiccSlot).getUiccCard();
