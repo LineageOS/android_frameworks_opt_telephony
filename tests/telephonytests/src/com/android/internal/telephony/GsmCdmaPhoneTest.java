@@ -61,6 +61,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.Process;
+import android.os.UserHandle;
 import android.os.UserManager;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
@@ -2573,5 +2574,19 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mPhoneUT.handleMessage(mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_MODEM_RESET));
 
         verify(est).exitEmergencyCallbackMode();
+    }
+
+    @Test
+    public void testGetUserHandle() {
+        UserHandle userHandle = new UserHandle(123);
+        doReturn(userHandle).when(mSubscriptionManager).getSubscriptionUserHandle(anyInt());
+        assertEquals(userHandle, mPhoneUT.getUserHandle());
+
+        doReturn(null).when(mSubscriptionManager).getSubscriptionUserHandle(anyInt());
+        assertNull(mPhoneUT.getUserHandle());
+
+        doThrow(IllegalArgumentException.class).when(mSubscriptionManager)
+                .getSubscriptionUserHandle(anyInt());
+        assertNull(mPhoneUT.getUserHandle());
     }
 }
