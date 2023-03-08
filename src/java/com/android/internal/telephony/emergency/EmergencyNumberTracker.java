@@ -16,9 +16,6 @@
 
 package com.android.internal.telephony.emergency;
 
-import static android.telephony.TelephonyManager.HAL_SERVICE_VOICE;
-
-import android.annotation.NonNull;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -30,7 +27,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.ParcelFileDescriptor;
 import android.os.PersistableBundle;
-import android.os.SystemProperties;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentity;
 import android.telephony.PhoneNumberUtils;
@@ -47,7 +43,6 @@ import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.HalVersion;
 import com.android.internal.telephony.LocaleTracker;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
@@ -113,7 +108,6 @@ public class EmergencyNumberTracker extends Handler {
     private String mLastKnownEmergencyCountryIso = "";
     private int mCurrentDatabaseVersion = INVALID_DATABASE_VERSION;
     private int mCurrentOtaDatabaseVersion = INVALID_DATABASE_VERSION;
-    private boolean mIsHalVersionLessThan1Dot4 = false;
     private Resources mResources = null;
     /**
      * Used for storing all specific mnc's along with the list of emergency numbers
@@ -212,9 +206,6 @@ public class EmergencyNumberTracker extends Handler {
             } else {
                 loge("CarrierConfigManager is null.");
             }
-
-            mIsHalVersionLessThan1Dot4 = mPhone.getHalVersion(HAL_SERVICE_VOICE)
-                                                 .lessOrEqual(new HalVersion(1, 3));
         } else {
             loge("mPhone is null.");
         }
@@ -1033,9 +1024,6 @@ public class EmergencyNumberTracker extends Handler {
     private List<EmergencyNumber> getEmergencyNumberListFromEccList() {
         List<EmergencyNumber> emergencyNumberList = new ArrayList<>();
 
-        if (mIsHalVersionLessThan1Dot4) {
-            emergencyNumberList.addAll(getEmergencyNumberListFromEccListForHalv1_3());
-        }
         String emergencyNumbers = ((isSimAbsent()) ? "112,911,000,08,110,118,119,999" : "112,911");
         for (String emergencyNum : emergencyNumbers.split(",")) {
             emergencyNumberList.add(getLabeledEmergencyNumberForEcclist(emergencyNum));
@@ -1044,37 +1032,6 @@ public class EmergencyNumberTracker extends Handler {
             emergencyNumberList.addAll(getEmergencyNumberListWithPrefix(emergencyNumberList));
         }
         EmergencyNumber.mergeSameNumbersInEmergencyNumberList(emergencyNumberList);
-        return emergencyNumberList;
-    }
-
-    private String getEmergencyNumberListForHalv1_3() {
-        int slotId;
-        if (mPhone.isSubscriptionManagerServiceEnabled()) {
-            slotId = SubscriptionManagerService.getInstance().getSlotIndex(mPhone.getSubId());
-        } else {
-            slotId = SubscriptionController.getInstance().getSlotIndex(mPhone.getSubId());
-        }
-
-        String ecclist = (slotId <= 0) ? "ril.ecclist" : ("ril.ecclist" + slotId);
-        String emergencyNumbers = SystemProperties.get(ecclist, "");
-
-        if (TextUtils.isEmpty(emergencyNumbers)) {
-            // then read-only ecclist property since old RIL only uses this
-            emergencyNumbers = SystemProperties.get("ro.ril.ecclist");
-        }
-        logd(ecclist + " emergencyNumbers: " + emergencyNumbers);
-        return emergencyNumbers;
-    }
-
-    private List<EmergencyNumber> getEmergencyNumberListFromEccListForHalv1_3() {
-        List<EmergencyNumber> emergencyNumberList = new ArrayList<>();
-        String emergencyNumbers = getEmergencyNumberListForHalv1_3();
-
-        if (!TextUtils.isEmpty(emergencyNumbers)) {
-            for (String emergencyNum : emergencyNumbers.split(",")) {
-                emergencyNumberList.add(getLabeledEmergencyNumberForEcclist(emergencyNum));
-            }
-        }
         return emergencyNumberList;
     }
 
@@ -1175,14 +1132,6 @@ public class EmergencyNumberTracker extends Handler {
         String countryIso = getLastKnownEmergencyCountryIso();
         logd("country:" + countryIso);
 
-        if (mIsHalVersionLessThan1Dot4) {
-            emergencyNumbers = getEmergencyNumberListForHalv1_3();
-
-            if (!TextUtils.isEmpty(emergencyNumbers)) {
-                return isEmergencyNumberFromEccListForHalv1_3(number, emergencyNumbers);
-            }
-        }
-
         logd("System property doesn't provide any emergency numbers."
                 + " Use embedded logic for determining ones.");
 
@@ -1220,25 +1169,6 @@ public class EmergencyNumberTracker extends Handler {
             }
         }
 
-        return false;
-    }
-
-    private boolean isEmergencyNumberFromEccListForHalv1_3(@NonNull String number,
-            @NonNull String emergencyNumbers) {
-        // searches through the comma-separated list for a match,
-        // return true if one is found.
-        for (String emergencyNum : emergencyNumbers.split(",")) {
-            if (number.equals(emergencyNum)) {
-                return true;
-            } else {
-                for (String prefix : mEmergencyNumberPrefix) {
-                    if (number.equals(prefix + emergencyNum)) {
-                        return true;
-                    }
-                }
-            }
-        }
-        // no matches found against the list!
         return false;
     }
 
@@ -1392,9 +1322,6 @@ public class EmergencyNumberTracker extends Handler {
      */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         final IndentingPrintWriter ipw = new IndentingPrintWriter(pw, "  ");
-        ipw.println(" Hal Version:" + mPhone.getHalVersion(HAL_SERVICE_VOICE));
-        ipw.println(" ========================================= ");
-
         ipw.println(" Country Iso:" + getEmergencyCountryIso());
         ipw.println(" ========================================= ");
 
@@ -1430,11 +1357,6 @@ public class EmergencyNumberTracker extends Handler {
         mEmergencyNumberListLocalLog.dump(fd, pw, args);
         ipw.decreaseIndent();
         ipw.println(" ========================================= ");
-
-        if (mIsHalVersionLessThan1Dot4) {
-            getEmergencyNumberListForHalv1_3();
-            ipw.println(" ========================================= ");
-        }
 
         ipw.println("Emergency Number List for Phone" + "(" + mPhone.getPhoneId() + ")");
         ipw.increaseIndent();
