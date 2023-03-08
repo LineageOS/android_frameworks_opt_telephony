@@ -266,6 +266,9 @@ public class UiccCardApplication {
             } else {
                 loge("Bogus facility lock response");
             }
+            if (mIccFdnEnabled && mIccFdnAvailable) {
+                ((SIMRecords) mIccRecords).loadFdnRecords();
+            }
         }
     }
 
