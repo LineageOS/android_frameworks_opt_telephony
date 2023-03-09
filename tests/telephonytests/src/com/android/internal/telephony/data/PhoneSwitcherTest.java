@@ -37,6 +37,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
@@ -73,6 +74,7 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.GsmCdmaCall;
 import com.android.internal.telephony.ISetOpportunisticDataCallback;
+import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
@@ -121,6 +123,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
     private ISetOpportunisticDataCallback mSetOpptDataCallback2;
     PhoneSwitcher.ImsRegTechProvider mMockImsRegTechProvider;
     private SubscriptionInfo mSubscriptionInfo;
+    private ISub mMockedIsub;
 
     private PhoneSwitcher mPhoneSwitcherUT;
     private SubscriptionManager.OnSubscriptionsChangedListener mSubChangedListener;
@@ -156,6 +159,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         mSetOpptDataCallback2 = mock(ISetOpportunisticDataCallback.class);
         mMockImsRegTechProvider = mock(PhoneSwitcher.ImsRegTechProvider.class);
         mSubscriptionInfo = mock(SubscriptionInfo.class);
+        mMockedIsub = mock(ISub.class);
 
         PhoneCapability phoneCapability = new PhoneCapability(1, 1, null, false, new int[0]);
         doReturn(phoneCapability).when(mPhoneConfigurationManager).getCurrentPhoneCapability();
@@ -172,6 +176,11 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
         replaceInstance(Phone.class, "mCi", mPhone, mCommandsInterface0);
         replaceInstance(Phone.class, "mCi", mPhone2, mCommandsInterface1);
+
+        doReturn(1).when(mMockedIsub).getDefaultDataSubId();
+        doReturn(mMockedIsub).when(mIBinder).queryLocalInterface(anyString());
+        doReturn(mPhone).when(mPhone).getImsPhone();
+        mServiceManagerMockedServices.put("isub", mIBinder);
     }
 
     @After
@@ -1977,10 +1986,13 @@ public class PhoneSwitcherTest extends TelephonyTest {
      * Capture mNetworkProviderMessenger so that testing can request or release
      * network requests on PhoneSwitcher.
      */
-    private void initializeSubControllerMock() {
+    private void initializeSubControllerMock() throws Exception {
         doReturn(mDefaultDataSub).when(mSubscriptionController).getDefaultDataSubId();
+        doReturn(mDefaultDataSub).when(mMockedIsub).getDefaultDataSubId();
         doReturn(0).when(mSubscriptionController).getPhoneId(1);
+        doReturn(0).when(mMockedIsub).getPhoneId(1);
         doReturn(1).when(mSubscriptionController).getPhoneId(2);
+        doReturn(1).when(mMockedIsub).getPhoneId(2);
         doAnswer(invocation -> {
             int phoneId = (int) invocation.getArguments()[0];
             if (phoneId == SubscriptionManager.INVALID_PHONE_INDEX) {
@@ -1991,6 +2003,17 @@ public class PhoneSwitcherTest extends TelephonyTest {
                 return mSlotIndexToSubId[phoneId][0];
             }
         }).when(mSubscriptionController).getSubId(anyInt());
+
+        doAnswer(invocation -> {
+            int phoneId = (int) invocation.getArguments()[0];
+            if (phoneId == SubscriptionManager.INVALID_PHONE_INDEX) {
+                return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+            } else if (phoneId == SubscriptionManager.DEFAULT_PHONE_INDEX) {
+                return mSlotIndexToSubId[0][0];
+            } else {
+                return mSlotIndexToSubId[phoneId][0];
+            }
+        }).when(mMockedIsub).getSubId(anyInt());
 
         doAnswer(invocation -> {
             int subId = (int) invocation.getArguments()[0];
@@ -2006,9 +2029,10 @@ public class PhoneSwitcherTest extends TelephonyTest {
                 .getActiveSubIdList(true);
     }
 
-    private void setDefaultDataSubId(int defaultDataSub) {
+    private void setDefaultDataSubId(int defaultDataSub) throws Exception {
         mDefaultDataSub = defaultDataSub;
         doReturn(mDefaultDataSub).when(mSubscriptionController).getDefaultDataSubId();
+        doReturn(mDefaultDataSub).when(mMockedIsub).getDefaultDataSubId();
         sendDefaultDataSubChanged();
     }
 
