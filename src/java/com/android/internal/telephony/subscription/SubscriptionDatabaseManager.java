@@ -81,7 +81,7 @@ import java.util.stream.Collectors;
  * to the database should go through {@link SubscriptionManagerService}.
  */
 public class SubscriptionDatabaseManager extends Handler {
-    private static final String LOG_TAG = "SDM";
+    private static final String LOG_TAG = "SDMGR";
 
     /** Whether enabling verbose debugging message or not. */
     private static final boolean VDBG = false;
