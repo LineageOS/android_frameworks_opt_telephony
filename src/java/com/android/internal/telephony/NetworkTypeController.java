@@ -997,6 +997,13 @@ public class NetworkTypeController extends StateMachine {
                             // Update in case the override network type changed
                             updateOverrideNetworkType();
                         } else {
+                            if (rat == TelephonyManager.NETWORK_TYPE_NR && mOverrideNetworkType
+                                    != TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED) {
+                                // manually override network type after data rat changes since
+                                // timer will prevent it from being updated
+                                mOverrideNetworkType =
+                                        TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
+                            }
                             transitionWithTimerTo(mNrConnectedState);
                         }
                     } else if (isLte(rat) && isNrNotRestricted()) {
@@ -1140,19 +1147,17 @@ public class NetworkTypeController extends StateMachine {
             if (currentState.equals(STATE_CONNECTED_NR_ADVANCED)) {
                 if (DBG) log("Reset timers since state is NR_ADVANCED.");
                 resetAllTimers();
-            }
-
-            if (currentState.equals(STATE_CONNECTED)
+            } else if (currentState.equals(STATE_CONNECTED)
                     && !mPrimaryTimerState.equals(STATE_CONNECTED_NR_ADVANCED)
                     && !mSecondaryTimerState.equals(STATE_CONNECTED_NR_ADVANCED)) {
-                if (DBG) log("Reset non-NR_advanced timers since state is NR_CONNECTED");
+                if (DBG) log("Reset non-NR_ADVANCED timers since state is NR_CONNECTED");
                 resetAllTimers();
-            }
-
-            int rat = getDataNetworkType();
-            if (!isLte(rat) && rat != TelephonyManager.NETWORK_TYPE_NR) {
-                if (DBG) log("Reset timers since 2G and 3G don't need NR timers.");
-                resetAllTimers();
+            } else {
+                int rat = getDataNetworkType();
+                if (!isLte(rat) && rat != TelephonyManager.NETWORK_TYPE_NR) {
+                    if (DBG) log("Reset timers since 2G and 3G don't need NR timers.");
+                    resetAllTimers();
+                }
             }
         }
     }

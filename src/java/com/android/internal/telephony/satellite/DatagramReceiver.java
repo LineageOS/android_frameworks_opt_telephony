@@ -34,15 +34,15 @@ import android.os.RemoteException;
 import android.provider.Telephony;
 import android.telephony.Rlog;
 import android.telephony.satellite.ISatelliteDatagramCallback;
-import android.telephony.satellite.ISatelliteDatagramReceiverAck;
 import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
 import android.util.Pair;
 
+import com.android.internal.R;
+import com.android.internal.telephony.ILongConsumer;
 import com.android.internal.telephony.Phone;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -55,8 +55,6 @@ public class DatagramReceiver {
      private static final String SATELLITE_SHARED_PREF = "satellite_shared_pref";
     /** Key used to read/write satellite datagramId in shared preferences. */
     private static final String SATELLITE_DATAGRAM_ID_KEY = "satellite_datagram_id_key";
-
-    private static final long MAX_DATAGRAM_ID = (long) Math.pow(2, 16);
     private static AtomicLong mNextDatagramId = new AtomicLong(0);
 
     @NonNull private static DatagramReceiver sInstance;
@@ -78,11 +76,12 @@ public class DatagramReceiver {
     /**
      * Create the DatagramReceiver singleton instance.
      * @param context The Context to use to create the DatagramReceiver.
+     * @param looper The looper for the handler.
      * @return The singleton instance of DatagramReceiver.
      */
-    public static DatagramReceiver make(@NonNull Context context) {
+    public static DatagramReceiver make(@NonNull Context context, @NonNull Looper looper) {
         if (sInstance == null) {
-            sInstance = new DatagramReceiver(context);
+            sInstance = new DatagramReceiver(context, looper);
         }
         return sInstance;
     }
@@ -92,19 +91,20 @@ public class DatagramReceiver {
      * The received datagrams will be delivered to respective messaging apps.
      *
      * @param context The Context for the DatagramReceiver.
+     * @param looper The looper for the handler.
      */
-    private DatagramReceiver(@NonNull Context context) {
+    private DatagramReceiver(@NonNull Context context, @NonNull Looper looper) {
         mContext = context;
         mContentResolver = context.getContentResolver();
 
         HandlerThread backgroundThread = new HandlerThread(TAG);
         backgroundThread.start();
-        mBackgroundHandler = new Handler(backgroundThread.getLooper());
+        mBackgroundHandler = new Handler(looper);
         try {
             mSharedPreferences = mContext.getSharedPreferences(SATELLITE_SHARED_PREF,
                     Context.MODE_PRIVATE);
         } catch (Exception e) {
-            loge("Cannot get default shared preferences:" + e);
+            loge("Cannot get default shared preferences: " + e);
         }
 
         if ((mSharedPreferences != null) &&
@@ -114,40 +114,42 @@ public class DatagramReceiver {
         }
     }
 
-    /** Callback used by datagram receiver app to send ack back to Telephony. */
-    private static final ISatelliteDatagramReceiverAck.Stub mDatagramReceiverAck =
-            new ISatelliteDatagramReceiverAck.Stub() {
-                /**
-                 * This callback will be used by datagram receiver app to send ack back to
-                 * Telephony. If the callback is not received within five minutes,
-                 * then Telephony will resend the datagram again.
-                 *
-                 * @param datagramId An id that uniquely identifies datagram
-                 *                   received by satellite datagram receiver app.
-                 *                   This should match with datagramId passed in
-                 *                   {@link android.telephony.satellite.SatelliteDatagramCallback
-                 *                   #onSatelliteDatagramReceived(long, SatelliteDatagram, int,
-                 *                   ISatelliteDatagramReceiverAck)}
-                 *                   Upon receiving the ack, Telephony will remove the datagram from
-                 *                   the persistent memory.
-                 */
-                public void acknowledgeSatelliteDatagramReceived(long datagramId) {
-                    // TODO: make this handler non-static
-                    logd("acknowledgeSatelliteDatagramReceived: datagramId=" + datagramId);
-                    sInstance.mBackgroundHandler.post(() -> {
-                       sInstance.deleteDatagram(datagramId);
-                    });
-                }
-            };
-
     /**
      * Listeners are updated about incoming datagrams using a backgroundThread.
      */
     private static final class SatelliteDatagramListenerHandler extends Handler {
         public static final int EVENT_SATELLITE_DATAGRAM_RECEIVED = 1;
+        public static final int EVENT_RETRY_DELIVERING_RECEIVED_DATAGRAM = 2;
+        public static final int EVENT_RECEIVED_ACK = 3;
 
         @NonNull private final ConcurrentHashMap<IBinder, ISatelliteDatagramCallback> mListeners;
         private final int mSubId;
+
+        private static final class DatagramRetryArgument {
+            public long datagramId;
+            @NonNull public SatelliteDatagram datagram;
+            public int pendingCount;
+            @NonNull public ISatelliteDatagramCallback listener;
+
+            DatagramRetryArgument(long datagramId, @NonNull SatelliteDatagram datagram,
+                    int pendingCount, @NonNull ISatelliteDatagramCallback listener) {
+                this.datagramId = datagramId;
+                this.datagram = datagram;
+                this.pendingCount = pendingCount;
+                this.listener = listener;
+            }
+
+            @Override
+            public boolean equals(Object other) {
+                if (this == other) return true;
+                if (other == null || getClass() != other.getClass()) return false;
+                DatagramRetryArgument that = (DatagramRetryArgument) other;
+                return datagramId == that.datagramId
+                        && datagram.equals(that.datagram)
+                        && pendingCount  == that.pendingCount
+                        && listener.equals(that.listener);
+            }
+        }
 
         SatelliteDatagramListenerHandler(@NonNull Looper looper, int subId) {
             super(looper);
@@ -155,16 +157,21 @@ public class DatagramReceiver {
             mListeners = new ConcurrentHashMap<>();
         }
 
-        public void addListener(ISatelliteDatagramCallback listener) {
+        public void addListener(@NonNull ISatelliteDatagramCallback listener) {
             mListeners.put(listener.asBinder(), listener);
         }
 
-        public void removeListener(ISatelliteDatagramCallback listener) {
+        public void removeListener(@NonNull ISatelliteDatagramCallback listener) {
             mListeners.remove(listener.asBinder());
         }
 
         public boolean hasListeners() {
             return !mListeners.isEmpty();
+        }
+
+        private int getTimeoutToReceiveAck() {
+            return sInstance.mContext.getResources().getInteger(
+                    R.integer.config_timeout_to_receive_delivered_ack_millis);
         }
 
         private long getDatagramId() {
@@ -175,26 +182,27 @@ public class DatagramReceiver {
                     sInstance.mSharedPreferences = sInstance.mContext
                             .getSharedPreferences(SATELLITE_SHARED_PREF, Context.MODE_PRIVATE);
                 } catch (Exception e) {
-                    loge("Cannot get default shared preferences:" + e);
+                    loge("Cannot get default shared preferences: " + e);
                 }
             }
 
             if (sInstance.mSharedPreferences != null) {
                 long prevDatagramId = sInstance.mSharedPreferences
                         .getLong(SATELLITE_DATAGRAM_ID_KEY, mNextDatagramId.get());
-                datagramId = (prevDatagramId + 1) % MAX_DATAGRAM_ID;
+                datagramId = (prevDatagramId + 1) % DatagramController.MAX_DATAGRAM_ID;
                 mNextDatagramId.set(datagramId);
                 sInstance.mSharedPreferences.edit().putLong(SATELLITE_DATAGRAM_ID_KEY, datagramId)
                         .commit();
             } else {
                 loge("Shared preferences is null - returning default datagramId");
-                datagramId = mNextDatagramId.getAndUpdate(n -> ((n + 1) % MAX_DATAGRAM_ID));
+                datagramId = mNextDatagramId.getAndUpdate(
+                        n -> ((n + 1) % DatagramController.MAX_DATAGRAM_ID));
             }
 
             return datagramId;
         }
 
-        private void insertDatagram(long datagramId, SatelliteDatagram datagram) {
+        private void insertDatagram(long datagramId, @NonNull SatelliteDatagram datagram) {
             ContentValues contentValues = new ContentValues();
             contentValues.put(
                     Telephony.SatelliteDatagrams.COLUMN_UNIQUE_KEY_DATAGRAM_ID, datagramId);
@@ -206,6 +214,61 @@ public class DatagramReceiver {
                 loge("Cannot insert datagram with datagramId: " + datagramId);
             } else {
                 logd("Inserted datagram with datagramId: " + datagramId);
+            }
+        }
+
+        private void deleteDatagram(long datagramId) {
+            String whereClause = (Telephony.SatelliteDatagrams.COLUMN_UNIQUE_KEY_DATAGRAM_ID
+                    + "=" + datagramId);
+            Cursor cursor =  sInstance.mContentResolver.query(
+                    Telephony.SatelliteDatagrams.CONTENT_URI,
+                    null, whereClause, null, null);
+            if ((cursor != null) && (cursor.getCount() == 1)) {
+                int numRowsDeleted = sInstance.mContentResolver.delete(
+                        Telephony.SatelliteDatagrams.CONTENT_URI, whereClause, null);
+                if (numRowsDeleted == 0) {
+                    loge("Cannot delete datagram with datagramId: " + datagramId);
+                } else {
+                    logd("Deleted datagram with datagramId: " + datagramId);
+                }
+            } else {
+                loge("Datagram with datagramId: " + datagramId + " is not present in DB.");
+            }
+        }
+
+        private void onSatelliteDatagramReceived(@NonNull DatagramRetryArgument argument) {
+            try {
+                argument.listener.onSatelliteDatagramReceived(argument.datagramId,
+                        argument.datagram, argument.pendingCount,
+                        new ILongConsumer.Stub() {
+                            /**
+                             * This callback will be used by datagram receiver app
+                             * to send ack back to Telephony. If the callback is not
+                             * received within five minutes, then Telephony will
+                             * resend the datagram again.
+                             *
+                             * @param datagramId An id that uniquely identifies
+                             *                   datagram received by satellite
+                             *                   datagram receiver app. This should
+                             *                   match with datagramId passed in
+                             *                   {@link android.telephony.satellite
+                             *                   .SatelliteDatagramCallback
+                             *                   #onSatelliteDatagramReceived(long,
+                             *                   SatelliteDatagram, int,
+                             *                   ISatelliteDatagramReceiverAck)}
+                             *                   Upon receiving the ack, Telephony
+                             *                   will remove the datagram from
+                             *                   the persistent memory.
+                             */
+                            @Override
+                            public void accept(long datagramId) {
+                                logd("acknowledgeSatelliteDatagramReceived: "
+                                        + "datagramId=" + datagramId);
+                                sendMessage(obtainMessage(EVENT_RECEIVED_ACK, argument));
+                            }
+                        });
+            } catch (RemoteException e) {
+                logd("EVENT_SATELLITE_DATAGRAM_RECEIVED RemoteException: " + e);
             }
         }
 
@@ -222,20 +285,34 @@ public class DatagramReceiver {
                     // onDatagramTransferStateChanged
 
                     long datagramId = getDatagramId();
-                        insertDatagram(datagramId, satelliteDatagram);
-                        logd("Received EVENT_SATELLITE_DATAGRAM_RECEIVED for subId=" + mSubId);
-                        mListeners.values().forEach(listener -> {
-                            try {
-                                // TODO (b/269637555): wait for ack and retry after 5mins
-                                listener.onSatelliteDatagramReceived(
-                                        datagramId, satelliteDatagram, pendingCount,
-                                        mDatagramReceiverAck);
-                            } catch (RemoteException e) {
-                                logd("EVENT_SATELLITE_DATAGRAM_RECEIVED RemoteException: " + e);
-                            }
-                        });
+                    insertDatagram(datagramId, satelliteDatagram);
+                    logd("Received EVENT_SATELLITE_DATAGRAM_RECEIVED for subId=" + mSubId);
+                    mListeners.values().forEach(listener -> {
+                        DatagramRetryArgument argument = new DatagramRetryArgument(datagramId,
+                                satelliteDatagram, pendingCount, listener);
+                        onSatelliteDatagramReceived(argument);
+                        // wait for ack and retry after the timeout specified.
+                        sendMessageDelayed(obtainMessage(EVENT_RETRY_DELIVERING_RECEIVED_DATAGRAM,
+                                argument), getTimeoutToReceiveAck());
+                    });
                     break;
                 }
+
+                case EVENT_RETRY_DELIVERING_RECEIVED_DATAGRAM: {
+                    DatagramRetryArgument argument = (DatagramRetryArgument) msg.obj;
+                    logd("Received EVENT_RETRY_DELIVERING_RECEIVED_DATAGRAM datagramId:"
+                            + argument.datagramId);
+                    onSatelliteDatagramReceived(argument);
+                    break;
+                }
+
+                case EVENT_RECEIVED_ACK: {
+                    DatagramRetryArgument argument = (DatagramRetryArgument) msg.obj;
+                    logd("Received EVENT_RECEIVED_ACK datagramId:" + argument.datagramId);
+                    removeMessages(EVENT_RETRY_DELIVERING_RECEIVED_DATAGRAM, argument);
+                    deleteDatagram(argument.datagramId);
+                }
+
                 default:
                     loge("SatelliteDatagramListenerHandler unknown event: " + msg.what);
             }
@@ -259,7 +336,7 @@ public class DatagramReceiver {
             return SatelliteManager.SATELLITE_NOT_SUPPORTED;
         }
 
-        final int validSubId = SatelliteController.getInstance().getValidSatelliteSubId(subId);
+        final int validSubId = SatelliteServiceUtils.getValidSatelliteSubId(subId, mContext);
         SatelliteDatagramListenerHandler satelliteDatagramListenerHandler =
                 mSatelliteDatagramListenerHandlers.get(validSubId);
         if (satelliteDatagramListenerHandler == null) {
@@ -293,8 +370,7 @@ public class DatagramReceiver {
      */
     public void unregisterForSatelliteDatagram(int subId,
             @NonNull ISatelliteDatagramCallback callback) {
-        final int validSubId = SatelliteController.getInstance()
-                .getValidSatelliteSubId(subId);
+        final int validSubId = SatelliteServiceUtils.getValidSatelliteSubId(subId, mContext);
         SatelliteDatagramListenerHandler handler =
                 mSatelliteDatagramListenerHandlers.get(validSubId);
         if (handler != null) {
@@ -321,7 +397,7 @@ public class DatagramReceiver {
      * This method requests modem to check if there are any pending datagrams to be received over
      * satellite. If there are any incoming datagrams, they will be received via
      * {@link android.telephony.satellite.SatelliteDatagramCallback
-     * #onSatelliteDatagramReceived(long, SatelliteDatagram, int, ISatelliteDatagramReceiverAck)}
+     * #onSatelliteDatagramReceived(long, SatelliteDatagram, int, ILongConsumer)}
      */
     public void pollPendingSatelliteDatagrams(@NonNull Message message, @Nullable Phone phone) {
         if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
@@ -336,24 +412,6 @@ public class DatagramReceiver {
             AsyncResult.forMessage(message, null, new SatelliteManager.SatelliteException(
                     SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE));
             message.sendToTarget();
-        }
-    }
-
-    private void deleteDatagram(long datagramId) {
-        String whereClause = (Telephony.SatelliteDatagrams.COLUMN_UNIQUE_KEY_DATAGRAM_ID
-                + "=" + datagramId);
-        Cursor cursor =  mContentResolver.query(Telephony.SatelliteDatagrams.CONTENT_URI,
-                null, whereClause, null, null);
-        if ((cursor != null) && (cursor.getCount() == 1)) {
-            int numRowsDeleted = sInstance.mContentResolver.delete(
-                    Telephony.SatelliteDatagrams.CONTENT_URI, whereClause, null);
-            if (numRowsDeleted == 0) {
-                loge("Cannot delete datagram with datagramId: " + datagramId);
-            } else {
-                logd("Deleted datagram with datagramId: " + datagramId);
-            }
-        } else {
-            loge("Datagram with datagramId: " + datagramId + " is not present in DB.");
         }
     }
 

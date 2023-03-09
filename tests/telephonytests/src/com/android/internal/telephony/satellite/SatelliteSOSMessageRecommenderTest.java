@@ -97,7 +97,8 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         when(mMockContext.getResources()).thenReturn(mResources);
         when(mResources.getString(com.android.internal.R.string.config_satellite_service_package))
                 .thenReturn("");
-        mTestSatelliteController = new TestSatelliteController(mMockContext);
+        mTestSatelliteController = new TestSatelliteController(mMockContext,
+                Looper.getMainLooper());
         mTestImsManager = new TestImsManager(
                 mMockContext, PHONE_ID, mMmTelFeatureConnectionFactory, null, null, null);
         mTestConnection = new TestConnection(CALL_ID);
@@ -403,8 +404,8 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
          *
          * @param context The Context for the SatelliteController.
          */
-        protected TestSatelliteController(Context context) {
-            super(context);
+        protected TestSatelliteController(Context context, Looper looper) {
+            super(context, looper);
             mProvisionStateChangedCallbacks = new HashMap<>();
             mSatelliteProvisionStates = new HashMap<>();
             mSatelliteProvisionStates.put(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, true);
