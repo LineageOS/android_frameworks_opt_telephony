@@ -17,8 +17,6 @@
 package com.android.internal.telephony;
 
 import static android.os.UserHandle.SYSTEM;
-import static android.telephony.CarrierConfigManager.EXTRA_SLOT_INDEX;
-import static android.telephony.CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX;
 import static android.telephony.CarrierConfigManager.KEY_CARRIER_CERTIFICATE_STRING_ARRAY;
 import static android.telephony.CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL;
 import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
@@ -76,8 +74,8 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
-import org.mockito.Mock;
 
 import java.security.MessageDigest;
 import java.util.ArrayList;
@@ -129,11 +127,10 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
                     | PackageManager.MATCH_DISABLED_UNTIL_USED_COMPONENTS
                     | PackageManager.MATCH_HIDDEN_UNTIL_INSTALLED_COMPONENTS;
 
-    @Mock private Signature mSignature;
-
     private PersistableBundle mCarrierConfigs;
     private CarrierPrivilegesTrackerTestHandler mHandler;
     private CarrierPrivilegesTracker mCarrierPrivilegesTracker;
+    private CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener;
 
     @Before
     public void setUp() throws Exception {
@@ -164,7 +161,8 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
     private void setupCarrierConfigRules(String... rules) {
         mCarrierConfigs.putStringArray(KEY_CARRIER_CERTIFICATE_STRING_ARRAY, rules);
         mCarrierConfigs.putBoolean(KEY_CARRIER_CONFIG_APPLIED_BOOL, true);
-        when(mCarrierConfigManager.getConfigForSubId(SUB_ID)).thenReturn(mCarrierConfigs);
+        when(mCarrierConfigManager.getConfigForSubId(eq(SUB_ID), any()))
+                .thenReturn(mCarrierConfigs);
     }
 
     private static String carrierConfigRuleString(String certificateHash, String... packageNames) {
@@ -222,8 +220,14 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
      * #setupInstalledPackages}.
      */
     private CarrierPrivilegesTracker createCarrierPrivilegesTracker() throws Exception {
+        // Capture CarrierConfigChangeListener to emulate the carrier config change notification
+        ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
+                ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
         CarrierPrivilegesTracker cpt =
                 new CarrierPrivilegesTracker(mTestableLooper.getLooper(), mPhone, mContext);
+        verify(mCarrierConfigManager).registerCarrierConfigChangeListener(any(),
+                listenerArgumentCaptor.capture());
+        mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(0);
         mTestableLooper.processAllMessages();
 
         cpt.registerCarrierPrivilegesListener(mHandler, REGISTRANT_WHAT, null);
@@ -371,7 +375,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verifyCarrierPrivilegesChangedUpdates(List.of());
 
         // Clear UIDs
-        sendCarrierConfigChangedIntent(INVALID_SUBSCRIPTION_ID, PHONE_ID);
+        sendCarrierConfigChanged(INVALID_SUBSCRIPTION_ID, PHONE_ID);
         mTestableLooper.processAllMessages();
 
         verifyCurrentState(Set.of(), new int[0]);
@@ -389,7 +393,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         setupCarrierConfigRules(
                 carrierConfigRuleString(getHash(CERT_1)), carrierConfigRuleString(getHash(CERT_2)));
 
-        sendCarrierConfigChangedIntent(SUB_ID, PHONE_ID);
+        sendCarrierConfigChanged(SUB_ID, PHONE_ID);
         mTestableLooper.processAllMessages();
 
         verifyCurrentState(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS);
@@ -403,7 +407,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         // Start with privileges. Incorrect phoneId shouldn't affect certs
         setupCarrierPrivilegesTrackerWithCarrierConfigUids();
 
-        sendCarrierConfigChangedIntent(SUB_ID, PHONE_ID_INCORRECT);
+        sendCarrierConfigChanged(SUB_ID, PHONE_ID_INCORRECT);
         mTestableLooper.processAllMessages();
 
         verifyCurrentState(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS);
@@ -417,7 +421,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         // Start with privileges, verify clearing certs clears UIDs
         setupCarrierPrivilegesTrackerWithCarrierConfigUids();
 
-        sendCarrierConfigChangedIntent(INVALID_SUBSCRIPTION_ID, PHONE_ID);
+        sendCarrierConfigChanged(INVALID_SUBSCRIPTION_ID, PHONE_ID);
         mTestableLooper.processAllMessages();
 
         verifyCurrentState(Set.of(), new int[0]);
@@ -434,9 +438,10 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         setupCarrierPrivilegesTrackerWithCarrierConfigUids();
 
         mCarrierConfigs.putBoolean(KEY_CARRIER_CONFIG_APPLIED_BOOL, false);
-        when(mCarrierConfigManager.getConfigForSubId(SUB_ID)).thenReturn(mCarrierConfigs);
+        when(mCarrierConfigManager.getConfigForSubId(eq(SUB_ID), any()))
+                .thenReturn(mCarrierConfigs);
 
-        sendCarrierConfigChangedIntent(SUB_ID, PHONE_ID);
+        sendCarrierConfigChanged(SUB_ID, PHONE_ID);
         mTestableLooper.processAllMessages();
 
         verifyCurrentState(Set.of(), new int[0]);
@@ -456,7 +461,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
                 carrierConfigRuleString(getHash(CERT_1), PACKAGE_1),
                 carrierConfigRuleString(getHash(CERT_2), PACKAGE_1));
 
-        sendCarrierConfigChangedIntent(SUB_ID, PHONE_ID);
+        sendCarrierConfigChanged(SUB_ID, PHONE_ID);
         mTestableLooper.processAllMessages();
 
         verifyCurrentState(Set.of(PACKAGE_1), new int[] {UID_1});
@@ -469,7 +474,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
                 carrierConfigRuleString(getHash(CERT_1), PACKAGE_1),
                 carrierConfigRuleString(getHash(CERT_2), PACKAGE_1, PACKAGE_2));
 
-        sendCarrierConfigChangedIntent(SUB_ID, PHONE_ID);
+        sendCarrierConfigChanged(SUB_ID, PHONE_ID);
         mTestableLooper.processAllMessages();
 
         verifyCurrentState(PRIVILEGED_PACKAGES, PRIVILEGED_UIDS);
@@ -1137,11 +1142,9 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verify(mPackageManager).queryIntentServices(any(), anyInt());
     }
 
-    private void sendCarrierConfigChangedIntent(int subId, int phoneId) {
-        mContext.sendBroadcast(
-                new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)
-                        .putExtra(EXTRA_SUBSCRIPTION_INDEX, subId)
-                        .putExtra(EXTRA_SLOT_INDEX, phoneId));
+    private void sendCarrierConfigChanged(int subId, int phoneId) {
+        mCarrierConfigChangeListener.onCarrierConfigChanged(phoneId, subId,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
     }
 
     private void sendSimCardStateChangedIntent(int phoneId, int simState) {

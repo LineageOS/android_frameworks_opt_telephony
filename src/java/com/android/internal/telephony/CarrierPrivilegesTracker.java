@@ -16,11 +16,8 @@
 
 package com.android.internal.telephony;
 
-import static android.telephony.CarrierConfigManager.EXTRA_SLOT_INDEX;
-import static android.telephony.CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX;
 import static android.telephony.CarrierConfigManager.KEY_CARRIER_CERTIFICATE_STRING_ARRAY;
 import static android.telephony.SubscriptionManager.INVALID_SIM_SLOT_INDEX;
-import static android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 import static android.telephony.TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
 import static android.telephony.TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS;
 import static android.telephony.TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED;
@@ -131,6 +128,13 @@ public class CarrierPrivilegesTracker extends Handler {
                     | PackageManager.MATCH_HIDDEN_UNTIL_INSTALLED_COMPONENTS;
 
     /**
+     * All carrier config keys used in this class should list here in alphabetical order.
+     */
+    private static final String[] CARRIER_CONFIG_KEYS = {
+            KEY_CARRIER_CERTIFICATE_STRING_ARRAY,
+    };
+
+    /**
      * Action to register a Registrant with this Tracker.
      * obj: Registrant that will be notified of Carrier Privileged UID changes.
      */
@@ -141,13 +145,6 @@ public class CarrierPrivilegesTracker extends Handler {
      * obj: Handler used by the Registrant that will be removed.
      */
     private static final int ACTION_UNREGISTER_LISTENER = 2;
-
-    /**
-     * Action for tracking when Carrier Configs are updated.
-     * arg1: Subscription Id for the Carrier Configs update being broadcast
-     * arg2: Slot Index for the Carrier Configs update being broadcast
-     */
-    private static final int ACTION_CARRIER_CONFIG_CERTS_UPDATED = 3;
 
     /**
      * Action for tracking when the Phone's SIM state changes.
@@ -298,19 +295,6 @@ public class CarrierPrivilegesTracker extends Handler {
                     if (action == null) return;
 
                     switch (action) {
-                        case CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED: {
-                            Bundle extras = intent.getExtras();
-                            int slotIndex = extras.getInt(EXTRA_SLOT_INDEX);
-                            int subId =
-                                    extras.getInt(
-                                            EXTRA_SUBSCRIPTION_INDEX, INVALID_SUBSCRIPTION_ID);
-                            sendMessage(
-                                    obtainMessage(
-                                            ACTION_CARRIER_CONFIG_CERTS_UPDATED,
-                                            subId,
-                                            slotIndex));
-                            break;
-                        }
                         case TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED: // fall through
                         case TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED: {
                             Bundle extras = intent.getExtras();
@@ -373,13 +357,16 @@ public class CarrierPrivilegesTracker extends Handler {
         mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
         mCarrierConfigManager =
                 (CarrierConfigManager) mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        // Callback is executed in handler thread and directly handles carrier config update
+        mCarrierConfigManager.registerCarrierConfigChangeListener(this::post,
+                (slotIndex, subId, carrierId, specificCarrierId) -> handleCarrierConfigUpdated(
+                        subId, slotIndex));
         mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
         mTelephonyRegistryManager =
                 (TelephonyRegistryManager)
                         mContext.getSystemService(Context.TELEPHONY_REGISTRY_SERVICE);
 
         IntentFilter certFilter = new IntentFilter();
-        certFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         certFilter.addAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED);
         certFilter.addAction(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
         mContext.registerReceiver(mIntentReceiver, certFilter);
@@ -407,12 +394,6 @@ public class CarrierPrivilegesTracker extends Handler {
             }
             case ACTION_UNREGISTER_LISTENER: {
                 handleUnregisterListener((Handler) msg.obj);
-                break;
-            }
-            case ACTION_CARRIER_CONFIG_CERTS_UPDATED: {
-                int subId = msg.arg1;
-                int slotIndex = msg.arg2;
-                handleCarrierConfigUpdated(subId, slotIndex);
                 break;
             }
             case ACTION_SIM_STATE_UPDATED: {
@@ -491,7 +472,14 @@ public class CarrierPrivilegesTracker extends Handler {
 
     @NonNull
     private List<UiccAccessRule> getCarrierConfigRules(int subId) {
-        PersistableBundle carrierConfigs = mCarrierConfigManager.getConfigForSubId(subId);
+        PersistableBundle carrierConfigs = null;
+        try {
+            carrierConfigs = mCarrierConfigManager.getConfigForSubId(subId, CARRIER_CONFIG_KEYS);
+        } catch (RuntimeException e) {
+            mLocalLog.log("CarrierConfigLoader is not available, try it later.");
+        }
+
+        // CarrierConfigManager#isConfigForIdentifiedCarrier can handle null or empty bundle
         if (!mCarrierConfigManager.isConfigForIdentifiedCarrier(carrierConfigs)) {
             return Collections.EMPTY_LIST;
         }
