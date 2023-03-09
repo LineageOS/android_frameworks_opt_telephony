@@ -30,6 +30,7 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsMessage;
 import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.Pair;
@@ -37,7 +38,6 @@ import android.util.Pair;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.SmsConstants;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.gsm.SimTlv;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.telephony.Rlog;
@@ -1055,7 +1055,7 @@ public class SIMRecords extends IccRecords {
                                     mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
                             if (ar.exception != null && configManager != null) {
                                 PersistableBundle b = configManager.getConfigForSubId(
-                                        SubscriptionController.getInstance().getSubId(
+                                        SubscriptionManager.getSubscriptionId(
                                                 mParentApp.getPhoneId()));
                                 if (b != null && b.getBoolean(
                                         CarrierConfigManager.KEY_EDITABLE_VOICEMAIL_NUMBER_BOOL)) {

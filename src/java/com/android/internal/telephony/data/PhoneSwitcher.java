@@ -1339,12 +1339,7 @@ public class PhoneSwitcher extends Handler {
 
         // Check if phoneId to subId mapping is changed.
         for (int i = 0; i < mActiveModemCount; i++) {
-            int sub;
-            if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-                sub = mSubscriptionManagerService.getSubId(i);
-            } else {
-                sub = mSubscriptionController.getSubId(i);
-            }
+            int sub = SubscriptionManager.getSubscriptionId(i);
 
             if (SubscriptionManager.isValidSubscriptionId(sub)) hasAnyActiveSubscription = true;
 
@@ -1667,11 +1662,7 @@ public class PhoneSwitcher extends Handler {
             mPreferredDataPhoneId = phoneId;
         }
 
-        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-            mPreferredDataSubId.set(mSubscriptionManagerService.getSubId(mPreferredDataPhoneId));
-        } else {
-            mPreferredDataSubId.set(mSubscriptionController.getSubId(mPreferredDataPhoneId));
-        }
+        mPreferredDataSubId.set(SubscriptionManager.getSubscriptionId(mPreferredDataPhoneId));
     }
 
     protected void transitionToEmergencyPhone() {
@@ -1710,12 +1701,7 @@ public class PhoneSwitcher extends Handler {
             TelephonyNetworkRequest networkRequest, int phoneId) {
         if (!SubscriptionManager.isValidPhoneId(phoneId)) return false;
 
-        int subId;
-        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-            subId = mSubscriptionManagerService.getSubId(phoneId);
-        } else {
-            subId = mSubscriptionController.getSubId(phoneId);
-        }
+        int subId = SubscriptionManager.getSubscriptionId(phoneId);
 
         // In any case, if phone state is inactive, don't apply the network request.
         if (!isPhoneActive(phoneId) || (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID
