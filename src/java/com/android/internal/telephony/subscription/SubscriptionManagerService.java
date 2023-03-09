@@ -943,6 +943,10 @@ public class SubscriptionManagerService extends ISub.Stub {
     })
     public SubscriptionInfo getActiveSubscriptionInfo(int subId, @NonNull String callingPackage,
             @Nullable String callingFeatureId) {
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
         if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext, subId, callingPackage,
                 callingFeatureId, "getActiveSubscriptionInfo")) {
             throw new SecurityException("Need READ_PHONE_STATE, READ_PRIVILEGED_PHONE_STATE, or "
@@ -975,6 +979,10 @@ public class SubscriptionManagerService extends ISub.Stub {
     @Nullable
     public SubscriptionInfo getActiveSubscriptionInfoForIccId(@NonNull String iccId,
             @NonNull String callingPackage, @Nullable String callingFeatureId) {
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
         return null;
     }
 
@@ -996,6 +1004,10 @@ public class SubscriptionManagerService extends ISub.Stub {
     })
     public SubscriptionInfo getActiveSubscriptionInfoForSimSlotIndex(int slotIndex,
             @NonNull String callingPackage, @Nullable String callingFeatureId) {
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
         int subId = mSlotIndexToSubId.getOrDefault(slotIndex,
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID);
 
@@ -1078,12 +1090,34 @@ public class SubscriptionManagerService extends ISub.Stub {
      *
      * @param callingPackage The package making the call
      * @param callingFeatureId The feature in the package
-     * @return the number of active subscriptions
+     *
+     * @return the number of active subscriptions.
      */
     @Override
+    @RequiresPermission(anyOf = {
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.READ_PRIVILEGED_PHONE_STATE,
+            "carrier privileges",
+    })
     public int getActiveSubInfoCount(@NonNull String callingPackage,
             @Nullable String callingFeatureId) {
-        return 0;
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
+        if (!TelephonyPermissions.checkReadPhoneStateOnAnyActiveSub(mContext,
+                Binder.getCallingPid(), Binder.getCallingUid(), callingPackage, callingFeatureId,
+                "getAllSubInfoList")) {
+            throw new SecurityException("Need READ_PHONE_STATE, READ_PRIVILEGED_PHONE_STATE, or "
+                    + "carrier privilege");
+        }
+
+        final long token = Binder.clearCallingIdentity();
+        try {
+            return getActiveSubIdList(false).length;
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
     }
 
     /**
@@ -1139,6 +1173,10 @@ public class SubscriptionManagerService extends ISub.Stub {
     @Override
     public List<SubscriptionInfo> getAccessibleSubscriptionInfoList(
             @NonNull String callingPackage) {
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
         return null;
     }
 
@@ -1371,6 +1409,11 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     @Override
     public int setOpportunistic(boolean opportunistic, int subId, @NonNull String callingPackage) {
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
+
         return 0;
     }
 
@@ -1392,6 +1435,11 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     @Override
     public ParcelUuid createSubscriptionGroup(int[] subIdList, @NonNull String callingPackage) {
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
+
         return null;
     }
 
@@ -1424,17 +1472,29 @@ public class SubscriptionManagerService extends ISub.Stub {
     @NonNull
     public List<SubscriptionInfo> getOpportunisticSubscriptions(@NonNull String callingPackage,
             @Nullable String callingFeatureId) {
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
         return Collections.emptyList();
     }
 
     @Override
     public void removeSubscriptionsFromGroup(int[] subIdList, @NonNull ParcelUuid groupUuid,
             @NonNull String callingPackage) {
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
     }
 
     @Override
     public void addSubscriptionsIntoGroup(int[] subIdList, @NonNull ParcelUuid groupUuid,
             @NonNull String callingPackage) {
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
     }
 
     /**
@@ -1468,6 +1528,10 @@ public class SubscriptionManagerService extends ISub.Stub {
     @NonNull
     public List<SubscriptionInfo> getSubscriptionsInGroup(@NonNull ParcelUuid groupUuid,
             @NonNull String callingPackage, @Nullable String callingFeatureId) {
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
         // If the calling app neither has carrier privileges nor READ_PHONE_STATE and access to
         // device identifiers, it will throw a SecurityException.
         if (CompatChanges.isChangeEnabled(REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID,
@@ -1766,6 +1830,10 @@ public class SubscriptionManagerService extends ISub.Stub {
     @Override
     public String getSubscriptionProperty(int subId, @NonNull String propKey,
             @NonNull String callingPackage, @Nullable String callingFeatureId) {
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
         return null;
     }
 
@@ -1806,6 +1874,10 @@ public class SubscriptionManagerService extends ISub.Stub {
     })
     public boolean isActiveSubId(int subId, @NonNull String callingPackage,
             @Nullable String callingFeatureId) {
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
         if (!TelephonyPermissions.checkCallingOrSelfReadPhoneState(mContext, subId, callingPackage,
                 callingFeatureId, "isActiveSubId")) {
             throw new SecurityException("Need READ_PHONE_STATE, READ_PRIVILEGED_PHONE_STATE, or "
@@ -1896,6 +1968,10 @@ public class SubscriptionManagerService extends ISub.Stub {
     })
     public String getPhoneNumber(int subId, @PhoneNumberSource int source,
             @NonNull String callingPackage, @Nullable String callingFeatureId) {
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
         TelephonyPermissions.enforceAnyPermissionGrantedOrCarrierPrivileges(
                 mContext, subId, Binder.getCallingUid(), "getPhoneNumber",
                 Manifest.permission.READ_PHONE_NUMBERS,
@@ -1934,12 +2010,20 @@ public class SubscriptionManagerService extends ISub.Stub {
     @Override
     public String getPhoneNumberFromFirstAvailableSource(int subId,
             @NonNull String callingPackage, @Nullable String callingFeatureId) {
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
         return null;
     }
 
     @Override
     public void setPhoneNumber(int subId, @PhoneNumberSource int source, @NonNull String number,
             @NonNull String callingPackage, @Nullable String callingFeatureId) {
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
         if (source != SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER) {
             throw new IllegalArgumentException("setPhoneNumber doesn't accept source "
                     + SubscriptionManager.phoneNumberSourceToString(source));
@@ -1970,6 +2054,10 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     @Override
     public int setUsageSetting(int usageSetting, int subId, @NonNull String callingPackage) {
+        // Verify that the callingPackage belongs to the calling UID
+        mContext.getSystemService(AppOpsManager.class)
+                .checkPackage(Binder.getCallingUid(), callingPackage);
+
         return 0;
     }
 

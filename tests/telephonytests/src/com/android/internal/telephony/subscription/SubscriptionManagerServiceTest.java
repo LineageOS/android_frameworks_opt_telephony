@@ -797,4 +797,19 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(1).getDisplayName())
                 .isEqualTo(FAKE_CARRIER_NAME2);
     }
+
+    @Test
+    public void testGetActiveSubInfoCount() {
+        doReturn(new int[]{1, 2}).when(mSubscriptionManager).getCompleteActiveSubscriptionIdList();
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        insertSubscription(FAKE_SUBSCRIPTION_INFO2);
+
+        // Should fail without READ_PHONE_STATE
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .getActiveSubInfoCount(CALLING_PACKAGE, CALLING_FEATURE));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubInfoCount(
+                CALLING_PACKAGE, CALLING_FEATURE)).isEqualTo(2);
+    }
 }
