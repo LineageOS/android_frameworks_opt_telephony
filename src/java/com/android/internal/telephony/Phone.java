@@ -5160,14 +5160,24 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * @return UserHandle from phone sub id, or null if subscription is invalid.
+     * @return User handle associated with the phone's subscription id. {@code null} if subscription
+     * is invalid or not found.
      */
+    @Nullable
     public UserHandle getUserHandle() {
-        SubscriptionManager subManager = mContext.getSystemService(SubscriptionManager.class);
         int subId = getSubId();
-        return subManager.isValidSubscriptionId(subId)
-                ? subManager.getSubscriptionUserHandle(subId)
-                : null;
+
+        UserHandle userHandle = null;
+        try {
+            SubscriptionManager subManager = mContext.getSystemService(SubscriptionManager.class);
+            if (subManager != null) {
+                userHandle = subManager.getSubscriptionUserHandle(subId);
+            }
+        } catch (IllegalArgumentException ex) {
+            loge("getUserHandle: ex=" + ex);
+        }
+
+        return userHandle;
     }
 
     /**
