@@ -233,7 +233,7 @@ public class SubscriptionManagerService extends ISub.Stub {
 
     /** The slot index subscription id map. Key is the slot index, and the value is sub id. */
     @NonNull
-    private final WatchedMap<Integer, Integer> mSlotIndexToSubId = new WatchedMap<>();
+    private final SubscriptionMap<Integer, Integer> mSlotIndexToSubId = new SubscriptionMap<>();
 
     /** Subscription manager service callbacks. */
     @NonNull
@@ -264,9 +264,10 @@ public class SubscriptionManagerService extends ISub.Stub {
     private final int[] mSimState;
 
     /**
-     * Watched map that automatically invalidate cache in {@link SubscriptionManager}.
+     * Slot index/subscription map that automatically invalidate cache in
+     * {@link SubscriptionManager}.
      */
-    private static class WatchedMap<K, V> extends ConcurrentHashMap<K, V> {
+    private static class SubscriptionMap<K, V> extends ConcurrentHashMap<K, V> {
         @Override
         public void clear() {
             super.clear();
@@ -1946,10 +1947,11 @@ public class SubscriptionManagerService extends ISub.Stub {
     @RequiresPermission(Manifest.permission.MODIFY_PHONE_STATE)
     public int addSubInfo(@NonNull String iccId, @NonNull String displayName, int slotIndex,
             @SubscriptionType int subscriptionType) {
-        log("addSubInfo: iccId=" + SubscriptionInfo.givePrintableIccid(iccId) + ", slotIndex="
-                + slotIndex + ", displayName=" + displayName + ", type="
-                + SubscriptionManager.subscriptionTypeToString(subscriptionType));
         enforcePermissions("addSubInfo", Manifest.permission.MODIFY_PHONE_STATE);
+        logl("addSubInfo: iccId=" + SubscriptionInfo.givePrintableIccid(iccId) + ", slotIndex="
+                + slotIndex + ", displayName=" + displayName + ", type="
+                + SubscriptionManager.subscriptionTypeToString(subscriptionType) + ", "
+                + getCallingPackage());
 
         // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
@@ -2004,6 +2006,9 @@ public class SubscriptionManagerService extends ISub.Stub {
     public int removeSubInfo(@NonNull String uniqueId, int subscriptionType) {
         enforcePermissions("removeSubInfo", Manifest.permission.MODIFY_PHONE_STATE);
 
+        logl("removeSubInfo: uniqueId=" + SubscriptionInfo.givePrintableIccid(uniqueId) + ", "
+                + SubscriptionManager.subscriptionTypeToString(subscriptionType) + ", "
+                + getCallingPackage());
         final long identity = Binder.clearCallingIdentity();
         try {
             SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
@@ -2016,6 +2021,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                 loge("The subscription type does not match.");
                 return -1;
             }
+            mSlotIndexToSubId.remove(subInfo.getSimSlotIndex());
             mSubscriptionDatabaseManager.removeSubscriptionInfo(subInfo.getSubscriptionId());
             return 0;
         } finally {
