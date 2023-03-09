@@ -37,15 +37,21 @@ import android.os.ParcelUuid;
 import android.os.TelephonyServiceManager;
 import android.os.UserHandle;
 import android.provider.Settings;
+import android.service.carrier.CarrierIdentifier;
+import android.service.euicc.EuiccProfileInfo;
+import android.service.euicc.EuiccService;
+import android.service.euicc.GetEuiccProfileInfoListResult;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.PhoneNumberSource;
+import android.telephony.SubscriptionManager.SimDisplayNameSource;
 import android.telephony.SubscriptionManager.SubscriptionType;
 import android.telephony.TelephonyFrameworkInitializer;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyRegistryManager;
+import android.telephony.UiccAccessRule;
 import android.telephony.euicc.EuiccManager;
 import android.text.TextUtils;
 import android.util.ArraySet;
@@ -54,11 +60,13 @@ import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.CarrierResolver;
 import com.android.internal.telephony.ISetOpportunisticDataCallback;
 import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.MultiSimSettingController;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyPermissions;
+import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.subscription.SubscriptionDatabaseManager.SubscriptionDatabaseManagerCallback;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccController;
@@ -107,16 +115,30 @@ public class SubscriptionManagerService extends ISub.Stub {
     private final Context mContext;
 
     /** Telephony manager instance. */
+    @NonNull
     private final TelephonyManager mTelephonyManager;
 
     /** Subscription manager instance. */
+    @NonNull
     private final SubscriptionManager mSubscriptionManager;
 
-    /** Euicc manager instance. */
+    /**
+     * Euicc manager instance. Will be null if the device does not support
+     * {@link PackageManager#FEATURE_TELEPHONY_EUICC}.
+     */
+    @Nullable
     private final EuiccManager mEuiccManager;
 
     /** Uicc controller instance. */
+    @NonNull
     private final UiccController mUiccController;
+
+    /**
+     * Euicc controller instance. Will be null if the device does not support
+     * {@link PackageManager#FEATURE_TELEPHONY_EUICC}.
+     */
+    @Nullable
+    private EuiccController mEuiccController;
 
     /** The main handler of subscription manager service. */
     @NonNull
@@ -288,6 +310,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         mTelephonyManager = context.getSystemService(TelephonyManager.class);
         mSubscriptionManager = context.getSystemService(SubscriptionManager.class);
         mEuiccManager = context.getSystemService(EuiccManager.class);
+
         mUiccController = UiccController.getInstance();
         mHandler = new Handler(looper);
         TelephonyServiceManager.ServiceRegisterer subscriptionServiceRegisterer =
@@ -402,6 +425,15 @@ public class SubscriptionManagerService extends ISub.Stub {
                 });
 
         updateDefaultSubId();
+
+        mHandler.post(() -> {
+            // EuiccController is created after SubscriptionManagerService. So we need to get
+            // the instance later in the handler.
+            if (mContext.getPackageManager().hasSystemFeature(
+                    PackageManager.FEATURE_TELEPHONY_EUICC)) {
+                mEuiccController = EuiccController.get();
+            }
+        });
     }
 
     /**
@@ -670,6 +702,153 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
+     * This is only for internal use and the returned priority is arbitrary. The idea is to give a
+     * higher value to name source that has higher priority to override other name sources.
+     *
+     * @param nameSource Source of display name.
+     *
+     * @return The priority. Higher value means higher priority.
+     */
+    private static int getNameSourcePriority(@SimDisplayNameSource int nameSource) {
+        int index = Arrays.asList(
+                SubscriptionManager.NAME_SOURCE_UNKNOWN,
+                SubscriptionManager.NAME_SOURCE_CARRIER_ID,
+                SubscriptionManager.NAME_SOURCE_SIM_PNN,
+                SubscriptionManager.NAME_SOURCE_SIM_SPN,
+                SubscriptionManager.NAME_SOURCE_CARRIER,
+                SubscriptionManager.NAME_SOURCE_USER_INPUT // user has highest priority.
+        ).indexOf(nameSource);
+        return Math.max(0, index);
+    }
+
+    /**
+     * Get the embedded profile port index by ICCID.
+     *
+     * @param iccId The ICCID.
+     * @return The port index.
+     */
+    private int getEmbeddedProfilePortIndex(String iccId) {
+        UiccSlot[] slots = UiccController.getInstance().getUiccSlots();
+        for (UiccSlot slot : slots) {
+            if (slot != null && slot.isEuicc()
+                    && slot.getPortIndexFromIccId(iccId) != TelephonyManager.INVALID_PORT_INDEX) {
+                return slot.getPortIndexFromIccId(iccId);
+            }
+        }
+        return TelephonyManager.INVALID_PORT_INDEX;
+    }
+
+    /**
+     * Pull the embedded subscription from {@link EuiccController} for the eUICC with the given list
+     * of card IDs {@code cardIds}.
+     *
+     * @param cardIds The card ids of the embedded subscriptions.
+     * @param callback Callback to be called upon completion.
+     */
+    public void updateEmbeddedSubscriptions(@NonNull List<Integer> cardIds,
+            @Nullable Runnable callback) {
+        mHandler.post(() -> {
+            // Do nothing if eUICCs are disabled. (Previous entries may remain in the cache, but
+            // they are filtered out of list calls as long as EuiccManager.isEnabled returns false).
+            if (mEuiccManager == null || !mEuiccManager.isEnabled()) {
+                loge("updateEmbeddedSubscriptions: eUICC not enabled");
+                if (callback != null) {
+                    callback.run();
+                }
+                return;
+            }
+
+            log("updateEmbeddedSubscriptions: start to get euicc profiles.");
+            for (int cardId : cardIds) {
+                GetEuiccProfileInfoListResult result = mEuiccController
+                        .blockingGetEuiccProfileInfoList(cardId);
+                log("updateEmbeddedSubscriptions: cardId=" + cardId + ", result=" + result);
+
+                if (result.getResult() != EuiccService.RESULT_OK) {
+                    loge("Failed to get euicc profile info. result="
+                            + EuiccService.resultToString(result.getResult()));
+                    continue;
+                }
+
+                if (result.getProfiles() == null || result.getProfiles().isEmpty()) {
+                    loge("No profiles returned.");
+                    continue;
+                }
+
+                final boolean isRemovable = result.getIsRemovable();
+
+                for (EuiccProfileInfo embeddedProfile : result.getProfiles()) {
+                    SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
+                            .getSubscriptionInfoInternalByIccId(embeddedProfile.getIccid());
+
+                    // The subscription does not exist in the database. Insert a new one here.
+                    if (subInfo == null) {
+                        subInfo = new SubscriptionInfoInternal.Builder()
+                                .setIccId(embeddedProfile.getIccid())
+                                .build();
+                        int subId = mSubscriptionDatabaseManager.insertSubscriptionInfo(subInfo);
+                        subInfo = new SubscriptionInfoInternal.Builder(subInfo)
+                                .setId(subId).build();
+                    }
+
+                    int nameSource = subInfo.getDisplayNameSource();
+                    int carrierId = subInfo.getCarrierId();
+
+                    SubscriptionInfoInternal.Builder builder = new SubscriptionInfoInternal
+                            .Builder(subInfo);
+
+                    builder.setEmbedded(1);
+
+                    List<UiccAccessRule> ruleList = embeddedProfile.getUiccAccessRules();
+                    if (ruleList != null && !ruleList.isEmpty()) {
+                        builder.setNativeAccessRules(embeddedProfile.getUiccAccessRules());
+                    }
+                    builder.setRemovableEmbedded(isRemovable ? 1 : 0);
+
+                    // override DISPLAY_NAME if the priority of existing nameSource is <= carrier
+                    if (getNameSourcePriority(nameSource) <= getNameSourcePriority(
+                            SubscriptionManager.NAME_SOURCE_CARRIER)) {
+                        builder.setDisplayName(embeddedProfile.getNickname());
+                        builder.setDisplayNameSource(SubscriptionManager.NAME_SOURCE_CARRIER);
+                    }
+                    builder.setProfileClass(embeddedProfile.getProfileClass());
+                    builder.setPortIndex(getEmbeddedProfilePortIndex(embeddedProfile.getIccid()));
+
+                    CarrierIdentifier cid = embeddedProfile.getCarrierIdentifier();
+                    if (cid != null) {
+                        // Due to the limited subscription information, carrier id identified here
+                        // might not be accurate compared with CarrierResolver. Only update carrier
+                        // id if there is no valid carrier id present.
+                        if (carrierId == TelephonyManager.UNKNOWN_CARRIER_ID) {
+                            builder.setCarrierId(CarrierResolver
+                                    .getCarrierIdFromIdentifier(mContext, cid));
+                        }
+                        String mcc = cid.getMcc();
+                        String mnc = cid.getMnc();
+                        builder.setMcc(mcc);
+                        builder.setMnc(mnc);
+                    }
+                    // If cardId = unsupported or un-initialized, we have no reason to update DB.
+                    // Additionally, if the device does not support cardId for default eUICC, the
+                    // CARD_ID field should not contain the EID
+                    if (cardId >= 0 && mUiccController.getCardIdForDefaultEuicc()
+                            != TelephonyManager.UNSUPPORTED_CARD_ID) {
+                        builder.setCardString(mUiccController.convertToCardString(cardId));
+                    }
+
+                    subInfo = builder.build();
+                    log("updateEmbeddedSubscriptions: update subscription " + subInfo);
+                    mSubscriptionDatabaseManager.updateSubscription(subInfo);
+                }
+            }
+        });
+        log("updateEmbeddedSubscriptions: Finished embedded subscription update.");
+        if (callback != null) {
+            callback.run();
+        }
+    }
+
+    /**
      * Get all subscription info records from SIMs that are inserted now or were inserted before.
      *
      * <p>
@@ -905,7 +1084,8 @@ public class SubscriptionManagerService extends ISub.Stub {
 
             return mSubscriptionDatabaseManager.getAllSubscriptions().stream()
                     .filter(subInfo -> subInfo.isActive() || iccIds.contains(subInfo.getIccId())
-                            || (mEuiccManager.isEnabled() && subInfo.isEmbedded()))
+                            || (mEuiccManager != null && mEuiccManager.isEnabled()
+                            && subInfo.isEmbedded()))
                     .map(SubscriptionInfoInternal::toSubscriptionInfo)
                     .sorted(Comparator.comparing(SubscriptionInfo::getSimSlotIndex)
                             .thenComparing(SubscriptionInfo::getSubscriptionId))
