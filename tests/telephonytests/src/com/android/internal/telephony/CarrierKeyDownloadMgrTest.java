@@ -45,6 +45,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 
 import java.security.PublicKey;
@@ -60,6 +61,8 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     private static final String LOG_TAG = "CarrierKeyDownloadManager";
 
     private CarrierKeyDownloadManager mCarrierKeyDM;
+
+    private PersistableBundle mBundle;
 
     private final String mURL = "http://www.google.com";
 
@@ -83,11 +86,23 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
             "{ \"carrier-keys\": [ { \"key-identifier\": \"key1=value\", "
                     + "\"public-key\": \"" + CERT + "\"}]}";
 
+    private CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener;
+
     @Before
     public void setUp() throws Exception {
         logd("CarrierActionAgentTest +Setup!");
         super.setUp(getClass().getSimpleName());
+        mBundle = mContextFixture.getCarrierConfigBundle();
+        when(mCarrierConfigManager.getConfigForSubId(anyInt(), any())).thenReturn(mBundle);
+
+        // Capture listener to emulate the carrier config change notification used later
+        ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
+                ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
         mCarrierKeyDM = new CarrierKeyDownloadManager(mPhone);
+        verify(mCarrierConfigManager).registerCarrierConfigChangeListener(any(),
+                listenerArgumentCaptor.capture());
+        mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(0);
+
         processAllMessages();
         logd("CarrierActionAgentTest -Setup!");
     }
@@ -322,7 +337,7 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
     }
 
     /**
-     * Test sending the ACTION_CARRIER_CONFIG_CHANGED intent.
+     * Test notifying the carrier config change from listener.
      * Verify that the right mnc/mcc gets stored in the preferences.
      **/
     @Test
@@ -337,16 +352,16 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
 
         when(mTelephonyManager.getSimOperator(anyInt())).thenReturn("310260");
         when(mTelephonyManager.getSimCarrierId()).thenReturn(1);
-        Intent mIntent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        mIntent.putExtra(PhoneConstants.PHONE_KEY, 0);
-        mContext.sendBroadcast(mIntent);
+        mCarrierConfigChangeListener.onCarrierConfigChanged(0 /* slotIndex */,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
         processAllMessages();
         assertEquals("310260", mCarrierKeyDM.mMccMncForDownload);
         assertEquals(1, mCarrierKeyDM.mCarrierId);
     }
 
     /**
-     * Tests sending the ACTION_CARRIER_CONFIG_CHANGED intent with an empty key.
+     * Tests notifying carrier config change from listener with an empty key.
      * Verify that the carrier keys are removed if IMSI_KEY_DOWNLOAD_URL_STRING is null.
      */
     @Test
@@ -359,9 +374,9 @@ public class CarrierKeyDownloadMgrTest extends TelephonyTest {
         bundle.putInt(CarrierConfigManager.IMSI_KEY_AVAILABILITY_INT, 3);
         bundle.putString(CarrierConfigManager.IMSI_KEY_DOWNLOAD_URL_STRING, null);
 
-        Intent mIntent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        mIntent.putExtra(PhoneConstants.PHONE_KEY, 0);
-        mContext.sendBroadcast(mIntent);
+        mCarrierConfigChangeListener.onCarrierConfigChanged(0 /* slotIndex */,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
         processAllMessages();
         assertNull(mCarrierKeyDM.mMccMncForDownload);
 
