@@ -73,6 +73,7 @@ public class DataStallRecoveryStats {
                 .REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING;
         boolean isFirstValidation = false;
         int phoneId = 0;
+        int durationMillisOfCurrentAction = 0;
         TelephonyStatsLog.write(
                 TelephonyStatsLog.DATA_STALL_RECOVERY_REPORTED,
                 carrierId,
@@ -89,7 +90,8 @@ public class DataStallRecoveryStats {
                 otherNetworkRegState,
                 phoneNetworkRegState,
                 isFirstValidation,
-                phoneId);
+                phoneId,
+                durationMillisOfCurrentAction);
     }
 
     /**
@@ -108,7 +110,8 @@ public class DataStallRecoveryStats {
             boolean isRecovered,
             int durationMillis,
             @DataStallRecoveryManager.RecoveredReason int reason,
-            boolean isFirstValidation) {
+            boolean isFirstValidation,
+            int durationMillisOfCurrentAction) {
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             phone = phone.getDefaultPhone();
         }
@@ -163,7 +166,8 @@ public class DataStallRecoveryStats {
                 otherNetworkRegState,
                 phoneNetworkRegState,
                 isFirstValidation,
-                phoneId);
+                phoneId,
+                durationMillisOfCurrentAction);
     }
 
     /** Returns the RAT used for data (including IWLAN). */
