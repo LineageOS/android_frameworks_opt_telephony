@@ -86,16 +86,13 @@ public class DatagramController {
      * Register to receive incoming datagrams over satellite.
      *
      * @param subId The subId of the subscription to register for incoming satellite datagrams.
-     * @param datagramType datagram type indicating whether the datagram is of type
-     *                     SOS_SMS or LOCATION_SHARING.
      * @param callback The callback to handle incoming datagrams over satellite.
      *
      * @return The {@link SatelliteManager.SatelliteError} result of the operation.
      */
     @SatelliteManager.SatelliteError public int registerForSatelliteDatagram(int subId,
-            @SatelliteManager.DatagramType int datagramType,
             @NonNull ISatelliteDatagramCallback callback) {
-        return mDatagramReceiver.registerForSatelliteDatagram(subId, datagramType, callback);
+        return mDatagramReceiver.registerForSatelliteDatagram(subId, callback);
     }
 
     /**
@@ -104,7 +101,7 @@ public class DatagramController {
      *
      * @param subId The subId of the subscription to unregister for incoming satellite datagrams.
      * @param callback The callback that was passed to
-     *                 {@link #registerForSatelliteDatagram(int, int, ISatelliteDatagramCallback)}.
+     *                 {@link #registerForSatelliteDatagram(int, ISatelliteDatagramCallback)}.
      */
     public void unregisterForSatelliteDatagram(int subId,
             @NonNull ISatelliteDatagramCallback callback) {
@@ -138,15 +135,14 @@ public class DatagramController {
      *                 Datagram will be passed down to modem without any encoding or encryption.
      * @param needFullScreenPointingUI this is used to indicate pointingUI app to open in
      *                                 full screen mode.
-     * @param isSatelliteDemoModeEnabled True if satellite demo mode is enabled
      * @param callback The callback to get {@link SatelliteManager.SatelliteError} of the request.
      */
     public void sendSatelliteDatagram(@SatelliteManager.DatagramType int datagramType,
             @NonNull SatelliteDatagram datagram, boolean needFullScreenPointingUI,
-            boolean isSatelliteDemoModeEnabled, @NonNull Consumer<Integer> callback) {
+            @NonNull Consumer<Integer> callback) {
         // TODO: set modemTransferState = SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING
         mDatagramDispatcher.sendSatelliteDatagram(datagramType, datagram,
-                needFullScreenPointingUI, isSatelliteDemoModeEnabled, callback);
+                needFullScreenPointingUI, callback);
     }
 
     private static void logd(@NonNull String log) {
