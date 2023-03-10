@@ -31,6 +31,7 @@
 
 package com.android.internal.telephony.subscription;
 
+import android.annotation.ColorInt;
 import android.annotation.NonNull;
 import android.os.UserHandle;
 import android.provider.Telephony.SimInfo;
@@ -113,6 +114,7 @@ public class SubscriptionInfoInternal {
     /**
      * The color to be used for tinting the icon when displaying to the user.
      */
+    @ColorInt
     private final int mIconTint;
 
     /**
@@ -509,6 +511,7 @@ public class SubscriptionInfoInternal {
      *
      * @return A hexadecimal color value.
      */
+    @ColorInt
     public int getIconTint() {
         return mIconTint;
     }
