@@ -5945,8 +5945,8 @@ public class RILUtils {
                 supportedRadioTechnologies.add(technology);
             }
         }
-        return new SatelliteCapabilities(supportedRadioTechnologies, capabilities.isAlwaysOn,
-                capabilities.needsPointingToSatellite, capabilities.needsSeparateSimProfile);
+        return new SatelliteCapabilities(supportedRadioTechnologies,
+                capabilities.needsPointingToSatellite, 0);
     }
 
     /**
@@ -5956,8 +5956,7 @@ public class RILUtils {
     public static PointingInfo convertHalSatellitePointingInfo(
             android.hardware.radio.satellite.PointingInfo pointingInfo) {
         return new PointingInfo(pointingInfo.satelliteAzimuthDegrees,
-                pointingInfo.satelliteElevationDegrees, pointingInfo.antennaAzimuthDegrees,
-                pointingInfo.antennaPitchDegrees, pointingInfo.antennaRollDegrees);
+                pointingInfo.satelliteElevationDegrees);
     }
 
     /**
@@ -5970,9 +5969,6 @@ public class RILUtils {
                 new android.hardware.radio.satellite.PointingInfo();
         halPointingInfo.satelliteAzimuthDegrees = pointingInfo.getSatelliteAzimuthDegrees();
         halPointingInfo.satelliteElevationDegrees = pointingInfo.getSatelliteElevationDegrees();
-        halPointingInfo.antennaAzimuthDegrees = pointingInfo.getAntennaAzimuthDegrees();
-        halPointingInfo.antennaPitchDegrees = pointingInfo.getAntennaPitchDegrees();
-        halPointingInfo.antennaRollDegrees = pointingInfo.getAntennaRollDegrees();
         return halPointingInfo;
     }
 

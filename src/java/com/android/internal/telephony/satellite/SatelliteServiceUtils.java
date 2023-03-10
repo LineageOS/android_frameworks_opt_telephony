@@ -161,9 +161,7 @@ public class SatelliteServiceUtils {
                 Arrays.stream(radioTechnologies)
                         .map(SatelliteServiceUtils::fromSatelliteRadioTechnology)
                         .boxed().collect(Collectors.toSet()),
-                capabilities.isAlwaysOn,
-                capabilities.needsPointingToSatellite,
-                capabilities.needsSeparateSimProfile);
+                capabilities.isPointingRequired, capabilities.maxBytesPerOutgoingDatagram);
     }
 
     /**
@@ -174,8 +172,7 @@ public class SatelliteServiceUtils {
     @Nullable public static PointingInfo fromPointingInfo(
             android.telephony.satellite.stub.PointingInfo pointingInfo) {
         if (pointingInfo == null) return null;
-        return new PointingInfo(pointingInfo.satelliteAzimuth, pointingInfo.satelliteElevation,
-                pointingInfo.antennaAzimuth, pointingInfo.antennaPitch, pointingInfo.antennaRoll);
+        return new PointingInfo(pointingInfo.satelliteAzimuth, pointingInfo.satelliteElevation);
     }
 
     /**

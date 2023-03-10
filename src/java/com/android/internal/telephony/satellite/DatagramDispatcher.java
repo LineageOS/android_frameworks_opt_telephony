@@ -117,18 +117,16 @@ public class DatagramDispatcher extends Handler {
         public @SatelliteManager.DatagramType int datagramType;
         public @NonNull SatelliteDatagram datagram;
         public boolean needFullScreenPointingUI;
-        public boolean isSatelliteDemoModeEnabled;
         public @NonNull Consumer<Integer> callback;
 
         SendSatelliteDatagramArgument(long datagramId,
                 @SatelliteManager.DatagramType int datagramType,
                 @NonNull SatelliteDatagram datagram, boolean needFullScreenPointingUI,
-                boolean isSatelliteDemoModeEnabled, @NonNull Consumer<Integer> callback) {
+                @NonNull Consumer<Integer> callback) {
             this.datagramId = datagramId;
             this.datagramType = datagramType;
             this.datagram = datagram;
             this.needFullScreenPointingUI = needFullScreenPointingUI;
-            this.isSatelliteDemoModeEnabled = isSatelliteDemoModeEnabled;
             this.callback = callback;
         }
     }
@@ -148,8 +146,7 @@ public class DatagramDispatcher extends Handler {
                 if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
                     SatelliteModemInterface.getInstance().sendSatelliteDatagram(argument.datagram,
                             argument.datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE,
-                            argument.needFullScreenPointingUI, argument.isSatelliteDemoModeEnabled,
-                            onCompleted);
+                            argument.needFullScreenPointingUI, onCompleted);
                     break;
                 }
                 Phone phone = request.phone;
@@ -216,19 +213,17 @@ public class DatagramDispatcher extends Handler {
      *                 Datagram will be passed down to modem without any encoding or encryption.
      * @param needFullScreenPointingUI this is used to indicate pointingUI app to open in
      *                                 full screen mode.
-     * @param isSatelliteDemoModeEnabled True if satellite demo mode is enabled
      * @param callback The callback to get {@link SatelliteManager.SatelliteError} of the request.
      */
     public void sendSatelliteDatagram(@SatelliteManager.DatagramType int datagramType,
             @NonNull SatelliteDatagram datagram, boolean needFullScreenPointingUI,
-            boolean isSatelliteDemoModeEnabled, @NonNull Consumer<Integer> callback) {
+            @NonNull Consumer<Integer> callback) {
         Phone phone = SatelliteServiceUtils.getPhone();
 
         long datagramId = mNextDatagramId.getAndUpdate(
                 n -> ((n + 1) % DatagramController.MAX_DATAGRAM_ID));
         SendSatelliteDatagramArgument datagramArgs = new SendSatelliteDatagramArgument(datagramId,
-                datagramType, datagram, needFullScreenPointingUI, isSatelliteDemoModeEnabled,
-                callback);
+                datagramType, datagram, needFullScreenPointingUI, callback);
 
         synchronized (mLock) {
             if (datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE) {
