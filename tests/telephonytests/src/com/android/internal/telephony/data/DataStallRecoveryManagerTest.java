@@ -29,7 +29,6 @@ import static org.mockito.Mockito.verify;
 import android.net.NetworkAgent;
 import android.telephony.Annotation.ValidationStatus;
 import android.telephony.CarrierConfigManager;
-import android.telephony.data.DataProfile;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -117,7 +116,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
                 dataNetworkControllerCallbackCaptor.getValue();
 
         if (isConnected) {
-            List<DataProfile> dataprofile = new ArrayList<DataProfile>();
+            List<DataNetwork> dataprofile = new ArrayList<>();
             dataNetworkControllerCallback.onInternetDataNetworkConnected(dataprofile);
         } else {
             dataNetworkControllerCallback.onInternetDataNetworkDisconnected();
