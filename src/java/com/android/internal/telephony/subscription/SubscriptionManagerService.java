@@ -18,6 +18,7 @@ package com.android.internal.telephony.subscription;
 
 import android.Manifest;
 import android.annotation.CallbackExecutor;
+import android.annotation.ColorInt;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.RequiresPermission;
@@ -635,6 +636,9 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @param subId Subscription id.
      * @param carrierId The carrier id.
      *
+     * @throws IllegalArgumentException if {@code subId} is invalid or the subscription does not
+     * exist.
+     *
      * @see TelephonyManager#getSimCarrierId()
      */
     public void setCarrierId(int subId, int carrierId) {
@@ -646,6 +650,9 @@ public class SubscriptionManagerService extends ISub.Stub {
      *
      * @param mccMnc MCC/MNC associated with the subscription.
      * @param subId The subscription id.
+     *
+     * @throws IllegalArgumentException if {@code subId} is invalid or the subscription does not
+     * exist.
      */
     public void setMccMnc(int subId, @NonNull String mccMnc) {
         mSubscriptionDatabaseManager.setMcc(subId, mccMnc.substring(0, 3));
@@ -1263,14 +1270,31 @@ public class SubscriptionManagerService extends ISub.Stub {
     /**
      * Set SIM icon tint color by simInfo index.
      *
-     * @param tint the icon tint color of the SIM
      * @param subId the unique subscription index in database
+     * @param tint the icon tint color of the SIM
      *
      * @return the number of records updated
+     *
+     * @throws IllegalArgumentException if {@code subId} is invalid or the subscription does not
+     * exist.
+     * @throws SecurityException if callers do not hold the required permission.
      */
     @Override
-    public int setIconTint(int tint, int subId) {
-        return 0;
+    @RequiresPermission(Manifest.permission.MODIFY_PHONE_STATE)
+    public int setIconTint(int subId, @ColorInt int tint) {
+        enforcePermissions("setIconTint", Manifest.permission.MODIFY_PHONE_STATE);
+
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+                throw new IllegalArgumentException("Invalid sub id passed as parameter");
+            }
+
+            mSubscriptionDatabaseManager.setIconTint(subId, tint);
+            return 1;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     /**
@@ -1344,7 +1368,7 @@ public class SubscriptionManagerService extends ISub.Stub {
             if (sub != null && sub.isEmbedded()) {
                 int cardId = sub.getCardId();
                 log("Updating embedded sub nickname on cardId: " + cardId);
-                mEuiccManager.updateSubscriptionNickname(subId, displayName,
+                mEuiccManager.updateSubscriptionNickname(subId, nameToSet,
                         // This PendingIntent simply fulfills the requirement to pass in a callback;
                         // we don't care about the result (hence 0 requestCode and no action
                         // specified on the intent).
@@ -1406,6 +1430,9 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @param callingPackage The package making the call
      *
      * @return the number of records updated
+     *
+     * @throws IllegalArgumentException if {@code subId} is invalid or the subscription does not
+     * exist.
      */
     @Override
     public int setOpportunistic(boolean opportunistic, int subId, @NonNull String callingPackage) {
@@ -1923,11 +1950,12 @@ public class SubscriptionManagerService extends ISub.Stub {
      * Returns the phone number for the given {@code subscriptionId} and {@code source},
      * or an empty string if not available.
      *
-     * <p>General apps that need to know the phone number should use {@link #getPhoneNumber(int)}
-     * instead. This API may be suitable specific apps that needs to know the phone number from
-     * a specific source. For example, a carrier app needs to know exactly what's on
-     * {@link #PHONE_NUMBER_SOURCE_UICC UICC} and decide if the previously set phone number
-     * of source {@link #PHONE_NUMBER_SOURCE_CARRIER carrier} should be updated.
+     * <p>General apps that need to know the phone number should use
+     * {@link SubscriptionManager#getPhoneNumber(int)} instead. This API may be suitable specific
+     * apps that needs to know the phone number from a specific source. For example, a carrier app
+     * needs to know exactly what's on {@link SubscriptionManager#PHONE_NUMBER_SOURCE_UICC UICC} and
+     * decide if the previously set phone number of source
+     * {@link SubscriptionManager#PHONE_NUMBER_SOURCE_CARRIER carrier} should be updated.
      *
      * <p>The API provides no guarantees of what format the number is in: the format can vary
      * depending on the {@code source} and the network etc. Programmatic parsing should be done
