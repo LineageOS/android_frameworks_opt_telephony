@@ -889,7 +889,7 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
     @Test
     public void testPackageDisabledAndThenEnabled() throws Exception {
         // Start with certs and packages installed
-        setupCarrierConfigRules(carrierConfigRuleString(getHash(CERT_1)));
+        setupSimLoadedRules(ruleWithHashOnly(getHash(CERT_1)));
         setupInstalledPackages(
                 new PackageCertInfo(PACKAGE_1, CERT_1, USER_1, UID_1),
                 new PackageCertInfo(PACKAGE_2, CERT_2, USER_1, UID_2));
@@ -1032,9 +1032,12 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
     }
 
     @Test
-    public void testGetCarrierService_haveCarrierServiceWithCarrierPrivileges() throws Exception {
-        // Only packages with CERT_1 have carrier privileges
-        setupCarrierConfigRules(carrierConfigRuleString(getHash(CERT_1)));
+    public void testGetCarrierService_haveCarrierServiceWithSimCarrierPrivileges()
+            throws Exception {
+        // Package 1 has SIM loaded rules, making it eligible for carrier service bindings
+        setupSimLoadedRules(ruleWithHashOnly(getHash(CERT_1)));
+        // Package 2 has only carrier-config based rules, which is insufficient for carrier services
+        setupCarrierConfigRules(carrierConfigRuleString(getHash(CERT_2)));
         // Setup all odd packages privileged, even packages not
         setupInstalledPackages(
                 new PackageCertInfo(PACKAGE_1, CERT_1, USER_1, UID_1),
@@ -1061,7 +1064,6 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         assertEquals(PACKAGE_1, carrierServicePackageName);
         assertEquals(UID_1, carrierServiceUid);
 
-
         reset(mPackageManager);
         // Get CS again
         carrierServicePackageName = mCarrierPrivilegesTracker.getCarrierServicePackageName();
@@ -1072,27 +1074,32 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verify(mPackageManager, never()).queryIntentServices(any(), anyInt());
         assertEquals(PACKAGE_1, carrierServicePackageName);
         assertEquals(UID_1, carrierServiceUid);
-
     }
 
     @Test
-    public void testGetCarrierService_haveCarrierServiceWithNoCarrierPrivileges() throws Exception {
-        // Only packages with CERT_1 have carrier privileges
-        setupCarrierConfigRules(carrierConfigRuleString(getHash(CERT_1)));
+    public void testGetCarrierService_haveCarrierServiceWithoutSimCarrierPrivileges()
+            throws Exception {
+        // Package 1 has no carrier privileges, package 2 has carrier-config based privileges, but
+        // no matching certificate on the SIM.
+        setupCarrierConfigRules(carrierConfigRuleString(getHash(CERT_2)));
         // Setup all odd packages privileged, even packages not
         setupInstalledPackages(
                 new PackageCertInfo(PACKAGE_1, CERT_1, USER_1, UID_1),
                 new PackageCertInfo(PACKAGE_2, CERT_2, USER_1, UID_2),
                 new PackageCertInfo(PACKAGE_3, CERT_1, USER_1, UID_1));
-        // One declared CarrierService which has no carrier privileges
-        ResolveInfo noPrivilegeService = new ResolveInfoBuilder().setService(PACKAGE_2).build();
+        // Two declared CarrierService, only PACKAGE_1 has carrier privileges
+        ResolveInfo service1 = new ResolveInfoBuilder().setService(PACKAGE_1).build();
+        ResolveInfo service2 = new ResolveInfoBuilder().setService(PACKAGE_2).build();
         // Use doReturn instead of when/thenReturn which has NPE with unknown reason
-        doReturn(List.of(noPrivilegeService)).when(
-                mPackageManager).queryIntentServices(any(), anyInt());
+        doReturn(List.of(service1, service2))
+                .when(mPackageManager)
+                .queryIntentServices(any(), anyInt());
         when(mPackageManager.getPackageUid(eq(PACKAGE_1), anyInt())).thenReturn(UID_1);
         when(mPackageManager.getPackageUid(eq(PACKAGE_2), anyInt())).thenReturn(UID_2);
         when(mPackageManager.getPackageUid(eq(PACKAGE_3), anyInt())).thenReturn(UID_1);
 
+        // Verify that neither carrier service (no privileges, or carrier-config based privileges)
+        // are accepted.
         mCarrierPrivilegesTracker = createCarrierPrivilegesTracker();
         String carrierServicePackageName = mCarrierPrivilegesTracker.getCarrierServicePackageName();
         int carrierServiceUid = mCarrierPrivilegesTracker.getCarrierServicePackageUid();
