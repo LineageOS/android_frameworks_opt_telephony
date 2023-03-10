@@ -28,6 +28,8 @@ import static com.android.internal.telephony.subscription.SubscriptionDatabaseMa
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_ICCID1;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_ICCID2;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_IMSI1;
+import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_MAC_ADDRESS1;
+import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_MAC_ADDRESS2;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_MCC1;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_MCC2;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_MNC1;
@@ -251,8 +253,9 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
             // Insertion is sync, but the onSubscriptionChanged callback is handled by the handler.
             processAllMessages();
 
-            Class<?> WatchedMapClass = Class.forName("com.android.internal.telephony.subscription"
-                    + ".SubscriptionManagerService$WatchedMap");
+            Class<?> SubscriptionMapClass = Class.forName(
+                    "com.android.internal.telephony.subscription"
+                            + ".SubscriptionManagerService$SubscriptionMap");
             Field field = SubscriptionManagerService.class.getDeclaredField("mSlotIndexToSubId");
             field.setAccessible(true);
             Object map = field.get(mSubscriptionManagerServiceUT);
@@ -262,7 +265,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
             if (subInfo.getSimSlotIndex() >= 0) {
                 // Change the slot -> subId mapping
-                Method method = WatchedMapClass.getDeclaredMethod("put", cArgs);
+                Method method = SubscriptionMapClass.getDeclaredMethod("put", cArgs);
                 method.setAccessible(true);
                 method.invoke(map, subInfo.getSimSlotIndex(), subId);
             }
@@ -1745,6 +1748,8 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
         assertThat(mSubscriptionManagerServiceUT.getAllSubInfoList(
                 CALLING_PACKAGE, CALLING_FEATURE).isEmpty()).isTrue();
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
+                CALLING_PACKAGE, CALLING_FEATURE)).isEmpty();
     }
 
     @Test
@@ -2045,5 +2050,42 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 .getSubscriptionInfoInternal(1);
         assertThat(subInfo.isActive()).isFalse();
         assertThat(subInfo.areUiccApplicationsEnabled()).isFalse();
+    }
+
+    @Test
+    public void testRemoteSim() {
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+
+        mSubscriptionManagerServiceUT.addSubInfo(FAKE_MAC_ADDRESS1, FAKE_CARRIER_NAME1,
+                0, SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM);
+        processAllMessages();
+
+        verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(1));
+
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1);
+        assertThat(subInfo.getIccId()).isEqualTo(FAKE_MAC_ADDRESS1);
+        assertThat(subInfo.getDisplayName()).isEqualTo(FAKE_CARRIER_NAME1);
+        assertThat(subInfo.getSimSlotIndex()).isEqualTo(0);
+        assertThat(subInfo.getSubscriptionType()).isEqualTo(
+                SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM);
+
+        assertThat(mSubscriptionManagerServiceUT.removeSubInfo(FAKE_MAC_ADDRESS1,
+                SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM)).isEqualTo(0);
+        assertThat(mSubscriptionManagerServiceUT.getAllSubInfoList(
+                CALLING_PACKAGE, CALLING_FEATURE)).isEmpty();
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false)).isEmpty();
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
+                CALLING_PACKAGE, CALLING_FEATURE)).isEmpty();
+
+        setIdentifierAccess(true);
+        mSubscriptionManagerServiceUT.addSubInfo(FAKE_MAC_ADDRESS2, FAKE_CARRIER_NAME2,
+                0, SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM);
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false)).isNotEmpty();
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
+                CALLING_PACKAGE, CALLING_FEATURE)).isNotEmpty();
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
+                CALLING_PACKAGE, CALLING_FEATURE).get(0).getIccId()).isEqualTo(FAKE_MAC_ADDRESS2);
     }
 }

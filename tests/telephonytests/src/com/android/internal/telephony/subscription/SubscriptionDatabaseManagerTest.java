@@ -114,6 +114,9 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
     static final int FAKE_USER_ID1 = 10;
     static final int FAKE_USER_ID2 = 11;
 
+    static final String FAKE_MAC_ADDRESS1 = "DC:E5:5B:38:7D:40";
+    static final String FAKE_MAC_ADDRESS2 = "DC:B5:4F:47:F3:4C";
+
     static final SubscriptionInfoInternal FAKE_SUBSCRIPTION_INFO1 =
             new SubscriptionInfoInternal.Builder()
                     .setId(1)
