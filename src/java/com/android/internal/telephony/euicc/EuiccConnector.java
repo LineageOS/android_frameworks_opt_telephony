@@ -101,7 +101,8 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
      * true or onServiceDisconnected is called (and no package change has occurred which should
      * force us to reestablish the binding).
      */
-    private static final int BIND_TIMEOUT_MILLIS = 30000;
+    @VisibleForTesting
+    static final int BIND_TIMEOUT_MILLIS = 30000;
 
     /**
      * Maximum amount of idle time to hold the binding while in {@link ConnectedState}. After this,
@@ -556,6 +557,11 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                 callback);
     }
 
+    @VisibleForTesting
+    public final IEuiccService getBinder() {
+        return mEuiccService;
+    }
+
     /**
      * State in which no EuiccService is available.
      *
@@ -693,6 +699,7 @@ public class EuiccConnector extends StateMachine implements ServiceConnection {
                 }
                 return HANDLED;
             } else if (message.what == CMD_CONNECT_TIMEOUT) {
+                unbind();
                 transitionTo(mAvailableState);
                 return HANDLED;
             } else if (isEuiccCommand(message.what)) {

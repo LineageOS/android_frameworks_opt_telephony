@@ -634,6 +634,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
 
         conn.onServiceDisconnected(mTestComponentName);
 
+        long delay = mTestImsServiceController.getRebindDelay();
+        waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
         verify(mMockCallbacks).imsServiceFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
         verify(mMockCallbacks).imsServiceFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS),
@@ -660,6 +662,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
 
         conn.onServiceDisconnected(mTestComponentName);
 
+        long delay = mTestImsServiceController.getRebindDelay();
+        waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
         verify(mMockCallbacks).imsServiceFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
         verify(mMockCallbacks).imsServiceFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_RCS),
@@ -762,6 +766,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
 
         conn.onBindingDied(null /*null*/);
 
+        long delay = REBIND_RETRY.getStartDelay();
+        waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
         verify(mMockContext).unbindService(eq(conn));
         verify(mMockCallbacks).imsServiceFeatureRemoved(eq(SLOT_0), eq(ImsFeature.FEATURE_MMTEL),
                 eq(mTestImsServiceController));
@@ -787,6 +793,8 @@ public class ImsServiceControllerTest extends ImsTestBase {
         slotIdToSubIdMap.put(SLOT_0, SUB_2);
         bindAndNullServiceError(testFeatures, slotIdToSubIdMap.clone());
 
+        long delay = mTestImsServiceController.getRebindDelay();
+        waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
         verify(mMockCallbacks, never()).imsServiceFeatureCreated(anyInt(), anyInt(),
                 eq(mTestImsServiceController));
         verify(mMockCallbacks).imsServiceBindPermanentError(eq(mTestComponentName));
@@ -1304,7 +1312,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
 
         conn.onBindingDied(null /*null*/);
 
-        long delay = mTestImsServiceController.getRebindDelay();
+        long delay = REBIND_RETRY.getStartDelay();
         waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
         // The service should autobind after rebind event occurs
         verify(mMockContext, times(2)).bindService(any(), any(), anyInt());
@@ -1330,7 +1338,7 @@ public class ImsServiceControllerTest extends ImsTestBase {
         // null binding should be ignored in this case.
         conn.onNullBinding(null);
 
-        long delay = mTestImsServiceController.getRebindDelay();
+        long delay = REBIND_RETRY.getStartDelay();
         waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
         // The service should autobind after rebind event occurs
         verify(mMockContext, times(2)).bindService(any(), any(), anyInt());
@@ -1398,10 +1406,11 @@ public class ImsServiceControllerTest extends ImsTestBase {
         slotIdToSubIdMap.put(SLOT_0, SUB_2);
         ServiceConnection conn = bindAndConnectService(testFeatures, slotIdToSubIdMap.clone());
         conn.onBindingDied(null /*null*/);
+
+        long delay = REBIND_RETRY.getStartDelay();
+        waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
         mTestImsServiceController.bind(testFeatures, slotIdToSubIdMap.clone());
 
-        long delay = mTestImsServiceController.getRebindDelay();
-        waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
         // Should only see two binds, not three from the auto rebind that occurs.
         verify(mMockContext, times(2)).bindService(any(), any(), anyInt());
     }
@@ -1481,6 +1490,9 @@ public class ImsServiceControllerTest extends ImsTestBase {
         IImsServiceController.Stub controllerStub = mock(IImsServiceController.Stub.class);
         when(controllerStub.queryLocalInterface(any())).thenReturn(mMockServiceControllerBinder);
         connection.onServiceConnected(mTestComponentName, controllerStub);
+
+        long delay = mTestImsServiceController.getRebindDelay();
+        waitForHandlerActionDelayed(mHandler, delay, 2 * delay);
         return connection;
     }
 
