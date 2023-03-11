@@ -347,7 +347,7 @@ public class GsmCdmaPhone extends Phone {
             mSubscriptionManagerService.registerCallback(new SubscriptionManagerServiceCallback(
                     this::post) {
                 @Override
-                public void onUiccApplicationsEnabled(int subId) {
+                public void onUiccApplicationsEnabledChanged(int subId) {
                     reapplyUiccAppsEnablementIfNeeded(ENABLE_UICC_APPS_MAX_RETRIES);
                 }
             });
@@ -4254,6 +4254,7 @@ public class GsmCdmaPhone extends Phone {
                 " mTelecomVoiceServiceStateOverride=" + mTelecomVoiceServiceStateOverride + "("
                         + ServiceState.rilServiceStateToString(mTelecomVoiceServiceStateOverride)
                         + ")");
+        pw.println(" mUiccApplicationsEnabled=" + mUiccApplicationsEnabled);
         pw.flush();
     }
 
@@ -4639,6 +4640,8 @@ public class GsmCdmaPhone extends Phone {
         // If no card is present or we don't have mUiccApplicationsEnabled yet, do nothing.
         if (slot == null || slot.getCardState() != IccCardStatus.CardState.CARDSTATE_PRESENT
                 || mUiccApplicationsEnabled == null) {
+            loge("reapplyUiccAppsEnablementIfNeeded: slot state="
+                    + (slot != null ? slot.getCardState() : null));
             return;
         }
 
