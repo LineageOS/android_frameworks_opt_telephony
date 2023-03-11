@@ -553,14 +553,6 @@ public class SubscriptionDatabaseManager extends Handler {
          * @param subId The subscription id.
          */
         public abstract void onSubscriptionChanged(int subId);
-
-        /**
-         * Called when {@link SubscriptionInfoInternal#areUiccApplicationsEnabled()}
-         * changed.
-         *
-         * @param subId The subscription id.
-         */
-        public abstract void onUiccApplicationsEnabled(int subId);
     }
 
     /**
@@ -918,10 +910,6 @@ public class SubscriptionDatabaseManager extends Handler {
                             mAllSubscriptionInfoInternalCache.put(id, builder.build());
                             mCallback.invokeFromExecutor(()
                                     -> mCallback.onSubscriptionChanged(subId));
-                            if (columnName.equals(SimInfo.COLUMN_UICC_APPLICATIONS_ENABLED)) {
-                                mCallback.invokeFromExecutor(()
-                                        -> mCallback.onUiccApplicationsEnabled(subId));
-                            }
                         }
                     }
                 }
@@ -956,10 +944,6 @@ public class SubscriptionDatabaseManager extends Handler {
             if (updateDatabase(subId, createDeltaContentValues(oldSubInfo, newSubInfo)) > 0) {
                 mAllSubscriptionInfoInternalCache.put(subId, newSubInfo);
                 mCallback.invokeFromExecutor(() -> mCallback.onSubscriptionChanged(subId));
-                if (oldSubInfo.areUiccApplicationsEnabled()
-                        != newSubInfo.areUiccApplicationsEnabled()) {
-                    mCallback.invokeFromExecutor(() -> mCallback.onUiccApplicationsEnabled(subId));
-                }
             }
         } finally {
             mReadWriteLock.writeLock().unlock();
