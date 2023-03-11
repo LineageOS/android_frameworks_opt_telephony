@@ -108,6 +108,10 @@ public class CarrierPrivilegesTracker extends Handler {
     private static final String SHA_1 = "SHA-1";
     private static final String SHA_256 = "SHA-256";
 
+    private static final int PACKAGE_NOT_PRIVILEGED = 0;
+    private static final int PACKAGE_PRIVILEGED_FROM_CARRIER_CONFIG = 1;
+    private static final int PACKAGE_PRIVILEGED_FROM_SIM = 2;
+
     // TODO(b/232273884): Turn feature on when find solution to handle the inter-carriers switching
     /**
      * Time delay to clear UICC rules after UICC is gone.
@@ -757,23 +761,35 @@ public class CarrierPrivilegesTracker extends Handler {
 
     @NonNull
     private PrivilegedPackageInfo getCurrentPrivilegedPackagesForAllUsers() {
+        Set<String> carrierServiceEligiblePackages = new ArraySet<>();
         Set<String> privilegedPackageNames = new ArraySet<>();
         Set<Integer> privilegedUids = new ArraySet<>();
         for (Map.Entry<String, Set<String>> e : mInstalledPackageCerts.entrySet()) {
-            if (isPackagePrivileged(e.getKey(), e.getValue())) {
-                privilegedPackageNames.add(e.getKey());
-                privilegedUids.addAll(getUidsForPackage(e.getKey(), /* invalidateCache= */ false));
+            final int priv = getPackagePrivilegedStatus(e.getKey(), e.getValue());
+            switch (priv) {
+                case PACKAGE_PRIVILEGED_FROM_SIM:
+                    carrierServiceEligiblePackages.add(e.getKey());
+                    // fallthrough
+                case PACKAGE_PRIVILEGED_FROM_CARRIER_CONFIG:
+                    privilegedPackageNames.add(e.getKey());
+                    privilegedUids.addAll(
+                            getUidsForPackage(e.getKey(), /* invalidateCache= */ false));
             }
         }
-        return new PrivilegedPackageInfo(privilegedPackageNames, privilegedUids,
-                getCarrierService(privilegedPackageNames));
+
+        return new PrivilegedPackageInfo(
+                privilegedPackageNames,
+                privilegedUids,
+                getCarrierService(carrierServiceEligiblePackages));
     }
 
     /**
-     * Returns true iff there is an overlap between the provided certificate hashes and the
-     * certificate hashes stored in mTestOverrideRules, mCarrierConfigRules and mUiccRules.
+     * Returns the privilege status of the provided package.
+     *
+     * <p>Returned privilege status depends on whether a package matches the certificates from
+     * carrier config, from test overrides or from certificates stored on the SIM.
      */
-    private boolean isPackagePrivileged(@NonNull String pkgName, @NonNull Set<String> certs) {
+    private int getPackagePrivilegedStatus(@NonNull String pkgName, @NonNull Set<String> certs) {
         // Double-nested for loops, but each collection should contain at most 2 elements in nearly
         // every case.
         // TODO(b/184382310) find a way to speed this up
@@ -782,23 +798,23 @@ public class CarrierPrivilegesTracker extends Handler {
             if (mTestOverrideRules != null) {
                 for (UiccAccessRule rule : mTestOverrideRules) {
                     if (rule.matches(cert, pkgName)) {
-                        return true;
+                        return PACKAGE_PRIVILEGED_FROM_SIM;
                     }
                 }
             } else {
-                for (UiccAccessRule rule : mCarrierConfigRules) {
-                    if (rule.matches(cert, pkgName)) {
-                        return true;
-                    }
-                }
                 for (UiccAccessRule rule : mUiccRules) {
                     if (rule.matches(cert, pkgName)) {
-                        return true;
+                        return PACKAGE_PRIVILEGED_FROM_SIM;
+                    }
+                }
+                for (UiccAccessRule rule : mCarrierConfigRules) {
+                    if (rule.matches(cert, pkgName)) {
+                        return PACKAGE_PRIVILEGED_FROM_CARRIER_CONFIG;
                     }
                 }
             }
         }
-        return false;
+        return PACKAGE_NOT_PRIVILEGED;
     }
 
     @NonNull
@@ -1067,13 +1083,13 @@ public class CarrierPrivilegesTracker extends Handler {
     }
 
     @NonNull
-    private Pair<String, Integer> getCarrierService(@NonNull Set<String> privilegedPackageNames) {
+    private Pair<String, Integer> getCarrierService(@NonNull Set<String> simPrivilegedPackages) {
         List<ResolveInfo> carrierServiceResolveInfos = mPackageManager.queryIntentServices(
                 new Intent(CarrierService.CARRIER_SERVICE_INTERFACE), /* flags= */ 0);
         String carrierServicePackageName = null;
         for (ResolveInfo resolveInfo : carrierServiceResolveInfos) {
             String packageName = getPackageName(resolveInfo);
-            if (privilegedPackageNames.contains(packageName)) {
+            if (simPrivilegedPackages.contains(packageName)) {
                 carrierServicePackageName = packageName;
                 break;
             }
