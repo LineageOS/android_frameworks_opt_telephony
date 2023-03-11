@@ -21,6 +21,7 @@ import static com.android.internal.telephony.subscription.SubscriptionDatabaseMa
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_CARRIER_ID2;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_CARRIER_NAME1;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_CARRIER_NAME2;
+import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_CONTACT1;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_CONTACT2;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_COUNTRY_CODE2;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_ICCID1;
@@ -29,10 +30,14 @@ import static com.android.internal.telephony.subscription.SubscriptionDatabaseMa
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_MCC2;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_MNC1;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_MNC2;
+import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_MOBILE_DATA_POLICY1;
+import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_MOBILE_DATA_POLICY2;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_NATIVE_ACCESS_RULES1;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_NATIVE_ACCESS_RULES2;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_PHONE_NUMBER1;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_PHONE_NUMBER2;
+import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_RCS_CONFIG1;
+import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_RCS_CONFIG2;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_SUBSCRIPTION_INFO1;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_SUBSCRIPTION_INFO2;
 import static com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.FAKE_UUID1;
@@ -66,6 +71,7 @@ import android.os.ParcelUuid;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony;
+import android.provider.Telephony.SimInfo;
 import android.service.carrier.CarrierIdentifier;
 import android.service.euicc.EuiccProfileInfo;
 import android.service.euicc.EuiccService;
@@ -76,6 +82,7 @@ import android.telephony.UiccAccessRule;
 import android.test.mock.MockContentResolver;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
+import android.util.Base64;
 
 import com.android.internal.telephony.ContextFixture;
 import com.android.internal.telephony.TelephonyIntents;
@@ -99,6 +106,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -1163,5 +1171,466 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         doReturn(true).when(mPhone).canDisablePhysicalSubscription();
         assertThat(mSubscriptionManagerServiceUT.canDisablePhysicalSubscription()).isTrue();
+    }
+
+    @Test
+    public void testSetGetEnhanced4GModeEnabled() throws Exception {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        assertThrows(SecurityException.class, () ->
+                mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                        SimInfo.COLUMN_ENHANCED_4G_MODE_ENABLED, CALLING_PACKAGE, CALLING_FEATURE));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                SimInfo.COLUMN_ENHANCED_4G_MODE_ENABLED, CALLING_PACKAGE, CALLING_FEATURE))
+                .isEqualTo("1");
+
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .setSubscriptionProperty(1, SimInfo.COLUMN_ENHANCED_4G_MODE_ENABLED, "0"));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // COLUMN_ENHANCED_4G_MODE_ENABLED
+        mSubscriptionManagerServiceUT.setSubscriptionProperty(1,
+                SimInfo.COLUMN_ENHANCED_4G_MODE_ENABLED, "0");
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1)
+                .getEnhanced4GModeEnabled()).isEqualTo(0);
+    }
+
+    @Test
+    public void testSetGetVideoTelephonyEnabled() throws Exception {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        assertThrows(SecurityException.class, () ->
+                mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                        SimInfo.COLUMN_VT_IMS_ENABLED, CALLING_PACKAGE, CALLING_FEATURE));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                SimInfo.COLUMN_VT_IMS_ENABLED, CALLING_PACKAGE, CALLING_FEATURE))
+                .isEqualTo("1");
+
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .setSubscriptionProperty(1, SimInfo.COLUMN_VT_IMS_ENABLED, "0"));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // COLUMN_VT_IMS_ENABLED
+        mSubscriptionManagerServiceUT.setSubscriptionProperty(1,
+                SimInfo.COLUMN_VT_IMS_ENABLED, "0");
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1)
+                .getVideoTelephonyEnabled()).isEqualTo(0);
+    }
+
+    @Test
+    public void testSetGetWifiCallingEnabled() throws Exception {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        assertThrows(SecurityException.class, () ->
+                mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                        SimInfo.COLUMN_WFC_IMS_ENABLED, CALLING_PACKAGE, CALLING_FEATURE));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                SimInfo.COLUMN_WFC_IMS_ENABLED, CALLING_PACKAGE, CALLING_FEATURE))
+                .isEqualTo("1");
+
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .setSubscriptionProperty(1, SimInfo.COLUMN_WFC_IMS_ENABLED, "0"));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // COLUMN_WFC_IMS_ENABLED
+        mSubscriptionManagerServiceUT.setSubscriptionProperty(1,
+                SimInfo.COLUMN_WFC_IMS_ENABLED, "0");
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1)
+                .getWifiCallingEnabled()).isEqualTo(0);
+    }
+
+    @Test
+    public void testSetGetWifiCallingMode() throws Exception {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        assertThrows(SecurityException.class, () ->
+                mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                        SimInfo.COLUMN_WFC_IMS_MODE, CALLING_PACKAGE, CALLING_FEATURE));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                SimInfo.COLUMN_WFC_IMS_MODE, CALLING_PACKAGE, CALLING_FEATURE))
+                .isEqualTo("1");
+
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .setSubscriptionProperty(1, SimInfo.COLUMN_WFC_IMS_MODE, "0"));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // COLUMN_WFC_IMS_MODE
+        mSubscriptionManagerServiceUT.setSubscriptionProperty(1,
+                SimInfo.COLUMN_WFC_IMS_MODE, "0");
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1)
+                .getWifiCallingMode()).isEqualTo(0);
+    }
+
+    @Test
+    public void testSetGetWifiCallingModeForRoaming() throws Exception {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        assertThrows(SecurityException.class, () ->
+                mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                        SimInfo.COLUMN_WFC_IMS_ROAMING_MODE, CALLING_PACKAGE, CALLING_FEATURE));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                SimInfo.COLUMN_WFC_IMS_ROAMING_MODE, CALLING_PACKAGE, CALLING_FEATURE))
+                .isEqualTo("2");
+
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .setSubscriptionProperty(1, SimInfo.COLUMN_WFC_IMS_ROAMING_MODE, "0"));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // COLUMN_WFC_IMS_ROAMING_MODE
+        mSubscriptionManagerServiceUT.setSubscriptionProperty(1,
+                SimInfo.COLUMN_WFC_IMS_ROAMING_MODE, "0");
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1)
+                .getWifiCallingModeForRoaming()).isEqualTo(0);
+    }
+
+    @Test
+    public void testSetGetEnabledMobileDataPolicies() throws Exception {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        assertThrows(SecurityException.class, () ->
+                mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                        SimInfo.COLUMN_ENABLED_MOBILE_DATA_POLICIES, CALLING_PACKAGE,
+                        CALLING_FEATURE));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                SimInfo.COLUMN_ENABLED_MOBILE_DATA_POLICIES, CALLING_PACKAGE, CALLING_FEATURE))
+                .isEqualTo(FAKE_MOBILE_DATA_POLICY1);
+
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .setSubscriptionProperty(1, SimInfo.COLUMN_ENABLED_MOBILE_DATA_POLICIES, "0"));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // COLUMN_ENABLED_MOBILE_DATA_POLICIES
+        mSubscriptionManagerServiceUT.setSubscriptionProperty(1,
+                SimInfo.COLUMN_ENABLED_MOBILE_DATA_POLICIES, FAKE_MOBILE_DATA_POLICY2);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1)
+                .getEnabledMobileDataPolicies()).isEqualTo(FAKE_MOBILE_DATA_POLICY2);
+    }
+
+    @Test
+    public void testSetGetRcsUceEnabled() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        assertThrows(SecurityException.class, () ->
+                mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                        SimInfo.COLUMN_IMS_RCS_UCE_ENABLED, CALLING_PACKAGE, CALLING_FEATURE));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                SimInfo.COLUMN_IMS_RCS_UCE_ENABLED, CALLING_PACKAGE, CALLING_FEATURE))
+                .isEqualTo("1");
+
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .setSubscriptionProperty(1, SimInfo.COLUMN_IMS_RCS_UCE_ENABLED, "0"));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // COLUMN_IMS_RCS_UCE_ENABLED
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                SimInfo.COLUMN_IMS_RCS_UCE_ENABLED, CALLING_PACKAGE, CALLING_FEATURE))
+                .isEqualTo("1");
+        mSubscriptionManagerServiceUT.setSubscriptionProperty(1,
+                SimInfo.COLUMN_IMS_RCS_UCE_ENABLED, "0");
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1)
+                .getRcsUceEnabled()).isEqualTo(0);
+    }
+
+    @Test
+    public void testSetGetCrossSimCallingEnabled() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        assertThrows(SecurityException.class, () ->
+                mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                        SimInfo.COLUMN_CROSS_SIM_CALLING_ENABLED, CALLING_PACKAGE,
+                        CALLING_FEATURE));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                SimInfo.COLUMN_CROSS_SIM_CALLING_ENABLED, CALLING_PACKAGE, CALLING_FEATURE))
+                .isEqualTo("1");
+
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .setSubscriptionProperty(1, SimInfo.COLUMN_CROSS_SIM_CALLING_ENABLED, "0"));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // COLUMN_CROSS_SIM_CALLING_ENABLED
+        mSubscriptionManagerServiceUT.setSubscriptionProperty(1,
+                SimInfo.COLUMN_CROSS_SIM_CALLING_ENABLED, "0");
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1)
+                .getCrossSimCallingEnabled()).isEqualTo(0);
+    }
+
+    @Test
+    public void testSetGetRcsConfig() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        assertThrows(SecurityException.class, () ->
+                mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                        SimInfo.COLUMN_RCS_CONFIG, CALLING_PACKAGE, CALLING_FEATURE));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                SimInfo.COLUMN_RCS_CONFIG, CALLING_PACKAGE, CALLING_FEATURE))
+                .isEqualTo(Base64.encodeToString(FAKE_RCS_CONFIG1, Base64.DEFAULT));
+
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .setSubscriptionProperty(1, SimInfo.COLUMN_RCS_CONFIG, "0"));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // COLUMN_RCS_CONFIG
+        mSubscriptionManagerServiceUT.setSubscriptionProperty(1,
+                SimInfo.COLUMN_RCS_CONFIG,
+                Base64.encodeToString(FAKE_RCS_CONFIG2, Base64.DEFAULT));
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1)
+                .getRcsConfig()).isEqualTo(FAKE_RCS_CONFIG2);
+    }
+
+    @Test
+    public void testSetGetDeviceToDeviceStatusSharingPreference() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        assertThrows(SecurityException.class, () ->
+                mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                        SimInfo.COLUMN_D2D_STATUS_SHARING, CALLING_PACKAGE, CALLING_FEATURE));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                SimInfo.COLUMN_D2D_STATUS_SHARING, CALLING_PACKAGE, CALLING_FEATURE))
+                .isEqualTo("1");
+
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .setSubscriptionProperty(1, SimInfo.COLUMN_D2D_STATUS_SHARING, "0"));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // COLUMN_D2D_STATUS_SHARING
+        mSubscriptionManagerServiceUT.setSubscriptionProperty(1,
+                SimInfo.COLUMN_D2D_STATUS_SHARING, "0");
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1)
+                .getDeviceToDeviceStatusSharingPreference()).isEqualTo(0);
+    }
+
+    @Test
+    public void testSetGetVoImsOptInEnabled() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        assertThrows(SecurityException.class, () ->
+                mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                        SimInfo.COLUMN_VOIMS_OPT_IN_STATUS, CALLING_PACKAGE, CALLING_FEATURE));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                SimInfo.COLUMN_VOIMS_OPT_IN_STATUS, CALLING_PACKAGE, CALLING_FEATURE))
+                .isEqualTo("1");
+
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .setSubscriptionProperty(1, SimInfo.COLUMN_VOIMS_OPT_IN_STATUS, "0"));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // COLUMN_VOIMS_OPT_IN_STATUS
+        mSubscriptionManagerServiceUT.setSubscriptionProperty(1,
+                SimInfo.COLUMN_VOIMS_OPT_IN_STATUS, "0");
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1)
+                .getVoImsOptInEnabled()).isEqualTo(0);
+    }
+
+    @Test
+    public void testSetGetDeviceToDeviceStatusSharingContacts() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        assertThrows(SecurityException.class, () ->
+                mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                        SimInfo.COLUMN_D2D_STATUS_SHARING_SELECTED_CONTACTS, CALLING_PACKAGE,
+                        CALLING_FEATURE));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                SimInfo.COLUMN_D2D_STATUS_SHARING_SELECTED_CONTACTS, CALLING_PACKAGE,
+                CALLING_FEATURE)).isEqualTo(FAKE_CONTACT1);
+
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .setSubscriptionProperty(1, SimInfo.COLUMN_D2D_STATUS_SHARING_SELECTED_CONTACTS,
+                        FAKE_CONTACT2));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // COLUMN_D2D_STATUS_SHARING_SELECTED_CONTACTS
+        mSubscriptionManagerServiceUT.setSubscriptionProperty(1,
+                SimInfo.COLUMN_D2D_STATUS_SHARING_SELECTED_CONTACTS, FAKE_CONTACT2);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1)
+                .getDeviceToDeviceStatusSharingContacts()).isEqualTo(FAKE_CONTACT2);
+    }
+
+    @Test
+    public void testSetGetNrAdvancedCallingEnabled() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        assertThrows(SecurityException.class, () ->
+                mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                        SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED, CALLING_PACKAGE,
+                        CALLING_FEATURE));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionProperty(1,
+                SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED, CALLING_PACKAGE, CALLING_FEATURE))
+                .isEqualTo("1");
+
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .setSubscriptionProperty(1, SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED, "0"));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        // COLUMN_NR_ADVANCED_CALLING_ENABLED
+        mSubscriptionManagerServiceUT.setSubscriptionProperty(1,
+                SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED, "0");
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1)
+                .getNrAdvancedCallingEnabled()).isEqualTo(0);
+    }
+
+    @Test
+    public void testSetSubscriptionPropertyInvalidField() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        assertThrows(IllegalArgumentException.class, () -> mSubscriptionManagerServiceUT
+                .setSubscriptionProperty(1, "hahahaha", "0"));
+    }
+
+    @Test
+    public void testGetNonAccessibleFields() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        Set<String> accessibleColumns = Set.of(
+                SimInfo.COLUMN_ENHANCED_4G_MODE_ENABLED,
+                SimInfo.COLUMN_VT_IMS_ENABLED,
+                SimInfo.COLUMN_WFC_IMS_ENABLED,
+                SimInfo.COLUMN_WFC_IMS_MODE,
+                SimInfo.COLUMN_WFC_IMS_ROAMING_MODE,
+                SimInfo.COLUMN_WFC_IMS_ROAMING_ENABLED,
+                SimInfo.COLUMN_ENABLED_MOBILE_DATA_POLICIES,
+                SimInfo.COLUMN_IMS_RCS_UCE_ENABLED,
+                SimInfo.COLUMN_CROSS_SIM_CALLING_ENABLED,
+                SimInfo.COLUMN_RCS_CONFIG,
+                SimInfo.COLUMN_D2D_STATUS_SHARING,
+                SimInfo.COLUMN_VOIMS_OPT_IN_STATUS,
+                SimInfo.COLUMN_D2D_STATUS_SHARING_SELECTED_CONTACTS,
+                SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED
+        );
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+
+        for (String column : SimInfo.getAllColumns()) {
+            if (accessibleColumns.contains(column)) {
+                mSubscriptionManagerServiceUT.getSubscriptionProperty(1, column,
+                        CALLING_PACKAGE, CALLING_FEATURE);
+            } else {
+                assertThrows(SecurityException.class, () ->
+                        mSubscriptionManagerServiceUT.getSubscriptionProperty(1, column,
+                                CALLING_PACKAGE, CALLING_FEATURE));
+            }
+        }
+    }
+
+    @Test
+    public void testSyncToGroup() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        insertSubscription(FAKE_SUBSCRIPTION_INFO2);
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+        mSubscriptionManagerServiceUT.createSubscriptionGroup(new int[]{1, 2}, CALLING_PACKAGE);
+
+        mSubscriptionManagerServiceUT.syncGroupedSetting(1);
+        processAllMessages();
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2).getIconTint())
+                .isEqualTo(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1)
+                        .getIconTint());
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2).getDataRoaming())
+                .isEqualTo(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1)
+                        .getDataRoaming());
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2)
+                .getEnhanced4GModeEnabled()).isEqualTo(mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1).getEnhanced4GModeEnabled());
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2)
+                .getVideoTelephonyEnabled()).isEqualTo(mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1).getVideoTelephonyEnabled());
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2)
+                .getWifiCallingEnabled()).isEqualTo(mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1).getWifiCallingEnabled());
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2)
+                .getWifiCallingMode()).isEqualTo(mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1).getWifiCallingMode());
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2)
+                .getWifiCallingModeForRoaming()).isEqualTo(mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1).getWifiCallingModeForRoaming());
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2)
+                .getWifiCallingEnabledForRoaming()).isEqualTo(mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1).getWifiCallingEnabledForRoaming());
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2)
+                .getEnabledMobileDataPolicies()).isEqualTo(mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1).getEnabledMobileDataPolicies());
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2)
+                .getUiccApplicationsEnabled()).isEqualTo(mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1).getUiccApplicationsEnabled());
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2)
+                .getRcsUceEnabled()).isEqualTo(mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1).getRcsUceEnabled());
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2)
+                .getCrossSimCallingEnabled()).isEqualTo(mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1).getCrossSimCallingEnabled());
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2)
+                .getRcsConfig()).isEqualTo(mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1).getRcsConfig());
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2)
+                .getDeviceToDeviceStatusSharingPreference()).isEqualTo(mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1).getDeviceToDeviceStatusSharingPreference());
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2)
+                .getVoImsOptInEnabled()).isEqualTo(mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1).getVoImsOptInEnabled());
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2)
+                .getDeviceToDeviceStatusSharingContacts()).isEqualTo(mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1).getDeviceToDeviceStatusSharingContacts());
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2)
+                .getNrAdvancedCallingEnabled()).isEqualTo(mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1).getNrAdvancedCallingEnabled());
+
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2)
+                .getUserId()).isEqualTo(mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1).getUserId());
     }
 }
