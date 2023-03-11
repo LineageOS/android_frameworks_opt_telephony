@@ -95,7 +95,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class PhoneSwitcherTest extends TelephonyTest {
-    private static final int AUTO_DATA_SWITCH_NOTIFICATION = 1;
     private static final int ACTIVE_PHONE_SWITCH = 1;
     private static final int EVENT_RADIO_ON = 108;
     private static final int EVENT_MODEM_COMMAND_DONE = 112;
@@ -1176,7 +1175,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         assertFalse(mPhoneSwitcherUT.shouldApplyNetworkRequest(
                 new TelephonyNetworkRequest(internetRequest, mPhone), 1));
 
-        // Phone2 has active call. So data switch to it.
+        // Phone2 has active call, and data is on. So data switch to it.
         doReturn(true).when(mPhone).isUserDataEnabled();
         notifyDataEnabled(true);
         verify(mMockRadioConfig).setPreferredDataModem(eq(1), any());
@@ -1186,8 +1185,19 @@ public class PhoneSwitcherTest extends TelephonyTest {
                 new TelephonyNetworkRequest(internetRequest, mPhone), 0));
         clearInvocations(mMockRadioConfig);
 
-        // Phone2 call ended. So data switch back to default data sub.
+        // Phone2(nDDS) call ended. But Phone1 having cross-SIM call. Don't switch.
+        mockImsRegTech(1, REGISTRATION_TECH_CROSS_SIM);
+        notifyPhoneAsInIncomingCall(mPhone);
         notifyPhoneAsInactive(mPhone2);
+        verify(mMockRadioConfig, never()).setPreferredDataModem(anyInt(), any());
+        assertTrue(mPhoneSwitcherUT.shouldApplyNetworkRequest(
+                new TelephonyNetworkRequest(internetRequest, mPhone), 1));
+        assertFalse(mPhoneSwitcherUT.shouldApplyNetworkRequest(
+                new TelephonyNetworkRequest(internetRequest, mPhone), 0));
+
+        // Phone1(DDS) call ended. So data switch back to default data sub.
+        mockImsRegTech(0, REGISTRATION_TECH_IWLAN);
+        notifyPhoneAsInactive(mPhone);
         verify(mMockRadioConfig).setPreferredDataModem(eq(0), any());
         assertTrue(mPhoneSwitcherUT.shouldApplyNetworkRequest(
                 new TelephonyNetworkRequest(internetRequest, mPhone), 0));
@@ -1195,13 +1205,14 @@ public class PhoneSwitcherTest extends TelephonyTest {
                 new TelephonyNetworkRequest(internetRequest, mPhone), 1));
         clearInvocations(mMockRadioConfig);
 
-        // Phone2 has holding call, but data is turned off. So no data switching should happen.
+        // Phone2 has holding call on VoWifi, no need to switch data
+        mockImsRegTech(1, REGISTRATION_TECH_IWLAN);
         notifyPhoneAsInHoldingCall(mPhone2);
-        verify(mMockRadioConfig).setPreferredDataModem(eq(1), any());
+        verify(mMockRadioConfig, never()).setPreferredDataModem(anyInt(), any());
         assertTrue(mPhoneSwitcherUT.shouldApplyNetworkRequest(
-                new TelephonyNetworkRequest(internetRequest, mPhone), 1));
-        assertFalse(mPhoneSwitcherUT.shouldApplyNetworkRequest(
                 new TelephonyNetworkRequest(internetRequest, mPhone), 0));
+        assertFalse(mPhoneSwitcherUT.shouldApplyNetworkRequest(
+                new TelephonyNetworkRequest(internetRequest, mPhone), 1));
     }
 
 
