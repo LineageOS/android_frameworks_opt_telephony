@@ -379,7 +379,7 @@ public class SubscriptionManagerService extends ISub.Stub {
          *
          * @param subId The subscription id.
          */
-        public void onUiccApplicationsEnabled(int subId) {}
+        public void onUiccApplicationsEnabledChanged(int subId) {}
     }
 
     /** DeviceConfig key for whether work profile telephony feature is enabled. */
@@ -515,23 +515,6 @@ public class SubscriptionManagerService extends ISub.Stub {
                                 && telephonyRegistryManager != null) {
                             telephonyRegistryManager.notifyOpportunisticSubscriptionInfoChanged();
                         }
-
-                        // TODO: Call TelephonyMetrics.updateActiveSubscriptionInfoList when active
-                        //  subscription changes.
-                    }
-
-                    /**
-                     * Called when {@link SubscriptionInfoInternal#areUiccApplicationsEnabled()}
-                     * changed.
-                     *
-                     * @param subId The subscription id.
-                     */
-                    @Override
-                    public void onUiccApplicationsEnabled(int subId) {
-                        log("onUiccApplicationsEnabled: subId=" + subId);
-                        mSubscriptionManagerServiceCallbacks.forEach(
-                                callback -> callback.invokeFromExecutor(
-                                        () -> callback.onUiccApplicationsEnabled(subId)));
                     }
                 });
 
@@ -3199,7 +3182,20 @@ public class SubscriptionManagerService extends ISub.Stub {
 
         final long identity = Binder.clearCallingIdentity();
         try {
-            mSubscriptionDatabaseManager.setUiccApplicationsEnabled(subId, enabled);
+
+            SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
+                    .getSubscriptionInfoInternal(subId);
+            if (subInfo == null) {
+                throw new IllegalArgumentException("setUiccApplicationsEnabled: Subscription "
+                        + "doesn't exist. subId=" + subId);
+            }
+
+            if (subInfo.areUiccApplicationsEnabled() != enabled) {
+                mSubscriptionDatabaseManager.setUiccApplicationsEnabled(subId, enabled);
+                mSubscriptionManagerServiceCallbacks.forEach(
+                        callback -> callback.invokeFromExecutor(
+                                () -> callback.onUiccApplicationsEnabledChanged(subId)));
+            }
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
