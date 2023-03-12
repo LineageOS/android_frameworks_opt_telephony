@@ -1633,4 +1633,23 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 .getUserId()).isEqualTo(mSubscriptionManagerServiceUT
                 .getSubscriptionInfoInternal(1).getUserId());
     }
+
+    @Test
+    public void testRemoveSubInfo() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        insertSubscription(FAKE_SUBSCRIPTION_INFO2);
+
+        assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
+                .removeSubInfo(FAKE_ICCID1, SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+        assertThat(mSubscriptionManagerServiceUT.removeSubInfo(FAKE_ICCID1,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM)).isEqualTo(0);
+        assertThat(mSubscriptionManagerServiceUT.removeSubInfo(FAKE_ICCID2,
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM)).isEqualTo(0);
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        assertThat(mSubscriptionManagerServiceUT.getAllSubInfoList(
+                CALLING_PACKAGE, CALLING_FEATURE).isEmpty()).isTrue();
+    }
 }
