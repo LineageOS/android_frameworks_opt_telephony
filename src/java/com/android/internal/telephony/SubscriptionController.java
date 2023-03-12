@@ -2712,7 +2712,6 @@ public class SubscriptionController extends ISub.Stub {
     /**
      * @return the number of records cleared
      */
-    @Override
     public int clearSubInfo() {
         enforceModifyPhoneState("clearSubInfo");
 
