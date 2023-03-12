@@ -273,10 +273,17 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
             }
 
             int subId = Integer.parseInt(uri.getLastPathSegment());
-            assertThat(mDatabase.size()).isAtLeast(subId);
-
-            ContentValues existingValues = mDatabase.get(subId - 1);
             logd("update: subId=" + subId + ", contentValues=" + values);
+
+            ContentValues existingValues = mDatabase.stream()
+                    .filter(contentValues -> contentValues.get(
+                            SimInfo.COLUMN_UNIQUE_KEY_SUBSCRIPTION_ID).equals(subId))
+                    .findFirst()
+                    .orElse(null);
+            if (existingValues == null) {
+                throw new IllegalArgumentException("Invalid sub id " + subId);
+            }
+
             for (Map.Entry<String, Object> entry : values.valueSet()) {
                 String column = entry.getKey();
                 Object value = entry.getValue();
@@ -290,7 +297,24 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
         @Override
         public int delete(Uri uri, String selection, String[] selectionArgs) {
-            throw new UnsupportedOperationException("delete is not supported uri=" + uri);
+            if (!uri.isPathPrefixMatch(SimInfo.CONTENT_URI)) {
+                throw new UnsupportedOperationException("Unsupported uri=" + uri);
+            }
+
+            logd("delete: uri=" + uri + ", selection=" + selection + ", selectionArgs="
+                    + Arrays.toString(selectionArgs));
+            if (!selection.equals(SimInfo.COLUMN_UNIQUE_KEY_SUBSCRIPTION_ID + "=?")) {
+                throw new UnsupportedOperationException("Only support delete by sub id.");
+            }
+
+            int rowsRemoved = 0;
+            for (String selectionArg : selectionArgs) {
+                int subId = Integer.parseInt(selectionArg);
+                // Clear it to null instead of removing it.
+                rowsRemoved += mDatabase.removeIf(contentValues -> contentValues.get(
+                        SimInfo.COLUMN_UNIQUE_KEY_SUBSCRIPTION_ID).equals(subId)) ? 1 : 0;
+            }
+            return rowsRemoved;
         }
 
         @Override
@@ -305,7 +329,14 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                     throw new IllegalArgumentException("Insert with unknown column " + column);
                 }
             }
-            int subId = mDatabase.size() + 1;
+            // The last row's subId + 1
+            int subId;
+            if (mDatabase.isEmpty()) {
+                subId = 1;
+            } else {
+                subId = (int) mDatabase.get(mDatabase.size() - 1)
+                        .get(SimInfo.COLUMN_UNIQUE_KEY_SUBSCRIPTION_ID) + 1;
+            }
             values.put(SimInfo.COLUMN_UNIQUE_KEY_SUBSCRIPTION_ID, subId);
             mDatabase.add(values);
             return ContentUris.withAppendedId(SimInfo.CONTENT_URI, subId);
@@ -1565,5 +1596,45 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .getIccId()).isEqualTo("0987");
         assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(2)
                 .getIccId()).isEqualTo(FAKE_ICCID2);
+    }
+
+    @Test
+    public void testRemoveSubscriptionInfo() throws Exception {
+        insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
+        insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO2);
+        Mockito.clearInvocations(mSubscriptionDatabaseManagerCallback);
+
+        mDatabaseManagerUT.removeSubscriptionInfo(1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)).isNull();
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(2))
+                .isEqualTo(FAKE_SUBSCRIPTION_INFO2);
+        verify(mSubscriptionDatabaseManagerCallback).onSubscriptionChanged(eq(1));
+
+        // Insert a new one. Should become sub 3.
+        Mockito.clearInvocations(mSubscriptionDatabaseManagerCallback);
+        insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)).isNull();
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(2))
+                .isEqualTo(FAKE_SUBSCRIPTION_INFO2);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(3))
+                .isEqualTo(new SubscriptionInfoInternal.Builder(FAKE_SUBSCRIPTION_INFO1)
+                        .setId(3).build());
+        verify(mSubscriptionDatabaseManagerCallback).onSubscriptionChanged(eq(3));
+
+        Mockito.clearInvocations(mSubscriptionDatabaseManagerCallback);
+        mDatabaseManagerUT.removeSubscriptionInfo(2);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)).isNull();
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(2)).isNull();
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(3))
+                .isEqualTo(new SubscriptionInfoInternal.Builder(FAKE_SUBSCRIPTION_INFO1)
+                        .setId(3).build());
+        verify(mSubscriptionDatabaseManagerCallback).onSubscriptionChanged(eq(2));
+
+        Mockito.clearInvocations(mSubscriptionDatabaseManagerCallback);
+        mDatabaseManagerUT.removeSubscriptionInfo(3);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)).isNull();
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(2)).isNull();
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(3)).isNull();
+        verify(mSubscriptionDatabaseManagerCallback).onSubscriptionChanged(eq(3));
     }
 }
