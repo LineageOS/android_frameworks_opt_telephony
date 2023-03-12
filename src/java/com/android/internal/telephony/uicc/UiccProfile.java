@@ -1740,7 +1740,7 @@ public class UiccProfile extends IccCard {
      */
     public boolean setOperatorBrandOverride(String brand) {
         log("setOperatorBrandOverride: " + brand);
-        log("current iccId: " + SubscriptionInfo.givePrintableIccid(getIccId()));
+        log("current iccId: " + SubscriptionInfo.getPrintableId(getIccId()));
 
         String iccId = getIccId();
         if (TextUtils.isEmpty(iccId)) {

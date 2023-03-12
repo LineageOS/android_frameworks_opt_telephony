@@ -1067,7 +1067,7 @@ public class SubscriptionInfoInternal {
     @Override
     public String toString() {
         return "[SubscriptionInfoInternal: id=" + mId
-                + " iccId=" + givePrintableId(mIccId)
+                + " iccId=" + SubscriptionInfo.getPrintableId(mIccId)
                 + " simSlotIndex=" + mSimSlotIndex
                 + " portIndex=" + mPortIndex
                 + " isEmbedded=" + mIsEmbedded
@@ -1087,7 +1087,7 @@ public class SubscriptionInfoInternal {
                 + " mnc=" + mMnc
                 + " ehplmns=" + mEhplmns
                 + " hplmns=" + mHplmns
-                + " cardString=" + givePrintableId(mCardString)
+                + " cardString=" + SubscriptionInfo.getPrintableId(mCardString)
                 + " cardId=" + mCardId
                 + " nativeAccessRules=" + IccUtils.bytesToHexString(mNativeAccessRules)
                 + " carrierConfigAccessRules=" + IccUtils.bytesToHexString(
@@ -1105,7 +1105,7 @@ public class SubscriptionInfoInternal {
                 + " wifiCallingModeForRoaming="
                 + ImsMmTelManager.wifiCallingModeToString(mWifiCallingModeForRoaming)
                 + " enabledMobileDataPolicies=" + mEnabledMobileDataPolicies
-                + " imsi=" + givePrintableId(mImsi)
+                + " imsi=" + SubscriptionInfo.getPrintableId(mImsi)
                 + " rcsUceEnabled=" + mIsRcsUceEnabled
                 + " crossSimCallingEnabled=" + mIsCrossSimCallingEnabled
                 + " rcsConfig=" + IccUtils.bytesToHexString(mRcsConfig)
