@@ -25,7 +25,6 @@ import static android.telephony.TelephonyManager.CAPABILITY_THERMAL_MITIGATION_D
 import static android.telephony.TelephonyManager.CAPABILITY_USES_ALLOWED_NETWORK_TYPES_BITMASK;
 
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ADD_ALLOWED_SATELLITE_CONTACTS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ALLOCATE_PDU_SESSION_ID;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ALLOW_DATA;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ANSWER;
@@ -91,17 +90,12 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_HARDWA
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_IMEI;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_IMEISV;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_IMSI;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_MAX_CHARACTERS_PER_SATELLITE_TEXT_MESSAGE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_MODEM_STATUS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_MUTE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_NEIGHBORING_CELL_IDS;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_PENDING_SATELLITE_MESSAGES;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_PHONE_CAPABILITY;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_PREFERRED_NETWORK_TYPE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_RADIO_CAPABILITY;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SATELLITE_CAPABILITIES;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SATELLITE_MODE;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SATELLITE_POWER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SIM_PHONEBOOK_CAPACITY;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SIM_PHONEBOOK_RECORDS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SIM_STATUS;
@@ -109,7 +103,6 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SLICIN
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SLOT_STATUS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SMSC_ADDRESS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_SYSTEM_SELECTION_CHANNELS;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_TIME_FOR_NEXT_SATELLITE_VISIBILITY;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_UICC_APPLICATIONS_ENABLEMENT;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_USAGE_SETTING;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GSM_BROADCAST_ACTIVATION;
@@ -133,7 +126,6 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_NV_WRITE_I
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_OEM_HOOK_RAW;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_OEM_HOOK_STRINGS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_OPERATOR;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_PROVISION_SATELLITE_SERVICE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_PULL_LCEDATA;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_QUERY_AVAILABLE_BAND_MODE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_QUERY_AVAILABLE_NETWORKS;
@@ -145,14 +137,12 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_QUERY_NETW
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_QUERY_TTY_MODE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_RADIO_POWER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_RELEASE_PDU_SESSION_ID;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_REMOVE_ALLOWED_SATELLITE_CONTACTS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_REPORT_SMS_MEMORY_STATUS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_RESET_RADIO;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SCREEN_STATE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_ANBR_QUERY;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_DEVICE_STATE;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SATELLITE_MESSAGES;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_SMS_EXPECT_MORE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SEND_USSD;
@@ -182,8 +172,6 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_NULL_C
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_PREFERRED_DATA_MODEM;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_RADIO_CAPABILITY;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SATELLITE_INDICATION_FILTER;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SATELLITE_POWER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SIGNAL_STRENGTH_REPORTING_CRITERIA;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SIM_CARD_POWER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SMSC_ADDRESS;
@@ -209,7 +197,6 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_START_IMS_
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_START_KEEPALIVE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_START_LCE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_START_NETWORK_SCAN;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_START_SENDING_SATELLITE_POINTING_INFO;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STK_GET_PROFILE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STK_HANDLE_CALL_SETUP_REQUESTED_FROM_SIM;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STK_SEND_ENVELOPE_COMMAND;
@@ -220,7 +207,6 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STOP_IMS_T
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STOP_KEEPALIVE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STOP_LCE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STOP_NETWORK_SCAN;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STOP_SENDING_SATELLITE_POINTING_INFO;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SWITCH_DUAL_SIM_CONFIG;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SWITCH_WAITING_OR_HOLDING_AND_ACTIVE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_TRIGGER_EMERGENCY_NETWORK_SCAN;
@@ -255,7 +241,6 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_KEEPALIVE_ST
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_LCEDATA_RECV;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_MODEM_RESTART;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NETWORK_SCAN_RESULT;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NEW_SATELLITE_MESSAGES;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NITZ_TIME_RECEIVED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_NOTIFY_ANBR;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_OEM_HOOK_RAW;
@@ -263,7 +248,6 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_SS;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_USSD;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_ON_USSD_REQUEST;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_PCO_DATA;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_PENDING_SATELLITE_MESSAGE_COUNT;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RADIO_CAPABILITY;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_REGISTRATION_FAILED;
@@ -283,11 +267,6 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESPONSE_SIM
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RESTRICTED_STATE_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RIL_CONNECTED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RINGBACK_TONE;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SATELLITE_MESSAGES_TRANSFER_COMPLETE;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SATELLITE_MODE_CHANGED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SATELLITE_POINTING_INFO_CHANGED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SATELLITE_PROVISION_STATE_CHANGED;
-import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SATELLITE_RADIO_TECHNOLOGY_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIGNAL_STRENGTH;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_REFRESH;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_SMS_STORAGE_FULL;
@@ -374,8 +353,6 @@ import android.telephony.ims.feature.ConnectionFailureInfo;
 import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.telephony.ims.stub.ImsRegistrationImplBase.ImsDeregistrationReason;
-import android.telephony.satellite.PointingInfo;
-import android.telephony.satellite.SatelliteCapabilities;
 import android.telephony.satellite.SatelliteManager;
 import android.text.TextUtils;
 import android.util.ArraySet;
@@ -5366,34 +5343,6 @@ public class RILUtils {
                 return "SET_N1_MODE_ENABLED";
             case RIL_REQUEST_IS_N1_MODE_ENABLED:
                 return "IS_N1_MODE_ENABLED";
-            case RIL_REQUEST_GET_SATELLITE_CAPABILITIES:
-                return "GET_SATELLITE_CAPABILITIES";
-            case RIL_REQUEST_SET_SATELLITE_POWER:
-                return "SET_SATELLITE_POWER";
-            case RIL_REQUEST_GET_SATELLITE_POWER:
-                return "GET_SATELLITE_POWER";
-            case RIL_REQUEST_PROVISION_SATELLITE_SERVICE:
-                return "PROVISION_SATELLITE_SERVICE";
-            case RIL_REQUEST_ADD_ALLOWED_SATELLITE_CONTACTS:
-                return "ADD_ALLOWED_SATELLITE_CONTACTS";
-            case RIL_REQUEST_REMOVE_ALLOWED_SATELLITE_CONTACTS:
-                return "REMOVE_ALLOWED_SATELLITE_CONTACTS";
-            case RIL_REQUEST_SEND_SATELLITE_MESSAGES:
-                return "SEND_SATELLITE_MESSAGES";
-            case RIL_REQUEST_GET_PENDING_SATELLITE_MESSAGES:
-                return "GET_PENDING_SATELLITE_MESSAGES";
-            case RIL_REQUEST_GET_SATELLITE_MODE:
-                return "GET_SATELLITE_MODE";
-            case RIL_REQUEST_SET_SATELLITE_INDICATION_FILTER:
-                return "SET_SATELLITE_INDICATION_FILTER";
-            case RIL_REQUEST_START_SENDING_SATELLITE_POINTING_INFO:
-                return "START_SENDING_SATELLITE_POINTING_INFO";
-            case RIL_REQUEST_STOP_SENDING_SATELLITE_POINTING_INFO:
-                return "STOP_SENDING_SATELLITE_POINTING_INFO";
-            case RIL_REQUEST_GET_MAX_CHARACTERS_PER_SATELLITE_TEXT_MESSAGE:
-                return "GET_MAX_CHARACTERS_PER_SATELLITE_TEXT_MESSAGE";
-            case RIL_REQUEST_GET_TIME_FOR_NEXT_SATELLITE_VISIBILITY:
-                return "GET_TIME_FOR_NEXT_SATELLITE_VISIBILITY";
             default:
                 return "<unknown request " + request + ">";
         }
@@ -5534,20 +5483,6 @@ public class RILUtils {
                 return "UNSOL_NOTIFY_ANBR";
             case RIL_UNSOL_TRIGGER_IMS_DEREGISTRATION:
                 return "UNSOL_TRIGGER_IMS_DEREGISTRATION";
-            case RIL_UNSOL_PENDING_SATELLITE_MESSAGE_COUNT:
-                return "UNSOL_PENDING_SATELLITE_MESSAGE_COUNT";
-            case RIL_UNSOL_NEW_SATELLITE_MESSAGES:
-                return "UNSOL_NEW_SATELLITE_MESSAGES";
-            case RIL_UNSOL_SATELLITE_MESSAGES_TRANSFER_COMPLETE:
-                return "UNSOL_SATELLITE_MESSAGES_TRANSFER_COMPLETE";
-            case RIL_UNSOL_SATELLITE_POINTING_INFO_CHANGED:
-                return "UNSOL_SATELLITE_POINTING_INFO_CHANGED";
-            case RIL_UNSOL_SATELLITE_MODE_CHANGED:
-                return "UNSOL_SATELLITE_MODE_CHANGED";
-            case RIL_UNSOL_SATELLITE_RADIO_TECHNOLOGY_CHANGED:
-                return "UNSOL_SATELLITE_RADIO_TECHNOLOGY_CHANGED";
-            case RIL_UNSOL_SATELLITE_PROVISION_STATE_CHANGED:
-                return "UNSOL_SATELLITE_PROVISION_STATE_CHANGED";
             default:
                 return "<unknown response>";
         }
@@ -5933,50 +5868,6 @@ public class RILUtils {
     }
 
     /**
-     * Convert android.hardware.radio.satellite.SatelliteCapabilities to
-     * android.telephony.satellite.SatelliteCapabilities
-     */
-    public static SatelliteCapabilities convertHalSatelliteCapabilities(
-            android.hardware.radio.satellite.SatelliteCapabilities capabilities) {
-        Set<Integer> supportedRadioTechnologies = new HashSet<>();
-        if (capabilities.supportedRadioTechnologies != null
-                && capabilities.supportedRadioTechnologies.length > 0) {
-            for (int technology : capabilities.supportedRadioTechnologies) {
-                supportedRadioTechnologies.add(technology);
-            }
-        }
-        return new SatelliteCapabilities(supportedRadioTechnologies, capabilities.isAlwaysOn,
-                capabilities.needsPointingToSatellite, capabilities.needsSeparateSimProfile);
-    }
-
-    /**
-     * Convert from android.hardware.radio.satellite.PointingInfo to
-     * android.telephony.satellite.stub.PointingInfo
-     */
-    public static PointingInfo convertHalSatellitePointingInfo(
-            android.hardware.radio.satellite.PointingInfo pointingInfo) {
-        return new PointingInfo(pointingInfo.satelliteAzimuthDegrees,
-                pointingInfo.satelliteElevationDegrees, pointingInfo.antennaAzimuthDegrees,
-                pointingInfo.antennaPitchDegrees, pointingInfo.antennaRollDegrees);
-    }
-
-    /**
-     * Convert from android.telephony.satellite.stub.PointingInfo to
-     * android.hardware.radio.satellite.PointingInfo
-     */
-    public static android.hardware.radio.satellite.PointingInfo convertToHalSatellitePointingInfo(
-            PointingInfo pointingInfo) {
-        android.hardware.radio.satellite.PointingInfo halPointingInfo =
-                new android.hardware.radio.satellite.PointingInfo();
-        halPointingInfo.satelliteAzimuthDegrees = pointingInfo.getSatelliteAzimuthDegrees();
-        halPointingInfo.satelliteElevationDegrees = pointingInfo.getSatelliteElevationDegrees();
-        halPointingInfo.antennaAzimuthDegrees = pointingInfo.getAntennaAzimuthDegrees();
-        halPointingInfo.antennaPitchDegrees = pointingInfo.getAntennaPitchDegrees();
-        halPointingInfo.antennaRollDegrees = pointingInfo.getAntennaRollDegrees();
-        return halPointingInfo;
-    }
-
-    /**
      * Convert satellite-related errors from CommandException.Error to
      * SatelliteManager.SatelliteServiceResult.
      * @param error The satellite error.
@@ -6006,18 +5897,12 @@ public class RILUtils {
                 return SatelliteManager.SATELLITE_NO_RESOURCES;
             case NETWORK_ERR:
                 return SatelliteManager.SATELLITE_NETWORK_ERROR;
-            case NETWORK_TIMEOUT:
-                return SatelliteManager.SATELLITE_NETWORK_TIMEOUT;
             case NO_NETWORK_FOUND:
-                //fallthrough to NO_SATELLITE_SIGNAL
-            case NO_SATELLITE_SIGNAL:
                 return SatelliteManager.SATELLITE_NOT_REACHABLE;
             case ABORTED:
                 return SatelliteManager.SATELLITE_REQUEST_ABORTED;
             case ACCESS_BARRED:
                 return SatelliteManager.SATELLITE_ACCESS_BARRED;
-            case SUBSCRIBER_NOT_AUTHORIZED:
-                return SatelliteManager.SATELLITE_NOT_AUTHORIZED;
             default:
                 return SatelliteManager.SATELLITE_ERROR;
         }
