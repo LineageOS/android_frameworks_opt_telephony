@@ -1796,7 +1796,7 @@ public class UiccController extends Handler {
 
     private List<String> getPrintableCardStrings() {
         if (!ArrayUtils.isEmpty(mCardStrings)) {
-            return mCardStrings.stream().map(SubscriptionInfo::givePrintableIccid).collect(
+            return mCardStrings.stream().map(SubscriptionInfo::getPrintableId).collect(
                     Collectors.toList());
         }
         return mCardStrings;
