@@ -197,7 +197,7 @@ public class IccCardStatus {
         }
 
         sb.append(",atr=").append(atr);
-        sb.append(",iccid=").append(SubscriptionInfo.givePrintableIccid(iccid));
+        sb.append(",iccid=").append(SubscriptionInfo.getPrintableId(iccid));
         sb.append(",eid=").append(Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, eid));
         sb.append(",SupportedMepMode=").append(mSupportedMepMode);
         sb.append(",SlotPortMapping=").append(mSlotPortMapping);
