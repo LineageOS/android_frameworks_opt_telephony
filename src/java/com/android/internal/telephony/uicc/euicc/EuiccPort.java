@@ -282,7 +282,7 @@ public class EuiccPort extends UiccPort {
                             return null;
                         case CODE_PROFILE_NOT_IN_EXPECTED_STATE:
                             logd("Profile is already disabled, iccid: "
-                                    + SubscriptionInfo.givePrintableIccid(iccid));
+                                    + SubscriptionInfo.getPrintableId(iccid));
                             return null;
                         default:
                             throw new EuiccCardErrorException(
@@ -330,7 +330,7 @@ public class EuiccPort extends UiccPort {
                             return null;
                         case CODE_PROFILE_NOT_IN_EXPECTED_STATE:
                             logd("Profile is already enabled, iccid: "
-                                    + SubscriptionInfo.givePrintableIccid(iccid));
+                                    + SubscriptionInfo.getPrintableId(iccid));
                             return null;
                         default:
                             throw new EuiccCardErrorException(
