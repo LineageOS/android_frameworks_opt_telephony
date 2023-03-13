@@ -1279,7 +1279,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         }
 
         String iccId = getIccId(phoneId);
-        log("updateSubscription: Found iccId=" + SubscriptionInfo.givePrintableIccid(iccId)
+        log("updateSubscription: Found iccId=" + SubscriptionInfo.getPrintableId(iccId)
                 + " on phone " + phoneId);
 
         // For eSIM switching, SIM absent will not happen. Below is to exam if we find ICCID
@@ -1935,7 +1935,7 @@ public class SubscriptionManagerService extends ISub.Stub {
     public int addSubInfo(@NonNull String iccId, @NonNull String displayName, int slotIndex,
             @SubscriptionType int subscriptionType) {
         enforcePermissions("addSubInfo", Manifest.permission.MODIFY_PHONE_STATE);
-        logl("addSubInfo: iccId=" + SubscriptionInfo.givePrintableIccid(iccId) + ", slotIndex="
+        logl("addSubInfo: iccId=" + SubscriptionInfo.getPrintableId(iccId) + ", slotIndex="
                 + slotIndex + ", displayName=" + displayName + ", type="
                 + SubscriptionManager.subscriptionTypeToString(subscriptionType) + ", "
                 + getCallingPackage());
@@ -1993,7 +1993,7 @@ public class SubscriptionManagerService extends ISub.Stub {
     public int removeSubInfo(@NonNull String uniqueId, int subscriptionType) {
         enforcePermissions("removeSubInfo", Manifest.permission.MODIFY_PHONE_STATE);
 
-        logl("removeSubInfo: uniqueId=" + SubscriptionInfo.givePrintableIccid(uniqueId) + ", "
+        logl("removeSubInfo: uniqueId=" + SubscriptionInfo.getPrintableId(uniqueId) + ", "
                 + SubscriptionManager.subscriptionTypeToString(subscriptionType) + ", "
                 + getCallingPackage());
         final long identity = Binder.clearCallingIdentity();
@@ -3932,7 +3932,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         pw.println("ICCID:");
         pw.increaseIndent();
         for (int i = 0; i < mTelephonyManager.getActiveModemCount(); i++) {
-            pw.println("slot " + i + ": " + SubscriptionInfo.givePrintableIccid(getIccId(i)));
+            pw.println("slot " + i + ": " + SubscriptionInfo.getPrintableId(getIccId(i)));
         }
         pw.decreaseIndent();
         pw.println();
