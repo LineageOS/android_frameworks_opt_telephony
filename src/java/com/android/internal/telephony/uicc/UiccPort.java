@@ -365,7 +365,7 @@ public class UiccPort {
         pw.increaseIndent();
         pw.println("mPortIdx=" + mPortIdx);
         pw.println("mCi=" + mCi);
-        pw.println("mIccid=" + SubscriptionInfo.givePrintableIccid(mIccid));
+        pw.println("mIccid=" + SubscriptionInfo.getPrintableId(mIccid));
         pw.println("mPhoneId=" + mPhoneId);
         pw.println("mPhysicalSlotIndex=" + mPhysicalSlotIndex);
         synchronized (mOpenChannelRecords) {
