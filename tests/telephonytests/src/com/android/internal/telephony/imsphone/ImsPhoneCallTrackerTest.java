@@ -1899,6 +1899,30 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
         }
     }
 
+    /**
+     * Tests the case where a dialed call has not yet moved beyond the "pending MO" phase, but the
+     * user then disconnects.  In such a case we need to ensure that the pending MO reference is
+     * cleared so that another call can be placed.
+     */
+    @Test
+    @SmallTest
+    public void testCallDisconnectBeforeActive() {
+        ImsPhoneConnection connection = placeCall();
+        assertEquals(1, mCTUT.getConnections().size());
+        // Call is the pending MO right now.
+        assertEquals(connection, mCTUT.getPendingMO());
+        assertEquals(Call.State.DIALING, mCTUT.mForegroundCall.getState());
+        assertEquals(PhoneConstants.State.OFFHOOK, mCTUT.getState());
+
+        mImsCallListener.onCallTerminated(connection.getImsCall(),
+                new ImsReasonInfo(ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE, 0));
+        // Make sure pending MO got nulled out.
+        assertNull(mCTUT.getPendingMO());
+
+        // Try making another call; it should not fail.
+        ImsPhoneConnection connection2 = placeCall();
+    }
+
     private void sendCarrierConfigChanged() {
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         intent.putExtra(CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());

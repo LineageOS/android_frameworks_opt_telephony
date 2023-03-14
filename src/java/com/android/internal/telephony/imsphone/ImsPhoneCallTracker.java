@@ -2841,6 +2841,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
             conn.getCall().detach(conn);
             removeConnection(conn);
 
+            // If the call being disconnected was the pending MO call we should clear it.
+            if (mPendingMO == conn) {
+                mPendingMO.finalize();
+                mPendingMO = null;
+            }
+
             // remove conference participants from the cached list when call is disconnected
             List<ConferenceParticipant> cpList = imsCall.getConferenceParticipants();
             if (cpList != null) {

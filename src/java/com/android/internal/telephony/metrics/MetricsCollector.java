@@ -49,7 +49,6 @@ import static com.android.internal.telephony.TelephonyStatsLog.UCE_EVENT_STATS;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_RAT_USAGE;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION;
 
-import android.annotation.Nullable;
 import android.app.StatsManager;
 import android.content.Context;
 import android.util.StatsEvent;
@@ -124,11 +123,6 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     private static final long DURATION_BUCKET_MILLIS =
             DBG ? 2L * SECOND_IN_MILLIS : 5L * MINUTE_IN_MILLIS;
 
-    private static final StatsManager.PullAtomMetadata POLICY_PULL_DAILY =
-            new StatsManager.PullAtomMetadata.Builder()
-                    .setCoolDownMillis(MIN_COOLDOWN_MILLIS)
-                    .build();
-
     private final PersistAtomsStorage mStorage;
     private final StatsManager mStatsManager;
     private final AirplaneModeStats mAirplaneModeStats;
@@ -146,35 +140,34 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         mStorage = storage;
         mStatsManager = (StatsManager) context.getSystemService(Context.STATS_MANAGER);
         if (mStatsManager != null) {
-            registerAtom(CELLULAR_DATA_SERVICE_SWITCH, POLICY_PULL_DAILY);
-            registerAtom(CELLULAR_SERVICE_STATE, POLICY_PULL_DAILY);
-            registerAtom(SIM_SLOT_STATE, null);
-            registerAtom(SUPPORTED_RADIO_ACCESS_FAMILY, null);
-            registerAtom(VOICE_CALL_RAT_USAGE, POLICY_PULL_DAILY);
-            registerAtom(VOICE_CALL_SESSION, POLICY_PULL_DAILY);
-            registerAtom(INCOMING_SMS, POLICY_PULL_DAILY);
-            registerAtom(OUTGOING_SMS, POLICY_PULL_DAILY);
-            registerAtom(CARRIER_ID_TABLE_VERSION, null);
-            registerAtom(DATA_CALL_SESSION, POLICY_PULL_DAILY);
-            registerAtom(IMS_REGISTRATION_STATS, POLICY_PULL_DAILY);
-            registerAtom(IMS_REGISTRATION_TERMINATION, POLICY_PULL_DAILY);
-            registerAtom(TELEPHONY_NETWORK_REQUESTS_V2, POLICY_PULL_DAILY);
-            registerAtom(IMS_REGISTRATION_FEATURE_TAG_STATS, POLICY_PULL_DAILY);
-            registerAtom(RCS_CLIENT_PROVISIONING_STATS, POLICY_PULL_DAILY);
-            registerAtom(RCS_ACS_PROVISIONING_STATS, POLICY_PULL_DAILY);
-            registerAtom(SIP_DELEGATE_STATS, POLICY_PULL_DAILY);
-            registerAtom(SIP_TRANSPORT_FEATURE_TAG_STATS, POLICY_PULL_DAILY);
-            registerAtom(SIP_MESSAGE_RESPONSE, POLICY_PULL_DAILY);
-            registerAtom(SIP_TRANSPORT_SESSION, POLICY_PULL_DAILY);
-            registerAtom(DEVICE_TELEPHONY_PROPERTIES, null);
-            registerAtom(IMS_DEDICATED_BEARER_LISTENER_EVENT, POLICY_PULL_DAILY);
-            registerAtom(IMS_DEDICATED_BEARER_EVENT, POLICY_PULL_DAILY);
-            registerAtom(IMS_REGISTRATION_SERVICE_DESC_STATS, POLICY_PULL_DAILY);
-            registerAtom(UCE_EVENT_STATS, POLICY_PULL_DAILY);
-            registerAtom(PRESENCE_NOTIFY_EVENT, POLICY_PULL_DAILY);
-            registerAtom(GBA_EVENT, POLICY_PULL_DAILY);
-            registerAtom(PER_SIM_STATUS, null);
-
+            registerAtom(CELLULAR_DATA_SERVICE_SWITCH);
+            registerAtom(CELLULAR_SERVICE_STATE);
+            registerAtom(SIM_SLOT_STATE);
+            registerAtom(SUPPORTED_RADIO_ACCESS_FAMILY);
+            registerAtom(VOICE_CALL_RAT_USAGE);
+            registerAtom(VOICE_CALL_SESSION);
+            registerAtom(INCOMING_SMS);
+            registerAtom(OUTGOING_SMS);
+            registerAtom(CARRIER_ID_TABLE_VERSION);
+            registerAtom(DATA_CALL_SESSION);
+            registerAtom(IMS_REGISTRATION_STATS);
+            registerAtom(IMS_REGISTRATION_TERMINATION);
+            registerAtom(TELEPHONY_NETWORK_REQUESTS_V2);
+            registerAtom(IMS_REGISTRATION_FEATURE_TAG_STATS);
+            registerAtom(RCS_CLIENT_PROVISIONING_STATS);
+            registerAtom(RCS_ACS_PROVISIONING_STATS);
+            registerAtom(SIP_DELEGATE_STATS);
+            registerAtom(SIP_TRANSPORT_FEATURE_TAG_STATS);
+            registerAtom(SIP_MESSAGE_RESPONSE);
+            registerAtom(SIP_TRANSPORT_SESSION);
+            registerAtom(DEVICE_TELEPHONY_PROPERTIES);
+            registerAtom(IMS_DEDICATED_BEARER_LISTENER_EVENT);
+            registerAtom(IMS_DEDICATED_BEARER_EVENT);
+            registerAtom(IMS_REGISTRATION_SERVICE_DESC_STATS);
+            registerAtom(UCE_EVENT_STATS);
+            registerAtom(PRESENCE_NOTIFY_EVENT);
+            registerAtom(GBA_EVENT);
+            registerAtom(PER_SIM_STATUS);
             Rlog.d(TAG, "registered");
         } else {
             Rlog.e(TAG, "could not get StatsManager, atoms not registered");
@@ -691,9 +684,10 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
         return result;
     }
 
-    /** Registers a pulled atom ID {@code atomId} with optional {@code policy} for pulling. */
-    private void registerAtom(int atomId, @Nullable StatsManager.PullAtomMetadata policy) {
-        mStatsManager.setPullAtomCallback(atomId, policy, ConcurrentUtils.DIRECT_EXECUTOR, this);
+    /** Registers a pulled atom ID {@code atomId}. */
+    private void registerAtom(int atomId) {
+        mStatsManager.setPullAtomCallback(atomId, /* metadata= */ null,
+                ConcurrentUtils.DIRECT_EXECUTOR, this);
     }
 
     private static StatsEvent buildStatsEvent(CellularDataServiceSwitch serviceSwitch) {
@@ -768,7 +762,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 session.videoEnabled,
                 session.ratAtConnected,
                 session.isMultiparty,
-                session.callDuration);
+                session.callDuration,
+                session.lastKnownRat);
     }
 
     private static StatsEvent buildStatsEvent(IncomingSms sms) {

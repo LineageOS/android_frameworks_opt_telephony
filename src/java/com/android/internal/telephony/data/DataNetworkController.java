@@ -551,6 +551,15 @@ public class DataNetworkController extends Handler {
          */
         public void onInternetDataNetworkConnected(@NonNull List<DataProfile> dataProfiles) {}
 
+        /**
+         * Called when data network is connected.
+         *
+         * @param transport Transport for the connected network.
+         * @param dataProfile The data profile of the connected data network.
+         */
+        public void onDataNetworkConnected(@TransportType int transport,
+                @NonNull DataProfile dataProfile) {}
+
         /** Called when internet data network is disconnected. */
         public void onInternetDataNetworkDisconnected() {}
 
@@ -1426,7 +1435,7 @@ public class DataNetworkController extends Handler {
         if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)) {
             evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_REQUEST);
             evaluation.setCandidateDataProfile(mDataProfileManager.getDataProfileForNetworkRequest(
-                    networkRequest, getDataNetworkType(transport)));
+                    networkRequest, getDataNetworkType(transport), true));
             networkRequest.setEvaluation(evaluation);
             log(evaluation.toString());
             return evaluation;
@@ -1568,7 +1577,10 @@ public class DataNetworkController extends Handler {
 
         // Check if there is any compatible data profile
         DataProfile dataProfile = mDataProfileManager
-                .getDataProfileForNetworkRequest(networkRequest, getDataNetworkType(transport));
+                .getDataProfileForNetworkRequest(networkRequest, getDataNetworkType(transport),
+                        // If the evaluation is due to environmental changes, then we should ignore
+                        // the permanent failure reached earlier.
+                        reason.isConditionBased());
         if (dataProfile == null) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.NO_SUITABLE_DATA_PROFILE);
         } else if (reason == DataEvaluationReason.NEW_REQUEST
@@ -1716,7 +1728,8 @@ public class DataNetworkController extends Handler {
                     if (nri != null) {
                         DataSpecificRegistrationInfo dsri = nri.getDataSpecificInfo();
                         if (dsri != null && dsri.getVopsSupportInfo() != null
-                                && !dsri.getVopsSupportInfo().isVopsSupported()) {
+                                && !dsri.getVopsSupportInfo().isVopsSupported()
+                                && !mDataConfigManager.shouldKeepNetworkUpInNonVops()) {
                             evaluation.addDataDisallowedReason(
                                     DataDisallowedReason.VOPS_NOT_SUPPORTED);
                         }
@@ -1858,11 +1871,6 @@ public class DataNetworkController extends Handler {
             return dataEvaluation;
         }
 
-        if (mDataRetryManager.isAnyHandoverRetryScheduled(dataNetwork)) {
-            dataEvaluation.addDataDisallowedReason(DataDisallowedReason.RETRY_SCHEDULED);
-            return dataEvaluation;
-        }
-
         // If enhanced handover check is enabled, perform extra checks.
         if (mDataConfigManager.isEnhancedIwlanHandoverCheckEnabled()) {
             int targetTransport = DataUtils.getTargetTransport(dataNetwork.getTransport());
@@ -1882,7 +1890,8 @@ public class DataNetworkController extends Handler {
                     DataSpecificRegistrationInfo dsri = nri.getDataSpecificInfo();
                     // Check if the network is non-VoPS.
                     if (dsri != null && dsri.getVopsSupportInfo() != null
-                            && !dsri.getVopsSupportInfo().isVopsSupported()) {
+                            && !dsri.getVopsSupportInfo().isVopsSupported()
+                            && !mDataConfigManager.shouldKeepNetworkUpInNonVops()) {
                         dataEvaluation.addDataDisallowedReason(
                                 DataDisallowedReason.VOPS_NOT_SUPPORTED);
                     }
@@ -2284,8 +2293,7 @@ public class DataNetworkController extends Handler {
                 + "carrier specific. mSimState="
                 + SubscriptionInfoUpdater.simStateString(mSimState));
         updateNetworkRequestsPriority();
-        sendMessage(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
-                DataEvaluationReason.DATA_CONFIG_CHANGED));
+        onReevaluateUnsatisfiedNetworkRequests(DataEvaluationReason.DATA_CONFIG_CHANGED);
     }
 
     /**
@@ -2368,9 +2376,12 @@ public class DataNetworkController extends Handler {
                 + dataSetupRetryEntry + ", allowed reason=" + allowedReason + ", service state="
                 + mServiceState);
         for (DataNetwork dataNetwork : mDataNetworkList) {
-            if (dataNetwork.getDataProfile().equals(dataProfile)) {
+            DataProfile currentDataProfile = dataNetwork.getDataProfile();
+            if (dataProfile.equals(currentDataProfile)
+                    || mDataProfileManager.areDataProfilesSharingApn(
+                            dataProfile, currentDataProfile)) {
                 log("onSetupDataNetwork: Found existing data network " + dataNetwork
-                        + " has the same data profile.");
+                        + " using the same or a similar data profile.");
                 if (dataSetupRetryEntry != null) {
                     dataSetupRetryEntry.setState(DataRetryEntry.RETRY_STATE_CANCELLED);
                 }
@@ -2582,6 +2593,11 @@ public class DataNetworkController extends Handler {
      */
     private void onDataNetworkConnected(@NonNull DataNetwork dataNetwork) {
         logl("onDataNetworkConnected: " + dataNetwork);
+
+        mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                () -> callback.onDataNetworkConnected(dataNetwork.getTransport(),
+                        dataNetwork.getDataProfile())));
+
         mPreviousConnectedDataNetworkList.add(0, dataNetwork);
         // Preserve the connected data networks for debugging purposes.
         if (mPreviousConnectedDataNetworkList.size() > MAX_HISTORICAL_CONNECTED_DATA_NETWORKS) {
@@ -2687,7 +2703,7 @@ public class DataNetworkController extends Handler {
         logl("onDataNetworkHandoverRetry: Start handover " + dataNetwork + " to "
                 + AccessNetworkConstants.transportTypeToString(preferredTransport)
                 + ", " + dataHandoverRetryEntry);
-        dataNetwork.startHandover(preferredTransport, dataHandoverRetryEntry);
+        tryHandoverDataNetwork(dataNetwork, preferredTransport, dataHandoverRetryEntry);
     }
 
     /**
@@ -2854,6 +2870,16 @@ public class DataNetworkController extends Handler {
         } else if (handoverFailureMode == DataCallResponse
                 .HANDOVER_FAILURE_MODE_NO_FALLBACK_RETRY_SETUP_NORMAL || handoverFailureMode
                 == DataCallResponse.HANDOVER_FAILURE_MODE_LEGACY) {
+            int preferredTransport = mAccessNetworksManager
+                    .getPreferredTransportByNetworkCapability(
+                            dataNetwork.getApnTypeNetworkCapability());
+            if (dataNetwork.getTransport() == preferredTransport) {
+                log("onDataNetworkHandoverFailed: Already on preferred transport "
+                        + AccessNetworkConstants.transportTypeToString(preferredTransport)
+                        + ". No further actions needed.");
+                return;
+            }
+
             int targetTransport = DataUtils.getTargetTransport(dataNetwork.getTransport());
             mDataRetryManager.evaluateDataSetupRetry(dataNetwork.getDataProfile(), targetTransport,
                     dataNetwork.getAttachedNetworkRequestList(), cause, retryDelayMillis);
@@ -2964,30 +2990,50 @@ public class DataNetworkController extends Handler {
                     continue;
                 }
 
-                DataEvaluation dataEvaluation = evaluateDataNetworkHandover(dataNetwork);
-                log("onEvaluatePreferredTransport: " + dataEvaluation + ", " + dataNetwork);
-                if (!dataEvaluation.containsDisallowedReasons()) {
-                    logl("Start handover " + dataNetwork + " to "
-                            + AccessNetworkConstants.transportTypeToString(preferredTransport));
-                    dataNetwork.startHandover(preferredTransport, null);
-                } else if (dataEvaluation.containsAny(DataDisallowedReason.NOT_ALLOWED_BY_POLICY,
-                        DataDisallowedReason.NOT_IN_SERVICE,
-                        DataDisallowedReason.VOPS_NOT_SUPPORTED)) {
-                    logl("onEvaluatePreferredTransport: Handover not allowed. Tear "
-                            + "down " + dataNetwork + " so a new network can be setup on "
-                            + AccessNetworkConstants.transportTypeToString(preferredTransport)
-                            + ".");
-                    tearDownGracefully(dataNetwork,
-                            DataNetwork.TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED);
-                } else if (dataEvaluation.containsAny(DataDisallowedReason.ILLEGAL_STATE,
-                        DataDisallowedReason.RETRY_SCHEDULED)) {
-                    logl("onEvaluatePreferredTransport: Handover not allowed. " + dataNetwork
-                            + " will remain on " + AccessNetworkConstants.transportTypeToString(
-                                    dataNetwork.getTransport()));
-                } else {
-                    loge("onEvaluatePreferredTransport: Unexpected handover evaluation result.");
-                }
+                tryHandoverDataNetwork(dataNetwork, preferredTransport, null/*handoverRetryEntry*/);
             }
+        }
+    }
+
+    /**
+     * Perform data network handover if condition allows, otherwise tear down the network to allow
+     * new network setup on the target transport.
+     *
+     * @param dataNetwork The network on which the handover occurs
+     * @param targetTransport The target transport of the handover
+     * @param dataHandoverRetryEntry {@code null} if the handover attempt is not due to scheduled
+     *                                           retry
+     */
+    private void tryHandoverDataNetwork(@NonNull DataNetwork dataNetwork,
+            @TransportType int targetTransport,
+            @Nullable DataHandoverRetryEntry dataHandoverRetryEntry) {
+        if (dataHandoverRetryEntry == null // This handover is a new request
+                && mDataRetryManager.isAnyHandoverRetryScheduled(dataNetwork)) {
+            log("tryHandoverDataNetwork: retry scheduled for" + dataNetwork
+                    + ", ignore this attempt");
+            return;
+        }
+        DataEvaluation dataEvaluation = evaluateDataNetworkHandover(dataNetwork);
+        log("tryHandoverDataNetwork: " + dataEvaluation + ", " + dataNetwork);
+        if (!dataEvaluation.containsDisallowedReasons()) {
+            logl("Start handover " + dataNetwork + " to "
+                    + AccessNetworkConstants.transportTypeToString(targetTransport));
+            dataNetwork.startHandover(targetTransport, dataHandoverRetryEntry);
+        } else if (dataEvaluation.containsAny(DataDisallowedReason.NOT_ALLOWED_BY_POLICY,
+                DataDisallowedReason.NOT_IN_SERVICE,
+                DataDisallowedReason.VOPS_NOT_SUPPORTED)) {
+            logl("tryHandoverDataNetwork: Handover not allowed. Tear down"
+                    + dataNetwork + " so a new network can be setup on "
+                    + AccessNetworkConstants.transportTypeToString(targetTransport));
+            tearDownGracefully(dataNetwork,
+                    DataNetwork.TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED);
+        } else if (dataEvaluation.containsAny(DataDisallowedReason.ILLEGAL_STATE,
+                DataDisallowedReason.RETRY_SCHEDULED)) {
+            logl("tryHandoverDataNetwork: Handover not allowed. " + dataNetwork
+                    + " will remain on " + AccessNetworkConstants.transportTypeToString(
+                    dataNetwork.getTransport()));
+        } else {
+            loge("tryHandoverDataNetwork: Unexpected handover evaluation result.");
         }
     }
 

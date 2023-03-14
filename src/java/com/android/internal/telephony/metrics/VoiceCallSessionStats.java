@@ -357,9 +357,9 @@ public class VoiceCallSessionStats {
     public synchronized void onRilSrvccStateChanged(int state) {
         List<Connection> handoverConnections = null;
         if (mPhone.getImsPhone() != null) {
-            loge("onRilSrvccStateChanged: ImsPhone is null");
-        } else {
             handoverConnections = mPhone.getImsPhone().getHandoverConnection();
+        } else {
+            loge("onRilSrvccStateChanged: ImsPhone is null");
         }
         List<Integer> imsConnIds;
         if (handoverConnections == null) {
@@ -464,9 +464,15 @@ public class VoiceCallSessionStats {
         proto.isEmergency = conn.isEmergencyCall();
         proto.isRoaming = serviceState != null ? serviceState.getVoiceRoaming() : false;
         proto.isMultiparty = conn.isMultiparty();
+        proto.lastKnownRat = rat;
 
         // internal fields for tracking
-        proto.setupBeginMillis = getTimeMillis();
+        if (getDirection(conn) == VOICE_CALL_SESSION__DIRECTION__CALL_DIRECTION_MT) {
+            // MT call setup hasn't begun hence set to 0
+            proto.setupBeginMillis = 0L;
+        } else {
+            proto.setupBeginMillis = getTimeMillis();
+        }
 
         // audio codec might have already been set
         int codec = audioQualityToCodec(bearer, conn.getAudioCodec());
@@ -492,6 +498,12 @@ public class VoiceCallSessionStats {
             loge("finishCall: could not find call to be removed, connectionId=%d", connectionId);
             return;
         }
+
+        // Compute time it took to fail setup (except for MT calls that have never been picked up)
+        if (proto.setupFailed && proto.setupBeginMillis != 0L && proto.setupDurationMillis == 0) {
+            proto.setupDurationMillis = (int) (getTimeMillis() - proto.setupBeginMillis);
+        }
+
         mCallProtos.delete(connectionId);
         proto.concurrentCallCountAtEnd = mCallProtos.size();
 
@@ -512,6 +524,17 @@ public class VoiceCallSessionStats {
         // Retry populating carrier ID if it was invalid
         if (proto.carrierId <= 0) {
             proto.carrierId = mPhone.getCarrierId();
+        }
+
+        // Update end RAT
+        @NetworkType
+        int rat = ServiceStateStats.getVoiceRat(mPhone, getServiceState(), proto.bearerAtEnd);
+        if (proto.ratAtEnd != rat) {
+            proto.ratSwitchCount++;
+            proto.ratAtEnd = rat;
+            if (rat != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
+                proto.lastKnownRat = rat;
+            }
         }
 
         mAtomsStorage.addVoiceCallSession(proto);
@@ -595,6 +618,9 @@ public class VoiceCallSessionStats {
             if (proto.ratAtEnd != rat) {
                 proto.ratSwitchCount++;
                 proto.ratAtEnd = rat;
+                if (rat != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
+                    proto.lastKnownRat = rat;
+                }
             }
             proto.bandAtEnd = (rat == TelephonyManager.NETWORK_TYPE_IWLAN)
                             ? 0
