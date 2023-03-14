@@ -317,4 +317,24 @@ public class ImsPhoneCallTest extends TelephonyTest {
             fail("Exception unexpected");
         }
     }
+
+    @Test
+    public void testMaybeClearRemotelyHeldStatus() {
+        mImsCallUT.attach(mConnection1, Call.State.ACTIVE);
+        when(mConnection1.isHeldByRemote()).thenReturn(true);
+        mImsCallUT.maybeClearRemotelyHeldStatus();
+        verify(mConnection1, times(1)).setRemotelyUnheld();
+
+        mImsCallUT.attach(mConnection2, Call.State.ACTIVE);
+        when(mConnection2.isHeldByRemote()).thenReturn(true);
+        mImsCallUT.maybeClearRemotelyHeldStatus();
+        verify(mConnection1, times(2)).setRemotelyUnheld();
+        verify(mConnection2, times(1)).setRemotelyUnheld();
+
+        when(mConnection1.isHeldByRemote()).thenReturn(false);
+        when(mConnection2.isHeldByRemote()).thenReturn(false);
+        mImsCallUT.maybeClearRemotelyHeldStatus();
+        verify(mConnection1, times(2)).setRemotelyUnheld();
+        verify(mConnection2, times(1)).setRemotelyUnheld();
+    }
 }
