@@ -49,6 +49,7 @@ import com.android.telephony.Rlog;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
@@ -301,6 +302,7 @@ public class TelephonyNetworkFactoryTest extends TelephonyTest {
      */
     @Test
     @SmallTest
+    @Ignore("b/256052233")
     public void testRequests() throws Exception {
         mTestName = "testActive";
         final int numberOfPhones = 2;

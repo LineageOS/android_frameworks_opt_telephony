@@ -891,9 +891,15 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 Rlog.d(LOG_TAG, "processCode: isShortCode");
 
                 // These just get treated as USSD.
-                Rlog.d(LOG_TAG, "processCode: Sending short code '"
-                       + mDialingNumber + "' over CS pipe.");
-                throw new CallStateException(Phone.CS_FALLBACK);
+                if (isUssdOverImsAllowed()) {
+                    Rlog.d(LOG_TAG, "processCode: Sending short code '"
+                           + mDialingNumber + "' over IMS pipe.");
+                    sendUssd(mDialingNumber);
+                } else {
+                    Rlog.d(LOG_TAG, "processCode: Sending short code '"
+                           + mDialingNumber + "' over CS pipe.");
+                    throw new CallStateException(Phone.CS_FALLBACK);
+                }
             } else if (isServiceCodeCallForwarding(mSc)) {
                 Rlog.d(LOG_TAG, "processCode: is CF");
 
@@ -1104,47 +1110,11 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                     throw new RuntimeException ("Invalid or Unsupported MMI Code");
                 }
             } else if (mPoundString != null) {
-                if (mContext.getResources().getBoolean(
-                        com.android.internal.R.bool.config_allow_ussd_over_ims)) {
-                    int ussd_method = getIntCarrierConfig(
-                                    CarrierConfigManager.KEY_CARRIER_USSD_METHOD_INT);
-
-                    switch (ussd_method) {
-                        case USSD_OVER_CS_PREFERRED:
-                            // We'll normally send USSD over the CS pipe, but if it happens that
-                            // the CS phone is out of service, we'll just try over IMS instead.
-                            if (mPhone.getDefaultPhone().getServiceStateTracker().mSS.getState()
-                                    == STATE_IN_SERVICE) {
-                                Rlog.i(LOG_TAG, "processCode: Sending ussd string '"
-                                        + Rlog.pii(LOG_TAG, mPoundString) + "' over CS pipe "
-                                        + "(allowed over ims).");
-                                throw new CallStateException(Phone.CS_FALLBACK);
-                            } else {
-                                Rlog.i(LOG_TAG, "processCode: CS is out of service, "
-                                        + "sending ussd string '"
-                                        + Rlog.pii(LOG_TAG, mPoundString) + "' over IMS pipe.");
-                                sendUssd(mPoundString);
-                            }
-                            break;
-                        case USSD_OVER_IMS_PREFERRED:
-                        case USSD_OVER_IMS_ONLY:
-                            Rlog.i(LOG_TAG, "processCode: Sending ussd string '"
-                                    + Rlog.pii(LOG_TAG, mPoundString) + "' over IMS pipe.");
-                            sendUssd(mPoundString);
-                            break;
-                        case USSD_OVER_CS_ONLY:
-                            Rlog.i(LOG_TAG, "processCode: Sending ussd string '"
-                                    + Rlog.pii(LOG_TAG, mPoundString) + "' over CS pipe.");
-                            throw new CallStateException(Phone.CS_FALLBACK);
-                        default:
-                            Rlog.i(LOG_TAG, "processCode: Sending ussd string '"
-                                    + Rlog.pii(LOG_TAG, mPoundString) + "' over CS pipe."
-                                    + "(unsupported method)");
-                            throw new CallStateException(Phone.CS_FALLBACK);
-                    }
+                if (isUssdOverImsAllowed()) {
+                    Rlog.i(LOG_TAG, "processCode: Sending ussd string '"
+                            + Rlog.pii(LOG_TAG, mPoundString) + "' over IMS pipe.");
+                    sendUssd(mPoundString);
                 } else {
-                    // USSD codes are not supported over IMS due to modem limitations; send over
-                    // the CS pipe instead.  This should be fixed in the future.
                     Rlog.i(LOG_TAG, "processCode: Sending ussd string '"
                             + Rlog.pii(LOG_TAG, mPoundString) + "' over CS pipe.");
                     throw new CallStateException(Phone.CS_FALLBACK);
@@ -1158,6 +1128,40 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             mMessage = mContext.getText(com.android.internal.R.string.mmiError);
             Rlog.d(LOG_TAG, "processCode: RuntimeException = " + exc);
             mPhone.onMMIDone(this);
+        }
+    }
+
+    private boolean isUssdOverImsAllowed() {
+        if (mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_allow_ussd_over_ims)) {
+            int ussd_method = getIntCarrierConfig(
+                            CarrierConfigManager.KEY_CARRIER_USSD_METHOD_INT);
+
+            switch (ussd_method) {
+                case USSD_OVER_CS_PREFERRED:
+                    // We'll normally send USSD over the CS pipe, but if it happens that
+                    // the CS phone is out of service, we'll just try over IMS instead.
+                    if (mPhone.getDefaultPhone().getServiceStateTracker().mSS.getState()
+                            == STATE_IN_SERVICE) {
+                        return false;
+                    } else {
+                        Rlog.i(LOG_TAG, "isUssdOverImsAllowed: CS is out of service");
+                        return true;
+                    }
+                case USSD_OVER_IMS_PREFERRED:
+                case USSD_OVER_IMS_ONLY:
+                    return true;
+                case USSD_OVER_CS_ONLY:
+                    return false;
+                default:
+                    Rlog.i(LOG_TAG, "isUssdOverImsAllowed: Unsupported method");
+                    return false;
+            }
+        } else {
+            // USSD codes are not supported over IMS due to modem limitations; send over
+            // the CS pipe instead.  This should be fixed in the future.
+            Rlog.i(LOG_TAG, "isUssdOverImsAllowed: USSD over IMS pipe is not supported.");
+            return false;
         }
     }
 
@@ -1330,7 +1334,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 mContext.getText(com.android.internal.R.string.mmiError);
     }
 
-    private CharSequence getMmiErrorMessage(AsyncResult ar) {
+    @VisibleForTesting
+    public CharSequence getMmiErrorMessage(AsyncResult ar) {
         if (ar.exception instanceof ImsException) {
             switch (((ImsException) ar.exception).getCode()) {
                 case ImsReasonInfo.CODE_FDN_BLOCKED:
@@ -1360,6 +1365,12 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 return mContext.getText(com.android.internal.R.string.stk_cc_ss_to_dial_video);
             } else if (err.getCommandError() == CommandException.Error.INTERNAL_ERR) {
                 return mContext.getText(com.android.internal.R.string.mmiError);
+            } else if (err.getCommandError() == CommandException.Error.REQUEST_NOT_SUPPORTED
+                    || err.getCommandError() == CommandException.Error.OPERATION_NOT_ALLOWED) {
+                // getResources().getText() is the same as getText(), however getText() is final and
+                // cannot be mocked in tests.
+                return mContext.getResources().getText(
+                        com.android.internal.R.string.mmiErrorNotSupported);
             }
         }
         return null;
