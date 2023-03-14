@@ -323,14 +323,11 @@ public class DatagramReceiver {
      * Register to receive incoming datagrams over satellite.
      *
      * @param subId The subId of the subscription to register for incoming satellite datagrams.
-     * @param datagramType datagram type indicating whether the datagram is of type
-     *                     SOS_SMS or LOCATION_SHARING.
      * @param callback The callback to handle incoming datagrams over satellite.
      *
      * @return The {@link SatelliteManager.SatelliteError} result of the operation.
      */
     @SatelliteManager.SatelliteError public int registerForSatelliteDatagram(int subId,
-            @SatelliteManager.DatagramType int datagramType,
             @NonNull ISatelliteDatagramCallback callback) {
         if (!SatelliteController.getInstance().isSatelliteSupported()) {
             return SatelliteManager.SATELLITE_NOT_SUPPORTED;
@@ -366,7 +363,7 @@ public class DatagramReceiver {
      *
      * @param subId The subId of the subscription to unregister for incoming satellite datagrams.
      * @param callback The callback that was passed to
-     *                 {@link #registerForSatelliteDatagram(int, int, ISatelliteDatagramCallback)}.
+     *                 {@link #registerForSatelliteDatagram(int, ISatelliteDatagramCallback)}.
      */
     public void unregisterForSatelliteDatagram(int subId,
             @NonNull ISatelliteDatagramCallback callback) {
