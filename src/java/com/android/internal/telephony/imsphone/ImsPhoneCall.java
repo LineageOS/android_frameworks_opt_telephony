@@ -469,6 +469,15 @@ public class ImsPhoneCall extends Call {
         return mIsRingbackTonePlaying;
     }
 
+    public void maybeClearRemotelyHeldStatus() {
+        for (Connection conn : getConnections()) {
+            ImsPhoneConnection c = (ImsPhoneConnection) conn;
+            if (c.isHeldByRemote()) {
+                c.setRemotelyUnheld();
+            }
+        }
+    }
+
     private void takeOver(ImsPhoneCall that) {
         copyConnectionFrom(that);
         mState = that.mState;
