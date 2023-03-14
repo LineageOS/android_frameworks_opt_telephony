@@ -75,7 +75,6 @@ import android.util.Log;
 
 import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccUtils;
@@ -3160,46 +3159,6 @@ public class SubscriptionController extends ISub.Stub {
 
         if (VDBG) logdl("[isActiveSubId]- " + retVal);
         return retVal;
-    }
-
-    /**
-     * Get the SIM state for the slot index.
-     * For Remote-SIMs, this method returns {@link IccCardConstants.State#UNKNOWN}
-     * @return SIM state as the ordinal of {@link IccCardConstants.State}
-     */
-    @Override
-    public int getSimStateForSlotIndex(int slotIndex) {
-        State simState;
-        String err;
-        if (slotIndex < 0) {
-            simState = IccCardConstants.State.UNKNOWN;
-            err = "invalid slotIndex";
-        } else {
-            Phone phone = null;
-            try {
-                phone = PhoneFactory.getPhone(slotIndex);
-            } catch (IllegalStateException e) {
-                // ignore
-            }
-            if (phone == null) {
-                simState = IccCardConstants.State.UNKNOWN;
-                err = "phone == null";
-            } else {
-                IccCard icc = phone.getIccCard();
-                if (icc == null) {
-                    simState = IccCardConstants.State.UNKNOWN;
-                    err = "icc == null";
-                } else {
-                    simState = icc.getState();
-                    err = "";
-                }
-            }
-        }
-        if (VDBG) {
-            logd("getSimStateForSlotIndex: " + err + " simState=" + simState
-                    + " ordinal=" + simState.ordinal() + " slotIndex=" + slotIndex);
-        }
-        return simState.ordinal();
     }
 
     /**
