@@ -60,6 +60,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DATA_REGIS
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEACTIVATE_DATA_CALL;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DELETE_SMS_ON_SIM;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEVICE_IDENTITY;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DEVICE_IMEI;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DIAL;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DTMF;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_DTMF_START;
@@ -5280,6 +5281,8 @@ public class RILUtils {
                 return "GET_SIM_PHONEBOOK_RECORDS";
             case RIL_REQUEST_UPDATE_SIM_PHONEBOOK_RECORD:
                 return "UPDATE_SIM_PHONEBOOK_RECORD";
+            case RIL_REQUEST_DEVICE_IMEI:
+                return "DEVICE_IMEI";
             case RIL_REQUEST_GET_SLOT_STATUS:
                 return "GET_SLOT_STATUS";
             case RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING:
