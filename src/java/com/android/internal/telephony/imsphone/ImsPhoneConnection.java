@@ -152,6 +152,11 @@ public class ImsPhoneConnection extends Connection implements
      */
     private ImsReasonInfo mImsReasonInfo;
 
+    /**
+     * Used to indicate that this call is held by remote party.
+     */
+    private boolean mIsHeldByRemote = false;
+
     //***** Event Constants
     private static final int EVENT_DTMF_DONE = 1;
     private static final int EVENT_PAUSE_DONE = 2;
@@ -1589,6 +1594,30 @@ public class ImsPhoneConnection extends Connection implements
     public void handleMergeComplete() {
         mIsMergeInProcess = false;
         onConnectionEvent(android.telecom.Connection.EVENT_MERGE_COMPLETE, null);
+    }
+
+    /**
+     * Mark the call is held by remote party and inform to the UI.
+     */
+    public void setRemotelyHeld() {
+        mIsHeldByRemote = true;
+        onConnectionEvent(android.telecom.Connection.EVENT_CALL_REMOTELY_HELD, null);
+    }
+
+    /**
+     * Mark the call is Unheld by remote party and inform to the UI.
+     */
+    public void setRemotelyUnheld() {
+        mIsHeldByRemote = false;
+        onConnectionEvent(android.telecom.Connection.EVENT_CALL_REMOTELY_UNHELD, null);
+    }
+
+    /**
+     * @return whether the remote party is holding the call.
+     */
+    public boolean isHeldByRemote() {
+        Rlog.i(LOG_TAG, "isHeldByRemote=" + mIsHeldByRemote);
+        return mIsHeldByRemote;
     }
 
     public void changeToPausedState() {

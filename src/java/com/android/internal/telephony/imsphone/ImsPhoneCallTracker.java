@@ -4041,7 +4041,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                     mPhone.stopOnHoldTone(conn);
                     mOnHoldToneStarted = false;
                 }
-                conn.onConnectionEvent(android.telecom.Connection.EVENT_CALL_REMOTELY_UNHELD, null);
+                conn.setRemotelyUnheld();
                 mImsCallInfoTracker.updateImsCallStatus(conn, false, true);
             }
 
@@ -4722,6 +4722,8 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 // If the dialing call had ringback, ensure it stops now,
                 // otherwise it'll keep playing afer the SRVCC completes.
                 mForegroundCall.maybeStopRingback();
+                mForegroundCall.maybeClearRemotelyHeldStatus();
+                mBackgroundCall.maybeClearRemotelyHeldStatus();
 
                 resetState();
                 transferHandoverConnections(mForegroundCall);
@@ -5822,7 +5824,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 mOnHoldToneStarted = true;
                 mOnHoldToneId = System.identityHashCode(conn);
             }
-            conn.onConnectionEvent(android.telecom.Connection.EVENT_CALL_REMOTELY_HELD, null);
+            conn.setRemotelyHeld();
             mImsCallInfoTracker.updateImsCallStatus(conn, true, false);
 
             boolean useVideoPauseWorkaround = mPhone.getContext().getResources().getBoolean(
