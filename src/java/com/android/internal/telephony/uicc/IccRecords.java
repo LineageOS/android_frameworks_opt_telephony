@@ -269,7 +269,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     @Override
     public String toString() {
-        String iccIdToPrint = SubscriptionInfo.givePrintableIccid(mFullIccId);
+        String iccIdToPrint = SubscriptionInfo.getPrintableId(mFullIccId);
         return "mDestroyed=" + mDestroyed
                 + " mContext=" + mContext
                 + " mCi=" + mCi
@@ -1428,7 +1428,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
         pw.println(" mRecordsToLoad=" + mRecordsToLoad);
         pw.println(" mRdnCache=" + mAdnCache);
 
-        String iccIdToPrint = SubscriptionInfo.givePrintableIccid(mFullIccId);
+        String iccIdToPrint = SubscriptionInfo.getPrintableId(mFullIccId);
         pw.println(" iccid=" + iccIdToPrint);
         pw.println(" mMsisdn=" + Rlog.pii(VDBG, mMsisdn));
         pw.println(" mMsisdnTag=" + mMsisdnTag);
