@@ -32,7 +32,6 @@ import android.telephony.Annotation.ValidationStatus;
 import android.telephony.CellSignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
-import android.telephony.data.DataProfile;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
@@ -265,7 +264,7 @@ public class DataStallRecoveryManager extends Handler {
 
                     @Override
                     public void onInternetDataNetworkConnected(
-                            @NonNull List<DataProfile> dataProfiles) {
+                            @NonNull List<DataNetwork> internetNetworks) {
                         mIsInternetNetworkConnected = true;
                         logl("onInternetDataNetworkConnected");
                     }

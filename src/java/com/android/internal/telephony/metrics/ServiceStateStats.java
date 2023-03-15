@@ -30,12 +30,12 @@ import android.telephony.Annotation.NetworkType;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
-import android.telephony.data.DataProfile;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
+import com.android.internal.telephony.data.DataNetwork;
 import com.android.internal.telephony.data.DataNetworkController;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.imsphone.ImsPhone;
@@ -93,7 +93,7 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
     }
 
     /** Updates service state when internet pdn gets connected. */
-    public void onInternetDataNetworkConnected(@NonNull List<DataProfile> dataProfiles) {
+    public void onInternetDataNetworkConnected(@NonNull List<DataNetwork> internetNetworks) {
         onInternetDataNetworkChanged(true);
     }
 
