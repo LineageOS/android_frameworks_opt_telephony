@@ -35,6 +35,7 @@ import android.os.RemoteException;
 import android.os.ResultReceiver;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.satellite.ISatelliteDatagramCallback;
 import android.telephony.satellite.ISatelliteProvisionStateCallback;
 import android.telephony.satellite.ISatelliteStateCallback;
@@ -46,6 +47,7 @@ import android.util.Log;
 
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IIntegerConsumer;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
@@ -89,6 +91,7 @@ public class SatelliteController extends Handler {
     private static final int EVENT_IS_SATELLITE_COMMUNICATION_ALLOWED_DONE = 22;
     private static final int CMD_GET_TIME_SATELLITE_NEXT_VISIBLE = 23;
     private static final int EVENT_GET_TIME_SATELLITE_NEXT_VISIBLE_DONE = 24;
+    private static final int EVENT_RADIO_STATE_CHANGED = 25;
 
     @NonNull private static SatelliteController sInstance;
     @NonNull private final Context mContext;
@@ -96,6 +99,7 @@ public class SatelliteController extends Handler {
     @NonNull private final SatelliteSessionController mSatelliteSessionController;
     @NonNull private final PointingAppController mPointingAppController;
     @NonNull private final DatagramController mDatagramController;
+    private final CommandsInterface mCi;
 
     BluetoothAdapter mBluetoothAdapter = null;
     WifiManager mWifiManager = null;
@@ -159,7 +163,8 @@ public class SatelliteController extends Handler {
     protected SatelliteController(@NonNull Context context, @NonNull Looper looper) {
         super(looper);
         mContext = context;
-
+        Phone phone = SatelliteServiceUtils.getPhone();
+        mCi = phone.mCi;
         // Create the SatelliteModemInterface singleton, which is used to manage connections
         // to the satellite service and HAL interface.
         mSatelliteModemInterface = SatelliteModemInterface.make(mContext);
@@ -195,6 +200,7 @@ public class SatelliteController extends Handler {
         //TODO: reenable below code
         //requestIsSatelliteSupported(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
         //        mSatelliteSupportedReceiver);
+        mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
     }
 
     private void internalInit() {
@@ -482,9 +488,9 @@ public class SatelliteController extends Handler {
 
             case CMD_SET_SATELLITE_ENABLED: {
                 request = (SatelliteControllerHandlerRequest) msg.obj;
+                //To be moved to EVENT_SET_SATELLITE_ENABLED_DONE
                 RequestSatelliteEnabledArgument argument =
                         (RequestSatelliteEnabledArgument) request.argument;
-                onCompleted = obtainMessage(EVENT_SET_SATELLITE_ENABLED_DONE, request);
                 if (argument.enableSatellite) {
                     if (mBluetoothAdapter == null) {
                         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -503,18 +509,7 @@ public class SatelliteController extends Handler {
                         mDisabledWifiFlag = true;
                     }
                 }
-                if (mSatelliteModemInterface.isSatelliteServiceSupported()) {
-                    mSatelliteModemInterface.requestSatelliteEnabled(argument.enableSatellite,
-                            argument.enableDemoMode, onCompleted);
-                    break;
-                }
-                Phone phone = request.phone;
-                if (phone != null) {
-                    phone.setSatellitePower(onCompleted, argument.enableSatellite);
-                } else {
-                    loge("requestSatelliteEnabled: No phone object");
-                    argument.callback.accept(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
-                }
+                handleSatelliteEnabled(request);
                 break;
             }
 
@@ -784,6 +779,27 @@ public class SatelliteController extends Handler {
                 }
                 ((ResultReceiver) request.argument).send(error, bundle);
                 break;
+            }
+
+            case EVENT_RADIO_STATE_CHANGED: {
+                if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF
+                        || mCi.getRadioState() == TelephonyManager.RADIO_POWER_UNAVAILABLE) {
+                    logd("Radio State Changed to " + mCi.getRadioState());
+                    IIntegerConsumer errorCallback = new IIntegerConsumer.Stub() {
+                        @Override
+                        public void accept(int result) {
+                            loge("Failed to Disable Satellite Mode, Error: " + result);
+                        }
+                    };
+                    Phone phone = SatelliteServiceUtils.getPhone();
+                    Consumer<Integer> result = FunctionalUtils
+                            .ignoreRemoteException(errorCallback::accept);
+                    RequestSatelliteEnabledArgument message =
+                            new RequestSatelliteEnabledArgument(false, false, result);
+                    request = new SatelliteControllerHandlerRequest(message, phone);
+                    handleSatelliteEnabled(request);
+                    break;
+                }
             }
 
             default:
@@ -1514,6 +1530,24 @@ public class SatelliteController extends Handler {
             Binder.restoreCallingIdentity(identity);
         }
         return false;
+    }
+
+    private void handleSatelliteEnabled(SatelliteControllerHandlerRequest request) {
+        RequestSatelliteEnabledArgument argument =
+                (RequestSatelliteEnabledArgument) request.argument;
+        Message onCompleted = obtainMessage(EVENT_SET_SATELLITE_ENABLED_DONE, request);
+        if (mSatelliteModemInterface.isSatelliteServiceSupported()) {
+            mSatelliteModemInterface.requestSatelliteEnabled(argument.enableSatellite,
+                            argument.enableDemoMode, onCompleted);
+            return;
+        }
+        Phone phone = request.phone;
+        if (phone != null) {
+            phone.setSatellitePower(onCompleted, argument.enableSatellite);
+        } else {
+            loge("requestSatelliteEnabled: No phone object");
+            argument.callback.accept(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
+        }
     }
 
     private static void logd(@NonNull String log) {
