@@ -558,8 +558,12 @@ public class ServiceStateTracker extends Handler {
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
             if (action.equals(Intent.ACTION_LOCALE_CHANGED)) {
+                log("ACTION_LOCALE_CHANGED");
                 // Update emergency string or operator name, polling service state.
                 pollState();
+                // Depends on modem, ServiceState is not necessarily updated, so make sure updating
+                // SPN.
+                updateSpnDisplay();
             } else if (action.equals(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED)) {
                 String lastKnownNetworkCountry = intent.getStringExtra(
                         TelephonyManager.EXTRA_LAST_KNOWN_NETWORK_COUNTRY);
