@@ -556,10 +556,10 @@ public class DataNetworkController extends Handler {
         /**
          * Called when internet data network is connected.
          *
-         * @param dataProfiles The data profiles of the connected internet data network. It should
-         * be only one in most of the cases.
+         * @param internetNetworks The connected internet data network. It should be only one in
+         *                         most of the cases.
          */
-        public void onInternetDataNetworkConnected(@NonNull List<DataProfile> dataProfiles) {}
+        public void onInternetDataNetworkConnected(@NonNull List<DataNetwork> internetNetworks) {}
 
         /**
          * Called when data network is connected.
@@ -1828,7 +1828,8 @@ public class DataNetworkController extends Handler {
         // If users switch preferred profile in APN editor, we need to tear down network.
         if (dataNetwork.isInternetSupported()
                 && !mDataProfileManager.isDataProfilePreferred(dataProfile)
-                && mDataProfileManager.isAnyPreferredDataProfileExisting()) {
+                && mDataProfileManager.canPreferredDataProfileSatisfy(
+                        dataNetwork.getAttachedNetworkRequestList())) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.DATA_PROFILE_NOT_PREFERRED);
         }
 
@@ -3454,9 +3455,7 @@ public class DataNetworkController extends Handler {
                     && mInternetDataNetworkState == TelephonyManager.DATA_DISCONNECTED) {
                 mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                         () -> callback.onInternetDataNetworkConnected(
-                                allConnectedInternetDataNetworks.stream()
-                                        .map(DataNetwork::getDataProfile)
-                                        .collect(Collectors.toList()))));
+                                allConnectedInternetDataNetworks)));
             } else if (dataNetworkState == TelephonyManager.DATA_DISCONNECTED
                     && mInternetDataNetworkState == TelephonyManager.DATA_CONNECTED) {
                 mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
