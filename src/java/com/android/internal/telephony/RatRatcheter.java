@@ -141,14 +141,23 @@ public class RatRatcheter {
         synchronized (mRatFamilyMap) {
             // Either the two technologies are the same or their families must be non-null
             // and the same.
+            // To Fix Missing Null check
+            if (ss1.getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
+                        AccessNetworkConstants.TRANSPORT_TYPE_WWAN) == null
+                    || ss2.getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
+                        AccessNetworkConstants.TRANSPORT_TYPE_WWAN) == null) {
+                return false;
+            }
+
             int dataRat1 = ServiceState.networkTypeToRilRadioTechnology(
                     ss1.getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
-                            AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                           AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                             .getAccessNetworkTechnology());
             int dataRat2 = ServiceState.networkTypeToRilRadioTechnology(
                     ss2.getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
-                            AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                           AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
                             .getAccessNetworkTechnology());
+
 
             // The api getAccessNetworkTechnology@NetworkRegistrationInfo always returns LTE though
             // data rat is LTE CA. Because it uses mIsUsingCarrierAggregation to indicate whether
