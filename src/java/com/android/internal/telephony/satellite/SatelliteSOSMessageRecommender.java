@@ -255,8 +255,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
         boolean isDialerNotified = false;
         if (!mIsImsRegistered.get() && !isCellularAvailable()
                 && mIsSatelliteAllowedInCurrentLocation.get()
-                && mSatelliteController.isSatelliteProvisioned(
-                        SubscriptionManager.DEFAULT_SUBSCRIPTION_ID)
+                && mSatelliteController.isSatelliteProvisioned()
                 && shouldTrackCall(mEmergencyConnection.getState())) {
             logd("handleTimeoutEvent: Sending EVENT_DISPLAY_SOS_MESSAGE to Dialer...");
             mEmergencyConnection.sendConnectionEvent(Call.EVENT_DISPLAY_SOS_MESSAGE, null);
