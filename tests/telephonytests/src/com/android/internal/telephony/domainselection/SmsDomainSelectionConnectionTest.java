@@ -112,6 +112,7 @@ public class SmsDomainSelectionConnectionTest {
 
     @Test
     @SmallTest
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void testOnWlanSelected() throws Exception {
         setUpTestableLooper();
         CompletableFuture<Integer> future =
@@ -139,6 +140,7 @@ public class SmsDomainSelectionConnectionTest {
 
     @Test
     @SmallTest
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void testOnDomainSelectedPs() throws Exception {
         setUpTestableLooper();
         CompletableFuture<Integer> future =
@@ -155,6 +157,7 @@ public class SmsDomainSelectionConnectionTest {
 
     @Test
     @SmallTest
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void testOnDomainSelectedCs() throws Exception {
         setUpTestableLooper();
         CompletableFuture<Integer> future =
@@ -171,6 +174,7 @@ public class SmsDomainSelectionConnectionTest {
 
     @Test
     @SmallTest
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void testFinishSelection() throws Exception {
         setUpTestableLooper();
         CompletableFuture<Integer> future =
@@ -188,6 +192,7 @@ public class SmsDomainSelectionConnectionTest {
 
     @Test
     @SmallTest
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void testCancelSelection() throws Exception {
         CompletableFuture<Integer> future =
                 mDsConnection.requestDomainSelection(mDsAttr, mDscCallback);

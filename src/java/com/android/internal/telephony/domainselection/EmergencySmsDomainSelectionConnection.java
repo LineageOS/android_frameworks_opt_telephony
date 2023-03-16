@@ -52,8 +52,14 @@ public class EmergencySmsDomainSelectionConnection extends SmsDomainSelectionCon
         mEmergencyStateTracker = tracker;
     }
 
+    /**
+     * Notifies that WLAN transport has been selected.
+     *
+     * @param useEmergencyPdn A flag specifying whether Wi-Fi emergency service uses emergency PDN
+     *                        or not.
+     */
     @Override
-    public void onWlanSelected() {
+    public void onWlanSelected(boolean useEmergencyPdn) {
         synchronized (mLock) {
             if (mPreferredTransportType != AccessNetworkConstants.TRANSPORT_TYPE_INVALID) {
                 logi("Domain selection completion is in progress");
@@ -63,18 +69,20 @@ public class EmergencySmsDomainSelectionConnection extends SmsDomainSelectionCon
             mEmergencyStateTracker.onEmergencyTransportChanged(
                     EmergencyStateTracker.EMERGENCY_TYPE_SMS, MODE_EMERGENCY_WLAN);
 
-            // Change the transport type if the current preferred transport type for an emergency
-            // is not {@link AccessNetworkConstants#TRANSPORT_TYPE_WLAN}.
-            AccessNetworksManager anm = mPhone.getAccessNetworksManager();
-            if (anm.getPreferredTransport(ApnSetting.TYPE_EMERGENCY)
-                    != AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
-                changePreferredTransport(AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
-                // The {@link #onDomainSlected()} will be called after the preferred transport
-                // is successfully changed and notified from the {@link AccessNetworksManager}.
-                return;
+            if (useEmergencyPdn) {
+                // Change the transport type if the current preferred transport type for
+                // an emergency is not {@link AccessNetworkConstants#TRANSPORT_TYPE_WLAN}.
+                AccessNetworksManager anm = mPhone.getAccessNetworksManager();
+                if (anm.getPreferredTransport(ApnSetting.TYPE_EMERGENCY)
+                        != AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
+                    changePreferredTransport(AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
+                    // The {@link #onDomainSlected()} will be called after the preferred transport
+                    // is successfully changed and notified from the {@link AccessNetworksManager}.
+                    return;
+                }
             }
 
-            super.onWlanSelected();
+            super.onWlanSelected(useEmergencyPdn);
         }
     }
 
@@ -84,15 +92,22 @@ public class EmergencySmsDomainSelectionConnection extends SmsDomainSelectionCon
                 EmergencyStateTracker.EMERGENCY_TYPE_SMS, MODE_EMERGENCY_WWAN);
     }
 
+    /**
+     * Notifies the domain selected.
+     *
+     * @param domain The selected domain.
+     * @param useEmergencyPdn A flag specifying whether emergency service uses emergency PDN or not.
+     */
     @Override
-    public void onDomainSelected(@NetworkRegistrationInfo.Domain int domain) {
+    public void onDomainSelected(@NetworkRegistrationInfo.Domain int domain,
+            boolean useEmergencyPdn) {
         synchronized (mLock) {
             if (mPreferredTransportType != AccessNetworkConstants.TRANSPORT_TYPE_INVALID) {
                 logi("Domain selection completion is in progress");
                 return;
             }
 
-            if (domain == NetworkRegistrationInfo.DOMAIN_PS) {
+            if (useEmergencyPdn && domain == NetworkRegistrationInfo.DOMAIN_PS) {
                 // Change the transport type if the current preferred transport type for
                 // an emergency is not {@link AccessNetworkConstants#TRANSPORT_TYPE_WWAN}.
                 AccessNetworksManager anm = mPhone.getAccessNetworksManager();
@@ -105,7 +120,7 @@ public class EmergencySmsDomainSelectionConnection extends SmsDomainSelectionCon
                 }
             }
 
-            super.onDomainSelected(domain);
+            super.onDomainSelected(domain, useEmergencyPdn);
         }
     }
 
@@ -131,7 +146,7 @@ public class EmergencySmsDomainSelectionConnection extends SmsDomainSelectionCon
         synchronized (mLock) {
             if (preferredTransportType == mPreferredTransportType) {
                 mPreferredTransportType = AccessNetworkConstants.TRANSPORT_TYPE_INVALID;
-                super.onDomainSelected(NetworkRegistrationInfo.DOMAIN_PS);
+                super.onDomainSelected(NetworkRegistrationInfo.DOMAIN_PS, true);
                 anm.unregisterForQualifiedNetworksChanged(mHandler);
             }
         }
