@@ -39,18 +39,24 @@ import android.telephony.satellite.SatelliteManager;
 import android.util.Pair;
 
 import com.android.internal.R;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.ILongConsumer;
 import com.android.internal.telephony.Phone;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 /**
  * Datagram receiver used to receive satellite datagrams and then,
  * deliver received datagrams to messaging apps.
  */
-public class DatagramReceiver {
+public class DatagramReceiver extends Handler {
     private static final String TAG = "DatagramReceiver";
+
+    private static final int CMD_POLL_PENDING_SATELLITE_DATAGRAMS = 1;
+    private static final int EVENT_POLL_PENDING_SATELLITE_DATAGRAMS_DONE = 2;
+
     /** File used to store shared preferences related to satellite. */
      private static final String SATELLITE_SHARED_PREF = "satellite_shared_pref";
     /** Key used to read/write satellite datagramId in shared preferences. */
@@ -61,6 +67,7 @@ public class DatagramReceiver {
     @NonNull private final Context mContext;
     @NonNull private final ContentResolver mContentResolver;
     @NonNull private SharedPreferences mSharedPreferences = null;
+    @NonNull private final DatagramController mDatagramController;
 
     /**
      * The background handler to perform database operations. This is running on a separate thread.
@@ -77,11 +84,13 @@ public class DatagramReceiver {
      * Create the DatagramReceiver singleton instance.
      * @param context The Context to use to create the DatagramReceiver.
      * @param looper The looper for the handler.
+     * @param datagramController DatagramController which is used to update datagram transfer state.
      * @return The singleton instance of DatagramReceiver.
      */
-    public static DatagramReceiver make(@NonNull Context context, @NonNull Looper looper) {
+    public static DatagramReceiver make(@NonNull Context context, @NonNull Looper looper,
+            @NonNull DatagramController datagramController) {
         if (sInstance == null) {
-            sInstance = new DatagramReceiver(context, looper);
+            sInstance = new DatagramReceiver(context, looper, datagramController);
         }
         return sInstance;
     }
@@ -92,10 +101,14 @@ public class DatagramReceiver {
      *
      * @param context The Context for the DatagramReceiver.
      * @param looper The looper for the handler.
+     * @param datagramController DatagramController which is used to update datagram transfer state.
      */
-    private DatagramReceiver(@NonNull Context context, @NonNull Looper looper) {
+    private DatagramReceiver(@NonNull Context context, @NonNull Looper looper,
+            @NonNull DatagramController datagramController) {
+        super(looper);
         mContext = context;
         mContentResolver = context.getContentResolver();
+        mDatagramController = datagramController;
 
         HandlerThread backgroundThread = new HandlerThread(TAG);
         backgroundThread.start();
@@ -114,10 +127,28 @@ public class DatagramReceiver {
         }
     }
 
+    private static final class DatagramReceiverHandlerRequest {
+        /** The argument to use for the request */
+        public @NonNull Object argument;
+        /** The caller needs to specify the phone to be used for the request */
+        public @NonNull Phone phone;
+        /** The subId of the subscription used for the request. */
+        public int subId;
+        /** The result of the request that is run on the main thread */
+        public @Nullable Object result;
+
+        DatagramReceiverHandlerRequest(Object argument, Phone phone, int subId) {
+            this.argument = argument;
+            this.phone = phone;
+            this.subId = subId;
+        }
+    }
+
     /**
      * Listeners are updated about incoming datagrams using a backgroundThread.
      */
-    private static final class SatelliteDatagramListenerHandler extends Handler {
+    @VisibleForTesting
+    public static final class SatelliteDatagramListenerHandler extends Handler {
         public static final int EVENT_SATELLITE_DATAGRAM_RECEIVED = 1;
         public static final int EVENT_RETRY_DELIVERING_RECEIVED_DATAGRAM = 2;
         public static final int EVENT_RECEIVED_ACK = 3;
@@ -151,7 +182,8 @@ public class DatagramReceiver {
             }
         }
 
-        SatelliteDatagramListenerHandler(@NonNull Looper looper, int subId) {
+        @VisibleForTesting
+        public SatelliteDatagramListenerHandler(@NonNull Looper looper, int subId) {
             super(looper);
             mSubId = subId;
             mListeners = new ConcurrentHashMap<>();
@@ -281,20 +313,37 @@ public class DatagramReceiver {
                             (Pair<SatelliteDatagram, Integer>) ar.result;
                     SatelliteDatagram satelliteDatagram = result.first;
                     int pendingCount = result.second;
-                    // TODO: update receivePendingCount to listeners using
-                    // onDatagramTransferStateChanged
+                    logd("Received EVENT_SATELLITE_DATAGRAM_RECEIVED for subId=" + mSubId
+                            + " pendingCount:" + pendingCount);
 
-                    long datagramId = getDatagramId();
-                    insertDatagram(datagramId, satelliteDatagram);
-                    logd("Received EVENT_SATELLITE_DATAGRAM_RECEIVED for subId=" + mSubId);
-                    mListeners.values().forEach(listener -> {
-                        DatagramRetryArgument argument = new DatagramRetryArgument(datagramId,
-                                satelliteDatagram, pendingCount, listener);
-                        onSatelliteDatagramReceived(argument);
-                        // wait for ack and retry after the timeout specified.
-                        sendMessageDelayed(obtainMessage(EVENT_RETRY_DELIVERING_RECEIVED_DATAGRAM,
-                                argument), getTimeoutToReceiveAck());
-                    });
+                    if (pendingCount == 0 && satelliteDatagram == null) {
+                        sInstance.mDatagramController.updateReceiveStatus(mSubId,
+                                SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_NONE,
+                                0, SatelliteManager.SATELLITE_ERROR_NONE);
+                    } else if (satelliteDatagram != null) {
+                        sInstance.mDatagramController.updateReceiveStatus(mSubId,
+                            SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_SUCCESS,
+                                pendingCount, SatelliteManager.SATELLITE_ERROR_NONE);
+
+                        long datagramId = getDatagramId();
+                        insertDatagram(datagramId, satelliteDatagram);
+
+                        mListeners.values().forEach(listener -> {
+                            DatagramRetryArgument argument = new DatagramRetryArgument(datagramId,
+                                    satelliteDatagram, pendingCount, listener);
+                            onSatelliteDatagramReceived(argument);
+                            // wait for ack and retry after the timeout specified.
+                            sendMessageDelayed(
+                                    obtainMessage(EVENT_RETRY_DELIVERING_RECEIVED_DATAGRAM,
+                                    argument), getTimeoutToReceiveAck());
+                        });
+                    }
+
+                    if (pendingCount == 0) {
+                        sInstance.mDatagramController.updateReceiveStatus(mSubId,
+                                SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE,
+                                pendingCount, SatelliteManager.SATELLITE_ERROR_NONE);
+                    }
                     break;
                 }
 
@@ -315,6 +364,62 @@ public class DatagramReceiver {
 
                 default:
                     loge("SatelliteDatagramListenerHandler unknown event: " + msg.what);
+            }
+        }
+    }
+
+    @Override
+    public void handleMessage(Message msg) {
+        DatagramReceiverHandlerRequest request;
+        Message onCompleted;
+        AsyncResult ar;
+
+        switch(msg.what) {
+            case CMD_POLL_PENDING_SATELLITE_DATAGRAMS: {
+                request = (DatagramReceiverHandlerRequest) msg.obj;
+                onCompleted =
+                        obtainMessage(EVENT_POLL_PENDING_SATELLITE_DATAGRAMS_DONE, request);
+
+                if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
+                    SatelliteModemInterface.getInstance()
+                            .pollPendingSatelliteDatagrams(onCompleted);
+                    break;
+                }
+
+                Phone phone = request.phone;
+                if (phone != null) {
+                    phone.pollPendingSatelliteDatagrams(onCompleted);
+                } else {
+                    loge("pollPendingSatelliteDatagrams: No phone object");
+                    ((Consumer<Integer>) request.argument)
+                            .accept(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
+                    mDatagramController.updateReceiveStatus(request.subId,
+                            SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_FAILED,
+                            mDatagramController.getReceivePendingCount(),
+                            SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
+
+                    mDatagramController.updateReceiveStatus(request.subId,
+                            SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE,
+                            mDatagramController.getReceivePendingCount(),
+                            SatelliteManager.SATELLITE_ERROR_NONE);
+                }
+                break;
+            }
+
+            case EVENT_POLL_PENDING_SATELLITE_DATAGRAMS_DONE: {
+                ar = (AsyncResult) msg.obj;
+                request = (DatagramReceiverHandlerRequest) ar.userObj;
+                int error = SatelliteServiceUtils.getSatelliteError(ar,
+                        "pollPendingSatelliteDatagrams");
+                ((Consumer<Integer>) request.argument).accept(error);
+                logd("EVENT_POLL_PENDING_SATELLITE_DATAGRAMS_DONE error: " + error);
+
+                if (error != SatelliteManager.SATELLITE_ERROR_NONE) {
+                    mDatagramController.updateReceiveStatus(request.subId,
+                            SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_FAILED,
+                            mDatagramController.getReceivePendingCount(), error);
+                }
+                break;
             }
         }
     }
@@ -395,21 +500,42 @@ public class DatagramReceiver {
      * satellite. If there are any incoming datagrams, they will be received via
      * {@link android.telephony.satellite.SatelliteDatagramCallback
      * #onSatelliteDatagramReceived(long, SatelliteDatagram, int, ILongConsumer)}
+     *
+     * @param subId The subId of the subscription used for receiving datagrams.
+     * @param callback The callback to get {@link SatelliteManager.SatelliteError} of the request.
      */
-    public void pollPendingSatelliteDatagrams(@NonNull Message message, @Nullable Phone phone) {
-        if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
-            SatelliteModemInterface.getInstance().pollPendingSatelliteDatagrams(message);
-            return;
-        }
+    public void pollPendingSatelliteDatagrams(int subId, @NonNull Consumer<Integer> callback) {
+        mDatagramController.updateReceiveStatus(subId,
+                SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING,
+                mDatagramController.getReceivePendingCount(),
+                SatelliteManager.SATELLITE_ERROR_NONE);
 
-        if (phone != null) {
-            phone.pollPendingSatelliteDatagrams(message);
-        } else {
-            loge("pollPendingSatelliteDatagrams: No phone object");
-            AsyncResult.forMessage(message, null, new SatelliteManager.SatelliteException(
-                    SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE));
-            message.sendToTarget();
-        }
+        Phone phone = SatelliteServiceUtils.getPhone();
+        sendRequestAsync(CMD_POLL_PENDING_SATELLITE_DATAGRAMS, callback, phone, subId);
+    }
+
+    /**
+     * Posts the specified command to be executed on the main thread and returns immediately.
+     *
+     * @param command command to be executed on the main thread
+     * @param argument additional parameters required to perform of the operation
+     * @param phone phone object used to perform the operation
+     * @param subId The subId of the subscription used for the request.
+     */
+    private void sendRequestAsync(int command, @NonNull Object argument, @Nullable Phone phone,
+            int subId) {
+        DatagramReceiverHandlerRequest request = new DatagramReceiverHandlerRequest(
+                argument, phone, subId);
+        Message msg = this.obtainMessage(command, request);
+        msg.sendToTarget();
+    }
+
+    /**
+     * Destroys this DatagramDispatcher. Used for tearing down static resources during testing.
+     */
+    @VisibleForTesting
+    public void destroy() {
+        sInstance = null;
     }
 
     private static void logd(@NonNull String log) {

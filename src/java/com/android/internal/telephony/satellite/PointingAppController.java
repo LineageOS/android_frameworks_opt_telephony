@@ -96,9 +96,24 @@ public class PointingAppController {
         mStartedSatelliteTransmissionUpdates = startedSatelliteTransmissionUpdates;
     }
 
+    private static final class DatagramTransferStateHandlerRequest {
+        public int datagramTransferState;
+        public int pendingCount;
+        public int errorCode;
+
+        DatagramTransferStateHandlerRequest(int datagramTransferState, int pendingCount,
+                int errorCode) {
+            this.datagramTransferState = datagramTransferState;
+            this.pendingCount = pendingCount;
+            this.errorCode = errorCode;
+        }
+    }
+
+
     private static final class SatelliteTransmissionUpdateHandler extends Handler {
         public static final int EVENT_POSITION_INFO_CHANGED = 1;
-        public static final int EVENT_DATAGRAM_TRANSFER_STATE_CHANGED = 2;
+        public static final int EVENT_SEND_DATAGRAM_STATE_CHANGED = 2;
+        public static final int EVENT_RECEIVE_DATAGRAM_STATE_CHANGED = 3;
 
         private final ConcurrentHashMap<IBinder, ISatelliteTransmissionUpdateCallback> mListeners;
         SatelliteTransmissionUpdateHandler(Looper looper) {
@@ -133,19 +148,35 @@ public class PointingAppController {
                     });
                     break;
                 }
-                case EVENT_DATAGRAM_TRANSFER_STATE_CHANGED: {
-                    AsyncResult ar = (AsyncResult) msg.obj;
-                    int result = (int) ar.result;
+
+                case EVENT_SEND_DATAGRAM_STATE_CHANGED: {
+                    DatagramTransferStateHandlerRequest request =
+                            (DatagramTransferStateHandlerRequest) msg.obj;
                     mListeners.values().forEach(listener -> {
                         try {
-                            // TODO: process and return the rest of the values correctly
-                            listener.onDatagramTransferStateChanged(result, 0, 0, 0);
+                            listener.onSendDatagramStateChanged(request.datagramTransferState,
+                                    request.pendingCount, request.errorCode);
                         } catch (RemoteException e) {
-                            logd("EVENT_DATAGRAM_TRANSFER_STATE_CHANGED RemoteException: " + e);
+                            logd("EVENT_SEND_DATAGRAM_STATE_CHANGED RemoteException: " + e);
                         }
                     });
                     break;
                 }
+
+                case EVENT_RECEIVE_DATAGRAM_STATE_CHANGED: {
+                    DatagramTransferStateHandlerRequest request =
+                            (DatagramTransferStateHandlerRequest) msg.obj;
+                    mListeners.values().forEach(listener -> {
+                        try {
+                            listener.onReceiveDatagramStateChanged(request.datagramTransferState,
+                                    request.pendingCount, request.errorCode);
+                        } catch (RemoteException e) {
+                            logd("EVENT_RECEIVE_DATAGRAM_STATE_CHANGED RemoteException: " + e);
+                        }
+                    });
+                    break;
+                }
+
                 default:
                     loge("SatelliteTransmissionUpdateHandler unknown event: " + msg.what);
             }
@@ -180,8 +211,7 @@ public class PointingAppController {
                  */
                 SatelliteModemInterface.getInstance().registerForDatagramTransferStateChanged(
                         handler,
-                        SatelliteTransmissionUpdateHandler.EVENT_DATAGRAM_TRANSFER_STATE_CHANGED,
-                        null);
+                        SatelliteTransmissionUpdateHandler.EVENT_SEND_DATAGRAM_STATE_CHANGED, null);
             } else {
                 phone.registerForSatellitePositionInfoChanged(handler,
                         SatelliteTransmissionUpdateHandler.EVENT_POSITION_INFO_CHANGED, null);
@@ -293,6 +323,42 @@ public class PointingAppController {
         Intent launchIntent = mContext.getPackageManager().getLaunchIntentForPackage(packageName);
         launchIntent.putExtra("needFullScreen", needFullScreenPointingUI);
         mContext.startActivity(launchIntent);
+    }
+
+    public void updateSendDatagramTransferState(int subId,
+            @SatelliteManager.SatelliteDatagramTransferState int datagramTransferState,
+            int sendPendingCount, int errorCode) {
+        DatagramTransferStateHandlerRequest request = new DatagramTransferStateHandlerRequest(
+                datagramTransferState, sendPendingCount, errorCode);
+        SatelliteTransmissionUpdateHandler handler =
+                mSatelliteTransmissionUpdateHandlers.get(subId);
+
+        if (handler != null) {
+            Message msg = handler.obtainMessage(
+                    SatelliteTransmissionUpdateHandler.EVENT_SEND_DATAGRAM_STATE_CHANGED,
+                    request);
+            msg.sendToTarget();
+        } else {
+            loge("SatelliteTransmissionUpdateHandler not found for subId: " + subId);
+        }
+    }
+
+    public void updateReceiveDatagramTransferState(int subId,
+            @SatelliteManager.SatelliteDatagramTransferState int datagramTransferState,
+            int receivePendingCount, int errorCode) {
+        DatagramTransferStateHandlerRequest request = new DatagramTransferStateHandlerRequest(
+                datagramTransferState, receivePendingCount, errorCode);
+        SatelliteTransmissionUpdateHandler handler =
+                mSatelliteTransmissionUpdateHandlers.get(subId);
+
+        if (handler != null) {
+            Message msg = handler.obtainMessage(
+                    SatelliteTransmissionUpdateHandler.EVENT_RECEIVE_DATAGRAM_STATE_CHANGED,
+                    request);
+            msg.sendToTarget();
+        } else {
+            loge(" SatelliteTransmissionUpdateHandler not found for subId: " + subId);
+        }
     }
 
     private static void logd(@NonNull String log) {
