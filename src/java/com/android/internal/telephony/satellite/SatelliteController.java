@@ -84,13 +84,11 @@ public class SatelliteController extends Handler {
     private static final int EVENT_IS_SATELLITE_SUPPORTED_DONE = 16;
     private static final int CMD_GET_SATELLITE_CAPABILITIES = 17;
     private static final int EVENT_GET_SATELLITE_CAPABILITIES_DONE = 18;
-    private static final int CMD_POLL_PENDING_SATELLITE_DATAGRAMS = 19;
-    private static final int EVENT_POLL_PENDING_SATELLITE_DATAGRAMS_DONE = 20;
-    private static final int CMD_IS_SATELLITE_COMMUNICATION_ALLOWED = 21;
-    private static final int EVENT_IS_SATELLITE_COMMUNICATION_ALLOWED_DONE = 22;
-    private static final int CMD_GET_TIME_SATELLITE_NEXT_VISIBLE = 23;
-    private static final int EVENT_GET_TIME_SATELLITE_NEXT_VISIBLE_DONE = 24;
-    private static final int EVENT_RADIO_STATE_CHANGED = 25;
+    private static final int CMD_IS_SATELLITE_COMMUNICATION_ALLOWED = 19;
+    private static final int EVENT_IS_SATELLITE_COMMUNICATION_ALLOWED_DONE = 20;
+    private static final int CMD_GET_TIME_SATELLITE_NEXT_VISIBLE = 21;
+    private static final int EVENT_GET_TIME_SATELLITE_NEXT_VISIBLE_DONE = 22;
+    private static final int EVENT_RADIO_STATE_CHANGED = 23;
 
     @NonNull private static SatelliteController sInstance;
     @NonNull private final Context mContext;
@@ -177,7 +175,7 @@ public class SatelliteController extends Handler {
 
         // Create the DatagramController singleton,
         // which is used to send and receive satellite datagrams.
-        mDatagramController = DatagramController.make(mContext, looper);
+        mDatagramController = DatagramController.make(mContext, looper, mPointingAppController);
 
         mSatelliteEnabledReceiver = createSatelliteEnabledResultReceiver();
         mSatelliteSupportedReceiver = createSatelliteSupportedResultReceiver(looper);
@@ -344,7 +342,13 @@ public class SatelliteController extends Handler {
                 }
                 case EVENT_PENDING_DATAGRAMS: {
                     logd("Received EVENT_PENDING_DATAGRAMS for subId=" + mSubId);
-                    // TODO: call pollPendingSatelliteDatagrams
+                    IIntegerConsumer internalCallback = new IIntegerConsumer.Stub() {
+                        @Override
+                        public void accept(int result) {
+                            logd("pollPendingSatelliteDatagram result: " + result);
+                        }
+                    };
+                    sInstance.pollPendingSatelliteDatagrams(mSubId, internalCallback);
                     break;
                 }
                 default:
@@ -647,23 +651,6 @@ public class SatelliteController extends Handler {
                     }
                 }
                 ((ResultReceiver) request.argument).send(error, bundle);
-                break;
-            }
-
-            case CMD_POLL_PENDING_SATELLITE_DATAGRAMS: {
-                request = (SatelliteControllerHandlerRequest) msg.obj;
-                onCompleted =
-                        obtainMessage(EVENT_POLL_PENDING_SATELLITE_DATAGRAMS_DONE, request);
-                mDatagramController.pollPendingSatelliteDatagrams(onCompleted, request.phone);
-                break;
-            }
-
-            case EVENT_POLL_PENDING_SATELLITE_DATAGRAMS_DONE: {
-                ar = (AsyncResult) msg.obj;
-                request = (SatelliteControllerHandlerRequest) ar.userObj;
-                int error = SatelliteServiceUtils.getSatelliteError(ar,
-                        "pollPendingSatelliteDatagrams");
-                ((Consumer<Integer>) request.argument).accept(error);
                 break;
             }
 
@@ -1269,9 +1256,7 @@ public class SatelliteController extends Handler {
             return;
         }
 
-        Phone phone = SatelliteServiceUtils.getPhone();
-        sendRequestAsync(CMD_POLL_PENDING_SATELLITE_DATAGRAMS, result, phone);
-        // TODO: return pending datagram count
+        mDatagramController.pollPendingSatelliteDatagrams(subId, result);
     }
 
     /**
@@ -1308,8 +1293,9 @@ public class SatelliteController extends Handler {
         if (mNeedsSatellitePointing) {
             mPointingAppController.startPointingUI(needFullScreenPointingUI);
         }
-        mDatagramController.sendSatelliteDatagram(datagramType, datagram, needFullScreenPointingUI,
-                result);
+
+        mDatagramController.sendSatelliteDatagram(validSubId, datagramType, datagram,
+                needFullScreenPointingUI, result);
     }
 
     /**
