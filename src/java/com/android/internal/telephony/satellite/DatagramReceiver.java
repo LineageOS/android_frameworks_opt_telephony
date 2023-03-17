@@ -57,8 +57,6 @@ public class DatagramReceiver extends Handler {
     private static final int CMD_POLL_PENDING_SATELLITE_DATAGRAMS = 1;
     private static final int EVENT_POLL_PENDING_SATELLITE_DATAGRAMS_DONE = 2;
 
-    /** File used to store shared preferences related to satellite. */
-     private static final String SATELLITE_SHARED_PREF = "satellite_shared_pref";
     /** Key used to read/write satellite datagramId in shared preferences. */
     private static final String SATELLITE_DATAGRAM_ID_KEY = "satellite_datagram_id_key";
     private static AtomicLong mNextDatagramId = new AtomicLong(0);
@@ -114,8 +112,9 @@ public class DatagramReceiver extends Handler {
         backgroundThread.start();
         mBackgroundHandler = new Handler(looper);
         try {
-            mSharedPreferences = mContext.getSharedPreferences(SATELLITE_SHARED_PREF,
-                    Context.MODE_PRIVATE);
+            mSharedPreferences =
+                    mContext.getSharedPreferences(SatelliteController.SATELLITE_SHARED_PREF,
+                            Context.MODE_PRIVATE);
         } catch (Exception e) {
             loge("Cannot get default shared preferences: " + e);
         }
@@ -212,7 +211,8 @@ public class DatagramReceiver extends Handler {
                 try {
                     // Try to recreate if it is null
                     sInstance.mSharedPreferences = sInstance.mContext
-                            .getSharedPreferences(SATELLITE_SHARED_PREF, Context.MODE_PRIVATE);
+                            .getSharedPreferences(SatelliteController.SATELLITE_SHARED_PREF,
+                            Context.MODE_PRIVATE);
                 } catch (Exception e) {
                     loge("Cannot get default shared preferences: " + e);
                 }
