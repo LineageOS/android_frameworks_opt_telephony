@@ -587,6 +587,16 @@ public class DataRetryManagerTest extends TelephonyTest {
         // Verify there is no retry.
         verify(mDataRetryManagerCallbackMock, never())
                 .onDataNetworkSetupRetry(any(DataSetupRetryEntry.class));
+
+        // 4th failed on a different transport and retry.
+        mDataRetryManagerUT.evaluateDataSetupRetry(mDataProfile1,
+                AccessNetworkConstants.TRANSPORT_TYPE_WLAN, networkRequestList, 123,
+                DataCallResponse.RETRY_DURATION_UNDEFINED);
+        processAllFutureMessages();
+
+        // Verify retry occurs
+        verify(mDataRetryManagerCallbackMock)
+                .onDataNetworkSetupRetry(any(DataSetupRetryEntry.class));
     }
 
     @Test
