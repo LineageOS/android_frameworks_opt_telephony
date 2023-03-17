@@ -3561,7 +3561,6 @@ public class SubscriptionManagerService extends ISub.Stub {
      * else {@code false} if subscription is not associated with user.
      *
      * @throws SecurityException if the caller doesn't have permissions required.
-     * @throws IllegalStateException if subscription service is not available.
      *
      */
     @Override
@@ -3612,7 +3611,6 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @return list of subscriptionInfo associated with the user.
      *
      * @throws SecurityException if the caller doesn't have permissions required.
-     * @throws IllegalStateException if subscription service is not available.
      *
      */
     @Override
