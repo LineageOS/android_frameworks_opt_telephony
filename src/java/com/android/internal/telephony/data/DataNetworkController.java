@@ -1775,10 +1775,7 @@ public class DataNetworkController extends Handler {
         }
 
         // Check if data is disabled
-        boolean dataDisabled = false;
-        if (!mDataSettingsManager.isDataEnabled()) {
-            dataDisabled = true;
-        }
+        boolean dataDisabled = !mDataSettingsManager.isDataEnabled();
 
         // Check if data roaming is disabled
         if (mServiceState.getDataRoaming() && !mDataSettingsManager.isDataRoamingEnabled()) {
@@ -1793,10 +1790,9 @@ public class DataNetworkController extends Handler {
         DataProfile dataProfile = dataNetwork.getDataProfile();
         if (dataProfile.getApnSetting() != null) {
             // Check if data is disabled for the APN type
-            dataDisabled = !mDataSettingsManager.isDataEnabled(DataUtils
-                    .networkCapabilityToApnType(DataUtils
-                            .getHighestPriorityNetworkCapabilityFromDataProfile(
-                                    mDataConfigManager, dataProfile)));
+            dataDisabled = !mDataSettingsManager.isDataEnabled(
+                    DataUtils.networkCapabilityToApnType(
+                            dataNetwork.getApnTypeNetworkCapability()));
 
             // Sometimes network temporarily OOS and network type becomes UNKNOWN. We don't
             // tear down network in that case.
