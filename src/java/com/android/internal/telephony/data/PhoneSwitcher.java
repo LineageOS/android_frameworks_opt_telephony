@@ -846,6 +846,9 @@ public class PhoneSwitcher extends Handler {
             }
             case EVENT_MODEM_COMMAND_RETRY: {
                 int phoneId = (int) msg.obj;
+                if (mActiveModemCount <= phoneId) {
+                    break;
+                }
                 if (isPhoneIdValidForRetry(phoneId)) {
                     logl("EVENT_MODEM_COMMAND_RETRY: resend modem command on phone " + phoneId);
                     sendRilCommands(phoneId);
