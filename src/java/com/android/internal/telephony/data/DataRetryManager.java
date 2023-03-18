@@ -1189,13 +1189,14 @@ public class DataRetryManager extends Handler {
                         return;
                     }
 
-                    int failedCount = getRetryFailedCount(capability, retryRule);
+                    int failedCount = getRetryFailedCount(capability, retryRule, transport);
                     log("For capability " + DataUtils.networkCapabilityToString(capability)
                             + ", found matching rule " + retryRule + ", failed count="
                             + failedCount);
                     if (failedCount == retryRule.getMaxRetries()) {
-                        log("Data retry failed for " + failedCount + " times. Stopped "
-                                + "timer-based data retry for "
+                        log("Data retry failed for " + failedCount + " times on "
+                                + AccessNetworkConstants.transportTypeToString(transport)
+                                + ". Stopped timer-based data retry for "
                                 + DataUtils.networkCapabilityToString(capability)
                                 + ". Condition-based retry will still happen when condition "
                                 + "changes.");
@@ -1368,16 +1369,18 @@ public class DataRetryManager extends Handler {
      *
      * @param networkCapability The network capability to check.
      * @param dataRetryRule The data retry rule.
+     * @param transport The transport on which setup failure has occurred.
      * @return The failed count since last successful data setup.
      */
     private int getRetryFailedCount(@NetCapability int networkCapability,
-            @NonNull DataSetupRetryRule dataRetryRule) {
+            @NonNull DataSetupRetryRule dataRetryRule, @TransportType int transport) {
         int count = 0;
         for (int i = mDataRetryEntries.size() - 1; i >= 0; i--) {
             if (mDataRetryEntries.get(i) instanceof DataSetupRetryEntry) {
                 DataSetupRetryEntry entry = (DataSetupRetryEntry) mDataRetryEntries.get(i);
                 // count towards the last succeeded data setup.
-                if (entry.setupRetryType == DataSetupRetryEntry.RETRY_TYPE_NETWORK_REQUESTS) {
+                if (entry.setupRetryType == DataSetupRetryEntry.RETRY_TYPE_NETWORK_REQUESTS
+                        && entry.transport == transport) {
                     if (entry.networkRequestList.isEmpty()) {
                         String msg = "Invalid data retry entry detected";
                         logl(msg);

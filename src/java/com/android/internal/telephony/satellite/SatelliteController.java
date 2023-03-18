@@ -20,6 +20,7 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.net.wifi.WifiManager;
 import android.os.AsyncResult;
 import android.os.Binder;
@@ -65,6 +66,9 @@ public class SatelliteController extends Handler {
     private static final String TAG = "SatelliteController";
     /** Whether enabling verbose debugging message or not. */
     private static final boolean DBG = false;
+    /** File used to store shared preferences related to satellite. */
+    public static final String SATELLITE_SHARED_PREF = "satellite_shared_pref";
+
 
     /** Message codes used in handleMessage() */
     //TODO: Move the Commands and events related to position updates to PointingAppController
@@ -96,10 +100,14 @@ public class SatelliteController extends Handler {
     @NonNull private SatelliteSessionController mSatelliteSessionController;
     @NonNull private final PointingAppController mPointingAppController;
     @NonNull private final DatagramController mDatagramController;
+    private SharedPreferences mSharedPreferences = null;
     private final CommandsInterface mCi;
 
     BluetoothAdapter mBluetoothAdapter = null;
     WifiManager mWifiManager = null;
+    /** Shared preference key to store the existing state of Bluetooth and Wifi*/
+    private static final String KEY_BLUETOOTH_DISABLED_BY_SCO = "bluetooth_disabled_by_sco";
+    private static final String KEY_WIFI_DISABLED_BY_SCO = "wifi_disabled_by_sco";
     boolean mDisabledBTFlag = false;
     boolean mDisabledWifiFlag = false;
     /**
@@ -183,6 +191,27 @@ public class SatelliteController extends Handler {
         //requestIsSatelliteSupported(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
         //        mSatelliteSupportedReceiver);
         mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
+
+        try {
+            mSharedPreferences = mContext.getSharedPreferences(SATELLITE_SHARED_PREF,
+                    Context.MODE_PRIVATE);
+        } catch (Exception e) {
+            loge("Cannot get default shared preferences: " + e);
+        }
+        //if BT and Wifi was already disabled by Satellite Controller, reset
+        if ((mSharedPreferences != null) &&
+                (mSharedPreferences.contains(KEY_BLUETOOTH_DISABLED_BY_SCO) ||
+                mSharedPreferences.contains(KEY_WIFI_DISABLED_BY_SCO))) {
+            /**
+             * read the flag from shared preference to check if the Bluetooth and Wifi was disabled
+             * by Satellite Controller
+             */
+            mDisabledBTFlag = mSharedPreferences
+                    .getBoolean(KEY_BLUETOOTH_DISABLED_BY_SCO, false);
+            mDisabledWifiFlag = mSharedPreferences
+                    .getBoolean(KEY_WIFI_DISABLED_BY_SCO, false);
+            checkAndEnableBluetoothWifiState();
+        }
     }
 
     private void internalInit() {
@@ -469,27 +498,6 @@ public class SatelliteController extends Handler {
 
             case CMD_SET_SATELLITE_ENABLED: {
                 request = (SatelliteControllerHandlerRequest) msg.obj;
-                //To be moved to EVENT_SET_SATELLITE_ENABLED_DONE
-                RequestSatelliteEnabledArgument argument =
-                        (RequestSatelliteEnabledArgument) request.argument;
-                if (argument.enableSatellite) {
-                    if (mBluetoothAdapter == null) {
-                        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-                    }
-                    if (mWifiManager == null) {
-                        mWifiManager = mContext.getSystemService(WifiManager.class);
-                    }
-                    if (mBluetoothAdapter.isEnabled()) {
-                        if (DBG) logd("disabling Bluetooth");
-                        mBluetoothAdapter.disable();
-                        mDisabledBTFlag = true;
-                    }
-                    if (mWifiManager.isWifiEnabled()) {
-                        if (DBG) logd("disabling Wifi");
-                        mWifiManager.setWifiEnabled(false);
-                        mDisabledWifiFlag = true;
-                    }
-                }
                 handleSatelliteEnabled(request);
                 break;
             }
@@ -501,21 +509,12 @@ public class SatelliteController extends Handler {
                         (RequestSatelliteEnabledArgument) request.argument;
                 int error =  SatelliteServiceUtils.getSatelliteError(ar, "setSatelliteEnabled");
                 if (error == SatelliteManager.SATELLITE_ERROR_NONE) {
-                    if (!argument.enableSatellite) {
-                        if (mBluetoothAdapter == null) {
-                            mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-                        }
-                        if (mWifiManager == null) {
-                            mWifiManager = mContext.getSystemService(WifiManager.class);
-                        }
-                        if (!mBluetoothAdapter.isEnabled() && mDisabledBTFlag) {
-                            if (DBG) logd("Enabling Bluetooth");
-                            mBluetoothAdapter.enable();
-                        }
-                        if (!mWifiManager.isWifiEnabled() && mDisabledWifiFlag) {
-                            if (DBG) logd("Enabling Wifi");
-                            mWifiManager.setWifiEnabled(true);
-                        }
+                    if (argument.enableSatellite) {
+                        //If satellite mode is enabled successfully, disable Bluetooth and wifi
+                        disableBluetoothWifiState();;
+                    } else {
+                        //Disabled satellite mode, Reset BT and Wifi if previously changed here
+                        checkAndEnableBluetoothWifiState();
                     }
                     /**
                      * TODO: check if Satellite is Acquired.
@@ -760,8 +759,8 @@ public class SatelliteController extends Handler {
                             new RequestSatelliteEnabledArgument(false, false, result);
                     request = new SatelliteControllerHandlerRequest(message, phone);
                     handleSatelliteEnabled(request);
-                    break;
                 }
+                break;
             }
 
             default:
@@ -1581,6 +1580,50 @@ public class SatelliteController extends Handler {
             mSatelliteSessionController.onSatelliteEnabledStateChanged(enabled);
         } else {
             loge(caller + ": mSatelliteSessionController is not initialized yet");
+        }
+    }
+
+    private void disableBluetoothWifiState() {
+        if (mBluetoothAdapter == null) {
+            mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        }
+        if (mWifiManager == null) {
+            mWifiManager = mContext.getSystemService(WifiManager.class);
+        }
+        if (mBluetoothAdapter.isEnabled()) {
+            if (DBG) logd("disabling Bluetooth");
+            //Set the Flag to  indicate that Bluetooth is disabled by Satellite Controller
+            mSharedPreferences.edit().putBoolean(KEY_BLUETOOTH_DISABLED_BY_SCO, true)
+                        .apply();
+            mBluetoothAdapter.disable();
+        }
+        if (mWifiManager.isWifiEnabled()) {
+            if (DBG) logd("disabling Wifi");
+            //Set the Flag to  indicate that Wifi is disabled by Satellite Controller
+            mSharedPreferences.edit().putBoolean(KEY_WIFI_DISABLED_BY_SCO, true)
+                        .apply();
+            mWifiManager.setWifiEnabled(false);
+        }
+    }
+
+    private void checkAndEnableBluetoothWifiState() {
+        if (mBluetoothAdapter == null) {
+            mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        }
+        if (mWifiManager == null) {
+            mWifiManager = mContext.getSystemService(WifiManager.class);
+        }
+        if (!mBluetoothAdapter.isEnabled() && mDisabledBTFlag) {
+            if (DBG) logd("Enabling Bluetooth");
+            mBluetoothAdapter.enable();
+            mSharedPreferences.edit().putBoolean(KEY_BLUETOOTH_DISABLED_BY_SCO, false)
+                        .apply();
+        }
+        if (!mWifiManager.isWifiEnabled() && mDisabledWifiFlag) {
+            if (DBG) logd("Enabling Wifi");
+            mWifiManager.setWifiEnabled(true);
+            mSharedPreferences.edit().putBoolean(KEY_WIFI_DISABLED_BY_SCO, false)
+                        .apply();
         }
     }
 

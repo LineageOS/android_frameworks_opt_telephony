@@ -1675,6 +1675,14 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
 
+        mDataNetworkControllerUT.obtainMessage(16 /*EVENT_REEVALUATE_EXISTING_DATA_NETWORKS*/,
+                DataEvaluation.DataEvaluationReason.DATA_SERVICE_STATE_CHANGED).sendToTarget();
+
+        processAllFutureMessages();
+
+        // Make sure IMS network is not torn down
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_MMS);
+
         // Remove MMS data enabled override
         mDataNetworkControllerUT.getDataSettingsManager().setMobileDataPolicy(TelephonyManager
                 .MOBILE_DATA_POLICY_MMS_ALWAYS_ALLOWED, false);
