@@ -2173,4 +2173,14 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         map.clear();
         assertThat(map).hasSize(0);
     }
+
+    @Test
+    public void testSimNotReady() {
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        mSubscriptionManagerServiceUT.updateSimState(
+                0, TelephonyManager.SIM_STATE_NOT_READY, null, null);
+        processAllMessages();
+
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false)).isEmpty();
+    }
 }
