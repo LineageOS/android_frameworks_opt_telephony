@@ -1831,6 +1831,36 @@ public class PhoneSwitcherTest extends TelephonyTest {
         verify(mMockRadioConfig, times(1)).setPreferredDataModem(eq(0), any());
     }
 
+    @Test
+    public void testScheduledRetryWhileMultiSimConfigChange() throws Exception {
+        doReturn(true).when(mMockRadioConfig).isSetPreferredDataCommandSupported();
+        initialize();
+
+        // Phone 0 has sub 1, phone 1 has sub 2.
+        // Sub 1 is default data sub.
+        setSlotIndexToSubId(0, 1);
+        setSlotIndexToSubId(1, 2);
+
+        // for EVENT_MODEM_COMMAND_RETRY
+        AsyncResult res = new AsyncResult(
+                1, null,  new CommandException(CommandException.Error.GENERIC_FAILURE));
+        Message.obtain(mPhoneSwitcherUT, EVENT_MODEM_COMMAND_DONE, res).sendToTarget();
+        processAllMessages();
+
+        // reduce count of phone
+        setNumPhones(1, 1);
+        AsyncResult result = new AsyncResult(null, 1, null);
+        Message.obtain(mPhoneSwitcherUT, EVENT_MULTI_SIM_CONFIG_CHANGED, result).sendToTarget();
+        processAllMessages();
+
+        // fire retries
+        moveTimeForward(5000);
+        processAllMessages();
+
+        verify(mCommandsInterface0, never()).setDataAllowed(anyBoolean(), any());
+        verify(mCommandsInterface1, never()).setDataAllowed(anyBoolean(), any());
+    }
+
     /* Private utility methods start here */
 
     private void prepareIdealAutoSwitchCondition() {

@@ -1246,7 +1246,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                 + TelephonyManager.simStateToString(simState));
         for (UiccSlot slot : mUiccController.getUiccSlots()) {
             if (slot != null) {
-                log("  " + slot.toString());
+                log("  " + slot);
             }
         }
 
@@ -1266,6 +1266,7 @@ public class SubscriptionManagerService extends ISub.Stub {
             // Check if this is the final state. Only update the subscription if NOT_READY is a
             // final state.
             IccCard iccCard = PhoneFactory.getPhone(phoneId).getIccCard();
+            if (iccCard.isEmptyProfile()) log("updateSubscription: iccCard has empty profile.");
             if (!iccCard.isEmptyProfile() && areUiccAppsEnabledOnCard(phoneId)) {
                 log("updateSubscription: SIM_STATE_NOT_READY is not a final state. Will update "
                         + "subscription later.");
@@ -1276,126 +1277,128 @@ public class SubscriptionManagerService extends ISub.Stub {
                 logl("updateSubscription: UICC app disabled on slot " + phoneId);
                 markSubscriptionsInactive(phoneId);
             }
-        }
+        } else {
+            String iccId = getIccId(phoneId);
+            log("updateSubscription: Found iccId=" + SubscriptionInfo.getPrintableId(iccId)
+                    + " on phone " + phoneId);
 
-        String iccId = getIccId(phoneId);
-        log("updateSubscription: Found iccId=" + SubscriptionInfo.getPrintableId(iccId)
-                + " on phone " + phoneId);
-
-        // For eSIM switching, SIM absent will not happen. Below is to exam if we find ICCID
-        // mismatch on the SIM slot. If that's the case, we need to mark all subscriptions on that
-        // logical slot invalid first. The correct subscription will be assigned the correct slot
-        // later.
-        SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager.getAllSubscriptions()
-                .stream()
-                .filter(sub -> sub.getSimSlotIndex() == phoneId && !iccId.equals(sub.getIccId()))
-                .findFirst()
-                .orElse(null);
-        if (subInfo != null) {
-            log("updateSubscription: Found previous active sub " + subInfo.getSubscriptionId()
-                    + " that doesn't match current iccid on slot " + phoneId + ".");
-            markSubscriptionsInactive(phoneId);
-        }
-
-        if (!TextUtils.isEmpty(iccId)) {
-            // Check if the subscription already existed.
-            subInfo = mSubscriptionDatabaseManager.getSubscriptionInfoInternalByIccId(iccId);
-            int subId;
-            if (subInfo == null) {
-                // This is a new SIM card. Insert a new record.
-                subId = insertSubscriptionInfo(iccId, phoneId, null,
-                        SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
-                logl("updateSubscription: Inserted a new subscription. subId=" + subId
-                        + ", phoneId=" + phoneId);
-            } else {
-                subId = subInfo.getSubscriptionId();
-                log("updateSubscription: Found existing subscription. subId= " + subId
-                        + ", phoneId=" + phoneId);
+            // For eSIM switching, SIM absent will not happen. Below is to exam if we find ICCID
+            // mismatch on the SIM slot. If that's the case, we need to mark all subscriptions on
+            // that logical slot invalid first. The correct subscription will be assigned the
+            // correct slot later.
+            SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager.getAllSubscriptions()
+                    .stream()
+                    .filter(sub -> sub.getSimSlotIndex() == phoneId && !iccId.equals(
+                            sub.getIccId()))
+                    .findFirst()
+                    .orElse(null);
+            if (subInfo != null) {
+                log("updateSubscription: Found previous active sub " + subInfo.getSubscriptionId()
+                        + " that doesn't match current iccid on slot " + phoneId + ".");
+                markSubscriptionsInactive(phoneId);
             }
 
-            subInfo = mSubscriptionDatabaseManager.getSubscriptionInfoInternal(subId);
-            if (subInfo != null && subInfo.areUiccApplicationsEnabled()) {
-                mSlotIndexToSubId.put(phoneId, subId);
-                // Update the SIM slot index. This will make the subscription active.
-                mSubscriptionDatabaseManager.setSimSlotIndex(subId, phoneId);
-                logl("updateSubscription: current mapping " + slotMappingToString());
-            }
-
-            // Update the card id.
-            UiccCard card = mUiccController.getUiccCardForPhone(phoneId);
-            if (card != null) {
-                String cardId = card.getCardId();
-                if (cardId != null) {
-                    mSubscriptionDatabaseManager.setCardString(subId, cardId);
+            if (!TextUtils.isEmpty(iccId)) {
+                // Check if the subscription already existed.
+                subInfo = mSubscriptionDatabaseManager.getSubscriptionInfoInternalByIccId(iccId);
+                int subId;
+                if (subInfo == null) {
+                    // This is a new SIM card. Insert a new record.
+                    subId = insertSubscriptionInfo(iccId, phoneId, null,
+                            SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+                    logl("updateSubscription: Inserted a new subscription. subId=" + subId
+                            + ", phoneId=" + phoneId);
+                } else {
+                    subId = subInfo.getSubscriptionId();
+                    log("updateSubscription: Found existing subscription. subId= " + subId
+                            + ", phoneId=" + phoneId);
                 }
-            }
 
-            // Update the port index.
-            mSubscriptionDatabaseManager.setPortIndex(subId, getPortIndex(iccId));
+                subInfo = mSubscriptionDatabaseManager.getSubscriptionInfoInternal(subId);
+                if (subInfo != null && subInfo.areUiccApplicationsEnabled()) {
+                    mSlotIndexToSubId.put(phoneId, subId);
+                    // Update the SIM slot index. This will make the subscription active.
+                    mSubscriptionDatabaseManager.setSimSlotIndex(subId, phoneId);
+                    logl("updateSubscription: current mapping " + slotMappingToString());
+                }
 
-            if (simState == TelephonyManager.SIM_STATE_LOADED) {
-                String mccMnc = mTelephonyManager.getSimOperatorNumeric(subId);
-                if (!TextUtils.isEmpty(mccMnc)) {
-                    if (subId == getDefaultSubId()) {
-                        MccTable.updateMccMncConfiguration(mContext, mccMnc);
+                // Update the card id.
+                UiccCard card = mUiccController.getUiccCardForPhone(phoneId);
+                if (card != null) {
+                    String cardId = card.getCardId();
+                    if (cardId != null) {
+                        mSubscriptionDatabaseManager.setCardString(subId, cardId);
                     }
-                    setMccMnc(subId, mccMnc);
-                } else {
-                    loge("updateSubscription: mcc/mnc is empty");
                 }
 
-                String iso = TelephonyManager.getSimCountryIsoForPhone(phoneId);
+                // Update the port index.
+                mSubscriptionDatabaseManager.setPortIndex(subId, getPortIndex(iccId));
 
-                if (!TextUtils.isEmpty(iso)) {
-                    setCountryIso(subId, iso);
-                } else {
-                    loge("updateSubscription: sim country iso is null");
-                }
-
-                String msisdn = mTelephonyManager.getLine1Number(subId);
-                if (!TextUtils.isEmpty(msisdn)) {
-                    setDisplayNumber(msisdn, subId);
-                }
-
-                String imsi = mTelephonyManager.createForSubscriptionId(subId).getSubscriberId();
-                if (imsi != null) {
-                    mSubscriptionDatabaseManager.setImsi(subId, imsi);
-                }
-
-                IccCard iccCard = PhoneFactory.getPhone(phoneId).getIccCard();
-                if (iccCard != null) {
-                    IccRecords records = iccCard.getIccRecords();
-                    if (records != null) {
-                        String[] ehplmns = records.getEhplmns();
-                        if (ehplmns != null) {
-                            mSubscriptionDatabaseManager.setEhplmns(subId, ehplmns);
+                if (simState == TelephonyManager.SIM_STATE_LOADED) {
+                    String mccMnc = mTelephonyManager.getSimOperatorNumeric(subId);
+                    if (!TextUtils.isEmpty(mccMnc)) {
+                        if (subId == getDefaultSubId()) {
+                            MccTable.updateMccMncConfiguration(mContext, mccMnc);
                         }
-                        String[] hplmns = records.getPlmnsFromHplmnActRecord();
-                        if (hplmns != null) {
-                            mSubscriptionDatabaseManager.setHplmns(subId, hplmns);
+                        setMccMnc(subId, mccMnc);
+                    } else {
+                        loge("updateSubscription: mcc/mnc is empty");
+                    }
+
+                    String iso = TelephonyManager.getSimCountryIsoForPhone(phoneId);
+
+                    if (!TextUtils.isEmpty(iso)) {
+                        setCountryIso(subId, iso);
+                    } else {
+                        loge("updateSubscription: sim country iso is null");
+                    }
+
+                    String msisdn = mTelephonyManager.getLine1Number(subId);
+                    if (!TextUtils.isEmpty(msisdn)) {
+                        setDisplayNumber(msisdn, subId);
+                    }
+
+                    String imsi = mTelephonyManager.createForSubscriptionId(
+                            subId).getSubscriberId();
+                    if (imsi != null) {
+                        mSubscriptionDatabaseManager.setImsi(subId, imsi);
+                    }
+
+                    IccCard iccCard = PhoneFactory.getPhone(phoneId).getIccCard();
+                    if (iccCard != null) {
+                        IccRecords records = iccCard.getIccRecords();
+                        if (records != null) {
+                            String[] ehplmns = records.getEhplmns();
+                            if (ehplmns != null) {
+                                mSubscriptionDatabaseManager.setEhplmns(subId, ehplmns);
+                            }
+                            String[] hplmns = records.getPlmnsFromHplmnActRecord();
+                            if (hplmns != null) {
+                                mSubscriptionDatabaseManager.setHplmns(subId, hplmns);
+                            }
+                        } else {
+                            loge("updateSubscription: ICC records are not available.");
                         }
                     } else {
-                        loge("updateSubscription: ICC records are not available.");
+                        loge("updateSubscription: ICC card is not available.");
                     }
-                } else {
-                    loge("updateSubscription: ICC card is not available.");
+
+                    // Attempt to restore SIM specific settings when SIM is loaded.
+                    mContext.getContentResolver().call(
+                            SubscriptionManager.SIM_INFO_BACKUP_AND_RESTORE_CONTENT_URI,
+                            SubscriptionManager.RESTORE_SIM_SPECIFIC_SETTINGS_METHOD_NAME,
+                            iccId, null);
+                    log("Reload the database.");
+                    mSubscriptionDatabaseManager.reloadDatabase();
                 }
 
-                // Attempt to restore SIM specific settings when SIM is loaded.
-                mContext.getContentResolver().call(
-                        SubscriptionManager.SIM_INFO_BACKUP_AND_RESTORE_CONTENT_URI,
-                        SubscriptionManager.RESTORE_SIM_SPECIFIC_SETTINGS_METHOD_NAME,
-                        iccId, null);
-                log("Reload the database.");
-                mSubscriptionDatabaseManager.reloadDatabase();
+                log("updateSubscription: " + mSubscriptionDatabaseManager
+                        .getSubscriptionInfoInternal(subId));
+            } else {
+                log("updateSubscription: No ICCID available for phone " + phoneId);
+                mSlotIndexToSubId.remove(phoneId);
+                logl("updateSubscription: current mapping " + slotMappingToString());
             }
-
-            log("updateSubscription: " + mSubscriptionDatabaseManager
-                    .getSubscriptionInfoInternal(subId));
-        } else {
-            log("updateSubscription: No ICCID available for phone " + phoneId);
-            mSlotIndexToSubId.remove(phoneId);
-            logl("updateSubscription: current mapping " + slotMappingToString());
         }
 
         if (areAllSubscriptionsLoaded()) {
@@ -3561,7 +3564,6 @@ public class SubscriptionManagerService extends ISub.Stub {
      * else {@code false} if subscription is not associated with user.
      *
      * @throws SecurityException if the caller doesn't have permissions required.
-     * @throws IllegalStateException if subscription service is not available.
      *
      */
     @Override
@@ -3612,7 +3614,6 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @return list of subscriptionInfo associated with the user.
      *
      * @throws SecurityException if the caller doesn't have permissions required.
-     * @throws IllegalStateException if subscription service is not available.
      *
      */
     @Override
