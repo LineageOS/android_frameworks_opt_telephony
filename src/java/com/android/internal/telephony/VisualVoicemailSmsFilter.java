@@ -21,6 +21,7 @@ import android.annotation.Nullable;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.os.UserHandle;
 import android.provider.VoicemailContract;
 import android.telecom.PhoneAccountHandle;
 import android.telephony.PhoneNumberUtils;
@@ -60,7 +61,7 @@ public class VisualVoicemailSmsFilter {
         /**
          * Convert the subId to a {@link PhoneAccountHandle}
          */
-        PhoneAccountHandle fromSubId(int subId);
+        PhoneAccountHandle fromSubId(int subId, Context context);
     }
 
     private static final String TAG = "VvmSmsFilter";
@@ -77,13 +78,22 @@ public class VisualVoicemailSmsFilter {
             new PhoneAccountHandleConverter() {
 
                 @Override
-                public PhoneAccountHandle fromSubId(int subId) {
+                public PhoneAccountHandle fromSubId(int subId, Context context) {
                     if (!SubscriptionManager.isValidSubscriptionId(subId)) {
                         return null;
                     }
                     int phoneId = SubscriptionManager.getPhoneId(subId);
                     if (phoneId == SubscriptionManager.INVALID_PHONE_INDEX) {
                         return null;
+                    }
+                    SubscriptionManager subscriptionManager =
+                            (SubscriptionManager) context.getSystemService(
+                                Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+                    UserHandle userHandle = subscriptionManager.getSubscriptionUserHandle(subId);
+                    if (userHandle != null) {
+                        return new PhoneAccountHandle(PSTN_CONNECTION_SERVICE_COMPONENT,
+                            Integer.toString(PhoneFactory.getPhone(phoneId).getSubId()),
+                            userHandle);
                     }
                     return new PhoneAccountHandle(PSTN_CONNECTION_SERVICE_COMPONENT,
                             Integer.toString(PhoneFactory.getPhone(phoneId).getSubId()));
@@ -138,7 +148,8 @@ public class VisualVoicemailSmsFilter {
             return false;
         }
 
-        PhoneAccountHandle phoneAccountHandle = sPhoneAccountHandleConverter.fromSubId(subId);
+        PhoneAccountHandle phoneAccountHandle = sPhoneAccountHandleConverter.fromSubId(subId,
+                context);
 
         if (phoneAccountHandle == null) {
             Log.e(TAG, "Unable to convert subId " + subId + " to PhoneAccountHandle");
