@@ -42,6 +42,7 @@ import android.telephony.satellite.stub.SatelliteService;
 import android.text.TextUtils;
 import android.util.Pair;
 
+import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.ExponentialBackoff;
 import com.android.internal.telephony.IBooleanConsumer;
@@ -54,6 +55,7 @@ import java.util.Arrays;
  */
 public class SatelliteModemInterface {
     private static final String TAG = "SatelliteModemInterface";
+
     private static final long REBIND_INITIAL_DELAY = 2 * 1000; // 2 seconds
     private static final long REBIND_MAXIMUM_DELAY = 64 * 1000; // 1 minute
     private static final int REBIND_MULTIPLIER = 2;
@@ -66,7 +68,7 @@ public class SatelliteModemInterface {
     /**
      * {@code true} to use the vendor satellite service and {@code false} to use the HAL.
      */
-    private final boolean mIsSatelliteServiceSupported = false;
+    private final boolean mIsSatelliteServiceSupported;
     @Nullable private ISatellite mSatelliteService;
     @Nullable private SatelliteServiceConnection mSatelliteServiceConnection;
     private boolean mIsBound;
@@ -166,6 +168,7 @@ public class SatelliteModemInterface {
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected SatelliteModemInterface(@NonNull Context context, @NonNull Looper looper) {
         mContext = context;
+        mIsSatelliteServiceSupported = getSatelliteServiceSupport();
         mExponentialBackoff = new ExponentialBackoff(REBIND_INITIAL_DELAY, REBIND_MAXIMUM_DELAY,
                 REBIND_MULTIPLIER, looper, () -> {
             synchronized (mLock) {
@@ -198,7 +201,11 @@ public class SatelliteModemInterface {
 
     @NonNull private String getSatellitePackageName() {
         return TextUtils.emptyIfNull(mContext.getResources().getString(
-                com.android.internal.R.string.config_satellite_service_package));
+                R.string.config_satellite_service_package));
+    }
+
+    private boolean getSatelliteServiceSupport() {
+        return !TextUtils.isEmpty(getSatellitePackageName());
     }
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
@@ -945,7 +952,6 @@ public class SatelliteModemInterface {
     }
 
     public boolean isSatelliteServiceSupported() {
-        // TODO: update this method to check a device config instead
         return mIsSatelliteServiceSupported;
     }
 
