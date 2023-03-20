@@ -96,7 +96,7 @@ public class VisualVoicemailSmsFilterTest extends TestCase {
         VisualVoicemailSmsFilter.setPhoneAccountHandleConverterForTest(
                 new PhoneAccountHandleConverter() {
                     @Override
-                    public PhoneAccountHandle fromSubId(int subId) {
+                    public PhoneAccountHandle fromSubId(int subId, Context context) {
                         return new PhoneAccountHandle(
                                 new ComponentName("com.android.internal.telephony",
                                         "VisualVoicemailSmsFilterTest"), "foo");
