@@ -908,6 +908,7 @@ public class IccSmsInterfaceManager {
     public String getSmscAddressFromIccEf(String callingPackage) {
         if (!mSmsPermissions.checkCallingOrSelfCanGetSmscAddress(
                 callingPackage, "getSmscAddressFromIccEf")) {
+            loge("Caller do not have permission to call GetSmscAddress");
             return null;
         }
         enforceNotOnHandlerThread("getSmscAddressFromIccEf");
@@ -929,6 +930,7 @@ public class IccSmsInterfaceManager {
     public boolean setSmscAddressOnIccEf(String callingPackage, String smsc) {
         if (!mSmsPermissions.checkCallingOrSelfCanSetSmscAddress(
                 callingPackage, "setSmscAddressOnIccEf")) {
+            loge("Caller do not have permission to call SetSmscAddress");
             return false;
         }
         enforceNotOnHandlerThread("setSmscAddressOnIccEf");
