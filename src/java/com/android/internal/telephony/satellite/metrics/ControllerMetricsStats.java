@@ -25,6 +25,7 @@ import android.os.BatteryManager;
 import android.telephony.satellite.SatelliteManager;
 import android.util.Log;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.metrics.SatelliteStats;
 
 /**
@@ -38,11 +39,11 @@ public class ControllerMetricsStats {
     private static ControllerMetricsStats sInstance;
 
     private final Context mContext;
-    private final SatelliteStats mSatelliteStats;
+    private SatelliteStats mSatelliteStats;
 
     private long mSatelliteOnTimeMillis;
     private int mBatteryLevelWhenServiceOn;
-    private Boolean mIsSatelliteModemOn = null;
+    private boolean mIsSatelliteModemOn;
     private Boolean mIsBatteryCharged = null;
     private int mBatteryChargedStartTimeSec;
     private int mTotalBatteryChargeTimeSec;
@@ -71,6 +72,22 @@ public class ControllerMetricsStats {
     }
 
     /**
+     * Create the ControllerMetricsStats singleton instance, testing purpose only.
+     *
+     * @param context   The Context for the ControllerMetricsStats.
+     * @param satelliteStats SatelliteStats instance to test
+     * @return          The singleton instance of ControllerMetricsStats.
+     */
+    @VisibleForTesting
+    public static ControllerMetricsStats make(@NonNull Context context,
+            @NonNull SatelliteStats satelliteStats) {
+        if (sInstance == null) {
+            sInstance = new ControllerMetricsStats(context, satelliteStats);
+        }
+        return sInstance;
+    }
+
+    /**
      * Create the ControllerMetricsStats to manage metrics report for
      * {@link SatelliteStats.SatelliteControllerParams}
      * @param context The Context for the ControllerMetricsStats.
@@ -78,6 +95,20 @@ public class ControllerMetricsStats {
     ControllerMetricsStats(@NonNull Context context) {
         mContext = context;
         mSatelliteStats = SatelliteStats.getInstance();
+    }
+
+    /**
+     * Create the ControllerMetricsStats to manage metrics report for
+     * {@link SatelliteStats.SatelliteControllerParams}
+     *
+     * @param context           The Context for the ControllerMetricsStats.
+     * @param satelliteStats    SatelliteStats object used for testing purpose
+     */
+    @VisibleForTesting
+    protected ControllerMetricsStats(@NonNull Context context,
+            @NonNull SatelliteStats satelliteStats) {
+        mContext = context;
+        mSatelliteStats = satelliteStats;
     }
 
 
@@ -195,14 +226,16 @@ public class ControllerMetricsStats {
     }
 
     /** Return the total service up time for satellite service */
-    private int captureTotalServiceUpTimeSec() {
-        long totalTimeMillis = System.currentTimeMillis() - mSatelliteOnTimeMillis;
+    @VisibleForTesting
+    public int captureTotalServiceUpTimeSec() {
+        long totalTimeMillis = getCurrentTime() - mSatelliteOnTimeMillis;
         mSatelliteOnTimeMillis = 0;
         return (int) (totalTimeMillis / 1000);
     }
 
     /** Return the total battery charge time while satellite service is on */
-    private int captureTotalBatteryChargeTimeSec() {
+    @VisibleForTesting
+    public int captureTotalBatteryChargeTimeSec() {
         int totalTime = mTotalBatteryChargeTimeSec;
         mTotalBatteryChargeTimeSec = 0;
         return totalTime;
@@ -210,13 +243,13 @@ public class ControllerMetricsStats {
 
     /** Capture the satellite service on time and register battery monitor */
     public void onSatelliteEnabled() {
-        if (!mIsSatelliteModemOn) {
+        if (!isSatelliteModemOn()) {
             mIsSatelliteModemOn = true;
 
-            startCaptureBatteryLevel(mContext);
+            startCaptureBatteryLevel();
 
             // log the timestamp of the satellite modem power on
-            mSatelliteOnTimeMillis = System.currentTimeMillis();
+            mSatelliteOnTimeMillis = getCurrentTime();
 
             // register broadcast receiver for monitoring battery status change
             IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
@@ -228,7 +261,7 @@ public class ControllerMetricsStats {
 
     /** Capture the satellite service off time and de-register battery monitor */
     public void onSatelliteDisabled() {
-        if (mIsSatelliteModemOn) {
+        if (isSatelliteModemOn()) {
             mIsSatelliteModemOn = false;
 
             logd("unregister BatteryStatusReceiver");
@@ -251,7 +284,7 @@ public class ControllerMetricsStats {
     }
 
     /** Log the total battery charging time when satellite service is on */
-    public void updateSatelliteBatteryChargeTime(boolean isCharged) {
+    private void updateSatelliteBatteryChargeTime(boolean isCharged) {
         logd("updateSatelliteBatteryChargeTime(" + isCharged + ")");
         // update only when the charge state has changed
         if (mIsBatteryCharged == null || isCharged != mIsBatteryCharged) {
@@ -259,22 +292,22 @@ public class ControllerMetricsStats {
 
             // When charged, log the start time of battery charging
             if (isCharged) {
-                mBatteryChargedStartTimeSec = (int) (System.currentTimeMillis() / 1000);
+                mBatteryChargedStartTimeSec = (int) (getCurrentTime() / 1000);
                 // When discharged, log the accumulated total battery charging time.
             } else {
                 mTotalBatteryChargeTimeSec +=
-                        (int) (System.currentTimeMillis() / 1000)
+                        (int) (getCurrentTime() / 1000)
                                 - mBatteryChargedStartTimeSec;
                 mBatteryChargedStartTimeSec = 0;
-
             }
         }
     }
 
     /** Capture the battery level when satellite service is on */
-    private void startCaptureBatteryLevel(Context context) {
+    @VisibleForTesting
+    public void startCaptureBatteryLevel() {
         try {
-            BatteryManager batteryManager = context.getSystemService(BatteryManager.class);
+            BatteryManager batteryManager = mContext.getSystemService(BatteryManager.class);
             mBatteryLevelWhenServiceOn =
                     batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
             logd("sBatteryLevelWhenServiceOn = " + mBatteryLevelWhenServiceOn);
@@ -284,7 +317,8 @@ public class ControllerMetricsStats {
     }
 
     /** Capture the total consumption level when service is off */
-    private int captureTotalBatteryConsumptionPercent(Context context) {
+    @VisibleForTesting
+    public int captureTotalBatteryConsumptionPercent(Context context) {
         try {
             BatteryManager batteryManager = context.getSystemService(BatteryManager.class);
             int currentLevel =
@@ -296,7 +330,6 @@ public class ControllerMetricsStats {
         }
     }
 
-
     /** Receives the battery status whether it is in charging or not, update interval is 60 sec. */
     private final BroadcastReceiver mBatteryStatusReceiver = new BroadcastReceiver() {
         private long mLastUpdatedTime = 0;
@@ -304,7 +337,7 @@ public class ControllerMetricsStats {
 
         @Override
         public void onReceive(Context context, Intent intent) {
-            long currentTime = System.currentTimeMillis();
+            long currentTime = getCurrentTime();
             if (currentTime - mLastUpdatedTime > UPDATE_INTERVAL) {
                 mLastUpdatedTime = currentTime;
                 int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
@@ -314,6 +347,16 @@ public class ControllerMetricsStats {
             }
         }
     };
+
+    @VisibleForTesting
+    public boolean isSatelliteModemOn() {
+        return mIsSatelliteModemOn;
+    }
+
+    @VisibleForTesting
+    public long getCurrentTime() {
+        return System.currentTimeMillis();
+    }
 
     private static void logd(@NonNull String log) {
         if (DBG) {
