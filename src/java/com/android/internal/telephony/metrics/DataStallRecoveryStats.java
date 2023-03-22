@@ -62,7 +62,8 @@ public class DataStallRecoveryStats {
             boolean isRecovered,
             int durationMillis,
             @DataStallRecoveryManager.RecoveredReason int reason,
-            boolean isFirstValidation) {
+            boolean isFirstValidation,
+            int durationMillisOfCurrentAction) {
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             phone = phone.getDefaultPhone();
         }
@@ -131,7 +132,8 @@ public class DataStallRecoveryStats {
                 otherNetworkRegState,
                 phoneNetworkRegState,
                 isFirstValidation,
-                phoneId);
+                phoneId,
+                durationMillisOfCurrentAction);
     }
 
     /** Returns the RAT used for data (including IWLAN). */

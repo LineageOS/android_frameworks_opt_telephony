@@ -175,6 +175,8 @@ public class DataStallRecoveryManager extends Handler {
     private boolean mIsAttemptedAllSteps;
     /** Whether internet network connected. */
     private boolean mIsInternetNetworkConnected;
+    /** The durations for current recovery action */
+    private @ElapsedRealtimeLong long mTimeElapsedOfCurrentAction;
 
     /** The array for the timers between recovery actions. */
     private @NonNull long[] mDataStallRecoveryDelayMillisArray;
@@ -468,6 +470,15 @@ public class DataStallRecoveryManager extends Handler {
     }
 
     /**
+     * Get duration time for current recovery action.
+     *
+     * @return the time duration for current recovery action.
+     */
+    private long getDurationOfCurrentRecoveryMs() {
+        return (SystemClock.elapsedRealtime() - mTimeElapsedOfCurrentAction);
+    }
+
+    /**
      * Broadcast intent when data stall occurred.
      *
      * @param recoveryAction Send the data stall detected intent with RecoveryAction info.
@@ -594,6 +605,7 @@ public class DataStallRecoveryManager extends Handler {
     private void setNetworkValidationState(boolean isValid) {
         boolean isLogNeeded = false;
         int timeDuration = 0;
+        int timeDurationOfCurrentAction = 0;
         boolean isFirstDataStall = false;
         boolean isFirstValidationAfterDoRecovery = false;
         @RecoveredReason int reason = getRecoveredReason(isValid);
@@ -626,9 +638,11 @@ public class DataStallRecoveryManager extends Handler {
         }
 
         if (isLogNeeded) {
+            timeDurationOfCurrentAction =
+                (isFirstDataStall == true ? 0 : (int) getDurationOfCurrentRecoveryMs());
             DataStallRecoveryStats.onDataStallEvent(
                     mLastAction, mPhone, isValid, timeDuration, reason,
-                    isFirstValidationAfterDoRecovery);
+                    isFirstValidationAfterDoRecovery, timeDurationOfCurrentAction);
             logl(
                     "data stall: "
                     + (isFirstDataStall == true ? "start" : isValid == false ? "in process" : "end")
@@ -641,7 +655,9 @@ public class DataStallRecoveryManager extends Handler {
                     + ", isFirstValidationAfterDoRecovery="
                     + isFirstValidationAfterDoRecovery
                     + ", TimeDuration="
-                    + timeDuration);
+                    + timeDuration
+                    + ", TimeDurationForCurrentRecoveryAction="
+                    + timeDurationOfCurrentAction);
         }
     }
 
@@ -692,6 +708,7 @@ public class DataStallRecoveryManager extends Handler {
         mLastActionReported = false;
         broadcastDataStallDetected(recoveryAction);
         mNetworkCheckTimerStarted = false;
+        mTimeElapsedOfCurrentAction = SystemClock.elapsedRealtime();
 
         switch (recoveryAction) {
             case RECOVERY_ACTION_GET_DATA_CALL_LIST:
