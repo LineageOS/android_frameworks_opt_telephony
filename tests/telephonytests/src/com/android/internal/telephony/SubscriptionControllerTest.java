@@ -51,6 +51,7 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -2140,6 +2141,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     @Test
     public void setSubscriptionUserHandle_withoutPermission() {
         testInsertSim();
+        enableGetSubscriptionUserHandle();
         /* Get SUB ID */
         int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
         assertTrue(subIds != null && subIds.length != 0);
@@ -2154,6 +2156,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     @Test
     public void setGetSubscriptionUserHandle_userHandleNull() {
         testInsertSim();
+        enableGetSubscriptionUserHandle();
         /* Get SUB ID */
         int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
         assertTrue(subIds != null && subIds.length != 0);
@@ -2167,6 +2170,8 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
     @Test
     public void setSubscriptionUserHandle_invalidSubId() {
+        enableGetSubscriptionUserHandle();
+
         assertThrows(IllegalArgumentException.class,
                 () -> mSubscriptionControllerUT.setSubscriptionUserHandle(
                         UserHandle.of(UserHandle.USER_SYSTEM),
@@ -2176,6 +2181,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     @Test
     public void setGetSubscriptionUserHandle_withValidUserHandleAndSubId() {
         testInsertSim();
+        enableGetSubscriptionUserHandle();
         /* Get SUB ID */
         int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
         assertTrue(subIds != null && subIds.length != 0);
@@ -2191,6 +2197,7 @@ public class SubscriptionControllerTest extends TelephonyTest {
     @Test
     public void getSubscriptionUserHandle_withoutPermission() {
         testInsertSim();
+        enableGetSubscriptionUserHandle();
         /* Get SUB ID */
         int[] subIds = mSubscriptionControllerUT.getActiveSubIdList(/*visibleOnly*/false);
         assertTrue(subIds != null && subIds.length != 0);
@@ -2203,8 +2210,17 @@ public class SubscriptionControllerTest extends TelephonyTest {
 
     @Test
     public void getSubscriptionUserHandle_invalidSubId() {
+        enableGetSubscriptionUserHandle();
+
         assertThrows(IllegalArgumentException.class,
                 () -> mSubscriptionControllerUT.getSubscriptionUserHandle(
                         SubscriptionManager.DEFAULT_SUBSCRIPTION_ID));
+    }
+
+    private void enableGetSubscriptionUserHandle() {
+        Resources mResources = mock(Resources.class);
+        doReturn(true).when(mResources).getBoolean(
+                eq(com.android.internal.R.bool.config_enable_get_subscription_user_handle));
+        doReturn(mResources).when(mContext).getResources();
     }
 }

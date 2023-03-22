@@ -986,7 +986,7 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
-     * Get all subscription info records from SIMs that are inserted now or were inserted before.
+     * Get all subscription info records from SIMs that are inserted now or previously inserted.
      *
      * <p>
      * If the caller does not have {@link Manifest.permission#READ_PHONE_NUMBERS} permission,
@@ -996,19 +996,17 @@ public class SubscriptionManagerService extends ISub.Stub {
      * empty string, and {@link SubscriptionInfo#getGroupUuid()} will return {@code null}.
      *
      * <p>
-     * The carrier app will always have full {@link SubscriptionInfo} for the subscriptions
-     * that it has carrier privilege. Subscriptions that the carrier app has no privilege will be
-     * excluded from the list.
-     *
-     * @return List of all {@link SubscriptionInfo} records from SIMs that are inserted or
-     * inserted before. Sorted by {@link SubscriptionInfo#getSimSlotIndex()}, then
-     * {@link SubscriptionInfo#getSubscriptionId()}.
+     * The carrier app will only get the list of subscriptions that it has carrier privilege on,
+     * but will have non-stripped {@link SubscriptionInfo} in the list.
      *
      * @param callingPackage The package making the call.
      * @param callingFeatureId The feature in the package.
      *
-     * @throws SecurityException if the caller does not have required permissions.
+     * @return List of all {@link SubscriptionInfo} records from SIMs that are inserted or
+     * previously inserted. Sorted by {@link SubscriptionInfo#getSimSlotIndex()}, then
+     * {@link SubscriptionInfo#getSubscriptionId()}.
      *
+     * @throws SecurityException if callers do not hold the required permission.
      */
     @Override
     @NonNull
@@ -2988,10 +2986,16 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @throws IllegalArgumentException if {@code subId} is invalid.
      */
     @Override
+    @Nullable
     @RequiresPermission(Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION)
     public UserHandle getSubscriptionUserHandle(int subId) {
         enforcePermissions("getSubscriptionUserHandle",
                 Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
+
+        if (!mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_enable_get_subscription_user_handle)) {
+            return null;
+        }
 
         long token = Binder.clearCallingIdentity();
         try {
