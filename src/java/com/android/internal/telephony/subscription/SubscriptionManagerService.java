@@ -2988,10 +2988,16 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @throws IllegalArgumentException if {@code subId} is invalid.
      */
     @Override
+    @Nullable
     @RequiresPermission(Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION)
     public UserHandle getSubscriptionUserHandle(int subId) {
         enforcePermissions("getSubscriptionUserHandle",
                 Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
+
+        if (!mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_enable_get_subscription_user_handle)) {
+            return null;
+        }
 
         long token = Binder.clearCallingIdentity();
         try {
