@@ -748,8 +748,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
      * The following events can set preferred data subId with priority in the order of
      * 1. Emergency call
      * 2. Voice call (when data during call feature is enabled).
-     * 3. CBRS requests
-     * 4. Auto switch requests
+     * 3. CBRS requests OR Auto switch requests - only one case applies at a time
      */
     @Test
     @SmallTest
@@ -762,6 +761,8 @@ public class PhoneSwitcherTest extends TelephonyTest {
         // Both are active subscriptions are active sub, as they are in both active slots.
         setSlotIndexToSubId(0, 1);
         setSlotIndexToSubId(1, 2);
+        // single visible sub, as the other one is CBRS
+        doReturn(new int[1]).when(mSubscriptionController).getActiveSubIdList(true);
         setDefaultDataSubId(1);
 
         // Notify phoneSwitcher about default data sub and default network request.
@@ -1000,14 +1001,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         mockImsRegTech(1, REGISTRATION_TECH_LTE);
         notifyPhoneAsInCall(mImsPhone);
 
-        // Phone 0 should be the default data phoneId.
-        assertEquals(0, mPhoneSwitcherUT.getPreferredDataPhoneId());
-
-        // User turns on data on Phone 0
-        doReturn(true).when(mPhone).isUserDataEnabled();
-        notifyDataEnabled(true);
-
-        // Phone 1 should become the default data phone.
+        // Phone 1 should become the preferred data phone.
         assertEquals(1, mPhoneSwitcherUT.getPreferredDataPhoneId());
     }
 
@@ -1036,14 +1030,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         mockImsRegTech(1, REGISTRATION_TECH_LTE);
         notifyPhoneAsInDial(mImsPhone);
 
-        // Phone 0 should be the default data phoneId.
-        assertEquals(0, mPhoneSwitcherUT.getPreferredDataPhoneId());
-
-        // User turns on data on Phone 0
-        doReturn(true).when(mPhone).isUserDataEnabled();
-        notifyDataEnabled(true);
-
-        // Phone 1 should become the default data phone.
+        // Phone2 should be preferred data phone
         assertEquals(1, mPhoneSwitcherUT.getPreferredDataPhoneId());
     }
     @Test
@@ -1071,14 +1058,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         mockImsRegTech(1, REGISTRATION_TECH_LTE);
         notifyPhoneAsInIncomingCall(mImsPhone);
 
-        // Phone 0 should be the default data phoneId.
-        assertEquals(0, mPhoneSwitcherUT.getPreferredDataPhoneId());
-
-        // User turns on data on Phone 0
-        doReturn(true).when(mPhone).isUserDataEnabled();
-        notifyDataEnabled(true);
-
-        // Phone 1 should become the default data phone.
+        // Phone 1 should become the preferred data phone.
         assertEquals(1, mPhoneSwitcherUT.getPreferredDataPhoneId());
     }
 
@@ -1186,7 +1166,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         clearInvocations(mMockRadioConfig);
 
         // Phone2(nDDS) call ended. But Phone1 having cross-SIM call. Don't switch.
-        mockImsRegTech(1, REGISTRATION_TECH_CROSS_SIM);
+        mockImsRegTech(0, REGISTRATION_TECH_CROSS_SIM);
         notifyPhoneAsInIncomingCall(mPhone);
         notifyPhoneAsInactive(mPhone2);
         verify(mMockRadioConfig, never()).setPreferredDataModem(anyInt(), any());
@@ -1195,17 +1175,28 @@ public class PhoneSwitcherTest extends TelephonyTest {
         assertFalse(mPhoneSwitcherUT.shouldApplyNetworkRequest(
                 new TelephonyNetworkRequest(internetRequest, mPhone), 0));
 
-        // Phone1(DDS) call ended. So data switch back to default data sub.
-        mockImsRegTech(0, REGISTRATION_TECH_IWLAN);
+        // Phone(DDS) call ended.
+        // Honor auto data switch's suggestion: if DDS is OOS, auto switch to Phone2(nDDS).
+        serviceStateChanged(1, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        serviceStateChanged(0, NetworkRegistrationInfo
+                .REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING);
+        doReturn(null).when(mConnectivityManager).getNetworkCapabilities(any());
         notifyPhoneAsInactive(mPhone);
+
+        // verify immediately switch back to DDS upon call ends
         verify(mMockRadioConfig).setPreferredDataModem(eq(0), any());
         assertTrue(mPhoneSwitcherUT.shouldApplyNetworkRequest(
                 new TelephonyNetworkRequest(internetRequest, mPhone), 0));
         assertFalse(mPhoneSwitcherUT.shouldApplyNetworkRequest(
                 new TelephonyNetworkRequest(internetRequest, mPhone), 1));
-        clearInvocations(mMockRadioConfig);
+
+        // verify the attempt to do auto data switch to Phone2(nDDS)
+        processAllFutureMessages();
+        verify(mCellularNetworkValidator).validate(eq(2), anyLong(), eq(false),
+                eq(mPhoneSwitcherUT.mValidationCallback));
 
         // Phone2 has holding call on VoWifi, no need to switch data
+        clearInvocations(mMockRadioConfig);
         mockImsRegTech(1, REGISTRATION_TECH_IWLAN);
         notifyPhoneAsInHoldingCall(mPhone2);
         verify(mMockRadioConfig, never()).setPreferredDataModem(anyInt(), any());
@@ -1215,6 +1206,43 @@ public class PhoneSwitcherTest extends TelephonyTest {
                 new TelephonyNetworkRequest(internetRequest, mPhone), 1));
     }
 
+    @Test
+    @SmallTest
+    public void testDataEnabledChangedDuringVoiceCall() throws Exception {
+        doReturn(true).when(mMockRadioConfig).isSetPreferredDataCommandSupported();
+        initialize();
+        // Phone 0 has sub 1, phone 1 has sub 2.
+        // Sub 1 is default data sub.
+        // Both are active subscriptions are active sub, as they are in both active slots.
+        setSlotIndexToSubId(0, 1);
+        setSlotIndexToSubId(1, 2);
+        setDefaultDataSubId(1);
+        NetworkRequest internetRequest = addInternetNetworkRequest(null, 50);
+        assertTrue(mPhoneSwitcherUT.shouldApplyNetworkRequest(
+                new TelephonyNetworkRequest(internetRequest, mPhone), 0));
+        assertFalse(mPhoneSwitcherUT.shouldApplyNetworkRequest(
+                new TelephonyNetworkRequest(internetRequest, mPhone), 1));
+        clearInvocations(mMockRadioConfig);
+        setAllPhonesInactive();
+        // Initialization done.
+
+        // Phone2 has active call and data is on. So switch to nDDS Phone2
+        notifyDataEnabled(true);
+        notifyPhoneAsInCall(mPhone2);
+        verify(mMockRadioConfig).setPreferredDataModem(eq(1), any());
+        assertFalse(mPhoneSwitcherUT.shouldApplyNetworkRequest(
+                new TelephonyNetworkRequest(internetRequest, mPhone), 0));
+        assertTrue(mPhoneSwitcherUT.shouldApplyNetworkRequest(
+                new TelephonyNetworkRequest(internetRequest, mPhone), 1));
+
+        // During the active call, user turns off data, should immediately switch back to DDS
+        notifyDataEnabled(false);
+        verify(mMockRadioConfig).setPreferredDataModem(eq(0), any());
+        assertTrue(mPhoneSwitcherUT.shouldApplyNetworkRequest(
+                new TelephonyNetworkRequest(internetRequest, mPhone), 0));
+        assertFalse(mPhoneSwitcherUT.shouldApplyNetworkRequest(
+                new TelephonyNetworkRequest(internetRequest, mPhone), 1));
+    }
 
     @Test
     @SmallTest
@@ -1810,6 +1838,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
     }
 
     private void notifyDataEnabled(boolean dataEnabled) {
+        doReturn(true).when(mPhone).isUserDataEnabled();
         doReturn(dataEnabled).when(mDataSettingsManager).isDataEnabled();
         doReturn(dataEnabled).when(mPhone2).isDataAllowed();
         mDataSettingsManagerCallbacks.get(0).onDataEnabledChanged(dataEnabled, 123 , "");
@@ -2044,6 +2073,13 @@ public class PhoneSwitcherTest extends TelephonyTest {
         mDefaultDataSub = defaultDataSub;
         doReturn(mDefaultDataSub).when(mSubscriptionController).getDefaultDataSubId();
         doReturn(mDefaultDataSub).when(mMockedIsub).getDefaultDataSubId();
+        if (defaultDataSub == 1) {
+            doReturn(true).when(mPhone).isUserDataEnabled();
+            doReturn(false).when(mPhone2).isUserDataEnabled();
+        } else {
+            doReturn(false).when(mPhone).isUserDataEnabled();
+            doReturn(true).when(mPhone2).isUserDataEnabled();
+        }
         sendDefaultDataSubChanged();
     }
 
