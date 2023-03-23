@@ -2707,8 +2707,9 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
         processAllFutureMessages();
 
-        // Should retried 20 times, which is the maximum based on the retry config rules.
-        verify(mMockedWwanDataServiceManager, times(21)).setupDataCall(anyInt(),
+        // The first 8 retries are short timers that scheduled by handler, future retries are
+        // scheduled by intent and require more complex mock, so we only verify the first 8 here.
+        verify(mMockedWwanDataServiceManager, times(9)).setupDataCall(anyInt(),
                 any(DataProfile.class), anyBoolean(), anyBoolean(), anyInt(), any(), anyInt(),
                 any(), any(), anyBoolean(), any(Message.class));
     }
