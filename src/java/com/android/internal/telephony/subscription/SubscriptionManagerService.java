@@ -55,6 +55,7 @@ import android.service.euicc.EuiccService;
 import android.service.euicc.GetEuiccProfileInfoListResult;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
+import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.RadioAccessFamily;
 import android.telephony.SubscriptionInfo;
@@ -1131,6 +1132,19 @@ public class SubscriptionManagerService extends ISub.Stub {
                         mSubscriptionDatabaseManager.setEmbedded(
                                 subInfo.getSubscriptionId(), false);
                     });
+            if (mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                    .anyMatch(subInfo -> subInfo.isEmbedded()
+                            && subInfo.isActive()
+                            && subInfo.getPortIndex()
+                            == TelephonyManager.INVALID_PORT_INDEX
+                            && mSimState[subInfo.getSimSlotIndex()]
+                            == TelephonyManager.SIM_STATE_LOADED)) {
+                //Report Anomaly if invalid portIndex is updated in Active subscriptions
+                AnomalyReporter.reportAnomaly(
+                        UUID.fromString("38fdf63c-3bd9-4fc2-ad33-a20246a32fa7"),
+                        "SubscriptionManagerService: Found Invalid portIndex"
+                                + " in active subscriptions");
+            }
         });
         log("updateEmbeddedSubscriptions: Finished embedded subscription update.");
         if (callback != null) {
