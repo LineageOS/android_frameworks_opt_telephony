@@ -716,7 +716,14 @@ public abstract class TelephonyTest {
         doReturn(mPhone).when(mInboundSmsHandler).getPhone();
         doReturn(mImsCallProfile).when(mImsCall).getCallProfile();
         doReturn(mIBinder).when(mIIntentSender).asBinder();
-        doReturn(mIIntentSender).when(mIActivityManager).getIntentSenderWithFeature(anyInt(),
+        doAnswer(invocation -> {
+            Intent[] intents = invocation.getArgument(6);
+            if (intents != null && intents.length > 0) {
+                doReturn(intents[0]).when(mIActivityManager)
+                        .getIntentForIntentSender(mIIntentSender);
+            }
+            return mIIntentSender;
+        }).when(mIActivityManager).getIntentSenderWithFeature(anyInt(),
                 nullable(String.class), nullable(String.class), nullable(IBinder.class),
                 nullable(String.class), anyInt(), nullable(Intent[].class),
                 nullable(String[].class), anyInt(), nullable(Bundle.class), anyInt());
