@@ -953,7 +953,7 @@ public class PhoneSwitcher extends Handler {
         Phone phone = getPhoneBySubId(mPrimaryDataSubId);
         if (phone != null) {
             DataConfigManager dataConfig = phone.getDataNetworkController().getDataConfigManager();
-            mRequirePingTestBeforeDataSwitch = dataConfig.requirePingTestBeforeDataSwitch();
+            mRequirePingTestBeforeDataSwitch = dataConfig.isPingTestBeforeAutoDataSwitchRequired();
             mAutoDataSwitchAvailabilityStabilityTimeThreshold =
                     dataConfig.getAutoDataSwitchAvailabilityStabilityTimeThreshold();
             mAutoDataSwitchValidationMaxRetry =
