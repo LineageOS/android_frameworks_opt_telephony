@@ -48,6 +48,12 @@ import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PresenceNotifyEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsAcsProvisioningStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsClientProvisioningStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteController;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteIncomingDatagram;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteOutgoingDatagram;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteProvision;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteSession;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteSosMessageRecommender;
 import com.android.internal.telephony.nano.PersistAtomsProto.SipDelegateStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.SipMessageResponse;
 import com.android.internal.telephony.nano.PersistAtomsProto.SipTransportFeatureTagStats;
@@ -160,9 +166,12 @@ public class PersistAtomsStorage {
     /** Maximum number of GBA Event to store between pulls. */
     private final int mMaxNumGbaEventStats;
 
-
-     /** Maximum number of outgoing short code sms to store between pulls. */
+    /** Maximum number of outgoing short code sms to store between pulls. */
     private final int mMaxOutgoingShortCodeSms;
+
+    /** Maximum number of Satellite relevant stats to store between pulls. */
+    private final int mMaxNumSatelliteStats;
+    private final int mMaxNumSatelliteControllerStats = 1;
 
     /** Stores persist atoms and persist states of the puller. */
     @VisibleForTesting protected PersistAtoms mAtoms;
@@ -213,6 +222,7 @@ public class PersistAtomsStorage {
             mMaxNumPresenceNotifyEventStats = 10;
             mMaxNumGbaEventStats = 5;
             mMaxOutgoingShortCodeSms = 5;
+            mMaxNumSatelliteStats = 5;
         } else {
             mMaxNumVoiceCallSessions = 50;
             mMaxNumSms = 25;
@@ -236,6 +246,7 @@ public class PersistAtomsStorage {
             mMaxNumPresenceNotifyEventStats = 50;
             mMaxNumGbaEventStats = 10;
             mMaxOutgoingShortCodeSms = 10;
+            mMaxNumSatelliteStats = 15;
         }
 
         mAtoms = loadAtomsFromFile();
@@ -678,6 +689,101 @@ public class PersistAtomsStorage {
         } else {
             mAtoms.outgoingShortCodeSms = insertAtRandomPlace(mAtoms.outgoingShortCodeSms,
                     shortCodeSms, mMaxOutgoingShortCodeSms);
+        }
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
+    }
+
+    /** Adds a new {@link SatelliteController} to the storage. */
+    public synchronized void addSatelliteControllerStats(SatelliteController stats) {
+        // SatelliteController is a single data point
+        SatelliteController[] atomArray = mAtoms.satelliteController;
+        if (atomArray == null || atomArray.length == 0) {
+            atomArray = new SatelliteController[] {new SatelliteController()};
+        }
+
+        SatelliteController atom = atomArray[0];
+        atom.countOfSatelliteServiceEnablementsSuccess
+                += stats.countOfSatelliteServiceEnablementsSuccess;
+        atom.countOfSatelliteServiceEnablementsFail
+                += stats.countOfSatelliteServiceEnablementsFail;
+        atom.countOfOutgoingDatagramSuccess
+                += stats.countOfOutgoingDatagramSuccess;
+        atom.countOfOutgoingDatagramFail
+                += stats.countOfOutgoingDatagramFail;
+        atom.countOfIncomingDatagramSuccess
+                += stats.countOfIncomingDatagramSuccess;
+        atom.countOfIncomingDatagramFail
+                += stats.countOfIncomingDatagramFail;
+        atom.countOfDatagramTypeSosSmsSuccess
+                += stats.countOfDatagramTypeSosSmsSuccess;
+        atom.countOfDatagramTypeSosSmsFail
+                += stats.countOfDatagramTypeSosSmsFail;
+        atom.countOfDatagramTypeLocationSharingSuccess
+                += stats.countOfDatagramTypeLocationSharingSuccess;
+        atom.countOfDatagramTypeLocationSharingFail
+                += stats.countOfDatagramTypeLocationSharingFail;
+        atom.countOfProvisionSuccess
+                += stats.countOfProvisionSuccess;
+        atom.countOfProvisionFail
+                += stats.countOfProvisionFail;
+        atom.countOfDeprovisionSuccess
+                += stats.countOfDeprovisionSuccess;
+        atom.countOfDeprovisionFail
+                += stats.countOfDeprovisionFail;
+        atom.totalServiceUptimeSec
+                += stats.totalServiceUptimeSec;
+        atom.totalBatteryConsumptionPercent
+                += stats.totalBatteryConsumptionPercent;
+        atom.totalBatteryChargedTimeSec
+                += stats.totalBatteryChargedTimeSec;
+
+        mAtoms.satelliteController = atomArray;
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
+    }
+
+    /** Adds a new {@link SatelliteSession} to the storage. */
+    public synchronized void addSatelliteSessionStats(SatelliteSession stats) {
+        SatelliteSession existingStats = find(stats);
+        if (existingStats != null) {
+            existingStats.count += 1;
+        } else {
+            mAtoms.satelliteSession =
+                    insertAtRandomPlace(mAtoms.satelliteSession, stats, mMaxNumSatelliteStats);
+        }
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
+    }
+
+    /** Adds a new {@link SatelliteIncomingDatagram} to the storage. */
+    public synchronized void addSatelliteIncomingDatagramStats(SatelliteIncomingDatagram stats) {
+        mAtoms.satelliteIncomingDatagram =
+                insertAtRandomPlace(mAtoms.satelliteIncomingDatagram, stats, mMaxNumSatelliteStats);
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
+    }
+
+    /** Adds a new {@link SatelliteOutgoingDatagram} to the storage. */
+    public synchronized void addSatelliteOutgoingDatagramStats(SatelliteOutgoingDatagram stats) {
+        mAtoms.satelliteOutgoingDatagram =
+                insertAtRandomPlace(mAtoms.satelliteOutgoingDatagram, stats, mMaxNumSatelliteStats);
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
+    }
+
+    /** Adds a new {@link SatelliteProvision} to the storage. */
+    public synchronized void addSatelliteProvisionStats(SatelliteProvision stats) {
+        mAtoms.satelliteProvision =
+                insertAtRandomPlace(mAtoms.satelliteProvision, stats, mMaxNumSatelliteStats);
+        saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
+    }
+
+    /** Adds a new {@link SatelliteSosMessageRecommender} to the storage. */
+    public synchronized void addSatelliteSosMessageRecommenderStats(
+            SatelliteSosMessageRecommender stats) {
+        SatelliteSosMessageRecommender existingStats = find(stats);
+        if (existingStats != null) {
+            existingStats.count += 1;
+        } else {
+            mAtoms.satelliteSosMessageRecommender =
+                    insertAtRandomPlace(mAtoms.satelliteSosMessageRecommender, stats,
+                            mMaxNumSatelliteStats);
         }
         saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_UPDATE_MILLIS);
     }
@@ -1229,6 +1335,117 @@ public class PersistAtomsStorage {
         }
     }
 
+    /**
+     * Returns and clears the {@link SatelliteController} stats if last pulled longer than {@code
+     * minIntervalMillis} ago, otherwise returns {@code null}.
+     */
+    @Nullable
+    public synchronized SatelliteController[] getSatelliteControllerStats(long minIntervalMillis) {
+        if (getWallTimeMillis() - mAtoms.satelliteControllerPullTimestampMillis
+                > minIntervalMillis) {
+            mAtoms.satelliteControllerPullTimestampMillis = getWallTimeMillis();
+            SatelliteController[] statsArray = mAtoms.satelliteController;
+            mAtoms.satelliteController = new SatelliteController[0];
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
+            return statsArray;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Returns and clears the {@link SatelliteSession} stats if last pulled longer than {@code
+     * minIntervalMillis} ago, otherwise returns {@code null}.
+     */
+    @Nullable
+    public synchronized SatelliteSession[] getSatelliteSessionStats(long minIntervalMillis) {
+        if (getWallTimeMillis() - mAtoms.satelliteSessionPullTimestampMillis
+                > minIntervalMillis) {
+            mAtoms.satelliteSessionPullTimestampMillis = getWallTimeMillis();
+            SatelliteSession[] statsArray = mAtoms.satelliteSession;
+            mAtoms.satelliteSession = new SatelliteSession[0];
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
+            return statsArray;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Returns and clears the {@link SatelliteIncomingDatagram} stats if last pulled longer than
+     * {@code minIntervalMillis} ago, otherwise returns {@code null}.
+     */
+    @Nullable
+    public synchronized SatelliteIncomingDatagram[] getSatelliteIncomingDatagramStats(
+            long minIntervalMillis) {
+        if (getWallTimeMillis() - mAtoms.satelliteIncomingDatagramPullTimestampMillis
+                > minIntervalMillis) {
+            mAtoms.satelliteIncomingDatagramPullTimestampMillis = getWallTimeMillis();
+            SatelliteIncomingDatagram[] statsArray = mAtoms.satelliteIncomingDatagram;
+            mAtoms.satelliteIncomingDatagram = new SatelliteIncomingDatagram[0];
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
+            return statsArray;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Returns and clears the {@link SatelliteOutgoingDatagram} stats if last pulled longer than
+     * {@code minIntervalMillis} ago, otherwise returns {@code null}.
+     */
+    @Nullable
+    public synchronized SatelliteOutgoingDatagram[] getSatelliteOutgoingDatagramStats(
+            long minIntervalMillis) {
+        if (getWallTimeMillis() - mAtoms.satelliteOutgoingDatagramPullTimestampMillis
+                > minIntervalMillis) {
+            mAtoms.satelliteOutgoingDatagramPullTimestampMillis = getWallTimeMillis();
+            SatelliteOutgoingDatagram[] statsArray = mAtoms.satelliteOutgoingDatagram;
+            mAtoms.satelliteOutgoingDatagram = new SatelliteOutgoingDatagram[0];
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
+            return statsArray;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Returns and clears the {@link SatelliteProvision} stats if last pulled longer than {@code
+     * minIntervalMillis} ago, otherwise returns {@code null}.
+     */
+    @Nullable
+    public synchronized SatelliteProvision[] getSatelliteProvisionStats(long minIntervalMillis) {
+        if (getWallTimeMillis() - mAtoms.satelliteProvisionPullTimestampMillis
+                > minIntervalMillis) {
+            mAtoms.satelliteProvisionPullTimestampMillis = getWallTimeMillis();
+            SatelliteProvision[] statsArray = mAtoms.satelliteProvision;
+            mAtoms.satelliteProvision = new SatelliteProvision[0];
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
+            return statsArray;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Returns and clears the {@link SatelliteSosMessageRecommender} stats if last pulled longer
+     * than {@code minIntervalMillis} ago, otherwise returns {@code null}.
+     */
+    @Nullable
+    public synchronized SatelliteSosMessageRecommender[] getSatelliteSosMessageRecommenderStats(
+            long minIntervalMillis) {
+        if (getWallTimeMillis() - mAtoms.satelliteSosMessageRecommenderPullTimestampMillis
+                > minIntervalMillis) {
+            mAtoms.satelliteProvisionPullTimestampMillis = getWallTimeMillis();
+            SatelliteSosMessageRecommender[] statsArray = mAtoms.satelliteSosMessageRecommender;
+            mAtoms.satelliteSosMessageRecommender = new SatelliteSosMessageRecommender[0];
+            saveAtomsToFile(SAVE_TO_FILE_DELAY_FOR_GET_MILLIS);
+            return statsArray;
+        } else {
+            return null;
+        }
+    }
+
     /** Saves {@link PersistAtoms} to a file in private storage immediately. */
     public synchronized void flushAtoms() {
         saveAtomsToFile(0);
@@ -1366,6 +1583,19 @@ public class PersistAtomsStorage {
                     );
             atoms.outgoingShortCodeSms = sanitizeAtoms(atoms.outgoingShortCodeSms,
                     OutgoingShortCodeSms.class, mMaxOutgoingShortCodeSms);
+            atoms.satelliteController = sanitizeAtoms(atoms.satelliteController,
+                            SatelliteController.class, mMaxNumSatelliteControllerStats);
+            atoms.satelliteSession = sanitizeAtoms(atoms.satelliteSession,
+                    SatelliteSession.class, mMaxNumSatelliteStats);
+            atoms.satelliteIncomingDatagram = sanitizeAtoms(atoms.satelliteIncomingDatagram,
+                            SatelliteIncomingDatagram.class, mMaxNumSatelliteStats);
+            atoms.satelliteOutgoingDatagram = sanitizeAtoms(atoms.satelliteOutgoingDatagram,
+                            SatelliteOutgoingDatagram.class, mMaxNumSatelliteStats);
+            atoms.satelliteProvision = sanitizeAtoms(atoms.satelliteProvision,
+                            SatelliteProvision.class, mMaxNumSatelliteStats);
+            atoms.satelliteSosMessageRecommender = sanitizeAtoms(
+                    atoms.satelliteSosMessageRecommender, SatelliteSosMessageRecommender.class,
+                    mMaxNumSatelliteStats);
 
             // out of caution, sanitize also the timestamps
             atoms.voiceCallRatUsagePullTimestampMillis =
@@ -1416,7 +1646,18 @@ public class PersistAtomsStorage {
                     sanitizeTimestamp(atoms.gbaEventPullTimestampMillis);
             atoms.outgoingShortCodeSmsPullTimestampMillis =
                     sanitizeTimestamp(atoms.outgoingShortCodeSmsPullTimestampMillis);
-
+            atoms.satelliteControllerPullTimestampMillis =
+                    sanitizeTimestamp(atoms.satelliteControllerPullTimestampMillis);
+            atoms.satelliteSessionPullTimestampMillis =
+                    sanitizeTimestamp(atoms.satelliteSessionPullTimestampMillis);
+            atoms.satelliteIncomingDatagramPullTimestampMillis =
+                    sanitizeTimestamp(atoms.satelliteIncomingDatagramPullTimestampMillis);
+            atoms.satelliteOutgoingDatagramPullTimestampMillis =
+                    sanitizeTimestamp(atoms.satelliteOutgoingDatagramPullTimestampMillis);
+            atoms.satelliteProvisionPullTimestampMillis =
+                    sanitizeTimestamp(atoms.satelliteProvisionPullTimestampMillis);
+            atoms.satelliteSosMessageRecommenderPullTimestampMillis =
+                    sanitizeTimestamp(atoms.satelliteSosMessageRecommenderPullTimestampMillis);
             return atoms;
         } catch (NoSuchFileException e) {
             Rlog.d(TAG, "PersistAtoms file not found");
@@ -1799,6 +2040,39 @@ public class PersistAtomsStorage {
     }
 
     /**
+     * Returns SatelliteOutgoingDatagram atom that has same values or {@code null}
+     * if it does not exist.
+     */
+    private @Nullable SatelliteSession find(
+            SatelliteSession key) {
+        for (SatelliteSession stats : mAtoms.satelliteSession) {
+            if (stats.satelliteServiceInitializationResult
+                    == key.satelliteServiceInitializationResult
+                    && stats.satelliteTechnology == key.satelliteTechnology) {
+                return stats;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns SatelliteOutgoingDatagram atom that has same values or {@code null}
+     * if it does not exist.
+     */
+    private @Nullable SatelliteSosMessageRecommender find(
+            SatelliteSosMessageRecommender key) {
+        for (SatelliteSosMessageRecommender stats : mAtoms.satelliteSosMessageRecommender) {
+            if (stats.isDisplaySosMessageSent == key.isDisplaySosMessageSent
+                    && stats.countOfTimerStarted == key.countOfTimerStarted
+                    && stats.isImsRegistered == key.isImsRegistered
+                    && stats.cellularServiceState == key.cellularServiceState) {
+                return stats;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Inserts a new element in a random position in an array with a maximum size.
      *
      * <p>If the array is full, merge with existing item if possible or replace one item randomly.
@@ -2044,6 +2318,12 @@ public class PersistAtomsStorage {
         atoms.presenceNotifyEventPullTimestampMillis = currentTime;
         atoms.gbaEventPullTimestampMillis = currentTime;
         atoms.outgoingShortCodeSmsPullTimestampMillis = currentTime;
+        atoms.satelliteControllerPullTimestampMillis = currentTime;
+        atoms.satelliteSessionPullTimestampMillis = currentTime;
+        atoms.satelliteIncomingDatagramPullTimestampMillis = currentTime;
+        atoms.satelliteOutgoingDatagramPullTimestampMillis = currentTime;
+        atoms.satelliteProvisionPullTimestampMillis = currentTime;
+        atoms.satelliteSosMessageRecommenderPullTimestampMillis = currentTime;
 
         Rlog.d(TAG, "created new PersistAtoms");
         return atoms;
