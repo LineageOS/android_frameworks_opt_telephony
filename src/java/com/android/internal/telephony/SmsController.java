@@ -32,6 +32,7 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.TelephonyServiceManager.ServiceRegisterer;
+import android.os.UserHandle;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SmsManager;
@@ -156,6 +157,14 @@ public class SmsController extends ISmsImplBase {
             callingPackage = getCallingPackage();
         }
 
+        // Check if user is associated with the subscription
+        if (!TelephonyPermissions.checkSubscriptionAssociatedWithUser(mContext, subId,
+                Binder.getCallingUserHandle())) {
+            // TODO(b/258629881): Display error dialog.
+            sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_USER_NOT_ALLOWED);
+            return;
+        }
+
         // Perform FDN check
         if (isNumberBlockedByFDN(subId, destAddr, callingPackage)) {
             sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE);
@@ -203,6 +212,14 @@ public class SmsController extends ISmsImplBase {
         if (!getSmsPermissions(subId).checkCallingCanSendText(persistMessageForNonDefaultSmsApp,
                 callingPackage, callingAttributionTag, "Sending SMS message")) {
             sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
+            return;
+        }
+
+        // Check if user is associated with the subscription
+        if (!TelephonyPermissions.checkSubscriptionAssociatedWithUser(mContext, subId,
+                Binder.getCallingUserHandle())) {
+            // TODO(b/258629881): Display error dialog.
+            sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_USER_NOT_ALLOWED);
             return;
         }
 
@@ -279,6 +296,14 @@ public class SmsController extends ISmsImplBase {
             callingPackage = getCallingPackage();
         }
 
+        // Check if user is associated with the subscription
+        if (!TelephonyPermissions.checkSubscriptionAssociatedWithUser(mContext, subId,
+                Binder.getCallingUserHandle())) {
+            // TODO(b/258629881): Display error dialog.
+            sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_USER_NOT_ALLOWED);
+            return;
+        }
+
         // Perform FDN check
         if (isNumberBlockedByFDN(subId, destAddr, callingPackage)) {
             sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE);
@@ -308,6 +333,14 @@ public class SmsController extends ISmsImplBase {
             callingPackage = getCallingPackage();
         }
 
+        // Check if user is associated with the subscription
+        if (!TelephonyPermissions.checkSubscriptionAssociatedWithUser(mContext, subId,
+                Binder.getCallingUserHandle())) {
+            // TODO(b/258629881): Display error dialog.
+            sendErrorInPendingIntents(sentIntents, SmsManager.RESULT_USER_NOT_ALLOWED);
+            return;
+        }
+
         // Perform FDN check
         if (isNumberBlockedByFDN(subId, destAddr, callingPackage)) {
             sendErrorInPendingIntents(sentIntents, SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE);
@@ -333,6 +366,14 @@ public class SmsController extends ISmsImplBase {
             boolean persistMessage, int priority, boolean expectMore, int validityPeriod) {
         if (callingPackage == null) {
             callingPackage = getCallingPackage();
+        }
+
+        // Check if user is associated with the subscription
+        if (!TelephonyPermissions.checkSubscriptionAssociatedWithUser(mContext, subId,
+                Binder.getCallingUserHandle())) {
+            // TODO(b/258629881): Display error dialog.
+            sendErrorInPendingIntents(sentIntents, SmsManager.RESULT_USER_NOT_ALLOWED);
+            return;
         }
 
         // Perform FDN check
@@ -772,6 +813,14 @@ public class SmsController extends ISmsImplBase {
         if(getPhone(subId).isInEcm()) {
             Rlog.d(LOG_TAG, "sendVisualVoicemailSmsForSubscriber: Do not send non-emergency "
                 + "SMS in ECBM as it forces device to exit ECBM.");
+            return;
+        }
+
+        // Check if user is associated with the subscription
+        if (!TelephonyPermissions.checkSubscriptionAssociatedWithUser(mContext, subId,
+                Binder.getCallingUserHandle())) {
+            // TODO(b/258629881): Display error dialog.
+            sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_USER_NOT_ALLOWED);
             return;
         }
 
