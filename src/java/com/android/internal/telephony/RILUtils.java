@@ -4634,12 +4634,14 @@ public class RILUtils {
     public static PhoneCapability convertHalPhoneCapability(int[] deviceNrCapabilities, Object o) {
         int maxActiveVoiceCalls = 0;
         int maxActiveData = 0;
+        int maxActiveInternetData = 0;
         boolean validationBeforeSwitchSupported = false;
         List<ModemInfo> logicalModemList = new ArrayList<>();
         if (o instanceof android.hardware.radio.config.PhoneCapability) {
             final android.hardware.radio.config.PhoneCapability phoneCapability =
                     (android.hardware.radio.config.PhoneCapability) o;
             maxActiveData = phoneCapability.maxActiveData;
+            maxActiveInternetData = phoneCapability.maxActiveInternetData;
             validationBeforeSwitchSupported = phoneCapability.isInternetLingeringSupported;
             for (int modemId : phoneCapability.logicalModemIds) {
                 logicalModemList.add(new ModemInfo(modemId));
@@ -4648,13 +4650,16 @@ public class RILUtils {
             final android.hardware.radio.config.V1_1.PhoneCapability phoneCapability =
                     (android.hardware.radio.config.V1_1.PhoneCapability) o;
             maxActiveData = phoneCapability.maxActiveData;
+            maxActiveInternetData = phoneCapability.maxActiveInternetData;
             validationBeforeSwitchSupported = phoneCapability.isInternetLingeringSupported;
             for (android.hardware.radio.config.V1_1.ModemInfo modemInfo :
                     phoneCapability.logicalModemList) {
                 logicalModemList.add(new ModemInfo(modemInfo.modemId));
             }
         }
-        maxActiveVoiceCalls = maxActiveData;
+        // maxActiveInternetData defines how many logical modems can have internet PDN connections
+        // simultaneously. For L+L DSDS modem it’s 1, and for DSDA modem it’s 2.
+        maxActiveVoiceCalls = maxActiveInternetData;
         return new PhoneCapability(maxActiveVoiceCalls, maxActiveData, logicalModemList,
                 validationBeforeSwitchSupported, deviceNrCapabilities);
     }
