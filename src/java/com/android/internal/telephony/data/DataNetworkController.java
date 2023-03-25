@@ -780,8 +780,7 @@ public class DataNetworkController extends Handler {
 
         mAccessNetworksManager = phone.getAccessNetworksManager();
         for (int transport : mAccessNetworksManager.getAvailableTransports()) {
-            mDataServiceManagers.put(transport, new DataServiceManager(mPhone, looper,
-                    AccessNetworkConstants.TRANSPORT_TYPE_WWAN));
+            mDataServiceManagers.put(transport, new DataServiceManager(mPhone, looper, transport));
         }
 
         mDataConfigManager = new DataConfigManager(mPhone, looper);
