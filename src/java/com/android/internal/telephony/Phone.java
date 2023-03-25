@@ -5316,6 +5316,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Check whether the satellite modem is provisioned.
+     * @param result The Message to send the result of the operation to.
+     */
+    public void isSatelliteProvisioned(Message result) {
+        mCi.getSatelliteProvisionState(result);
+    }
+
+    /**
      * Get the satellite capabilities.
      * @param result The Message to send the result of the operation to.
      */
