@@ -442,6 +442,11 @@ public class DatagramReceiver extends Handler {
                             SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_FAILED,
                             mDatagramController.getReceivePendingCount(), error);
 
+                    mDatagramController.updateReceiveStatus(request.subId,
+                            SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE,
+                            mDatagramController.getReceivePendingCount(),
+                            SatelliteManager.SATELLITE_ERROR_NONE);
+
                     reportMetrics(null, error);
                     mControllerMetricsStats.reportIncomingDatagramCount(error);
                 }
