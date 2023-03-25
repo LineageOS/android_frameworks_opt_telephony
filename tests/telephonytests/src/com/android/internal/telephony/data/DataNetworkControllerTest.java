@@ -3523,7 +3523,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
     @Test
     public void testHandoverDataNetworkSourceOos() throws Exception {
         testSetupImsDataNetwork();
-        // Configured handover is allowed from OOS to 4G/5G/IWLAN.
+        // Configured handover is disallowed from OOS to 4G/5G/IWLAN.
         mCarrierConfig.putStringArray(
                 CarrierConfigManager.KEY_IWLAN_HANDOVER_POLICY_STRING_ARRAY,
                 new String[]{
