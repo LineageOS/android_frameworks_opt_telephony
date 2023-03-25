@@ -941,21 +941,33 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @Test
     public void testGetAccessibleSubscriptionInfoList() {
+        doReturn(true).when(mEuiccManager).isEnabled();
+        insertSubscription(FAKE_SUBSCRIPTION_INFO2);
+
+        doReturn(true).when(mSubscriptionManager).canManageSubscription(
+                any(SubscriptionInfo.class), eq(CALLING_PACKAGE));
+        // FAKE_SUBSCRIPTION_INFO2 is a not eSIM. So the list should be empty.
+        assertThat(mSubscriptionManagerServiceUT.getAccessibleSubscriptionInfoList(
+                CALLING_PACKAGE)).isEmpty();
+
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
 
         doReturn(false).when(mEuiccManager).isEnabled();
         assertThat(mSubscriptionManagerServiceUT.getAccessibleSubscriptionInfoList(
                 CALLING_PACKAGE)).isNull();
 
+        doReturn(false).when(mSubscriptionManager).canManageSubscription(
+                any(SubscriptionInfo.class), eq(CALLING_PACKAGE));
+
         doReturn(true).when(mEuiccManager).isEnabled();
         assertThat(mSubscriptionManagerServiceUT.getAccessibleSubscriptionInfoList(
                 CALLING_PACKAGE)).isEmpty();
 
         doReturn(true).when(mSubscriptionManager).canManageSubscription(
-                eq(FAKE_SUBSCRIPTION_INFO1.toSubscriptionInfo()), eq(CALLING_PACKAGE));
-
+                any(SubscriptionInfo.class), eq(CALLING_PACKAGE));
         assertThat(mSubscriptionManagerServiceUT.getAccessibleSubscriptionInfoList(
-                CALLING_PACKAGE)).isEqualTo(List.of(FAKE_SUBSCRIPTION_INFO1.toSubscriptionInfo()));
+                CALLING_PACKAGE)).isEqualTo(List.of(new SubscriptionInfoInternal.Builder(
+                        FAKE_SUBSCRIPTION_INFO1).setId(2).build().toSubscriptionInfo()));
     }
 
     @Test

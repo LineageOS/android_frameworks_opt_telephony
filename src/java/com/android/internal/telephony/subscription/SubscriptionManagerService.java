@@ -1919,8 +1919,8 @@ public class SubscriptionManagerService extends ISub.Stub {
 
         return mSubscriptionDatabaseManager.getAllSubscriptions().stream()
                 .map(SubscriptionInfoInternal::toSubscriptionInfo)
-                .filter(subInfo -> mSubscriptionManager
-                        .canManageSubscription(subInfo, callingPackage))
+                .filter(subInfo -> subInfo.isEmbedded()
+                        && mSubscriptionManager.canManageSubscription(subInfo, callingPackage))
                 .sorted(Comparator.comparing(SubscriptionInfo::getSimSlotIndex)
                         .thenComparing(SubscriptionInfo::getSubscriptionId))
                 .collect(Collectors.toList());
@@ -3559,6 +3559,7 @@ public class SubscriptionManagerService extends ISub.Stub {
             }
 
             UserHandle userHandle = UserHandle.of(subInfo.getUserId());
+            log("getSubscriptionUserHandle subId = " + subId + " userHandle = " + userHandle);
             if (userHandle.getIdentifier() == UserHandle.USER_NULL) {
                 return null;
             }
