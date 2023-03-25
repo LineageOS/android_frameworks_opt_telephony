@@ -91,6 +91,7 @@ public class SatelliteSessionController extends StateMachine {
     private final long mSatelliteStayAtListeningFromSendingMillis;
     private final long mSatelliteStayAtListeningFromReceivingMillis;
     private final ConcurrentHashMap<IBinder, ISatelliteStateCallback> mListeners;
+    @SatelliteManager.SatelliteModemState private int mCurrentState;
 
     /**
      * @return The singleton instance of SatelliteSessionController.
@@ -147,6 +148,7 @@ public class SatelliteSessionController extends StateMachine {
         mSatelliteStayAtListeningFromReceivingMillis = satelliteStayAtListeningFromReceivingMillis;
         mListeners = new ConcurrentHashMap<>();
         mIsSendingTriggeredDuringTransferringState = new AtomicBoolean(false);
+        mCurrentState = SatelliteManager.SATELLITE_MODEM_STATE_UNKNOWN;
 
         addState(mUnavailableState);
         addState(mPowerOffState);
@@ -192,7 +194,12 @@ public class SatelliteSessionController extends StateMachine {
      * @param callback The callback to handle the satellite modem state changed event.
      */
     public void registerForSatelliteModemStateChanged(@NonNull ISatelliteStateCallback callback) {
-        mListeners.put(callback.asBinder(), callback);
+        try {
+            callback.onSatelliteModemStateChanged(mCurrentState);
+            mListeners.put(callback.asBinder(), callback);
+        } catch (RemoteException ex) {
+            loge("registerForSatelliteModemStateChanged: Got RemoteException ex=" + ex);
+        }
     }
 
     /**
@@ -221,6 +228,7 @@ public class SatelliteSessionController extends StateMachine {
         @Override
         public void enter() {
             if (DBG) logd("Entering UnavailableState");
+            mCurrentState = SatelliteManager.SATELLITE_MODEM_STATE_UNAVAILABLE;
         }
 
         @Override
@@ -234,6 +242,7 @@ public class SatelliteSessionController extends StateMachine {
         @Override
         public void enter() {
             if (DBG) logd("Entering PowerOffState");
+            mCurrentState = SatelliteManager.SATELLITE_MODEM_STATE_OFF;
             mIsSendingTriggeredDuringTransferringState.set(false);
             notifyStateChangedEvent(SatelliteManager.SATELLITE_MODEM_STATE_OFF);
         }
@@ -253,8 +262,6 @@ public class SatelliteSessionController extends StateMachine {
         private void handleSatelliteEnabledStateChanged(boolean on) {
             if (on) {
                 transitionTo(mIdleState);
-            } else {
-                loge("PowerOffState: Unexpected satellite radio powered-off state changed event");
             }
         }
     }
@@ -263,6 +270,7 @@ public class SatelliteSessionController extends StateMachine {
         @Override
         public void enter() {
             if (DBG) logd("Entering IdleState");
+            mCurrentState = SatelliteManager.SATELLITE_MODEM_STATE_IDLE;
             mIsSendingTriggeredDuringTransferringState.set(false);
             notifyStateChangedEvent(SatelliteManager.SATELLITE_MODEM_STATE_IDLE);
         }
@@ -296,6 +304,7 @@ public class SatelliteSessionController extends StateMachine {
         @Override
         public void enter() {
             if (DBG) logd("Entering TransferringState");
+            mCurrentState = SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING;
             notifyStateChangedEvent(SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING);
         }
 
@@ -333,8 +342,9 @@ public class SatelliteSessionController extends StateMachine {
     private class ListeningState extends State {
         @Override
         public void enter() {
-            if (DBG) logd("Entering TransferringState");
+            if (DBG) logd("Entering ListeningState");
 
+            mCurrentState = SatelliteManager.SATELLITE_MODEM_STATE_LISTENING;
             long timeoutMillis = updateListeningMode(true);
             sendMessageDelayed(EVENT_LISTENING_TIMER_TIMEOUT, timeoutMillis);
             mIsSendingTriggeredDuringTransferringState.set(false);
