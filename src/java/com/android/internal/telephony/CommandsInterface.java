@@ -3035,6 +3035,13 @@ public interface CommandsInterface {
     default void getSatellitePowerState(Message result) {}
 
     /**
+     * Get satellite provision state.
+     *
+     * @param result Message that will be sent back to the requester
+     */
+    default void getSatelliteProvisionState(Message result) {}
+
+    /**
      * Check whether satellite modem is supported by the device.
      *
      * @param result Message that will be sent back to the requester
