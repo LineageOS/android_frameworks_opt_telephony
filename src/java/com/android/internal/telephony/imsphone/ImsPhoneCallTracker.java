@@ -3700,6 +3700,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 cause = DisconnectCause.IMS_MERGED_SUCCESSFULLY;
             }
 
+            // Ensure the background call is correctly marked as MERGE_COMPLETE before it is
+            // disconnected as part of the IMS merge conference process:
+            if (cause == DisconnectCause.IMS_MERGED_SUCCESSFULLY && conn != null) {
+                conn.onConnectionEvent(android.telecom.Connection.EVENT_MERGE_COMPLETE, null);
+            }
+
             EmergencyNumberTracker emergencyNumberTracker = null;
             EmergencyNumber num = null;
 
