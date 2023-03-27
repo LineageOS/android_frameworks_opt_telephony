@@ -65,7 +65,6 @@ public class SatelliteModemInterface {
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     @NonNull protected final ExponentialBackoff mExponentialBackoff;
     @NonNull private final Object mLock = new Object();
-    @NonNull private final SatelliteController mSatelliteController;
     /**
      * {@code true} to use the vendor satellite service and {@code false} to use the HAL.
      */
@@ -151,14 +150,11 @@ public class SatelliteModemInterface {
     /**
      * Create the SatelliteModemInterface singleton instance.
      * @param context The Context to use to create the SatelliteModemInterface.
-     * @param satelliteController The singleton instance of SatelliteController.
      * @return The singleton instance of SatelliteModemInterface.
      */
-    public static SatelliteModemInterface make(@NonNull Context context,
-            SatelliteController satelliteController) {
+    public static SatelliteModemInterface make(@NonNull Context context) {
         if (sInstance == null) {
-            sInstance = new SatelliteModemInterface(
-                    context, satelliteController, Looper.getMainLooper());
+            sInstance = new SatelliteModemInterface(context, Looper.getMainLooper());
         }
         return sInstance;
     }
@@ -170,11 +166,9 @@ public class SatelliteModemInterface {
      * @param looper The Looper to run binding retry on.
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
-    protected SatelliteModemInterface(@NonNull Context context,
-            SatelliteController satelliteController, @NonNull Looper looper) {
+    protected SatelliteModemInterface(@NonNull Context context, @NonNull Looper looper) {
         mContext = context;
         mIsSatelliteServiceSupported = getSatelliteServiceSupport();
-        mSatelliteController = satelliteController;
         mExponentialBackoff = new ExponentialBackoff(REBIND_INITIAL_DELAY, REBIND_MAXIMUM_DELAY,
                 REBIND_MULTIPLIER, looper, () -> {
             synchronized (mLock) {
@@ -286,7 +280,6 @@ public class SatelliteModemInterface {
                 // TODO: Retry setSatelliteListener
                 logd("setSatelliteListener: RemoteException " + e);
             }
-            mSatelliteController.onSatelliteServiceConnected();
         }
 
         @Override
