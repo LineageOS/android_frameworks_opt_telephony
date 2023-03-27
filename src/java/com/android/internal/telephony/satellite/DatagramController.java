@@ -186,7 +186,6 @@ public class DatagramController {
         mSendErrorCode = errorCode;
         mPointingAppController.updateSendDatagramTransferState(subId, datagramTransferState,
                 sendPendingCount, errorCode);
-        notifyDatagramTransferStateChangedToSessionController();
     }
 
     /**
@@ -211,7 +210,6 @@ public class DatagramController {
         mReceiveErrorCode = errorCode;
         mPointingAppController.updateReceiveDatagramTransferState(subId, datagramTransferState,
                 receivePendingCount, errorCode);
-        notifyDatagramTransferStateChangedToSessionController();
     }
 
     /**
@@ -220,17 +218,6 @@ public class DatagramController {
      */
     public int getReceivePendingCount() {
         return mReceivePendingCount;
-    }
-
-    private void notifyDatagramTransferStateChangedToSessionController() {
-        SatelliteSessionController sessionController = SatelliteSessionController.getInstance();
-        if (sessionController == null) {
-            loge("notifyDatagramTransferStateChangeToSessionController: SatelliteSessionController"
-                    + " is not initialized yet");
-        } else {
-            sessionController.onDatagramTransferStateChanged(
-                    mSendDatagramTransferState, mReceiveDatagramTransferState);
-        }
     }
 
     private static void logd(@NonNull String log) {
