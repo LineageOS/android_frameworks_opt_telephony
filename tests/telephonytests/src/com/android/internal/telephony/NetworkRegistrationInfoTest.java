@@ -85,6 +85,6 @@ public class NetworkRegistrationInfoTest {
         nri.setRoamingType(ServiceState.ROAMING_TYPE_NOT_ROAMING);
         assertEquals(NetworkRegistrationInfo.REGISTRATION_STATE_HOME, nri.getRegistrationState());
         assertEquals(NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING,
-                nri.getInitialRegistrationState());
+                nri.getNetworkRegistrationState());
     }
 }
