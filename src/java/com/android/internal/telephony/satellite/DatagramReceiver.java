@@ -445,6 +445,8 @@ public class DatagramReceiver extends Handler {
             satelliteDatagramListenerHandler = new SatelliteDatagramListenerHandler(
                     mBackgroundHandler.getLooper(), validSubId);
             if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
+                // TODO: remove this as SatelliteModemInterface can register for incoming datagrams
+                // on boot up itself.
                 SatelliteModemInterface.getInstance().registerForSatelliteDatagramsReceived(
                         satelliteDatagramListenerHandler,
                         SatelliteDatagramListenerHandler.EVENT_SATELLITE_DATAGRAM_RECEIVED, null);
@@ -543,4 +545,6 @@ public class DatagramReceiver extends Handler {
     private static void loge(@NonNull String log) {
         Rlog.e(TAG, log);
     }
+
+    // TODO: An api change - do not pass the binder from Telephony to Applications
 }
