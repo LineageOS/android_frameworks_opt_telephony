@@ -38,6 +38,7 @@ public class DatagramController {
     @NonNull private final DatagramDispatcher mDatagramDispatcher;
     @NonNull private final DatagramReceiver mDatagramReceiver;
     public static final long MAX_DATAGRAM_ID = (long) Math.pow(2, 16);
+    public static final int ROUNDING_UNIT = 10;
 
     /** Variables used to update onSendDatagramStateChanged(). */
     private int mSendSubId;
