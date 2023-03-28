@@ -292,17 +292,6 @@ public class PhoneSwitcher extends Handler {
 
     private ISetOpportunisticDataCallback mSetOpptSubCallback;
 
-    /** Data config manager callback for updating device config. **/
-    private final DataConfigManager.DataConfigManagerCallback mDataConfigManagerCallback =
-            new DataConfigManager.DataConfigManagerCallback(this::post) {
-
-        @Override
-        public void onCarrierConfigChanged() {
-            log("onCarrierConfigChanged");
-            PhoneSwitcher.this.updateCarrierConfig();
-        }
-    };
-
     private static final int EVENT_PRIMARY_DATA_SUB_CHANGED       = 101;
     protected static final int EVENT_SUBSCRIPTION_CHANGED         = 102;
     private static final int EVENT_REQUEST_NETWORK                = 103;
@@ -588,6 +577,8 @@ public class PhoneSwitcher extends Handler {
         if (mActiveModemCount > 0) {
             PhoneFactory.getPhone(0).mCi.registerForOn(this, EVENT_RADIO_ON, null);
         }
+
+        readDeviceResourceConfig();
 
         TelephonyRegistryManager telephonyRegistryManager = (TelephonyRegistryManager)
                 context.getSystemService(Context.TELEPHONY_REGISTRY_SERVICE);
@@ -914,51 +905,40 @@ public class PhoneSwitcher extends Handler {
                 break;
             }
             case EVENT_PROCESS_SIM_STATE_CHANGE: {
-                int slotIndex = (int) msg.arg1;
-                int simState = (int) msg.arg2;
+                int slotIndex = msg.arg1;
+                int simState = msg.arg2;
 
                 if (!SubscriptionManager.isValidSlotIndex(slotIndex)) {
                     logl("EVENT_PROCESS_SIM_STATE_CHANGE: skip processing due to invalid slotId: "
                             + slotIndex);
-                } else if (mCurrentDdsSwitchFailure.get(slotIndex).contains(
+                } else if (TelephonyManager.SIM_STATE_LOADED == simState) {
+                    if (mCurrentDdsSwitchFailure.get(slotIndex).contains(
                         CommandException.Error.INVALID_SIM_STATE)
                         && (TelephonyManager.SIM_STATE_LOADED == simState)
                         && isSimApplicationReady(slotIndex)) {
-                    sendRilCommands(slotIndex);
+                        sendRilCommands(slotIndex);
+                    }
+                    // SIM loaded after subscriptions slot mapping are done. Evaluate for auto
+                    // data switch.
+                    sendEmptyMessage(EVENT_EVALUATE_AUTO_SWITCH);
                 }
-
-                registerConfigChange();
                 break;
             }
         }
     }
 
     /**
-     * Register for config change on the primary data phone.
+     * Read the default device config from any default phone because the resource config are per
+     * device. No need to register callback for the same reason.
      */
-    private void registerConfigChange() {
-        Phone phone = getPhoneBySubId(mPrimaryDataSubId);
-        if (phone != null) {
-            DataConfigManager dataConfig = phone.getDataNetworkController().getDataConfigManager();
-            dataConfig.registerCallback(mDataConfigManagerCallback);
-            updateCarrierConfig();
-            sendEmptyMessage(EVENT_EVALUATE_AUTO_SWITCH);
-        }
-    }
-
-    /**
-     * Update carrier config.
-     */
-    private void updateCarrierConfig() {
-        Phone phone = getPhoneBySubId(mPrimaryDataSubId);
-        if (phone != null) {
-            DataConfigManager dataConfig = phone.getDataNetworkController().getDataConfigManager();
-            mRequirePingTestBeforeDataSwitch = dataConfig.isPingTestBeforeAutoDataSwitchRequired();
-            mAutoDataSwitchAvailabilityStabilityTimeThreshold =
-                    dataConfig.getAutoDataSwitchAvailabilityStabilityTimeThreshold();
-            mAutoDataSwitchValidationMaxRetry =
-                    dataConfig.getAutoDataSwitchValidationMaxRetry();
-        }
+    private void readDeviceResourceConfig() {
+        Phone phone = PhoneFactory.getDefaultPhone();
+        DataConfigManager dataConfig = phone.getDataNetworkController().getDataConfigManager();
+        mRequirePingTestBeforeDataSwitch = dataConfig.isPingTestBeforeAutoDataSwitchRequired();
+        mAutoDataSwitchAvailabilityStabilityTimeThreshold =
+                dataConfig.getAutoDataSwitchAvailabilityStabilityTimeThreshold();
+        mAutoDataSwitchValidationMaxRetry =
+                dataConfig.getAutoDataSwitchValidationMaxRetry();
     }
 
     private synchronized void onMultiSimConfigChanged(int activeModemCount) {
