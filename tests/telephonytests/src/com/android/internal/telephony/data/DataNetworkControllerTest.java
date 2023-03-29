@@ -3678,7 +3678,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
                 TelephonyManager.DATA_ENABLED_REASON_USER, false, mContext.getOpPackageName());
         processAllMessages();
-        doReturn(true).when(mPhone).isInEmergencyCall();
+        doReturn(true).when(mTelecomManager).isInEmergencyCall();
         mDataNetworkControllerUT.addNetworkRequest(
                 createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_SUPL));
         processAllMessages();
@@ -3692,7 +3692,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
     @Test
     public void testEmergencyCallDataDisabled() throws Exception {
-        doReturn(true).when(mPhone).isInEmergencyCall();
+        doReturn(true).when(mTelecomManager).isInEmergencyCall();
         mDataNetworkControllerUT.addNetworkRequest(
                 createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
         processAllMessages();
