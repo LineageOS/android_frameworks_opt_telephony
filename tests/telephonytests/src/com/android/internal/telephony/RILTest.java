@@ -111,6 +111,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
@@ -345,15 +346,13 @@ public class RILTest extends TelephonyTest {
                 RadioAccessFamily.getRafFromNetworkType(RILConstants.PREFERRED_NETWORK_MODE),
                 Phone.PREFERRED_CDMA_SUBSCRIPTION, 0, proxies);
         mRILUnderTest = spy(mRILInstance);
-        doReturn(mRadioProxy).when(mRILUnderTest).getRadioProxy(any());
-        doReturn(mDataProxy).when(mRILUnderTest).getRadioServiceProxy(eq(RadioDataProxy.class),
-                any());
+        doReturn(mRadioProxy).when(mRILUnderTest).getRadioProxy();
+        doReturn(mDataProxy).when(mRILUnderTest).getRadioServiceProxy(eq(RadioDataProxy.class));
         doReturn(mNetworkProxy).when(mRILUnderTest).getRadioServiceProxy(
-                eq(RadioNetworkProxy.class), any());
-        doReturn(mSimProxy).when(mRILUnderTest).getRadioServiceProxy(eq(RadioSimProxy.class),
-                any());
+                eq(RadioNetworkProxy.class));
+        doReturn(mSimProxy).when(mRILUnderTest).getRadioServiceProxy(eq(RadioSimProxy.class));
         doReturn(mRadioModemProxy).when(mRILUnderTest).getRadioServiceProxy(
-                eq(RadioModemProxy.class), any());
+                eq(RadioModemProxy.class));
         doReturn(false).when(mDataProxy).isEmpty();
         doReturn(false).when(mNetworkProxy).isEmpty();
         doReturn(false).when(mSimProxy).isEmpty();
@@ -2901,7 +2900,7 @@ public class RILTest extends TelephonyTest {
     @Test
     public void testAreUiccApplicationsEnabled_nullRadioProxy() throws Exception {
         // Not supported on Radio 1.0.
-        doReturn(null).when(mRILUnderTest).getRadioProxy(any());
+        doReturn(null).when(mRILUnderTest).getRadioProxy();
         Message message = obtainMessage();
         mRILUnderTest.areUiccApplicationsEnabled(message);
         processAllMessages();
@@ -2972,43 +2971,6 @@ public class RILTest extends TelephonyTest {
         Assert.assertEquals("REQUEST_NOT_SUPPORTED", ar.exception.getMessage());
     }
 
-    class RilErrorHandler extends Handler {
-        RilErrorHandler(Looper looper) {
-            super(looper);
-            mLatchErrRadioNotAvailable = new CountDownLatch(0);
-            mLatchErrSystem = new CountDownLatch(0);
-        }
-
-        void setLatchForRadioNotAvailableError(CountDownLatch latch) {
-            mLatchErrRadioNotAvailable = latch;
-        }
-
-        void setLatchForSystemError(CountDownLatch latch) {
-            mLatchErrRadioNotAvailable = latch;
-        }
-
-        CountDownLatch mLatchErrRadioNotAvailable;
-        CountDownLatch mLatchErrSystem;
-
-        @Override
-        public void handleMessage(Message msg) {
-            super.handleMessage(msg);
-            AsyncResult ar = (AsyncResult) msg.obj;
-            if (ar != null && ar.exception != null) {
-                CommandException.Error err = null;
-                if (ar.exception instanceof CommandException) {
-                    err = ((CommandException) (ar.exception)).getCommandError();
-                    if (err == CommandException.Error.RADIO_NOT_AVAILABLE) {
-                        mLatchErrRadioNotAvailable.countDown();
-                    }
-                    if (err == CommandException.Error.SYSTEM_ERR) {
-                        mLatchErrSystem.countDown();
-                    }
-                }
-            }
-        }
-    }
-
     @Test
     public void testRadioServiceInvokeHelper() throws Exception {
         CountDownLatch latch = new CountDownLatch(1);
@@ -3039,4 +3001,28 @@ public class RILTest extends TelephonyTest {
         assertEquals(mRILUnderTest.getRadioState(), TelephonyManager.RADIO_POWER_UNAVAILABLE);
     }
 
+
+    @Test
+    public void testRadioServiceNotAvailable() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        HandlerThread handlerThread = new HandlerThread("testRadioServiceNotAvailable");
+        handlerThread.start();
+        Handler handler = new Handler(handlerThread.getLooper()) {
+            public void handleMessage(Message msg) {
+                AsyncResult ar = (AsyncResult) msg.obj;
+                if (ar != null && ar.exception != null
+                        && ar.exception instanceof CommandException) {
+                    CommandException.Error err =
+                            ((CommandException) (ar.exception)).getCommandError();
+                    if (err == CommandException.Error.RADIO_NOT_AVAILABLE) {
+                        latch.countDown();
+                    }
+                }
+            }
+        };
+
+        when(mDataProxy.isEmpty()).thenReturn(true);
+        mRILUnderTest.getDataCallList(handler.obtainMessage());
+        assertTrue(latch.await(3, TimeUnit.SECONDS));
+    }
 }

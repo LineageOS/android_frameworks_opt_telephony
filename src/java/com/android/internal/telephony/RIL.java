@@ -511,7 +511,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         clearRequestList(RADIO_NOT_AVAILABLE, false);
 
         if (service == HAL_SERVICE_RADIO) {
-            getRadioProxy(null);
+            getRadioProxy();
         } else {
             for (int i = MIN_SERVICE_IDX; i <= MAX_SERVICE_IDX; i++) {
                 if (i == HAL_SERVICE_RADIO) continue;
@@ -520,7 +520,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     riljLoge("Null service proxy for service " + serviceToString(i));
                     continue;
                 }
-                getRadioServiceProxy(i, null);
+                getRadioServiceProxy(i);
             }
         }
     }
@@ -648,7 +648,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     /** Returns a {@link IRadio} instance or null if the service is not available. */
     @VisibleForTesting
-    public synchronized IRadio getRadioProxy(Message result) {
+    public synchronized IRadio getRadioProxy() {
         if (mHalVersion.containsKey(HAL_SERVICE_RADIO)
                 && mHalVersion.get(HAL_SERVICE_RADIO).greaterOrEqual(RADIO_HAL_VERSION_2_0)) {
             return null;
@@ -656,11 +656,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
         if (!SubscriptionManager.isValidPhoneId(mPhoneId)) return null;
         if (!mIsCellularSupported) {
             if (RILJ_LOGV) riljLog("getRadioProxy: Not calling getService(): wifi-only");
-            if (result != null) {
-                AsyncResult.forMessage(result, null,
-                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
-                result.sendToTarget();
-            }
             return null;
         }
 
@@ -755,11 +750,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
         if (mRadioProxy == null) {
             // getService() is a blocking call, so this should never happen
             riljLoge("getRadioProxy: mRadioProxy == null");
-            if (result != null) {
-                AsyncResult.forMessage(result, null,
-                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
-                result.sendToTarget();
-            }
         }
 
         return mRadioProxy;
@@ -771,31 +761,30 @@ public class RIL extends BaseCommands implements CommandsInterface {
      * {@link RadioImsProxy}, {@link RadioSatelliteProxy}, or null if the service is not available.
      */
     @NonNull
-    public <T extends RadioServiceProxy> T getRadioServiceProxy(Class<T> serviceClass,
-            Message result) {
+    public <T extends RadioServiceProxy> T getRadioServiceProxy(Class<T> serviceClass) {
         if (serviceClass == RadioDataProxy.class) {
-            return (T) getRadioServiceProxy(HAL_SERVICE_DATA, result);
+            return (T) getRadioServiceProxy(HAL_SERVICE_DATA);
         }
         if (serviceClass == RadioMessagingProxy.class) {
-            return (T) getRadioServiceProxy(HAL_SERVICE_MESSAGING, result);
+            return (T) getRadioServiceProxy(HAL_SERVICE_MESSAGING);
         }
         if (serviceClass == RadioModemProxy.class) {
-            return (T) getRadioServiceProxy(HAL_SERVICE_MODEM, result);
+            return (T) getRadioServiceProxy(HAL_SERVICE_MODEM);
         }
         if (serviceClass == RadioNetworkProxy.class) {
-            return (T) getRadioServiceProxy(HAL_SERVICE_NETWORK, result);
+            return (T) getRadioServiceProxy(HAL_SERVICE_NETWORK);
         }
         if (serviceClass == RadioSimProxy.class) {
-            return (T) getRadioServiceProxy(HAL_SERVICE_SIM, result);
+            return (T) getRadioServiceProxy(HAL_SERVICE_SIM);
         }
         if (serviceClass == RadioVoiceProxy.class) {
-            return (T) getRadioServiceProxy(HAL_SERVICE_VOICE, result);
+            return (T) getRadioServiceProxy(HAL_SERVICE_VOICE);
         }
         if (serviceClass == RadioImsProxy.class) {
-            return (T) getRadioServiceProxy(HAL_SERVICE_IMS, result);
+            return (T) getRadioServiceProxy(HAL_SERVICE_IMS);
         }
         if (serviceClass == RadioSatelliteProxy.class) {
-            return (T) getRadioServiceProxy(HAL_SERVICE_SATELLITE, result);
+            return (T) getRadioServiceProxy(HAL_SERVICE_SATELLITE);
         }
         riljLoge("getRadioServiceProxy: unrecognized " + serviceClass);
         return null;
@@ -807,18 +796,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @VisibleForTesting
     @NonNull
-    public synchronized RadioServiceProxy getRadioServiceProxy(int service, Message result) {
+    public synchronized RadioServiceProxy getRadioServiceProxy(int service) {
         if (!SubscriptionManager.isValidPhoneId(mPhoneId)) return mServiceProxies.get(service);
         if ((service >= HAL_SERVICE_IMS) && !isRadioServiceSupported(service)) {
             return mServiceProxies.get(service);
         }
         if (!mIsCellularSupported) {
             if (RILJ_LOGV) riljLog("getRadioServiceProxy: Not calling getService(): wifi-only");
-            if (result != null) {
-                AsyncResult.forMessage(result, null,
-                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
-                result.sendToTarget();
-            }
             return mServiceProxies.get(service);
         }
 
@@ -1113,11 +1097,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
         if (serviceProxy.isEmpty()) {
             // getService() is a blocking call, so this should never happen
             riljLoge("getRadioServiceProxy: serviceProxy == null");
-            if (result != null) {
-                AsyncResult.forMessage(result, null,
-                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
-                result.sendToTarget();
-            }
         }
 
         return serviceProxy;
@@ -1130,9 +1109,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             if (active) {
                 // Try to connect to RIL services and set response functions.
                 if (service == HAL_SERVICE_RADIO) {
-                    getRadioProxy(null);
+                    getRadioProxy();
                 } else {
-                    getRadioServiceProxy(service, null);
+                    getRadioServiceProxy(service);
                 }
             } else {
                 resetProxyAndRequestList(service);
@@ -1264,11 +1243,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
         // wakelock stuff is initialized above as callbacks are received on separate binder threads)
         for (int service = MIN_SERVICE_IDX; service <= MAX_SERVICE_IDX; service++) {
             if (service == HAL_SERVICE_RADIO) {
-                getRadioProxy(null);
+                getRadioProxy();
             } else {
                 if (proxies == null) {
                     // Prevent telephony tests from calling the service
-                    getRadioServiceProxy(service, null);
+                    getRadioServiceProxy(service);
                 }
             }
 
@@ -1391,8 +1370,17 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     private void handleRadioServiceNotAvailable(RadioServiceProxy proxy, Message result) {
-        riljLoge("RadioService is not available, " + proxy);
         if (result != null) {
+            riljLoge("RadioService is not available, " + proxy);
+            AsyncResult.forMessage(result, null,
+                    CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
+            result.sendToTarget();
+        }
+    }
+
+    private void handleRadioProxyNotAvailable(Message result) {
+        if (result != null) {
+            riljLoge("RadioProxy is not available");
             AsyncResult.forMessage(result, null,
                     CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
             result.sendToTarget();
@@ -1401,7 +1389,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getIccCardStatus(Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -1448,7 +1436,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void supplyIccPinForApp(String pin, String aid, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -1474,7 +1462,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void supplyIccPukForApp(String puk, String newPin, String aid, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -1502,7 +1490,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void supplyIccPin2ForApp(String pin, String aid, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -1528,7 +1516,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void supplyIccPuk2ForApp(String puk, String newPin2, String aid, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -1555,7 +1543,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void changeIccPinForApp(String oldPin, String newPin, String aid, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -1583,7 +1571,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void changeIccPin2ForApp(String oldPin2, String newPin2, String aid, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -1606,7 +1594,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void supplyNetworkDepersonalization(String netpin, Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -1629,7 +1617,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void supplySimDepersonalization(PersoSubState persoType, String controlKey,
             Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -1665,7 +1653,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getCurrentCalls(Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -1691,7 +1679,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void enableModem(boolean enable, Message result) {
-        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
+        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class);
         if (modemProxy.isEmpty()) {
             handleRadioServiceNotAvailable(modemProxy, result);
             return;
@@ -1720,7 +1708,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setSystemSelectionChannels(@NonNull List<RadioAccessSpecifier> specifiers,
             Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -1749,7 +1737,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getSystemSelectionChannels(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -1778,7 +1766,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getModemStatus(Message result) {
-        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
+        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class);
         if (modemProxy.isEmpty()) {
             handleRadioServiceNotAvailable(modemProxy, result);
             return;
@@ -1814,7 +1802,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     uusInfo, result);
             return;
         }
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -1834,7 +1822,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     private void emergencyDial(String address, EmergencyNumber emergencyNumberInfo,
             boolean hasKnownUserIntentEmergency, int clirMode, UUSInfo uusInfo, Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -1864,7 +1852,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getIMSIForApp(String aid, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -1883,7 +1871,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void hangupConnection(int gsmIndex, Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -1904,7 +1892,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @Override
     public void hangupWaitingOrBackground(Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -1924,7 +1912,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @Override
     public void hangupForegroundResumeBackground(Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -1944,7 +1932,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void switchWaitingOrHoldingAndActive(Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -1964,7 +1952,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void conference(Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -1982,7 +1970,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void rejectCall(Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -2001,7 +1989,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getLastCallFailCause(Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -2021,7 +2009,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getSignalStrength(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -2040,7 +2028,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getVoiceRegistrationState(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -2065,7 +2053,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getDataRegistrationState(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -2090,7 +2078,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getOperator(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -2111,7 +2099,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setRadioPower(boolean on, boolean forEmergencyCall,
             boolean preferredForEmergencyCall, Message result) {
-        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
+        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class);
         if (modemProxy.isEmpty()) {
             handleRadioServiceNotAvailable(modemProxy, result);
             return;
@@ -2133,7 +2121,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void sendDtmf(char c, Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -2154,7 +2142,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void sendSMS(String smscPdu, String pdu, Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -2195,7 +2183,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void sendSMSExpectMore(String smscPdu, String pdu, Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -2221,7 +2209,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             boolean allowRoaming, int reason, LinkProperties linkProperties, int pduSessionId,
             NetworkSliceInfo sliceInfo, TrafficDescriptor trafficDescriptor,
             boolean matchAllRuleAllowed, Message result) {
-        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class, result);
+        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class);
         if (dataProxy.isEmpty()) {
             handleRadioServiceNotAvailable(dataProxy, result);
             return;
@@ -2256,7 +2244,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void iccIOForApp(int command, int fileId, String path, int p1, int p2, int p3,
             String data, String pin2, String aid, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -2288,7 +2276,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void sendUSSD(String ussd, Message result) {
         RadioVoiceProxy voiceProxy =
-                getRadioServiceProxy(RadioVoiceProxy.class, result);
+                getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -2311,7 +2299,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void cancelPendingUssd(Message result) {
         RadioVoiceProxy voiceProxy =
-                getRadioServiceProxy(RadioVoiceProxy.class, result);
+                getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -2330,7 +2318,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getCLIR(Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -2349,7 +2337,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setCLIR(int clirMode, Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -2370,7 +2358,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void queryCallForwardStatus(int cfReason, int serviceClass, String number,
             Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -2392,7 +2380,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setCallForward(int action, int cfReason, int serviceClass, String number,
             int timeSeconds, Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -2414,7 +2402,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void queryCallWaiting(int serviceClass, Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -2435,7 +2423,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setCallWaiting(boolean enable, int serviceClass, Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -2456,7 +2444,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void acknowledgeLastIncomingGsmSms(boolean success, int cause, Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -2477,7 +2465,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void acceptCall(Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -2497,7 +2485,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void deactivateDataCall(int cid, int reason, Message result) {
-        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class, result);
+        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class);
         if (dataProxy.isEmpty()) {
             handleRadioServiceNotAvailable(dataProxy, result);
             return;
@@ -2527,7 +2515,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void queryFacilityLockForApp(String facility, String password, int serviceClass,
             String appId, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -2560,7 +2548,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setFacilityLockForApp(String facility, boolean lockState, String password,
             int serviceClass, String appId, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -2585,7 +2573,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void changeBarringPassword(String facility, String oldPwd, String newPwd,
             Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -2610,7 +2598,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getNetworkSelectionMode(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -2630,7 +2618,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setNetworkSelectionModeAutomatic(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -2651,7 +2639,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setNetworkSelectionModeManual(String operatorNumeric, int ran, Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -2673,7 +2661,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getAvailableNetworks(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -2699,7 +2687,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void startNetworkScan(NetworkScanRequest networkScanRequest, Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -2733,7 +2721,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void stopNetworkScan(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -2761,7 +2749,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void startDtmf(char c, Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -2781,7 +2769,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void stopDtmf(Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -2800,7 +2788,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void separateConnection(int gsmIndex, Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -2821,7 +2809,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getBasebandVersion(Message result) {
-        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
+        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class);
         if (modemProxy.isEmpty()) {
             handleRadioServiceNotAvailable(modemProxy, result);
             return;
@@ -2840,7 +2828,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setMute(boolean enableMute, Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -2860,7 +2848,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getMute(Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -2879,7 +2867,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void queryCLIP(Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -2907,7 +2895,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getDataCallList(Message result) {
-        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class, result);
+        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class);
         if (dataProxy.isEmpty()) {
             handleRadioServiceNotAvailable(dataProxy, result);
             return;
@@ -2937,7 +2925,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setSuppServiceNotifications(boolean enable, Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -2959,7 +2947,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void writeSmsToSim(int status, String smsc, String pdu, Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -2982,7 +2970,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void deleteSmsOnSim(int index, Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -3002,7 +2990,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setBandMode(int bandMode, Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -3022,7 +3010,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void queryAvailableBandMode(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -3042,7 +3030,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void sendEnvelope(String contents, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -3063,7 +3051,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void sendTerminalResponse(String contents, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -3086,7 +3074,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void sendEnvelopeWithStatus(String contents, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -3108,7 +3096,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void explicitCallTransfer(Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -3128,7 +3116,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setPreferredNetworkType(@PrefNetworkMode int networkType , Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -3151,7 +3139,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getPreferredNetworkType(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -3172,7 +3160,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setAllowedNetworkTypesBitmap(
             @TelephonyManager.NetworkTypeBitMask int networkTypeBitmask, Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -3198,7 +3186,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getAllowedNetworkTypesBitmap(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -3218,7 +3206,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setLocationUpdates(boolean enable, WorkSource workSource, Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -3242,7 +3230,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void isNrDualConnectivityEnabled(Message result, WorkSource workSource) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -3284,7 +3272,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setNrDualConnectivityState(int nrDualConnectivityState, Message result,
             WorkSource workSource) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -3324,7 +3312,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void isVoNrEnabled(Message result, WorkSource workSource) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -3356,7 +3344,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setVoNrEnabled(boolean enabled, Message result, WorkSource workSource) {
         setVoNrEnabled(enabled);
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -3388,7 +3376,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setCdmaSubscriptionSource(int cdmaSubscription, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -3409,7 +3397,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void queryCdmaRoamingPreference(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -3429,7 +3417,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setCdmaRoamingPreference(int cdmaRoamingType, Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -3450,7 +3438,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void queryTTYMode(Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -3469,7 +3457,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setTTYMode(int ttyMode, Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -3489,7 +3477,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setPreferredVoicePrivacy(boolean enable, Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -3510,7 +3498,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getPreferredVoicePrivacy(Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -3530,7 +3518,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void sendCDMAFeatureCode(String featureCode, Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -3551,7 +3539,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void sendBurstDtmf(String dtmfString, int on, int off, Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -3573,7 +3561,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void sendCdmaSMSExpectMore(byte[] pdu, Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -3600,7 +3588,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void sendCdmaSms(byte[] pdu, Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -3623,7 +3611,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void acknowledgeLastIncomingCdmaSms(boolean success, int cause, Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -3646,7 +3634,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void getGsmBroadcastConfig(Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -3667,7 +3655,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setGsmBroadcastConfig(SmsBroadcastConfigInfo[] config, Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -3692,7 +3680,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setGsmBroadcastActivation(boolean activate, Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -3714,7 +3702,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void getCdmaBroadcastConfig(Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -3735,7 +3723,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setCdmaBroadcastConfig(CdmaSmsBroadcastConfigInfo[] configs, Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -3760,7 +3748,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setCdmaBroadcastActivation(boolean activate, Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -3781,7 +3769,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getCDMASubscription(Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -3801,7 +3789,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void writeSmsToRuim(int status, byte[] pdu, Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -3823,7 +3811,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void deleteSmsOnRuim(int index, Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -3844,7 +3832,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getDeviceIdentity(Message result) {
-        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
+        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class);
         if (modemProxy.isEmpty()) {
             handleRadioServiceNotAvailable(modemProxy, result);
             return;
@@ -3864,7 +3852,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getImei(Message result) {
-        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
+        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class);
         if (modemProxy.isEmpty()) {
             handleRadioServiceNotAvailable(modemProxy, result);
             return;
@@ -3894,7 +3882,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void exitEmergencyCallbackMode(Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -3915,7 +3903,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void getSmscAddress(Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -3936,7 +3924,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setSmscAddress(String address, Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -3958,7 +3946,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void reportSmsMemoryStatus(boolean available, Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -3979,7 +3967,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void reportStkServiceIsRunning(Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -3999,7 +3987,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getCdmaSubscriptionSource(Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -4020,7 +4008,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void acknowledgeIncomingGsmSmsWithPdu(boolean success, String ackPdu, Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -4043,7 +4031,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getVoiceRadioTechnology(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -4062,7 +4050,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getCellInfoList(Message result, WorkSource workSource) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -4082,7 +4070,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setCellInfoListRate(int rateInMillis, Message result, WorkSource workSource) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -4103,7 +4091,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setInitialAttachApn(DataProfile dataProfile, boolean isRoaming, Message result) {
-        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class, result);
+        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class);
         if (dataProxy.isEmpty()) {
             handleRadioServiceNotAvailable(dataProxy, result);
             return;
@@ -4124,7 +4112,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getImsRegistrationState(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -4146,7 +4134,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void sendImsGsmSms(String smscPdu, String pdu, int retry, int messageRef,
             Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -4169,7 +4157,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void sendImsCdmaSms(byte[] pdu, int retry, int messageRef, Message result) {
         RadioMessagingProxy messagingProxy =
-                getRadioServiceProxy(RadioMessagingProxy.class, result);
+                getRadioServiceProxy(RadioMessagingProxy.class);
         if (messagingProxy.isEmpty()) {
             handleRadioServiceNotAvailable(messagingProxy, result);
             return;
@@ -4192,7 +4180,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void iccTransmitApduBasicChannel(int cla, int instruction, int p1, int p2, int p3,
             String data, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -4220,7 +4208,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void iccOpenLogicalChannel(String aid, int p2, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -4245,7 +4233,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void iccCloseLogicalChannel(int channel, boolean isEs10, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -4270,7 +4258,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     "Invalid channel in iccTransmitApduLogicalChannel: " + channel);
         }
 
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -4300,7 +4288,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void nvReadItem(int itemID, Message result, WorkSource workSource) {
-        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
+        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class);
         if (modemProxy.isEmpty()) {
             handleRadioServiceNotAvailable(modemProxy, result);
             return;
@@ -4321,7 +4309,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void nvWriteItem(int itemId, String itemValue, Message result, WorkSource workSource) {
-        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
+        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class);
         if (modemProxy.isEmpty()) {
             handleRadioServiceNotAvailable(modemProxy, result);
             return;
@@ -4343,7 +4331,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void nvWriteCdmaPrl(byte[] preferredRoamingList, Message result) {
-        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
+        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class);
         if (modemProxy.isEmpty()) {
             handleRadioServiceNotAvailable(modemProxy, result);
             return;
@@ -4364,7 +4352,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void nvResetConfig(int resetType, Message result) {
-        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
+        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class);
         if (modemProxy.isEmpty()) {
             handleRadioServiceNotAvailable(modemProxy, result);
             return;
@@ -4385,7 +4373,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setUiccSubscription(int slotId, int appIndex, int subId, int subStatus,
             Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -4420,7 +4408,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setDataAllowed(boolean allowed, Message result) {
-        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class, result);
+        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class);
         if (dataProxy.isEmpty()) {
             handleRadioServiceNotAvailable(dataProxy, result);
             return;
@@ -4440,7 +4428,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getHardwareConfig(Message result) {
-        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
+        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class);
         if (modemProxy.isEmpty()) {
             handleRadioServiceNotAvailable(modemProxy, result);
             return;
@@ -4462,7 +4450,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void requestIccSimAuthentication(int authContext, String data, String aid,
             Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -4485,7 +4473,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setDataProfile(DataProfile[] dps, boolean isRoaming, Message result) {
-        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class, result);
+        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class);
         if (dataProxy.isEmpty()) {
             handleRadioServiceNotAvailable(dataProxy, result);
             return;
@@ -4508,7 +4496,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void requestShutdown(Message result) {
-        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
+        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class);
         if (modemProxy.isEmpty()) {
             handleRadioServiceNotAvailable(modemProxy, result);
             return;
@@ -4527,7 +4515,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getRadioCapability(Message result) {
-        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
+        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class);
         if (modemProxy.isEmpty()) {
             handleRadioServiceNotAvailable(modemProxy, result);
             return;
@@ -4547,7 +4535,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setRadioCapability(RadioCapability rc, Message result) {
-        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
+        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class);
         if (modemProxy.isEmpty()) {
             handleRadioServiceNotAvailable(modemProxy, result);
             return;
@@ -4580,26 +4568,22 @@ public class RIL extends BaseCommands implements CommandsInterface {
             return;
         }
 
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_START_LCE, result, mRILDefaultWorkSource);
-
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
-                        + " reportIntervalMs = " + reportIntervalMs + " pullMode = " + pullMode);
-            }
-
-            radioServiceInvokeHelper(HAL_SERVICE_RADIO, rr, "startLceService", () -> {
-                radioProxy.startLceService(rr.mSerial, reportIntervalMs, pullMode);
-            });
-        } else {
-            riljLoge("startLceService: RadioProxy is empty");
-            if (result != null) {
-                AsyncResult.forMessage(result, null,
-                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
-                result.sendToTarget();
-            }
+        IRadio radioProxy = getRadioProxy();
+        if (radioProxy == null) {
+            handleRadioProxyNotAvailable(result);
+            return;
         }
+
+        RILRequest rr = obtainRequest(RIL_REQUEST_START_LCE, result, mRILDefaultWorkSource);
+
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
+                    + " reportIntervalMs = " + reportIntervalMs + " pullMode = " + pullMode);
+        }
+
+        radioServiceInvokeHelper(HAL_SERVICE_RADIO, rr, "startLceService", () -> {
+            radioProxy.startLceService(rr.mSerial, reportIntervalMs, pullMode);
+        });
     }
 
     @Override
@@ -4616,25 +4600,21 @@ public class RIL extends BaseCommands implements CommandsInterface {
             return;
         }
 
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_STOP_LCE, result, mRILDefaultWorkSource);
-
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
-            }
-
-            radioServiceInvokeHelper(HAL_SERVICE_RADIO, rr, "stopLceService", () -> {
-                radioProxy.stopLceService(rr.mSerial);
-            });
-        } else {
-            riljLoge("stopLceService: RadioProxy is empty");
-            if (result != null) {
-                AsyncResult.forMessage(result, null,
-                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
-                result.sendToTarget();
-            }
+        IRadio radioProxy = getRadioProxy();
+        if (radioProxy == null) {
+            handleRadioProxyNotAvailable(result);
+            return;
         }
+
+        RILRequest rr = obtainRequest(RIL_REQUEST_STOP_LCE, result, mRILDefaultWorkSource);
+
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+        }
+
+        radioServiceInvokeHelper(HAL_SERVICE_RADIO, rr, "stopLceService", () -> {
+            radioProxy.stopLceService(rr.mSerial);
+        });
     }
 
     /**
@@ -4649,7 +4629,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setDataThrottling(Message result, WorkSource workSource, int dataThrottlingAction,
             long completionWindowMillis) {
-        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class, result);
+        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class);
         if (dataProxy.isEmpty()) {
             handleRadioServiceNotAvailable(dataProxy, result);
             return;
@@ -4704,30 +4684,26 @@ public class RIL extends BaseCommands implements CommandsInterface {
             return;
         }
 
-        IRadio radioProxy = getRadioProxy(result);
-        if (radioProxy != null) {
-            RILRequest rr = obtainRequest(RIL_REQUEST_PULL_LCEDATA, result, mRILDefaultWorkSource);
-
-            if (RILJ_LOGD) {
-                riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
-            }
-
-            radioServiceInvokeHelper(HAL_SERVICE_RADIO, rr, "pullLceData", () -> {
-                radioProxy.pullLceData(rr.mSerial);
-            });
-        } else {
-            riljLoge("pullLceData: RadioProxy is empty");
-            if (result != null) {
-                AsyncResult.forMessage(result, null,
-                        CommandException.fromRilErrno(RADIO_NOT_AVAILABLE));
-                result.sendToTarget();
-            }
+        IRadio radioProxy = getRadioProxy();
+        if (radioProxy == null) {
+            handleRadioProxyNotAvailable(result);
+            return;
         }
+
+        RILRequest rr = obtainRequest(RIL_REQUEST_PULL_LCEDATA, result, mRILDefaultWorkSource);
+
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
+        }
+
+        radioServiceInvokeHelper(HAL_SERVICE_RADIO, rr, "pullLceData", () -> {
+            radioProxy.pullLceData(rr.mSerial);
+        });
     }
 
     @Override
     public void getModemActivityInfo(Message result, WorkSource workSource) {
-        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
+        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class);
         if (modemProxy.isEmpty()) {
             handleRadioServiceNotAvailable(modemProxy, result);
             return;
@@ -4753,7 +4729,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             Message result, WorkSource workSource) {
         Objects.requireNonNull(carrierRestrictionRules, "Carrier restriction cannot be null.");
 
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -4774,7 +4750,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getAllowedCarriers(Message result, WorkSource workSource) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -4794,7 +4770,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void sendDeviceState(int stateType, boolean state, Message result) {
-        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
+        RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class);
         if (modemProxy.isEmpty()) {
             handleRadioServiceNotAvailable(modemProxy, result);
             return;
@@ -4814,7 +4790,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setUnsolResponseFilter(int filter, Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -4836,7 +4812,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setSignalStrengthReportingCriteria(
             @NonNull List<SignalThresholdInfo> signalThresholdInfos, @Nullable Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -4863,7 +4839,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void setLinkCapacityReportingCriteria(int hysteresisMs, int hysteresisDlKbps,
             int hysteresisUlKbps, int[] thresholdsDlKbps, int[] thresholdsUlKbps, int ran,
             Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -4890,7 +4866,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setSimCardPower(int state, Message result, WorkSource workSource) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -4913,7 +4889,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo,
             Message result) {
         Objects.requireNonNull(imsiEncryptionInfo, "ImsiEncryptionInfo cannot be null.");
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -4944,7 +4920,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void startNattKeepalive(int contextId, KeepalivePacketData packetData,
             int intervalMillis, Message result) {
         Objects.requireNonNull(packetData, "KeepaliveRequest cannot be null.");
-        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class, result);
+        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class);
         if (dataProxy.isEmpty()) {
             handleRadioServiceNotAvailable(dataProxy, result);
             return;
@@ -4972,7 +4948,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void stopNattKeepalive(int sessionHandle, Message result) {
-        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class, result);
+        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class);
         if (dataProxy.isEmpty()) {
             handleRadioServiceNotAvailable(dataProxy, result);
             return;
@@ -5033,7 +5009,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void enableUiccApplications(boolean enable, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -5067,7 +5043,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void areUiccApplicationsEnabled(Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -5100,7 +5076,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public boolean canToggleUiccApplicationsEnablement() {
-        return !getRadioServiceProxy(RadioSimProxy.class, null).isEmpty()
+        return !getRadioServiceProxy(RadioSimProxy.class).isEmpty()
                 && mHalVersion.get(HAL_SERVICE_SIM).greaterOrEqual(RADIO_HAL_VERSION_1_5);
     }
 
@@ -5114,7 +5090,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void handleCallSetupRequestFromSim(boolean accept, Message result) {
-        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class, result);
+        RadioVoiceProxy voiceProxy = getRadioServiceProxy(RadioVoiceProxy.class);
         if (voiceProxy.isEmpty()) {
             handleRadioServiceNotAvailable(voiceProxy, result);
             return;
@@ -5137,7 +5113,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void getBarringInfo(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -5168,7 +5144,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void allocatePduSessionId(Message result) {
-        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class, result);
+        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class);
         if (dataProxy.isEmpty()) {
             handleRadioServiceNotAvailable(dataProxy, result);
             return;
@@ -5196,7 +5172,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void releasePduSessionId(Message result, int pduSessionId) {
-        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class, result);
+        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class);
         if (dataProxy.isEmpty()) {
             handleRadioServiceNotAvailable(dataProxy, result);
             return;
@@ -5224,7 +5200,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void startHandover(Message result, int callId) {
-        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class, result);
+        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class);
         if (dataProxy.isEmpty()) {
             handleRadioServiceNotAvailable(dataProxy, result);
             return;
@@ -5254,7 +5230,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void cancelHandover(Message result, int callId) {
-        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class, result);
+        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class);
         if (dataProxy.isEmpty()) {
             handleRadioServiceNotAvailable(dataProxy, result);
             return;
@@ -5282,7 +5258,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void getSlicingConfig(Message result) {
-        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class, result);
+        RadioDataProxy dataProxy = getRadioServiceProxy(RadioDataProxy.class);
         if (dataProxy.isEmpty()) {
             handleRadioServiceNotAvailable(dataProxy, result);
             return;
@@ -5308,7 +5284,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getSimPhonebookRecords(Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -5338,7 +5314,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void getSimPhonebookCapacity(Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -5368,7 +5344,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void updateSimPhonebookRecord(SimPhonebookRecord phonebookRecord, Message result) {
-        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class, result);
+        RadioSimProxy simProxy = getRadioServiceProxy(RadioSimProxy.class);
         if (simProxy.isEmpty()) {
             handleRadioServiceNotAvailable(simProxy, result);
             return;
@@ -5406,7 +5382,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setUsageSetting(Message result,
             /* @TelephonyManager.UsageSetting */ int usageSetting) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -5441,7 +5417,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void getUsageSetting(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -5471,7 +5447,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void setSrvccCallInfo(SrvccConnection[] srvccConnections, Message result) {
-        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
+        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class);
         if (imsProxy.isEmpty()) {
             handleRadioServiceNotAvailable(imsProxy, result);
             return;
@@ -5507,7 +5483,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             @ImsRegistrationImplBase.ImsRegistrationTech int imsRadioTech,
             @RegistrationManager.SuggestedAction int suggestedAction,
             int capabilities, Message result) {
-        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
+        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class);
         if (imsProxy.isEmpty()) {
             handleRadioServiceNotAvailable(imsProxy, result);
             return;
@@ -5547,7 +5523,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void startImsTraffic(int token,
             int trafficType, int accessNetworkType, int trafficDirection, Message result) {
-        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
+        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class);
         if (imsProxy.isEmpty()) {
             handleRadioServiceNotAvailable(imsProxy, result);
             return;
@@ -5581,7 +5557,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void stopImsTraffic(int token, Message result) {
-        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
+        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class);
         if (imsProxy.isEmpty()) {
             handleRadioServiceNotAvailable(imsProxy, result);
             return;
@@ -5612,7 +5588,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void triggerEpsFallback(int reason, Message result) {
-        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
+        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class);
         if (imsProxy.isEmpty()) {
             handleRadioServiceNotAvailable(imsProxy, result);
             return;
@@ -5644,7 +5620,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void sendAnbrQuery(int mediaType, int direction, int bitsPerSecond,
             Message result) {
-        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
+        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class);
         if (imsProxy.isEmpty()) {
             handleRadioServiceNotAvailable(imsProxy, result);
             return;
@@ -5677,7 +5653,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void setEmergencyMode(int emcMode, Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -5713,7 +5689,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void triggerEmergencyNetworkScan(
             @NonNull @AccessNetworkConstants.RadioAccessNetworkType int[] accessNetwork,
             @DomainSelectionService.EmergencyScanType int scanType, Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -5749,7 +5725,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void cancelEmergencyNetworkScan(boolean resetScan, Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -5783,7 +5759,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void exitEmergencyMode(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -5819,7 +5795,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void setNullCipherAndIntegrityEnabled(boolean enabled, Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -5853,7 +5829,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void updateImsCallStatus(@NonNull List<ImsCallInfo> imsCallInfo, Message result) {
-        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class, result);
+        RadioImsProxy imsProxy = getRadioServiceProxy(RadioImsProxy.class);
         if (imsProxy.isEmpty()) {
             handleRadioServiceNotAvailable(imsProxy, result);
             return;
@@ -5886,7 +5862,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void setN1ModeEnabled(boolean enable, Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -5920,7 +5896,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void isN1ModeEnabled(Message result) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class, result);
+        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
         if (networkProxy.isEmpty()) {
             handleRadioServiceNotAvailable(networkProxy, result);
             return;
@@ -5956,7 +5932,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void getSatelliteCapabilities(Message result) {
         RadioSatelliteProxy radioSatelliteProxy =
-                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+                getRadioServiceProxy(RadioSatelliteProxy.class);
         if (radioSatelliteProxy.isEmpty()) {
             handleRadioServiceNotAvailable(radioSatelliteProxy, result);
             return;
@@ -5995,7 +5971,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setSatellitePower(Message result, boolean on) {
         RadioSatelliteProxy radioSatelliteProxy =
-                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+                getRadioServiceProxy(RadioSatelliteProxy.class);
         if (radioSatelliteProxy.isEmpty()) {
             handleRadioServiceNotAvailable(radioSatelliteProxy, result);
             return;
@@ -6032,7 +6008,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void getSatellitePowerState(Message result) {
         RadioSatelliteProxy radioSatelliteProxy =
-                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+                getRadioServiceProxy(RadioSatelliteProxy.class);
         if (radioSatelliteProxy.isEmpty()) {
             handleRadioServiceNotAvailable(radioSatelliteProxy, result);
             return;
@@ -6075,7 +6051,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void provisionSatelliteService(
             Message result, String imei, String msisdn, String imsi, int[] features) {
         RadioSatelliteProxy radioSatelliteProxy =
-                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+                getRadioServiceProxy(RadioSatelliteProxy.class);
         if (radioSatelliteProxy.isEmpty()) {
             handleRadioServiceNotAvailable(radioSatelliteProxy, result);
             return;
@@ -6114,7 +6090,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void addAllowedSatelliteContacts(Message result, String[] contacts) {
         RadioSatelliteProxy radioSatelliteProxy =
-                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+                getRadioServiceProxy(RadioSatelliteProxy.class);
         if (radioSatelliteProxy.isEmpty()) {
             handleRadioServiceNotAvailable(radioSatelliteProxy, result);
             return;
@@ -6154,7 +6130,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void removeAllowedSatelliteContacts(Message result, String[] contacts) {
         RadioSatelliteProxy radioSatelliteProxy =
-                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+                getRadioServiceProxy(RadioSatelliteProxy.class);
         if (radioSatelliteProxy.isEmpty()) {
             handleRadioServiceNotAvailable(radioSatelliteProxy, result);
             return;
@@ -6197,7 +6173,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     public void sendSatelliteMessages(Message result, String[] messages, String destination,
             double latitude, double longitude) {
         RadioSatelliteProxy radioSatelliteProxy =
-                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+                getRadioServiceProxy(RadioSatelliteProxy.class);
         if (radioSatelliteProxy.isEmpty()) {
             handleRadioServiceNotAvailable(radioSatelliteProxy, result);
             return;
@@ -6235,7 +6211,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void getPendingSatelliteMessages(Message result) {
         RadioSatelliteProxy radioSatelliteProxy =
-                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+                getRadioServiceProxy(RadioSatelliteProxy.class);
         if (radioSatelliteProxy.isEmpty()) {
             handleRadioServiceNotAvailable(radioSatelliteProxy, result);
             return;
@@ -6273,7 +6249,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void getSatelliteMode(Message result) {
         RadioSatelliteProxy radioSatelliteProxy =
-                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+                getRadioServiceProxy(RadioSatelliteProxy.class);
         if (radioSatelliteProxy.isEmpty()) {
             handleRadioServiceNotAvailable(radioSatelliteProxy, result);
             return;
@@ -6312,7 +6288,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void setSatelliteIndicationFilter(Message result, int filterBitmask) {
         RadioSatelliteProxy radioSatelliteProxy =
-                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+                getRadioServiceProxy(RadioSatelliteProxy.class);
         if (radioSatelliteProxy.isEmpty()) {
             handleRadioServiceNotAvailable(radioSatelliteProxy, result);
             return;
@@ -6370,7 +6346,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void startSendingSatellitePointingInfo(Message result) {
         RadioSatelliteProxy radioSatelliteProxy =
-                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+                getRadioServiceProxy(RadioSatelliteProxy.class);
         if (radioSatelliteProxy.isEmpty()) {
             handleRadioServiceNotAvailable(radioSatelliteProxy, result);
             return;
@@ -6409,7 +6385,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void stopSendingSatellitePointingInfo(Message result) {
         RadioSatelliteProxy radioSatelliteProxy =
-                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+                getRadioServiceProxy(RadioSatelliteProxy.class);
         if (radioSatelliteProxy.isEmpty()) {
             handleRadioServiceNotAvailable(radioSatelliteProxy, result);
             return;
@@ -6448,7 +6424,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void getMaxCharactersPerSatelliteTextMessage(Message result) {
         RadioSatelliteProxy radioSatelliteProxy =
-                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+                getRadioServiceProxy(RadioSatelliteProxy.class);
         if (radioSatelliteProxy.isEmpty()) {
             handleRadioServiceNotAvailable(radioSatelliteProxy, result);
             return;
@@ -6506,7 +6482,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void getTimeForNextSatelliteVisibility(Message result) {
         RadioSatelliteProxy radioSatelliteProxy =
-                getRadioServiceProxy(RadioSatelliteProxy.class, result);
+                getRadioServiceProxy(RadioSatelliteProxy.class);
         if (radioSatelliteProxy.isEmpty()) {
             riljLoge("getTimeForNextSatelliteVisibility: RadioSatelliteProxy is empty");
             if (result != null) {
@@ -6809,7 +6785,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 mRILDefaultWorkSource);
         acquireWakeLock(rr, FOR_ACK_WAKELOCK);
         if (service == HAL_SERVICE_RADIO) {
-            IRadio radioProxy = getRadioProxy(null);
+            IRadio radioProxy = getRadioProxy();
             if (radioProxy != null) {
                 try {
                     radioProxy.responseAcknowledgement();
@@ -6821,7 +6797,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 Rlog.e(RILJ_LOG_TAG, "Error trying to send ack, radioProxy = null");
             }
         } else {
-            RadioServiceProxy serviceProxy = getRadioServiceProxy(service, null);
+            RadioServiceProxy serviceProxy = getRadioServiceProxy(service);
             if (!serviceProxy.isEmpty()) {
                 try {
                     serviceProxy.responseAcknowledgement();
