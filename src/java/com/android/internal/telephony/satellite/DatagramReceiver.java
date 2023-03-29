@@ -45,6 +45,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.ILongConsumer;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.metrics.SatelliteStats;
+import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -69,6 +70,7 @@ public class DatagramReceiver extends Handler {
     @NonNull private final ContentResolver mContentResolver;
     @NonNull private SharedPreferences mSharedPreferences = null;
     @NonNull private final DatagramController mDatagramController;
+    @NonNull private final ControllerMetricsStats mControllerMetricsStats;
 
     private long mDatagramTransferStartTime = 0;
 
@@ -112,6 +114,7 @@ public class DatagramReceiver extends Handler {
         mContext = context;
         mContentResolver = context.getContentResolver();
         mDatagramController = datagramController;
+        mControllerMetricsStats = ControllerMetricsStats.getInstance();
 
         HandlerThread backgroundThread = new HandlerThread(TAG);
         backgroundThread.start();
@@ -342,6 +345,9 @@ public class DatagramReceiver extends Handler {
                                     obtainMessage(EVENT_RETRY_DELIVERING_RECEIVED_DATAGRAM,
                                     argument), getTimeoutToReceiveAck());
                         });
+
+                        sInstance.mControllerMetricsStats.reportIncomingDatagramCount(
+                                SatelliteManager.SATELLITE_ERROR_NONE);
                     }
 
                     if (pendingCount == 0) {
@@ -412,8 +418,9 @@ public class DatagramReceiver extends Handler {
                             mDatagramController.getReceivePendingCount(),
                             SatelliteManager.SATELLITE_ERROR_NONE);
 
-                    // report not able to poll pending datagrams
                     reportMetrics(null, SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
+                    mControllerMetricsStats.reportIncomingDatagramCount(
+                                    SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
                 }
                 break;
             }
@@ -430,7 +437,9 @@ public class DatagramReceiver extends Handler {
                     mDatagramController.updateReceiveStatus(request.subId,
                             SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_FAILED,
                             mDatagramController.getReceivePendingCount(), error);
+
                     reportMetrics(null, error);
+                    mControllerMetricsStats.reportIncomingDatagramCount(error);
                 }
                 break;
             }
