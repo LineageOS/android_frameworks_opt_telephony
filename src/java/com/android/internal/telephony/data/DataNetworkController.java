@@ -34,6 +34,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.telecom.TelecomManager;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.RadioAccessNetworkType;
@@ -234,6 +235,7 @@ public class DataNetworkController extends Handler {
     private final @NonNull AccessNetworksManager mAccessNetworksManager;
     private final @NonNull DataRetryManager mDataRetryManager;
     private final @NonNull ImsManager mImsManager;
+    private final @NonNull TelecomManager mTelecomManager;
     private final @NonNull NetworkPolicyManager mNetworkPolicyManager;
     private final @NonNull SparseArray<DataServiceManager> mDataServiceManagers =
             new SparseArray<>();
@@ -903,6 +905,7 @@ public class DataNetworkController extends Handler {
                 });
         mImsManager = mPhone.getContext().getSystemService(ImsManager.class);
         mNetworkPolicyManager = mPhone.getContext().getSystemService(NetworkPolicyManager.class);
+        mTelecomManager = mPhone.getContext().getSystemService(TelecomManager.class);
 
         // Use the raw one from ServiceStateTracker instead of the combined one from
         // mPhone.getServiceState().
@@ -1570,7 +1573,7 @@ public class DataNetworkController extends Handler {
                 evaluation.addDataAllowedReason(DataAllowedReason.MMS_REQUEST);
             }
         } else if (!evaluation.containsHardDisallowedReasons()) {
-            if ((mPhone.isInEmergencyCall() || mPhone.isInEcm())
+            if ((mTelecomManager.isInEmergencyCall() || mPhone.isInEcm())
                     && networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_SUPL)) {
                 // Check if it's SUPL during emergency call.
                 evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_SUPL);
@@ -1837,7 +1840,8 @@ public class DataNetworkController extends Handler {
             // If there are reasons we should tear down the network, check if those are hard reasons
             // or soft reasons. In some scenarios, we can make exceptions if they are soft
             // disallowed reasons.
-            if ((mPhone.isInEmergencyCall() || mPhone.isInEcm()) && dataNetwork.isEmergencySupl()) {
+            if ((mTelecomManager.isInEmergencyCall() || mPhone.isInEcm())
+                    && dataNetwork.isEmergencySupl()) {
                 // Check if it's SUPL during emergency call.
                 evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_SUPL);
             } else if (!dataNetwork.getNetworkCapabilities().hasCapability(
