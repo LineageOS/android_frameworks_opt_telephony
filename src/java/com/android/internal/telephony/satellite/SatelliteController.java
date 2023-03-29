@@ -54,6 +54,7 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
 import com.android.internal.telephony.satellite.metrics.ProvisionMetricsStats;
+import com.android.internal.telephony.satellite.metrics.SessionMetricsStats;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.util.FunctionalUtils;
 
@@ -563,6 +564,10 @@ public class SatelliteController extends Handler {
                     } else {
                         mControllerMetricsStats.reportServiceEnablementFailCount();
                     }
+                    SessionMetricsStats.getInstance()
+                            .setInitializationResult(error)
+                            .setRadioTechnology(SatelliteManager.NT_RADIO_TECHNOLOGY_PROPRIETARY)
+                            .reportSessionMetrics();
                 } else {
                     mControllerMetricsStats.onSatelliteDisabled();
                 }
