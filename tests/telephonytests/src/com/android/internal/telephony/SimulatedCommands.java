@@ -196,6 +196,9 @@ public class SimulatedCommands extends BaseCommands
 
     private int[] mImsRegistrationInfo = new int[4];
 
+    private boolean mN1ModeEnabled = false;
+    private boolean mVonrEnabled = false;
+
     //***** Constructor
     public
     SimulatedCommands() {
@@ -2610,5 +2613,23 @@ public class SimulatedCommands extends BaseCommands
 
     public int[] getImsRegistrationInfo() {
         return mImsRegistrationInfo;
+    }
+
+    @Override
+    public void setN1ModeEnabled(boolean enable, Message result) {
+        mN1ModeEnabled = enable;
+    }
+
+    public boolean isN1ModeEnabled() {
+        return mN1ModeEnabled;
+    }
+
+    @Override
+    public void isVoNrEnabled(Message message, WorkSource workSource) {
+        resultSuccess(message, (Object) mVonrEnabled);
+    }
+
+    public void setVonrEnabled(boolean vonrEnable) {
+        mVonrEnabled = vonrEnable;
     }
 }
