@@ -523,6 +523,13 @@ public class SubscriptionManagerService extends ISub.Stub {
                     }
                 });
 
+        // Broadcast sub Id on service initialized.
+        broadcastSubId(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED,
+                getDefaultDataSubId());
+        broadcastSubId(TelephonyIntents.ACTION_DEFAULT_VOICE_SUBSCRIPTION_CHANGED,
+                getDefaultVoiceSubId());
+        broadcastSubId(SubscriptionManager.ACTION_DEFAULT_SMS_SUBSCRIPTION_CHANGED,
+                getDefaultSmsSubId());
         updateDefaultSubId();
 
         TelephonyServiceManager.ServiceRegisterer subscriptionServiceRegisterer =
@@ -2704,7 +2711,7 @@ public class SubscriptionManagerService extends ISub.Stub {
             Intent intent = new Intent(SubscriptionManager.ACTION_DEFAULT_SUBSCRIPTION_CHANGED);
             intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, phoneId, subId);
-            mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+            mContext.sendBroadcastAsUser(intent, UserHandle.ALL);
         }
     }
 
@@ -2774,11 +2781,8 @@ public class SubscriptionManagerService extends ISub.Stub {
             if (mDefaultDataSubId.set(subId)) {
                 MultiSimSettingController.getInstance().notifyDefaultDataSubChanged();
 
-                Intent intent = new Intent(
-                        TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED);
-                intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-                SubscriptionManager.putSubscriptionIdExtra(intent, subId);
-                mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+                broadcastSubId(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED,
+                        subId);
 
                 updateDefaultSubId();
             }
@@ -2814,11 +2818,8 @@ public class SubscriptionManagerService extends ISub.Stub {
         final long token = Binder.clearCallingIdentity();
         try {
             if (mDefaultVoiceSubId.set(subId)) {
-                Intent intent = new Intent(
-                        TelephonyIntents.ACTION_DEFAULT_VOICE_SUBSCRIPTION_CHANGED);
-                intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-                SubscriptionManager.putSubscriptionIdExtra(intent, subId);
-                mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+                broadcastSubId(TelephonyIntents.ACTION_DEFAULT_VOICE_SUBSCRIPTION_CHANGED,
+                        subId);
 
                 PhoneAccountHandle newHandle = subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID
                         ? null : mTelephonyManager.getPhoneAccountHandleForSubscriptionId(subId);
@@ -2863,16 +2864,26 @@ public class SubscriptionManagerService extends ISub.Stub {
         final long token = Binder.clearCallingIdentity();
         try {
             if (mDefaultSmsSubId.set(subId)) {
-                Intent intent = new Intent(
-                        SubscriptionManager.ACTION_DEFAULT_SMS_SUBSCRIPTION_CHANGED);
-                intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-                SubscriptionManager.putSubscriptionIdExtra(intent, subId);
-                mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+                broadcastSubId(SubscriptionManager.ACTION_DEFAULT_SMS_SUBSCRIPTION_CHANGED,
+                        subId);
             }
 
         } finally {
             Binder.restoreCallingIdentity(token);
         }
+    }
+
+    /**
+     * Broadcast a sub Id with the given action.
+     * @param action The intent action.
+     * @param newSubId The sub Id to broadcast.
+     */
+    private void broadcastSubId(@NonNull String action, int newSubId) {
+        Intent intent = new Intent(action);
+        intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
+        SubscriptionManager.putSubscriptionIdExtra(intent, newSubId);
+        mContext.sendBroadcastAsUser(intent, UserHandle.ALL);
+        log("broadcastSubId action: " + action + " subId= " + newSubId);
     }
 
     /**
