@@ -55,6 +55,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
@@ -300,6 +301,17 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         doReturn(true).when(mResources).getBoolean(
                 eq(com.android.internal.R.bool.config_enable_get_subscription_user_handle));
         doReturn(mResources).when(mContext).getResources();
+    }
+
+    @Test
+    public void testBroadcastOnInitialization() {
+        ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, times(3)).sendBroadcastAsUser(
+                captorIntent.capture(), eq(UserHandle.ALL));
+        assertThat(captorIntent.getAllValues().stream().map(Intent::getAction).toList())
+                .containsExactly(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED,
+                        TelephonyIntents.ACTION_DEFAULT_VOICE_SUBSCRIPTION_CHANGED,
+                        SubscriptionManager.ACTION_DEFAULT_SMS_SUBSCRIPTION_CHANGED);
     }
 
     @Test
@@ -573,6 +585,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @Test
     public void testSetDefaultVoiceSubId() throws Exception {
+        clearInvocations(mContext);
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
 
@@ -590,7 +603,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION)).isEqualTo(1);
         ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext, times(2)).sendStickyBroadcastAsUser(
+        verify(mContext, times(2)).sendBroadcastAsUser(
                 captorIntent.capture(), eq(UserHandle.ALL));
 
         Intent intent = captorIntent.getAllValues().get(0);
@@ -614,6 +627,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @Test
     public void testSetDefaultDataSubId() throws Exception {
+        clearInvocations(mContext);
         doReturn(false).when(mTelephonyManager).isVoiceCapable();
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
@@ -633,7 +647,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(Settings.Global.getInt(mContext.getContentResolver(),
                         Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION)).isEqualTo(1);
         ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext, times(2)).sendStickyBroadcastAsUser(
+        verify(mContext, times(2)).sendBroadcastAsUser(
                 captorIntent.capture(), eq(UserHandle.ALL));
 
         Intent intent = captorIntent.getAllValues().get(0);
@@ -657,6 +671,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @Test
     public void testSetDefaultSmsSubId() throws Exception {
+        clearInvocations(mContext);
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
 
@@ -673,7 +688,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION)).isEqualTo(1);
         ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext).sendStickyBroadcastAsUser(captorIntent.capture(), eq(UserHandle.ALL));
+        verify(mContext).sendBroadcastAsUser(captorIntent.capture(), eq(UserHandle.ALL));
 
         Intent intent = captorIntent.getValue();
         assertThat(intent.getAction()).isEqualTo(
