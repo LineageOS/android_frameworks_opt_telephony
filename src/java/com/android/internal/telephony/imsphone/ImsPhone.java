@@ -265,6 +265,7 @@ public class ImsPhone extends ImsPhoneBase {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     ImsPhoneCallTracker mCT;
     ImsExternalCallTracker mExternalCallTracker;
+    ImsNrSaModeHandler mImsNrSaModeHandler;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private ArrayList <ImsPhoneMmiCode> mPendingMMIs = new ArrayList<ImsPhoneMmiCode>();
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
@@ -475,6 +476,10 @@ public class ImsPhone extends ImsPhoneBase {
                 TelephonyComponentFactory.getInstance()
                         .inject(ImsExternalCallTracker.class.getName())
                         .makeImsExternalCallTracker(this);
+        mImsNrSaModeHandler =
+                TelephonyComponentFactory.getInstance()
+                        .inject(ImsNrSaModeHandler.class.getName())
+                        .makeImsNrSaModeHandler(this);
         mCT = TelephonyComponentFactory.getInstance().inject(ImsPhoneCallTracker.class.getName())
                 .makeImsPhoneCallTracker(this);
         mCT.registerPhoneStateListener(mExternalCallTracker);
@@ -522,6 +527,7 @@ public class ImsPhone extends ImsPhoneBase {
         //super.dispose();
         mPendingMMIs.clear();
         mExternalCallTracker.tearDown();
+        mImsNrSaModeHandler.tearDown();
         mCT.unregisterPhoneStateListener(mExternalCallTracker);
         mCT.unregisterForVoiceCallEnded(this);
         mCT.dispose();
@@ -2473,6 +2479,8 @@ public class ImsPhone extends ImsPhoneBase {
             getDefaultPhone().setImsRegistrationState(true);
             mMetrics.writeOnImsConnectionState(mPhoneId, ImsConnectionState.State.CONNECTED, null);
             mImsStats.onImsRegistered(imsRadioTech);
+            mImsNrSaModeHandler.onImsRegistered(
+                    attributes.getRegistrationTechnology(), attributes.getFeatureTags());
             updateImsRegistrationInfo(REGISTRATION_STATE_REGISTERED,
                     attributes.getRegistrationTechnology(), SUGGESTED_ACTION_NONE);
         }
@@ -2509,6 +2517,7 @@ public class ImsPhone extends ImsPhoneBase {
             mMetrics.writeOnImsConnectionState(mPhoneId, ImsConnectionState.State.DISCONNECTED,
                     imsReasonInfo);
             mImsStats.onImsUnregistered(imsReasonInfo);
+            mImsNrSaModeHandler.onImsUnregistered(imsRadioTech);
             mImsRegistrationTech = REGISTRATION_TECH_NONE;
             int suggestedModemAction = SUGGESTED_ACTION_NONE;
             if (imsReasonInfo.getCode() == ImsReasonInfo.CODE_REGISTRATION_ERROR) {
