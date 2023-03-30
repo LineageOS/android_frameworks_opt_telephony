@@ -52,6 +52,9 @@ import com.android.internal.telephony.IIntegerConsumer;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
+import com.android.internal.telephony.satellite.metrics.ProvisionMetricsStats;
+import com.android.internal.telephony.satellite.metrics.SessionMetricsStats;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.util.FunctionalUtils;
 
@@ -100,6 +103,8 @@ public class SatelliteController extends Handler {
     @NonNull private SatelliteSessionController mSatelliteSessionController;
     @NonNull private final PointingAppController mPointingAppController;
     @NonNull private final DatagramController mDatagramController;
+    @NonNull private final ControllerMetricsStats mControllerMetricsStats;
+    @NonNull private final ProvisionMetricsStats mProvisionMetricsStats;
     private SharedPreferences mSharedPreferences = null;
     private final CommandsInterface mCi;
 
@@ -170,6 +175,7 @@ public class SatelliteController extends Handler {
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected SatelliteController(@NonNull Context context, @NonNull Looper looper) {
         super(looper);
+
         mContext = context;
         Phone phone = SatelliteServiceUtils.getPhone();
         mCi = phone.mCi;
@@ -180,6 +186,12 @@ public class SatelliteController extends Handler {
         // Create the PointingUIController singleton,
         // which is used to manage interactions with PointingUI app.
         mPointingAppController = PointingAppController.make(mContext);
+
+        // Create the SatelliteControllerMetrics to report controller metrics
+        // should be called before making DatagramController
+        loge("mControllerMetricsStats = ControllerMetricsStats.make(mContext);");
+        mControllerMetricsStats = ControllerMetricsStats.make(mContext);
+        mProvisionMetricsStats = ProvisionMetricsStats.getOrCreateInstance();
 
         // Create the DatagramController singleton,
         // which is used to send and receive satellite datagrams.
@@ -436,6 +448,8 @@ public class SatelliteController extends Handler {
                 }
                 mSatelliteProvisionCallbacks.put(argument.subId, argument.callback);
                 onCompleted = obtainMessage(EVENT_PROVISION_SATELLITE_SERVICE_DONE, request);
+                // Log the current time for provision triggered
+                mProvisionMetricsStats.setProvisioningStartTime();
                 if (mSatelliteModemInterface.isSatelliteServiceSupported()) {
                     mSatelliteModemInterface.provisionSatelliteService(argument.token,
                             argument.regionId, onCompleted);
@@ -448,6 +462,11 @@ public class SatelliteController extends Handler {
                     loge("provisionSatelliteService: No phone object");
                     argument.callback.accept(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
                     notifyRequester(request);
+                    mProvisionMetricsStats
+                            .setResultCode(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE)
+                            .reportProvisionMetrics();
+                    mControllerMetricsStats.reportProvisionCount(
+                            SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
                 }
                 break;
             }
@@ -468,6 +487,9 @@ public class SatelliteController extends Handler {
                 ProvisionSatelliteServiceArgument argument =
                         (ProvisionSatelliteServiceArgument) request.argument;
                 onCompleted = obtainMessage(EVENT_DEPROVISION_SATELLITE_SERVICE_DONE, request);
+                if (argument.callback != null) {
+                    mProvisionMetricsStats.setProvisioningStartTime();
+                }
                 if (mSatelliteModemInterface.isSatelliteServiceSupported()) {
                     mSatelliteModemInterface
                             .deprovisionSatelliteService(argument.token, onCompleted);
@@ -480,6 +502,11 @@ public class SatelliteController extends Handler {
                     loge("deprovisionSatelliteService: No phone object");
                     if (argument.callback != null) {
                         argument.callback.accept(
+                                SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
+                        mProvisionMetricsStats
+                                .setResultCode(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE)
+                                .reportProvisionMetrics();
+                        mControllerMetricsStats.reportDeprovisionCount(
                                 SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
                     }
                 }
@@ -511,7 +538,7 @@ public class SatelliteController extends Handler {
                 if (error == SatelliteManager.SATELLITE_ERROR_NONE) {
                     if (argument.enableSatellite) {
                         //If satellite mode is enabled successfully, disable Bluetooth and wifi
-                        disableBluetoothWifiState();;
+                        disableBluetoothWifiState();
                     } else {
                         //Disabled satellite mode, Reset BT and Wifi if previously changed here
                         checkAndEnableBluetoothWifiState();
@@ -529,6 +556,21 @@ public class SatelliteController extends Handler {
                 }
                 argument.callback.accept(error);
                 // TODO: if error is ERROR_NONE, request satellite capabilities
+
+                if (argument.enableSatellite) {
+                    if (error == SatelliteManager.SATELLITE_ERROR_NONE) {
+                        mControllerMetricsStats.onSatelliteEnabled();
+                        mControllerMetricsStats.reportServiceEnablementSuccessCount();
+                    } else {
+                        mControllerMetricsStats.reportServiceEnablementFailCount();
+                    }
+                    SessionMetricsStats.getInstance()
+                            .setInitializationResult(error)
+                            .setRadioTechnology(SatelliteManager.NT_RADIO_TECHNOLOGY_PROPRIETARY)
+                            .reportSessionMetrics();
+                } else {
+                    mControllerMetricsStats.onSatelliteDisabled();
+                }
                 break;
             }
 
@@ -564,6 +606,7 @@ public class SatelliteController extends Handler {
                         boolean enabled = ((int[]) ar.result)[0] == 1;
                         if (DBG) logd("isSatelliteEnabled: " + enabled);
                         bundle.putBoolean(SatelliteManager.KEY_SATELLITE_ENABLED, enabled);
+                        updateSatelliteEnabledState(enabled, "EVENT_IS_SATELLITE_ENABLED_DONE");
                     }
                 }
                 ((ResultReceiver) request.argument).send(error, bundle);
@@ -1008,6 +1051,7 @@ public class SatelliteController extends Handler {
             sendRequestAsync(CMD_DEPROVISION_SATELLITE_SERVICE,
                     new ProvisionSatelliteServiceArgument(token, regionId, null, validSubId),
                     phone);
+            mProvisionMetricsStats.setIsCanceled(true);
         });
         return cancelTransport;
     }
@@ -1350,6 +1394,12 @@ public class SatelliteController extends Handler {
         if (callback == null) {
             loge("handleEventProvisionSatelliteServiceDone: callback is null for subId="
                     + arg.subId);
+            mProvisionMetricsStats
+                    .setResultCode(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE)
+                    .setIsProvisionRequest(true)
+                    .reportProvisionMetrics();
+            mControllerMetricsStats.reportProvisionCount(
+                    SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
             return;
         }
         callback.accept(result);
@@ -1364,6 +1414,11 @@ public class SatelliteController extends Handler {
          * TODO (b/267826133) we need to do this for all subscriptions on the device.
          */
         registerForSatelliteProvisionStateChanged(arg.subId, null);
+
+        mProvisionMetricsStats.setResultCode(result)
+                .setIsProvisionRequest(true)
+                .reportProvisionMetrics();
+        mControllerMetricsStats.reportProvisionCount(result);
     }
 
     private void handleEventDeprovisionSatelliteServiceDone(
@@ -1378,6 +1433,10 @@ public class SatelliteController extends Handler {
 
         if (arg.callback != null) {
             arg.callback.accept(result);
+            mProvisionMetricsStats.setResultCode(result)
+                    .setIsProvisionRequest(false)
+                    .reportProvisionMetrics();
+            mControllerMetricsStats.reportDeprovisionCount(result);
         }
 
         if (result == SatelliteManager.SATELLITE_ERROR_NONE) {

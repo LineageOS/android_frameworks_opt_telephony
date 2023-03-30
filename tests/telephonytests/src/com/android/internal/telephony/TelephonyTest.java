@@ -69,6 +69,7 @@ import android.provider.BlockedNumberContract;
 import android.provider.DeviceConfig;
 import android.provider.Settings;
 import android.provider.Telephony;
+import android.telecom.TelecomManager;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentity;
@@ -106,6 +107,7 @@ import com.android.internal.telephony.data.LinkBandwidthEstimator;
 import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
+import com.android.internal.telephony.imsphone.ImsNrSaModeHandler;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.metrics.ImsStats;
@@ -232,6 +234,7 @@ public abstract class TelephonyTest {
     protected CarrierSignalAgent mCarrierSignalAgent;
     protected CarrierActionAgent mCarrierActionAgent;
     protected ImsExternalCallTracker mImsExternalCallTracker;
+    protected ImsNrSaModeHandler mImsNrSaModeHandler;
     protected AppSmsManager mAppSmsManager;
     protected IccSmsInterfaceManager mIccSmsInterfaceManager;
     protected SmsDispatchersController mSmsDispatchersController;
@@ -272,6 +275,7 @@ public abstract class TelephonyTest {
     protected ActivityManager mActivityManager;
     protected ImsCallProfile mImsCallProfile;
     protected TelephonyManager mTelephonyManager;
+    protected TelecomManager mTelecomManager;
     protected TelephonyRegistryManager mTelephonyRegistryManager;
     protected SubscriptionManager mSubscriptionManager;
     protected EuiccManager mEuiccManager;
@@ -466,6 +470,7 @@ public abstract class TelephonyTest {
         mCarrierSignalAgent = Mockito.mock(CarrierSignalAgent.class);
         mCarrierActionAgent = Mockito.mock(CarrierActionAgent.class);
         mImsExternalCallTracker = Mockito.mock(ImsExternalCallTracker.class);
+        mImsNrSaModeHandler = Mockito.mock(ImsNrSaModeHandler.class);
         mAppSmsManager = Mockito.mock(AppSmsManager.class);
         mIccSmsInterfaceManager = Mockito.mock(IccSmsInterfaceManager.class);
         mSmsDispatchersController = Mockito.mock(SmsDispatchersController.class);
@@ -537,6 +542,7 @@ public abstract class TelephonyTest {
         doReturn(mUiccProfile).when(mUiccPort).getUiccProfile();
 
         mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
+        mTelecomManager = mContext.getSystemService(TelecomManager.class);
         mActivityManager = (ActivityManager) mContext.getSystemService(Context.ACTIVITY_SERVICE);
         mTelephonyRegistryManager = (TelephonyRegistryManager) mContext.getSystemService(
             Context.TELEPHONY_REGISTRY_SERVICE);
@@ -585,6 +591,8 @@ public abstract class TelephonyTest {
                         anyInt(), nullable(Object.class));
         doReturn(mImsExternalCallTracker).when(mTelephonyComponentFactory)
                 .makeImsExternalCallTracker(nullable(ImsPhone.class));
+        doReturn(mImsNrSaModeHandler).when(mTelephonyComponentFactory)
+                .makeImsNrSaModeHandler(nullable(ImsPhone.class));
         doReturn(mAppSmsManager).when(mTelephonyComponentFactory)
                 .makeAppSmsManager(nullable(Context.class));
         doReturn(mCarrierSignalAgent).when(mTelephonyComponentFactory)
