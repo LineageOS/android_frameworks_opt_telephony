@@ -678,7 +678,7 @@ public class LinkBandwidthEstimator extends Handler {
                 return;
             }
             int linkBandwidthKbps = (int) linkBandwidthLongKbps;
-            mBwSampleValid = true;
+            mBwSampleValid = linkBandwidthKbps > 0;
             mBwSampleKbps = linkBandwidthKbps;
 
             String dataRatName = getDataRatName(mDataRat);

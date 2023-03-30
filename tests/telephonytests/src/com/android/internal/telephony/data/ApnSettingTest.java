@@ -205,9 +205,11 @@ public class ApnSettingTest extends TelephonyTest {
         Field[] fields = ApnSetting.class.getDeclaredFields();
         for (Field f : fields) {
             int modifiers = f.getModifiers();
-            if (Modifier.isStatic(modifiers) || !Modifier.isFinal(modifiers)) {
+            if (Modifier.isStatic(modifiers) || !Modifier.isFinal(modifiers)
+                    || "mId".equals(f.getName())) {
                 continue;
             }
+
             f.setAccessible(true);
             ApnSetting testApn = null;
             if (int.class.equals(f.getType())) {
@@ -377,5 +379,53 @@ public class ApnSettingTest extends TelephonyTest {
                 .setMmsProxyAddress("proxy.mobile.att.net")
                 .build();
         assertEquals("proxy.mobile.att.net", apn3.getMmsProxyAddressAsString());
+    }
+
+    @Test
+    public void testApnProfileEqualsWithoutID() {
+        ApnSetting apn1 = new ApnSetting.Builder()
+                .setId(1234)
+                .setOperatorNumeric("310260")
+                .setEntryName("ims")
+                .setApnName("ims")
+                .setApnTypeBitmask(ApnSetting.TYPE_IMS)
+                .setProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setRoamingProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_EDGE
+                        | TelephonyManager.NETWORK_TYPE_BITMASK_GPRS))
+                .setMtuV4(1440)
+                .setCarrierEnabled(true)
+                .build();
+
+        ApnSetting apn2 = new ApnSetting.Builder()
+                .setId(1235)
+                .setOperatorNumeric("310260")
+                .setEntryName("ims")
+                .setApnName("ims")
+                .setApnTypeBitmask(ApnSetting.TYPE_IMS)
+                .setProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setRoamingProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_EDGE
+                        | TelephonyManager.NETWORK_TYPE_BITMASK_GPRS))
+                .setMtuV4(1440)
+                .setCarrierEnabled(true)
+                .build();
+
+        ApnSetting apn3 = new ApnSetting.Builder()
+                .setId(1234)
+                .setOperatorNumeric("310260")
+                .setEntryName("ims")
+                .setApnName("ims2")
+                .setApnTypeBitmask(ApnSetting.TYPE_IMS)
+                .setProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setRoamingProtocol(ApnSetting.PROTOCOL_IPV6)
+                .setNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_EDGE
+                        | TelephonyManager.NETWORK_TYPE_BITMASK_GPRS))
+                .setMtuV4(1440)
+                .setCarrierEnabled(true)
+                .build();
+
+        assertTrue(apn1.equals(apn2));
+        assertFalse(apn1.equals(apn3));
     }
 }
