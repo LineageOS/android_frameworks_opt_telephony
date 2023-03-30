@@ -3017,14 +3017,6 @@ public class SubscriptionManagerService extends ISub.Stub {
         }
     }
 
-    @Override
-    public boolean setSubscriptionEnabled(boolean enable, int subId) {
-        enforcePermissions("setSubscriptionEnabled", Manifest.permission.MODIFY_PHONE_STATE);
-
-
-        return true;
-    }
-
     /**
      * Check if a subscription is active.
      *
@@ -3188,14 +3180,12 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @param enabled whether uicc applications are enabled or disabled.
      * @param subId which subscription to operate on.
      *
-     * @return the number of records updated.
-     *
      * @throws IllegalArgumentException if the subscription does not exist.
      * @throws SecurityException if callers do not hold the required permission.
      */
     @Override
     @RequiresPermission(Manifest.permission.MODIFY_PHONE_STATE)
-    public int setUiccApplicationsEnabled(boolean enabled, int subId) {
+    public void setUiccApplicationsEnabled(boolean enabled, int subId) {
         enforcePermissions("setUiccApplicationsEnabled",
                 Manifest.permission.MODIFY_PHONE_STATE);
         logl("setUiccApplicationsEnabled: subId=" + subId + ", enabled=" + enabled
@@ -3220,7 +3210,6 @@ public class SubscriptionManagerService extends ISub.Stub {
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
-        return 1;
     }
 
     /**
