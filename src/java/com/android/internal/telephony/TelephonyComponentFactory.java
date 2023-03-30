@@ -41,6 +41,7 @@ import com.android.internal.telephony.data.LinkBandwidthEstimator;
 import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
+import com.android.internal.telephony.imsphone.ImsNrSaModeHandler;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.nitz.NitzStateMachineImpl;
@@ -383,6 +384,14 @@ public class TelephonyComponentFactory {
     public ImsExternalCallTracker makeImsExternalCallTracker(ImsPhone imsPhone) {
 
         return new ImsExternalCallTracker(imsPhone, imsPhone.getContext().getMainExecutor());
+    }
+
+    /**
+     * Create an ImsNrSaModeHandler.
+     */
+    public ImsNrSaModeHandler makeImsNrSaModeHandler(ImsPhone imsPhone) {
+
+        return new ImsNrSaModeHandler(imsPhone, imsPhone.getLooper());
     }
 
     /**
