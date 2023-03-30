@@ -6038,6 +6038,21 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     /**
+     * Get satellite provision state.
+     *
+     * @param result Message that will be sent back to the requester
+     */
+    @Override
+    public void getSatelliteProvisionState(Message result) {
+        // Satellite HAL APIs are not supported before Android V.
+        if (result != null) {
+            AsyncResult.forMessage(result, null,
+                    CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
+            result.sendToTarget();
+        }
+    }
+
+    /**
      * Provision the subscription with a satellite provider. This is needed to register the
      * subscription if the provider allows dynamic registration.
      *
