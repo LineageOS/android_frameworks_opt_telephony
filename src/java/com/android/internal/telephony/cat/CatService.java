@@ -1010,7 +1010,11 @@ public class CatService extends Handler implements AppInterface {
                     }
                 }
             }
-            mMsgDecoder.sendStartDecodingMessageParams(new RilMessage(msg.what, data));
+            if (mMsgDecoder != null) {
+                mMsgDecoder.sendStartDecodingMessageParams(new RilMessage(msg.what, data));
+            } else {
+                CatLog.e(this, "Error in handleMessage (" + msg.what + ") mMsgDecoder is NULL");
+            }
             break;
         case MSG_ID_CALL_SETUP:
             mMsgDecoder.sendStartDecodingMessageParams(new RilMessage(msg.what, null));
