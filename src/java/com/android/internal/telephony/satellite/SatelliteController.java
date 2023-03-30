@@ -185,7 +185,7 @@ public class SatelliteController extends Handler {
      * @param looper The looper for the handler. It does not run on main thread.
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
-    protected SatelliteController(@NonNull Context context, @NonNull Looper looper) {
+    public SatelliteController(@NonNull Context context, @NonNull Looper looper) {
         super(looper);
 
         mContext = context;
@@ -512,6 +512,8 @@ public class SatelliteController extends Handler {
                         bundle.putBoolean(SatelliteManager.KEY_SATELLITE_ENABLED, enabled);
                         updateSatelliteEnabledState(enabled, "EVENT_IS_SATELLITE_ENABLED_DONE");
                     }
+                } else if (error == SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED) {
+                    updateSatelliteSupportedState(false);
                 }
                 ((ResultReceiver) request.argument).send(error, bundle);
                 break;
@@ -829,7 +831,7 @@ public class SatelliteController extends Handler {
     public void requestSatelliteEnabled(int subId, boolean enableSatellite, boolean enableDemoMode,
             @NonNull IIntegerConsumer callback) {
         Consumer<Integer> result = FunctionalUtils.ignoreRemoteException(callback::accept);
-        Boolean satelliteSupported = isSatelliteSupported();
+        Boolean satelliteSupported = isSatelliteSupportedInternal();
         if (satelliteSupported == null) {
             result.accept(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
             return;
@@ -862,7 +864,7 @@ public class SatelliteController extends Handler {
      *               if the request is successful or an error code if the request failed.
      */
     public void requestIsSatelliteEnabled(int subId, @NonNull ResultReceiver result) {
-        Boolean satelliteSupported = isSatelliteSupported();
+        Boolean satelliteSupported = isSatelliteSupportedInternal();
         if (satelliteSupported == null) {
             result.send(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE, null);
             return;
@@ -894,7 +896,7 @@ public class SatelliteController extends Handler {
      *               if the request is successful or an error code if the request failed.
      */
     public void requestIsDemoModeEnabled(int subId, @NonNull ResultReceiver result) {
-        Boolean satelliteSupported = isSatelliteSupported();
+        Boolean satelliteSupported = isSatelliteSupportedInternal();
         if (satelliteSupported == null) {
             result.send(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE, null);
             return;
@@ -948,7 +950,7 @@ public class SatelliteController extends Handler {
      *               if the request is successful or an error code if the request failed.
      */
     public void requestSatelliteCapabilities(int subId, @NonNull ResultReceiver result) {
-        Boolean satelliteSupported = isSatelliteSupported();
+        Boolean satelliteSupported = isSatelliteSupportedInternal();
         if (satelliteSupported == null) {
             result.send(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE, null);
             return;
@@ -984,7 +986,7 @@ public class SatelliteController extends Handler {
             @NonNull IIntegerConsumer errorCallback,
             @NonNull ISatelliteTransmissionUpdateCallback callback) {
         Consumer<Integer> result = FunctionalUtils.ignoreRemoteException(errorCallback::accept);
-        Boolean satelliteSupported = isSatelliteSupported();
+        Boolean satelliteSupported = isSatelliteSupportedInternal();
         if (satelliteSupported == null) {
             result.accept(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
             return;
@@ -1023,7 +1025,7 @@ public class SatelliteController extends Handler {
     public void stopSatelliteTransmissionUpdates(int subId, @NonNull IIntegerConsumer errorCallback,
             @NonNull ISatelliteTransmissionUpdateCallback callback) {
         Consumer<Integer> result = FunctionalUtils.ignoreRemoteException(errorCallback::accept);
-        Boolean satelliteSupported = isSatelliteSupported();
+        Boolean satelliteSupported = isSatelliteSupportedInternal();
         if (satelliteSupported == null) {
             result.accept(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
             return;
@@ -1070,7 +1072,7 @@ public class SatelliteController extends Handler {
     @Nullable public ICancellationSignal provisionSatelliteService(int subId,
             @NonNull String token, @NonNull String regionId, @NonNull IIntegerConsumer callback) {
         Consumer<Integer> result = FunctionalUtils.ignoreRemoteException(callback::accept);
-        Boolean satelliteSupported = isSatelliteSupported();
+        Boolean satelliteSupported = isSatelliteSupportedInternal();
         if (satelliteSupported == null) {
             result.accept(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
             return null;
@@ -1120,7 +1122,7 @@ public class SatelliteController extends Handler {
     public void deprovisionSatelliteService(int subId,
             @NonNull String token, @NonNull IIntegerConsumer callback) {
         Consumer<Integer> result = FunctionalUtils.ignoreRemoteException(callback::accept);
-        Boolean satelliteSupported = isSatelliteSupported();
+        Boolean satelliteSupported = isSatelliteSupportedInternal();
         if (satelliteSupported == null) {
             result.accept(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
             return;
@@ -1156,7 +1158,7 @@ public class SatelliteController extends Handler {
      */
     @SatelliteManager.SatelliteError public int registerForSatelliteProvisionStateChanged(int subId,
             @NonNull ISatelliteProvisionStateCallback callback) {
-        Boolean satelliteSupported = isSatelliteSupported();
+        Boolean satelliteSupported = isSatelliteSupportedInternal();
         if (satelliteSupported == null) {
             return SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE;
         }
@@ -1190,7 +1192,7 @@ public class SatelliteController extends Handler {
      *               request failed.
      */
     public void requestIsSatelliteProvisioned(int subId, @NonNull ResultReceiver result) {
-        Boolean satelliteSupported = isSatelliteSupported();
+        Boolean satelliteSupported = isSatelliteSupportedInternal();
         if (satelliteSupported == null) {
             result.send(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE, null);
             return;
@@ -1359,7 +1361,7 @@ public class SatelliteController extends Handler {
      */
     public void requestIsSatelliteCommunicationAllowedForCurrentLocation(int subId,
             @NonNull ResultReceiver result) {
-        Boolean satelliteSupported = isSatelliteSupported();
+        Boolean satelliteSupported = isSatelliteSupportedInternal();
         if (satelliteSupported == null) {
             result.send(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE, null);
             return;
@@ -1381,7 +1383,7 @@ public class SatelliteController extends Handler {
      *               be visible if the request is successful or an error code if the request failed.
      */
     public void requestTimeForNextSatelliteVisibility(int subId, @NonNull ResultReceiver result) {
-        Boolean satelliteSupported = isSatelliteSupported();
+        Boolean satelliteSupported = isSatelliteSupportedInternal();
         if (satelliteSupported == null) {
             result.send(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE, null);
             return;
@@ -1403,31 +1405,6 @@ public class SatelliteController extends Handler {
 
         Phone phone = SatelliteServiceUtils.getPhone();
         sendRequestAsync(CMD_GET_TIME_SATELLITE_NEXT_VISIBLE, result, phone);
-    }
-
-    /**
-     * If we have not successfully queried the satellite modem for its satellite service support,
-     * we will retry the query one more time. Otherwise, we will return the cached result.
-     */
-    public Boolean isSatelliteSupported() {
-        synchronized (mIsSatelliteSupportedLock) {
-            if (mIsSatelliteSupported != null) {
-                /* We have already successfully queried the satellite modem. */
-                return mIsSatelliteSupported;
-            }
-        }
-        /**
-         * We have not successfully checked whether the modem supports satellite service.
-         * Thus, we need to retry it now.
-         */
-        requestIsSatelliteSupported(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
-                new ResultReceiver(this) {
-                    @Override
-                    protected void onReceiveResult(int resultCode, Bundle resultData) {
-                        logd("requestIsSatelliteSupported: resultCode=" + resultCode);
-                    }
-                });
-        return null;
     }
 
     /**
@@ -1458,6 +1435,39 @@ public class SatelliteController extends Handler {
             logd("onSatelliteServiceConnected: Satellite vendor service is not supported."
                     + " Ignored the event");
         }
+    }
+
+    /**
+     * @return {@code true} is satellite is supported on the device, {@code  false} otherwise.
+     */
+    public boolean isSatelliteSupported() {
+        Boolean supported = isSatelliteSupportedInternal();
+        return (supported != null ? supported : false);
+    }
+
+    /**
+     * If we have not successfully queried the satellite modem for its satellite service support,
+     * we will retry the query one more time. Otherwise, we will return the cached result.
+     */
+    private Boolean isSatelliteSupportedInternal() {
+        synchronized (mIsSatelliteSupportedLock) {
+            if (mIsSatelliteSupported != null) {
+                /* We have already successfully queried the satellite modem. */
+                return mIsSatelliteSupported;
+            }
+        }
+        /**
+         * We have not successfully checked whether the modem supports satellite service.
+         * Thus, we need to retry it now.
+         */
+        requestIsSatelliteSupported(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+                new ResultReceiver(this) {
+                    @Override
+                    protected void onReceiveResult(int resultCode, Bundle resultData) {
+                        logd("requestIsSatelliteSupported: resultCode=" + resultCode);
+                    }
+                });
+        return null;
     }
 
     private void handleEventProvisionSatelliteServiceDone(
