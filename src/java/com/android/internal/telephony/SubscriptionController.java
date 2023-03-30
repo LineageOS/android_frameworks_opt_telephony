@@ -2484,9 +2484,8 @@ public class SubscriptionController extends ISub.Stub {
     /**
      * Set uicc applications being enabled or disabled.
      * @param enabled whether uicc applications are enabled or disabled.
-     * @return the number of records updated
      */
-    public int setUiccApplicationsEnabled(boolean enabled, int subId) {
+    public void setUiccApplicationsEnabled(boolean enabled, int subId) {
         if (DBG) logd("[setUiccApplicationsEnabled]+ enabled:" + enabled + " subId:" + subId);
 
         enforceModifyPhoneState("setUiccApplicationsEnabled");
@@ -2496,16 +2495,14 @@ public class SubscriptionController extends ISub.Stub {
             ContentValues value = new ContentValues(1);
             value.put(SubscriptionManager.UICC_APPLICATIONS_ENABLED, enabled);
 
-            int result = mContext.getContentResolver().update(
-                    SubscriptionManager.getUriForSubscriptionId(subId), value, null, null);
+            mContext.getContentResolver().update(SubscriptionManager.getUriForSubscriptionId(subId),
+                    value, null, null);
 
             // Refresh the Cache of Active Subscription Info List
             refreshCachedActiveSubscriptionInfoList();
 
             notifyUiccAppsEnableChanged();
             notifySubscriptionInfoChanged();
-
-            return result;
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
@@ -4040,7 +4037,6 @@ public class SubscriptionController extends ISub.Stub {
      * @return true if success, false if fails or the further action is
      * needed hence it's redirected to Euicc.
      */
-    @Override
     public boolean setSubscriptionEnabled(boolean enable, int subId) {
         enforceModifyPhoneState("setSubscriptionEnabled");
 
