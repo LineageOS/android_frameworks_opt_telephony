@@ -578,7 +578,8 @@ public class SatelliteModemInterface {
             }
         } else {
             loge("requestIsSatelliteSupported: Satellite service is unavailable.");
-            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED);
+            sendMessageWithResult(
+                    message, null, SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE);
         }
     }
 

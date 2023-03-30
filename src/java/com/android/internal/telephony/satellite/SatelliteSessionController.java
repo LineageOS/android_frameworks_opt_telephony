@@ -31,6 +31,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.RemoteException;
 import android.provider.DeviceConfig;
+import android.telephony.Rlog;
 import android.telephony.satellite.ISatelliteStateCallback;
 import android.telephony.satellite.SatelliteManager;
 import android.util.Log;
@@ -92,6 +93,7 @@ public class SatelliteSessionController extends StateMachine {
     private final long mSatelliteStayAtListeningFromReceivingMillis;
     private final ConcurrentHashMap<IBinder, ISatelliteStateCallback> mListeners;
     @SatelliteManager.SatelliteModemState private int mCurrentState;
+    final boolean mIsSatelliteSupported;
 
     /**
      * @return The singleton instance of SatelliteSessionController.
@@ -118,6 +120,12 @@ public class SatelliteSessionController extends StateMachine {
                     SatelliteModemInterface.getInstance(),
                     getSatelliteStayAtListeningFromSendingMillis(),
                     getSatelliteStayAtListeningFromReceivingMillis());
+        } else {
+            if (isSatelliteSupported != sInstance.mIsSatelliteSupported) {
+                Rlog.e(TAG, "New satellite support state " + isSatelliteSupported
+                        + " is different from existing state " + sInstance.mIsSatelliteSupported
+                        + ". Ignore the new state.");
+            }
         }
         return sInstance;
     }
@@ -149,6 +157,7 @@ public class SatelliteSessionController extends StateMachine {
         mListeners = new ConcurrentHashMap<>();
         mIsSendingTriggeredDuringTransferringState = new AtomicBoolean(false);
         mCurrentState = SatelliteManager.SATELLITE_MODEM_STATE_UNKNOWN;
+        mIsSatelliteSupported = isSatelliteSupported;
 
         addState(mUnavailableState);
         addState(mPowerOffState);

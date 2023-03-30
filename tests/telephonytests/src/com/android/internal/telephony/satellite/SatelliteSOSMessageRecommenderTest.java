@@ -72,7 +72,6 @@ import java.util.concurrent.Executor;
 public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
     private static final String TAG = "SatelliteSOSMessageRecommenderTest";
     private static final long TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS = 500;
-    private static final long EVENT_PROCESSING_TIME_MILLIS = 100;
     private static final int PHONE_ID = 0;
     private static final String CALL_ID = "CALL_ID";
     private static final String WRONG_CALL_ID = "WRONG_CALL_ID";
@@ -314,6 +313,21 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
     }
 
+    @Test
+    public void testOnEmergencyCallStarted() {
+        SatelliteController satelliteController = new SatelliteController(
+                mMockContext, Looper.myLooper());
+        TestSOSMessageRecommender testSOSMessageRecommender = new TestSOSMessageRecommender(
+                Looper.myLooper(),
+                satelliteController, mTestImsManager,
+                TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS);
+        testSOSMessageRecommender.onEmergencyCallStarted(mTestConnection, mPhone);
+        processAllMessages();
+
+        assertFalse(testSOSMessageRecommender.isTimerStarted());
+        assertEquals(0, testSOSMessageRecommender.getCountOfTimerStarted());
+    }
+
     private void testStopTrackingCallBeforeTimeout(
             @Connection.ConnectionState int connectionState) {
         mTestSOSMessageRecommender.onEmergencyCallStarted(mTestConnection, mPhone);
@@ -409,7 +423,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         }
 
         @Override
-        public Boolean isSatelliteSupported() {
+        public boolean isSatelliteSupported() {
             return true;
         }
 
