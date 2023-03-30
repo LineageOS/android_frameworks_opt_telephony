@@ -106,6 +106,7 @@ import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.SubscriptionProvider;
 import com.android.internal.telephony.subscription.SubscriptionManagerService.SubscriptionManagerServiceCallback;
 import com.android.internal.telephony.subscription.SubscriptionManagerService.SubscriptionMap;
+import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.UiccSlot;
 
 import libcore.junit.util.compat.CoreCompatChangeRule.EnableCompatChanges;
@@ -2218,5 +2219,40 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         processAllMessages();
 
         assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false)).isEmpty();
+    }
+
+    @Test
+    public void testInactiveSimRemoval() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO2);
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        doReturn(FAKE_ICCID2).when(mUiccSlot).getIccId(0);
+        doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mUiccSlot).getCardState();
+
+        mSubscriptionManagerServiceUT.setUiccApplicationsEnabled(false, 1);
+        mSubscriptionManagerServiceUT.updateSimState(
+                1, TelephonyManager.SIM_STATE_NOT_READY, null, null);
+        processAllMessages();
+
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false)).isEmpty();
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(1)
+                .areUiccApplicationsEnabled()).isFalse();
+        assertThat(mSubscriptionManagerServiceUT.getAvailableSubscriptionInfoList(
+                CALLING_PACKAGE, CALLING_FEATURE)).hasSize(1);
+
+        // Now remove the SIM
+        doReturn(null).when(mUiccSlot).getIccId(0);
+        doReturn(IccCardStatus.CardState.CARDSTATE_ABSENT).when(mUiccSlot).getCardState();
+        mSubscriptionManagerServiceUT.updateSimState(
+                1, TelephonyManager.SIM_STATE_ABSENT, null, null);
+        processAllMessages();
+
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false)).isEmpty();
+        // UICC should be re-enabled again for next re-insertion.
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(1)
+                .areUiccApplicationsEnabled()).isTrue();
+        assertThat(mSubscriptionManagerServiceUT.getAvailableSubscriptionInfoList(
+                CALLING_PACKAGE, CALLING_FEATURE)).isEmpty();
     }
 }
