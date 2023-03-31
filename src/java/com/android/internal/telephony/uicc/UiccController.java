@@ -1202,55 +1202,57 @@ public class UiccController extends Handler {
      * Returns the UiccCardInfo of all currently inserted UICCs and embedded eUICCs.
      */
     public ArrayList<UiccCardInfo> getAllUiccCardInfos() {
-        ArrayList<UiccCardInfo> infos = new ArrayList<>();
-        for (int slotIndex = 0; slotIndex < mUiccSlots.length; slotIndex++) {
-            final UiccSlot slot = mUiccSlots[slotIndex];
-            if (slot == null) continue;
-            boolean isEuicc = slot.isEuicc();
-            String eid = null;
-            UiccCard card = slot.getUiccCard();
-            int cardId = UNINITIALIZED_CARD_ID;
-            boolean isRemovable = slot.isRemovable();
+        synchronized (mLock) {
+            ArrayList<UiccCardInfo> infos = new ArrayList<>();
+            for (int slotIndex = 0; slotIndex < mUiccSlots.length; slotIndex++) {
+                final UiccSlot slot = mUiccSlots[slotIndex];
+                if (slot == null) continue;
+                boolean isEuicc = slot.isEuicc();
+                String eid = null;
+                UiccCard card = slot.getUiccCard();
+                int cardId = UNINITIALIZED_CARD_ID;
+                boolean isRemovable = slot.isRemovable();
 
-            // first we try to populate UiccCardInfo using the UiccCard, but if it doesn't exist
-            // (e.g. the slot is for an inactive eUICC) then we try using the UiccSlot.
-            if (card != null) {
-                if (isEuicc) {
-                    eid = ((EuiccCard) card).getEid();
-                    cardId = convertToPublicCardId(eid);
-                } else {
-                    // In case of non Euicc, use default port index to get the IccId.
-                    UiccPort port = card.getUiccPort(TelephonyManager.DEFAULT_PORT_INDEX);
-                    if (port == null) {
-                        AnomalyReporter.reportAnomaly(
-                                UUID.fromString("92885ba7-98bb-490a-ba19-987b1c8b2055"),
-                                "UiccController: Found UiccPort Null object.");
+                // first we try to populate UiccCardInfo using the UiccCard, but if it doesn't exist
+                // (e.g. the slot is for an inactive eUICC) then we try using the UiccSlot.
+                if (card != null) {
+                    if (isEuicc) {
+                        eid = ((EuiccCard) card).getEid();
+                        cardId = convertToPublicCardId(eid);
+                    } else {
+                        // In case of non Euicc, use default port index to get the IccId.
+                        UiccPort port = card.getUiccPort(TelephonyManager.DEFAULT_PORT_INDEX);
+                        if (port == null) {
+                            AnomalyReporter.reportAnomaly(
+                                    UUID.fromString("92885ba7-98bb-490a-ba19-987b1c8b2055"),
+                                    "UiccController: Found UiccPort Null object.");
+                        }
+                        String iccId = (port != null) ? port.getIccId() : null;
+                        cardId = convertToPublicCardId(iccId);
                     }
-                    String iccId = (port != null) ? port.getIccId() : null;
-                    cardId = convertToPublicCardId(iccId);
+                } else {
+                    // This iccid is used for non Euicc only, so use default port index
+                    String iccId = slot.getIccId(TelephonyManager.DEFAULT_PORT_INDEX);
+                    // Fill in the fields we can
+                    if (!isEuicc && !TextUtils.isEmpty(iccId)) {
+                        cardId = convertToPublicCardId(iccId);
+                    }
                 }
-            } else {
-                // This iccid is used for non Euicc only, so use default port index
-                String iccId = slot.getIccId(TelephonyManager.DEFAULT_PORT_INDEX);
-                // Fill in the fields we can
-                if (!isEuicc && !TextUtils.isEmpty(iccId)) {
-                    cardId = convertToPublicCardId(iccId);
-                }
-            }
 
-            List<UiccPortInfo> portInfos = new ArrayList<>();
-            int[] portIndexes = slot.getPortList();
-            for (int portIdx : portIndexes) {
-                String iccId = IccUtils.stripTrailingFs(slot.getIccId(portIdx));
-                portInfos.add(new UiccPortInfo(iccId, portIdx,
-                        slot.getPhoneIdFromPortIndex(portIdx), slot.isPortActive(portIdx)));
+                List<UiccPortInfo> portInfos = new ArrayList<>();
+                int[] portIndexes = slot.getPortList();
+                for (int portIdx : portIndexes) {
+                    String iccId = IccUtils.stripTrailingFs(slot.getIccId(portIdx));
+                    portInfos.add(new UiccPortInfo(iccId, portIdx,
+                            slot.getPhoneIdFromPortIndex(portIdx), slot.isPortActive(portIdx)));
+                }
+                UiccCardInfo info = new UiccCardInfo(
+                        isEuicc, cardId, eid, slotIndex, isRemovable,
+                        slot.isMultipleEnabledProfileSupported(), portInfos);
+                infos.add(info);
             }
-            UiccCardInfo info = new UiccCardInfo(
-                    isEuicc, cardId, eid, slotIndex, isRemovable,
-                    slot.isMultipleEnabledProfileSupported(), portInfos);
-            infos.add(info);
+            return infos;
         }
-        return infos;
     }
 
     /**
