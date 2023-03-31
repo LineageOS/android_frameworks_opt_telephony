@@ -88,6 +88,7 @@ public class SubscriptionInfoInternalTest {
                     .setLastUsedTPMessageReference(SubscriptionDatabaseManagerTest
                             .FAKE_TP_MESSAGE_REFERENCE1)
                     .setUserId(SubscriptionDatabaseManagerTest.FAKE_USER_ID1)
+                    .setSatelliteEnabled(1)
                     .setGroupDisabled(false)
                     .build();
 
@@ -185,6 +186,7 @@ public class SubscriptionInfoInternalTest {
         assertThat(mSubInfo.getLastUsedTPMessageReference()).isEqualTo(
                 SubscriptionDatabaseManagerTest.FAKE_TP_MESSAGE_REFERENCE1);
         assertThat(mSubInfo.getUserId()).isEqualTo(SubscriptionDatabaseManagerTest.FAKE_USER_ID1);
+        assertThat(mSubInfo.getSatelliteEnabled()).isEqualTo(1);
         assertThat(mSubInfo.isGroupDisabled()).isFalse();
     }
 

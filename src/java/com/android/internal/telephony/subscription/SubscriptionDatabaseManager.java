@@ -232,7 +232,10 @@ public class SubscriptionDatabaseManager extends Handler {
                     SubscriptionInfoInternal::getLastUsedTPMessageReference),
             new AbstractMap.SimpleImmutableEntry<>(
                     SimInfo.COLUMN_USER_HANDLE,
-                    SubscriptionInfoInternal::getUserId)
+                    SubscriptionInfoInternal::getUserId),
+            new AbstractMap.SimpleImmutableEntry<>(
+                    SimInfo.COLUMN_SATELLITE_ENABLED,
+                    SubscriptionInfoInternal::getSatelliteEnabled)
     );
 
     /**
@@ -318,7 +321,10 @@ public class SubscriptionDatabaseManager extends Handler {
                     SubscriptionDatabaseManager::setLastUsedTPMessageReference),
             new AbstractMap.SimpleImmutableEntry<>(
                     SimInfo.COLUMN_USER_HANDLE,
-                    SubscriptionDatabaseManager::setUserId)
+                    SubscriptionDatabaseManager::setUserId),
+            new AbstractMap.SimpleImmutableEntry<>(
+                    SimInfo.COLUMN_SATELLITE_ENABLED,
+                    SubscriptionDatabaseManager::setSatelliteEnabled)
     );
 
     /**
@@ -1679,6 +1685,20 @@ public class SubscriptionDatabaseManager extends Handler {
     }
 
     /**
+     * Set whether satellite is enabled or not.
+     *
+     * @param subId Subscription id.
+     * @param isSatelliteEnabled if satellite is enabled or not.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
+     */
+    public void setSatelliteEnabled(int subId, int isSatelliteEnabled) {
+        writeDatabaseAndCacheHelper(subId, SimInfo.COLUMN_SATELLITE_ENABLED,
+                isSatelliteEnabled,
+                SubscriptionInfoInternal.Builder::setSatelliteEnabled);
+    }
+
+    /**
      * Load the entire database into the cache.
      */
     private void loadFromDatabase() {
@@ -1833,8 +1853,9 @@ public class SubscriptionDatabaseManager extends Handler {
                 .setLastUsedTPMessageReference(cursor.getInt(cursor.getColumnIndexOrThrow(
                         SimInfo.COLUMN_TP_MESSAGE_REF)))
                 .setUserId(cursor.getInt(cursor.getColumnIndexOrThrow(
-                        SimInfo.COLUMN_USER_HANDLE)));
-
+                        SimInfo.COLUMN_USER_HANDLE)))
+                .setSatelliteEnabled(cursor.getInt(cursor.getColumnIndexOrThrow(
+                        SimInfo.COLUMN_SATELLITE_ENABLED)));
         return builder.build();
     }
 
