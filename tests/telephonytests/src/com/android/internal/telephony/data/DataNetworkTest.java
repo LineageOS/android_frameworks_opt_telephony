@@ -1446,7 +1446,7 @@ public class DataNetworkTest extends TelephonyTest {
         assertThat(mDataNetworkUT.getApnTypeNetworkCapability())
                 .isEqualTo(NetworkCapabilities.NET_CAPABILITY_SUPL);
 
-        mDataNetworkUT.detachNetworkRequest(networkRequest);
+        mDataNetworkUT.detachNetworkRequest(networkRequest, false);
         processAllMessages();
 
         assertThat(mDataNetworkUT.getApnTypeNetworkCapability())
@@ -1469,7 +1469,7 @@ public class DataNetworkTest extends TelephonyTest {
         // SUPL priority is 80
         assertThat(mDataNetworkUT.getPriority()).isEqualTo(80);
 
-        mDataNetworkUT.detachNetworkRequest(networkRequest);
+        mDataNetworkUT.detachNetworkRequest(networkRequest, false);
         processAllMessages();
 
         // Internet priority is 20
