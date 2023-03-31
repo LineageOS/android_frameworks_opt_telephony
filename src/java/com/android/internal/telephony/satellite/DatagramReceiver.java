@@ -25,6 +25,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.database.SQLException;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -260,19 +261,22 @@ public class DatagramReceiver extends Handler {
         private void deleteDatagram(long datagramId) {
             String whereClause = (Telephony.SatelliteDatagrams.COLUMN_UNIQUE_KEY_DATAGRAM_ID
                     + "=" + datagramId);
-            Cursor cursor =  sInstance.mContentResolver.query(
+            try (Cursor cursor = sInstance.mContentResolver.query(
                     Telephony.SatelliteDatagrams.CONTENT_URI,
-                    null, whereClause, null, null);
-            if ((cursor != null) && (cursor.getCount() == 1)) {
-                int numRowsDeleted = sInstance.mContentResolver.delete(
-                        Telephony.SatelliteDatagrams.CONTENT_URI, whereClause, null);
-                if (numRowsDeleted == 0) {
-                    loge("Cannot delete datagram with datagramId: " + datagramId);
+                    null, whereClause, null, null)) {
+                if ((cursor != null) && (cursor.getCount() == 1)) {
+                    int numRowsDeleted = sInstance.mContentResolver.delete(
+                            Telephony.SatelliteDatagrams.CONTENT_URI, whereClause, null);
+                    if (numRowsDeleted == 0) {
+                        loge("Cannot delete datagram with datagramId: " + datagramId);
+                    } else {
+                        logd("Deleted datagram with datagramId: " + datagramId);
+                    }
                 } else {
-                    logd("Deleted datagram with datagramId: " + datagramId);
+                    loge("Datagram with datagramId: " + datagramId + " is not present in DB.");
                 }
-            } else {
-                loge("Datagram with datagramId: " + datagramId + " is not present in DB.");
+            } catch(SQLException e) {
+                loge("deleteDatagram SQLException e:" + e);
             }
         }
 
@@ -467,8 +471,6 @@ public class DatagramReceiver extends Handler {
             satelliteDatagramListenerHandler = new SatelliteDatagramListenerHandler(
                     mBackgroundHandler.getLooper(), validSubId);
             if (SatelliteModemInterface.getInstance().isSatelliteServiceSupported()) {
-                // TODO: remove this as SatelliteModemInterface can register for incoming datagrams
-                // on boot up itself.
                 SatelliteModemInterface.getInstance().registerForSatelliteDatagramsReceived(
                         satelliteDatagramListenerHandler,
                         SatelliteDatagramListenerHandler.EVENT_SATELLITE_DATAGRAM_RECEIVED, null);
@@ -593,6 +595,4 @@ public class DatagramReceiver extends Handler {
     private static void loge(@NonNull String log) {
         Rlog.e(TAG, log);
     }
-
-    // TODO: An api change - do not pass the binder from Telephony to Applications
 }
