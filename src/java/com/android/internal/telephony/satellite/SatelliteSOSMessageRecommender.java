@@ -42,6 +42,7 @@ import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.metrics.SatelliteStats;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -261,7 +262,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
             mEmergencyConnection.sendConnectionEvent(Call.EVENT_DISPLAY_SOS_MESSAGE, null);
             isDialerNotified = true;
         }
-        reportMetrics(isDialerNotified);
+        reportEsosRecommenderDecision(isDialerNotified);
         cleanUpResources();
     }
 
@@ -288,7 +289,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
         }
 
         if (!shouldTrackCall(state)) {
-            reportMetrics(false);
+            reportEsosRecommenderDecision(false);
             cleanUpResources();
         }
     }
@@ -308,14 +309,14 @@ public class SatelliteSOSMessageRecommender extends Handler {
         }
     }
 
-    private void reportMetrics(boolean isDialerNotified) {
-        /**
-         * TODO: We need to report the following info
-         * - Whether the Dialer is notified with the event DISPLAY_SOS_MESSAGE (isDialerNotified).
-         * - Number of times the timer is started (mCountOfTimerStarted).
-         * - Whether IMS is registered (mIsImsRegistered).
-         * - The cellular service state (mCellularServiceState).
-         */
+    private void reportEsosRecommenderDecision(boolean isDialerNotified) {
+        SatelliteStats.getInstance().onSatelliteSosMessageRecommender(
+                new SatelliteStats.SatelliteSosMessageRecommenderParams.Builder()
+                        .setDisplaySosMessageSent(isDialerNotified)
+                        .setCountOfTimerStarted(mCountOfTimerStarted)
+                        .setImsRegistered(mIsImsRegistered.get())
+                        .setCellularServiceState(mCellularServiceState.get())
+                        .build());
     }
 
     private void cleanUpResources() {
