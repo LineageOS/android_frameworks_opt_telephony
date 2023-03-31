@@ -201,7 +201,6 @@ public class SatelliteController extends Handler {
 
         // Create the SatelliteControllerMetrics to report controller metrics
         // should be called before making DatagramController
-        loge("mControllerMetricsStats = ControllerMetricsStats.make(mContext);");
         mControllerMetricsStats = ControllerMetricsStats.make(mContext);
         mProvisionMetricsStats = ProvisionMetricsStats.getOrCreateInstance();
 
@@ -1405,6 +1404,35 @@ public class SatelliteController extends Handler {
 
         Phone phone = SatelliteServiceUtils.getPhone();
         sendRequestAsync(CMD_GET_TIME_SATELLITE_NEXT_VISIBLE, result, phone);
+    }
+
+    /**
+     * This API can be used by only CTS to update satellite vendor service package name.
+     *
+     * @param servicePackageName The package name of the satellite vendor service.
+     * @return {@code true} if the satellite vendor service is set successfully,
+     * {@code false} otherwise.
+     */
+    public boolean setSatelliteServicePackageName(@Nullable String servicePackageName) {
+        boolean result = mSatelliteModemInterface.setSatelliteServicePackageName(
+                servicePackageName);
+        if (result && (servicePackageName == null || servicePackageName.equals("null"))) {
+            /**
+             * mIsSatelliteSupported is set to true when running SatelliteManagerTestOnMockService.
+             * We need to set it to the actual state of the device.
+             */
+            synchronized (mIsSatelliteSupportedLock) {
+                mIsSatelliteSupported = null;
+            }
+            ResultReceiver receiver = new ResultReceiver(this) {
+                @Override
+                protected void onReceiveResult(int resultCode, Bundle resultData) {
+                    logd("requestIsSatelliteSupported: resultCode=" + resultCode);
+                }
+            };
+            requestIsSatelliteSupported(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, receiver);
+        }
+        return result;
     }
 
     /**
