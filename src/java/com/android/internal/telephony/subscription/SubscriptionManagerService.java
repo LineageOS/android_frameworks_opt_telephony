@@ -1265,15 +1265,25 @@ public class SubscriptionManagerService extends ISub.Stub {
         }
 
         if (simState == TelephonyManager.SIM_STATE_ABSENT) {
+            // Re-enable the pSIM when it's removed, so it will be in enabled state when it gets
+            // re-inserted again. (pre-U behavior)
+            List<String> iccIds = getIccIdsOfInsertedPhysicalSims();
+            mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                    // All the removed pSIMs (Note this could include some erased eSIM that has
+                    // embedded bit removed).
+                    .filter(subInfo -> !iccIds.contains(subInfo.getIccId())
+                            && !subInfo.isEmbedded())
+                    .forEach(subInfo -> {
+                        int subId = subInfo.getSubscriptionId();
+                        log("updateSubscription: Re-enable Uicc application on sub " + subId);
+                        mSubscriptionDatabaseManager.setUiccApplicationsEnabled(subId, true);
+                        // When sim is absent, set the port index to invalid port index.
+                        // (pre-U behavior)
+                        mSubscriptionDatabaseManager.setPortIndex(subId,
+                                TelephonyManager.INVALID_PORT_INDEX);
+                    });
+
             if (mSlotIndexToSubId.containsKey(phoneId)) {
-                int subId = mSlotIndexToSubId.get(phoneId);
-                // Re-enable the SIM when it's removed, so it will be in enabled state when it gets
-                // re-inserted again. (pre-U behavior)
-                log("updateSubscription: Re-enable Uicc application on sub " + subId);
-                mSubscriptionDatabaseManager.setUiccApplicationsEnabled(subId, true);
-                // When sim is absent, set the port index to invalid port index. (pre-U behavior)
-                mSubscriptionDatabaseManager.setPortIndex(subId,
-                        TelephonyManager.INVALID_PORT_INDEX);
                 markSubscriptionsInactive(phoneId);
             }
         } else if (simState == TelephonyManager.SIM_STATE_NOT_READY) {
