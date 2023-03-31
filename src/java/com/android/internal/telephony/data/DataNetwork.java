@@ -853,6 +853,14 @@ public class DataNetwork extends StateMachine {
          * @param dataNetwork The data network.
          */
         public abstract void onTrackNetworkUnwanted(@NonNull DataNetwork dataNetwork);
+
+        /**
+         * Called when a network request is detached after no longer satisfied.
+         *
+         * @param networkRequest The detached network request.
+         */
+        public abstract void onRetryUnsatisfiedNetworkRequest(
+                @NonNull TelephonyNetworkRequest networkRequest);
     }
 
     /**
@@ -1114,7 +1122,8 @@ public class DataNetwork extends StateMachine {
                     break;
                 }
                 case EVENT_DETACH_NETWORK_REQUEST: {
-                    onDetachNetworkRequest((TelephonyNetworkRequest) msg.obj);
+                    onDetachNetworkRequest((TelephonyNetworkRequest) msg.obj,
+                            msg.arg1 != 0 /* shouldRetry */);
                     updateNetworkScore();
                     break;
                 }
@@ -1691,11 +1700,20 @@ public class DataNetwork extends StateMachine {
      * Called when detaching the network request from this data network.
      *
      * @param networkRequest Network request to detach.
+     * @param shouldRetry {@code true} if the detached network request should be retried.
      */
-    private void onDetachNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
+    private void onDetachNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest,
+            boolean shouldRetry) {
         mAttachedNetworkRequestList.remove(networkRequest);
         networkRequest.setState(TelephonyNetworkRequest.REQUEST_STATE_UNSATISFIED);
         networkRequest.setAttachedNetwork(null);
+
+        if (shouldRetry) {
+            // Inform DataNetworkController that a network request was detached and should be
+            // scheduled to retry.
+            mDataNetworkCallback.invokeFromExecutor(
+                    () -> mDataNetworkCallback.onRetryUnsatisfiedNetworkRequest(networkRequest));
+        }
 
         if (mAttachedNetworkRequestList.isEmpty()) {
             log("All network requests are detached.");
@@ -1717,12 +1735,15 @@ public class DataNetwork extends StateMachine {
      * network.
      *
      * @param networkRequest Network request to detach.
+     * @param shouldRetry {@code true} if the detached network request should be retried.
      */
-    public void detachNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest) {
+    public void detachNetworkRequest(@NonNull TelephonyNetworkRequest networkRequest,
+            boolean shouldRetry) {
         if (getCurrentState() == null || isDisconnected()) {
             return;
         }
-        sendMessage(obtainMessage(EVENT_DETACH_NETWORK_REQUEST, networkRequest));
+        sendMessage(obtainMessage(EVENT_DETACH_NETWORK_REQUEST, shouldRetry ? 1 : 0, 0,
+                networkRequest));
     }
 
     /**
@@ -1773,13 +1794,15 @@ public class DataNetwork extends StateMachine {
 
     /**
      * Remove network requests that can't be satisfied anymore.
+     *
+     * @param shouldRetry {@code true} if the detached network requests should be retried.
      */
-    private void removeUnsatisfiedNetworkRequests() {
+    private void removeUnsatisfiedNetworkRequests(boolean shouldRetry) {
         for (TelephonyNetworkRequest networkRequest : mAttachedNetworkRequestList) {
             if (!networkRequest.canBeSatisfiedBy(mNetworkCapabilities)) {
                 log("removeUnsatisfiedNetworkRequests: " + networkRequest
                         + " can't be satisfied anymore. Will be detached.");
-                detachNetworkRequest(networkRequest);
+                detachNetworkRequest(networkRequest, shouldRetry);
             }
         }
     }
@@ -2081,7 +2104,11 @@ public class DataNetwork extends StateMachine {
                 mNetworkAgent.sendNetworkCapabilities(mNetworkCapabilities);
             }
 
-            removeUnsatisfiedNetworkRequests();
+            // Only retry the request when the network is in connected or handover state. This is to
+            // prevent request is detached during connecting state, and then become a setup/detach
+            // infinite loop.
+            boolean shouldRetry = isConnected() || isHandoverInProgress();
+            removeUnsatisfiedNetworkRequests(shouldRetry);
             mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
                     .onNetworkCapabilitiesChanged(DataNetwork.this));
         } else {
