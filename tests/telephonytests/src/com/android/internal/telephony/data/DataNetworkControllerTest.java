@@ -377,6 +377,12 @@ public class DataNetworkControllerTest extends TelephonyTest {
                             "ENTERPRISE", 1).getBytes()))
             .build();
 
+    private final DataProfile mLowLatencyDataProfile = new DataProfile.Builder()
+            .setTrafficDescriptor(new TrafficDescriptor(null,
+                    new TrafficDescriptor.OsAppId(TrafficDescriptor.OsAppId.ANDROID_OS_ID,
+                            "PRIORITIZE_LATENCY", 1).getBytes()))
+            .build();
+
     /** Data call response map. The first key is the transport type, the second key is the cid. */
     private final Map<Integer, Map<Integer, DataCallResponse>> mDataCallResponses = new HashMap<>();
 
@@ -4371,5 +4377,73 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
 
         verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_MMS);
+    }
+
+    @Test
+    public void testTrafficDescriptionChangedDataRetry() throws Exception {
+        List<TrafficDescriptor> tdList = List.of(
+                new TrafficDescriptor.Builder()
+                        .setOsAppId(new OsAppId(OsAppId.ANDROID_OS_ID, "PRIORITIZE_LATENCY", 1)
+                                .getBytes()).build(),
+                new TrafficDescriptor.Builder()
+                        .setOsAppId(new OsAppId(OsAppId.ANDROID_OS_ID, "ENTERPRISE", 1).getBytes())
+                        .build()
+                );
+        setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager,
+                createDataCallResponse(1, DataCallResponse.LINK_STATUS_ACTIVE, tdList));
+        doReturn(mEnterpriseDataProfile).when(mDataProfileManager)
+                .getDataProfileForNetworkRequest(any(TelephonyNetworkRequest.class), anyInt(),
+                        anyBoolean());
+        mDataNetworkControllerUT.addNetworkRequest(new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)
+                        .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                        .build(), mPhone));
+        processAllMessages();
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE,
+                NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY);
+
+        mDataNetworkControllerUT.addNetworkRequest(new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY)
+                        .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                        .build(), mPhone));
+        processAllMessages();
+        List<DataNetwork> dataNetworkList = getDataNetworks();
+        assertThat(dataNetworkList).hasSize(1);
+
+        // Now remove low latency TD from the data call response.
+        logd("Now remove PRIORITIZE_LATENCY");
+        tdList = List.of(new TrafficDescriptor.Builder()
+                .setOsAppId(new OsAppId(OsAppId.ANDROID_OS_ID, "ENTERPRISE", 1).getBytes())
+                .build());
+        mDataCallResponses.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN).put(1,
+                createDataCallResponse(1, DataCallResponse.LINK_STATUS_ACTIVE, tdList));
+        mDataCallListChangedRegistrants.get(AccessNetworkConstants.TRANSPORT_TYPE_WWAN)
+                .notifyRegistrants(new AsyncResult(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                        List.of(createDataCallResponse(1, DataCallResponse.LINK_STATUS_ACTIVE,
+                                tdList)), null));
+
+        tdList = List.of(new TrafficDescriptor.Builder()
+                .setOsAppId(new OsAppId(OsAppId.ANDROID_OS_ID, "PRIORITIZE_LATENCY", 1).getBytes())
+                .build());
+        setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager,
+                createDataCallResponse(2, DataCallResponse.LINK_STATUS_ACTIVE, tdList));
+        doReturn(mLowLatencyDataProfile).when(mDataProfileManager)
+                .getDataProfileForNetworkRequest(any(TelephonyNetworkRequest.class), anyInt(),
+                        anyBoolean());
+        processAllFutureMessages();
+
+        dataNetworkList = getDataNetworks();
+        assertThat(dataNetworkList).hasSize(2);
+
+        assertThat(dataNetworkList.get(0).getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)).isTrue();
+        assertThat(dataNetworkList.get(0).getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY)).isFalse();
+        assertThat(dataNetworkList.get(1).getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)).isFalse();
+        assertThat(dataNetworkList.get(1).getNetworkCapabilities().hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY)).isTrue();
     }
 }
