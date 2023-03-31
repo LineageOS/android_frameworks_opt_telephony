@@ -165,6 +165,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                     .setUsageSetting(SubscriptionManager.USAGE_SETTING_DEFAULT)
                     .setLastUsedTPMessageReference(FAKE_TP_MESSAGE_REFERENCE1)
                     .setUserId(FAKE_USER_ID1)
+                    .setSatelliteEnabled(0)
                     .setGroupDisabled(false)
                     .build();
 
@@ -220,6 +221,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                     .setUsageSetting(SubscriptionManager.USAGE_SETTING_DATA_CENTRIC)
                     .setLastUsedTPMessageReference(FAKE_TP_MESSAGE_REFERENCE2)
                     .setUserId(FAKE_USER_ID2)
+                    .setSatelliteEnabled(1)
                     .setGroupDisabled(false)
                     .build();
 
@@ -1551,6 +1553,33 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_USER_HANDLE, FAKE_USER_ID1);
         assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
                 .getUserId()).isEqualTo(FAKE_USER_ID1);
+    }
+
+    @Test
+    public void testUpdateSatelliteEnabled() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class, () -> mDatabaseManagerUT.setSatelliteEnabled(
+                FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(), 1));
+
+        SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
+        mDatabaseManagerUT.setSatelliteEnabled(FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(),
+                1);
+        processAllMessages();
+
+        subInfo = new SubscriptionInfoInternal.Builder(subInfo)
+                .setSatelliteEnabled(1).build();
+        verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(), SimInfo.COLUMN_SATELLITE_ENABLED))
+                .isEqualTo(1);
+
+        mDatabaseManagerUT.setSubscriptionProperty(FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(),
+                SimInfo.COLUMN_SATELLITE_ENABLED, 0);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(
+                FAKE_SUBSCRIPTION_INFO1.getSubscriptionId()).getSatelliteEnabled())
+                .isEqualTo(0);
     }
 
     @Test
