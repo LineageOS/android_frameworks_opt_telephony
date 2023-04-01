@@ -146,6 +146,18 @@ public class SubscriptionManagerService extends ISub.Stub {
      * that requires higher permission to access.
      */
     private static final Set<String> DIRECT_ACCESS_SUBSCRIPTION_COLUMNS = Set.of(
+            SimInfo.COLUMN_CB_EXTREME_THREAT_ALERT,
+            SimInfo.COLUMN_CB_SEVERE_THREAT_ALERT,
+            SimInfo.COLUMN_CB_AMBER_ALERT,
+            SimInfo.COLUMN_CB_EMERGENCY_ALERT,
+            SimInfo.COLUMN_CB_ALERT_SOUND_DURATION,
+            SimInfo.COLUMN_CB_ALERT_REMINDER_INTERVAL,
+            SimInfo.COLUMN_CB_ALERT_VIBRATE,
+            SimInfo.COLUMN_CB_ALERT_SPEECH,
+            SimInfo.COLUMN_CB_ETWS_TEST_ALERT,
+            SimInfo.COLUMN_CB_CHANNEL_50_ALERT,
+            SimInfo.COLUMN_CB_CMAS_TEST_ALERT,
+            SimInfo.COLUMN_CB_OPT_OUT_DIALOG,
             SimInfo.COLUMN_ENHANCED_4G_MODE_ENABLED,
             SimInfo.COLUMN_VT_IMS_ENABLED,
             SimInfo.COLUMN_WFC_IMS_ENABLED,
