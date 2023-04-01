@@ -274,14 +274,14 @@ public class SatelliteController extends Handler {
 
     private static final class ProvisionSatelliteServiceArgument {
         @NonNull public String token;
-        @NonNull public String regionId;
+        @NonNull public byte[] provisionData;
         @NonNull public Consumer<Integer> callback;
         public int subId;
 
-        ProvisionSatelliteServiceArgument(String token, String regionId, Consumer<Integer> callback,
-                int subId) {
+        ProvisionSatelliteServiceArgument(String token, byte[] provisionData,
+                Consumer<Integer> callback, int subId) {
             this.token = token;
-            this.regionId = regionId;
+            this.provisionData = provisionData;
             this.callback = callback;
             this.subId = subId;
         }
@@ -357,7 +357,7 @@ public class SatelliteController extends Handler {
                 mProvisionMetricsStats.setProvisioningStartTime();
                 if (mSatelliteModemInterface.isSatelliteServiceSupported()) {
                     mSatelliteModemInterface.provisionSatelliteService(argument.token,
-                            argument.regionId, onCompleted);
+                            argument.provisionData, onCompleted);
                     break;
                 }
                 Phone phone = request.phone;
@@ -1062,14 +1062,15 @@ public class SatelliteController extends Handler {
      * @param subId The subId of the subscription to be provisioned.
      * @param token The token to be used as a unique identifier for provisioning with satellite
      *              gateway.
-     * @param regionId The region ID for the device's current location.
+     * @param provisionData Data from the provisioning app that can be used by provisioning server
      * @param callback The callback to get the error code of the request.
      *
      * @return The signal transport used by the caller to cancel the provision request,
      *         or {@code null} if the request failed.
      */
     @Nullable public ICancellationSignal provisionSatelliteService(int subId,
-            @NonNull String token, @NonNull String regionId, @NonNull IIntegerConsumer callback) {
+            @NonNull String token, @NonNull byte[] provisionData,
+            @NonNull IIntegerConsumer callback) {
         Consumer<Integer> result = FunctionalUtils.ignoreRemoteException(callback::accept);
         Boolean satelliteSupported = isSatelliteSupportedInternal();
         if (satelliteSupported == null) {
@@ -1095,13 +1096,14 @@ public class SatelliteController extends Handler {
 
         Phone phone = SatelliteServiceUtils.getPhone();
         sendRequestAsync(CMD_PROVISION_SATELLITE_SERVICE,
-                new ProvisionSatelliteServiceArgument(token, regionId, result, validSubId), phone);
+                new ProvisionSatelliteServiceArgument(token, provisionData, result, validSubId),
+                phone);
 
         ICancellationSignal cancelTransport = CancellationSignal.createTransport();
         CancellationSignal.fromTransport(cancelTransport).setOnCancelListener(() -> {
             sendRequestAsync(CMD_DEPROVISION_SATELLITE_SERVICE,
-                    new ProvisionSatelliteServiceArgument(token, regionId, null, validSubId),
-                    phone);
+                    new ProvisionSatelliteServiceArgument(token, provisionData, null,
+                            validSubId), phone);
             mProvisionMetricsStats.setIsCanceled(true);
         });
         return cancelTransport;
@@ -1144,7 +1146,8 @@ public class SatelliteController extends Handler {
         Phone phone = SatelliteServiceUtils.getPhone();
         final int validSubId = SatelliteServiceUtils.getValidSatelliteSubId(subId, mContext);
         sendRequestAsync(CMD_DEPROVISION_SATELLITE_SERVICE,
-                new ProvisionSatelliteServiceArgument(token, null, result, validSubId), phone);
+                new ProvisionSatelliteServiceArgument(token, null, result, validSubId),
+                phone);
     }
 
     /**
