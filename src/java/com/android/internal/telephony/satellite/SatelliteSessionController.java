@@ -26,6 +26,7 @@ import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TR
 
 import android.annotation.NonNull;
 import android.content.Context;
+import android.os.AsyncResult;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
@@ -282,6 +283,8 @@ public class SatelliteSessionController extends StateMachine {
             mCurrentState = SatelliteManager.SATELLITE_MODEM_STATE_IDLE;
             mIsSendingTriggeredDuringTransferringState.set(false);
             notifyStateChangedEvent(SatelliteManager.SATELLITE_MODEM_STATE_IDLE);
+            //Disable Cellular Modem
+            mSatelliteModemInterface.enableCellularModemWhileSatelliteModeIsOn(false, null);
         }
 
         @Override
@@ -306,6 +309,13 @@ public class SatelliteSessionController extends StateMachine {
                     == SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING)) {
                 transitionTo(mTransferringState);
             }
+        }
+
+        @Override
+        public void exit() {
+            if (DBG) logd("Exiting IdleState");
+            //Enable Cellular Modem
+            mSatelliteModemInterface.enableCellularModemWhileSatelliteModeIsOn(true, null);
         }
     }
 
