@@ -132,8 +132,8 @@ public class DatagramController {
      *
      * This method requests modem to check if there are any pending datagrams to be received over
      * satellite. If there are any incoming datagrams, they will be received via
-     * {@link android.telephony.satellite.SatelliteDatagramCallback
-     * #onSatelliteDatagramReceived(long, SatelliteDatagram, int, ILongConsumer)}
+     * {@link android.telephony.satellite.SatelliteDatagramCallback#onSatelliteDatagramReceived(
+     * long, SatelliteDatagram, int, Consumer)}
      *
      * @param subId The subId of the subscription used for receiving datagrams.
      * @param callback The callback to get {@link SatelliteManager.SatelliteError} of the request.

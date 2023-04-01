@@ -43,7 +43,7 @@ import android.util.Pair;
 
 import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.telephony.ILongConsumer;
+import com.android.internal.telephony.IVoidConsumer;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.metrics.SatelliteStats;
 import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
@@ -282,35 +282,23 @@ public class DatagramReceiver extends Handler {
 
         private void onSatelliteDatagramReceived(@NonNull DatagramRetryArgument argument) {
             try {
+                IVoidConsumer internalAck = new IVoidConsumer.Stub() {
+                    /**
+                     * This callback will be used by datagram receiver app
+                     * to send ack back to Telephony. If the callback is not
+                     * received within five minutes, then Telephony will
+                     * resend the datagram again.
+                     */
+                    @Override
+                    public void accept() {
+                        logd("acknowledgeSatelliteDatagramReceived: "
+                                + "datagramId=" + argument.datagramId);
+                        sendMessage(obtainMessage(EVENT_RECEIVED_ACK, argument));
+                    }
+                };
+
                 argument.listener.onSatelliteDatagramReceived(argument.datagramId,
-                        argument.datagram, argument.pendingCount,
-                        new ILongConsumer.Stub() {
-                            /**
-                             * This callback will be used by datagram receiver app
-                             * to send ack back to Telephony. If the callback is not
-                             * received within five minutes, then Telephony will
-                             * resend the datagram again.
-                             *
-                             * @param datagramId An id that uniquely identifies
-                             *                   datagram received by satellite
-                             *                   datagram receiver app. This should
-                             *                   match with datagramId passed in
-                             *                   {@link android.telephony.satellite
-                             *                   .SatelliteDatagramCallback
-                             *                   #onSatelliteDatagramReceived(long,
-                             *                   SatelliteDatagram, int,
-                             *                   ISatelliteDatagramReceiverAck)}
-                             *                   Upon receiving the ack, Telephony
-                             *                   will remove the datagram from
-                             *                   the persistent memory.
-                             */
-                            @Override
-                            public void accept(long datagramId) {
-                                logd("acknowledgeSatelliteDatagramReceived: "
-                                        + "datagramId=" + datagramId);
-                                sendMessage(obtainMessage(EVENT_RECEIVED_ACK, argument));
-                            }
-                        });
+                        argument.datagram, argument.pendingCount, internalAck);
             } catch (RemoteException e) {
                 logd("EVENT_SATELLITE_DATAGRAM_RECEIVED RemoteException: " + e);
             }
@@ -528,7 +516,7 @@ public class DatagramReceiver extends Handler {
      * This method requests modem to check if there are any pending datagrams to be received over
      * satellite. If there are any incoming datagrams, they will be received via
      * {@link android.telephony.satellite.SatelliteDatagramCallback
-     * #onSatelliteDatagramReceived(long, SatelliteDatagram, int, ILongConsumer)}
+     * #onSatelliteDatagramReceived(long, SatelliteDatagram, int, Consumer)}
      *
      * @param subId The subId of the subscription used for receiving datagrams.
      * @param callback The callback to get {@link SatelliteManager.SatelliteError} of the request.
