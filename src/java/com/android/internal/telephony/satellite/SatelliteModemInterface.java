@@ -486,6 +486,44 @@ public class SatelliteModemInterface {
     }
 
     /**
+     * Allow cellular modem scanning while satellite mode is on.
+     * @param enabled  {@code true} to enable cellular modem while satellite mode is on
+     * and {@code false} to disable
+     * @param message The Message to send to result of the operation to.
+     */
+    public void enableCellularModemWhileSatelliteModeIsOn(boolean enabled,
+            @Nullable Message message) {
+        if (mSatelliteService != null) {
+            try {
+                mSatelliteService.enableCellularModemWhileSatelliteModeIsOn(enabled,
+                        new IIntegerConsumer.Stub() {
+                            @Override
+                            public void accept(int result) {
+                                int error = SatelliteServiceUtils.fromSatelliteError(result);
+                                logd("enableCellularModemWhileSatelliteModeIsOn: " + error);
+                                Binder.withCleanCallingIdentity(() -> {
+                                        if (message != null) {
+                                            sendMessageWithResult(message, null, error);
+                                        }
+                                });
+                            }
+                        });
+            } catch (RemoteException e) {
+                loge("enableCellularModemWhileSatelliteModeIsOn: RemoteException " + e);
+                if (message != null) {
+                    sendMessageWithResult(
+                            message, null, SatelliteManager.SATELLITE_SERVICE_ERROR);
+                }
+            }
+        } else {
+            loge("enableCellularModemWhileSatelliteModeIsOn: Satellite service is unavailable.");
+            if (message != null) {
+                sendMessageWithResult(message, null,
+                        SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE);
+            }
+        }
+    }
+    /**
      * Request to enable or disable the satellite modem and demo mode. If the satellite modem
      * is enabled, this may also disable the cellular modem, and if the satellite modem is disabled,
      * this may also re-enable the cellular modem.
@@ -691,14 +729,14 @@ public class SatelliteModemInterface {
      *
      * @param token The token to be used as a unique identifier for provisioning with satellite
      *              gateway.
-     * @param regionId The region ID for the device's current location.
+     * @param provisionData Data from the provisioning app that can be used by provisioning server
      * @param message The Message to send to result of the operation to.
      */
-    public void provisionSatelliteService(@NonNull String token, @NonNull String regionId,
+    public void provisionSatelliteService(@NonNull String token, @NonNull byte[] provisionData,
             @NonNull Message message) {
         if (mSatelliteService != null) {
             try {
-                mSatelliteService.provisionSatelliteService(token, regionId,
+                mSatelliteService.provisionSatelliteService(token, provisionData,
                         new IIntegerConsumer.Stub() {
                             @Override
                             public void accept(int result) {
