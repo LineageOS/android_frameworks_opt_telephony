@@ -24,12 +24,14 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.AsyncResult;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.os.RemoteException;
+import android.os.SystemProperties;
 import android.telephony.Rlog;
 import android.telephony.satellite.SatelliteCapabilities;
 import android.telephony.satellite.SatelliteDatagram;
@@ -55,7 +57,8 @@ import java.util.Arrays;
  */
 public class SatelliteModemInterface {
     private static final String TAG = "SatelliteModemInterface";
-
+    private static final String ALLOW_MOCK_MODEM_PROPERTY = "persist.radio.allow_mock_modem";
+    private static final boolean DEBUG = !"user".equals(Build.TYPE);
     private static final long REBIND_INITIAL_DELAY = 2 * 1000; // 2 seconds
     private static final long REBIND_MAXIMUM_DELAY = 64 * 1000; // 1 minute
     private static final int REBIND_MULTIPLIER = 2;
@@ -69,9 +72,10 @@ public class SatelliteModemInterface {
     /**
      * {@code true} to use the vendor satellite service and {@code false} to use the HAL.
      */
-    private final boolean mIsSatelliteServiceSupported;
+    private boolean mIsSatelliteServiceSupported;
     @Nullable private ISatellite mSatelliteService;
     @Nullable private SatelliteServiceConnection mSatelliteServiceConnection;
+    @NonNull private String mVendorSatellitePackageName = "";
     private boolean mIsBound;
     private boolean mIsBinding;
 
@@ -133,7 +137,6 @@ public class SatelliteModemInterface {
                     // keep previous state as this could be retrying sending or receiving
                     break;
             }
-            // TODO: properly notify the rest of the datagram transfer state changed parameters
             mDatagramTransferStateChangedRegistrants.notifyResult(datagramTransferState);
         }
     };
@@ -206,6 +209,9 @@ public class SatelliteModemInterface {
     }
 
     @NonNull private String getSatellitePackageName() {
+        if (!TextUtils.isEmpty(mVendorSatellitePackageName)) {
+            return mVendorSatellitePackageName;
+        }
         return TextUtils.emptyIfNull(mContext.getResources().getString(
                 R.string.config_satellite_service_package));
     }
@@ -235,6 +241,7 @@ public class SatelliteModemInterface {
         intent.setPackage(packageName);
 
         mSatelliteServiceConnection = new SatelliteServiceConnection();
+        logd("Binding to " + packageName);
         try {
             boolean success = mContext.bindService(
                     intent, mSatelliteServiceConnection, Context.BIND_AUTO_CREATE);
@@ -479,6 +486,44 @@ public class SatelliteModemInterface {
     }
 
     /**
+     * Allow cellular modem scanning while satellite mode is on.
+     * @param enabled  {@code true} to enable cellular modem while satellite mode is on
+     * and {@code false} to disable
+     * @param message The Message to send to result of the operation to.
+     */
+    public void enableCellularModemWhileSatelliteModeIsOn(boolean enabled,
+            @Nullable Message message) {
+        if (mSatelliteService != null) {
+            try {
+                mSatelliteService.enableCellularModemWhileSatelliteModeIsOn(enabled,
+                        new IIntegerConsumer.Stub() {
+                            @Override
+                            public void accept(int result) {
+                                int error = SatelliteServiceUtils.fromSatelliteError(result);
+                                logd("enableCellularModemWhileSatelliteModeIsOn: " + error);
+                                Binder.withCleanCallingIdentity(() -> {
+                                        if (message != null) {
+                                            sendMessageWithResult(message, null, error);
+                                        }
+                                });
+                            }
+                        });
+            } catch (RemoteException e) {
+                loge("enableCellularModemWhileSatelliteModeIsOn: RemoteException " + e);
+                if (message != null) {
+                    sendMessageWithResult(
+                            message, null, SatelliteManager.SATELLITE_SERVICE_ERROR);
+                }
+            }
+        } else {
+            loge("enableCellularModemWhileSatelliteModeIsOn: Satellite service is unavailable.");
+            if (message != null) {
+                sendMessageWithResult(message, null,
+                        SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE);
+            }
+        }
+    }
+    /**
      * Request to enable or disable the satellite modem and demo mode. If the satellite modem
      * is enabled, this may also disable the cellular modem, and if the satellite modem is disabled,
      * this may also re-enable the cellular modem.
@@ -684,14 +729,14 @@ public class SatelliteModemInterface {
      *
      * @param token The token to be used as a unique identifier for provisioning with satellite
      *              gateway.
-     * @param regionId The region ID for the device's current location.
+     * @param provisionData Data from the provisioning app that can be used by provisioning server
      * @param message The Message to send to result of the operation to.
      */
-    public void provisionSatelliteService(@NonNull String token, @NonNull String regionId,
+    public void provisionSatelliteService(@NonNull String token, @NonNull byte[] provisionData,
             @NonNull Message message) {
         if (mSatelliteService != null) {
             try {
-                mSatelliteService.provisionSatelliteService(token, regionId,
+                mSatelliteService.provisionSatelliteService(token, provisionData,
                         new IIntegerConsumer.Stub() {
                             @Override
                             public void accept(int result) {
@@ -963,6 +1008,43 @@ public class SatelliteModemInterface {
         return mIsSatelliteServiceSupported;
     }
 
+    /**
+     * This API can be used by only CTS to update satellite vendor service package name.
+     *
+     * @param servicePackageName The package name of the satellite vendor service.
+     * @return {@code true} if the satellite vendor service is set successfully,
+     * {@code false} otherwise.
+     */
+    boolean setSatelliteServicePackageName(@Nullable String servicePackageName) {
+        if (!shouldAllowModifyingSatelliteServicePackageName()) {
+            loge("setSatelliteServicePackageName: modifying satellite service package name "
+                    + "is not allowed");
+            return false;
+        }
+
+        logd("setSatelliteServicePackageName: config_satellite_service_package is "
+                + "updated, new packageName=" + servicePackageName);
+        mExponentialBackoff.stop();
+        if (mSatelliteServiceConnection != null) {
+            synchronized (mLock) {
+                mIsBound = false;
+                mIsBinding = false;
+            }
+            unbindService();
+        }
+
+        if (servicePackageName == null || servicePackageName.equals("null")) {
+            mVendorSatellitePackageName = "";
+        } else {
+            mVendorSatellitePackageName = servicePackageName;
+        }
+        mIsSatelliteServiceSupported = getSatelliteServiceSupport();
+        bindService();
+        mExponentialBackoff.start();
+
+        return true;
+    }
+
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected static void sendMessageWithResult(@NonNull Message message, @Nullable Object result,
             @SatelliteManager.SatelliteError int error) {
@@ -970,6 +1052,10 @@ public class SatelliteModemInterface {
                 ? null : new SatelliteException(error);
         AsyncResult.forMessage(message, result, exception);
         message.sendToTarget();
+    }
+
+    private boolean shouldAllowModifyingSatelliteServicePackageName() {
+        return (DEBUG || SystemProperties.getBoolean(ALLOW_MOCK_MODEM_PROPERTY, false));
     }
 
     private static void logd(@NonNull String log) {

@@ -55,6 +55,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
@@ -103,6 +104,7 @@ import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.SubscriptionProvider;
 import com.android.internal.telephony.subscription.SubscriptionManagerService.SubscriptionManagerServiceCallback;
 import com.android.internal.telephony.subscription.SubscriptionManagerService.SubscriptionMap;
+import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.UiccSlot;
 
 import libcore.junit.util.compat.CoreCompatChangeRule.EnableCompatChanges;
@@ -294,6 +296,17 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
             fail("Failed to insert subscription. e=" + e);
         }
         return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    }
+
+    @Test
+    public void testBroadcastOnInitialization() {
+        ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, times(3)).sendBroadcastAsUser(
+                captorIntent.capture(), eq(UserHandle.ALL));
+        assertThat(captorIntent.getAllValues().stream().map(Intent::getAction).toList())
+                .containsExactly(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED,
+                        TelephonyIntents.ACTION_DEFAULT_VOICE_SUBSCRIPTION_CHANGED,
+                        SubscriptionManager.ACTION_DEFAULT_SMS_SUBSCRIPTION_CHANGED);
     }
 
     @Test
@@ -567,6 +580,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @Test
     public void testSetDefaultVoiceSubId() throws Exception {
+        clearInvocations(mContext);
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
 
@@ -584,7 +598,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION)).isEqualTo(1);
         ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext, times(2)).sendStickyBroadcastAsUser(
+        verify(mContext, times(2)).sendBroadcastAsUser(
                 captorIntent.capture(), eq(UserHandle.ALL));
 
         Intent intent = captorIntent.getAllValues().get(0);
@@ -608,6 +622,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @Test
     public void testSetDefaultDataSubId() throws Exception {
+        clearInvocations(mContext);
         doReturn(false).when(mTelephonyManager).isVoiceCapable();
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
@@ -626,7 +641,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(Settings.Global.getInt(mContext.getContentResolver(),
                         Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION)).isEqualTo(1);
         ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext, times(2)).sendStickyBroadcastAsUser(
+        verify(mContext, times(2)).sendBroadcastAsUser(
                 captorIntent.capture(), eq(UserHandle.ALL));
 
         Intent intent = captorIntent.getAllValues().get(0);
@@ -650,6 +665,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @Test
     public void testSetDefaultSmsSubId() throws Exception {
+        clearInvocations(mContext);
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
 
@@ -666,7 +682,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION)).isEqualTo(1);
         ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext).sendStickyBroadcastAsUser(captorIntent.capture(), eq(UserHandle.ALL));
+        verify(mContext).sendBroadcastAsUser(captorIntent.capture(), eq(UserHandle.ALL));
 
         Intent intent = captorIntent.getValue();
         assertThat(intent.getAction()).isEqualTo(
@@ -2194,5 +2210,40 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         processAllMessages();
 
         assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false)).isEmpty();
+    }
+
+    @Test
+    public void testInactiveSimRemoval() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO2);
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        doReturn(FAKE_ICCID2).when(mUiccSlot).getIccId(0);
+        doReturn(IccCardStatus.CardState.CARDSTATE_PRESENT).when(mUiccSlot).getCardState();
+
+        mSubscriptionManagerServiceUT.setUiccApplicationsEnabled(false, 1);
+        mSubscriptionManagerServiceUT.updateSimState(
+                1, TelephonyManager.SIM_STATE_NOT_READY, null, null);
+        processAllMessages();
+
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false)).isEmpty();
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(1)
+                .areUiccApplicationsEnabled()).isFalse();
+        assertThat(mSubscriptionManagerServiceUT.getAvailableSubscriptionInfoList(
+                CALLING_PACKAGE, CALLING_FEATURE)).hasSize(1);
+
+        // Now remove the SIM
+        doReturn(null).when(mUiccSlot).getIccId(0);
+        doReturn(IccCardStatus.CardState.CARDSTATE_ABSENT).when(mUiccSlot).getCardState();
+        mSubscriptionManagerServiceUT.updateSimState(
+                1, TelephonyManager.SIM_STATE_ABSENT, null, null);
+        processAllMessages();
+
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false)).isEmpty();
+        // UICC should be re-enabled again for next re-insertion.
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(1)
+                .areUiccApplicationsEnabled()).isTrue();
+        assertThat(mSubscriptionManagerServiceUT.getAvailableSubscriptionInfoList(
+                CALLING_PACKAGE, CALLING_FEATURE)).isEmpty();
     }
 }

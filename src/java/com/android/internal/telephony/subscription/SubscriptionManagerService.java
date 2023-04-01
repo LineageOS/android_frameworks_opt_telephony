@@ -523,6 +523,13 @@ public class SubscriptionManagerService extends ISub.Stub {
                     }
                 });
 
+        // Broadcast sub Id on service initialized.
+        broadcastSubId(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED,
+                getDefaultDataSubId());
+        broadcastSubId(TelephonyIntents.ACTION_DEFAULT_VOICE_SUBSCRIPTION_CHANGED,
+                getDefaultVoiceSubId());
+        broadcastSubId(SubscriptionManager.ACTION_DEFAULT_SMS_SUBSCRIPTION_CHANGED,
+                getDefaultSmsSubId());
         updateDefaultSubId();
 
         TelephonyServiceManager.ServiceRegisterer subscriptionServiceRegisterer =
@@ -1265,15 +1272,25 @@ public class SubscriptionManagerService extends ISub.Stub {
         }
 
         if (simState == TelephonyManager.SIM_STATE_ABSENT) {
+            // Re-enable the pSIM when it's removed, so it will be in enabled state when it gets
+            // re-inserted again. (pre-U behavior)
+            List<String> iccIds = getIccIdsOfInsertedPhysicalSims();
+            mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                    // All the removed pSIMs (Note this could include some erased eSIM that has
+                    // embedded bit removed).
+                    .filter(subInfo -> !iccIds.contains(subInfo.getIccId())
+                            && !subInfo.isEmbedded())
+                    .forEach(subInfo -> {
+                        int subId = subInfo.getSubscriptionId();
+                        log("updateSubscription: Re-enable Uicc application on sub " + subId);
+                        mSubscriptionDatabaseManager.setUiccApplicationsEnabled(subId, true);
+                        // When sim is absent, set the port index to invalid port index.
+                        // (pre-U behavior)
+                        mSubscriptionDatabaseManager.setPortIndex(subId,
+                                TelephonyManager.INVALID_PORT_INDEX);
+                    });
+
             if (mSlotIndexToSubId.containsKey(phoneId)) {
-                int subId = mSlotIndexToSubId.get(phoneId);
-                // Re-enable the SIM when it's removed, so it will be in enabled state when it gets
-                // re-inserted again. (pre-U behavior)
-                log("updateSubscription: Re-enable Uicc application on sub " + subId);
-                mSubscriptionDatabaseManager.setUiccApplicationsEnabled(subId, true);
-                // When sim is absent, set the port index to invalid port index. (pre-U behavior)
-                mSubscriptionDatabaseManager.setPortIndex(subId,
-                        TelephonyManager.INVALID_PORT_INDEX);
                 markSubscriptionsInactive(phoneId);
             }
         } else if (simState == TelephonyManager.SIM_STATE_NOT_READY) {
@@ -2704,7 +2721,7 @@ public class SubscriptionManagerService extends ISub.Stub {
             Intent intent = new Intent(SubscriptionManager.ACTION_DEFAULT_SUBSCRIPTION_CHANGED);
             intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, phoneId, subId);
-            mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+            mContext.sendBroadcastAsUser(intent, UserHandle.ALL);
         }
     }
 
@@ -2774,11 +2791,8 @@ public class SubscriptionManagerService extends ISub.Stub {
             if (mDefaultDataSubId.set(subId)) {
                 MultiSimSettingController.getInstance().notifyDefaultDataSubChanged();
 
-                Intent intent = new Intent(
-                        TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED);
-                intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-                SubscriptionManager.putSubscriptionIdExtra(intent, subId);
-                mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+                broadcastSubId(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED,
+                        subId);
 
                 updateDefaultSubId();
             }
@@ -2814,11 +2828,8 @@ public class SubscriptionManagerService extends ISub.Stub {
         final long token = Binder.clearCallingIdentity();
         try {
             if (mDefaultVoiceSubId.set(subId)) {
-                Intent intent = new Intent(
-                        TelephonyIntents.ACTION_DEFAULT_VOICE_SUBSCRIPTION_CHANGED);
-                intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-                SubscriptionManager.putSubscriptionIdExtra(intent, subId);
-                mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+                broadcastSubId(TelephonyIntents.ACTION_DEFAULT_VOICE_SUBSCRIPTION_CHANGED,
+                        subId);
 
                 PhoneAccountHandle newHandle = subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID
                         ? null : mTelephonyManager.getPhoneAccountHandleForSubscriptionId(subId);
@@ -2863,16 +2874,26 @@ public class SubscriptionManagerService extends ISub.Stub {
         final long token = Binder.clearCallingIdentity();
         try {
             if (mDefaultSmsSubId.set(subId)) {
-                Intent intent = new Intent(
-                        SubscriptionManager.ACTION_DEFAULT_SMS_SUBSCRIPTION_CHANGED);
-                intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-                SubscriptionManager.putSubscriptionIdExtra(intent, subId);
-                mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+                broadcastSubId(SubscriptionManager.ACTION_DEFAULT_SMS_SUBSCRIPTION_CHANGED,
+                        subId);
             }
 
         } finally {
             Binder.restoreCallingIdentity(token);
         }
+    }
+
+    /**
+     * Broadcast a sub Id with the given action.
+     * @param action The intent action.
+     * @param newSubId The sub Id to broadcast.
+     */
+    private void broadcastSubId(@NonNull String action, int newSubId) {
+        Intent intent = new Intent(action);
+        intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
+        SubscriptionManager.putSubscriptionIdExtra(intent, newSubId);
+        mContext.sendBroadcastAsUser(intent, UserHandle.ALL);
+        log("broadcastSubId action: " + action + " subId= " + newSubId);
     }
 
     /**
