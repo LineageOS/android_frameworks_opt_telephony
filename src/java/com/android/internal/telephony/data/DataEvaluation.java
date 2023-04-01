@@ -240,7 +240,9 @@ public class DataEvaluation {
         /** Query from {@link TelephonyManager#isDataConnectivityPossible()}. */
         EXTERNAL_QUERY(false),
         /** Tracking area code changed. */
-        TAC_CHANGED(true);
+        TAC_CHANGED(true),
+        /** Unsatisfied network request detached. */
+        UNSATISFIED_REQUEST_DETACHED(true);
 
         /**
          * {@code true} if the evaluation is due to environmental changes (i.e. SIM removal,
