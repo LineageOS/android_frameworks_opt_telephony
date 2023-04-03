@@ -1421,11 +1421,21 @@ public class SatelliteController extends Handler {
                 servicePackageName);
         if (result && (servicePackageName == null || servicePackageName.equals("null"))) {
             /**
-             * mIsSatelliteSupported is set to true when running SatelliteManagerTestOnMockService.
-             * We need to set it to the actual state of the device.
+             * Cached states like mIsSatelliteSupported and mIsSatelliteProvisioned are set to true
+             * when running SatelliteManagerTestOnMockService. We need to reset them to the actual
+             * states of the device.
              */
             synchronized (mIsSatelliteSupportedLock) {
                 mIsSatelliteSupported = null;
+            }
+            synchronized (mIsSatelliteProvisionedLock) {
+                mIsSatelliteProvisioned = null;
+            }
+            synchronized (mIsSatelliteEnabledLock) {
+                mIsSatelliteEnabled = null;
+            }
+            synchronized (mSatelliteCapabilitiesLock) {
+                mSatelliteCapabilities = null;
             }
             ResultReceiver receiver = new ResultReceiver(this) {
                 @Override
