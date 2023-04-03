@@ -191,6 +191,66 @@ public class SubscriptionInfoInternal {
     private final int mIsRemovableEmbedded;
 
     /**
+     * Whether cell broadcast extreme threat alert is enabled by the user or not.
+     */
+    private int mIsExtremeThreatAlertEnabled;
+
+    /**
+     * Whether cell broadcast severe threat alert is enabled by the user or not.
+     */
+    private int mIsSevereThreatAlertEnabled;
+
+    /**
+     * Whether cell broadcast amber alert is enabled by the user or not.
+     */
+    private int mIsAmberAlertEnabled;
+
+    /**
+     * Whether cell broadcast emergency alert is enabled by the user or not.
+     */
+    private int mIsEmergencyAlertEnabled;
+
+    /**
+     * Cell broadcast alert sound duration in seconds.
+     */
+    private int mAlertSoundDuration;
+
+    /**
+     * Cell broadcast alert reminder interval in minutes.
+     */
+    private int mReminderInterval;
+
+    /**
+     * Whether cell broadcast alert vibration is enabled by the user or not.
+     */
+    private int mIsAlertVibrationEnabled;
+
+    /**
+     * Whether cell broadcast alert speech is enabled by the user or not.
+     */
+    private int mIsAlertSpeechEnabled;
+
+    /**
+     * Whether ETWS test alert is enabled by the user or not.
+     */
+    private int mIsEtwsTestAlertEnabled;
+
+    /**
+     * Whether area info message is enabled by the user or not.
+     */
+    private int mIsAreaInfoMessageEnabled;
+
+    /**
+     * Whether cell broadcast test alert is enabled by the user or not.
+     */
+    private int mIsTestAlertEnabled;
+
+    /**
+     * Whether cell broadcast opt-out dialog should be shown or not.
+     */
+    private int mIsOptOutDialogEnabled;
+
+    /**
      * Whether enhanced 4G mode is enabled by the user or not. It is intended to use integer to fit
      * the database format.
      */
@@ -420,6 +480,18 @@ public class SubscriptionInfoInternal {
         this.mNativeAccessRules = builder.mNativeAccessRules;
         this.mCarrierConfigAccessRules = builder.mCarrierConfigAccessRules;
         this.mIsRemovableEmbedded = builder.mIsRemovableEmbedded;
+        this.mIsExtremeThreatAlertEnabled = builder.mIsExtremeThreatAlertEnabled;
+        this.mIsSevereThreatAlertEnabled = builder.mIsSevereThreatAlertEnabled;
+        this.mIsAmberAlertEnabled = builder.mIsAmberAlertEnabled;
+        this.mIsEmergencyAlertEnabled = builder.mIsEmergencyAlertEnabled;
+        this.mAlertSoundDuration = builder.mAlertSoundDuration;
+        this.mReminderInterval = builder.mReminderInterval;
+        this.mIsAlertVibrationEnabled = builder.mIsAlertVibrationEnabled;
+        this.mIsAlertSpeechEnabled = builder.mIsAlertSpeechEnabled;
+        this.mIsEtwsTestAlertEnabled = builder.mIsEtwsTestAlertEnabled;
+        this.mIsAreaInfoMessageEnabled = builder.mIsAreaInfoMessageEnabled;
+        this.mIsTestAlertEnabled = builder.mIsTestAlertEnabled;
+        this.mIsOptOutDialogEnabled = builder.mIsOptOutDialogEnabled;
         this.mIsEnhanced4GModeEnabled = builder.mIsEnhanced4GModeEnabled;
         this.mIsVideoTelephonyEnabled = builder.mIsVideoTelephonyEnabled;
         this.mIsWifiCallingEnabled = builder.mIsWifiCallingEnabled;
@@ -618,8 +690,8 @@ public class SubscriptionInfoInternal {
     }
 
     /**
-     * @return {@code 1} if an embedded subscription is on a removable card. Such subscriptions are
-     * marked inaccessible as soon as the current card is removed. Otherwise, they will remain
+     * @return {@code true} if an embedded subscription is on a removable card. Such subscriptions
+     * are marked inaccessible as soon as the current card is removed. Otherwise, they will remain
      * accessible unless explicitly deleted. Only meaningful when {@link #getEmbedded()} is 1.
      */
     public boolean isRemovableEmbedded() {
@@ -633,6 +705,90 @@ public class SubscriptionInfoInternal {
      */
     public int getRemovableEmbedded() {
         return mIsRemovableEmbedded;
+    }
+
+    /**
+     * @return {@code 1} if cell broadcast extreme threat alert is enabled by the user.
+     */
+    public int getCellBroadcastExtremeThreatAlertEnabled() {
+        return mIsExtremeThreatAlertEnabled;
+    }
+
+    /**
+     * @return {@code 1} if cell broadcast amber alert is enabled by the user.
+     */
+    public int getCellBroadcastSevereThreatAlertEnabled() {
+        return mIsSevereThreatAlertEnabled;
+    }
+
+    /**
+     * @return {@code 1} if cell broadcast emergency alert is enabled by the user.
+     */
+    public int getCellBroadcastAmberAlertEnabled() {
+        return mIsAmberAlertEnabled;
+    }
+
+    /**
+     * @return {@code 1} if cell broadcast emergency alert is enabled by the user.
+     */
+    public int getCellBroadcastEmergencyAlertEnabled() {
+        return mIsEmergencyAlertEnabled;
+    }
+
+    /**
+     * @return {@code 1} if cell broadcast alert sound duration in seconds.
+     */
+    public int getCellBroadcastAlertSoundDuration() {
+        return mAlertSoundDuration;
+    }
+
+    /**
+     * @return Cell broadcast alert reminder interval in minutes.
+     */
+    public int getCellBroadcastAlertReminderInterval() {
+        return mReminderInterval;
+    }
+
+    /**
+     * @return {@code 1} if cell broadcast alert vibration is enabled by the user.
+     */
+    public int getCellBroadcastAlertVibrationEnabled() {
+        return mIsAlertVibrationEnabled;
+    }
+
+    /**
+     * @return {@code 1} if cell broadcast alert speech is enabled by the user.
+     */
+    public int getCellBroadcastAlertSpeechEnabled() {
+        return mIsAlertSpeechEnabled;
+    }
+
+    /**
+     * @return {@code 1} if ETWS test alert is enabled by the user.
+     */
+    public int getCellBroadcastEtwsTestAlertEnabled() {
+        return mIsEtwsTestAlertEnabled;
+    }
+
+    /**
+     * @return {@code 1} if area info message is enabled by the user.
+     */
+    public int getCellBroadcastAreaInfoMessageEnabled() {
+        return mIsAreaInfoMessageEnabled;
+    }
+
+    /**
+     * @return {@code 1} if cell broadcast test alert is enabled by the user.
+     */
+    public int getCellBroadcastTestAlertEnabled() {
+        return mIsTestAlertEnabled;
+    }
+
+    /**
+     * @return {@code 1} if cell broadcast opt-out dialog should be shown.
+     */
+    public int getCellBroadcastOptOutDialogEnabled() {
+        return mIsOptOutDialogEnabled;
     }
 
     /**
@@ -1044,26 +1200,6 @@ public class SubscriptionInfoInternal {
                 .build();
     }
 
-    /**
-     * Get ID stripped PII information on user build.
-     *
-     * @param id The PII id.
-     *
-     * @return The stripped string.
-     */
-    public static String givePrintableId(String id) {
-        String idToPrint = null;
-        if (id != null) {
-            int len = id.length();
-            if (len > 6 && !TelephonyUtils.IS_DEBUGGABLE) {
-                idToPrint = id.substring(0, len - 6) + Rlog.pii(false, id.substring(len - 6));
-            } else {
-                idToPrint = id;
-            }
-        }
-        return idToPrint;
-    }
-
     @Override
     public String toString() {
         return "[SubscriptionInfoInternal: id=" + mId
@@ -1130,6 +1266,16 @@ public class SubscriptionInfoInternal {
                 && mDisplayNameSource == that.mDisplayNameSource && mIconTint == that.mIconTint
                 && mDataRoaming == that.mDataRoaming && mIsEmbedded == that.mIsEmbedded
                 && mIsRemovableEmbedded == that.mIsRemovableEmbedded
+                && mIsExtremeThreatAlertEnabled == that.mIsExtremeThreatAlertEnabled
+                && mIsSevereThreatAlertEnabled == that.mIsSevereThreatAlertEnabled
+                && mIsAmberAlertEnabled == that.mIsAmberAlertEnabled
+                && mIsEmergencyAlertEnabled == that.mIsEmergencyAlertEnabled
+                && mAlertSoundDuration == that.mAlertSoundDuration
+                && mReminderInterval == that.mReminderInterval
+                && mIsAlertVibrationEnabled == that.mIsAlertVibrationEnabled
+                && mIsAlertSpeechEnabled == that.mIsAlertSpeechEnabled
+                && mIsEtwsTestAlertEnabled == that.mIsEtwsTestAlertEnabled
+                && mIsAreaInfoMessageEnabled == that.mIsAreaInfoMessageEnabled
                 && mIsEnhanced4GModeEnabled == that.mIsEnhanced4GModeEnabled
                 && mIsVideoTelephonyEnabled == that.mIsVideoTelephonyEnabled
                 && mIsWifiCallingEnabled == that.mIsWifiCallingEnabled
@@ -1147,31 +1293,33 @@ public class SubscriptionInfoInternal {
                 && mIsNrAdvancedCallingEnabled == that.mIsNrAdvancedCallingEnabled
                 && mPortIndex == that.mPortIndex && mUsageSetting == that.mUsageSetting
                 && mLastUsedTPMessageReference == that.mLastUsedTPMessageReference
-                && mUserId == that.mUserId && mCardId == that.mCardId
-                && mIsGroupDisabled == that.mIsGroupDisabled && mIccId.equals(that.mIccId)
-                && mDisplayName.equals(that.mDisplayName) && mCarrierName.equals(that.mCarrierName)
-                && mNumber.equals(that.mNumber) && mMcc.equals(that.mMcc) && mMnc.equals(that.mMnc)
-                && mEhplmns.equals(that.mEhplmns) && mHplmns.equals(that.mHplmns)
-                && mCardString.equals(
-                that.mCardString) && Arrays.equals(mNativeAccessRules,
-                that.mNativeAccessRules) && Arrays.equals(mCarrierConfigAccessRules,
-                that.mCarrierConfigAccessRules) && mGroupUuid.equals(that.mGroupUuid)
-                && mCountryIso.equals(that.mCountryIso) && mGroupOwner.equals(that.mGroupOwner)
-                && mEnabledMobileDataPolicies.equals(that.mEnabledMobileDataPolicies)
-                && mImsi.equals(
-                that.mImsi) && Arrays.equals(mRcsConfig, that.mRcsConfig)
-                && mAllowedNetworkTypesForReasons.equals(that.mAllowedNetworkTypesForReasons)
-                && mDeviceToDeviceStatusSharingContacts.equals(
+                && mUserId == that.mUserId && mIsSatelliteEnabled == that.mIsSatelliteEnabled
+                && mCardId == that.mCardId && mIsGroupDisabled == that.mIsGroupDisabled
+                && mIccId.equals(that.mIccId) && mDisplayName.equals(that.mDisplayName)
+                && mCarrierName.equals(that.mCarrierName) && mNumber.equals(that.mNumber)
+                && mMcc.equals(that.mMcc) && mMnc.equals(that.mMnc) && mEhplmns.equals(
+                that.mEhplmns)
+                && mHplmns.equals(that.mHplmns) && mCardString.equals(that.mCardString)
+                && Arrays.equals(mNativeAccessRules, that.mNativeAccessRules)
+                && Arrays.equals(mCarrierConfigAccessRules, that.mCarrierConfigAccessRules)
+                && mGroupUuid.equals(that.mGroupUuid) && mCountryIso.equals(that.mCountryIso)
+                && mGroupOwner.equals(that.mGroupOwner) && mEnabledMobileDataPolicies.equals(
+                that.mEnabledMobileDataPolicies) && mImsi.equals(that.mImsi) && Arrays.equals(
+                mRcsConfig, that.mRcsConfig) && mAllowedNetworkTypesForReasons.equals(
+                that.mAllowedNetworkTypesForReasons) && mDeviceToDeviceStatusSharingContacts.equals(
                 that.mDeviceToDeviceStatusSharingContacts) && mNumberFromCarrier.equals(
-                that.mNumberFromCarrier) && mNumberFromIms.equals(that.mNumberFromIms)
-                && mIsSatelliteEnabled == that.mIsSatelliteEnabled;
+                that.mNumberFromCarrier) && mNumberFromIms.equals(that.mNumberFromIms);
     }
 
     @Override
     public int hashCode() {
         int result = Objects.hash(mId, mIccId, mSimSlotIndex, mDisplayName, mCarrierName,
                 mDisplayNameSource, mIconTint, mNumber, mDataRoaming, mMcc, mMnc, mEhplmns, mHplmns,
-                mIsEmbedded, mCardString, mIsRemovableEmbedded, mIsEnhanced4GModeEnabled,
+                mIsEmbedded, mCardString, mIsRemovableEmbedded, mIsExtremeThreatAlertEnabled,
+                mIsSevereThreatAlertEnabled, mIsAmberAlertEnabled, mIsEmergencyAlertEnabled,
+                mAlertSoundDuration, mReminderInterval, mIsAlertVibrationEnabled,
+                mIsAlertSpeechEnabled,
+                mIsEtwsTestAlertEnabled, mIsAreaInfoMessageEnabled, mIsEnhanced4GModeEnabled,
                 mIsVideoTelephonyEnabled, mIsWifiCallingEnabled, mWifiCallingMode,
                 mWifiCallingModeForRoaming, mIsWifiCallingEnabledForRoaming, mIsOpportunistic,
                 mGroupUuid, mCountryIso, mCarrierId, mProfileClass, mType, mGroupOwner,
@@ -1304,6 +1452,66 @@ public class SubscriptionInfoInternal {
          * {@code 1}.
          */
         private int mIsRemovableEmbedded = 0;
+
+        /**
+         * Whether cell broadcast extreme threat alert is enabled by the user or not.
+         */
+        private int mIsExtremeThreatAlertEnabled = 1;
+
+        /**
+         * Whether cell broadcast severe threat alert is enabled by the user or not.
+         */
+        private int mIsSevereThreatAlertEnabled = 1;
+
+        /**
+         * Whether cell broadcast amber alert is enabled by the user or not.
+         */
+        private int mIsAmberAlertEnabled = 1;
+
+        /**
+         * Whether cell broadcast emergency alert is enabled by the user or not.
+         */
+        private int mIsEmergencyAlertEnabled = 1;
+
+        /**
+         * Cell broadcast alert sound duration in seconds.
+         */
+        private int mAlertSoundDuration = 4;
+
+        /**
+         * Cell broadcast alert reminder interval in minutes.
+         */
+        private int mReminderInterval = 0;
+
+        /**
+         * Whether cell broadcast alert vibration is enabled by the user or not.
+         */
+        private int mIsAlertVibrationEnabled = 1;
+
+        /**
+         * Whether cell broadcast alert speech is enabled by the user or not.
+         */
+        private int mIsAlertSpeechEnabled = 1;
+
+        /**
+         * Whether ETWS test alert is enabled by the user or not.
+         */
+        private int mIsEtwsTestAlertEnabled = 0;
+
+        /**
+         * Whether area info message is enabled by the user or not.
+         */
+        private int mIsAreaInfoMessageEnabled = 1;
+
+        /**
+         * Whether cell broadcast test alert is enabled by the user or not.
+         */
+        private int mIsTestAlertEnabled = 0;
+
+        /**
+         * Whether cell broadcast opt-out dialog should be shown or not.
+         */
+        private int mIsOptOutDialogEnabled = 1;
 
         /**
          * Whether enhanced 4G mode is enabled by the user or not.
@@ -1528,6 +1736,18 @@ public class SubscriptionInfoInternal {
             mNativeAccessRules = info.mNativeAccessRules;
             mCarrierConfigAccessRules = info.mCarrierConfigAccessRules;
             mIsRemovableEmbedded = info.mIsRemovableEmbedded;
+            mIsExtremeThreatAlertEnabled = info.mIsExtremeThreatAlertEnabled;
+            mIsSevereThreatAlertEnabled = info.mIsSevereThreatAlertEnabled;
+            mIsAmberAlertEnabled = info.mIsAmberAlertEnabled;
+            mIsEmergencyAlertEnabled = info.mIsEmergencyAlertEnabled;
+            mAlertSoundDuration = info.mAlertSoundDuration;
+            mReminderInterval = info.mReminderInterval;
+            mIsAlertVibrationEnabled = info.mIsAlertVibrationEnabled;
+            mIsAlertSpeechEnabled = info.mIsAlertSpeechEnabled;
+            mIsEtwsTestAlertEnabled = info.mIsEtwsTestAlertEnabled;
+            mIsAreaInfoMessageEnabled = info.mIsAreaInfoMessageEnabled;
+            mIsTestAlertEnabled = info.mIsTestAlertEnabled;
+            mIsOptOutDialogEnabled = info.mIsOptOutDialogEnabled;
             mIsEnhanced4GModeEnabled = info.mIsEnhanced4GModeEnabled;
             mIsVideoTelephonyEnabled = info.mIsVideoTelephonyEnabled;
             mIsWifiCallingEnabled = info.mIsWifiCallingEnabled;
@@ -1855,6 +2075,171 @@ public class SubscriptionInfoInternal {
         @NonNull
         public Builder setRemovableEmbedded(int isRemovableEmbedded) {
             mIsRemovableEmbedded = isRemovableEmbedded;
+            return this;
+        }
+
+        /**
+         * Set whether cell broadcast extreme threat alert is enabled by the user or not.
+         *
+         * @param isExtremeThreatAlertEnabled whether cell broadcast extreme threat alert is enabled
+         * by the user or not.
+         *
+         * @return The builder.
+         */
+        @NonNull
+        public Builder setCellBroadcastExtremeThreatAlertEnabled(int isExtremeThreatAlertEnabled) {
+            mIsExtremeThreatAlertEnabled = isExtremeThreatAlertEnabled;
+            return this;
+        }
+
+        /**
+         * Set whether cell broadcast severe threat alert is enabled by the user or not.
+         *
+         * @param isSevereThreatAlertEnabled whether cell broadcast severe threat alert is enabled
+         * by the user or not.
+         *
+         * @return The builder.
+         */
+        @NonNull
+        public Builder setCellBroadcastSevereThreatAlertEnabled(int isSevereThreatAlertEnabled) {
+            mIsSevereThreatAlertEnabled = isSevereThreatAlertEnabled;
+            return this;
+        }
+
+        /**
+         * Set whether cell broadcast amber alert is enabled by the user or not.
+         *
+         * @param isAmberAlertEnabled whether cell broadcast amber alert is enabled by the user or
+         * not.
+         *
+         * @return The builder.
+         */
+        @NonNull
+        public Builder setCellBroadcastAmberAlertEnabled(int isAmberAlertEnabled) {
+            mIsAmberAlertEnabled = isAmberAlertEnabled;
+            return this;
+        }
+
+        /**
+         * Set whether cell broadcast emergency alert is enabled by the user or not.
+         *
+         * @param isEmergencyAlertEnabled whether cell broadcast emergency alert is enabled by the
+         * user or not.
+         *
+         * @return The builder.
+         */
+        @NonNull
+        public Builder setCellBroadcastEmergencyAlertEnabled(int isEmergencyAlertEnabled) {
+            mIsEmergencyAlertEnabled = isEmergencyAlertEnabled;
+            return this;
+        }
+
+        /**
+         * Set cell broadcast alert sound duration.
+         *
+         * @param alertSoundDuration Alert sound duration in seconds.
+         *
+         * @return The builder.
+         */
+        @NonNull
+        public Builder setCellBroadcastAlertSoundDuration(int alertSoundDuration) {
+            mAlertSoundDuration = alertSoundDuration;
+            return this;
+        }
+
+        /**
+         * Set cell broadcast alert reminder interval in minutes.
+         *
+         * @param reminderInterval Alert reminder interval in minutes.
+         *
+         * @return The builder.
+         */
+        public Builder setCellBroadcastAlertReminderInterval(int reminderInterval) {
+            mReminderInterval = reminderInterval;
+            return this;
+        }
+
+        /**
+         * Set whether cell broadcast alert vibration is enabled by the user or not.
+         *
+         * @param isAlertVibrationEnabled whether cell broadcast alert vibration is enabled by the
+         * user or not.
+         *
+         * @return The builder.
+         */
+        @NonNull
+        public Builder setCellBroadcastAlertVibrationEnabled(int isAlertVibrationEnabled) {
+            mIsAlertVibrationEnabled = isAlertVibrationEnabled;
+            return this;
+        }
+
+        /**
+         * Set whether cell broadcast alert speech is enabled by the user or not.
+         *
+         * @param isAlertSpeechEnabled whether cell broadcast alert speech is enabled by the user or
+         * not.
+         *
+         * @return The builder.
+         */
+        @NonNull
+        public Builder setCellBroadcastAlertSpeechEnabled(int isAlertSpeechEnabled) {
+            mIsAlertSpeechEnabled = isAlertSpeechEnabled;
+            return this;
+        }
+
+        /**
+         * Set whether ETWS test alert is enabled by the user or not.
+         *
+         * @param isEtwsTestAlertEnabled whether cell broadcast ETWS test alert is enabled by the
+         * user or not.
+         *
+         * @return The builder.
+         */
+        @NonNull
+        public Builder setCellBroadcastEtwsTestAlertEnabled(int isEtwsTestAlertEnabled) {
+            mIsEtwsTestAlertEnabled = isEtwsTestAlertEnabled;
+            return this;
+        }
+
+        /**
+         * Set whether area info message is enabled by the user or not.
+         *
+         * @param isAreaInfoMessageEnabled whether cell broadcast area info message is enabled by
+         * the user or not.
+         *
+         * @return The builder.
+         */
+        @NonNull
+        public Builder setCellBroadcastAreaInfoMessageEnabled(int isAreaInfoMessageEnabled) {
+            mIsAreaInfoMessageEnabled = isAreaInfoMessageEnabled;
+            return this;
+        }
+
+        /**
+         * Set whether cell broadcast test alert is enabled by the user or not.
+         *
+         * @param isTestAlertEnabled whether cell broadcast test alert is enabled by the user or
+         * not.
+         *
+         * @return The builder.
+         */
+        @NonNull
+        public Builder setCellBroadcastTestAlertEnabled(int isTestAlertEnabled) {
+            mIsTestAlertEnabled = isTestAlertEnabled;
+            return this;
+        }
+
+        /**
+         * Set whether cell broadcast opt-out dialog should be shown or not.
+         *
+         * @param isOptOutDialogEnabled whether cell broadcast opt-out dialog should be shown or
+         * not.
+         *
+         * @return The builder.
+         */
+        @NonNull
+        public Builder setCellBroadcastOptOutDialogEnabled(int isOptOutDialogEnabled) {
+            mIsOptOutDialogEnabled = isOptOutDialogEnabled;
             return this;
         }
 
