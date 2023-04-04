@@ -104,6 +104,7 @@ public class DatagramReceiverTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         logd(TAG + " tearDown");
+        mFakeSatelliteProvider.shutdown();
         mDatagramReceiverUT.destroy();
         mDatagramReceiverUT = null;
         mResultListener = null;
