@@ -3857,7 +3857,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             handleRadioServiceNotAvailable(modemProxy, result);
             return;
         }
-        if (mHalVersion.get(HAL_SERVICE_NETWORK).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+        if (mHalVersion.get(HAL_SERVICE_MODEM).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_DEVICE_IMEI, result,
                     mRILDefaultWorkSource);
 
