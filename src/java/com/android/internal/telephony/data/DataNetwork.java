@@ -2613,7 +2613,7 @@ public class DataNetwork extends StateMachine {
                 reason == TEAR_DOWN_REASON_AIRPLANE_MODE_ON ? DataService.REQUEST_REASON_SHUTDOWN
                         : DataService.REQUEST_REASON_NORMAL,
                 obtainMessage(EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE));
-        mDataCallSessionStats.setDeactivateDataCallReason(DataService.REQUEST_REASON_NORMAL);
+        mDataCallSessionStats.setDeactivateDataCallReason(reason);
         mInvokedDataDeactivation = true;
     }
 
