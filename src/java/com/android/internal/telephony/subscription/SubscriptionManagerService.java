@@ -1050,6 +1050,9 @@ public class SubscriptionManagerService extends ISub.Stub {
                 }
             }
 
+            // The flag indicating getting successful result from EuiccController.
+            boolean isProfileUpdateSuccessful = false;
+
             for (int cardId : cardIds) {
                 GetEuiccProfileInfoListResult result = mEuiccController
                         .blockingGetEuiccProfileInfoList(cardId);
@@ -1065,6 +1068,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                             + EuiccService.resultToString(result.getResult()));
                     continue;
                 }
+
+                isProfileUpdateSuccessful = true;
 
                 if (result.getProfiles() == null || result.getProfiles().isEmpty()) {
                     loge("No profiles returned.");
@@ -1137,32 +1142,38 @@ public class SubscriptionManagerService extends ISub.Stub {
                 }
             }
 
-            // embeddedSubs contains all the existing embedded subs queried from EuiccManager,
-            // including active or inactive. If there are any embedded subscription in the database
-            // that is not in embeddedSubs, mark them as non-embedded. These were deleted embedded
-            // subscriptions, so we treated them as non-embedded (pre-U behavior) and they don't
-            // show up in Settings SIM page.
-            mSubscriptionDatabaseManager.getAllSubscriptions().stream()
-                    .filter(SubscriptionInfoInternal::isEmbedded)
-                    .filter(subInfo -> !embeddedSubs.contains(subInfo.getSubscriptionId()))
-                    .forEach(subInfo -> {
-                        logl("updateEmbeddedSubscriptions: Mark the deleted sub "
-                                + subInfo.getSubscriptionId() + " as non-embedded.");
-                        mSubscriptionDatabaseManager.setEmbedded(
-                                subInfo.getSubscriptionId(), false);
-                    });
-            if (mSubscriptionDatabaseManager.getAllSubscriptions().stream()
-                    .anyMatch(subInfo -> subInfo.isEmbedded()
-                            && subInfo.isActive()
-                            && subInfo.getPortIndex()
-                            == TelephonyManager.INVALID_PORT_INDEX
-                            && mSimState[subInfo.getSimSlotIndex()]
-                            == TelephonyManager.SIM_STATE_LOADED)) {
-                //Report Anomaly if invalid portIndex is updated in Active subscriptions
-                AnomalyReporter.reportAnomaly(
-                        UUID.fromString("38fdf63c-3bd9-4fc2-ad33-a20246a32fa7"),
-                        "SubscriptionManagerService: Found Invalid portIndex"
-                                + " in active subscriptions");
+            // Marked the previous embedded subscriptions non-embedded if the latest profiles do
+            // not include them anymore.
+            if (isProfileUpdateSuccessful) {
+                // embeddedSubs contains all the existing embedded subs queried from EuiccManager,
+                // including active or inactive. If there are any embedded subscription in the
+                // database that is not in embeddedSubs, mark them as non-embedded. These were
+                // deleted embedded subscriptions, so we treated them as non-embedded (pre-U
+                // behavior) and they don't show up in Settings SIM page.
+                mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                        .filter(SubscriptionInfoInternal::isEmbedded)
+                        .filter(subInfo -> !embeddedSubs.contains(subInfo.getSubscriptionId()))
+                        .forEach(subInfo -> {
+                            logl("updateEmbeddedSubscriptions: Mark the deleted sub "
+                                    + subInfo.getSubscriptionId() + " as non-embedded.");
+                            mSubscriptionDatabaseManager.setEmbedded(
+                                    subInfo.getSubscriptionId(), false);
+                        });
+                if (mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                        .anyMatch(subInfo -> subInfo.isEmbedded()
+                                && subInfo.isActive()
+                                && subInfo.getPortIndex()
+                                == TelephonyManager.INVALID_PORT_INDEX
+                                && mSimState[subInfo.getSimSlotIndex()]
+                                == TelephonyManager.SIM_STATE_LOADED)) {
+                    //Report Anomaly if invalid portIndex is updated in Active subscriptions
+                    AnomalyReporter.reportAnomaly(
+                            UUID.fromString("38fdf63c-3bd9-4fc2-ad33-a20246a32fa7"),
+                            "SubscriptionManagerService: Found Invalid portIndex"
+                                    + " in active subscriptions");
+                }
+            } else {
+                loge("The eSIM profiles update was not successful.");
             }
         });
         log("updateEmbeddedSubscriptions: Finished embedded subscription update.");
