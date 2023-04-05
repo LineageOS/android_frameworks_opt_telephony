@@ -16,10 +16,6 @@
 
 package com.android.internal.telephony.metrics;
 
-import static com.android.internal.telephony.TelephonyStatsLog.DATA_CALL_SESSION__DEACTIVATE_REASON__DEACTIVATE_REASON_HANDOVER;
-import static com.android.internal.telephony.TelephonyStatsLog.DATA_CALL_SESSION__DEACTIVATE_REASON__DEACTIVATE_REASON_NORMAL;
-import static com.android.internal.telephony.TelephonyStatsLog.DATA_CALL_SESSION__DEACTIVATE_REASON__DEACTIVATE_REASON_RADIO_OFF;
-import static com.android.internal.telephony.TelephonyStatsLog.DATA_CALL_SESSION__DEACTIVATE_REASON__DEACTIVATE_REASON_UNKNOWN;
 import static com.android.internal.telephony.TelephonyStatsLog.DATA_CALL_SESSION__IP_TYPE__APN_PROTOCOL_IPV4;
 
 import android.annotation.Nullable;
@@ -36,13 +32,13 @@ import android.telephony.data.ApnSetting;
 import android.telephony.data.ApnSetting.ProtocolType;
 import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataService;
-import android.telephony.data.DataService.DeactivateDataReason;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.data.DataNetwork;
 import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
@@ -128,33 +124,17 @@ public class DataCallSessionStats {
     /**
      * Updates the dataCall atom when data call is deactivated.
      *
-     * @param reason Deactivate reason
+     * @param reason Tear down reason
      */
-    public synchronized void setDeactivateDataCallReason(@DeactivateDataReason int reason) {
+    public synchronized void setDeactivateDataCallReason(@DataNetwork.TearDownReason int reason) {
         // there should've been another call to initiate the atom,
         // so this method is being called out of order -> no metric will be logged
         if (mDataCallSession == null) {
             loge("setDeactivateDataCallReason: no DataCallSession atom has been initiated.");
             return;
         }
-        switch (reason) {
-            case DataService.REQUEST_REASON_NORMAL:
-                mDataCallSession.deactivateReason =
-                        DATA_CALL_SESSION__DEACTIVATE_REASON__DEACTIVATE_REASON_NORMAL;
-                break;
-            case DataService.REQUEST_REASON_SHUTDOWN:
-                mDataCallSession.deactivateReason =
-                        DATA_CALL_SESSION__DEACTIVATE_REASON__DEACTIVATE_REASON_RADIO_OFF;
-                break;
-            case DataService.REQUEST_REASON_HANDOVER:
-                mDataCallSession.deactivateReason =
-                        DATA_CALL_SESSION__DEACTIVATE_REASON__DEACTIVATE_REASON_HANDOVER;
-                break;
-            default:
-                mDataCallSession.deactivateReason =
-                        DATA_CALL_SESSION__DEACTIVATE_REASON__DEACTIVATE_REASON_UNKNOWN;
-                break;
-        }
+        // Skip the pre-U enum. See enum DataDeactivateReasonEnum in enums.proto
+        mDataCallSession.deactivateReason = reason + DataService.REQUEST_REASON_HANDOVER + 1;
     }
 
     /**
@@ -333,7 +313,7 @@ public class DataCallSessionStats {
         proto.setupFailed = false;
         proto.failureCause = DataFailCause.NONE;
         proto.suggestedRetryMillis = 0;
-        proto.deactivateReason = DATA_CALL_SESSION__DEACTIVATE_REASON__DEACTIVATE_REASON_UNKNOWN;
+        proto.deactivateReason = DataNetwork.TEAR_DOWN_REASON_NONE;
         proto.durationMinutes = 0;
         proto.ongoing = true;
         proto.handoverFailureCauses = new int[0];
