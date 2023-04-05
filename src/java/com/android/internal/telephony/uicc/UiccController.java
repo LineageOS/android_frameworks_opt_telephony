@@ -808,6 +808,7 @@ public class UiccController extends Handler {
         // DO NOT add any new extras to this broadcast -- it is not protected by any permissions.
         Intent intent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
         intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         intent.putExtra(PhoneConstants.PHONE_NAME_KEY, "Phone");
         intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE, state);
         intent.putExtra(IccCardConstants.INTENT_KEY_LOCKED_REASON, reason);

@@ -95,4 +95,9 @@ public class FakeSatelliteProvider extends MockContentProvider {
         // Do nothing.
         return 0;
     }
+
+    @Override
+    public void shutdown() {
+        mDbHelper.close();
+    }
 }
