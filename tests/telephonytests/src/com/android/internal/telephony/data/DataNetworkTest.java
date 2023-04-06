@@ -39,6 +39,7 @@ import android.net.NetworkAgentConfig;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.NetworkRequest;
+import android.net.NetworkScore;
 import android.net.vcn.VcnManager.VcnNetworkPolicyChangeListener;
 import android.net.vcn.VcnNetworkPolicyResult;
 import android.os.AsyncResult;
@@ -1023,6 +1024,9 @@ public class DataNetworkTest extends TelephonyTest {
         setupDataNetwork();
 
         setSuccessfulSetupDataResponse(mMockedWlanDataServiceManager, 456);
+        TelephonyNetworkAgent mockNetworkAgent = Mockito.mock(TelephonyNetworkAgent.class);
+        replaceInstance(DataNetwork.class, "mNetworkAgent",
+                mDataNetworkUT, mockNetworkAgent);
         // Now handover to IWLAN
         mDataNetworkUT.startHandover(AccessNetworkConstants.TRANSPORT_TYPE_WLAN, null);
         processAllMessages();
@@ -1047,6 +1051,18 @@ public class DataNetworkTest extends TelephonyTest {
                 .isEqualTo(TelephonyManager.DATA_HANDOVER_IN_PROGRESS);
         assertThat(pdcsList.get(3).getState()).isEqualTo(TelephonyManager.DATA_CONNECTED);
 
+        ArgumentCaptor<NetworkScore> networkScoreCaptor =
+                ArgumentCaptor.forClass(NetworkScore.class);
+        verify(mockNetworkAgent, times(2))
+                .sendNetworkScore(networkScoreCaptor.capture());
+        List<NetworkScore> networkScoreList = networkScoreCaptor.getAllValues();
+
+        assertThat(networkScoreList).hasSize(2);
+        assertThat(networkScoreList.get(0).getKeepConnectedReason())
+                .isEqualTo(NetworkScore.KEEP_CONNECTED_FOR_HANDOVER);
+        assertThat(networkScoreList.get(1).getKeepConnectedReason())
+                .isEqualTo(NetworkScore.KEEP_CONNECTED_NONE);
+
         // Now handover back to cellular
         Mockito.clearInvocations(mDataNetworkCallback);
         Mockito.clearInvocations(mLinkBandwidthEstimator);
@@ -1066,6 +1082,9 @@ public class DataNetworkTest extends TelephonyTest {
     public void testHandoverFailed() throws Exception {
         setupDataNetwork();
 
+        TelephonyNetworkAgent mockNetworkAgent = Mockito.mock(TelephonyNetworkAgent.class);
+        replaceInstance(DataNetwork.class, "mNetworkAgent",
+                mDataNetworkUT, mockNetworkAgent);
         setFailedSetupDataResponse(mMockedWlanDataServiceManager,
                 DataServiceCallback.RESULT_ERROR_TEMPORARILY_UNAVAILABLE);
         // Now attempt to handover to IWLAN but fail it.
@@ -1094,6 +1113,18 @@ public class DataNetworkTest extends TelephonyTest {
         assertThat(pdcsList.get(3).getState()).isEqualTo(TelephonyManager.DATA_CONNECTED);
         assertThat(pdcsList.get(3).getLastCauseCode())
                 .isEqualTo(DataFailCause.SERVICE_TEMPORARILY_UNAVAILABLE);
+
+        ArgumentCaptor<NetworkScore> networkScoreCaptor =
+                ArgumentCaptor.forClass(NetworkScore.class);
+        verify(mockNetworkAgent, times(2))
+                .sendNetworkScore(networkScoreCaptor.capture());
+        List<NetworkScore> networkScoreList = networkScoreCaptor.getAllValues();
+
+        assertThat(networkScoreList).hasSize(2);
+        assertThat(networkScoreList.get(0).getKeepConnectedReason())
+                .isEqualTo(NetworkScore.KEEP_CONNECTED_FOR_HANDOVER);
+        assertThat(networkScoreList.get(1).getKeepConnectedReason())
+                .isEqualTo(NetworkScore.KEEP_CONNECTED_NONE);
 
         // Test source PDN lost during the HO, expect tear down after HO
         setFailedSetupDataResponse(mMockedWlanDataServiceManager,
