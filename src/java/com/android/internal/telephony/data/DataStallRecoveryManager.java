@@ -639,7 +639,10 @@ public class DataStallRecoveryManager extends Handler {
 
         if (isLogNeeded) {
             timeDurationOfCurrentAction =
-                (isFirstDataStall == true ? 0 : (int) getDurationOfCurrentRecoveryMs());
+                ((getRecoveryAction() > RECOVERY_ACTION_GET_DATA_CALL_LIST
+                   && !mIsAttemptedAllSteps)
+                 || mLastAction == RECOVERY_ACTION_RESET_MODEM)
+                 ? (int) getDurationOfCurrentRecoveryMs() : 0;
             DataStallRecoveryStats.onDataStallEvent(
                     mLastAction, mPhone, isValid, timeDuration, reason,
                     isFirstValidationAfterDoRecovery, timeDurationOfCurrentAction);
