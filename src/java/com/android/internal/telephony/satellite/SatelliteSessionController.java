@@ -26,11 +26,12 @@ import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TR
 
 import android.annotation.NonNull;
 import android.content.Context;
-import android.os.AsyncResult;
+import android.os.Build;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.RemoteException;
+import android.os.SystemProperties;
 import android.provider.DeviceConfig;
 import android.telephony.Rlog;
 import android.telephony.satellite.ISatelliteStateCallback;
@@ -53,6 +54,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class SatelliteSessionController extends StateMachine {
     private static final String TAG = "SatelliteSessionController";
     private static final boolean DBG = true;
+    private static final String ALLOW_MOCK_MODEM_PROPERTY = "persist.radio.allow_mock_modem";
+    private static final boolean DEBUG = !"user".equals(Build.TYPE);
 
     /**
      * The time duration in millis that the satellite will stay at listening mode to wait for the
@@ -90,8 +93,8 @@ public class SatelliteSessionController extends StateMachine {
     @NonNull private final ListeningState mListeningState = new ListeningState();
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected AtomicBoolean mIsSendingTriggeredDuringTransferringState;
-    private final long mSatelliteStayAtListeningFromSendingMillis;
-    private final long mSatelliteStayAtListeningFromReceivingMillis;
+    private long mSatelliteStayAtListeningFromSendingMillis;
+    private long mSatelliteStayAtListeningFromReceivingMillis;
     private final ConcurrentHashMap<IBinder, ISatelliteStateCallback> mListeners;
     @SatelliteManager.SatelliteModemState private int mCurrentState;
     final boolean mIsSatelliteSupported;
@@ -221,6 +224,34 @@ public class SatelliteSessionController extends StateMachine {
      */
     public void unregisterForSatelliteModemStateChanged(@NonNull ISatelliteStateCallback callback) {
         mListeners.remove(callback.asBinder());
+    }
+
+    /**
+     * This API can be used by only CTS to update the timeout duration in milliseconds that
+     * satellite should stay at listening mode to wait for the next incoming page before disabling
+     * listening mode.
+     *
+     * @param timeoutMillis The timeout duration in millisecond.
+     * @return {@code true} if the timeout duration is set successfully, {@code false} otherwise.
+     */
+    boolean setSatelliteListeningTimeoutDuration(long timeoutMillis) {
+        if (!isMockModemAllowed()) {
+            loge("Updating listening timeout duration is not allowed");
+            return false;
+        }
+
+        logd("setSatelliteListeningTimeoutDuration: timeoutMillis=" + timeoutMillis);
+        if (timeoutMillis == 0) {
+            mSatelliteStayAtListeningFromSendingMillis =
+                    getSatelliteStayAtListeningFromSendingMillis();
+            mSatelliteStayAtListeningFromReceivingMillis =
+                    getSatelliteStayAtListeningFromReceivingMillis();
+        } else {
+            mSatelliteStayAtListeningFromSendingMillis = timeoutMillis;
+            mSatelliteStayAtListeningFromReceivingMillis = timeoutMillis;
+        }
+
+        return true;
     }
 
     private static class DatagramTransferState {
@@ -479,6 +510,10 @@ public class SatelliteSessionController extends StateMachine {
         return (receiveState == SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING
                 || receiveState == SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_SUCCESS
                 || receiveState == SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_NONE);
+    }
+
+    private boolean isMockModemAllowed() {
+        return (DEBUG || SystemProperties.getBoolean(ALLOW_MOCK_MODEM_PROPERTY, false));
     }
 
     private static long getSatelliteStayAtListeningFromSendingMillis() {
