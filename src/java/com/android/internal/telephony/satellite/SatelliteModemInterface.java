@@ -480,7 +480,7 @@ public class SatelliteModemInterface {
             loge("requestSatelliteListeningEnabled: Satellite service is unavailable.");
             if (message != null) {
                 sendMessageWithResult(message, null,
-                        SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED);
+                        SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE);
             }
         }
     }
@@ -552,7 +552,7 @@ public class SatelliteModemInterface {
             }
         } else {
             loge("setSatelliteEnabled: Satellite service is unavailable.");
-            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED);
+            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE);
         }
     }
 
@@ -589,7 +589,7 @@ public class SatelliteModemInterface {
             }
         } else {
             loge("requestIsSatelliteEnabled: Satellite service is unavailable.");
-            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED);
+            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE);
         }
     }
 
@@ -661,7 +661,7 @@ public class SatelliteModemInterface {
             }
         } else {
             loge("requestSatelliteCapabilities: Satellite service is unavailable.");
-            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED);
+            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE);
         }
     }
 
@@ -690,7 +690,7 @@ public class SatelliteModemInterface {
             }
         } else {
             loge("startSendingSatellitePointingInfo: Satellite service is unavailable.");
-            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED);
+            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE);
         }
     }
 
@@ -718,7 +718,7 @@ public class SatelliteModemInterface {
             }
         } else {
             loge("stopSendingSatellitePointingInfo: Satellite service is unavailable.");
-            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED);
+            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE);
         }
     }
 
@@ -752,7 +752,7 @@ public class SatelliteModemInterface {
             }
         } else {
             loge("provisionSatelliteService: Satellite service is unavailable.");
-            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED);
+            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE);
         }
     }
 
@@ -782,7 +782,7 @@ public class SatelliteModemInterface {
             }
         } else {
             loge("deprovisionSatelliteService: Satellite service is unavailable.");
-            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED);
+            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE);
         }
     }
 
@@ -819,7 +819,7 @@ public class SatelliteModemInterface {
             }
         } else {
             loge("requestIsSatelliteProvisioned: Satellite service is unavailable.");
-            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED);
+            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE);
         }
     }
 
@@ -848,7 +848,7 @@ public class SatelliteModemInterface {
             }
         } else {
             loge("pollPendingSatelliteDatagrams: Satellite service is unavailable.");
-            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED);
+            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE);
         }
     }
 
@@ -882,7 +882,7 @@ public class SatelliteModemInterface {
             }
         } else {
             loge("sendSatelliteDatagram: Satellite service is unavailable.");
-            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED);
+            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE);
         }
     }
 
@@ -920,7 +920,7 @@ public class SatelliteModemInterface {
             }
         } else {
             loge("requestSatelliteModemState: Satellite service is unavailable.");
-            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED);
+            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE);
         }
     }
 
@@ -959,7 +959,7 @@ public class SatelliteModemInterface {
         } else {
             loge("requestIsSatelliteCommunicationAllowedForCurrentLocation: "
                     + "Satellite service is unavailable.");
-            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED);
+            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE);
         }
     }
 
@@ -1000,7 +1000,7 @@ public class SatelliteModemInterface {
             }
         } else {
             loge("requestTimeForNextSatelliteVisibility: Satellite service is unavailable.");
-            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED);
+            sendMessageWithResult(message, null, SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE);
         }
     }
 

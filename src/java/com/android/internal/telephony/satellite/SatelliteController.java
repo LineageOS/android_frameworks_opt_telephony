@@ -1419,12 +1419,8 @@ public class SatelliteController extends Handler {
     public boolean setSatelliteServicePackageName(@Nullable String servicePackageName) {
         boolean result = mSatelliteModemInterface.setSatelliteServicePackageName(
                 servicePackageName);
-        if (result && (servicePackageName == null || servicePackageName.equals("null"))) {
-            /**
-             * Cached states like mIsSatelliteSupported and mIsSatelliteProvisioned are set to true
-             * when running SatelliteManagerTestOnMockService. We need to reset them to the actual
-             * states of the device.
-             */
+        if (result) {
+            // Cached states need to be cleared whenever switching satellite vendor services.
             synchronized (mIsSatelliteSupportedLock) {
                 mIsSatelliteSupported = null;
             }
@@ -1446,6 +1442,22 @@ public class SatelliteController extends Handler {
             requestIsSatelliteSupported(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, receiver);
         }
         return result;
+    }
+
+    /**
+     * This API can be used by only CTS to update the timeout duration in milliseconds that
+     * satellite should stay at listening mode to wait for the next incoming page before disabling
+     * listening mode.
+     *
+     * @param timeoutMillis The timeout duration in millisecond.
+     * @return {@code true} if the timeout duration is set successfully, {@code false} otherwise.
+     */
+    public boolean setSatelliteListeningTimeoutDuration(long timeoutMillis) {
+        if (mSatelliteSessionController == null) {
+            loge("mSatelliteSessionController is not initialized yet");
+            return false;
+        }
+        return mSatelliteSessionController.setSatelliteListeningTimeoutDuration(timeoutMillis);
     }
 
     /**
