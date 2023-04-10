@@ -1338,17 +1338,6 @@ public class DataNetwork extends StateMachine {
                     }
 
                     int tearDownReason = msg.arg1;
-                    // If the tear down request is from upper layer, for example, IMS service
-                    // releases network request, we don't need to delay. The purpose of the delay
-                    // is to have IMS service have time to perform IMS de-registration, so if this
-                    // request is from IMS service itself, that means IMS service is already aware
-                    // of the tear down. So there is no need to delay in this case.
-                    if (tearDownReason != TEAR_DOWN_REASON_CONNECTIVITY_SERVICE_UNWANTED
-                            && shouldDelayImsTearDown()) {
-                        logl("Delay IMS tear down until call ends. reason="
-                                + tearDownReasonToString(tearDownReason));
-                        break;
-                    }
 
                     removeMessages(EVENT_TEAR_DOWN_NETWORK);
                     removeDeferredMessages(EVENT_TEAR_DOWN_NETWORK);
@@ -2608,7 +2597,7 @@ public class DataNetwork extends StateMachine {
      * @return {@code true} if this is an IMS network and tear down should be delayed until call
      * ends on this data network.
      */
-    public boolean shouldDelayImsTearDown() {
+    public boolean shouldDelayImsTearDownDueToInCall() {
         return mDataConfigManager.isImsDelayTearDownEnabled()
                 && mNetworkCapabilities != null
                 && mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL)
