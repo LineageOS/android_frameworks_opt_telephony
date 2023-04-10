@@ -665,6 +665,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         mCarrierConfig.putBoolean(CarrierConfigManager.KEY_NETWORK_TEMP_NOT_METERED_SUPPORTED_BOOL,
                 true);
+        mCarrierConfig.putStringArray(CarrierConfigManager.KEY_UNMETERED_NETWORK_TYPES_STRING_ARRAY,
+                new String[] {"NR_NSA", "NR_NSA_MMWAVE", "NR_SA", "NR_SA_MMWAVE"});
 
         mCarrierConfig.putIntArray(CarrierConfigManager.KEY_ONLY_SINGLE_DC_ALLOWED_INT_ARRAY,
                 new int[]{TelephonyManager.NETWORK_TYPE_CDMA, TelephonyManager.NETWORK_TYPE_1xRTT,
@@ -3196,6 +3198,33 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // All data (including IMS) should be torn down.
         verifyAllDataDisconnected();
+    }
+
+    @Test
+    public void testDelayImsTearDownDuringSrvcc() throws Exception {
+        testSetupImsDataNetwork();
+        // SRVCC in progress, delay tear down
+        mDataNetworkControllerUT.obtainMessage(4 /*EVENT_SRVCC_STATE_CHANGED*/,
+                new AsyncResult(null,
+                        new int[]{TelephonyManager.SRVCC_STATE_HANDOVER_STARTED}, null))
+                .sendToTarget();
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_HSPAP,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        processAllMessages();
+
+        // Make sure IMS network is still connected.
+        verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_IMS,
+                NetworkCapabilities.NET_CAPABILITY_MMTEL);
+
+        // SRVCC handover ends, tear down as normal
+        mDataNetworkControllerUT.obtainMessage(4 /*EVENT_SRVCC_STATE_CHANGED*/,
+                        new AsyncResult(null,
+                                new int[]{TelephonyManager.SRVCC_STATE_HANDOVER_CANCELED}, null))
+                .sendToTarget();
+        processAllFutureMessages();
+
+        // Make sure IMS network is torn down
+        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_MMTEL);
     }
 
     @Test
