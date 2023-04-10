@@ -37,6 +37,7 @@ import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.WorkSource;
 import android.preference.PreferenceManager;
+import android.provider.DeviceConfig;
 import android.sysprop.TelephonyProperties;
 import android.telecom.VideoProfile;
 import android.telephony.AccessNetworkConstants;
@@ -602,8 +603,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         // Initialize SMS stats
         mSmsStats = new SmsStats(this);
 
+        // This is a temp flag which will be removed before U AOSP public release.
         mIsSubscriptionManagerServiceEnabled = mContext.getResources().getBoolean(
-                com.android.internal.R.bool.config_using_subscription_manager_service);
+                com.android.internal.R.bool.config_using_subscription_manager_service)
+                || DeviceConfig.getBoolean(DeviceConfig.NAMESPACE_TELEPHONY,
+                "enable_subscription_manager_service", false);
         if (isSubscriptionManagerServiceEnabled()) {
             mSubscriptionManagerService = SubscriptionManagerService.getInstance();
         }
