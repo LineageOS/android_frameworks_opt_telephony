@@ -609,9 +609,7 @@ public class PhoneFactory {
         pw.decreaseIndent();
         pw.println("++++++++++++++++++++++++++++++++");
 
-        if (isSubscriptionManagerServiceEnabled()) {
-            SubscriptionManagerService.getInstance().dump(fd, pw, args);
-        } else {
+        if (!isSubscriptionManagerServiceEnabled()) {
             pw.println("SubscriptionController:");
             pw.increaseIndent();
             try {
