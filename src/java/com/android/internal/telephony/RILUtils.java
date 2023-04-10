@@ -5954,7 +5954,7 @@ public class RILUtils {
             }
         }
         return new SatelliteCapabilities(supportedRadioTechnologies,
-                capabilities.needsPointingToSatellite, 0);
+                capabilities.needsPointingToSatellite, 0, null);
     }
 
     /**
