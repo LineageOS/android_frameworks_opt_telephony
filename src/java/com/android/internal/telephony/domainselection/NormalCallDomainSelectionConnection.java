@@ -38,15 +38,6 @@ public class NormalCallDomainSelectionConnection extends DomainSelectionConnecti
 
     private static final boolean DBG = false;
 
-    private static final String PREFIX_WPS = "*272";
-
-    // WPS prefix when CLIR is being activated for the call.
-    private static final String PREFIX_WPS_CLIR_ACTIVATE = "*31#*272";
-
-    // WPS prefix when CLIR is being deactivated for the call.
-    private static final String PREFIX_WPS_CLIR_DEACTIVATE = "#31#*272";
-
-
     private @Nullable DomainSelectionConnectionCallback mCallback;
 
     /**
@@ -131,16 +122,5 @@ public class NormalCallDomainSelectionConnection extends DomainSelectionConnecti
             builder.setPsDisconnectCause(imsReasonInfo);
         }
         return builder.build();
-    }
-
-    /**
-     * Check if the call is Wireless Priority Service call
-     * @param dialString  The number being dialed.
-     * @return {@code true} if dialString matches WPS pattern and {@code false} otherwise.
-     */
-    public static boolean isWpsCall(String dialString) {
-        return (dialString != null) && (dialString.startsWith(PREFIX_WPS)
-                || dialString.startsWith(PREFIX_WPS_CLIR_ACTIVATE)
-                || dialString.startsWith(PREFIX_WPS_CLIR_DEACTIVATE));
     }
 }
