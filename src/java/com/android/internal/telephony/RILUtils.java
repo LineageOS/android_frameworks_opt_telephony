@@ -92,6 +92,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_HARDWA
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_IMEI;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_IMEISV;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_IMSI;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_LOCATION_PRIVACY_SETTING;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_MAX_CHARACTERS_PER_SATELLITE_TEXT_MESSAGE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_MODEM_STATUS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_GET_MUTE;
@@ -173,6 +174,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_EMERGE
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_FACILITY_LOCK;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_INITIAL_ATTACH_APN;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_LINK_CAPACITY_REPORTING_CRITERIA;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_LOCATION_PRIVACY_SETTING;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_LOCATION_UPDATES;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_MUTE;
@@ -292,6 +294,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SATELLITE_RA
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIGNAL_STRENGTH;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_REFRESH;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_SMS_STORAGE_FULL;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SLICING_CONFIG_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SRVCC_STATE_NOTIFY;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_CALL_SETUP;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_CC_ALPHA_NOTIFY;
@@ -5288,6 +5291,7 @@ public class RILUtils {
                 return "UPDATE_SIM_PHONEBOOK_RECORD";
             case RIL_REQUEST_DEVICE_IMEI:
                 return "DEVICE_IMEI";
+            /* The following requests are not defined in RIL.h */
             case RIL_REQUEST_GET_SLOT_STATUS:
                 return "GET_SLOT_STATUS";
             case RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING:
@@ -5374,6 +5378,10 @@ public class RILUtils {
                 return "SET_N1_MODE_ENABLED";
             case RIL_REQUEST_IS_N1_MODE_ENABLED:
                 return "IS_N1_MODE_ENABLED";
+            case RIL_REQUEST_SET_LOCATION_PRIVACY_SETTING:
+                return "SET_LOCATION_PRIVACY_SETTING";
+            case RIL_REQUEST_GET_LOCATION_PRIVACY_SETTING:
+                return "GET_LOCATION_PRIVACY_SETTING";
             case RIL_REQUEST_GET_SATELLITE_CAPABILITIES:
                 return "GET_SATELLITE_CAPABILITIES";
             case RIL_REQUEST_SET_SATELLITE_POWER:
@@ -5522,26 +5530,8 @@ public class RILUtils {
                 return "UNSOL_RESPONSE_SIM_PHONEBOOK_CHANGED";
             case RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED:
                 return "UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED";
-            case RIL_UNSOL_ICC_SLOT_STATUS:
-                return "UNSOL_ICC_SLOT_STATUS";
-            case RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG:
-                return "UNSOL_PHYSICAL_CHANNEL_CONFIG";
-            case RIL_UNSOL_EMERGENCY_NUMBER_LIST:
-                return "UNSOL_EMERGENCY_NUMBER_LIST";
-            case RIL_UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED:
-                return "UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED";
-            case RIL_UNSOL_REGISTRATION_FAILED:
-                return "UNSOL_REGISTRATION_FAILED";
-            case RIL_UNSOL_BARRING_INFO_CHANGED:
-                return "UNSOL_BARRING_INFO_CHANGED";
-            case RIL_UNSOL_EMERGENCY_NETWORK_SCAN_RESULT:
-                return "UNSOL_EMERGENCY_NETWORK_SCAN_RESULT";
-            case RIL_UNSOL_CONNECTION_SETUP_FAILURE:
-                return "UNSOL_CONNECTION_SETUP_FAILURE";
-            case RIL_UNSOL_NOTIFY_ANBR:
-                return "UNSOL_NOTIFY_ANBR";
-            case RIL_UNSOL_TRIGGER_IMS_DEREGISTRATION:
-                return "UNSOL_TRIGGER_IMS_DEREGISTRATION";
+            case RIL_UNSOL_SLICING_CONFIG_CHANGED:
+                return "UNSOL_SLICING_CONFIG_CHANGED";
             case RIL_UNSOL_PENDING_SATELLITE_MESSAGE_COUNT:
                 return "UNSOL_PENDING_SATELLITE_MESSAGE_COUNT";
             case RIL_UNSOL_NEW_SATELLITE_MESSAGES:
@@ -5556,8 +5546,29 @@ public class RILUtils {
                 return "UNSOL_SATELLITE_RADIO_TECHNOLOGY_CHANGED";
             case RIL_UNSOL_SATELLITE_PROVISION_STATE_CHANGED:
                 return "UNSOL_SATELLITE_PROVISION_STATE_CHANGED";
+            /* The follow unsols are not defined in RIL.h */
+            case RIL_UNSOL_ICC_SLOT_STATUS:
+                return "UNSOL_ICC_SLOT_STATUS";
+            case RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG:
+                return "UNSOL_PHYSICAL_CHANNEL_CONFIG";
+            case RIL_UNSOL_EMERGENCY_NUMBER_LIST:
+                return "UNSOL_EMERGENCY_NUMBER_LIST";
+            case RIL_UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED:
+                return "UNSOL_UICC_APPLICATIONS_ENABLEMENT_CHANGED";
+            case RIL_UNSOL_REGISTRATION_FAILED:
+                return "UNSOL_REGISTRATION_FAILED";
+            case RIL_UNSOL_BARRING_INFO_CHANGED:
+                return "UNSOL_BARRING_INFO_CHANGED";
+            case RIL_UNSOL_EMERGENCY_NETWORK_SCAN_RESULT:
+                return "UNSOL_EMERGENCY_NETWORK_SCAN_RESULT";
+            case RIL_UNSOL_TRIGGER_IMS_DEREGISTRATION:
+                return "UNSOL_TRIGGER_IMS_DEREGISTRATION";
+            case RIL_UNSOL_CONNECTION_SETUP_FAILURE:
+                return "UNSOL_CONNECTION_SETUP_FAILURE";
+            case RIL_UNSOL_NOTIFY_ANBR:
+                return "UNSOL_NOTIFY_ANBR";
             default:
-                return "<unknown response>";
+                return "<unknown response " + response + ">";
         }
     }
 
