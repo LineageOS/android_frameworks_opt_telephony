@@ -162,7 +162,7 @@ public class MissedIncomingCallSmsFilter {
         }
 
         boolean result = false;
-        String[] missedCallMsgs = splitTheMultipleCalls(message.getMessageBody());
+        String[] missedCallMsgs = splitCalls(message.getMessageBody());
         if (missedCallMsgs != null && missedCallMsgs.length > 0) {
             for (String parsedMsg : missedCallMsgs) {
                 long missedCallTime = 0;
@@ -237,7 +237,7 @@ public class MissedIncomingCallSmsFilter {
         return result;
     }
 
-    private String[] splitTheMultipleCalls(String messageBody) {
+    private String[] splitCalls(String messageBody) {
         String[] messages = null;
         if (messageBody != null) {
             messages = messageBody.split("\\n" + "\\n");
@@ -248,7 +248,7 @@ public class MissedIncomingCallSmsFilter {
         return messages;
     }
 
-    // Create phone account. The logic is copied from PhoneUtils.makePstnPhoneAccountHandleWithId.
+    // Create phone account. The logic is copied from PhoneUtils.makePstnPhoneAccountHandle.
     private PhoneAccountHandle makePstnPhoneAccountHandle(Phone phone) {
         SubscriptionManager subscriptionManager =
                 (SubscriptionManager) phone.getContext().getSystemService(
