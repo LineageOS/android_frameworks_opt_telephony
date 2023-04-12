@@ -271,6 +271,7 @@ import static com.android.internal.telephony.RILConstants.RIL_UNSOL_RINGBACK_TON
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIGNAL_STRENGTH;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_REFRESH;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SIM_SMS_STORAGE_FULL;
+import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SLICING_CONFIG_CHANGED;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_SRVCC_STATE_NOTIFY;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_CALL_SETUP;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_STK_CC_ALPHA_NOTIFY;
@@ -5265,6 +5266,7 @@ public class RILUtils {
                 return "UPDATE_SIM_PHONEBOOK_RECORD";
             case RIL_REQUEST_DEVICE_IMEI:
                 return "DEVICE_IMEI";
+            /* The following requests are not defined in RIL.h */
             case RIL_REQUEST_GET_SLOT_STATUS:
                 return "GET_SLOT_STATUS";
             case RIL_REQUEST_SET_LOGICAL_TO_PHYSICAL_SLOT_MAPPING:
@@ -5471,6 +5473,9 @@ public class RILUtils {
                 return "UNSOL_RESPONSE_SIM_PHONEBOOK_CHANGED";
             case RIL_UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED:
                 return "UNSOL_RESPONSE_SIM_PHONEBOOK_RECORDS_RECEIVED";
+            case RIL_UNSOL_SLICING_CONFIG_CHANGED:
+                return "UNSOL_SLICING_CONFIG_CHANGED";
+            /* The follow unsols are not defined in RIL.h */
             case RIL_UNSOL_ICC_SLOT_STATUS:
                 return "UNSOL_ICC_SLOT_STATUS";
             case RIL_UNSOL_PHYSICAL_CHANNEL_CONFIG:
@@ -5485,14 +5490,14 @@ public class RILUtils {
                 return "UNSOL_BARRING_INFO_CHANGED";
             case RIL_UNSOL_EMERGENCY_NETWORK_SCAN_RESULT:
                 return "UNSOL_EMERGENCY_NETWORK_SCAN_RESULT";
+            case RIL_UNSOL_TRIGGER_IMS_DEREGISTRATION:
+                return "UNSOL_TRIGGER_IMS_DEREGISTRATION";
             case RIL_UNSOL_CONNECTION_SETUP_FAILURE:
                 return "UNSOL_CONNECTION_SETUP_FAILURE";
             case RIL_UNSOL_NOTIFY_ANBR:
                 return "UNSOL_NOTIFY_ANBR";
-            case RIL_UNSOL_TRIGGER_IMS_DEREGISTRATION:
-                return "UNSOL_TRIGGER_IMS_DEREGISTRATION";
             default:
-                return "<unknown response>";
+                return "<unknown response " + response + ">";
         }
     }
 
