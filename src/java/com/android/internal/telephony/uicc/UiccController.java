@@ -787,7 +787,7 @@ public class UiccController extends Handler {
                         IccCardConstants.State.ABSENT.toString());
             }
 
-            SubscriptionManagerService.getInstance().updateSimStateForInactivePort(phoneId);
+            SubscriptionManagerService.getInstance().updateSimStateForInactivePort(phoneId, iccId);
         });
     }
 
