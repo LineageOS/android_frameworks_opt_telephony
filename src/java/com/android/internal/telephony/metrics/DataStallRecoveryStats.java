@@ -152,10 +152,6 @@ public class DataStallRecoveryStats {
                 return;
             }
 
-            /**
-             * TODO: Extend TelephonyStatsLog.write to upload the TCP information and data
-             * networking stats data.
-            */
             TelephonyStatsLog.write(
                     TelephonyStatsLog.DATA_STALL_RECOVERY_REPORTED,
                     mCarrierId,
@@ -173,7 +169,10 @@ public class DataStallRecoveryStats {
                     mNetworkRegState,
                     isFirstValidation,
                     mPhoneId,
-                    durationOfAction);
+                    durationOfAction,
+                    mInternetLinkStatus,
+                    mLinkUpBandwidthKbps,
+                    mLinkDownBandwidthKbps);
 
             log("Upload stats: "
                     + "Action:"
