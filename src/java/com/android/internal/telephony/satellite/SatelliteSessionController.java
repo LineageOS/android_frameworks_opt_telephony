@@ -313,9 +313,9 @@ public class SatelliteSessionController extends StateMachine {
             if (DBG) logd("Entering IdleState");
             mCurrentState = SatelliteManager.SATELLITE_MODEM_STATE_IDLE;
             mIsSendingTriggeredDuringTransferringState.set(false);
+            //Enable Cellular Modem scanning
+            mSatelliteModemInterface.enableCellularModemWhileSatelliteModeIsOn(true, null);
             notifyStateChangedEvent(SatelliteManager.SATELLITE_MODEM_STATE_IDLE);
-            //Disable Cellular Modem
-            mSatelliteModemInterface.enableCellularModemWhileSatelliteModeIsOn(false, null);
         }
 
         @Override
@@ -345,8 +345,8 @@ public class SatelliteSessionController extends StateMachine {
         @Override
         public void exit() {
             if (DBG) logd("Exiting IdleState");
-            //Enable Cellular Modem
-            mSatelliteModemInterface.enableCellularModemWhileSatelliteModeIsOn(true, null);
+            //Disable Cellular Modem Scanning
+            mSatelliteModemInterface.enableCellularModemWhileSatelliteModeIsOn(false, null);
         }
     }
 
