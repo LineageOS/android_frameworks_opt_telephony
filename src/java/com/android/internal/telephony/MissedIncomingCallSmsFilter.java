@@ -228,10 +228,10 @@ public class MissedIncomingCallSmsFilter {
         return false;
     }
 
-    // Create phone account. The logic is copied from PhoneUtils.makePstnPhoneAccountHandleWithId.
+    // Create phone account. The logic is copied from PhoneUtils.makePstnPhoneAccountHandle.
     private static PhoneAccountHandle makePstnPhoneAccountHandle(Phone phone) {
         return new PhoneAccountHandle(PSTN_CONNECTION_SERVICE_COMPONENT,
-                String.valueOf(phone.getSubId()), phone.getUserHandle());
+                String.valueOf(phone.getFullIccSerialNumber()));
     }
 
     /**
