@@ -23,14 +23,12 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.PersistableBundle;
-import android.os.UserHandle;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.SmsMessage;
-import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 
 import java.time.Instant;
@@ -154,6 +152,9 @@ public class MissedIncomingCallSmsFilter {
      * @return {@code true} if the SMS message has been processed as a missed incoming call SMS.
      */
     private boolean processSms(@NonNull SmsMessage message) {
+        long missedCallTime = 0;
+        String callerId = null;
+
         String[] smsPatterns = mCarrierConfig.getStringArray(CarrierConfigManager
                 .KEY_MISSED_INCOMING_CALL_SMS_PATTERN_STRING_ARRAY);
         if (smsPatterns == null || smsPatterns.length == 0) {
@@ -161,105 +162,76 @@ public class MissedIncomingCallSmsFilter {
             return false;
         }
 
-        boolean result = false;
-        String[] missedCallMsgs = splitTheMultipleCalls(message.getMessageBody());
-        if (missedCallMsgs != null && missedCallMsgs.length > 0) {
-            for (String parsedMsg : missedCallMsgs) {
-                long missedCallTime = 0;
-                String callerId = null;
-                for (String smsPattern : smsPatterns) {
-                    Pattern pattern;
-                    try {
-                        pattern = Pattern.compile(smsPattern, Pattern.DOTALL | Pattern.UNIX_LINES);
-                    } catch (PatternSyntaxException e) {
-                        Rlog.w(TAG, "Configuration error. Unexpected missed incoming call sms "
-                                + "pattern: " + smsPattern + ", e=" + e);
-                        continue;
-                    }
+        for (String smsPattern : smsPatterns) {
+            Pattern pattern;
+            try {
+                pattern = Pattern.compile(smsPattern, Pattern.DOTALL | Pattern.UNIX_LINES);
+            } catch (PatternSyntaxException e) {
+                Rlog.w(TAG, "Configuration error. Unexpected missed incoming call sms "
+                        + "pattern: " + smsPattern + ", e=" + e);
+                continue;
+            }
 
-                    Matcher matcher = pattern.matcher(parsedMsg);
-                    String year = null, month = null, day = null, hour = null, minute = null;
-                    if (matcher.find()) {
-                        try {
-                            month = matcher.group(SMS_MONTH_TAG);
-                            day = matcher.group(SMS_DAY_TAG);
-                            hour = matcher.group(SMS_HOUR_TAG);
-                            minute = matcher.group(SMS_MINUTE_TAG);
-                            if (VDBG) {
-                                Rlog.v(TAG, "month=" + month + ", day=" + day + ", hour=" + hour
-                                        + ", minute=" + minute);
-                            }
-                        } catch (IllegalArgumentException e) {
-                            if (VDBG) {
-                                Rlog.v(TAG, "One of the critical date field is missing. Using the "
-                                        + "current time for missed incoming call.");
-                            }
+            Matcher matcher = pattern.matcher(message.getMessageBody());
+            String year = null, month = null, day = null, hour = null, minute = null;
+            if (matcher.find()) {
+                try {
+                    month = matcher.group(SMS_MONTH_TAG);
+                    day = matcher.group(SMS_DAY_TAG);
+                    hour = matcher.group(SMS_HOUR_TAG);
+                    minute = matcher.group(SMS_MINUTE_TAG);
+                    if (VDBG) {
+                        Rlog.v(TAG, "month=" + month + ", day=" + day + ", hour=" + hour
+                                + ", minute=" + minute);
+                    }
+                } catch (IllegalArgumentException e) {
+                    if (VDBG) {
+                        Rlog.v(TAG, "One of the critical date field is missing. Using the "
+                                + "current time for missed incoming call.");
+                    }
+                    missedCallTime = System.currentTimeMillis();
+                }
+
+                // Year is an optional field.
+                try {
+                    year = matcher.group(SMS_YEAR_TAG);
+                } catch (IllegalArgumentException e) {
+                    if (VDBG) Rlog.v(TAG, "Year is missing.");
+                }
+
+                try {
+                    if (missedCallTime == 0) {
+                        missedCallTime = getEpochTime(year, month, day, hour, minute);
+                        if (missedCallTime == 0) {
+                            Rlog.e(TAG, "Can't get the time. Use the current time.");
                             missedCallTime = System.currentTimeMillis();
                         }
-
-                        // Year is an optional field.
-                        try {
-                            year = matcher.group(SMS_YEAR_TAG);
-                        } catch (IllegalArgumentException e) {
-                            if (VDBG) Rlog.v(TAG, "Year is missing.");
-                        }
-
-                        try {
-                            if (missedCallTime == 0) {
-                                missedCallTime = getEpochTime(year, month, day, hour, minute);
-                                if (missedCallTime == 0) {
-                                    Rlog.e(TAG, "Can't get the time. Use the current time.");
-                                    missedCallTime = System.currentTimeMillis();
-                                }
-                            }
-
-                            if (VDBG) Rlog.v(TAG, "missedCallTime=" + missedCallTime);
-                        } catch (Exception e) {
-                            Rlog.e(TAG, "Can't get the time for missed incoming call");
-                        }
-
-                        try {
-                            callerId = matcher.group(SMS_CALLER_ID_TAG);
-                            if (VDBG) Rlog.v(TAG, "caller id=" + callerId);
-                        } catch (IllegalArgumentException e) {
-                            Rlog.d(TAG, "Caller id is not provided or can't be parsed.");
-                        }
-                        createMissedIncomingCallEvent(missedCallTime, callerId);
-                        result = true;
-                        break;
                     }
+
+                    if (VDBG) Rlog.v(TAG, "missedCallTime=" + missedCallTime);
+                } catch (Exception e) {
+                    Rlog.e(TAG, "Can't get the time for missed incoming call");
                 }
+
+                try {
+                    callerId = matcher.group(SMS_CALLER_ID_TAG);
+                    if (VDBG) Rlog.v(TAG, "caller id=" + callerId);
+                } catch (IllegalArgumentException e) {
+                    Rlog.d(TAG, "Caller id is not provided or can't be parsed.");
+                }
+                createMissedIncomingCallEvent(missedCallTime, callerId);
+                return true;
             }
         }
-        if (!result) {
-            Rlog.d(TAG, "SMS did not match any missed incoming call SMS pattern.");
-        }
-        return result;
+
+        Rlog.d(TAG, "SMS did not match any missed incoming call SMS pattern.");
+        return false;
     }
 
-    private String[] splitTheMultipleCalls(String messageBody) {
-        String[] messages = null;
-        if (messageBody != null) {
-            messages = messageBody.split("\\n" + "\\n");
-            Rlog.d(TAG,
-                    "splitTheMultipleCalls no of calls = " + ((messages != null) ? messages.length
-                            : 0));
-        }
-        return messages;
-    }
-
-    // Create phone account. The logic is copied from PhoneUtils.makePstnPhoneAccountHandleWithId.
-    private PhoneAccountHandle makePstnPhoneAccountHandle(Phone phone) {
-        SubscriptionManager subscriptionManager =
-                (SubscriptionManager) phone.getContext().getSystemService(
-                        Context.TELEPHONY_SUBSCRIPTION_SERVICE);
-        UserHandle userHandle = subscriptionManager.getSubscriptionUserHandle(phone.getSubId());
-        if (userHandle != null) {
-            return new PhoneAccountHandle(PSTN_CONNECTION_SERVICE_COMPONENT,
-                    String.valueOf(phone.getSubId()), userHandle);
-        }
+    // Create phone account. The logic is copied from PhoneUtils.makePstnPhoneAccountHandle.
+    private static PhoneAccountHandle makePstnPhoneAccountHandle(Phone phone) {
         return new PhoneAccountHandle(PSTN_CONNECTION_SERVICE_COMPONENT,
-                String.valueOf(phone.getSubId()));
+                String.valueOf(phone.getFullIccSerialNumber()));
     }
 
     /**
