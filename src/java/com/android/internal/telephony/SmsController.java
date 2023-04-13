@@ -260,7 +260,12 @@ public class SmsController extends ISmsImplBase {
         }
 
         // Check if user is associated with the subscription
-        if (!TelephonyPermissions.checkSubscriptionAssociatedWithUser(mContext, subId,
+        boolean crossUserFullGranted = mContext.checkCallingOrSelfPermission(
+                android.Manifest.permission.INTERACT_ACROSS_USERS_FULL) == PERMISSION_GRANTED;
+        Rlog.d(LOG_TAG, "sendTextForSubscriber: caller has INTERACT_ACROSS_USERS_FULL? "
+                + crossUserFullGranted);
+        if (!crossUserFullGranted
+                && !TelephonyPermissions.checkSubscriptionAssociatedWithUser(mContext, subId,
                 Binder.getCallingUserHandle(), destAddr)) {
             TelephonyUtils.showSwitchToManagedProfileDialogIfAppropriate(mContext, subId,
                     Binder.getCallingUid(), callingPackage);
