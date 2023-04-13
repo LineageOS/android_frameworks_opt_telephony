@@ -7431,6 +7431,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         switch (interfaceVersion) {
             case 1: return RADIO_HAL_VERSION_2_0;
             case 2: return RADIO_HAL_VERSION_2_1;
+            case 3: return RADIO_HAL_VERSION_2_1; // for now
             default: return RADIO_HAL_VERSION_UNKNOWN;
         }
     }
