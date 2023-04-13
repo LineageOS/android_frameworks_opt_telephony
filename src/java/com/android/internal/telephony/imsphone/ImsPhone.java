@@ -196,6 +196,7 @@ public class ImsPhone extends ImsPhoneBase {
                     return new ImsDialArgs.Builder()
                             .setUusInfo(dialArgs.uusInfo)
                             .setIsEmergency(dialArgs.isEmergency)
+                            .setEccCategory(dialArgs.eccCategory)
                             .setVideoState(dialArgs.videoState)
                             .setIntentExtras(dialArgs.intentExtras)
                             .setRttTextStream(((ImsDialArgs)dialArgs).rttTextStream)
