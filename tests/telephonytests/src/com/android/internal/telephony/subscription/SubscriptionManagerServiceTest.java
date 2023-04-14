@@ -1956,6 +1956,8 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 EuiccService.RESULT_OK, new EuiccProfileInfo[0], false);
         doReturn(result).when(mEuiccController).blockingGetEuiccProfileInfoList(eq(1));
         doReturn("").when(mUiccPort).getIccId();
+        doReturn(TelephonyManager.INVALID_PORT_INDEX)
+                .when(mUiccSlot).getPortIndexFromIccId(anyString());
 
         mSubscriptionManagerServiceUT.updateEmbeddedSubscriptions(List.of(1), null);
         mSubscriptionManagerServiceUT.updateSimState(
@@ -2017,7 +2019,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 .getSubscriptionInfoInternal(1);
         assertThat(subInfo.getSimSlotIndex()).isEqualTo(
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID);
-        assertThat(subInfo.getPortIndex()).isEqualTo(TelephonyManager.INVALID_PORT_INDEX);
+        assertThat(subInfo.getPortIndex()).isEqualTo(TelephonyManager.DEFAULT_PORT_INDEX);
     }
 
     @Test
@@ -2166,7 +2168,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         testSetUiccApplicationsEnabled();
 
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
-        mSubscriptionManagerServiceUT.updateSimStateForInactivePort(0);
+        mSubscriptionManagerServiceUT.updateSimStateForInactivePort(0, null);
         processAllMessages();
 
         SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT

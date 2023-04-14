@@ -26,6 +26,7 @@ import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import android.content.pm.PackageManager;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -207,4 +208,35 @@ public class SmsControllerTest extends TelephonyTest {
                 .sendText(mCallingPackage, "1234", null, "text", null, null, false, 0L, true);
     }
 
+    @Test
+    public void sendTextForSubscriberTest_InteractAcrossUsers() {
+        int subId = 1;
+        // Sending text to subscriber should not fail when the caller has the
+        // INTERACT_ACROSS_USERS_FULL permission.
+        doReturn(false).when(mSubscriptionManager)
+                .isSubscriptionAssociatedWithUser(eq(subId), any());
+        doReturn(PackageManager.PERMISSION_GRANTED).when(mContext).checkCallingOrSelfPermission(
+                eq(android.Manifest.permission.INTERACT_ACROSS_USERS_FULL));
+
+        mSmsControllerUT.sendTextForSubscriber(subId, mCallingPackage, null, "1234",
+                null, "text", null, null, false, 0L, true, true);
+        verify(mIccSmsInterfaceManager, Mockito.times(1))
+                .sendText(mCallingPackage, "1234", null, "text", null, null, false, 0L, true);
+    }
+
+    @Test
+    public void sendTextForSubscriberTestFail() {
+        int subId = 1;
+        // Sending text to subscriber should fail when the caller does not have the
+        // INTERACT_ACROSS_USERS_FULL permission and is not associated with the subscription.
+        doReturn(false).when(mSubscriptionManager)
+                .isSubscriptionAssociatedWithUser(eq(subId), any());
+        doReturn(PackageManager.PERMISSION_DENIED).when(mContext).checkCallingOrSelfPermission(
+                eq(android.Manifest.permission.INTERACT_ACROSS_USERS_FULL));
+
+        mSmsControllerUT.sendTextForSubscriber(subId, mCallingPackage, null, "1234",
+                null, "text", null, null, false, 0L, true, true);
+        verify(mIccSmsInterfaceManager, Mockito.times(0))
+                .sendText(mCallingPackage, "1234", null, "text", null, null, false, 0L, true);
+    }
 }

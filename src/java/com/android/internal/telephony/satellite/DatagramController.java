@@ -185,9 +185,9 @@ public class DatagramController {
         mSendDatagramTransferState = datagramTransferState;
         mSendPendingCount = sendPendingCount;
         mSendErrorCode = errorCode;
+        notifyDatagramTransferStateChangedToSessionController();
         mPointingAppController.updateSendDatagramTransferState(subId, datagramTransferState,
                 sendPendingCount, errorCode);
-        notifyDatagramTransferStateChangedToSessionController();
     }
 
     /**
@@ -210,9 +210,9 @@ public class DatagramController {
         mReceiveDatagramTransferState = datagramTransferState;
         mReceivePendingCount = receivePendingCount;
         mReceiveErrorCode = errorCode;
+        notifyDatagramTransferStateChangedToSessionController();
         mPointingAppController.updateReceiveDatagramTransferState(subId, datagramTransferState,
                 receivePendingCount, errorCode);
-        notifyDatagramTransferStateChangedToSessionController();
     }
 
     /**
