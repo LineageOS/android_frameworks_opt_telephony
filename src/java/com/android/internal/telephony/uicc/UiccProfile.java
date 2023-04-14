@@ -63,7 +63,6 @@ import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.cat.CatService;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
@@ -545,25 +544,15 @@ public class UiccProfile extends IccCard {
         if (!TextUtils.isEmpty(iso)
                 && !iso.equals(TelephonyManager.getSimCountryIsoForPhone(mPhoneId))) {
             mTelephonyManager.setSimCountryIsoForPhone(mPhoneId, iso);
-            if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-                SubscriptionManagerService.getInstance().setCountryIso(subId, iso);
-            } else {
-                SubscriptionController.getInstance().setCountryIso(iso, subId);
-            }
+            SubscriptionManagerService.getInstance().setCountryIso(subId, iso);
         }
     }
 
     private void updateCarrierNameForSubscription(int subId, int nameSource) {
         /* update display name with carrier override */
-        SubscriptionInfo subInfo;
-
-        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-            subInfo = SubscriptionManagerService.getInstance().getActiveSubscriptionInfo(subId,
-                    mContext.getOpPackageName(), mContext.getAttributionTag());
-        } else {
-            subInfo = SubscriptionController.getInstance().getActiveSubscriptionInfo(
-                    subId, mContext.getOpPackageName(), mContext.getAttributionTag());
-        }
+        SubscriptionInfo subInfo = SubscriptionManagerService.getInstance()
+                .getActiveSubscriptionInfo(subId, mContext.getOpPackageName(),
+                        mContext.getAttributionTag());
 
         if (subInfo == null) {
             return;
@@ -574,13 +563,8 @@ public class UiccProfile extends IccCard {
 
         if (!TextUtils.isEmpty(newCarrierName) && !newCarrierName.equals(oldSubName)) {
             log("sim name[" + mPhoneId + "] = " + newCarrierName);
-            if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-                SubscriptionManagerService.getInstance().setDisplayNameUsingSrc(
-                        newCarrierName, subId, nameSource);
-            } else {
-                SubscriptionController.getInstance().setDisplayNameUsingSrc(
-                        newCarrierName, subId, nameSource);
-            }
+            SubscriptionManagerService.getInstance().setDisplayNameUsingSrc(
+                    newCarrierName, subId, nameSource);
         }
     }
 
@@ -837,13 +821,8 @@ public class UiccProfile extends IccCard {
             }
             log("setExternalState: set mPhoneId=" + mPhoneId + " mExternalState=" + mExternalState);
 
-            if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-                UiccController.getInstance().updateSimState(mPhoneId, mExternalState,
-                        getIccStateReason(mExternalState));
-            } else {
-                UiccController.updateInternalIccState(mContext, mExternalState,
-                        getIccStateReason(mExternalState), mPhoneId);
-            }
+            UiccController.getInstance().updateSimState(mPhoneId, mExternalState,
+                    getIccStateReason(mExternalState));
         }
     }
 
@@ -1747,35 +1726,27 @@ public class UiccProfile extends IccCard {
             return false;
         }
 
-        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-            int subId = SubscriptionManager.getSubscriptionId(getPhoneId());
-            SubscriptionInfoInternal subInfo = SubscriptionManagerService.getInstance()
-                    .getSubscriptionInfoInternal(subId);
-            if (subInfo == null) {
-                loge("setOperatorBrandOverride: Cannot find subscription info for sub " + subId);
-                return false;
-            }
+        int subId = SubscriptionManager.getSubscriptionId(getPhoneId());
+        SubscriptionInfoInternal subInfo = SubscriptionManagerService.getInstance()
+                .getSubscriptionInfoInternal(subId);
+        if (subInfo == null) {
+            loge("setOperatorBrandOverride: Cannot find subscription info for sub " + subId);
+            return false;
+        }
 
-            List<SubscriptionInfo> subInfos = new ArrayList<>();
-            subInfos.add(subInfo.toSubscriptionInfo());
-            String groupUuid = subInfo.getGroupUuid();
-            if (!TextUtils.isEmpty(groupUuid)) {
-                subInfos.addAll(SubscriptionManagerService.getInstance()
-                        .getSubscriptionsInGroup(ParcelUuid.fromString(groupUuid),
-                                mContext.getOpPackageName(), mContext.getFeatureId()));
-            }
+        List<SubscriptionInfo> subInfos = new ArrayList<>();
+        subInfos.add(subInfo.toSubscriptionInfo());
+        String groupUuid = subInfo.getGroupUuid();
+        if (!TextUtils.isEmpty(groupUuid)) {
+            subInfos.addAll(SubscriptionManagerService.getInstance()
+                    .getSubscriptionsInGroup(ParcelUuid.fromString(groupUuid),
+                            mContext.getOpPackageName(), mContext.getFeatureId()));
+        }
 
-            if (subInfos.stream().noneMatch(info -> TextUtils.equals(IccUtils.stripTrailingFs(
-                    info.getIccId()), IccUtils.stripTrailingFs(iccId)))) {
-                loge("iccId doesn't match current active subId.");
-                return false;
-            }
-        } else {
-            if (!SubscriptionController.getInstance().checkPhoneIdAndIccIdMatch(
-                    getPhoneId(), iccId)) {
-                loge("iccId doesn't match current active subId.");
-                return false;
-            }
+        if (subInfos.stream().noneMatch(info -> TextUtils.equals(IccUtils.stripTrailingFs(
+                info.getIccId()), IccUtils.stripTrailingFs(iccId)))) {
+            loge("iccId doesn't match current active subId.");
+            return false;
         }
 
         SharedPreferences.Editor spEditor =

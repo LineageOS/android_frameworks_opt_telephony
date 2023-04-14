@@ -159,7 +159,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("SubscriptionManagerServiceTest +Setup!");
         super.setUp(getClass().getSimpleName());
-        enableSubscriptionManagerService(true);
 
         // Dual-SIM configuration
         mPhones = new Phone[] {mPhone, mPhone2};
@@ -1780,9 +1779,9 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
         assertThat(mSubscriptionManagerServiceUT.removeSubInfo(FAKE_ICCID1,
-                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM)).isEqualTo(0);
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM)).isEqualTo(true);
         assertThat(mSubscriptionManagerServiceUT.removeSubInfo(FAKE_ICCID2,
-                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM)).isEqualTo(0);
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM)).isEqualTo(true);
 
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
         assertThat(mSubscriptionManagerServiceUT.getAllSubInfoList(
@@ -2119,7 +2118,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM);
 
         assertThat(mSubscriptionManagerServiceUT.removeSubInfo(FAKE_MAC_ADDRESS1,
-                SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM)).isEqualTo(0);
+                SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM)).isEqualTo(true);
         assertThat(mSubscriptionManagerServiceUT.getAllSubInfoList(
                 CALLING_PACKAGE, CALLING_FEATURE)).isEmpty();
         assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false)).isEmpty();

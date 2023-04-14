@@ -447,14 +447,10 @@ public abstract class SMSDispatcher extends Handler {
                  */
                 mMessageRef = getTpmrValueFromSIM();
                 if (mMessageRef == -1) {
-                    if (mPhone.isSubscriptionManagerServiceEnabled()) {
-                        SubscriptionInfoInternal subInfo = SubscriptionManagerService.getInstance()
-                                .getSubscriptionInfoInternal(msg.arg1);
-                        if (subInfo != null) {
-                            mMessageRef = subInfo.getLastUsedTPMessageReference();
-                        }
-                    } else {
-                        mMessageRef = SubscriptionController.getInstance().getMessageRef(msg.arg1);
+                    SubscriptionInfoInternal subInfo = SubscriptionManagerService.getInstance()
+                            .getSubscriptionInfoInternal(msg.arg1);
+                    if (subInfo != null) {
+                        mMessageRef = subInfo.getLastUsedTPMessageReference();
                     }
                 }
                 break;
@@ -477,12 +473,8 @@ public abstract class SMSDispatcher extends Handler {
         updateSIMLastTPMRValue(mMessageRef);
         final long identity = Binder.clearCallingIdentity();
         try {
-            if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-                SubscriptionManagerService.getInstance()
-                        .setLastUsedTPMessageReference(getSubId(), mMessageRef);
-            } else {
-                SubscriptionController.getInstance().updateMessageRef(getSubId(), mMessageRef);
-            }
+            SubscriptionManagerService.getInstance()
+                    .setLastUsedTPMessageReference(getSubId(), mMessageRef);
         } catch (SecurityException e) {
             Rlog.e(TAG, "Security Exception caused on messageRef updation to DB " + e.getMessage());
         } finally {

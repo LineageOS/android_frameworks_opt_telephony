@@ -220,17 +220,9 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
 
         // Verify clearSubInfoRecord() and onSlotActiveStatusChange() are called for second phone,
         // and not for the first one
-        if (isSubscriptionManagerServiceEnabled()) {
-            verify(mSubscriptionManagerService).markSubscriptionsInactive(1);
-        } else {
-            verify(mSubscriptionController).clearSubInfoRecord(1);
-        }
+        verify(mSubscriptionManagerService).markSubscriptionsInactive(1);
         verify(mMockCi1).onSlotActiveStatusChange(anyBoolean());
-        if (isSubscriptionManagerServiceEnabled()) {
-            verify(mSubscriptionManagerService, never()).markSubscriptionsInactive(0);
-        } else {
-            verify(mSubscriptionController, never()).clearSubInfoRecord(0);
-        }
+        verify(mSubscriptionManagerService, never()).markSubscriptionsInactive(0);
         verify(mMockCi0, never()).onSlotActiveStatusChange(anyBoolean());
 
         // Verify onPhoneRemoved() gets called on MultiSimSettingController phone
@@ -261,12 +253,6 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
         // setup mocks for  VOICE mSubscriptionManagerService. getter/setter
         doAnswer(invocation -> {
             Integer value = (Integer) invocation.getArguments()[0];
-            Mockito.when(mSubscriptionController.getDefaultVoiceSubId()).thenReturn(value);
-            return null;
-        }).when(mSubscriptionController).setDefaultVoiceSubId(anyInt());
-
-        doAnswer(invocation -> {
-            Integer value = (Integer) invocation.getArguments()[0];
             Mockito.when(mSubscriptionManagerService.getDefaultVoiceSubId()).thenReturn(value);
             return null;
         }).when(mSubscriptionManagerService).setDefaultVoiceSubId(anyInt());
@@ -275,30 +261,17 @@ public class PhoneConfigurationManagerTest extends TelephonyTest {
         // start off the phone stat with 1 active sim. reset values for new test.
         init(1);
 
-        if (isSubscriptionManagerServiceEnabled()) {
-            mSubscriptionManagerService.setDefaultVoiceSubId(startingDefaultSubscriptionId);
-            assertEquals(startingDefaultSubscriptionId,
-                    mSubscriptionManagerService.getDefaultVoiceSubId());
-        } else {
-            mSubscriptionController.setDefaultVoiceSubId(startingDefaultSubscriptionId);
-            assertEquals(startingDefaultSubscriptionId,
-                    mSubscriptionController.getDefaultVoiceSubId());
-        }
+        mSubscriptionManagerService.setDefaultVoiceSubId(startingDefaultSubscriptionId);
+        assertEquals(startingDefaultSubscriptionId,
+                mSubscriptionManagerService.getDefaultVoiceSubId());
 
         // Perform the switch to DSDS mode and ensure all existing checks are not altered
         testSwitchFromSingleToDualSimModeNoReboot();
 
         // VOICE check
-        if (isSubscriptionManagerServiceEnabled()) {
-            assertEquals(SubscriptionManager.INVALID_SUBSCRIPTION_ID /* No CALL Preference value */,
-                    mSubscriptionManagerService.getDefaultVoiceSubId());
-            // Now, when the user goes to place a CALL, they will be prompted on which sim to use.
-        } else {
-            assertEquals(SubscriptionManager.INVALID_SUBSCRIPTION_ID /* No CALL Preference value */,
-                    mSubscriptionController.getDefaultVoiceSubId());
-            // Now, when the user goes to place a CALL, they will be prompted on which sim to use.
-        }
-
+        assertEquals(SubscriptionManager.INVALID_SUBSCRIPTION_ID /* No CALL Preference value */,
+                mSubscriptionManagerService.getDefaultVoiceSubId());
+        // Now, when the user goes to place a CALL, they will be prompted on which sim to use.
     }
 
     /**
