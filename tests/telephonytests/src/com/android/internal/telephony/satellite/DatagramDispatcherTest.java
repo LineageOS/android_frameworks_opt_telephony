@@ -37,6 +37,7 @@ import android.testing.TestableLooper;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
 
 import org.junit.After;
 import org.junit.Before;
@@ -61,6 +62,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
 
     @Mock private DatagramController mMockDatagramController;
     @Mock private SatelliteModemInterface mMockSatelliteModemInterface;
+    @Mock private ControllerMetricsStats mMockControllerMetricsStats;
 
     /** Variables required to send datagram in the unit tests. */
     LinkedBlockingQueue<Integer> mResultListener;
@@ -77,6 +79,8 @@ public class DatagramDispatcherTest extends TelephonyTest {
                 mMockDatagramController);
         replaceInstance(SatelliteModemInterface.class, "sInstance", null,
                 mMockSatelliteModemInterface);
+        replaceInstance(ControllerMetricsStats.class, "sInstance", null,
+                mMockControllerMetricsStats);
 
         mDatagramDispatcherUT = DatagramDispatcher.make(mContext, Looper.myLooper(),
                 mMockDatagramController);
