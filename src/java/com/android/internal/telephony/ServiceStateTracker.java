@@ -384,7 +384,6 @@ public class ServiceStateTracker extends Handler {
             // If not, then the subId has changed, so we need to remember the old subId,
             // even if the new subId is invalid (likely).
             mPrevSubId = mSubId;
-            mSubId = curSubId;
 
             // Update voicemail count and notify message waiting changed regardless of
             // whether the new subId is valid. This is an exception to the general logic
@@ -393,72 +392,70 @@ public class ServiceStateTracker extends Handler {
             // which seems desirable.
             mPhone.updateVoiceMail();
 
-            if (!SubscriptionManager.isValidSubscriptionId(mSubId)) {
+            if (!SubscriptionManager.isValidSubscriptionId(curSubId)) {
                 if (SubscriptionManager.isValidSubscriptionId(mPrevSubId)) {
                     // just went from valid to invalid subId, so notify phone state listeners
                     // with final broadcast
                     mPhone.notifyServiceStateChangedForSubId(mOutOfServiceSS,
                             ServiceStateTracker.this.mPrevSubId);
                 }
-                // If the new subscription ID isn't valid, then we don't need to do all the
-                // UI updating, so we're done.
-                return;
+            } else {
+                Context context = mPhone.getContext();
+
+                mPhone.notifyPhoneStateChanged();
+
+                if (!SubscriptionManager.isValidSubscriptionId(mPrevSubId)) {
+                    // just went from invalid to valid subId, so notify with current service
+                    // state in case our service state was never broadcasted (we don't notify
+                    // service states when the subId is invalid)
+                    mPhone.notifyServiceStateChanged(mPhone.getServiceState());
+                }
+
+                boolean restoreSelection = !context.getResources().getBoolean(
+                        com.android.internal.R.bool.skip_restoring_network_selection);
+                mPhone.sendSubscriptionSettings(restoreSelection);
+
+                setDataNetworkTypeForPhone(mSS.getRilDataRadioTechnology());
+
+                if (mSpnUpdatePending) {
+                    mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(), mCurShowPlmn,
+                            mCurPlmn, mCurShowSpn, mCurSpn);
+                    mSpnUpdatePending = false;
+                }
+
+                // Remove old network selection sharedPreferences since SP key names are now
+                // changed to include subId. This will be done only once when upgrading from an
+                // older build that did not include subId in the names.
+                SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(
+                        context);
+                String oldNetworkSelection = sp.getString(
+                        Phone.NETWORK_SELECTION_KEY, "");
+                String oldNetworkSelectionName = sp.getString(
+                        Phone.NETWORK_SELECTION_NAME_KEY, "");
+                String oldNetworkSelectionShort = sp.getString(
+                        Phone.NETWORK_SELECTION_SHORT_KEY, "");
+                if (!TextUtils.isEmpty(oldNetworkSelection)
+                        || !TextUtils.isEmpty(oldNetworkSelectionName)
+                        || !TextUtils.isEmpty(oldNetworkSelectionShort)) {
+                    SharedPreferences.Editor editor = sp.edit();
+                    editor.putString(Phone.NETWORK_SELECTION_KEY + curSubId,
+                            oldNetworkSelection);
+                    editor.putString(Phone.NETWORK_SELECTION_NAME_KEY + curSubId,
+                            oldNetworkSelectionName);
+                    editor.putString(Phone.NETWORK_SELECTION_SHORT_KEY + curSubId,
+                            oldNetworkSelectionShort);
+                    editor.remove(Phone.NETWORK_SELECTION_KEY);
+                    editor.remove(Phone.NETWORK_SELECTION_NAME_KEY);
+                    editor.remove(Phone.NETWORK_SELECTION_SHORT_KEY);
+                    editor.commit();
+                }
+
+                // Once sub id becomes valid, we need to update the service provider name
+                // displayed on the UI again. The old SPN update intents sent to
+                // MobileSignalController earlier were actually ignored due to invalid sub id.
+                updateSpnDisplay();
             }
-
-            Context context = mPhone.getContext();
-
-            mPhone.notifyPhoneStateChanged();
-
-            if (!SubscriptionManager.isValidSubscriptionId(mPrevSubId)) {
-                // just went from invalid to valid subId, so notify with current service
-                // state in case our service state was never broadcasted (we don't notify
-                // service states when the subId is invalid)
-                mPhone.notifyServiceStateChanged(mPhone.getServiceState());
-            }
-
-            boolean restoreSelection = !context.getResources().getBoolean(
-                    com.android.internal.R.bool.skip_restoring_network_selection);
-            mPhone.sendSubscriptionSettings(restoreSelection);
-
-            setDataNetworkTypeForPhone(mSS.getRilDataRadioTechnology());
-
-            if (mSpnUpdatePending) {
-                mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(), mCurShowPlmn,
-                        mCurPlmn, mCurShowSpn, mCurSpn);
-                mSpnUpdatePending = false;
-            }
-
-            // Remove old network selection sharedPreferences since SP key names are now
-            // changed to include subId. This will be done only once when upgrading from an
-            // older build that did not include subId in the names.
-            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(
-                    context);
-            String oldNetworkSelection = sp.getString(
-                    Phone.NETWORK_SELECTION_KEY, "");
-            String oldNetworkSelectionName = sp.getString(
-                    Phone.NETWORK_SELECTION_NAME_KEY, "");
-            String oldNetworkSelectionShort = sp.getString(
-                    Phone.NETWORK_SELECTION_SHORT_KEY, "");
-            if (!TextUtils.isEmpty(oldNetworkSelection)
-                    || !TextUtils.isEmpty(oldNetworkSelectionName)
-                    || !TextUtils.isEmpty(oldNetworkSelectionShort)) {
-                SharedPreferences.Editor editor = sp.edit();
-                editor.putString(Phone.NETWORK_SELECTION_KEY + mSubId,
-                        oldNetworkSelection);
-                editor.putString(Phone.NETWORK_SELECTION_NAME_KEY + mSubId,
-                        oldNetworkSelectionName);
-                editor.putString(Phone.NETWORK_SELECTION_SHORT_KEY + mSubId,
-                        oldNetworkSelectionShort);
-                editor.remove(Phone.NETWORK_SELECTION_KEY);
-                editor.remove(Phone.NETWORK_SELECTION_NAME_KEY);
-                editor.remove(Phone.NETWORK_SELECTION_SHORT_KEY);
-                editor.commit();
-            }
-
-            // Once sub id becomes valid, we need to update the service provider name
-            // displayed on the UI again. The old SPN update intents sent to
-            // MobileSignalController earlier were actually ignored due to invalid sub id.
-            updateSpnDisplay();
+            mSubId = curSubId;
         }
     };
 
@@ -2771,7 +2768,7 @@ public class ServiceStateTracker extends Handler {
 
     private void notifySpnDisplayUpdate(CarrierDisplayNameData data) {
         int subId = mPhone.getSubId();
-        // Update ACTION_SERVICE_PROVIDERS_UPDATED IFF any value changes
+        // Update ACTION_SERVICE_PROVIDERS_UPDATED if any value changes
         if (mSubId != subId
                 || data.shouldShowPlmn() != mCurShowPlmn
                 || data.shouldShowSpn() != mCurShowSpn
@@ -2815,8 +2812,6 @@ public class ServiceStateTracker extends Handler {
                 }
             }
         }
-
-        mSubId = subId;
         mCurShowSpn = data.shouldShowSpn();
         mCurShowPlmn = data.shouldShowPlmn();
         mCurSpn = data.getSpn();
