@@ -39,6 +39,7 @@ import android.util.Pair;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
 
 import org.junit.After;
 import org.junit.Before;
@@ -62,6 +63,7 @@ public class DatagramReceiverTest extends TelephonyTest {
 
     @Mock private DatagramController mMockDatagramController;
     @Mock private SatelliteModemInterface mMockSatelliteModemInterface;
+    @Mock private ControllerMetricsStats mMockControllerMetricsStats;
 
 
     /** Variables required to receive datagrams in the unit tests. */
@@ -88,6 +90,8 @@ public class DatagramReceiverTest extends TelephonyTest {
                 mMockDatagramController);
         replaceInstance(SatelliteModemInterface.class, "sInstance", null,
                 mMockSatelliteModemInterface);
+        replaceInstance(ControllerMetricsStats.class, "sInstance", null,
+                mMockControllerMetricsStats);
 
         mDatagramReceiverUT = DatagramReceiver.make(mContext, Looper.myLooper(),
                 mMockDatagramController);
