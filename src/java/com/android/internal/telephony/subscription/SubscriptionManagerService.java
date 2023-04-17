@@ -3848,9 +3848,10 @@ public class SubscriptionManagerService extends ISub.Stub {
                     // If iccId is new, add a subscription record in the database so it can be
                     // activated later. (Pre-U behavior)
                     subId = insertSubscriptionInfo(IccUtils.stripTrailingFs(iccId),
-                            SubscriptionManager.INVALID_SIM_SLOT_INDEX,
-                            mContext.getResources().getString(R.string.default_card_name),
+                            SubscriptionManager.INVALID_SIM_SLOT_INDEX, "",
                             SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+                    mSubscriptionDatabaseManager.setDisplayName(subId,
+                            mContext.getResources().getString(R.string.default_card_name, subId));
                     log("updateSimStateForInactivePort: Insert a new subscription for inactive SIM."
                             + " subId=" + subId);
                 }
