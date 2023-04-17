@@ -92,6 +92,7 @@ import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.cdnr.CarrierDisplayNameData;
 import com.android.internal.telephony.cdnr.CarrierDisplayNameResolver;
 import com.android.internal.telephony.data.AccessNetworksManager;
+import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksManagerCallback;
 import com.android.internal.telephony.data.DataNetwork;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.imsphone.ImsPhone;
@@ -625,6 +626,12 @@ public class ServiceStateTracker extends Handler {
      */
     private DataNetworkControllerCallback mDataDisconnectedCallback;
 
+    /**
+     * AccessNetworksManagerCallback is used for preferred on the IWLAN when preferred transport
+     * type changed in AccessNetworksManager.
+     */
+    private AccessNetworksManagerCallback mAccessNetworksManagerCallback = null;
+
     public ServiceStateTracker(GsmCdmaPhone phone, CommandsInterface ci) {
         mNitzState = TelephonyComponentFactory.getInstance()
                 .inject(NitzStateMachine.class.getName())
@@ -737,6 +744,23 @@ public class ServiceStateTracker extends Handler {
                 }
             }
         };
+
+        mAccessNetworksManagerCallback = new AccessNetworksManagerCallback(this::post) {
+            @Override
+            public void onPreferredTransportChanged(int networkCapability) {
+                // Check if preferred on IWLAN was changed in ServiceState.
+                boolean isIwlanPreferred = mAccessNetworksManager.isAnyApnOnIwlan();
+                if (mSS.isIwlanPreferred() != isIwlanPreferred) {
+                    log("onPreferredTransportChanged: IwlanPreferred is changed to "
+                            + isIwlanPreferred);
+                    mSS.setIwlanPreferred(isIwlanPreferred);
+                    mPhone.notifyServiceStateChanged(mPhone.getServiceState());
+                }
+            }
+        };
+        if (mAccessNetworksManagerCallback != null) {
+            mAccessNetworksManager.registerCallback(mAccessNetworksManagerCallback);
+        }
     }
 
     @VisibleForTesting
@@ -874,6 +898,10 @@ public class ServiceStateTracker extends Handler {
         if (mCSST != null) {
             mCSST.dispose();
             mCSST = null;
+        }
+        if (mAccessNetworksManagerCallback != null) {
+            mAccessNetworksManager.unregisterCallback(mAccessNetworksManagerCallback);
+            mAccessNetworksManagerCallback = null;
         }
     }
 
