@@ -1461,6 +1461,22 @@ public class SatelliteController extends Handler {
     }
 
     /**
+     * This API can be used by only CTS to update satellite gateway service package name.
+     *
+     * @param servicePackageName The package name of the satellite gateway service.
+     * @return {@code true} if the satellite gateway service is set successfully,
+     * {@code false} otherwise.
+     */
+    public boolean setSatelliteGatewayServicePackageName(@Nullable String servicePackageName) {
+        if (mSatelliteSessionController == null) {
+            loge("mSatelliteSessionController is not initialized yet");
+            return false;
+        }
+        return mSatelliteSessionController.setSatelliteGatewayServicePackageName(
+                servicePackageName);
+    }
+
+    /**
      * This function is used by {@link SatelliteModemInterface} to notify
      * {@link SatelliteController} that the satellite vendor service was just connected.
      * <p>
