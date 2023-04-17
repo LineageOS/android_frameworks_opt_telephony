@@ -25,7 +25,11 @@ import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TR
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_SUCCESS;
 
 import android.annotation.NonNull;
+import android.annotation.Nullable;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.Looper;
@@ -36,9 +40,14 @@ import android.provider.DeviceConfig;
 import android.telephony.Rlog;
 import android.telephony.satellite.ISatelliteStateCallback;
 import android.telephony.satellite.SatelliteManager;
+import android.telephony.satellite.stub.ISatelliteGateway;
+import android.telephony.satellite.stub.SatelliteGatewayService;
+import android.text.TextUtils;
 import android.util.Log;
 
+import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.ExponentialBackoff;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 
@@ -81,6 +90,18 @@ public class SatelliteSessionController extends StateMachine {
     private static final int EVENT_DATAGRAM_TRANSFER_STATE_CHANGED = 1;
     private static final int EVENT_LISTENING_TIMER_TIMEOUT = 2;
     private static final int EVENT_SATELLITE_ENABLED_STATE_CHANGED = 3;
+
+    private static final long REBIND_INITIAL_DELAY = 2 * 1000; // 2 seconds
+    private static final long REBIND_MAXIMUM_DELAY = 64 * 1000; // 1 minute
+    private static final int REBIND_MULTIPLIER = 2;
+    @NonNull private final ExponentialBackoff mExponentialBackoff;
+    @NonNull private final Object mLock = new Object();
+    @Nullable
+    private ISatelliteGateway mSatelliteGatewayService;
+    private String mSatelliteGatewayServicePackageName = "";
+    @Nullable private SatelliteGatewayServiceConnection mSatelliteGatewayServiceConnection;
+    private boolean mIsBound;
+    private boolean mIsBinding;
 
     @NonNull private static SatelliteSessionController sInstance;
 
@@ -162,6 +183,22 @@ public class SatelliteSessionController extends StateMachine {
         mIsSendingTriggeredDuringTransferringState = new AtomicBoolean(false);
         mCurrentState = SatelliteManager.SATELLITE_MODEM_STATE_UNKNOWN;
         mIsSatelliteSupported = isSatelliteSupported;
+        mExponentialBackoff = new ExponentialBackoff(REBIND_INITIAL_DELAY, REBIND_MAXIMUM_DELAY,
+                REBIND_MULTIPLIER, looper, () -> {
+            synchronized (mLock) {
+                if ((mIsBound && mSatelliteGatewayService != null) || mIsBinding) {
+                    return;
+                }
+            }
+            if (mSatelliteGatewayServiceConnection != null) {
+                synchronized (mLock) {
+                    mIsBound = false;
+                    mIsBinding = false;
+                }
+                unbindService();
+            }
+            bindService();
+        });
 
         addState(mUnavailableState);
         addState(mPowerOffState);
@@ -254,6 +291,40 @@ public class SatelliteSessionController extends StateMachine {
         return true;
     }
 
+    /**
+     * This API can be used by only CTS to update satellite gateway service package name.
+     *
+     * @param servicePackageName The package name of the satellite gateway service.
+     * @return {@code true} if the satellite gateway service is set successfully,
+     * {@code false} otherwise.
+     */
+    boolean setSatelliteGatewayServicePackageName(@Nullable String servicePackageName) {
+        if (!isMockModemAllowed()) {
+            loge("setSatelliteGatewayServicePackageName: modifying satellite gateway service "
+                    + "package name is not allowed");
+            return false;
+        }
+
+        logd("setSatelliteGatewayServicePackageName: config_satellite_gateway_service_package is "
+                + "updated, new packageName=" + servicePackageName);
+
+        if (servicePackageName == null || servicePackageName.equals("null")) {
+            mSatelliteGatewayServicePackageName = "";
+        } else {
+            mSatelliteGatewayServicePackageName = servicePackageName;
+        }
+
+        if (mSatelliteGatewayServiceConnection != null) {
+            synchronized (mLock) {
+                mIsBound = false;
+                mIsBinding = false;
+            }
+            unbindService();
+            bindService();
+        }
+        return true;
+    }
+
     private static class DatagramTransferState {
         @SatelliteManager.SatelliteDatagramTransferState public int sendState;
         @SatelliteManager.SatelliteDatagramTransferState public int receiveState;
@@ -283,9 +354,18 @@ public class SatelliteSessionController extends StateMachine {
         @Override
         public void enter() {
             if (DBG) logd("Entering PowerOffState");
+
             mCurrentState = SatelliteManager.SATELLITE_MODEM_STATE_OFF;
             mIsSendingTriggeredDuringTransferringState.set(false);
+            unbindService();
             notifyStateChangedEvent(SatelliteManager.SATELLITE_MODEM_STATE_OFF);
+        }
+
+        @Override
+        public void exit() {
+            if (DBG) logd("Exiting PowerOffState");
+            logd("Attempting to bind to SatelliteGatewayService.");
+            bindService();
         }
 
         @Override
@@ -510,6 +590,108 @@ public class SatelliteSessionController extends StateMachine {
         return (receiveState == SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING
                 || receiveState == SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_SUCCESS
                 || receiveState == SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_NONE);
+    }
+
+    @NonNull
+    private String getSatelliteGatewayPackageName() {
+        if (!TextUtils.isEmpty(mSatelliteGatewayServicePackageName)) {
+            return mSatelliteGatewayServicePackageName;
+        }
+        return TextUtils.emptyIfNull(mContext.getResources().getString(
+                R.string.config_satellite_gateway_service_package));
+    }
+
+    private void bindService() {
+        synchronized (mLock) {
+            if (mIsBinding || mIsBound) return;
+            mIsBinding = true;
+        }
+        mExponentialBackoff.start();
+
+        String packageName = getSatelliteGatewayPackageName();
+        if (TextUtils.isEmpty(packageName)) {
+            loge("Unable to bind to the satellite gateway service because the package is"
+                    + " undefined.");
+            // Since the package name comes from static device configs, stop retry because
+            // rebind will continue to fail without a valid package name.
+            synchronized (mLock) {
+                mIsBinding = false;
+            }
+            mExponentialBackoff.stop();
+            return;
+        }
+        Intent intent = new Intent(SatelliteGatewayService.SERVICE_INTERFACE);
+        intent.setPackage(packageName);
+
+        mSatelliteGatewayServiceConnection = new SatelliteGatewayServiceConnection();
+        try {
+            boolean success = mContext.bindService(
+                    intent, mSatelliteGatewayServiceConnection, Context.BIND_AUTO_CREATE);
+            if (success) {
+                logd("Successfully bound to the satellite gateway service.");
+            } else {
+                synchronized (mLock) {
+                    mIsBinding = false;
+                }
+                mExponentialBackoff.notifyFailed();
+                loge("Error binding to the satellite gateway service. Retrying in "
+                        + mExponentialBackoff.getCurrentDelay() + " ms.");
+            }
+        } catch (Exception e) {
+            synchronized (mLock) {
+                mIsBinding = false;
+            }
+            mExponentialBackoff.notifyFailed();
+            loge("Exception binding to the satellite gateway service. Retrying in "
+                    + mExponentialBackoff.getCurrentDelay() + " ms. Exception: " + e);
+        }
+    }
+
+    private void unbindService() {
+        logd("unbindService");
+        mExponentialBackoff.stop();
+        mSatelliteGatewayService = null;
+        synchronized (mLock) {
+            mIsBinding = false;
+            mIsBound = false;
+        }
+        if (mSatelliteGatewayServiceConnection != null) {
+            mContext.unbindService(mSatelliteGatewayServiceConnection);
+            mSatelliteGatewayServiceConnection = null;
+        }
+    }
+    private class SatelliteGatewayServiceConnection implements ServiceConnection {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            logd("onServiceConnected: ComponentName=" + name);
+            synchronized (mLock) {
+                mIsBound = true;
+                mIsBinding = false;
+            }
+            mSatelliteGatewayService = ISatelliteGateway.Stub.asInterface(service);
+            mExponentialBackoff.stop();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            loge("onServiceDisconnected: Waiting for reconnect.");
+            synchronized (mLock) {
+                mIsBinding = false;
+                mIsBound = false;
+            }
+            mSatelliteGatewayService = null;
+        }
+
+        @Override
+        public void onBindingDied(ComponentName name) {
+            loge("onBindingDied: Unbinding and rebinding service.");
+            synchronized (mLock) {
+                mIsBound = false;
+                mIsBinding = false;
+            }
+            unbindService();
+            mExponentialBackoff.start();
+        }
     }
 
     private boolean isMockModemAllowed() {
