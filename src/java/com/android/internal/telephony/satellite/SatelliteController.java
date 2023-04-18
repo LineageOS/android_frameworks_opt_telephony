@@ -1477,6 +1477,19 @@ public class SatelliteController extends Handler {
     }
 
     /**
+     * This API can be used by only CTS to update satellite pointing UI app package and class names.
+     *
+     * @param packageName The package name of the satellite pointing UI app.
+     * @param className The class name of the satellite pointing UI app.
+     * @return {@code true} if the satellite pointing UI app package and class is set successfully,
+     * {@code false} otherwise.
+     */
+    public boolean setSatellitePointingUiClassName(
+            @Nullable String packageName, @Nullable String className) {
+        return mPointingAppController.setSatellitePointingUiClassName(packageName, className);
+    }
+
+    /**
      * This function is used by {@link SatelliteModemInterface} to notify
      * {@link SatelliteController} that the satellite vendor service was just connected.
      * <p>
