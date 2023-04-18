@@ -830,7 +830,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 dataCallSession.ongoing,
                 dataCallSession.bandAtEnd,
                 dataCallSession.handoverFailureCauses,
-                dataCallSession.handoverFailureRat);
+                dataCallSession.handoverFailureRat,
+                dataCallSession.isNonDds);
     }
 
     private static StatsEvent buildStatsEvent(ImsRegistrationStats stats) {
