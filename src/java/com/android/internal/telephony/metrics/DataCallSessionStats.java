@@ -37,7 +37,6 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.data.DataNetwork;
 import com.android.internal.telephony.nano.PersistAtomsProto.DataCallSession;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
@@ -243,14 +242,8 @@ public class DataCallSessionStats {
         mDataCallSession.oosAtEnd = getIsOos();
         mDataCallSession.ongoing = false;
         // set if this data call is established for internet on the non-Dds
-        SubscriptionInfo subInfo;
-        if (mPhone.isSubscriptionManagerServiceEnabled()) {
-            subInfo = SubscriptionManagerService.getInstance()
-                    .getSubscriptionInfo(mPhone.getSubId());
-        } else {
-            subInfo = SubscriptionController.getInstance()
-                    .getSubscriptionInfo(mPhone.getSubId());
-        }
+        SubscriptionInfo subInfo = SubscriptionManagerService.getInstance()
+                .getSubscriptionInfo(mPhone.getSubId());
         if (mPhone.getSubId() != SubscriptionManager.getDefaultDataSubscriptionId()
                 && ((mDataCallSession.apnTypeBitmask & ApnSetting.TYPE_DEFAULT)
                 == ApnSetting.TYPE_DEFAULT)
@@ -330,13 +323,9 @@ public class DataCallSessionStats {
     }
 
     private boolean getIsOpportunistic() {
-        if (mPhone.isSubscriptionManagerServiceEnabled()) {
-            SubscriptionInfoInternal subInfo = SubscriptionManagerService.getInstance()
-                    .getSubscriptionInfoInternal(mPhone.getSubId());
-            return subInfo != null && subInfo.isOpportunistic();
-        }
-        SubscriptionController subController = SubscriptionController.getInstance();
-        return subController != null && subController.isOpportunistic(mPhone.getSubId());
+        SubscriptionInfoInternal subInfo = SubscriptionManagerService.getInstance()
+                .getSubscriptionInfoInternal(mPhone.getSubId());
+        return subInfo != null && subInfo.isOpportunistic();
     }
 
     private boolean getIsOos() {

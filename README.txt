@@ -15,7 +15,7 @@ We define several AIDL interfaces in frameworks/base/telephony/ which we
 implement in this directory and packages/services/Telephony. This IPC scheme
 allows us to run public API code in the calling process, while the
 telephony-related code runs in the privileged com.android.phone process. Such
-implementations include PhoneInterfaceManager, SubscriptionController and
+implementations include PhoneInterfaceManager, SubscriptionManagerService and
 others.
 
 The declaration of the com.android.phone process is in

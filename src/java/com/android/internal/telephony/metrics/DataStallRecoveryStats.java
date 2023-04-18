@@ -27,7 +27,6 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.data.DataStallRecoveryManager;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
@@ -147,12 +146,8 @@ public class DataStallRecoveryStats {
     }
 
     private static boolean getIsOpportunistic(Phone phone) {
-        if (phone.isSubscriptionManagerServiceEnabled()) {
-            SubscriptionInfoInternal subInfo = SubscriptionManagerService.getInstance()
-                    .getSubscriptionInfoInternal(phone.getSubId());
-            return subInfo != null && subInfo.isOpportunistic();
-        }
-        SubscriptionController subController = SubscriptionController.getInstance();
-        return subController != null && subController.isOpportunistic(phone.getSubId());
+        SubscriptionInfoInternal subInfo = SubscriptionManagerService.getInstance()
+                .getSubscriptionInfoInternal(phone.getSubId());
+        return subInfo != null && subInfo.isOpportunistic();
     }
 }
