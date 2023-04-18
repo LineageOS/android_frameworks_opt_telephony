@@ -43,10 +43,12 @@ import android.util.Pair;
 
 import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.IIntegerConsumer;
 import com.android.internal.telephony.IVoidConsumer;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.metrics.SatelliteStats;
 import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
+import com.android.internal.util.FunctionalUtils;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -74,14 +76,22 @@ public class DatagramReceiver extends Handler {
     @NonNull private final ControllerMetricsStats mControllerMetricsStats;
 
     private long mDatagramTransferStartTime = 0;
-
-   @NonNull private final Looper mLooper;
+    @NonNull private final Looper mLooper;
 
     /**
      * Map key: subId, value: SatelliteDatagramListenerHandler to notify registrants.
      */
     private final ConcurrentHashMap<Integer, SatelliteDatagramListenerHandler>
             mSatelliteDatagramListenerHandlers = new ConcurrentHashMap<>();
+
+    /**
+     * Map key: DatagramId, value: pendingAckCount
+     * This map is used to track number of listeners that are yet to send ack for a particular
+     * datagram.
+     */
+    private final ConcurrentHashMap<Long, Integer>
+            mPendingAckCountHashMap = new ConcurrentHashMap<>();
+
 
     /**
      * Create the DatagramReceiver singleton instance.
@@ -204,6 +214,10 @@ public class DatagramReceiver extends Handler {
             return !mListeners.isEmpty();
         }
 
+        public int getNumOfListeners() {
+            return mListeners.size();
+        }
+
         private int getTimeoutToReceiveAck() {
             return sInstance.mContext.getResources().getInteger(
                     R.integer.config_timeout_to_receive_delivered_ack_millis);
@@ -321,6 +335,7 @@ public class DatagramReceiver extends Handler {
                                 pendingCount, SatelliteManager.SATELLITE_ERROR_NONE);
 
                         long datagramId = getDatagramId();
+                        sInstance.mPendingAckCountHashMap.put(datagramId, getNumOfListeners());
                         insertDatagram(datagramId, satelliteDatagram);
 
                         mListeners.values().forEach(listener -> {
@@ -337,10 +352,21 @@ public class DatagramReceiver extends Handler {
                                 SatelliteManager.SATELLITE_ERROR_NONE);
                     }
 
-                    if (pendingCount == 0) {
+                    if (pendingCount <= 0) {
                         sInstance.mDatagramController.updateReceiveStatus(mSubId,
                                 SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE,
                                 pendingCount, SatelliteManager.SATELLITE_ERROR_NONE);
+                    } else {
+                        // Poll for pending datagrams
+                        IIntegerConsumer internalCallback = new IIntegerConsumer.Stub() {
+                            @Override
+                            public void accept(int result) {
+                                logd("pollPendingSatelliteDatagram result: " + result);
+                            }
+                        };
+                        Consumer<Integer> callback = FunctionalUtils.ignoreRemoteException(
+                                internalCallback::accept);
+                        sInstance.pollPendingSatelliteDatagrams(mSubId, callback);
                     }
 
                     // Send the captured data about incoming datagram to metric
@@ -359,9 +385,18 @@ public class DatagramReceiver extends Handler {
 
                 case EVENT_RECEIVED_ACK: {
                     DatagramRetryArgument argument = (DatagramRetryArgument) msg.obj;
+                    int pendingAckCount = sInstance.mPendingAckCountHashMap
+                            .get(argument.datagramId);
+                    pendingAckCount -= 1;
+                    sInstance.mPendingAckCountHashMap.put(argument.datagramId, pendingAckCount);
                     logd("Received EVENT_RECEIVED_ACK datagramId:" + argument.datagramId);
                     removeMessages(EVENT_RETRY_DELIVERING_RECEIVED_DATAGRAM, argument);
-                    deleteDatagram(argument.datagramId);
+
+                    if (pendingAckCount <= 0) {
+                        // Delete datagram from DB after receiving ack from all listeners
+                        deleteDatagram(argument.datagramId);
+                        sInstance.mPendingAckCountHashMap.remove(argument.datagramId);
+                    }
                 }
 
                 default:
