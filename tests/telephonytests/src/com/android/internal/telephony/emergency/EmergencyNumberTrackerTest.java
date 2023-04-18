@@ -50,7 +50,6 @@ import androidx.test.InstrumentationRegistry;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyTest;
 
 import com.google.i18n.phonenumbers.ShortNumberInfo;
@@ -115,7 +114,6 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     private static final int INVALID_SLOT_INDEX_VALID = SubscriptionManager.INVALID_SIM_SLOT_INDEX;
     private ParcelFileDescriptor mOtaParcelFileDescriptor = null;
     // Mocked classes
-    private SubscriptionController mSubControllerMock;
     private CarrierConfigManager mCarrierConfigManagerMock;
 
     // mEmergencyNumberTrackerMock for mPhone
@@ -137,7 +135,6 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         logd("EmergencyNumberTrackerTest +Setup!");
         super.setUp(getClass().getSimpleName());
         mShortNumberInfo = mock(ShortNumberInfo.class);
-        mSubControllerMock = mock(SubscriptionController.class);
         mCarrierConfigManagerMock = mock(CarrierConfigManager.class);
 
         mContext = new ContextWrapper(InstrumentationRegistry.getTargetContext());
@@ -333,13 +330,6 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     @Test
     public void testIsSimAbsent() throws Exception {
         setDsdsPhones();
-        replaceInstance(SubscriptionController.class, "sInstance", null, mSubControllerMock);
-
-        // Both sim slots are active
-        doReturn(VALID_SLOT_INDEX_VALID_1).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_1));
-        doReturn(VALID_SLOT_INDEX_VALID_2).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_2));
         doReturn(VALID_SLOT_INDEX_VALID_1).when(mSubscriptionManagerService).getSlotIndex(
                 eq(SUB_ID_PHONE_1));
         doReturn(VALID_SLOT_INDEX_VALID_2).when(mSubscriptionManagerService).getSlotIndex(
@@ -347,10 +337,6 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         assertFalse(mEmergencyNumberTrackerMock.isSimAbsent());
 
         // One sim slot is active; the other one is not active
-        doReturn(VALID_SLOT_INDEX_VALID_1).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_1));
-        doReturn(INVALID_SLOT_INDEX_VALID).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_2));
         doReturn(VALID_SLOT_INDEX_VALID_1).when(mSubscriptionManagerService).getSlotIndex(
                 eq(SUB_ID_PHONE_1));
         doReturn(INVALID_SLOT_INDEX_VALID).when(mSubscriptionManagerService).getSlotIndex(
@@ -358,10 +344,6 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         assertFalse(mEmergencyNumberTrackerMock.isSimAbsent());
 
         // Both sim slots are not active
-        doReturn(INVALID_SLOT_INDEX_VALID).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_1));
-        doReturn(INVALID_SLOT_INDEX_VALID).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_2));
         doReturn(INVALID_SLOT_INDEX_VALID).when(mSubscriptionManagerService).getSlotIndex(
                 anyInt());
         assertTrue(mEmergencyNumberTrackerMock.isSimAbsent());
@@ -425,13 +407,8 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     @Test
     public void testIsEmergencyNumber_FallbackToShortNumberXml_NoSims() throws Exception {
         setDsdsPhones();
-        replaceInstance(SubscriptionController.class, "sInstance", null, mSubControllerMock);
 
         // Both sim slots are not active
-        doReturn(INVALID_SLOT_INDEX_VALID).when(mSubControllerMock).getSlotIndex(
-            eq(SUB_ID_PHONE_1));
-        doReturn(INVALID_SLOT_INDEX_VALID).when(mSubControllerMock).getSlotIndex(
-            eq(SUB_ID_PHONE_2));
         doReturn(INVALID_SLOT_INDEX_VALID).when(mSubscriptionManagerService).getSlotIndex(
                 anyInt());
         assertTrue(mEmergencyNumberTrackerMock.isSimAbsent());
@@ -462,24 +439,15 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     private void testIsEmergencyNumber_NoFallbackToShortNumberXml(int numSims) throws Exception {
         assertTrue((numSims > 0 && numSims < 3));
         setDsdsPhones();
-        replaceInstance(SubscriptionController.class, "sInstance", null, mSubControllerMock);
 
         if (numSims == 1) {
             // One sim slot is active; the other one is not active
-            doReturn(VALID_SLOT_INDEX_VALID_1).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_1));
-            doReturn(INVALID_SLOT_INDEX_VALID).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_2));
             doReturn(VALID_SLOT_INDEX_VALID_1).when(mSubscriptionManagerService).getSlotIndex(
                     eq(SUB_ID_PHONE_1));
             doReturn(INVALID_SLOT_INDEX_VALID).when(mSubscriptionManagerService).getSlotIndex(
                     eq(SUB_ID_PHONE_2));
         } else {
             //both slots active
-            doReturn(VALID_SLOT_INDEX_VALID_1).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_1));
-            doReturn(VALID_SLOT_INDEX_VALID_2).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_2));
             doReturn(VALID_SLOT_INDEX_VALID_1).when(mSubscriptionManagerService).getSlotIndex(
                     eq(SUB_ID_PHONE_1));
             doReturn(VALID_SLOT_INDEX_VALID_2).when(mSubscriptionManagerService).getSlotIndex(

@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony.imsphone;
 
-import static android.provider.Telephony.SimInfo.COLUMN_PHONE_NUMBER_SOURCE_IMS;
 import static android.telephony.ims.ImsManager.EXTRA_WFC_REGISTRATION_FAILURE_MESSAGE;
 import static android.telephony.ims.ImsManager.EXTRA_WFC_REGISTRATION_FAILURE_TITLE;
 import static android.telephony.ims.RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED;
@@ -78,7 +77,6 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
-import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.UssdResponse;
@@ -117,7 +115,6 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.ServiceStateTracker;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyComponentFactory;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.domainselection.DomainSelectionResolver;
@@ -2548,42 +2545,22 @@ public class ImsPhone extends ImsPhoneBase {
         int subId = getSubId();
         if (!SubscriptionManager.isValidSubscriptionId(subId)) {
             // Defending b/219080264:
-            // SubscriptionController.setSubscriptionProperty validates input subId
+            // SubscriptionManagerService.setSubscriptionProperty validates input subId
             // so do not proceed if subId invalid. This may be happening because cached
             // IMS callbacks are sent back to telephony after SIM state changed.
             return;
         }
 
-        if (isSubscriptionManagerServiceEnabled()) {
-            SubscriptionInfoInternal subInfo = mSubscriptionManagerService
-                    .getSubscriptionInfoInternal(subId);
-            if (subInfo != null) {
-                phoneNumber = PhoneNumberUtils.formatNumberToE164(phoneNumber,
-                        subInfo.getCountryIso());
-                if (phoneNumber == null) {
-                    return;
-                }
-                mSubscriptionManagerService.setNumberFromIms(subId, phoneNumber);
-            }
-        } else {
-            SubscriptionController subController = SubscriptionController.getInstance();
-            String countryIso = getCountryIso(subController, subId);
-            // Format the number as one more defense to reject garbage values:
-            // phoneNumber will become null.
-            phoneNumber = PhoneNumberUtils.formatNumberToE164(phoneNumber, countryIso);
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerService
+                .getSubscriptionInfoInternal(subId);
+        if (subInfo != null) {
+            phoneNumber = PhoneNumberUtils.formatNumberToE164(phoneNumber,
+                    subInfo.getCountryIso());
             if (phoneNumber == null) {
                 return;
             }
-            subController.setSubscriptionProperty(subId, COLUMN_PHONE_NUMBER_SOURCE_IMS,
-                    phoneNumber);
+            mSubscriptionManagerService.setNumberFromIms(subId, phoneNumber);
         }
-    }
-
-    private static String getCountryIso(SubscriptionController subController, int subId) {
-        SubscriptionInfo info = subController.getSubscriptionInfo(subId);
-        String countryIso = info == null ? "" : info.getCountryIso();
-        // info.getCountryIso() may return null
-        return countryIso == null ? "" : countryIso;
     }
 
     /**

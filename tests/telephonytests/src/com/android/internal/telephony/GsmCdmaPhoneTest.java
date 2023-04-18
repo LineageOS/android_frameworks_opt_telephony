@@ -1092,8 +1092,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 getVoiceCallForwardingFlag();
 
         // invalid subId
-        doReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID).when(mSubscriptionController).
-                getSubId(anyInt());
         doReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID).when(mSubscriptionManagerService)
                 .getSubId(anyInt());
         assertEquals(false, mPhoneUT.getCallForwardingIndicator());
@@ -1101,7 +1099,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         // valid subId, sharedPreference not present
         int subId1 = 0;
         int subId2 = 1;
-        doReturn(subId1).when(mSubscriptionController).getSubId(anyInt());
         doReturn(subId1).when(mSubscriptionManagerService).getSubId(anyInt());
         assertEquals(false, mPhoneUT.getCallForwardingIndicator());
 
@@ -1124,7 +1121,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         assertEquals(true, mPhoneUT.getCallForwardingIndicator());
 
         // check for another subId
-        doReturn(subId2).when(mSubscriptionController).getSubId(anyInt());
         doReturn(subId2).when(mSubscriptionManagerService).getSubId(anyInt());
         assertEquals(false, mPhoneUT.getCallForwardingIndicator());
 
@@ -1134,7 +1130,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         assertEquals(true, mPhoneUT.getCallForwardingIndicator());
 
         // switching back to previous subId, stored value should still be available
-        doReturn(subId1).when(mSubscriptionController).getSubId(anyInt());
         doReturn(subId1).when(mSubscriptionManagerService).getSubId(anyInt());
         assertEquals(true, mPhoneUT.getCallForwardingIndicator());
 
@@ -1297,7 +1292,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         processAllMessages();
 
         verify(mSubscriptionManagerService, never()).getAllSubInfoList(anyString(), anyString());
-        verify(mSubscriptionController, never()).getSubInfoForIccId(any());
 
         // Have IccId defined. But expected value and current value are the same. So no RIL command
         // should be sent.
@@ -1305,12 +1299,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         doReturn(iccId).when(mUiccSlot).getIccId(anyInt());
         Message.obtain(mPhoneUT, EVENT_ICC_CHANGED, null).sendToTarget();
         processAllMessages();
-        if (isSubscriptionManagerServiceEnabled()) {
-            verify(mSubscriptionManagerService).getAllSubInfoList(anyString(),
-                    nullable(String.class));
-        } else {
-            verify(mSubscriptionController).getSubInfoForIccId(iccId);
-        }
+        verify(mSubscriptionManagerService).getAllSubInfoList(anyString(),
+                nullable(String.class));
         verify(mMockCi, never()).enableUiccApplications(anyBoolean(), any());
     }
 
@@ -1480,8 +1470,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @Test
     public void testEventCarrierConfigChanged() {
-        doReturn(null).when(mSubscriptionController).getSubscriptionProperty(anyInt(),
-                eq(SubscriptionManager.NR_ADVANCED_CALLING_ENABLED));
         doReturn(null).when(mSubscriptionManagerService).getSubscriptionProperty(anyInt(),
                 eq(SubscriptionManager.NR_ADVANCED_CALLING_ENABLED), anyString(), anyString());
 
@@ -1552,11 +1540,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     @SmallTest
     public void testLoadAllowedNetworksFromSubscriptionDatabase_loadTheNullValue_isLoadedTrue() {
         int subId = 1;
-        doReturn(subId).when(mSubscriptionController).getSubId(anyInt());
         doReturn(subId).when(mSubscriptionManagerService).getSubId(anyInt());
 
-        doReturn(null).when(mSubscriptionController).getSubscriptionProperty(anyInt(),
-                eq(SubscriptionManager.ALLOWED_NETWORK_TYPES));
         doReturn(null).when(mSubscriptionManagerService).getSubscriptionProperty(anyInt(),
                 eq(SubscriptionManager.ALLOWED_NETWORK_TYPES), anyString(), anyString());
 
@@ -1569,11 +1554,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     @SmallTest
     public void testLoadAllowedNetworksFromSubscriptionDatabase_subIdNotValid_isLoadedFalse() {
         int subId = -1;
-        doReturn(subId).when(mSubscriptionController).getSubId(anyInt());
         doReturn(subId).when(mSubscriptionManagerService).getSubId(anyInt());
 
-        when(mSubscriptionController.getSubscriptionProperty(anyInt(),
-                eq(SubscriptionManager.ALLOWED_NETWORK_TYPES))).thenReturn(null);
         when(mSubscriptionManagerService.getSubscriptionProperty(anyInt(),
                 eq(SubscriptionManager.ALLOWED_NETWORK_TYPES), anyString(), anyString()))
                 .thenReturn(null);
@@ -1586,14 +1568,11 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     @Test
     public void testLoadAllowedNetworksFromSubscriptionDatabase_allValidData() {
         int subId = 1;
-        doReturn(subId).when(mSubscriptionController).getSubId(anyInt());
         doReturn(subId).when(mSubscriptionManagerService).getSubId(anyInt());
 
         // 13 == TelephonyManager.NETWORK_TYPE_LTE
         // NR_BITMASK == 4096 == 1 << (13 - 1)
         String validSerializedNetworkMap = "user=4096,power=4096,carrier=4096,enable_2g=4096";
-        doReturn(validSerializedNetworkMap).when(mSubscriptionController).getSubscriptionProperty(
-                anyInt(), eq(SubscriptionManager.ALLOWED_NETWORK_TYPES));
         SubscriptionInfoInternal si = new SubscriptionInfoInternal.Builder()
                 .setId(1)
                 .setAllowedNetworkTypesForReasons(validSerializedNetworkMap)
@@ -1613,15 +1592,12 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     @Test
     public void testLoadAllowedNetworksFromSubscriptionDatabase_invalidKeys() {
         int subId = 1;
-        doReturn(subId).when(mSubscriptionController).getSubId(anyInt());
         doReturn(subId).when(mSubscriptionManagerService).getSubId(anyInt());
 
         // 13 == TelephonyManager.NETWORK_TYPE_LTE
         // NR_BITMASK == 4096 == 1 << (13 - 1)
         String validSerializedNetworkMap =
                 "user=4096,power=4096,carrier=4096,enable_2g=4096,-1=4096";
-        doReturn(validSerializedNetworkMap).when(mSubscriptionController).getSubscriptionProperty(
-                anyInt(), eq(SubscriptionManager.ALLOWED_NETWORK_TYPES));
         SubscriptionInfoInternal si = new SubscriptionInfoInternal.Builder()
                 .setId(1)
                 .setAllowedNetworkTypesForReasons(validSerializedNetworkMap)
@@ -1641,14 +1617,11 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     @Test
     public void testLoadAllowedNetworksFromSubscriptionDatabase_invalidValues() {
         int subId = 1;
-        doReturn(subId).when(mSubscriptionController).getSubId(anyInt());
         doReturn(subId).when(mSubscriptionManagerService).getSubId(anyInt());
 
         // 19 == TelephonyManager.NETWORK_TYPE_NR
         // NR_BITMASK == 524288 == 1 << 19
         String validSerializedNetworkMap = "user=4096,power=4096,carrier=4096,enable_2g=-1";
-        doReturn(validSerializedNetworkMap).when(mSubscriptionController).getSubscriptionProperty(
-                anyInt(), eq(SubscriptionManager.ALLOWED_NETWORK_TYPES));
         SubscriptionInfoInternal si = new SubscriptionInfoInternal.Builder()
                 .setId(1)
                 .setAllowedNetworkTypesForReasons(validSerializedNetworkMap)
@@ -1830,8 +1803,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         final SubscriptionInfoInternal si = makeSubscriptionInfoInternal(
                 false, SubscriptionManager.USAGE_SETTING_DATA_CENTRIC);
 
-        doReturn(si.toSubscriptionInfo()).when(mSubscriptionController)
-                .getSubscriptionInfo(anyInt());
         doReturn(si).when(mSubscriptionManagerService).getSubscriptionInfoInternal(anyInt());
 
         mPhoneUT.updateUsageSetting();
@@ -1855,8 +1826,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         final SubscriptionInfoInternal si = makeSubscriptionInfoInternal(
                 true, SubscriptionManager.USAGE_SETTING_DEFAULT);
-        doReturn(si.toSubscriptionInfo()).when(mSubscriptionController)
-                .getSubscriptionInfo(anyInt());
         doReturn(si).when(mSubscriptionManagerService).getSubscriptionInfoInternal(anyInt());
 
         mPhoneUT.updateUsageSetting();
@@ -1882,8 +1851,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 false, SubscriptionManager.USAGE_SETTING_DEFAULT);
 
         assertNotNull(si);
-        doReturn(si.toSubscriptionInfo()).when(mSubscriptionController)
-                .getSubscriptionInfo(anyInt());
         doReturn(si).when(mSubscriptionManagerService).getSubscriptionInfoInternal(anyInt());
 
         mPhoneUT.updateUsageSetting();

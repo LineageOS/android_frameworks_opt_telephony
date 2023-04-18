@@ -385,11 +385,7 @@ public class PhoneConfigurationManager {
             // eg if we are going from 2 phones to 1 phone, we need to deregister RIL for the
             // second phone. This loop does nothing if numOfActiveModems is increasing.
             for (int phoneId = numOfActiveModems; phoneId < oldNumOfActiveModems; phoneId++) {
-                if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-                    SubscriptionManagerService.getInstance().markSubscriptionsInactive(phoneId);
-                } else {
-                    SubscriptionController.getInstance().clearSubInfoRecord(phoneId);
-                }
+                SubscriptionManagerService.getInstance().markSubscriptionsInactive(phoneId);
                 subInfoCleared = true;
                 mPhones[phoneId].mCi.onSlotActiveStatusChange(
                         SubscriptionManager.isValidPhoneId(phoneId));
@@ -423,13 +419,8 @@ public class PhoneConfigurationManager {
                         + "setting VOICE & SMS subId to -1 (No Preference)");
 
                 //Set the default VOICE subId to -1 ("No Preference")
-                if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-                    SubscriptionManagerService.getInstance().setDefaultVoiceSubId(
-                            SubscriptionManager.INVALID_SUBSCRIPTION_ID);
-                } else {
-                    SubscriptionController.getInstance().setDefaultVoiceSubId(
-                            SubscriptionManager.INVALID_SUBSCRIPTION_ID);
-                }
+                SubscriptionManagerService.getInstance().setDefaultVoiceSubId(
+                        SubscriptionManager.INVALID_SUBSCRIPTION_ID);
 
                 //TODO:: Set the default SMS sub to "No Preference". Tracking this bug (b/227386042)
             } else {
