@@ -3984,79 +3984,87 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     public void dump(@NonNull FileDescriptor fd, @NonNull PrintWriter printWriter,
             @NonNull String[] args) {
-        IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
-        pw.println(SubscriptionManagerService.class.getSimpleName() + ":");
-        pw.println("Active modem count=" + mTelephonyManager.getActiveModemCount());
-        pw.println("Logical SIM slot sub id mapping:");
-        pw.increaseIndent();
-        mSlotIndexToSubId.forEach((slotIndex, subId)
-                -> pw.println("Logical SIM slot " + slotIndex + ": subId=" + subId));
-        pw.decreaseIndent();
-        pw.println("ICCID:");
-        pw.increaseIndent();
-        for (int i = 0; i < mTelephonyManager.getActiveModemCount(); i++) {
-            pw.println("slot " + i + ": " + SubscriptionInfo.getPrintableId(getIccId(i)));
+        mContext.enforceCallingOrSelfPermission(android.Manifest.permission.DUMP,
+                "Requires android.Manifest.permission.DUMP");
+        final long token = Binder.clearCallingIdentity();
+        try {
+            IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
+            pw.println(SubscriptionManagerService.class.getSimpleName() + ":");
+            pw.println("Active modem count=" + mTelephonyManager.getActiveModemCount());
+            pw.println("Logical SIM slot sub id mapping:");
+            pw.increaseIndent();
+            mSlotIndexToSubId.forEach((slotIndex, subId)
+                    -> pw.println("Logical SIM slot " + slotIndex + ": subId=" + subId));
+            pw.decreaseIndent();
+            pw.println("ICCID:");
+            pw.increaseIndent();
+            for (int i = 0; i < mTelephonyManager.getActiveModemCount(); i++) {
+                pw.println("slot " + i + ": " + SubscriptionInfo.getPrintableId(getIccId(i)));
+            }
+            pw.decreaseIndent();
+            pw.println();
+            pw.println("defaultSubId=" + getDefaultSubId());
+            pw.println("defaultVoiceSubId=" + getDefaultVoiceSubId());
+            pw.println("defaultDataSubId=" + getDefaultDataSubId());
+            pw.println("activeDataSubId=" + getActiveDataSubscriptionId());
+            pw.println("defaultSmsSubId=" + getDefaultSmsSubId());
+            pw.println("areAllSubscriptionsLoaded=" + areAllSubscriptionsLoaded());
+            pw.println();
+            for (int i = 0; i < mSimState.length; i++) {
+                pw.println("mSimState[" + i + "]="
+                        + TelephonyManager.simStateToString(mSimState[i]));
+            }
+
+            pw.println();
+            pw.println("Active subscriptions:");
+            pw.increaseIndent();
+            mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                    .filter(SubscriptionInfoInternal::isActive).forEach(pw::println);
+            pw.decreaseIndent();
+
+            pw.println();
+            pw.println("All subscriptions:");
+            pw.increaseIndent();
+            mSubscriptionDatabaseManager.getAllSubscriptions().forEach(pw::println);
+            pw.decreaseIndent();
+            pw.println();
+
+            pw.print("Embedded subscriptions: [");
+            pw.println(mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                    .filter(SubscriptionInfoInternal::isEmbedded)
+                    .map(subInfo -> String.valueOf(subInfo.getSubscriptionId()))
+                    .collect(Collectors.joining(", ")) + "]");
+
+            pw.print("Opportunistic subscriptions: [");
+            pw.println(mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                    .filter(SubscriptionInfoInternal::isOpportunistic)
+                    .map(subInfo -> String.valueOf(subInfo.getSubscriptionId()))
+                    .collect(Collectors.joining(", ")) + "]");
+
+            pw.print("getAvailableSubscriptionInfoList: [");
+            pw.println(getAvailableSubscriptionInfoList(
+                    mContext.getOpPackageName(), mContext.getFeatureId()).stream()
+                    .map(subInfo -> String.valueOf(subInfo.getSubscriptionId()))
+                    .collect(Collectors.joining(", ")) + "]");
+
+            pw.print("getSelectableSubscriptionInfoList: [");
+            pw.println(mSubscriptionManager.getSelectableSubscriptionInfoList().stream()
+                    .map(subInfo -> String.valueOf(subInfo.getSubscriptionId()))
+                    .collect(Collectors.joining(", ")) + "]");
+
+            if (mEuiccManager != null) {
+                pw.println("Euicc enabled=" + mEuiccManager.isEnabled());
+            }
+            pw.println();
+            pw.println("Local log:");
+            pw.increaseIndent();
+            mLocalLog.dump(fd, pw, args);
+            pw.decreaseIndent();
+            pw.decreaseIndent();
+            pw.println();
+            mSubscriptionDatabaseManager.dump(fd, pw, args);
+        } finally {
+            Binder.restoreCallingIdentity(token);
         }
-        pw.decreaseIndent();
-        pw.println();
-        pw.println("defaultSubId=" + getDefaultSubId());
-        pw.println("defaultVoiceSubId=" + getDefaultVoiceSubId());
-        pw.println("defaultDataSubId=" + getDefaultDataSubId());
-        pw.println("activeDataSubId=" + getActiveDataSubscriptionId());
-        pw.println("defaultSmsSubId=" + getDefaultSmsSubId());
-        pw.println("areAllSubscriptionsLoaded=" + areAllSubscriptionsLoaded());
-        pw.println();
-        for (int i = 0; i < mSimState.length; i++) {
-            pw.println("mSimState[" + i + "]=" + TelephonyManager.simStateToString(mSimState[i]));
-        }
-
-        pw.println();
-        pw.println("Active subscriptions:");
-        pw.increaseIndent();
-        mSubscriptionDatabaseManager.getAllSubscriptions().stream()
-                .filter(SubscriptionInfoInternal::isActive).forEach(pw::println);
-        pw.decreaseIndent();
-
-        pw.println();
-        pw.println("All subscriptions:");
-        pw.increaseIndent();
-        mSubscriptionDatabaseManager.getAllSubscriptions().forEach(pw::println);
-        pw.decreaseIndent();
-        pw.println();
-
-        pw.print("Embedded subscriptions: [");
-        pw.println(mSubscriptionDatabaseManager.getAllSubscriptions().stream()
-                .filter(SubscriptionInfoInternal::isEmbedded)
-                .map(subInfo -> String.valueOf(subInfo.getSubscriptionId()))
-                .collect(Collectors.joining(", ")) + "]");
-
-        pw.print("Opportunistic subscriptions: [");
-        pw.println(mSubscriptionDatabaseManager.getAllSubscriptions().stream()
-                .filter(SubscriptionInfoInternal::isOpportunistic)
-                .map(subInfo -> String.valueOf(subInfo.getSubscriptionId()))
-                .collect(Collectors.joining(", ")) + "]");
-
-        pw.print("getAvailableSubscriptionInfoList: [");
-        pw.println(getAvailableSubscriptionInfoList(
-                mContext.getOpPackageName(), mContext.getFeatureId()).stream()
-                .map(subInfo -> String.valueOf(subInfo.getSubscriptionId()))
-                .collect(Collectors.joining(", ")) + "]");
-
-        pw.print("getSelectableSubscriptionInfoList: [");
-        pw.println(mSubscriptionManager.getSelectableSubscriptionInfoList().stream()
-                .map(subInfo -> String.valueOf(subInfo.getSubscriptionId()))
-                .collect(Collectors.joining(", ")) + "]");
-
-        if (mEuiccManager != null) {
-            pw.println("Euicc enabled=" + mEuiccManager.isEnabled());
-        }
-        pw.println();
-        pw.println("Local log:");
-        pw.increaseIndent();
-        mLocalLog.dump(fd, pw, args);
-        pw.decreaseIndent();
-        pw.decreaseIndent();
-        pw.println();
-        mSubscriptionDatabaseManager.dump(fd, pw, args);
     }
 }

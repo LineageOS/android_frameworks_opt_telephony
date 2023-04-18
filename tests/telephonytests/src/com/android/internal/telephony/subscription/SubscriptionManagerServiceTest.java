@@ -2027,8 +2027,13 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
 
-        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
         final StringWriter stringWriter = new StringWriter();
+        assertThrows(SecurityException.class, ()
+                -> mSubscriptionManagerServiceUT.dump(new FileDescriptor(),
+                new PrintWriter(stringWriter), null));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.DUMP);
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
         mSubscriptionManagerServiceUT.dump(new FileDescriptor(), new PrintWriter(stringWriter),
                 null);
         assertThat(stringWriter.toString().length()).isGreaterThan(0);
