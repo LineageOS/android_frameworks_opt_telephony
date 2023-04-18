@@ -2193,7 +2193,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 .getSubscriptionInfoInternal(1);
         assertThat(subInfo.getSimSlotIndex()).isEqualTo(SubscriptionManager.INVALID_SIM_SLOT_INDEX);
         assertThat(subInfo.getIccId()).isEqualTo(FAKE_ICCID1);
-        assertThat(subInfo.getDisplayName()).isEqualTo(FAKE_DEFAULT_CARD_NAME);
+        assertThat(subInfo.getDisplayName()).isEqualTo("CARD 1");
         assertThat(subInfo.getPortIndex()).isEqualTo(0);
     }
 
