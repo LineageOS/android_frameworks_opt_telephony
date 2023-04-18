@@ -47,10 +47,8 @@ import android.telephony.TelephonyManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ProxyController;
 import com.android.internal.telephony.SmsController;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccFileHandler;
@@ -966,16 +964,9 @@ public class CatService extends Handler implements AppInterface {
     //TODO Need to take care for MSIM
     public static AppInterface getInstance() {
         int slotId = PhoneConstants.DEFAULT_SLOT_INDEX;
-        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-            if (SubscriptionManagerService.getInstance() != null) {
-                slotId = SubscriptionManagerService.getInstance().getSlotIndex(
-                        SubscriptionManagerService.getInstance().getDefaultSubId());
-            }
-        } else {
-            SubscriptionController sControl = SubscriptionController.getInstance();
-            if (sControl != null) {
-                slotId = sControl.getSlotIndex(sControl.getDefaultSubId());
-            }
+        if (SubscriptionManagerService.getInstance() != null) {
+            slotId = SubscriptionManagerService.getInstance().getSlotIndex(
+                    SubscriptionManagerService.getInstance().getDefaultSubId());
         }
         return getInstance(null, null, null, slotId);
     }

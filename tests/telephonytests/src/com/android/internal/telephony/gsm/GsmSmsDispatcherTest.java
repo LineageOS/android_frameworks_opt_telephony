@@ -66,7 +66,6 @@ import com.android.internal.telephony.ContextFixture;
 import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.SmsDispatchersController;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.TelephonyTestUtils;
 import com.android.internal.telephony.TestApplication;
@@ -566,11 +565,7 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         doReturn(mIsimUiccRecords).when(mPhone).getIccRecords();
         Message msg = mGsmSmsDispatcher.obtainMessage(17);
         mPhone.getIccRecords().setSmssTpmrValue(-1, msg);
-        if (isSubscriptionManagerServiceEnabled()) {
-            mSubscriptionManagerService.setLastUsedTPMessageReference(mPhone.getSubId(), -1);
-        } else {
-            SubscriptionController.getInstance().updateMessageRef(mPhone.getSubId(), -1);
-        }
+        mSubscriptionManagerService.setLastUsedTPMessageReference(mPhone.getSubId(), -1);
 
         mGsmSmsDispatcher.sendText("111", "222" /*scAddr*/, TAG,
                 null, null, null, null, false, -1, false, -1, false, 0L);

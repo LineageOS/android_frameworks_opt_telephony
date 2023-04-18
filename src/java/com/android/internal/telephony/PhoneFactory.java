@@ -31,10 +31,8 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.LocalServerSocket;
 import android.os.Build;
-import android.os.HandlerThread;
 import android.os.Looper;
 import android.preference.PreferenceManager;
-import android.provider.DeviceConfig;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.telephony.AnomalyReporter;
@@ -89,8 +87,6 @@ public class PhoneFactory {
     private static @Nullable EuiccCardController sEuiccCardController;
     private static SubscriptionManagerService sSubscriptionManagerService;
 
-    static private SubscriptionInfoUpdater sSubInfoRecordUpdater = null;
-
     @UnsupportedAppUsage
     static private boolean sMadeDefaults = false;
     @UnsupportedAppUsage
@@ -107,8 +103,6 @@ public class PhoneFactory {
     private static MetricsCollector sMetricsCollector;
     private static RadioInterfaceCapabilityController sRadioHalCapabilities;
 
-    private static boolean sSubscriptionManagerServiceEnabled = false;
-
     //***** Class Methods
 
     public static void makeDefaultPhones(Context context) {
@@ -124,12 +118,6 @@ public class PhoneFactory {
         synchronized (sLockProxyPhones) {
             if (!sMadeDefaults) {
                 sContext = context;
-
-                // This is a temp flag which will be removed before U AOSP public release.
-                sSubscriptionManagerServiceEnabled = context.getResources().getBoolean(
-                        com.android.internal.R.bool.config_using_subscription_manager_service)
-                        || DeviceConfig.getBoolean(DeviceConfig.NAMESPACE_TELEPHONY,
-                        "enable_subscription_manager_service", false);
 
                 // create the telephony device controller.
                 TelephonyDevController.create();
@@ -208,24 +196,12 @@ public class PhoneFactory {
                 // call getInstance()
                 sUiccController = UiccController.make(context);
 
-
-                if (isSubscriptionManagerServiceEnabled()) {
-                    Rlog.i(LOG_TAG, "Creating SubscriptionManagerService");
-                    sSubscriptionManagerService = new SubscriptionManagerService(context,
-                            Looper.myLooper());
-                } else {
-                    Rlog.i(LOG_TAG, "Creating SubscriptionController");
-                    TelephonyComponentFactory.getInstance().inject(SubscriptionController.class
-                            .getName()).initSubscriptionController(context);
-                }
-
-                SubscriptionController sc = null;
-                if (!isSubscriptionManagerServiceEnabled()) {
-                    sc = SubscriptionController.getInstance();
-                }
+                Rlog.i(LOG_TAG, "Creating SubscriptionManagerService");
+                sSubscriptionManagerService = new SubscriptionManagerService(context,
+                        Looper.myLooper());
 
                 TelephonyComponentFactory.getInstance().inject(MultiSimSettingController.class.
-                        getName()).initMultiSimSettingController(context, sc);
+                        getName()).initMultiSimSettingController(context);
 
                 if (context.getPackageManager().hasSystemFeature(
                         PackageManager.FEATURE_TELEPHONY_EUICC)) {
@@ -256,16 +232,6 @@ public class PhoneFactory {
                 SmsApplication.initSmsPackageMonitor(context);
 
                 sMadeDefaults = true;
-
-                if (!isSubscriptionManagerServiceEnabled()) {
-                    Rlog.i(LOG_TAG, "Creating SubInfoRecordUpdater ");
-                    HandlerThread pfhandlerThread = new HandlerThread("PhoneFactoryHandlerThread");
-                    pfhandlerThread.start();
-                    sSubInfoRecordUpdater = TelephonyComponentFactory.getInstance().inject(
-                            SubscriptionInfoUpdater.class.getName())
-                            .makeSubscriptionInfoUpdater(pfhandlerThread.getLooper(), context,
-                                    SubscriptionController.getInstance());
-                }
 
                 // Only bring up IMS if the device supports having an IMS stack.
                 if (context.getPackageManager().hasSystemFeature(
@@ -303,14 +269,6 @@ public class PhoneFactory {
                 }
             }
         }
-    }
-
-    /**
-     * @return {@code true} if the new {@link SubscriptionManagerService} is enabled, otherwise the
-     * old {@link SubscriptionController} is used.
-     */
-    public static boolean isSubscriptionManagerServiceEnabled() {
-        return sSubscriptionManagerServiceEnabled;
     }
 
     /**
@@ -412,10 +370,6 @@ public class PhoneFactory {
         }
     }
 
-    public static SubscriptionInfoUpdater getSubscriptionInfoUpdater() {
-        return sSubInfoRecordUpdater;
-    }
-
     /**
      * Get the network factory associated with a given phone ID.
      * @param phoneId the phone id
@@ -452,7 +406,6 @@ public class PhoneFactory {
      * @param phoneId The phone's id.
      * @return the preferred network mode bitmask that should be set.
      */
-    // TODO: Fix when we "properly" have TelephonyDevController/SubscriptionController ..
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public static int calculatePreferredNetworkType(int phoneId) {
         if (getPhone(phoneId) == null) {
@@ -469,10 +422,7 @@ public class PhoneFactory {
     /* Gets the default subscription */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public static int getDefaultSubscription() {
-        if (isSubscriptionManagerServiceEnabled()) {
-            return SubscriptionManagerService.getInstance().getDefaultSubId();
-        }
-        return SubscriptionController.getInstance().getDefaultSubId();
+        return SubscriptionManagerService.getInstance().getDefaultSubId();
     }
 
     /* Returns User SMS Prompt property,  enabled or not */
@@ -500,19 +450,7 @@ public class PhoneFactory {
     }
 
     /**
-     * Request a refresh of the embedded subscription list.
-     *
-     * @param cardId the card ID of the eUICC.
-     * @param callback Optional callback to execute after the refresh completes. Must terminate
-     *     quickly as it will be called from SubscriptionInfoUpdater's handler thread.
-     */
-    public static void requestEmbeddedSubscriptionInfoListRefresh(
-            int cardId, @Nullable Runnable callback) {
-        sSubInfoRecordUpdater.requestEmbeddedSubscriptionInfoListRefresh(cardId, callback);
-    }
-
-    /**
-     * Get a the SmsController.
+     * Get the instance of {@link SmsController}.
      */
     public static SmsController getSmsController() {
         synchronized (sLockProxyPhones) {
@@ -615,26 +553,6 @@ public class PhoneFactory {
         pw.decreaseIndent();
         pw.println("++++++++++++++++++++++++++++++++");
 
-        if (!isSubscriptionManagerServiceEnabled()) {
-            pw.println("SubscriptionController:");
-            pw.increaseIndent();
-            try {
-                SubscriptionController.getInstance().dump(fd, pw, args);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            pw.flush();
-            pw.decreaseIndent();
-            pw.println("++++++++++++++++++++++++++++++++");
-
-            pw.println("SubInfoRecordUpdater:");
-            pw.increaseIndent();
-            try {
-                sSubInfoRecordUpdater.dump(fd, pw, args);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
         pw.flush();
         pw.decreaseIndent();
         pw.println("++++++++++++++++++++++++++++++++");
