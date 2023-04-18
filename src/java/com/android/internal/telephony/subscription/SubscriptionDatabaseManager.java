@@ -91,7 +91,6 @@ public class SubscriptionDatabaseManager extends Handler {
 
     /** The mapping from {@link SimInfo} table to {@link SubscriptionInfoInternal} get methods. */
     private static final Map<String, Function<SubscriptionInfoInternal, ?>>
-            // TODO: Support SimInfo.COLUMN_CB_XXX which are still used by wear.
             SUBSCRIPTION_GET_METHOD_MAP = Map.ofEntries(
             new AbstractMap.SimpleImmutableEntry<>(
                     SimInfo.COLUMN_UNIQUE_KEY_SUBSCRIPTION_ID,

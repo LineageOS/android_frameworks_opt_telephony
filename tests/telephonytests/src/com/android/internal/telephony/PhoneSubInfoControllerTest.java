@@ -27,7 +27,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Matchers.anyInt;
-import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
@@ -77,22 +76,15 @@ public class PhoneSubInfoControllerTest extends TelephonyTest {
         PropertyInvalidatedCache.disableForTestMode();
         /* mPhone -> PhoneId: 0 -> SubId:0
            mSecondPhone -> PhoneId:1 -> SubId: 1*/
-        doReturn(0).when(mSubscriptionController).getPhoneId(eq(0));
         doReturn(0).when(mSubscriptionManagerService).getPhoneId(eq(0));
-        doReturn(1).when(mSubscriptionController).getPhoneId(eq(1));
         doReturn(1).when(mSubscriptionManagerService).getPhoneId(eq(1));
         doReturn(2).when(mTelephonyManager).getPhoneCount();
         doReturn(2).when(mTelephonyManager).getActiveModemCount();
-        doReturn(true).when(mSubscriptionController).isActiveSubId(0, TAG, FEATURE_ID);
         doReturn(true).when(mSubscriptionManagerService).isActiveSubId(0, TAG, FEATURE_ID);
-        doReturn(true).when(mSubscriptionController).isActiveSubId(1, TAG, FEATURE_ID);
         doReturn(true).when(mSubscriptionManagerService).isActiveSubId(1, TAG, FEATURE_ID);
         doReturn(new int[]{0, 1}).when(mSubscriptionManager)
                 .getCompleteActiveSubscriptionIdList();
 
-        mServiceManagerMockedServices.put("isub", mSubscriptionController);
-        doReturn(mSubscriptionController).when(mSubscriptionController)
-                .queryLocalInterface(anyString());
         doReturn(mContext).when(mSecondPhone).getContext();
 
         mAppOsMgr = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
