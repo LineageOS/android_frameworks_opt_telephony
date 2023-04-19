@@ -773,20 +773,12 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(true).when(mSST).getPowerStateFromCarrier();
         doReturn(true).when(mSST).isConcurrentVoiceAndDataAllowed();
         doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
-        doReturn("").when(mSubscriptionController).getEnabledMobileDataPolicies(anyInt());
-        doReturn(true).when(mSubscriptionController).setEnabledMobileDataPolicies(
-                anyInt(), anyString());
         doReturn(new SubscriptionInfoInternal.Builder().setId(1).build())
                 .when(mSubscriptionManagerService).getSubscriptionInfoInternal(anyInt());
 
         List<SubscriptionInfo> infoList = new ArrayList<>();
         infoList.add(mMockSubInfo);
-        doReturn(infoList).when(mSubscriptionController).getSubscriptionsInGroup(
-                any(), any(), any());
-        doReturn(true).when(mSubscriptionController).isActiveSubId(anyInt());
-        doReturn(0).when(mSubscriptionController).getPhoneId(1);
         doReturn(0).when(mSubscriptionManagerService).getPhoneId(1);
-        doReturn(1).when(mSubscriptionController).getPhoneId(2);
         doReturn(1).when(mSubscriptionManagerService).getPhoneId(2);
 
         for (int transport : new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
@@ -1629,9 +1621,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         boolean isDataEnabled = mDataNetworkControllerUT.getDataSettingsManager().isDataEnabled();
         doReturn(mDataNetworkControllerUT.getDataSettingsManager())
                 .when(mPhone).getDataSettingsManager();
-        MultiSimSettingController instance = MultiSimSettingController.getInstance();
-        MultiSimSettingController controller = Mockito.spy(
-                new MultiSimSettingController(mContext, mSubscriptionController));
+        MultiSimSettingController controller = Mockito.spy(new MultiSimSettingController(mContext));
         doReturn(true).when(controller).isCarrierConfigLoadedForAllSub();
         replaceInstance(MultiSimSettingController.class, "sInstance", null, controller);
 
@@ -1725,7 +1715,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
     @Test
     public void testIsDataEnabledOverriddenForApnDataDuringCall() throws Exception {
         doReturn(1).when(mPhone).getSubId();
-        doReturn(2).when(mSubscriptionController).getDefaultDataSubId();
         doReturn(2).when(mSubscriptionManagerService).getDefaultDataSubId();
         // Data disabled
         mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
@@ -1768,7 +1757,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
         // Assume phone2 is the default data phone
         Phone phone2 = Mockito.mock(Phone.class);
         replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[]{mPhone, phone2});
-        doReturn(2).when(mSubscriptionController).getDefaultDataSubId();
         doReturn(2).when(mSubscriptionManagerService).getDefaultDataSubId();
 
         // Data disabled on nonDDS

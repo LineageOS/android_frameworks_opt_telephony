@@ -145,7 +145,6 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        enableSubscriptionManagerService(true);
         initializeSubs();
         mPhoneMock1 = mock(Phone.class);
         mPhoneMock2 = mock(Phone.class);
@@ -156,6 +155,9 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         doReturn(mSubscriptionManagerService).when(mIBinder).queryLocalInterface(anyString());
         doReturn(mPhone).when(mPhone).getImsPhone();
         mServiceManagerMockedServices.put("isub", mIBinder);
+
+        doReturn(mSubscriptionManagerService).when(mIBinder)
+                .queryLocalInterface(anyString());
 
         // Default configuration:
         // DSDS device.
@@ -247,8 +249,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         // Capture listener to emulate the carrier config change notification used later
         ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
                 ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
-        mMultiSimSettingControllerUT = new MultiSimSettingController(
-                mContext, mSubscriptionController);
+        mMultiSimSettingControllerUT = new MultiSimSettingController(mContext);
         processAllMessages();
         verify(mCarrierConfigManager).registerCarrierConfigChangeListener(any(),
                 listenerArgumentCaptor.capture());
