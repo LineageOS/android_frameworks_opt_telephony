@@ -1372,6 +1372,21 @@ public class ImsPhoneTest extends TelephonyTest {
         assertTrue(regInfo[0] == 1 && regInfo[1] == 1 && regInfo[2] == 1);
     }
 
+    @Test
+    @SmallTest
+    public void testImsDialArgsBuilderFromForAlternateService() {
+        ImsPhone.ImsDialArgs dialArgs = new ImsPhone.ImsDialArgs.Builder()
+                .setIsEmergency(true)
+                .setEccCategory(2)
+                .build();
+
+        ImsPhone.ImsDialArgs copiedDialArgs =
+                ImsPhone.ImsDialArgs.Builder.from(dialArgs).build();
+
+        assertTrue(copiedDialArgs.isEmergency);
+        assertEquals(2, copiedDialArgs.eccCategory);
+    }
+
     private ServiceState getServiceStateDataAndVoice(int rat, int regState, boolean isRoaming) {
         ServiceState ss = new ServiceState();
         ss.setStateOutOfService();
