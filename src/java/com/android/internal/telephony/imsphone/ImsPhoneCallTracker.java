@@ -3546,6 +3546,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 // Since onCallInitiating and onCallProgressing reset mPendingMO,
                 // we can't depend on mPendingMO.
                 if ((reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL
+                        || reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_NOT_REGISTERED
                         || reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_CALL_CS_RETRY_REQUIRED)
                         && conn != null) {
                     logi("onCallStartFailed eccCategory=" + eccCategory);
