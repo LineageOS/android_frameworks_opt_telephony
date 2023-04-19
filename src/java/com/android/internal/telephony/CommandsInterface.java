@@ -2990,6 +2990,13 @@ public interface CommandsInterface {
     default void setNullCipherAndIntegrityEnabled(boolean enabled, Message result) {}
 
     /**
+     * Check whether null ciphering and/or null integrity-protected connections are allowed.
+     *
+     * @param result Callback message containing the success or failure status.
+     */
+    default void isNullCipherAndIntegrityEnabled(Message result) {}
+
+    /**
      * Notifies the IMS call status to the modem.
      *
      * @param imsCallInfo The list of {@link ImsCallInfo}.
