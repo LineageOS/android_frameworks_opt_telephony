@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -64,6 +65,7 @@ public class RadioOnStateListenerTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
         MockitoAnnotations.initMocks(this);
         mListener = new RadioOnStateListener();
+        doReturn(mSST).when(mMockPhone).getServiceStateTracker();
     }
 
     @After
@@ -83,7 +85,7 @@ public class RadioOnStateListenerTest extends TelephonyTest {
     @Test
     public void testRegisterForCallback() {
         mMockPhone.mCi = mMockCi;
-        mListener.waitForRadioOn(mMockPhone, mCallback, false, false);
+        mListener.waitForRadioOn(mMockPhone, mCallback, false, false, 0);
 
         waitForHandlerAction(mListener.getHandler(), TIMEOUT_MS);
 
@@ -96,8 +98,9 @@ public class RadioOnStateListenerTest extends TelephonyTest {
     }
 
     /**
-     * {@link RadioOnStateListener.Callback#isOkToCall(Phone, int)} returns true, so we are
-     * expecting {@link RadioOnStateListener.Callback#onComplete(RadioOnStateListener, boolean)} to
+     * {@link RadioOnStateListener.Callback#isOkToCall(Phone, int, boolean)} returns true,
+     * so we are expecting
+     * {@link RadioOnStateListener.Callback#onComplete(RadioOnStateListener, boolean)} to
      * return true.
      */
     @Test
@@ -106,9 +109,10 @@ public class RadioOnStateListenerTest extends TelephonyTest {
         state.setState(ServiceState.STATE_IN_SERVICE);
         when(mMockPhone.getServiceState()).thenReturn(state);
         when(mMockPhone.getState()).thenReturn(PhoneConstants.State.IDLE);
-        when(mCallback.isOkToCall(eq(mMockPhone), anyInt())).thenReturn(true);
+        when(mCallback.isOkToCall(eq(mMockPhone), anyInt(), anyBoolean()))
+                .thenReturn(true);
         mMockPhone.mCi = mMockCi;
-        mListener.waitForRadioOn(mMockPhone, mCallback, false, false);
+        mListener.waitForRadioOn(mMockPhone, mCallback, false, false, 0);
         waitForHandlerAction(mListener.getHandler(), TIMEOUT_MS);
 
         mListener.getHandler().obtainMessage(RadioOnStateListener.MSG_SERVICE_STATE_CHANGED,
@@ -121,17 +125,18 @@ public class RadioOnStateListenerTest extends TelephonyTest {
     /**
      * We never receive a
      * {@link RadioOnStateListener.Callback#onComplete(RadioOnStateListener, boolean)} because
-     * {@link RadioOnStateListener.Callback#isOkToCall(Phone, int)} returns false.
+     * {@link RadioOnStateListener.Callback#isOkToCall(Phone, int, boolean)} returns false.
      */
     @Test
     public void testPhoneChangeState_NoOkToCall_Timeout() {
         ServiceState state = new ServiceState();
         state.setState(ServiceState.STATE_OUT_OF_SERVICE);
         when(mMockPhone.getState()).thenReturn(PhoneConstants.State.IDLE);
-        when(mCallback.isOkToCall(eq(mMockPhone), anyInt())).thenReturn(false);
+        when(mCallback.isOkToCall(eq(mMockPhone), anyInt(), anyBoolean()))
+                .thenReturn(false);
         when(mMockPhone.getServiceState()).thenReturn(state);
         mMockPhone.mCi = mMockCi;
-        mListener.waitForRadioOn(mMockPhone, mCallback, false, false);
+        mListener.waitForRadioOn(mMockPhone, mCallback, false, false, 0);
         waitForHandlerAction(mListener.getHandler(), TIMEOUT_MS);
 
         mListener.getHandler().obtainMessage(RadioOnStateListener.MSG_SERVICE_STATE_CHANGED,
@@ -142,8 +147,8 @@ public class RadioOnStateListenerTest extends TelephonyTest {
     }
 
     /**
-     * Tests {@link RadioOnStateListener.Callback#isOkToCall(Phone, int)} returning false and
-     * hitting the max number of retries. This should result in
+     * Tests {@link RadioOnStateListener.Callback#isOkToCall(Phone, int, boolean)} returning
+     * false and hitting the max number of retries. This should result in
      * {@link RadioOnStateListener.Callback#onComplete(RadioOnStateListener, boolean)} returning
      * false.
      */
@@ -153,13 +158,14 @@ public class RadioOnStateListenerTest extends TelephonyTest {
         state.setState(ServiceState.STATE_POWER_OFF);
         when(mMockPhone.getState()).thenReturn(PhoneConstants.State.IDLE);
         when(mMockPhone.getServiceState()).thenReturn(state);
-        when(mCallback.isOkToCall(eq(mMockPhone), anyInt())).thenReturn(false);
+        when(mCallback.isOkToCall(eq(mMockPhone), anyInt(), anyBoolean()))
+                .thenReturn(false);
         mListener.setTimeBetweenRetriesMillis(0/* ms */);
         mListener.setMaxNumRetries(2);
 
         // Wait for the timer to expire and check state manually in onRetryTimeout
         mMockPhone.mCi = mMockCi;
-        mListener.waitForRadioOn(mMockPhone, mCallback, false, false);
+        mListener.waitForRadioOn(mMockPhone, mCallback, false, false, 0);
         waitForDelayedHandlerAction(mListener.getHandler(), TIMEOUT_MS /* delay */, TIMEOUT_MS);
 
         verify(mCallback).onComplete(eq(mListener), eq(false));
@@ -172,16 +178,39 @@ public class RadioOnStateListenerTest extends TelephonyTest {
         state.setState(ServiceState.STATE_POWER_OFF);
         when(mMockPhone.getState()).thenReturn(PhoneConstants.State.IDLE);
         when(mMockPhone.getServiceState()).thenReturn(state);
-        when(mCallback.isOkToCall(eq(mMockPhone), anyInt())).thenReturn(false);
+        when(mCallback.isOkToCall(eq(mMockPhone), anyInt(), anyBoolean()))
+                .thenReturn(false);
         mListener.setTimeBetweenRetriesMillis(0/* ms */);
         mListener.setMaxNumRetries(2);
 
         // Wait for the timer to expire and check state manually in onRetryTimeout
         mMockPhone.mCi = mMockCi;
-        mListener.waitForRadioOn(mMockPhone, mCallback, true, true);
+        mListener.waitForRadioOn(mMockPhone, mCallback, true, true, 0);
         waitForDelayedHandlerAction(mListener.getHandler(), TIMEOUT_MS /* delay */, TIMEOUT_MS );
 
         verify(mCallback).onComplete(eq(mListener), eq(false));
         verify(mMockPhone, times(2)).setRadioPower(eq(true), eq(true), eq(true), eq(false));
+    }
+
+    @Test
+    public void testTimeout_OnTimeoutForEmergency() {
+        ServiceState state = new ServiceState();
+        state.setState(ServiceState.STATE_POWER_OFF);
+        when(mMockPhone.getState()).thenReturn(PhoneConstants.State.IDLE);
+        when(mMockPhone.getServiceState()).thenReturn(state);
+        when(mCallback.isOkToCall(eq(mMockPhone), anyInt(), anyBoolean()))
+                .thenReturn(false);
+        when(mCallback.onTimeout(eq(mMockPhone), anyInt(), anyBoolean()))
+                .thenReturn(true);
+        mListener.setTimeBetweenRetriesMillis(0 /* ms */);
+        mListener.setMaxNumRetries(1);
+
+        // Wait for the timer to expire and check state manually in onRetryTimeout
+        mMockPhone.mCi = mMockCi;
+        mListener.waitForRadioOn(mMockPhone, mCallback, true, true, 100);
+        waitForDelayedHandlerAction(mListener.getHandler(), TIMEOUT_MS /* delay */, TIMEOUT_MS);
+
+        verify(mCallback).onTimeout(eq(mMockPhone), anyInt(), anyBoolean());
+        verify(mCallback).onComplete(eq(mListener), eq(true));
     }
 }

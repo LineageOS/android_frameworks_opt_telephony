@@ -1026,14 +1026,19 @@ public class EmergencyStateTracker {
                 }
 
                 @Override
-                public boolean isOkToCall(Phone phone, int serviceState) {
+                public boolean isOkToCall(Phone phone, int serviceState, boolean imsVoiceCapable) {
                     // We currently only look to make sure that the radio is on before dialing. We
                     // should be able to make emergency calls at any time after the radio has been
                     // powered on and isn't in the UNAVAILABLE state, even if it is reporting the
                     // OUT_OF_SERVICE state.
                     return phone.getServiceStateTracker().isRadioOn();
                 }
-            }, !isTestEmergencyNumber, phone, isTestEmergencyNumber);
+
+                @Override
+                public boolean onTimeout(Phone phone, int serviceState, boolean imsVoiceCapable) {
+                    return true;
+                }
+            }, !isTestEmergencyNumber, phone, isTestEmergencyNumber, 0);
         } else {
             switchDdsAndSetEmergencyMode(phone, emergencyType);
         }

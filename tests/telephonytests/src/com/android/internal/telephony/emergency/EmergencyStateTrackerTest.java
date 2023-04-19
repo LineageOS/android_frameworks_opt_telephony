@@ -157,11 +157,13 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         ArgumentCaptor<RadioOnStateListener.Callback> callback = ArgumentCaptor
                 .forClass(RadioOnStateListener.Callback.class);
         verify(mRadioOnHelper).triggerRadioOnAndListen(callback.capture(), eq(true), eq(testPhone),
-                eq(false));
+                eq(false), eq(0));
         // isOkToCall() should return true once radio is on
-        assertFalse(callback.getValue().isOkToCall(testPhone, ServiceState.STATE_OUT_OF_SERVICE));
+        assertFalse(callback.getValue()
+                .isOkToCall(testPhone, ServiceState.STATE_OUT_OF_SERVICE, false));
         when(mSST.isRadioOn()).thenReturn(true);
-        assertTrue(callback.getValue().isOkToCall(testPhone, ServiceState.STATE_OUT_OF_SERVICE));
+        assertTrue(callback.getValue()
+                .isOkToCall(testPhone, ServiceState.STATE_OUT_OF_SERVICE, false));
         // Once radio on is complete, trigger delay dial
         callback.getValue().onComplete(null, true);
         ArgumentCaptor<Consumer<Boolean>> completeConsumer = ArgumentCaptor
@@ -194,7 +196,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         ArgumentCaptor<RadioOnStateListener.Callback> callback = ArgumentCaptor
                 .forClass(RadioOnStateListener.Callback.class);
         verify(mRadioOnHelper).triggerRadioOnAndListen(callback.capture(), eq(true), eq(testPhone),
-                eq(false));
+                eq(false), eq(0));
         // Verify future completes with DisconnectCause.POWER_OFF if radio not ready
         CompletableFuture<Void> unused = future.thenAccept((result) -> {
             assertEquals((Integer) result, (Integer) DisconnectCause.POWER_OFF);
@@ -222,7 +224,7 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
 
         // Radio already on so shouldn't trigger this
         verify(mRadioOnHelper, never()).triggerRadioOnAndListen(any(), anyBoolean(), any(),
-                anyBoolean());
+                anyBoolean(), eq(0));
         // Carrier supports control-plane fallback, so no DDS switch
         verify(mPhoneSwitcher, never()).overrideDefaultDataForEmergency(anyInt(), anyInt(), any());
     }
