@@ -283,11 +283,14 @@ public class RadioSimProxy extends RadioServiceProxy {
         if (isEmpty()) return;
         if (isAidl()) {
             if (mHalVersion.greaterOrEqual(RIL.RADIO_HAL_VERSION_2_1)) {
-                android.hardware.radio.sim.SessionInfo info =
-                        new android.hardware.radio.sim.SessionInfo();
-                info.sessionId = channelId;
-                info.isEs10 = isEs10;
-                mSimProxy.iccCloseLogicalChannelWithSessionInfo(serial, info);
+                // TODO: [MEP-A1] Use iccCloseLogicalChannelWithSessionInfo API once vendor
+                //  changes are completed.
+                //android.hardware.radio.sim.SessionInfo info =
+                //        new android.hardware.radio.sim.SessionInfo();
+                //info.sessionId = channelId;
+                //info.isEs10 = isEs10;
+                //mSimProxy.iccCloseLogicalChannelWithSessionInfo(serial, info);
+                mSimProxy.iccCloseLogicalChannel(serial, channelId);
                 return;
             }
             mSimProxy.iccCloseLogicalChannel(serial, channelId);

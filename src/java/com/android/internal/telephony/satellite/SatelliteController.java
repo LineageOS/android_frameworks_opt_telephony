@@ -444,15 +444,15 @@ public class SatelliteController extends Handler {
                     if (argument.enableSatellite) {
                         //If satellite mode is enabled successfully, disable Bluetooth and wifi
                         disableBluetoothWifiState();
+                        /**
+                         * TODO for NTN-based satellites: Check if satellite is acquired.
+                         */
+                        if (mNeedsSatellitePointing) {
+                            mPointingAppController.startPointingUI(false);
+                        }
                     } else {
                         //Disabled satellite mode, Reset BT and Wifi if previously changed here
                         checkAndEnableBluetoothWifiState();
-                    }
-                    /**
-                     * TODO for NTN-based satellites: Check if satellite is acquired.
-                     */
-                    if (mNeedsSatellitePointing) {
-                        mPointingAppController.startPointingUI(false);
                     }
                     mIsDemoModeEnabled = argument.enableDemoMode;
                     updateSatelliteEnabledState(

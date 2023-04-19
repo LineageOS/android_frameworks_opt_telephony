@@ -40,7 +40,6 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConfigurationManager;
 import com.android.internal.telephony.PhoneFactory;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyEvent;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
@@ -166,17 +165,9 @@ public class CellularNetworkValidator {
 
         private String getValidationNetworkIdentity(int subId) {
             if (!SubscriptionManager.isUsableSubscriptionId(subId)) return null;
-            Phone phone;
-            if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-                if (SubscriptionManagerService.getInstance() == null) return null;
-                phone = PhoneFactory.getPhone(SubscriptionManagerService.getInstance()
-                        .getPhoneId(subId));
-            } else {
-                SubscriptionController subController = SubscriptionController.getInstance();
-                if (subController == null) return null;
-                phone = PhoneFactory.getPhone(subController.getPhoneId(subId));
-            }
-
+            if (SubscriptionManagerService.getInstance() == null) return null;
+            Phone phone = PhoneFactory.getPhone(SubscriptionManagerService.getInstance()
+                    .getPhoneId(subId));
             if (phone == null || phone.getServiceState() == null) return null;
 
             NetworkRegistrationInfo regInfo = phone.getServiceState().getNetworkRegistrationInfo(
@@ -267,20 +258,12 @@ public class CellularNetworkValidator {
         // If it's already validating the same subscription, do nothing.
         if (subId == mSubId) return;
 
-        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-            SubscriptionInfoInternal subInfo = SubscriptionManagerService.getInstance()
-                    .getSubscriptionInfoInternal(subId);
-            if (subInfo == null || !subInfo.isActive()) {
-                logd("Failed to start validation. Inactive subId " + subId);
-                callback.onValidationDone(false, subId);
-                return;
-            }
-        } else {
-            if (!SubscriptionController.getInstance().isActiveSubId(subId)) {
-                logd("Failed to start validation. Inactive subId " + subId);
-                callback.onValidationDone(false, subId);
-                return;
-            }
+        SubscriptionInfoInternal subInfo = SubscriptionManagerService.getInstance()
+                .getSubscriptionInfoInternal(subId);
+        if (subInfo == null || !subInfo.isActive()) {
+            logd("Failed to start validation. Inactive subId " + subId);
+            callback.onValidationDone(false, subId);
+            return;
         }
 
         if (isValidating()) {

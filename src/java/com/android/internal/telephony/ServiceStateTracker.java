@@ -71,7 +71,6 @@ import android.telephony.PhysicalChannelConfig;
 import android.telephony.RadioAccessFamily;
 import android.telephony.ServiceState;
 import android.telephony.ServiceState.RilRadioTechnology;
-import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
@@ -92,6 +91,7 @@ import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.cdnr.CarrierDisplayNameData;
 import com.android.internal.telephony.cdnr.CarrierDisplayNameResolver;
 import com.android.internal.telephony.data.AccessNetworksManager;
+import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksManagerCallback;
 import com.android.internal.telephony.data.DataNetwork;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.imsphone.ImsPhone;
@@ -325,8 +325,6 @@ public class ServiceStateTracker extends Handler {
     private boolean mDeviceShuttingDown = false;
     /** Keep track of SPN display rules, so we only broadcast intent if something changes. */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    private boolean mSpnUpdatePending = false;
-    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private String mCurSpn = null;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private String mCurDataSpn = null;
@@ -345,8 +343,6 @@ public class ServiceStateTracker extends Handler {
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private SubscriptionManager mSubscriptionManager;
-    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    private SubscriptionController mSubscriptionController;
     private SubscriptionManagerService mSubscriptionManagerService;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private final SstSubscriptionsChangedListener mOnSubscriptionsChangedListener =
@@ -416,12 +412,6 @@ public class ServiceStateTracker extends Handler {
                 mPhone.sendSubscriptionSettings(restoreSelection);
 
                 setDataNetworkTypeForPhone(mSS.getRilDataRadioTechnology());
-
-                if (mSpnUpdatePending) {
-                    mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(), mCurShowPlmn,
-                            mCurPlmn, mCurShowSpn, mCurSpn);
-                    mSpnUpdatePending = false;
-                }
 
                 // Remove old network selection sharedPreferences since SP key names are now
                 // changed to include subId. This will be done only once when upgrading from an
@@ -622,6 +612,12 @@ public class ServiceStateTracker extends Handler {
      */
     private DataNetworkControllerCallback mDataDisconnectedCallback;
 
+    /**
+     * AccessNetworksManagerCallback is used for preferred on the IWLAN when preferred transport
+     * type changed in AccessNetworksManager.
+     */
+    private AccessNetworksManagerCallback mAccessNetworksManagerCallback = null;
+
     public ServiceStateTracker(GsmCdmaPhone phone, CommandsInterface ci) {
         mNitzState = TelephonyComponentFactory.getInstance()
                 .inject(NitzStateMachine.class.getName())
@@ -651,12 +647,7 @@ public class ServiceStateTracker extends Handler {
         mCi.registerForCellInfoList(this, EVENT_UNSOL_CELL_INFO_LIST, null);
         mCi.registerForPhysicalChannelConfiguration(this, EVENT_PHYSICAL_CHANNEL_CONFIG, null);
 
-        if (mPhone.isSubscriptionManagerServiceEnabled()) {
-            mSubscriptionManagerService = SubscriptionManagerService.getInstance();
-        } else {
-            mSubscriptionController = SubscriptionController.getInstance();
-        }
-
+        mSubscriptionManagerService = SubscriptionManagerService.getInstance();
         mSubscriptionManager = SubscriptionManager.from(phone.getContext());
         mSubscriptionManager.addOnSubscriptionsChangedListener(
                 new android.os.HandlerExecutor(this), mOnSubscriptionsChangedListener);
@@ -734,6 +725,23 @@ public class ServiceStateTracker extends Handler {
                 }
             }
         };
+
+        mAccessNetworksManagerCallback = new AccessNetworksManagerCallback(this::post) {
+            @Override
+            public void onPreferredTransportChanged(int networkCapability) {
+                // Check if preferred on IWLAN was changed in ServiceState.
+                boolean isIwlanPreferred = mAccessNetworksManager.isAnyApnOnIwlan();
+                if (mSS.isIwlanPreferred() != isIwlanPreferred) {
+                    log("onPreferredTransportChanged: IwlanPreferred is changed to "
+                            + isIwlanPreferred);
+                    mSS.setIwlanPreferred(isIwlanPreferred);
+                    mPhone.notifyServiceStateChanged(mPhone.getServiceState());
+                }
+            }
+        };
+        if (mAccessNetworksManagerCallback != null) {
+            mAccessNetworksManager.registerCallback(mAccessNetworksManagerCallback);
+        }
     }
 
     @VisibleForTesting
@@ -871,6 +879,10 @@ public class ServiceStateTracker extends Handler {
         if (mCSST != null) {
             mCSST.dispose();
             mCSST = null;
+        }
+        if (mAccessNetworksManagerCallback != null) {
+            mAccessNetworksManager.unregisterCallback(mAccessNetworksManagerCallback);
+            mAccessNetworksManagerCallback = null;
         }
     }
 
@@ -2798,18 +2810,10 @@ public class ServiceStateTracker extends Handler {
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
             mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
 
-            if (mPhone.isSubscriptionManagerServiceEnabled()) {
-                if (SubscriptionManager.isValidSubscriptionId(subId)) {
-                    mSubscriptionManagerService.setCarrierName(subId, TextUtils.emptyIfNull(
-                            getCarrierName(data.shouldShowPlmn(), data.getPlmn(),
-                                    data.shouldShowSpn(), data.getSpn())));
-                }
-            } else {
-                if (!mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(),
-                        data.shouldShowPlmn(), data.getPlmn(), data.shouldShowSpn(),
-                        data.getSpn())) {
-                    mSpnUpdatePending = true;
-                }
+            if (SubscriptionManager.isValidSubscriptionId(subId)) {
+                mSubscriptionManagerService.setCarrierName(subId, TextUtils.emptyIfNull(
+                        getCarrierName(data.shouldShowPlmn(), data.getPlmn(),
+                                data.shouldShowSpn(), data.getSpn())));
             }
         }
         mCurShowSpn = data.shouldShowSpn();
@@ -4528,23 +4532,11 @@ public class ServiceStateTracker extends Handler {
         }
         Context context = mPhone.getContext();
 
-        if (mPhone.isSubscriptionManagerServiceEnabled()) {
-            SubscriptionInfoInternal subInfo = mSubscriptionManagerService
-                    .getSubscriptionInfoInternal(mPhone.getSubId());
-            if (subInfo == null || !subInfo.isVisible()) {
-                log("cannot setNotification on invisible subid mSubId=" + mSubId);
-                return;
-            }
-        } else {
-            SubscriptionInfo info = mSubscriptionController
-                    .getActiveSubscriptionInfo(mPhone.getSubId(), context.getOpPackageName(),
-                            context.getAttributionTag());
-
-            //if subscription is part of a group and non-primary, suppress all notifications
-            if (info == null || (info.isOpportunistic() && info.getGroupUuid() != null)) {
-                log("cannot setNotification on invisible subid mSubId=" + mSubId);
-                return;
-            }
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerService
+                .getSubscriptionInfoInternal(mPhone.getSubId());
+        if (subInfo == null || !subInfo.isVisible()) {
+            log("cannot setNotification on invisible subid mSubId=" + mSubId);
+            return;
         }
 
         // Needed because sprout RIL sends these when they shouldn't?
@@ -5334,7 +5326,6 @@ public class ServiceStateTracker extends Handler {
                 + hasMessages(EVENT_POWER_OFF_RADIO_IMS_DEREG_TIMEOUT));
         pw.println(" mRadioPowerOffReasons=" + mRadioPowerOffReasons);
         pw.println(" mDeviceShuttingDown=" + mDeviceShuttingDown);
-        pw.println(" mSpnUpdatePending=" + mSpnUpdatePending);
         pw.println(" mCellInfoMinIntervalMs=" + mCellInfoMinIntervalMs);
         pw.println(" mEriManager=" + mEriManager);
 
