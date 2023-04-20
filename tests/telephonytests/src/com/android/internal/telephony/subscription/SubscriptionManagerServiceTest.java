@@ -2313,4 +2313,62 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(2).isEmbedded())
                 .isEqualTo(true);
     }
+
+
+    @Test
+    public void testNonNullSubInfoBuilderFromEmbeddedProfile() {
+        EuiccProfileInfo profileInfo1 = new EuiccProfileInfo.Builder(FAKE_ICCID1)
+                .setIccid(FAKE_ICCID1) //can't build profile with null iccid.
+                .setNickname(null) //nullable
+                .setServiceProviderName(null) //nullable
+                .setProfileName(null) //nullable
+                .setCarrierIdentifier(null) //nullable
+                .setUiccAccessRule(null) //nullable
+                .build();
+
+        EuiccProfileInfo profileInfo2 = new EuiccProfileInfo.Builder(FAKE_ICCID2)
+                .setIccid(FAKE_ICCID2) //impossible to build profile with null iccid.
+                .setNickname(null) //nullable
+                .setCarrierIdentifier(new CarrierIdentifier(FAKE_MCC2, FAKE_MNC2, null, null, null,
+                        null, FAKE_CARRIER_ID2, FAKE_CARRIER_ID2)) //not allow null mcc/mnc.
+                .setUiccAccessRule(null) //nullable
+                .build();
+
+        GetEuiccProfileInfoListResult result = new GetEuiccProfileInfoListResult(
+                EuiccService.RESULT_OK, new EuiccProfileInfo[]{profileInfo1}, false);
+        doReturn(result).when(mEuiccController).blockingGetEuiccProfileInfoList(eq(1));
+        result = new GetEuiccProfileInfoListResult(EuiccService.RESULT_OK,
+                new EuiccProfileInfo[]{profileInfo2}, false);
+        doReturn(result).when(mEuiccController).blockingGetEuiccProfileInfoList(eq(2));
+        doReturn(TelephonyManager.INVALID_PORT_INDEX).when(mUiccSlot)
+                .getPortIndexFromIccId(anyString());
+
+        mSubscriptionManagerServiceUT.updateEmbeddedSubscriptions(List.of(1, 2), null);
+        processAllMessages();
+
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1);
+        assertThat(subInfo.getSubscriptionId()).isEqualTo(1);
+        assertThat(subInfo.getIccId()).isEqualTo(FAKE_ICCID1);
+        assertThat(subInfo.getDisplayName()).isEqualTo("");
+        assertThat(subInfo.getDisplayNameSource()).isEqualTo(
+                SubscriptionManager.NAME_SOURCE_UNKNOWN);
+        assertThat(subInfo.getMcc()).isEqualTo("");
+        assertThat(subInfo.getMnc()).isEqualTo("");
+        assertThat(subInfo.isEmbedded()).isTrue();
+        assertThat(subInfo.isRemovableEmbedded()).isFalse();
+        assertThat(subInfo.getNativeAccessRules()).isEqualTo(new byte[]{});
+
+        subInfo = mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2);
+        assertThat(subInfo.getSubscriptionId()).isEqualTo(2);
+        assertThat(subInfo.getIccId()).isEqualTo(FAKE_ICCID2);
+        assertThat(subInfo.getDisplayName()).isEqualTo("");
+        assertThat(subInfo.getDisplayNameSource()).isEqualTo(
+                SubscriptionManager.NAME_SOURCE_UNKNOWN);
+        assertThat(subInfo.getMcc()).isEqualTo(FAKE_MCC2);
+        assertThat(subInfo.getMnc()).isEqualTo(FAKE_MNC2);
+        assertThat(subInfo.isEmbedded()).isTrue();
+        assertThat(subInfo.isRemovableEmbedded()).isFalse();
+        assertThat(subInfo.getNativeAccessRules()).isEqualTo(new byte[]{});
+    }
 }
