@@ -212,8 +212,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         setIdentifierAccess(false);
         setPhoneNumberAccess(PackageManager.PERMISSION_DENIED);
 
-        mSubscriptionManagerServiceUT.setWorkProfileTelephonyEnabled(true);
-
         logd("SubscriptionManagerServiceTest -Setup!");
     }
 
