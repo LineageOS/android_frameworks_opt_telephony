@@ -1110,9 +1110,11 @@ public class SubscriptionManagerService extends ISub.Stub {
                     builder.setRemovableEmbedded(isRemovable);
 
                     // override DISPLAY_NAME if the priority of existing nameSource is <= carrier
-                    if (getNameSourcePriority(nameSource) <= getNameSourcePriority(
-                            SubscriptionManager.NAME_SOURCE_CARRIER)) {
-                        builder.setDisplayName(embeddedProfile.getNickname());
+                    String nickName = embeddedProfile.getNickname();
+                    if (nickName != null
+                            && getNameSourcePriority(nameSource) <= getNameSourcePriority(
+                                    SubscriptionManager.NAME_SOURCE_CARRIER)) {
+                        builder.setDisplayName(nickName);
                         builder.setDisplayNameSource(SubscriptionManager.NAME_SOURCE_CARRIER);
                     }
                     builder.setProfileClass(embeddedProfile.getProfileClass());

@@ -82,7 +82,8 @@ public class RadioOnHelper implements RadioOnStateListener.Callback {
      * and runs on the main looper.)
      */
     public void triggerRadioOnAndListen(RadioOnStateListener.Callback callback,
-            boolean forEmergencyCall, Phone phoneForEmergencyCall, boolean isTestEmergencyNumber) {
+            boolean forEmergencyCall, Phone phoneForEmergencyCall, boolean isTestEmergencyNumber,
+            int emergencyTimeoutIntervalMillis) {
         setupListeners();
         mCallback = callback;
         mInProgressListeners.clear();
@@ -93,9 +94,11 @@ public class RadioOnHelper implements RadioOnStateListener.Callback {
                 continue;
             }
 
+            int timeoutCallbackInterval = (forEmergencyCall && phone == phoneForEmergencyCall)
+                    ? emergencyTimeoutIntervalMillis : 0;
             mInProgressListeners.add(mListeners.get(i));
             mListeners.get(i).waitForRadioOn(phone, this, forEmergencyCall, forEmergencyCall
-                    && phone == phoneForEmergencyCall);
+                    && phone == phoneForEmergencyCall, timeoutCallbackInterval);
         }
         powerOnRadio(forEmergencyCall, phoneForEmergencyCall, isTestEmergencyNumber);
     }
@@ -152,7 +155,14 @@ public class RadioOnHelper implements RadioOnStateListener.Callback {
     }
 
     @Override
-    public boolean isOkToCall(Phone phone, int serviceState) {
-        return (mCallback == null) ? false : mCallback.isOkToCall(phone, serviceState);
+    public boolean isOkToCall(Phone phone, int serviceState, boolean imsVoiceCapable) {
+        return (mCallback == null)
+                ? false : mCallback.isOkToCall(phone, serviceState, imsVoiceCapable);
+    }
+
+    @Override
+    public boolean onTimeout(Phone phone, int serviceState, boolean imsVoiceCapable) {
+        return (mCallback == null)
+                ? false : mCallback.onTimeout(phone, serviceState, imsVoiceCapable);
     }
 }
