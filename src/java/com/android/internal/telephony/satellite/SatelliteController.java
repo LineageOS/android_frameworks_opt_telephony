@@ -512,7 +512,7 @@ public class SatelliteController extends Handler {
                         updateSatelliteEnabledState(enabled, "EVENT_IS_SATELLITE_ENABLED_DONE");
                     }
                 } else if (error == SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED) {
-                    updateSatelliteSupportedState(false);
+                    updateSatelliteSupportedStateWhenSatelliteServiceConnected(false);
                 }
                 ((ResultReceiver) request.argument).send(error, bundle);
                 break;
@@ -550,7 +550,7 @@ public class SatelliteController extends Handler {
                         boolean supported = (boolean) ar.result;
                         if (DBG) logd("isSatelliteSupported: " + supported);
                         bundle.putBoolean(SatelliteManager.KEY_SATELLITE_SUPPORTED, supported);
-                        updateSatelliteSupportedState(supported);
+                        updateSatelliteSupportedStateWhenSatelliteServiceConnected(supported);
                     }
                 }
                 ((ResultReceiver) request.argument).send(error, bundle);
@@ -1477,12 +1477,28 @@ public class SatelliteController extends Handler {
     }
 
     /**
+     * This API can be used by only CTS to update satellite pointing UI app package and class names.
+     *
+     * @param packageName The package name of the satellite pointing UI app.
+     * @param className The class name of the satellite pointing UI app.
+     * @return {@code true} if the satellite pointing UI app package and class is set successfully,
+     * {@code false} otherwise.
+     */
+    public boolean setSatellitePointingUiClassName(
+            @Nullable String packageName, @Nullable String className) {
+        return mPointingAppController.setSatellitePointingUiClassName(packageName, className);
+    }
+
+    /**
      * This function is used by {@link SatelliteModemInterface} to notify
      * {@link SatelliteController} that the satellite vendor service was just connected.
      * <p>
      * {@link SatelliteController} will send requests to satellite modem to check whether it support
-     * satellite, whether it is powered on, and whether it is provisioned.
-     * {@link SatelliteController} will use these cached values to serve requests from its clients.
+     * satellite and whether it is provisioned. {@link SatelliteController} will use these cached
+     * values to serve requests from its clients.
+     * <p>
+     * Because satellite vendor service might have just come back from a crash, we need to disable
+     * the satellite modem so that resources will be cleaned up and internal states will be reset.
      */
     void onSatelliteServiceConnected() {
         if (mSatelliteModemInterface.isSatelliteServiceSupported()) {
@@ -1684,7 +1700,7 @@ public class SatelliteController extends Handler {
         }
     }
 
-    private void updateSatelliteSupportedState(boolean supported) {
+    private void updateSatelliteSupportedStateWhenSatelliteServiceConnected(boolean supported) {
         synchronized (mIsSatelliteSupportedLock) {
             mIsSatelliteSupported = supported;
         }
@@ -1695,18 +1711,19 @@ public class SatelliteController extends Handler {
             registerForPendingDatagramCount();
             registerForSatelliteModemStateChanged();
 
-            requestIsSatelliteEnabled(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
-                    new ResultReceiver(this) {
-                        @Override
-                        protected void onReceiveResult(int resultCode, Bundle resultData) {
-                            logd("requestIsSatelliteEnabled: resultCode=" + resultCode);
-                        }
-                    });
             requestIsSatelliteProvisioned(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
                     new ResultReceiver(this) {
                         @Override
                         protected void onReceiveResult(int resultCode, Bundle resultData) {
                             logd("requestIsSatelliteProvisioned: resultCode=" + resultCode);
+                            requestSatelliteEnabled(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+                                    false, false,
+                                    new IIntegerConsumer.Stub() {
+                                        @Override
+                                        public void accept(int result) {
+                                            logd("requestSatelliteEnabled: result=" + result);
+                                        }
+                                    });
                         }
                     });
             requestSatelliteCapabilities(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
@@ -1861,6 +1878,7 @@ public class SatelliteController extends Handler {
             updateSatelliteEnabledState(
                     false, "handleEventSatelliteModemStateChanged");
         }
+        mDatagramController.onSatelliteModemStateChanged(state);
     }
 
     private static void logd(@NonNull String log) {
