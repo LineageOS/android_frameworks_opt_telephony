@@ -26,6 +26,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
 import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
 
@@ -277,7 +278,8 @@ public class DatagramDispatcher extends Handler {
                         // Abort sending all the pending datagrams
                         mControllerMetricsStats.reportOutgoingDatagramFailCount(
                                 argument.datagramType);
-                        abortSendingPendingDatagrams(argument.subId, error);
+                        abortSendingPendingDatagrams(argument.subId,
+                                SatelliteManager.SATELLITE_REQUEST_ABORTED);
                     }
                 }
                 break;
@@ -365,6 +367,8 @@ public class DatagramDispatcher extends Handler {
 
     /**
      * Send error code to all the pending datagrams
+     *
+     * @param pendingDatagramsMap The pending datagrams map to be cleaned up.
      * @param errorCode error code to be returned.
      */
     @GuardedBy("mLock")
@@ -374,6 +378,7 @@ public class DatagramDispatcher extends Handler {
         if (pendingDatagramsMap.size() == 0) {
             return;
         }
+        loge("sendErrorCodeAndCleanupPendingDatagrams: cleaning up resources");
 
         // Send error code to all the pending datagrams
         for (Entry<Long, SendSatelliteDatagramArgument> entry :
@@ -391,17 +396,15 @@ public class DatagramDispatcher extends Handler {
     /**
      * Abort sending all the pending datagrams.
      *
-     * @param subId the subId of the subscription used to send datagram
-     * @param error error that resulted in abort.
+     * @param subId The subId of the subscription used to send datagram
+     * @param errorCode The error code that resulted in abort.
      */
     @GuardedBy("mLock")
     private void abortSendingPendingDatagrams(int subId,
-            @SatelliteManager.SatelliteError int error) {
+            @SatelliteManager.SatelliteError int errorCode) {
         logd("abortSendingPendingDatagrams()");
-        sendErrorCodeAndCleanupPendingDatagrams(mPendingEmergencyDatagramsMap,
-                SatelliteManager.SATELLITE_REQUEST_ABORTED);
-        sendErrorCodeAndCleanupPendingDatagrams(mPendingNonEmergencyDatagramsMap,
-                SatelliteManager.SATELLITE_REQUEST_ABORTED);
+        sendErrorCodeAndCleanupPendingDatagrams(mPendingEmergencyDatagramsMap, errorCode);
+        sendErrorCodeAndCleanupPendingDatagrams(mPendingNonEmergencyDatagramsMap, errorCode);
     }
 
     /**
@@ -445,6 +448,36 @@ public class DatagramDispatcher extends Handler {
     @VisibleForTesting
     public void destroy() {
         sInstance = null;
+    }
+
+    /**
+     * This function is used by {@link DatagramController} to notify {@link DatagramDispatcher}
+     * that satellite modem state has changed.
+     *
+     * @param state Current satellite modem state.
+     */
+    public void onSatelliteModemStateChanged(@SatelliteManager.SatelliteModemState int state) {
+        if (state == SatelliteManager.SATELLITE_MODEM_STATE_OFF
+                || state == SatelliteManager.SATELLITE_MODEM_STATE_UNAVAILABLE) {
+            logd("onSatelliteModemStateChanged: cleaning up resources");
+            cleanUpResources();
+        }
+    }
+
+    private void cleanUpResources() {
+        synchronized (mLock) {
+            mSendingDatagramInProgress = false;
+            if (getPendingDatagramCount() > 0) {
+                mDatagramController.updateSendStatus(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+                        SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_FAILED,
+                        getPendingDatagramCount(), SatelliteManager.SATELLITE_REQUEST_ABORTED);
+            }
+            mDatagramController.updateSendStatus(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+                    SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE,
+                    0, SatelliteManager.SATELLITE_ERROR_NONE);
+            abortSendingPendingDatagrams(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+                    SatelliteManager.SATELLITE_REQUEST_ABORTED);
+        }
     }
 
     private static void logd(@NonNull String log) {
