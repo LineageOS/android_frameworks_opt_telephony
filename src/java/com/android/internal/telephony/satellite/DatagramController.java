@@ -20,6 +20,7 @@ import android.annotation.NonNull;
 import android.content.Context;
 import android.os.Looper;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
 import android.telephony.satellite.ISatelliteDatagramCallback;
 import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
@@ -221,6 +222,34 @@ public class DatagramController {
      */
     public int getReceivePendingCount() {
         return mReceivePendingCount;
+    }
+
+    /**
+     * This function is used by {@link SatelliteController} to notify {@link DatagramController}
+     * that satellite modem state has changed.
+     *
+     * @param state Current satellite modem state.
+     */
+    public void onSatelliteModemStateChanged(@SatelliteManager.SatelliteModemState int state) {
+        if (state == SatelliteManager.SATELLITE_MODEM_STATE_OFF
+                || state == SatelliteManager.SATELLITE_MODEM_STATE_UNAVAILABLE) {
+            logd("onSatelliteModemStateChanged: cleaning up resources");
+            cleanUpResources();
+        }
+        mDatagramDispatcher.onSatelliteModemStateChanged(state);
+    }
+
+    private void cleanUpResources() {
+        if (mReceiveDatagramTransferState
+                == SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING) {
+            updateReceiveStatus(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+                    SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_FAILED,
+                    mReceivePendingCount,
+                    SatelliteManager.SATELLITE_REQUEST_ABORTED);
+        }
+        updateReceiveStatus(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+                SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE, 0,
+                SatelliteManager.SATELLITE_ERROR_NONE);
     }
 
     private void notifyDatagramTransferStateChangedToSessionController() {
