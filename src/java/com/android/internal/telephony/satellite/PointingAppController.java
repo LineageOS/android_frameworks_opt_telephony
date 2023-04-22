@@ -18,20 +18,25 @@ package com.android.internal.telephony.satellite;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.content.ActivityNotFoundException;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.RemoteException;
+import android.os.SystemProperties;
 import android.telephony.Rlog;
 import android.telephony.satellite.ISatelliteTransmissionUpdateCallback;
 import android.telephony.satellite.PointingInfo;
 import android.telephony.satellite.SatelliteManager;
 import android.text.TextUtils;
 
+import com.android.internal.R;
 import com.android.internal.telephony.Phone;
 
 import java.util.ArrayList;
@@ -44,11 +49,15 @@ import java.util.function.Consumer;
  */
 public class PointingAppController {
     private static final String TAG = "PointingAppController";
+    private static final String ALLOW_MOCK_MODEM_PROPERTY = "persist.radio.allow_mock_modem";
+    private static final boolean DEBUG = !"user".equals(Build.TYPE);
 
     @NonNull
     private static PointingAppController sInstance;
     @NonNull private final Context mContext;
     private boolean mStartedSatelliteTransmissionUpdates;
+    @NonNull private String mPointingUiPackageName = "";
+    @NonNull private String mPointingUiClassName = "";
 
     /**
      * Map key: subId, value: SatelliteTransmissionUpdateHandler to notify registrants.
@@ -334,21 +343,32 @@ public class PointingAppController {
      * @param needFullScreenPointingUI if pointing UI has to be launchd with Full screen
      */
     public void startPointingUI(boolean needFullScreenPointingUI) {
-        String packageName = TextUtils.emptyIfNull(mContext.getResources()
-                .getString(com.android.internal.R.string.config_pointing_ui_package));
+        String packageName = getPointingUiPackageName();
         if (TextUtils.isEmpty(packageName)) {
             logd("startPointingUI: config_pointing_ui_package is not set. Ignore the request");
             return;
         }
 
-        Intent launchIntent = mContext.getPackageManager().getLaunchIntentForPackage(packageName);
+        Intent launchIntent;
+        String className = getPointingUiClassName();
+        if (!TextUtils.isEmpty(className)) {
+            launchIntent = new Intent()
+                    .setComponent(new ComponentName(packageName, className))
+                    .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        } else {
+            launchIntent = mContext.getPackageManager().getLaunchIntentForPackage(packageName);
+        }
         if (launchIntent == null) {
             loge("startPointingUI: launchIntent is null");
             return;
         }
-
         launchIntent.putExtra("needFullScreen", needFullScreenPointingUI);
-        mContext.startActivity(launchIntent);
+
+        try {
+            mContext.startActivity(launchIntent);
+        } catch (ActivityNotFoundException ex) {
+            loge("startPointingUI: Pointing UI app activity is not found, ex=" + ex);
+        }
     }
 
     public void updateSendDatagramTransferState(int subId,
@@ -385,6 +405,61 @@ public class PointingAppController {
         } else {
             loge(" SatelliteTransmissionUpdateHandler not found for subId: " + subId);
         }
+    }
+
+    /**
+     * This API can be used by only CTS to update satellite pointing UI app package and class names.
+     *
+     * @param packageName The package name of the satellite pointing UI app.
+     * @param className The class name of the satellite pointing UI app.
+     * @return {@code true} if the satellite pointing UI app package and class is set successfully,
+     * {@code false} otherwise.
+     */
+    boolean setSatellitePointingUiClassName(
+            @Nullable String packageName, @Nullable String className) {
+        if (!isMockModemAllowed()) {
+            loge("setSatellitePointingUiClassName: modifying satellite pointing UI package and "
+                    + "class name is not allowed");
+            return false;
+        }
+
+        logd("setSatellitePointingUiClassName: config_pointing_ui_package is updated, new "
+                + "packageName=" + packageName
+                + ", config_pointing_ui_class new className=" + className);
+
+        if (packageName == null || packageName.equals("null")) {
+            mPointingUiPackageName = "";
+            mPointingUiClassName = "";
+        } else {
+            mPointingUiPackageName = packageName;
+            if (className == null || className.equals("null")) {
+                mPointingUiClassName = "";
+            } else {
+                mPointingUiClassName = className;
+            }
+        }
+
+        return true;
+    }
+
+    @NonNull private String getPointingUiPackageName() {
+        if (!TextUtils.isEmpty(mPointingUiPackageName)) {
+            return mPointingUiPackageName;
+        }
+        return TextUtils.emptyIfNull(mContext.getResources().getString(
+                R.string.config_pointing_ui_package));
+    }
+
+    @NonNull private String getPointingUiClassName() {
+        if (!TextUtils.isEmpty(mPointingUiClassName)) {
+            return mPointingUiClassName;
+        }
+        return TextUtils.emptyIfNull(mContext.getResources().getString(
+                R.string.config_pointing_ui_class));
+    }
+
+    private boolean isMockModemAllowed() {
+        return (DEBUG || SystemProperties.getBoolean(ALLOW_MOCK_MODEM_PROPERTY, false));
     }
 
     private static void logd(@NonNull String log) {
