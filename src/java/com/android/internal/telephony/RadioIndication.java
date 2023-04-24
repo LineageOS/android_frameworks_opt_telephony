@@ -17,7 +17,6 @@
 package com.android.internal.telephony;
 
 import static android.telephony.TelephonyManager.HAL_SERVICE_RADIO;
-import static android.telephony.TelephonyManager.UNKNOWN_CARRIER_ID;
 
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CALL_RING;
 import static com.android.internal.telephony.RILConstants.RIL_UNSOL_CARRIER_INFO_IMSI_ENCRYPTION;
@@ -1133,7 +1132,7 @@ public class RadioIndication extends IRadioIndication.Stub {
                 || (domain & ~NetworkRegistrationInfo.DOMAIN_CS_PS) != 0
                 || causeCode < 0 || additionalCauseCode < 0
                 || (causeCode == Integer.MAX_VALUE && additionalCauseCode == Integer.MAX_VALUE)) {
-            reportAnomaly(
+            AnomalyReporter.reportAnomaly(
                     UUID.fromString("f16e5703-6105-4341-9eb3-e68189156eb4"),
                             "Invalid registrationFailed indication");
 
@@ -1159,7 +1158,7 @@ public class RadioIndication extends IRadioIndication.Stub {
         mRil.processIndication(HAL_SERVICE_RADIO, indicationType);
 
         if (cellIdentity == null || barringInfos == null) {
-            reportAnomaly(
+            AnomalyReporter.reportAnomaly(
                     UUID.fromString("645b16bb-c930-4c1c-9c5d-568696542e05"),
                             "Invalid barringInfoChanged indication");
 
@@ -1257,8 +1256,9 @@ public class RadioIndication extends IRadioIndication.Stub {
                 }
             }
         } catch (IllegalArgumentException iae) {
-            reportAnomaly(UUID.fromString("918f0970-9aa9-4bcd-a28e-e49a83fe77d5"),
-                    "RIL reported invalid PCC (HIDL)");
+            AnomalyReporter.reportAnomaly(
+                    UUID.fromString("918f0970-9aa9-4bcd-a28e-e49a83fe77d5"),
+                            "RIL reported invalid PCC (HIDL)");
             mRil.riljLoge("Invalid PhysicalChannelConfig " + iae);
             return;
         }
@@ -1341,11 +1341,5 @@ public class RadioIndication extends IRadioIndication.Stub {
 
         mRil.mApnUnthrottledRegistrants.notifyRegistrants(
                 new AsyncResult(null, apn, null));
-    }
-
-    private void reportAnomaly(UUID uuid, String msg) {
-        Phone phone = mRil.mPhoneId == null ? null : PhoneFactory.getPhone(mRil.mPhoneId);
-        int carrierId = phone == null ? UNKNOWN_CARRIER_ID : phone.getCarrierId();
-        AnomalyReporter.reportAnomaly(uuid, msg, carrierId);
     }
 }
