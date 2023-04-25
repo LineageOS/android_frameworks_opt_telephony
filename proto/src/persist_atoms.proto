@@ -274,6 +274,7 @@ message VoiceCallSession {
     optional bool is_multiparty = 31;
     optional int32 call_duration = 32;
     optional int32 last_known_rat = 33;
+
     // Internal use only
     optional int64 setup_begin_millis = 10001;
 }
@@ -375,6 +376,7 @@ message CellularServiceState {
     optional int64 total_time_millis = 9; // Duration needs to be rounded when pulled
     optional bool is_emergency_only = 10;
     optional bool is_internet_pdn_up = 11;
+    optional int32 fold_state = 12;
 
     // Internal use only
     optional int64 last_used_millis = 10001;

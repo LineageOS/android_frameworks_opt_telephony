@@ -147,20 +147,22 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
             DBG ? 2L * MILLIS_PER_SECOND : 5L * MILLIS_PER_MINUTE;
 
     private final PersistAtomsStorage mStorage;
+    private final DeviceStateHelper mDeviceStateHelper;
     private final StatsManager mStatsManager;
     private final AirplaneModeStats mAirplaneModeStats;
     private final Set<DataCallSessionStats> mOngoingDataCallStats = ConcurrentHashMap.newKeySet();
     private static final Random sRandom = new Random();
 
     public MetricsCollector(Context context) {
-        this(context, new PersistAtomsStorage(context));
+        this(context, new PersistAtomsStorage(context), new DeviceStateHelper(context));
     }
 
     /** Allows dependency injection. Used during unit tests. */
     @VisibleForTesting
-    public MetricsCollector(Context context,
-            PersistAtomsStorage storage) {
+    public MetricsCollector(
+            Context context, PersistAtomsStorage storage, DeviceStateHelper deviceStateHelper) {
         mStorage = storage;
+        mDeviceStateHelper = deviceStateHelper;
         mStatsManager = (StatsManager) context.getSystemService(Context.STATS_MANAGER);
         if (mStatsManager != null) {
             // Most (but not all) of these are subject to cooldown specified by MIN_COOLDOWN_MILLIS.
@@ -299,6 +301,11 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     /** Returns the {@link PersistAtomsStorage} backing the puller. */
     public PersistAtomsStorage getAtomsStorage() {
         return mStorage;
+    }
+
+    /** Returns the {@link DeviceStateHelper}. */
+    public DeviceStateHelper getDeviceStateHelper() {
+        return mDeviceStateHelper;
     }
 
     /** Updates duration segments and calls {@link PersistAtomsStorage#flushAtoms()}. */
@@ -924,7 +931,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 state.carrierId,
                 roundAndConvertMillisToSeconds(state.totalTimeMillis),
                 state.isEmergencyOnly,
-                state.isInternetPdnUp);
+                state.isInternetPdnUp,
+                state.foldState);
     }
 
     private static StatsEvent buildStatsEvent(VoiceCallRatUsage usage) {
@@ -1325,7 +1333,7 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     }
 
     /** Returns all phones in {@link PhoneFactory}, or an empty array if phones not made yet. */
-    private static Phone[] getPhonesIfAny() {
+    static Phone[] getPhonesIfAny() {
         try {
             return PhoneFactory.getPhones();
         } catch (IllegalStateException e) {
