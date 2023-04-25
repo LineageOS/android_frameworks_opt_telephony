@@ -1742,6 +1742,7 @@ public class SatelliteController extends Handler {
         }
         if (mSatelliteSessionController != null) {
             mSatelliteSessionController.onSatelliteEnabledStateChanged(enabled);
+            mSatelliteSessionController.setDemoMode(mIsDemoModeEnabled);
         } else {
             loge(caller + ": mSatelliteSessionController is not initialized yet");
         }
