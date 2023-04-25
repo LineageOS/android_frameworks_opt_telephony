@@ -147,6 +147,7 @@ public class SatelliteController extends Handler {
     private final Object mIsSatelliteSupportedLock = new Object();
     private boolean mIsDemoModeEnabled = false;
     private Boolean mIsSatelliteEnabled = null;
+    private boolean mIsRadioOn = false;
     private final Object mIsSatelliteEnabledLock = new Object();
     private Boolean mIsSatelliteProvisioned = null;
     private final Object mIsSatelliteProvisionedLock = new Object();
@@ -216,6 +217,7 @@ public class SatelliteController extends Handler {
                     }
                 });
         mCi.registerForRadioStateChanged(this, EVENT_RADIO_STATE_CHANGED, null);
+        mIsRadioOn = phone.isRadioOn();
         registerForSatelliteProvisionStateChanged();
         registerForPendingDatagramCount();
         registerForSatelliteModemStateChanged();
@@ -694,6 +696,7 @@ public class SatelliteController extends Handler {
             case EVENT_RADIO_STATE_CHANGED: {
                 if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF
                         || mCi.getRadioState() == TelephonyManager.RADIO_POWER_UNAVAILABLE) {
+                    mIsRadioOn = false;
                     logd("Radio State Changed to " + mCi.getRadioState());
                     IIntegerConsumer errorCallback = new IIntegerConsumer.Stub() {
                         @Override
@@ -709,6 +712,7 @@ public class SatelliteController extends Handler {
                     request = new SatelliteControllerHandlerRequest(message, phone);
                     handleSatelliteEnabled(request);
                 } else {
+                    mIsRadioOn = true;
                     if (!mSatelliteModemInterface.isSatelliteServiceSupported()) {
                         synchronized (mIsSatelliteSupportedLock) {
                             if (mIsSatelliteSupported == null) {
@@ -848,6 +852,33 @@ public class SatelliteController extends Handler {
         if (!satelliteProvisioned) {
             result.accept(SatelliteManager.SATELLITE_SERVICE_NOT_PROVISIONED);
             return;
+        }
+
+        if (enableSatellite) {
+            if (!mIsRadioOn) {
+                loge("Radio is not on, can not enable satellite");
+                result.accept(SatelliteManager.SATELLITE_INVALID_MODEM_STATE);
+                return;
+            }
+        } else {
+            /* if disable satellite, always assume demo is also disabled */
+            enableDemoMode = false;
+        }
+
+        if (mIsSatelliteEnabled != null) {
+            if (mIsSatelliteEnabled == enableSatellite) {
+                if (enableDemoMode != mIsDemoModeEnabled) {
+                    loge("Received invalid demo mode while satellite session is enabled"
+                            + " enableDemoMode = " + enableDemoMode);
+                    result.accept(SatelliteManager.SATELLITE_INVALID_ARGUMENTS);
+                    return;
+                } else {
+                    logd("Enable request matches with current state"
+                            + " enableSatellite = " + enableSatellite);
+                    result.accept(SatelliteManager.SATELLITE_ERROR_NONE);
+                    return;
+                }
+            }
         }
 
         sendRequestAsync(CMD_SET_SATELLITE_ENABLED,
