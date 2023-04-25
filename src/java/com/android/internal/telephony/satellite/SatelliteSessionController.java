@@ -86,6 +86,11 @@ public class SatelliteSessionController extends StateMachine {
      * The default value of {@link #SATELLITE_STAY_AT_LISTENING_FROM_RECEIVING_MILLIS}
      */
     public static final long DEFAULT_SATELLITE_STAY_AT_LISTENING_FROM_RECEIVING_MILLIS = 30000;
+    /**
+     * The default value of {@link #SATELLITE_STAY_AT_LISTENING_FROM_SENDING_MILLIS},
+     * and {@link #SATELLITE_STAY_AT_LISTENING_FROM_RECEIVING_MILLIS} for demo mode
+     */
+    public static final long DEMO_MODE_SATELLITE_STAY_AT_LISTENING_MILLIS = 3000;
 
     private static final int EVENT_DATAGRAM_TRANSFER_STATE_CHANGED = 1;
     private static final int EVENT_LISTENING_TIMER_TIMEOUT = 2;
@@ -119,6 +124,7 @@ public class SatelliteSessionController extends StateMachine {
     private final ConcurrentHashMap<IBinder, ISatelliteStateCallback> mListeners;
     @SatelliteManager.SatelliteModemState private int mCurrentState;
     final boolean mIsSatelliteSupported;
+    private boolean mIsDemoMode = false;
 
     /**
      * @return The singleton instance of SatelliteSessionController.
@@ -163,7 +169,7 @@ public class SatelliteSessionController extends StateMachine {
      * @param isSatelliteSupported Whether satellite is supported on the device.
      * @param satelliteModemInterface The singleton of SatelliteModemInterface.
      * @param satelliteStayAtListeningFromSendingMillis The duration to stay at listening mode when
-     *                                                  transitioning from sending mode.
+     *                                                    transitioning from sending mode.
      * @param satelliteStayAtListeningFromReceivingMillis The duration to stay at listening mode
      *                                                    when transitioning from receiving mode.
      */
@@ -323,6 +329,21 @@ public class SatelliteSessionController extends StateMachine {
             bindService();
         }
         return true;
+    }
+    /**
+     * Adjusts listening timeout duration when demo mode is on
+     *
+     * @param isDemoMode {@code true} : The listening timeout durations will be set to
+     *                   {@link #DEMO_MODE_SATELLITE_STAY_AT_LISTENING_MILLIS}
+     *                   {@code false} : The listening timeout durations will be restored to
+     *                   production mode
+     */
+    void setDemoMode(boolean isDemoMode) {
+        mIsDemoMode = isDemoMode;
+    }
+
+    private boolean isDemoMode() {
+        return mIsDemoMode;
     }
 
     private static class DatagramTransferState {
@@ -699,14 +720,22 @@ public class SatelliteSessionController extends StateMachine {
     }
 
     private static long getSatelliteStayAtListeningFromSendingMillis() {
-        return DeviceConfig.getLong(DeviceConfig.NAMESPACE_TELEPHONY,
-                SATELLITE_STAY_AT_LISTENING_FROM_SENDING_MILLIS,
-                DEFAULT_SATELLITE_STAY_AT_LISTENING_FROM_SENDING_MILLIS);
+        if (sInstance != null && sInstance.isDemoMode()) {
+            return DEMO_MODE_SATELLITE_STAY_AT_LISTENING_MILLIS;
+        } else {
+            return DeviceConfig.getLong(DeviceConfig.NAMESPACE_TELEPHONY,
+                    SATELLITE_STAY_AT_LISTENING_FROM_SENDING_MILLIS,
+                    DEFAULT_SATELLITE_STAY_AT_LISTENING_FROM_SENDING_MILLIS);
+        }
     }
 
     private static long getSatelliteStayAtListeningFromReceivingMillis() {
-        return DeviceConfig.getLong(DeviceConfig.NAMESPACE_TELEPHONY,
-                SATELLITE_STAY_AT_LISTENING_FROM_RECEIVING_MILLIS,
-                DEFAULT_SATELLITE_STAY_AT_LISTENING_FROM_RECEIVING_MILLIS);
+        if (sInstance != null && sInstance.isDemoMode()) {
+            return DEMO_MODE_SATELLITE_STAY_AT_LISTENING_MILLIS;
+        } else {
+            return DeviceConfig.getLong(DeviceConfig.NAMESPACE_TELEPHONY,
+                    SATELLITE_STAY_AT_LISTENING_FROM_RECEIVING_MILLIS,
+                    DEFAULT_SATELLITE_STAY_AT_LISTENING_FROM_RECEIVING_MILLIS);
+        }
     }
 }
