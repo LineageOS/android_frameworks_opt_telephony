@@ -561,4 +561,22 @@ public class UiccSlotTest extends TelephonyTest {
         assertEquals(IccSlotStatus.MultipleEnabledProfilesMode.MEP_B,
                 mUiccSlot.getSupportedMepMode());
     }
+
+    @Test
+    @SmallTest
+    public void testSimStateUnknown() {
+        int phoneId = 0;
+        int slotIndex = 0;
+        // Initially state is unknown
+        assertTrue(mUiccSlot.isStateUnknown());
+        mIccCardStatus.mCardState = IccCardStatus.CardState.CARDSTATE_ABSENT;
+        mUiccSlot.update(mSimulatedCommands, mIccCardStatus, phoneId, slotIndex);
+        assertNull(mUiccSlot.getUiccCard());
+        // As CardState is absent, state should not be unknown
+        assertFalse(mUiccSlot.isStateUnknown());
+        // radio state unavailable
+        mUiccSlot.onRadioStateUnavailable(phoneId);
+        // When radio is not available, state is unknown
+        assertTrue(mUiccSlot.isStateUnknown());
+    }
 }
