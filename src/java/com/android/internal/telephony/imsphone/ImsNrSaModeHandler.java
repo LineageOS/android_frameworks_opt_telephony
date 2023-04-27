@@ -17,12 +17,12 @@
 package com.android.internal.telephony.imsphone;
 
 import static android.telephony.CarrierConfigManager.CARRIER_NR_AVAILABILITY_SA;
-import static android.telephony.CarrierConfigManager.Ims.KEY_SA_DISABLE_POLICY_INT;
+import static android.telephony.CarrierConfigManager.Ims.KEY_NR_SA_DISABLE_POLICY_INT;
+import static android.telephony.CarrierConfigManager.Ims.NR_SA_DISABLE_POLICY_NONE;
+import static android.telephony.CarrierConfigManager.Ims.NR_SA_DISABLE_POLICY_VOWIFI_REGISTERED;
+import static android.telephony.CarrierConfigManager.Ims.NR_SA_DISABLE_POLICY_WFC_ESTABLISHED;
+import static android.telephony.CarrierConfigManager.Ims.NR_SA_DISABLE_POLICY_WFC_ESTABLISHED_WHEN_VONR_DISABLED;
 import static android.telephony.CarrierConfigManager.Ims.NrSaDisablePolicy;
-import static android.telephony.CarrierConfigManager.Ims.SA_DISABLE_POLICY_NONE;
-import static android.telephony.CarrierConfigManager.Ims.SA_DISABLE_POLICY_VOWIFI_REGISTERED;
-import static android.telephony.CarrierConfigManager.Ims.SA_DISABLE_POLICY_WFC_ESTABLISHED;
-import static android.telephony.CarrierConfigManager.Ims.SA_DISABLE_POLICY_WFC_ESTABLISHED_WHEN_VONR_DISABLED;
 import static android.telephony.CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.ImsRegistrationTech;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
@@ -100,7 +100,7 @@ public class ImsNrSaModeHandler extends Handler{
      */
     public void onImsRegistered(
             @ImsRegistrationTech int imsRadioTech, @NonNull Set<String> featureTags) {
-        if (mNrSaDisablePolicy == SA_DISABLE_POLICY_NONE) {
+        if (mNrSaDisablePolicy == NR_SA_DISABLE_POLICY_NONE) {
             return;
         }
 
@@ -118,12 +118,13 @@ public class ImsNrSaModeHandler extends Handler{
         }
 
         if (isVowifiRegChanged) {
-            if (mNrSaDisablePolicy == SA_DISABLE_POLICY_VOWIFI_REGISTERED) {
+            if (mNrSaDisablePolicy == NR_SA_DISABLE_POLICY_VOWIFI_REGISTERED) {
                 setNrSaMode(!isVowifiRegistered());
-            } else if ((mNrSaDisablePolicy == SA_DISABLE_POLICY_WFC_ESTABLISHED
-                    || mNrSaDisablePolicy == SA_DISABLE_POLICY_WFC_ESTABLISHED_WHEN_VONR_DISABLED)
+            } else if ((mNrSaDisablePolicy == NR_SA_DISABLE_POLICY_WFC_ESTABLISHED
+                    || mNrSaDisablePolicy
+                    == NR_SA_DISABLE_POLICY_WFC_ESTABLISHED_WHEN_VONR_DISABLED)
                     && isImsCallOngoing()) {
-                if (mNrSaDisablePolicy == SA_DISABLE_POLICY_WFC_ESTABLISHED_WHEN_VONR_DISABLED) {
+                if (mNrSaDisablePolicy == NR_SA_DISABLE_POLICY_WFC_ESTABLISHED_WHEN_VONR_DISABLED) {
                     requestIsVonrEnabled(!isVowifiRegistered());
                     return;
                 }
@@ -140,7 +141,7 @@ public class ImsNrSaModeHandler extends Handler{
      */
     public void onImsUnregistered(
             @ImsRegistrationTech int imsRadioTech) {
-        if (mNrSaDisablePolicy == SA_DISABLE_POLICY_NONE
+        if (mNrSaDisablePolicy == NR_SA_DISABLE_POLICY_NONE
                 || imsRadioTech != REGISTRATION_TECH_IWLAN || !isVowifiRegistered()) {
             return;
         }
@@ -149,12 +150,12 @@ public class ImsNrSaModeHandler extends Handler{
 
         setVowifiRegStatus(false);
 
-        if (mNrSaDisablePolicy == SA_DISABLE_POLICY_VOWIFI_REGISTERED) {
+        if (mNrSaDisablePolicy == NR_SA_DISABLE_POLICY_VOWIFI_REGISTERED) {
             setNrSaMode(true);
-        } else if ((mNrSaDisablePolicy == SA_DISABLE_POLICY_WFC_ESTABLISHED
-                || mNrSaDisablePolicy == SA_DISABLE_POLICY_WFC_ESTABLISHED_WHEN_VONR_DISABLED)
+        } else if ((mNrSaDisablePolicy == NR_SA_DISABLE_POLICY_WFC_ESTABLISHED
+                || mNrSaDisablePolicy == NR_SA_DISABLE_POLICY_WFC_ESTABLISHED_WHEN_VONR_DISABLED)
                 && isImsCallOngoing()) {
-            if (mNrSaDisablePolicy == SA_DISABLE_POLICY_WFC_ESTABLISHED_WHEN_VONR_DISABLED) {
+            if (mNrSaDisablePolicy == NR_SA_DISABLE_POLICY_WFC_ESTABLISHED_WHEN_VONR_DISABLED) {
                 requestIsVonrEnabled(true);
                 return;
             }
@@ -182,7 +183,7 @@ public class ImsNrSaModeHandler extends Handler{
         }
 
         if (isVowifiRegistered() && isImsCallStatusChanged) {
-            if (mNrSaDisablePolicy == SA_DISABLE_POLICY_WFC_ESTABLISHED_WHEN_VONR_DISABLED) {
+            if (mNrSaDisablePolicy == NR_SA_DISABLE_POLICY_WFC_ESTABLISHED_WHEN_VONR_DISABLED) {
                 requestIsVonrEnabled(!isImsCallOngoing());
                 return;
             }
@@ -260,8 +261,8 @@ public class ImsNrSaModeHandler extends Handler{
     private void setNrSaDisablePolicy(int subId) {
         if (mPhone.getSubId() == subId && mCarrierConfigManager != null) {
             PersistableBundle bundle = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId(),
-                    KEY_SA_DISABLE_POLICY_INT, KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY);
-            mNrSaDisablePolicy = bundle.getInt(KEY_SA_DISABLE_POLICY_INT);
+                    KEY_NR_SA_DISABLE_POLICY_INT, KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY);
+            mNrSaDisablePolicy = bundle.getInt(KEY_NR_SA_DISABLE_POLICY_INT);
             mIsNrSaSupported = Arrays.stream(
                     bundle.getIntArray(KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY)).anyMatch(
                         value -> value == CARRIER_NR_AVAILABILITY_SA);
@@ -269,8 +270,8 @@ public class ImsNrSaModeHandler extends Handler{
             Log.d(TAG, "setNrSaDisablePolicy : NrSaDisablePolicy = "
                     + mNrSaDisablePolicy + ", IsNrSaSupported = "  + mIsNrSaSupported);
 
-            if (mNrSaDisablePolicy == SA_DISABLE_POLICY_WFC_ESTABLISHED_WHEN_VONR_DISABLED
-                    || mNrSaDisablePolicy == SA_DISABLE_POLICY_WFC_ESTABLISHED) {
+            if (mNrSaDisablePolicy == NR_SA_DISABLE_POLICY_WFC_ESTABLISHED_WHEN_VONR_DISABLED
+                    || mNrSaDisablePolicy == NR_SA_DISABLE_POLICY_WFC_ESTABLISHED) {
                 registerForPreciseCallStateChanges();
             } else {
                 unregisterForPreciseCallStateChanges();
