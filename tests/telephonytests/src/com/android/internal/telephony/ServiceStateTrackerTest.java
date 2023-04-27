@@ -2306,6 +2306,42 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     }
 
     @Test
+    public void testNotifyServiceStateChangedOnPhysicalConfigUpdates() {
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL,
+                true);
+
+        // LTE Cell with bandwidth = 10000
+        CellIdentityLte cellIdentity11 =
+                new CellIdentityLte(1, 1, 1, 1, new int[] {1, 2}, 10000, "1", "1", "test",
+                        "tst", Collections.emptyList(), null);
+
+        sendRegStateUpdateForLteCellId(cellIdentity11);
+
+        // Notify Service State changed for BandWidth Change
+        sendPhyChanConfigChange(new int[] {10000, 40000}, TelephonyManager.NETWORK_TYPE_LTE, 1);
+        verify(mPhone, times(1)).notifyServiceStateChanged(any(ServiceState.class));
+
+        // Notify Service State changed for NR Connection Status: LTE -> NR
+        // with context id update
+        when(mPhone.getDataNetworkController().isInternetNetwork(eq(3))).thenReturn(true);
+        sendPhyChanConfigChange(new int[] {10000, 40000}, TelephonyManager.NETWORK_TYPE_NR, 1,
+                new int[][]{{0, 1}, {2, 3}});
+        verify(mPhone, times(2)).notifyServiceStateChanged(any(ServiceState.class));
+
+        // Service State changed is not notified since no change
+        when(mPhone.getDataNetworkController().isInternetNetwork(eq(3))).thenReturn(true);
+        sendPhyChanConfigChange(new int[] {10000, 40000}, TelephonyManager.NETWORK_TYPE_NR, 1,
+                new int[][]{{0, 1}, {2, 3}});
+        verify(mPhone, times(2)).notifyServiceStateChanged(any(ServiceState.class));
+
+        // Notify Service State changed for NR Connection Status: NR -> LTE
+        when(mPhone.getDataNetworkController().isInternetNetwork(eq(3))).thenReturn(true);
+        sendPhyChanConfigChange(new int[] {10000, 40000}, TelephonyManager.NETWORK_TYPE_LTE, 1);
+        verify(mPhone, times(3)).notifyServiceStateChanged(any(ServiceState.class));
+    }
+
+    @Test
     public void testPhyChanBandwidthResetsOnOos() {
         testPhyChanBandwidthRatchetedOnPhyChanBandwidth();
         LteVopsSupportInfo lteVopsSupportInfo =
