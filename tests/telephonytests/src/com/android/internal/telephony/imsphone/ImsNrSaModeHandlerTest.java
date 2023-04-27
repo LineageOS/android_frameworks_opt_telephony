@@ -18,11 +18,11 @@ package com.android.internal.telephony.imsphone;
 
 import static android.telephony.CarrierConfigManager.CARRIER_NR_AVAILABILITY_NSA;
 import static android.telephony.CarrierConfigManager.CARRIER_NR_AVAILABILITY_SA;
-import static android.telephony.CarrierConfigManager.Ims.KEY_SA_DISABLE_POLICY_INT;
-import static android.telephony.CarrierConfigManager.Ims.SA_DISABLE_POLICY_NONE;
-import static android.telephony.CarrierConfigManager.Ims.SA_DISABLE_POLICY_VOWIFI_REGISTERED;
-import static android.telephony.CarrierConfigManager.Ims.SA_DISABLE_POLICY_WFC_ESTABLISHED;
-import static android.telephony.CarrierConfigManager.Ims.SA_DISABLE_POLICY_WFC_ESTABLISHED_WHEN_VONR_DISABLED;
+import static android.telephony.CarrierConfigManager.Ims.KEY_NR_SA_DISABLE_POLICY_INT;
+import static android.telephony.CarrierConfigManager.Ims.NR_SA_DISABLE_POLICY_NONE;
+import static android.telephony.CarrierConfigManager.Ims.NR_SA_DISABLE_POLICY_VOWIFI_REGISTERED;
+import static android.telephony.CarrierConfigManager.Ims.NR_SA_DISABLE_POLICY_WFC_ESTABLISHED;
+import static android.telephony.CarrierConfigManager.Ims.NR_SA_DISABLE_POLICY_WFC_ESTABLISHED_WHEN_VONR_DISABLED;
 import static android.telephony.CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
@@ -108,7 +108,7 @@ public final class ImsNrSaModeHandlerTest extends TelephonyTest{
     @Test
     public void testTearDown() {
         mContextFixture.getCarrierConfigBundle().putInt(
-                KEY_SA_DISABLE_POLICY_INT, SA_DISABLE_POLICY_WFC_ESTABLISHED);
+                KEY_NR_SA_DISABLE_POLICY_INT, NR_SA_DISABLE_POLICY_WFC_ESTABLISHED);
         mContextFixture.getCarrierConfigBundle().putIntArray(
                 KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY, new int[]{CARRIER_NR_AVAILABILITY_SA});
 
@@ -131,7 +131,7 @@ public final class ImsNrSaModeHandlerTest extends TelephonyTest{
     @Test
     public void testOnImsRegisteredWithSaDisablePolicyNone() {
         mContextFixture.getCarrierConfigBundle().putInt(
-                KEY_SA_DISABLE_POLICY_INT, SA_DISABLE_POLICY_NONE);
+                KEY_NR_SA_DISABLE_POLICY_INT, NR_SA_DISABLE_POLICY_NONE);
         mContextFixture.getCarrierConfigBundle().putIntArray(
                 KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY, new int[]{CARRIER_NR_AVAILABILITY_SA});
 
@@ -147,7 +147,7 @@ public final class ImsNrSaModeHandlerTest extends TelephonyTest{
     @Test
     public void testOnImsRegisteredWithSaDisablePolicyWfcEstablished() {
         mContextFixture.getCarrierConfigBundle().putInt(
-                KEY_SA_DISABLE_POLICY_INT, SA_DISABLE_POLICY_WFC_ESTABLISHED);
+                KEY_NR_SA_DISABLE_POLICY_INT, NR_SA_DISABLE_POLICY_WFC_ESTABLISHED);
         mContextFixture.getCarrierConfigBundle().putIntArray(
                 KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY, new int[]{CARRIER_NR_AVAILABILITY_SA});
 
@@ -168,7 +168,8 @@ public final class ImsNrSaModeHandlerTest extends TelephonyTest{
     @Test
     public void testOnImsRegisteredWithSaDisablePolicyWfcEstablishedWithVonrDisabled() {
         mContextFixture.getCarrierConfigBundle().putInt(
-                KEY_SA_DISABLE_POLICY_INT, SA_DISABLE_POLICY_WFC_ESTABLISHED_WHEN_VONR_DISABLED);
+                KEY_NR_SA_DISABLE_POLICY_INT,
+                NR_SA_DISABLE_POLICY_WFC_ESTABLISHED_WHEN_VONR_DISABLED);
         mContextFixture.getCarrierConfigBundle().putIntArray(
                 KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY, new int[]{CARRIER_NR_AVAILABILITY_SA});
 
@@ -226,7 +227,7 @@ public final class ImsNrSaModeHandlerTest extends TelephonyTest{
     @Test
     public void testOnImsRegisteredWithSaDisablePolicyVowifiRegistered() {
         mContextFixture.getCarrierConfigBundle().putInt(
-                KEY_SA_DISABLE_POLICY_INT, SA_DISABLE_POLICY_VOWIFI_REGISTERED);
+                KEY_NR_SA_DISABLE_POLICY_INT, NR_SA_DISABLE_POLICY_VOWIFI_REGISTERED);
         mContextFixture.getCarrierConfigBundle().putIntArray(
                 KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY, new int[]{CARRIER_NR_AVAILABILITY_SA});
 
@@ -252,7 +253,7 @@ public final class ImsNrSaModeHandlerTest extends TelephonyTest{
     @Test
     public void testOnImsUnregisteredDoNothingIfNotVowifiRegNoti() {
         mContextFixture.getCarrierConfigBundle().putInt(
-                KEY_SA_DISABLE_POLICY_INT, SA_DISABLE_POLICY_VOWIFI_REGISTERED);
+                KEY_NR_SA_DISABLE_POLICY_INT, NR_SA_DISABLE_POLICY_VOWIFI_REGISTERED);
         mContextFixture.getCarrierConfigBundle().putIntArray(
                 KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY, new int[]{CARRIER_NR_AVAILABILITY_SA});
 
@@ -268,7 +269,7 @@ public final class ImsNrSaModeHandlerTest extends TelephonyTest{
     @Test
     public void testOnImsUnregisteredWithSaDisablePolicyVowifiRegistered() {
         mContextFixture.getCarrierConfigBundle().putInt(
-                KEY_SA_DISABLE_POLICY_INT, SA_DISABLE_POLICY_VOWIFI_REGISTERED);
+                KEY_NR_SA_DISABLE_POLICY_INT, NR_SA_DISABLE_POLICY_VOWIFI_REGISTERED);
         mContextFixture.getCarrierConfigBundle().putIntArray(
                 KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY, new int[]{CARRIER_NR_AVAILABILITY_SA});
 
@@ -294,7 +295,7 @@ public final class ImsNrSaModeHandlerTest extends TelephonyTest{
     @Test
     public void testOnPreciseCallStateChangedWithSaDisablePolicyWfcEstablished() {
         mContextFixture.getCarrierConfigBundle().putInt(
-                KEY_SA_DISABLE_POLICY_INT, SA_DISABLE_POLICY_WFC_ESTABLISHED);
+                KEY_NR_SA_DISABLE_POLICY_INT, NR_SA_DISABLE_POLICY_WFC_ESTABLISHED);
         mContextFixture.getCarrierConfigBundle().putIntArray(
                 KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY, new int[]{CARRIER_NR_AVAILABILITY_SA});
 
@@ -345,7 +346,7 @@ public final class ImsNrSaModeHandlerTest extends TelephonyTest{
     @Test
     public void testUnregisterForPreciseCallStateChangeIfNeeded() {
         mContextFixture.getCarrierConfigBundle().putInt(
-                KEY_SA_DISABLE_POLICY_INT, SA_DISABLE_POLICY_WFC_ESTABLISHED);
+                KEY_NR_SA_DISABLE_POLICY_INT, NR_SA_DISABLE_POLICY_WFC_ESTABLISHED);
         mContextFixture.getCarrierConfigBundle().putIntArray(
                 KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY, new int[]{CARRIER_NR_AVAILABILITY_SA});
 
@@ -356,7 +357,7 @@ public final class ImsNrSaModeHandlerTest extends TelephonyTest{
         mPreciseCallStateHandler = mPreciseCallStateHandlerCaptor.getValue();
 
         mContextFixture.getCarrierConfigBundle().putInt(
-                KEY_SA_DISABLE_POLICY_INT, SA_DISABLE_POLICY_VOWIFI_REGISTERED);
+                KEY_NR_SA_DISABLE_POLICY_INT, NR_SA_DISABLE_POLICY_VOWIFI_REGISTERED);
 
         mCarrierConfigChangeListener.onCarrierConfigChanged(mAnyInt, mAnyInt, mAnyInt, mAnyInt);
 
@@ -366,7 +367,7 @@ public final class ImsNrSaModeHandlerTest extends TelephonyTest{
     @Test
     public void testNrSaModeIsNotHandledWhenNotSupported() {
         mContextFixture.getCarrierConfigBundle().putInt(
-                KEY_SA_DISABLE_POLICY_INT, SA_DISABLE_POLICY_WFC_ESTABLISHED);
+                KEY_NR_SA_DISABLE_POLICY_INT, NR_SA_DISABLE_POLICY_WFC_ESTABLISHED);
         mContextFixture.getCarrierConfigBundle().putIntArray(
                 KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY, new int[]{CARRIER_NR_AVAILABILITY_NSA});
 
