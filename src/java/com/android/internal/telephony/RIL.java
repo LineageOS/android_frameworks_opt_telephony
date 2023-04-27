@@ -3756,8 +3756,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void getImei(Message result) {
         RadioModemProxy modemProxy = getRadioServiceProxy(RadioModemProxy.class, result);
-        if (!modemProxy.isEmpty() &&
-                mHalVersion.get(HAL_SERVICE_MODEM).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
+        if (modemProxy.isEmpty()) {
+            if (RILJ_LOGD) {
+                Rlog.e(RILJ_LOG_TAG, "getImei: modemProxy is Empty");
+            }
+            return;
+        }
+        if (mHalVersion.get(HAL_SERVICE_MODEM).greaterOrEqual(RADIO_HAL_VERSION_2_1)) {
             RILRequest rr = obtainRequest(RIL_REQUEST_DEVICE_IMEI, result,
                     mRILDefaultWorkSource);
 
