@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.satellite;
 
+import android.annotation.NonNull;
+import android.content.Context;
 import android.provider.Telephony;
 import android.test.mock.MockContentResolver;
 import android.testing.AndroidTestingRunner;
@@ -25,9 +27,14 @@ import static com.google.common.truth.Truth.assertThat;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 
 import android.os.AsyncResult;
 import android.os.Looper;
@@ -64,7 +71,6 @@ public class DatagramReceiverTest extends TelephonyTest {
     @Mock private DatagramController mMockDatagramController;
     @Mock private SatelliteModemInterface mMockSatelliteModemInterface;
     @Mock private ControllerMetricsStats mMockControllerMetricsStats;
-
 
     /** Variables required to receive datagrams in the unit tests. */
     LinkedBlockingQueue<Integer> mResultListener;
@@ -306,5 +312,46 @@ public class DatagramReceiverTest extends TelephonyTest {
                 .updateReceiveStatus(eq(SUB_ID),
                         eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_SUCCESS),
                         eq(10), eq(SatelliteManager.SATELLITE_ERROR_NONE));
+    }
+
+    @Test
+    public void testPollPendingSatelliteDatagrams_DemoMode() throws Exception {
+        // Checks invalid case only as SatelliteController does not exist in unit test
+        TestDatagramReceiver testDatagramReceiver = new TestDatagramReceiver(
+                mContext, Looper.myLooper(), mMockDatagramController);
+        testDatagramReceiver.setDemoMode(true);
+        when(mMockDatagramController.getDemoModeDatagram()).thenReturn(mDatagram);
+        testDatagramReceiver.pollPendingSatelliteDatagrams(SUB_ID, mResultListener::offer);
+        processAllMessages();
+        verify(mMockDatagramController, times(1)).getDemoModeDatagram();
+        verify(mMockDatagramController)
+                .updateReceiveStatus(eq(SUB_ID),
+                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING),
+                        anyInt(),
+                        eq(SatelliteManager.SATELLITE_ERROR_NONE));
+        verify(mMockDatagramController)
+                .updateReceiveStatus(eq(SUB_ID),
+                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_FAILED),
+                        anyInt(),
+                        eq(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE));
+        verify(mMockDatagramController)
+                .updateReceiveStatus(eq(SUB_ID),
+                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE),
+                        anyInt(),
+                        eq(SatelliteManager.SATELLITE_ERROR_NONE));
+        assertThat(mResultListener.peek())
+                .isEqualTo(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
+    }
+
+    private static class TestDatagramReceiver extends DatagramReceiver {
+        TestDatagramReceiver(@NonNull Context context, @NonNull Looper looper,
+                @NonNull DatagramController datagramController) {
+            super(context, looper, datagramController);
+        }
+
+        @Override
+        protected void setDemoMode(boolean isDemoMode) {
+            super.setDemoMode(isDemoMode);
+        }
     }
 }
