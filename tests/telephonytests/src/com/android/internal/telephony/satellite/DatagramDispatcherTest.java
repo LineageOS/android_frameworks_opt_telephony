@@ -26,6 +26,8 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import android.annotation.NonNull;
+import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Looper;
 import android.os.Message;
@@ -59,8 +61,10 @@ public class DatagramDispatcherTest extends TelephonyTest {
     private static final String TEST_MESSAGE = "This is a test datagram message";
 
     private DatagramDispatcher mDatagramDispatcherUT;
+    private TestDatagramDispatcher mTestDemoModeDatagramDispatcher;
 
     @Mock private DatagramController mMockDatagramController;
+    @Mock private DatagramReceiver mMockDatagramReceiver;
     @Mock private SatelliteModemInterface mMockSatelliteModemInterface;
     @Mock private ControllerMetricsStats mMockControllerMetricsStats;
 
@@ -77,12 +81,16 @@ public class DatagramDispatcherTest extends TelephonyTest {
 
         replaceInstance(DatagramController.class, "sInstance", null,
                 mMockDatagramController);
+        replaceInstance(DatagramReceiver.class, "sInstance", null,
+                mMockDatagramReceiver);
         replaceInstance(SatelliteModemInterface.class, "sInstance", null,
                 mMockSatelliteModemInterface);
         replaceInstance(ControllerMetricsStats.class, "sInstance", null,
                 mMockControllerMetricsStats);
 
         mDatagramDispatcherUT = DatagramDispatcher.make(mContext, Looper.myLooper(),
+                mMockDatagramController);
+        mTestDemoModeDatagramDispatcher = new TestDatagramDispatcher(mContext, Looper.myLooper(),
                 mMockDatagramController);
 
         mResultListener = new LinkedBlockingQueue<>(1);
@@ -95,6 +103,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
         logd(TAG + " tearDown");
         mDatagramDispatcherUT.destroy();
         mDatagramDispatcherUT = null;
+        mTestDemoModeDatagramDispatcher = null;
         mResultListener = null;
         mDatagram = null;
         mInOrder = null;
@@ -273,5 +282,93 @@ public class DatagramDispatcherTest extends TelephonyTest {
         verifyNoMoreInteractions(mMockDatagramController);
 
         assertThat(mResultListener.peek()).isEqualTo(SatelliteManager.SATELLITE_SERVICE_ERROR);
+    }
+
+    @Test
+    public void testSendSatelliteDatagram_DemoMode_data_type_sos_message() throws Exception {
+        mTestDemoModeDatagramDispatcher.setDemoMode(true);
+        doReturn(false).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone});
+        doAnswer(invocation -> {
+            Message message = (Message) invocation.getArguments()[0];
+
+            mDatagramDispatcherUT.obtainMessage(2 /*EVENT_SEND_SATELLITE_DATAGRAM_DONE*/,
+                            new AsyncResult(message.obj, null, null))
+                    .sendToTarget();
+            return null;
+        }).when(mPhone).sendSatelliteDatagram(any(Message.class), any(SatelliteDatagram.class),
+                anyBoolean());
+
+        mTestDemoModeDatagramDispatcher.sendSatelliteDatagram(SUB_ID, DATAGRAM_TYPE1, mDatagram,
+                true, mResultListener::offer);
+
+        processAllMessages();
+
+        mInOrder.verify(mMockDatagramController)
+                .updateSendStatus(eq(SUB_ID),
+                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING), eq(1),
+                        eq(SatelliteManager.SATELLITE_ERROR_NONE));
+        mInOrder.verify(mMockDatagramController)
+                .updateSendStatus(eq(SUB_ID),
+                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_SUCCESS), eq(0),
+                        eq(SatelliteManager.SATELLITE_ERROR_NONE));
+        mInOrder.verify(mMockDatagramController)
+                .updateSendStatus(eq(SUB_ID),
+                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE), eq(0),
+                        eq(SatelliteManager.SATELLITE_ERROR_NONE));
+        assertThat(mResultListener.peek()).isEqualTo(SatelliteManager.SATELLITE_ERROR_NONE);
+        mTestDemoModeDatagramDispatcher.setDemoMode(false);
+    }
+
+    @Test
+    public void testSendSatelliteDatagram_DemoMode_data_type_location_sharing() throws Exception {
+        mTestDemoModeDatagramDispatcher.setDemoMode(true);
+        doReturn(false).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone});
+        doAnswer(invocation -> {
+            Message message = (Message) invocation.getArguments()[0];
+
+            mDatagramDispatcherUT.obtainMessage(2 /*EVENT_SEND_SATELLITE_DATAGRAM_DONE*/,
+                            new AsyncResult(message.obj, null, null))
+                    .sendToTarget();
+            return null;
+        }).when(mPhone).sendSatelliteDatagram(any(Message.class), any(SatelliteDatagram.class),
+                anyBoolean());
+
+        mTestDemoModeDatagramDispatcher.sendSatelliteDatagram(SUB_ID, DATAGRAM_TYPE2, mDatagram,
+                true, mResultListener::offer);
+
+        processAllMessages();
+
+        mInOrder.verify(mMockDatagramController)
+                .updateSendStatus(eq(SUB_ID),
+                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING), eq(1),
+                        eq(SatelliteManager.SATELLITE_ERROR_NONE));
+
+        assertThat(mResultListener.peek()).isEqualTo(SatelliteManager.SATELLITE_ERROR_NONE);
+
+        mInOrder.verify(mMockDatagramController)
+                .updateSendStatus(eq(SUB_ID),
+                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_SUCCESS), eq(0),
+                        eq(SatelliteManager.SATELLITE_ERROR_NONE));
+
+        mInOrder.verify(mMockDatagramController)
+                .updateSendStatus(eq(SUB_ID),
+                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE), eq(0),
+                        eq(SatelliteManager.SATELLITE_ERROR_NONE));
+
+        mTestDemoModeDatagramDispatcher.setDemoMode(false);
+    }
+
+    private static class TestDatagramDispatcher extends DatagramDispatcher {
+        TestDatagramDispatcher(@NonNull Context context, @NonNull Looper looper,
+                @NonNull DatagramController datagramController) {
+            super(context, looper, datagramController);
+        }
+
+        @Override
+        protected void setDemoMode(boolean isDemoMode) {
+            super.setDemoMode(isDemoMode);
+        }
     }
 }
