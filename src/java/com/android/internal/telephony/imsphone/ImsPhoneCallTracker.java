@@ -143,7 +143,6 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.SrvccConnection;
-import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.d2d.RtpTransport;
 import com.android.internal.telephony.data.DataSettingsManager;
 import com.android.internal.telephony.domainselection.DomainSelectionResolver;
@@ -1857,20 +1856,12 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
         // Check for changes due to carrier config.
         maybeConfigureRtpHeaderExtensions();
 
-        if (mPhone.isSubscriptionManagerServiceEnabled()) {
-            SubscriptionInfoInternal subInfo = SubscriptionManagerService.getInstance()
-                    .getSubscriptionInfoInternal(subId);
-            if (subInfo == null || !subInfo.isActive()) {
-                loge("updateCarrierConfiguration: skipping notification to ImsService, non"
-                        + "active subId = " + subId);
-                return;
-            }
-        } else {
-            if (!SubscriptionController.getInstance().isActiveSubId(subId)) {
-                loge("updateCarrierConfiguration: skipping notification to ImsService, non"
-                        + "active subId = " + subId);
-                return;
-            }
+        SubscriptionInfoInternal subInfo = SubscriptionManagerService.getInstance()
+                .getSubscriptionInfoInternal(subId);
+        if (subInfo == null || !subInfo.isActive()) {
+            loge("updateCarrierConfiguration: skipping notification to ImsService, non"
+                    + "active subId = " + subId);
+            return;
         }
 
         Phone defaultPhone = getPhone().getDefaultPhone();
@@ -3555,6 +3546,7 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 // Since onCallInitiating and onCallProgressing reset mPendingMO,
                 // we can't depend on mPendingMO.
                 if ((reasonInfo.getCode() == ImsReasonInfo.CODE_SIP_ALTERNATE_EMERGENCY_CALL
+                        || reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_NOT_REGISTERED
                         || reasonInfo.getCode() == ImsReasonInfo.CODE_LOCAL_CALL_CS_RETRY_REQUIRED)
                         && conn != null) {
                     logi("onCallStartFailed eccCategory=" + eccCategory);

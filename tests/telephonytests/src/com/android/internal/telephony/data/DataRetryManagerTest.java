@@ -365,14 +365,28 @@ public class DataRetryManagerTest extends TelephonyTest {
                 .setSetupRetryType(1)
                 .build();
         mDataRetryEntries.addAll(List.of(scheduledRetry1, scheduledRetry2));
+        // Suppose we set the data profile as permanently failed.
+        mDataProfile3.getApnSetting().setPermanentFailed(true);
+
+        DataProfile dataProfile3ReconstructedFromModem = new DataProfile.Builder()
+                .setApnSetting(new ApnSetting.Builder()
+                        .setEntryName("some_fake_ims")
+                        .setApnName("fake_ims")
+                        .setApnTypeBitmask(ApnSetting.TYPE_IMS)
+                        .setProtocol(ApnSetting.PROTOCOL_IPV6)
+                        .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
+                        .build())
+                .build();
 
         // unthrottle the data profile, expect previous retries of the same transport is cancelled
         mDataRetryManagerUT.obtainMessage(6/*EVENT_DATA_PROFILE_UNTHROTTLED*/,
-                new AsyncResult(AccessNetworkConstants.TRANSPORT_TYPE_WWAN, mDataProfile3, null))
+                new AsyncResult(AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                        dataProfile3ReconstructedFromModem, null))
                 .sendToTarget();
         processAllMessages();
 
         // check unthrottle
+        assertThat(mDataProfile3.getApnSetting().getPermanentFailed()).isFalse();
         ArgumentCaptor<List<ThrottleStatus>> throttleStatusCaptor =
                 ArgumentCaptor.forClass(List.class);
         verify(mDataRetryManagerCallbackMock).onThrottleStatusChanged(

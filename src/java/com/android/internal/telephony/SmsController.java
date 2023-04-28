@@ -260,7 +260,12 @@ public class SmsController extends ISmsImplBase {
         }
 
         // Check if user is associated with the subscription
-        if (!TelephonyPermissions.checkSubscriptionAssociatedWithUser(mContext, subId,
+        boolean crossUserFullGranted = mContext.checkCallingOrSelfPermission(
+                android.Manifest.permission.INTERACT_ACROSS_USERS_FULL) == PERMISSION_GRANTED;
+        Rlog.d(LOG_TAG, "sendTextForSubscriber: caller has INTERACT_ACROSS_USERS_FULL? "
+                + crossUserFullGranted);
+        if (!crossUserFullGranted
+                && !TelephonyPermissions.checkSubscriptionAssociatedWithUser(mContext, subId,
                 Binder.getCallingUserHandle(), destAddr)) {
             TelephonyUtils.showSwitchToManagedProfileDialogIfAppropriate(mContext, subId,
                     Binder.getCallingUid(), callingPackage);
@@ -613,32 +618,19 @@ public class SmsController extends ISmsImplBase {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     @Override
     public int getPreferredSmsSubscription() {
-        int defaultSubId;
-        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-            // If there is a default, choose that one.
-            defaultSubId = SubscriptionManagerService.getInstance().getDefaultSmsSubId();
-        } else {
-            // If there is a default, choose that one.
-            defaultSubId = SubscriptionController.getInstance().getDefaultSmsSubId();
-        }
+        // If there is a default, choose that one.
+        int defaultSubId = SubscriptionManagerService.getInstance().getDefaultSmsSubId();
+
         if (SubscriptionManager.isValidSubscriptionId(defaultSubId)) {
             return defaultSubId;
         }
         // No default, if there is only one sub active, choose that as the "preferred" sub id.
         long token = Binder.clearCallingIdentity();
         try {
-            if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-                int[] activeSubs = SubscriptionManagerService.getInstance()
-                        .getActiveSubIdList(true /*visibleOnly*/);
-                if (activeSubs.length == 1) {
-                    return activeSubs[0];
-                }
-            } else {
-                int[] activeSubs = SubscriptionController.getInstance()
-                        .getActiveSubIdList(true /*visibleOnly*/);
-                if (activeSubs.length == 1) {
-                    return activeSubs[0];
-                }
+            int[] activeSubs = SubscriptionManagerService.getInstance()
+                    .getActiveSubIdList(true /*visibleOnly*/);
+            if (activeSubs.length == 1) {
+                return activeSubs[0];
             }
         } finally {
             Binder.restoreCallingIdentity(token);

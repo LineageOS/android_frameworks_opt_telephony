@@ -1315,12 +1315,9 @@ public class TelephonyRegistryTest extends TelephonyTest {
         final int subId = 1;
 
         // Return a slotIndex / phoneId of 0 for subId 1.
-        doReturn(subId).when(mSubscriptionController).getSubId(phoneId);
+        doReturn(subId).when(mSubscriptionManagerService).getSubId(phoneId);
         doReturn(mMockSubInfo).when(mSubscriptionManager).getActiveSubscriptionInfo(subId);
         doReturn(phoneId).when(mMockSubInfo).getSimSlotIndex();
-        mServiceManagerMockedServices.put("isub", mSubscriptionController);
-        doReturn(mSubscriptionController).when(mSubscriptionController)
-                .queryLocalInterface(anyString());
 
         UserInfo userInfo = new UserInfo(UserHandle.myUserId(), "" /* name */, 0 /* flags */);
         doReturn(userInfo.id).when(mIActivityManager).getCurrentUserId();

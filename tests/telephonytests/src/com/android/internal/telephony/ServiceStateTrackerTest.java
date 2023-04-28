@@ -93,6 +93,7 @@ import androidx.test.filters.FlakyTest;
 
 import com.android.internal.R;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
+import com.android.internal.telephony.data.AccessNetworksManager;
 import com.android.internal.telephony.data.DataNetworkController;
 import com.android.internal.telephony.metrics.ServiceStateStats;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
@@ -107,6 +108,7 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1548,9 +1550,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sst.mSubId = subId;
         doReturn(subId).when(mSubInfo).getSubscriptionId();
 
-        doReturn(mSubInfo).when(mSubscriptionController).getActiveSubscriptionInfo(
-                anyInt(), anyString(), nullable(String.class));
-
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mContextFixture.putBooleanResource(
@@ -1583,8 +1582,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         int subId = 1;
         sst.mSubId = subId;
         doReturn(subId).when(mSubInfo).getSubscriptionId();
-        doReturn(mSubInfo).when(mSubscriptionController)
-                .getActiveSubscriptionInfo(anyInt(), anyString(), nullable(String.class));
 
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -1619,8 +1616,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         int subId = 1;
         sst.mSubId = subId;
         doReturn(subId).when(mSubInfo).getSubscriptionId();
-        doReturn(mSubInfo).when(mSubscriptionController)
-                .getActiveSubscriptionInfo(anyInt(), anyString(), nullable(String.class));
 
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -1654,8 +1649,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         int subId = 1;
         sst.mSubId = subId;
         doReturn(subId).when(mSubInfo).getSubscriptionId();
-        doReturn(mSubInfo).when(mSubscriptionController)
-                .getActiveSubscriptionInfo(anyInt(), anyString(), nullable(String.class));
 
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -3165,5 +3158,36 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // Check emergency
         doReturn(ServiceState.STATE_EMERGENCY_ONLY).when(mServiceState).getState();
         assertEquals(ServiceState.STATE_EMERGENCY_ONLY, sst.getCombinedRegState(mServiceState));
+    }
+
+
+    @Test
+    public void testOnChangingPreferredOnIwlan() throws Exception {
+        Field callbackField =
+                ServiceStateTracker.class.getDeclaredField("mAccessNetworksManagerCallback");
+        callbackField.setAccessible(true);
+        AccessNetworksManager.AccessNetworksManagerCallback accessNetworksManagerCallback =
+                (AccessNetworksManager.AccessNetworksManagerCallback) callbackField.get(sst);
+
+        when(mAccessNetworksManager.isAnyApnOnIwlan()).thenReturn(false);
+
+        // Start state: Cell data only LTE + IWLAN
+        CellIdentityLte cellIdentity =
+                new CellIdentityLte(1, 1, 5, 1, new int[] {1, 2}, 5000, "001", "01", "test",
+                        "tst", Collections.emptyList(), null);
+        changeRegStateWithIwlan(
+                // WWAN
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME, cellIdentity,
+                TelephonyManager.NETWORK_TYPE_UNKNOWN, TelephonyManager.NETWORK_TYPE_LTE,
+                // WLAN
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME,
+                TelephonyManager.NETWORK_TYPE_IWLAN);
+        assertFalse(sst.mSS.isIwlanPreferred());
+
+        when(mAccessNetworksManager.isAnyApnOnIwlan()).thenReturn(true);
+        accessNetworksManagerCallback.onPreferredTransportChanged(0);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        assertTrue(sst.mSS.isIwlanPreferred());
     }
 }

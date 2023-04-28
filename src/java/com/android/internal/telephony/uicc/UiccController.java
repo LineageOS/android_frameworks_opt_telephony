@@ -63,7 +63,6 @@ import com.android.internal.telephony.PhoneConfigurationManager;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RadioConfig;
-import com.android.internal.telephony.SubscriptionInfoUpdater;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
@@ -744,38 +743,6 @@ public class UiccController extends Handler {
         }
     }
 
-    static void updateInternalIccStateForInactivePort(
-            Context context, int prevActivePhoneId, String iccId) {
-        if (SubscriptionManager.isValidPhoneId(prevActivePhoneId)) {
-            // Mark SIM state as ABSENT on previously phoneId.
-            TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(
-                    Context.TELEPHONY_SERVICE);
-            telephonyManager.setSimStateForPhone(prevActivePhoneId,
-                    IccCardConstants.State.ABSENT.toString());
-        }
-
-        SubscriptionInfoUpdater subInfoUpdator = PhoneFactory.getSubscriptionInfoUpdater();
-        if (subInfoUpdator != null) {
-            subInfoUpdator.updateInternalIccStateForInactivePort(prevActivePhoneId, iccId);
-        } else {
-            Rlog.e(LOG_TAG, "subInfoUpdate is null.");
-        }
-    }
-
-    static void updateInternalIccState(Context context, IccCardConstants.State state, String reason,
-            int phoneId) {
-        TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(
-                Context.TELEPHONY_SERVICE);
-        telephonyManager.setSimStateForPhone(phoneId, state.toString());
-
-        SubscriptionInfoUpdater subInfoUpdator = PhoneFactory.getSubscriptionInfoUpdater();
-        if (subInfoUpdator != null) {
-            subInfoUpdator.updateInternalIccState(getIccStateIntentString(state), reason, phoneId);
-        } else {
-            Rlog.e(LOG_TAG, "subInfoUpdate is null.");
-        }
-    }
-
     /**
      * Update SIM state for the inactive eSIM port.
      *
@@ -790,7 +757,8 @@ public class UiccController extends Handler {
                         IccCardConstants.State.ABSENT.toString());
             }
 
-            SubscriptionManagerService.getInstance().updateSimStateForInactivePort(phoneId, iccId);
+            SubscriptionManagerService.getInstance().updateSimStateForInactivePort(phoneId,
+                    TextUtils.emptyIfNull(iccId));
         });
     }
 
