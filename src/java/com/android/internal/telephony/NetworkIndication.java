@@ -149,21 +149,28 @@ public class NetworkIndication extends IRadioNetworkIndication.Stub {
         try {
             for (android.hardware.radio.network.PhysicalChannelConfig config : configs) {
                 PhysicalChannelConfig.Builder builder = new PhysicalChannelConfig.Builder();
+                int band = PhysicalChannelConfig.BAND_UNKNOWN;
                 switch (config.band.getTag()) {
                     case android.hardware.radio.network.PhysicalChannelConfigBand.geranBand:
-                        builder.setBand(config.band.getGeranBand());
+                        band = config.band.getGeranBand();
                         break;
                     case android.hardware.radio.network.PhysicalChannelConfigBand.utranBand:
-                        builder.setBand(config.band.getUtranBand());
+                        band = config.band.getUtranBand();
                         break;
                     case android.hardware.radio.network.PhysicalChannelConfigBand.eutranBand:
-                        builder.setBand(config.band.getEutranBand());
+                        band = config.band.getEutranBand();
                         break;
                     case android.hardware.radio.network.PhysicalChannelConfigBand.ngranBand:
-                        builder.setBand(config.band.getNgranBand());
+                        band = config.band.getNgranBand();
                         break;
                     default:
                         mRil.riljLoge("Unsupported band type " + config.band.getTag());
+                }
+                if (band == PhysicalChannelConfig.BAND_UNKNOWN) {
+                    mRil.riljLoge("Unsupported unknown band.");
+                    return;
+                } else {
+                    builder.setBand(band);
                 }
                 response.add(builder.setCellConnectionStatus(
                         RILUtils.convertHalCellConnectionStatus(config.status))
