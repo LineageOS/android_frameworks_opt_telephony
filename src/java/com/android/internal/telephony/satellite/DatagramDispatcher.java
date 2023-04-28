@@ -56,6 +56,8 @@ public class DatagramDispatcher extends Handler {
     @NonNull private final DatagramController mDatagramController;
     @NonNull private final ControllerMetricsStats mControllerMetricsStats;
 
+    private boolean mIsDemoMode = false;
+
     private static AtomicLong mNextDatagramId = new AtomicLong(0);
 
     private final Object mLock = new Object();
@@ -101,7 +103,8 @@ public class DatagramDispatcher extends Handler {
      * @param looper The looper for the handler.
      * @param datagramController DatagramController which is used to update datagram transfer state.
      */
-    private DatagramDispatcher(@NonNull Context context, @NonNull Looper looper,
+    @VisibleForTesting
+    protected DatagramDispatcher(@NonNull Context context, @NonNull Looper looper,
             @NonNull DatagramController datagramController) {
         super(looper);
         mContext = context;
@@ -335,6 +338,15 @@ public class DatagramDispatcher extends Handler {
                 sendRequestAsync(CMD_SEND_SATELLITE_DATAGRAM, datagramArgs, phone);
             }
         }
+    }
+
+    /** Set demo mode
+     *
+     * @param isDemoMode {@code true} means demo mode is on, {@code false} otherwise.
+     */
+    @VisibleForTesting
+    protected void setDemoMode(boolean isDemoMode) {
+        mIsDemoMode = isDemoMode;
     }
 
     /**
