@@ -125,6 +125,7 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IMS_SEND_S
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_ISIM_AUTHENTICATION;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_N1_MODE_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_NR_DUAL_CONNECTIVITY_ENABLED;
+import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_NULL_CIPHER_AND_INTEGRITY_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_IS_VONR_ENABLED;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_LAST_CALL_FAIL_CAUSE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_LAST_DATA_CALL_FAIL_CAUSE;
@@ -5372,6 +5373,8 @@ public class RILUtils {
                 return "TRIGGER_EPS_FALLBACK";
             case RIL_REQUEST_SET_NULL_CIPHER_AND_INTEGRITY_ENABLED:
                 return "SET_NULL_CIPHER_AND_INTEGRITY_ENABLED";
+            case RIL_REQUEST_IS_NULL_CIPHER_AND_INTEGRITY_ENABLED:
+                return "IS_NULL_CIPHER_AND_INTEGRITY_ENABLED";
             case RIL_REQUEST_UPDATE_IMS_CALL_STATUS:
                 return "UPDATE_IMS_CALL_STATUS";
             case RIL_REQUEST_SET_N1_MODE_ENABLED:
