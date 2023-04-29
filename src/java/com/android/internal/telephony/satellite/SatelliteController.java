@@ -457,6 +457,7 @@ public class SatelliteController extends Handler {
                         checkAndEnableBluetoothWifiState();
                     }
                     mIsDemoModeEnabled = argument.enableDemoMode;
+                    mDatagramController.setDemoMode(mIsDemoModeEnabled);
                     updateSatelliteEnabledState(
                             argument.enableSatellite, "EVENT_SET_SATELLITE_ENABLED_DONE");
                 }
