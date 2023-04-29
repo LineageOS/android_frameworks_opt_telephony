@@ -25,6 +25,8 @@ import android.telephony.satellite.ISatelliteDatagramCallback;
 import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
 
+import com.android.internal.annotations.VisibleForTesting;
+
 import java.util.function.Consumer;
 
 /**
@@ -53,6 +55,8 @@ public class DatagramController {
             SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_UNKNOWN;
     private int mReceivePendingCount = 0;
     private int mReceiveErrorCode = SatelliteManager.SATELLITE_ERROR_NONE;
+    private SatelliteDatagram mDemoModeDatagram;
+    private boolean mIsDemoMode = false;
 
     /**
      * @return The singleton instance of DatagramController.
@@ -88,7 +92,8 @@ public class DatagramController {
      * @param pointingAppController PointingAppController is used to update PointingApp
      *                              about datagram transfer state changes.
      */
-    private DatagramController(@NonNull Context context, @NonNull Looper  looper,
+    @VisibleForTesting
+    protected DatagramController(@NonNull Context context, @NonNull Looper  looper,
             @NonNull PointingAppController pointingAppController) {
         mContext = context;
         mPointingAppController = pointingAppController;
@@ -150,6 +155,9 @@ public class DatagramController {
      * input to this method. Datagram received here will be passed down to modem without any
      * encoding or encryption.
      *
+     * When demo mode is on, save the sent datagram and this datagram will be used as a received
+     * datagram.
+     *
      * @param subId The subId of the subscription to send satellite datagrams for.
      * @param datagramType datagram type indicating whether the datagram is of type
      *                     SOS_SMS or LOCATION_SHARING.
@@ -162,6 +170,7 @@ public class DatagramController {
     public void sendSatelliteDatagram(int subId, @SatelliteManager.DatagramType int datagramType,
             @NonNull SatelliteDatagram datagram, boolean needFullScreenPointingUI,
             @NonNull Consumer<Integer> callback) {
+        setDemoModeDatagram(datagramType, datagram);
         mDatagramDispatcher.sendSatelliteDatagram(subId, datagramType, datagram,
                 needFullScreenPointingUI, callback);
     }
@@ -250,6 +259,39 @@ public class DatagramController {
         updateReceiveStatus(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
                 SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE, 0,
                 SatelliteManager.SATELLITE_ERROR_NONE);
+    }
+
+    /**
+     * Set variables for {@link DatagramDispatcher} and {@link DatagramReceiver} to run demo mode
+     * @param isDemoMode {@code true} means demo mode is on, {@code false} otherwise.
+     */
+    void setDemoMode(boolean isDemoMode) {
+        mIsDemoMode = isDemoMode;
+        mDatagramDispatcher.setDemoMode(isDemoMode);
+        mDatagramReceiver.setDemoMode(isDemoMode);
+
+        if (!isDemoMode) {
+            mDemoModeDatagram = null;
+        }
+    }
+
+    /** Get the last sent datagram for demo mode */
+    @VisibleForTesting
+    public SatelliteDatagram getDemoModeDatagram() {
+        return mDemoModeDatagram;
+    }
+
+    /**
+     * Set last sent datagram for demo mode
+     * @param datagramType datagram type, only DATAGRAM_TYPE_SOS_MESSAGE will be saved
+     * @param datagram datagram The last datagram saved when sendSatelliteDatagramForDemo is called
+     */
+    @VisibleForTesting
+    protected void setDemoModeDatagram(@SatelliteManager.DatagramType int datagramType,
+            SatelliteDatagram datagram) {
+        if (mIsDemoMode &&  datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE) {
+            mDemoModeDatagram = datagram;
+        }
     }
 
     private void notifyDatagramTransferStateChangedToSessionController() {
