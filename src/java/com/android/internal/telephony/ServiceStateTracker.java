@@ -1714,7 +1714,7 @@ public class ServiceStateTracker extends Handler {
                         log("Do not ratchet bandwidths since anchor NR cell is different ("
                                 + mLastAnchorNrCellId + "->" + anchorNrCellId + ").");
                         mLastAnchorNrCellId = anchorNrCellId;
-                        hasChanged = !Arrays.equals(mSS.getCellBandwidths(), bandwidths);
+                        hasChanged |= !Arrays.equals(mSS.getCellBandwidths(), bandwidths);
                         mSS.setCellBandwidths(bandwidths);
                     }
 

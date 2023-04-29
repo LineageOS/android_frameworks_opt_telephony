@@ -379,13 +379,15 @@ public class UiccSlot extends Handler {
     }
 
     private void disposeUiccCardIfNeeded(boolean isStateUnknown, int portIndex) {
-        // First dispose UiccPort corresponding to the portIndex
         if (mUiccCard != null) {
+            // First dispose UiccPort corresponding to the portIndex
             mUiccCard.disposePort(portIndex);
             if (ArrayUtils.isEmpty(mUiccCard.getUiccPortList())) {
                 // No UiccPort objects are found, safe to dispose the card
                 nullifyUiccCard(isStateUnknown);
             }
+        } else {
+            mStateIsUnknown = isStateUnknown;
         }
     }
 
