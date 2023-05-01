@@ -702,7 +702,7 @@ public class SatelliteController extends Handler {
                     IIntegerConsumer errorCallback = new IIntegerConsumer.Stub() {
                         @Override
                         public void accept(int result) {
-                            loge("Failed to Disable Satellite Mode, Error: " + result);
+                            logd("RequestSatelliteEnabled: result=" + result);
                         }
                     };
                     Phone phone = SatelliteServiceUtils.getPhone();
@@ -1442,6 +1442,16 @@ public class SatelliteController extends Handler {
     }
 
     /**
+     * Inform whether the device is aligned with satellite for demo mode.
+     *
+     * @param subId The subId of the subscription.
+     * @param isAligned {@true} means device is aligned with the satellite, otherwise {@false}.
+     */
+    public void onDeviceAlignedWithSatellite(@NonNull int subId, @NonNull boolean isAligned) {
+        mDatagramController.onDeviceAlignedWithSatellite(isAligned);
+    }
+
+    /**
      * This API can be used by only CTS to update satellite vendor service package name.
      *
      * @param servicePackageName The package name of the satellite vendor service.
@@ -1490,6 +1500,17 @@ public class SatelliteController extends Handler {
             return false;
         }
         return mSatelliteSessionController.setSatelliteListeningTimeoutDuration(timeoutMillis);
+    }
+
+    /**
+     * This API can be used by only CTS to update the timeout duration in milliseconds whether
+     * the device is aligned with the satellite for demo mode
+     *
+     * @param timeoutMillis The timeout duration in millisecond.
+     * @return {@code true} if the timeout duration is set successfully, {@code false} otherwise.
+     */
+    public boolean setSatelliteDeviceAlignedTimeoutDuration(long timeoutMillis) {
+        return mDatagramController.setSatelliteDeviceAlignedTimeoutDuration(timeoutMillis);
     }
 
     /**
