@@ -919,6 +919,17 @@ public class SatelliteController extends Handler {
     }
 
     /**
+     * Get whether the satellite modem is enabled.
+     * This will return the cached value instead of querying the satellite modem.
+     *
+     * @return {@code true} if the satellite modem is enabled and {@code false} otherwise.
+     */
+    public boolean isSatelliteEnabled() {
+        if (mIsSatelliteEnabled == null) return false;
+        return mIsSatelliteEnabled;
+    }
+
+    /**
      * Request to get whether the satellite service demo mode is enabled.
      *
      * @param subId The subId of the subscription to check whether the satellite demo mode
@@ -950,6 +961,15 @@ public class SatelliteController extends Handler {
         final Bundle bundle = new Bundle();
         bundle.putBoolean(SatelliteManager.KEY_DEMO_MODE_ENABLED, mIsDemoModeEnabled);
         result.send(SatelliteManager.SATELLITE_ERROR_NONE, bundle);
+    }
+
+    /**
+     * Get whether the satellite service demo mode is enabled.
+     *
+     * @return {@code true} if the satellite demo mode is enabled and {@code false} otherwise.
+     */
+    public boolean isDemoModeEnabled() {
+        return mIsDemoModeEnabled;
     }
 
     /**
