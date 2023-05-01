@@ -18,15 +18,17 @@ package com.android.internal.telephony.satellite;
 
 import android.annotation.NonNull;
 import android.content.Context;
+import android.os.Build;
 import android.os.Looper;
+import android.os.SystemProperties;
 import android.telephony.Rlog;
-import android.telephony.SubscriptionManager;
 import android.telephony.satellite.ISatelliteDatagramCallback;
 import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
 
 import com.android.internal.annotations.VisibleForTesting;
 
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
@@ -42,6 +44,9 @@ public class DatagramController {
     @NonNull private final DatagramReceiver mDatagramReceiver;
     public static final long MAX_DATAGRAM_ID = (long) Math.pow(2, 16);
     public static final int ROUNDING_UNIT = 10;
+    public static final long SATELLITE_ALIGN_TIMEOUT = TimeUnit.SECONDS.toMillis(30);
+    private static final String ALLOW_MOCK_MODEM_PROPERTY = "persist.radio.allow_mock_modem";
+    private static final boolean DEBUG = !"user".equals(Build.TYPE);
 
     /** Variables used to update onSendDatagramStateChanged(). */
     private int mSendSubId;
@@ -57,6 +62,7 @@ public class DatagramController {
     private int mReceiveErrorCode = SatelliteManager.SATELLITE_ERROR_NONE;
     private SatelliteDatagram mDemoModeDatagram;
     private boolean mIsDemoMode = false;
+    private long mAlignTimeoutDuration = SATELLITE_ALIGN_TIMEOUT;
 
     /**
      * @return The singleton instance of DatagramController.
@@ -240,25 +246,18 @@ public class DatagramController {
      * @param state Current satellite modem state.
      */
     public void onSatelliteModemStateChanged(@SatelliteManager.SatelliteModemState int state) {
-        if (state == SatelliteManager.SATELLITE_MODEM_STATE_OFF
-                || state == SatelliteManager.SATELLITE_MODEM_STATE_UNAVAILABLE) {
-            logd("onSatelliteModemStateChanged: cleaning up resources");
-            cleanUpResources();
-        }
         mDatagramDispatcher.onSatelliteModemStateChanged(state);
+        mDatagramReceiver.onSatelliteModemStateChanged(state);
     }
 
-    private void cleanUpResources() {
-        if (mReceiveDatagramTransferState
-                == SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING) {
-            updateReceiveStatus(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
-                    SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_FAILED,
-                    mReceivePendingCount,
-                    SatelliteManager.SATELLITE_REQUEST_ABORTED);
-        }
-        updateReceiveStatus(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
-                SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE, 0,
-                SatelliteManager.SATELLITE_ERROR_NONE);
+    void onDeviceAlignedWithSatellite(boolean isAligned) {
+        mDatagramDispatcher.onDeviceAlignedWithSatellite(isAligned);
+        mDatagramReceiver.onDeviceAlignedWithSatellite(isAligned);
+    }
+
+    boolean isReceivingDatagrams() {
+        return (mReceiveDatagramTransferState
+                == SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING);
     }
 
     /**
@@ -292,6 +291,32 @@ public class DatagramController {
         if (mIsDemoMode &&  datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE) {
             mDemoModeDatagram = datagram;
         }
+    }
+
+    long getSatelliteAlignedTimeoutDuration() {
+        return mAlignTimeoutDuration;
+    }
+
+    /**
+     * This API can be used by only CTS to update the timeout duration in milliseconds whether
+     * the device is aligned with the satellite for demo mode
+     *
+     * @param timeoutMillis The timeout duration in millisecond.
+     * @return {@code true} if the timeout duration is set successfully, {@code false} otherwise.
+     */
+    boolean setSatelliteDeviceAlignedTimeoutDuration(long timeoutMillis) {
+        if (!isMockModemAllowed()) {
+            loge("Updating align timeout duration is not allowed");
+            return false;
+        }
+
+        logd("setSatelliteDeviceAlignedTimeoutDuration: timeoutMillis=" + timeoutMillis);
+        mAlignTimeoutDuration = timeoutMillis;
+        return true;
+    }
+
+    private boolean isMockModemAllowed() {
+        return (DEBUG || SystemProperties.getBoolean(ALLOW_MOCK_MODEM_PROPERTY, false));
     }
 
     private void notifyDatagramTransferStateChangedToSessionController() {
