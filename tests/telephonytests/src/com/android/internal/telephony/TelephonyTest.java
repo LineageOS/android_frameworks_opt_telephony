@@ -115,6 +115,7 @@ import com.android.internal.telephony.metrics.PersistAtomsStorage;
 import com.android.internal.telephony.metrics.ServiceStateStats;
 import com.android.internal.telephony.metrics.SmsStats;
 import com.android.internal.telephony.metrics.VoiceCallSessionStats;
+import com.android.internal.telephony.satellite.SatelliteController;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.test.SimulatedCommandsVerifier;
@@ -267,6 +268,7 @@ public abstract class TelephonyTest {
     protected DataServiceManager mMockedWwanDataServiceManager;
     protected DataServiceManager mMockedWlanDataServiceManager;
     protected ServiceStateStats mServiceStateStats;
+    protected SatelliteController mSatelliteController;
 
     // Initialized classes
     protected ActivityManager mActivityManager;
@@ -501,6 +503,7 @@ public abstract class TelephonyTest {
         mMockedWwanDataServiceManager = Mockito.mock(DataServiceManager.class);
         mMockedWlanDataServiceManager = Mockito.mock(DataServiceManager.class);
         mServiceStateStats = Mockito.mock(ServiceStateStats.class);
+        mSatelliteController = Mockito.mock(SatelliteController.class);
 
         TelephonyManager.disableServiceHandleCaching();
         PropertyInvalidatedCache.disableForTestMode();
@@ -862,6 +865,7 @@ public abstract class TelephonyTest {
         replaceInstance(PhoneFactory.class, "sCommandsInterfaces", null,
                 new CommandsInterface[] {mSimulatedCommands});
         replaceInstance(PhoneFactory.class, "sMetricsCollector", null, mMetricsCollector);
+        replaceInstance(SatelliteController.class, "sInstance", null, mSatelliteController);
 
         setReady(false);
         // create default TestableLooper for test and add to list of monitored loopers
