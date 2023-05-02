@@ -50,6 +50,7 @@ public class DatagramDispatcher extends Handler {
 
     private static final int CMD_SEND_SATELLITE_DATAGRAM = 1;
     private static final int EVENT_SEND_SATELLITE_DATAGRAM_DONE = 2;
+    private static final int EVENT_WAIT_FOR_DEVICE_ALIGNMENT_IN_DEMO_MODE_TIMED_OUT = 3;
 
     @NonNull private static DatagramDispatcher sInstance;
     @NonNull private final Context mContext;
@@ -57,6 +58,8 @@ public class DatagramDispatcher extends Handler {
     @NonNull private final ControllerMetricsStats mControllerMetricsStats;
 
     private boolean mIsDemoMode = false;
+    private boolean mIsAligned = false;
+    private DatagramDispatcherHandlerRequest mSendSatelliteDatagramRequest = null;
 
     private static AtomicLong mNextDatagramId = new AtomicLong(0);
 
@@ -138,6 +141,7 @@ public class DatagramDispatcher extends Handler {
         public boolean needFullScreenPointingUI;
         public @NonNull Consumer<Integer> callback;
         public long datagramStartTime;
+        public boolean skipCheckingSatelliteAligned = false;
 
         SendSatelliteDatagramArgument(int subId, long datagramId,
                 @SatelliteManager.DatagramType int datagramType,
@@ -233,11 +237,22 @@ public class DatagramDispatcher extends Handler {
                 int error = SatelliteServiceUtils.getSatelliteError(ar, "sendSatelliteDatagram");
                 SendSatelliteDatagramArgument argument =
                         (SendSatelliteDatagramArgument) request.argument;
-                logd("EVENT_SEND_SATELLITE_DATAGRAM_DONE error: " + error);
-                // log metrics about the outgoing datagram
-                reportSendDatagramCompleted(argument, error);
 
                 synchronized (mLock) {
+                    if (mIsDemoMode && (error == SatelliteManager.SATELLITE_ERROR_NONE)) {
+                        if (argument.skipCheckingSatelliteAligned) {
+                            logd("Satellite was already aligned. No need to check alignment again");
+                        } else if (!mIsAligned) {
+                            logd("Satellite is not aligned in demo mode, wait for the alignment.");
+                            startSatelliteAlignedTimer(request);
+                            break;
+                        }
+                    }
+
+                    logd("EVENT_SEND_SATELLITE_DATAGRAM_DONE error: " + error);
+                    // log metrics about the outgoing datagram
+                    reportSendDatagramCompleted(argument, error);
+
                     mSendingDatagramInProgress = false;
 
                     // Remove current datagram from pending map.
@@ -285,6 +300,11 @@ public class DatagramDispatcher extends Handler {
                                 SatelliteManager.SATELLITE_REQUEST_ABORTED);
                     }
                 }
+                break;
+            }
+
+            case EVENT_WAIT_FOR_DEVICE_ALIGNMENT_IN_DEMO_MODE_TIMED_OUT: {
+                handleEventSatelliteAlignedTimeout((DatagramDispatcherHandlerRequest) msg.obj);
                 break;
             }
 
@@ -344,9 +364,72 @@ public class DatagramDispatcher extends Handler {
      *
      * @param isDemoMode {@code true} means demo mode is on, {@code false} otherwise.
      */
-    @VisibleForTesting
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
     protected void setDemoMode(boolean isDemoMode) {
         mIsDemoMode = isDemoMode;
+    }
+
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
+    protected void onDeviceAlignedWithSatellite(boolean isAligned) {
+        if (mIsDemoMode) {
+            synchronized (mLock) {
+                mIsAligned = isAligned;
+                if (isAligned) handleEventSatelliteAligned();
+            }
+        }
+    }
+
+    private void startSatelliteAlignedTimer(@NonNull DatagramDispatcherHandlerRequest request) {
+        if (isSatelliteAlignedTimerStarted()) {
+            logd("Satellite aligned timer was already started");
+            return;
+        }
+        mSendSatelliteDatagramRequest = request;
+        sendMessageDelayed(
+                obtainMessage(EVENT_WAIT_FOR_DEVICE_ALIGNMENT_IN_DEMO_MODE_TIMED_OUT, request),
+                getSatelliteAlignedTimeoutDuration());
+    }
+
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    protected long getSatelliteAlignedTimeoutDuration() {
+        return mDatagramController.getSatelliteAlignedTimeoutDuration();
+    }
+
+    private void handleEventSatelliteAligned() {
+        if (isSatelliteAlignedTimerStarted()) {
+            stopSatelliteAlignedTimer();
+
+            if (mSendSatelliteDatagramRequest == null) {
+                loge("handleEventSatelliteAligned: mSendSatelliteDatagramRequest is null");
+            } else {
+                SendSatelliteDatagramArgument argument =
+                        (SendSatelliteDatagramArgument) mSendSatelliteDatagramRequest.argument;
+                argument.skipCheckingSatelliteAligned = true;
+                Message message = obtainMessage(
+                        EVENT_SEND_SATELLITE_DATAGRAM_DONE, mSendSatelliteDatagramRequest);
+                mSendSatelliteDatagramRequest = null;
+                AsyncResult.forMessage(message, null, null);
+                message.sendToTarget();
+            }
+        }
+    }
+
+    private void handleEventSatelliteAlignedTimeout(
+            @NonNull DatagramDispatcherHandlerRequest request) {
+        SatelliteManager.SatelliteException exception =
+                new SatelliteManager.SatelliteException(
+                        SatelliteManager.SATELLITE_NOT_REACHABLE);
+        Message message = obtainMessage(EVENT_SEND_SATELLITE_DATAGRAM_DONE, request);
+        AsyncResult.forMessage(message, null, exception);
+        message.sendToTarget();
+    }
+
+    private boolean isSatelliteAlignedTimerStarted() {
+        return hasMessages(EVENT_WAIT_FOR_DEVICE_ALIGNMENT_IN_DEMO_MODE_TIMED_OUT);
+    }
+
+    private void stopSatelliteAlignedTimer() {
+        removeMessages(EVENT_WAIT_FOR_DEVICE_ALIGNMENT_IN_DEMO_MODE_TIMED_OUT);
     }
 
     /**
@@ -480,7 +563,8 @@ public class DatagramDispatcher extends Handler {
         synchronized (mLock) {
             mSendingDatagramInProgress = false;
             if (getPendingDatagramCount() > 0) {
-                mDatagramController.updateSendStatus(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+                mDatagramController.updateSendStatus(
+                        SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
                         SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_FAILED,
                         getPendingDatagramCount(), SatelliteManager.SATELLITE_REQUEST_ABORTED);
             }
@@ -489,6 +573,11 @@ public class DatagramDispatcher extends Handler {
                     0, SatelliteManager.SATELLITE_ERROR_NONE);
             abortSendingPendingDatagrams(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
                     SatelliteManager.SATELLITE_REQUEST_ABORTED);
+
+            stopSatelliteAlignedTimer();
+            mIsDemoMode = false;
+            mSendSatelliteDatagramRequest = null;
+            mIsAligned = false;
         }
     }
 
