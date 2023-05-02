@@ -66,6 +66,7 @@ public class RadioOnStateListenerTest extends TelephonyTest {
         MockitoAnnotations.initMocks(this);
         mListener = new RadioOnStateListener();
         doReturn(mSST).when(mMockPhone).getServiceStateTracker();
+        mMockPhone.mCi = mMockCi;
     }
 
     @After
@@ -84,22 +85,38 @@ public class RadioOnStateListenerTest extends TelephonyTest {
      */
     @Test
     public void testRegisterForCallback() {
-        mMockPhone.mCi = mMockCi;
         mListener.waitForRadioOn(mMockPhone, mCallback, false, false, 0);
 
         waitForHandlerAction(mListener.getHandler(), TIMEOUT_MS);
 
         verify(mMockPhone).unregisterForServiceStateChanged(any(Handler.class));
+        verify(mSatelliteController).unregisterForSatelliteModemStateChanged(anyInt(), any());
         verify(mMockPhone).registerForServiceStateChanged(any(Handler.class),
                 eq(RadioOnStateListener.MSG_SERVICE_STATE_CHANGED), isNull());
+        verify(mSatelliteController, never()).registerForSatelliteModemStateChanged(
+                anyInt(), any());
 
         verify(mMockCi).registerForOffOrNotAvailable(any(Handler.class),
                 eq(RadioOnStateListener.MSG_RADIO_OFF_OR_NOT_AVAILABLE), isNull());
     }
 
     /**
-     * {@link RadioOnStateListener.Callback#isOkToCall(Phone, int, boolean)} returns true,
-     * so we are expecting
+     * Ensure that we successfully register for the satellite modem state changed messages.
+     */
+    @Test
+    public void testRegisterForSatelliteCallback() {
+        doReturn(true).when(mSatelliteController).isSatelliteEnabled();
+        mListener.waitForRadioOn(mMockPhone, mCallback, false, false, 0);
+
+        waitForHandlerAction(mListener.getHandler(), TIMEOUT_MS);
+
+        verify(mSatelliteController).unregisterForSatelliteModemStateChanged(anyInt(), any());
+        verify(mSatelliteController).registerForSatelliteModemStateChanged(anyInt(), any());
+    }
+
+    /**
+     * {@link RadioOnStateListener.Callback#isOkToCall(Phone, int, boolean)} returns true after
+     * service state changes, so we are expecting
      * {@link RadioOnStateListener.Callback#onComplete(RadioOnStateListener, boolean)} to
      * return true.
      */
@@ -109,14 +126,35 @@ public class RadioOnStateListenerTest extends TelephonyTest {
         state.setState(ServiceState.STATE_IN_SERVICE);
         when(mMockPhone.getServiceState()).thenReturn(state);
         when(mMockPhone.getState()).thenReturn(PhoneConstants.State.IDLE);
-        when(mCallback.isOkToCall(eq(mMockPhone), anyInt(), anyBoolean()))
-                .thenReturn(true);
-        mMockPhone.mCi = mMockCi;
+        when(mCallback.isOkToCall(eq(mMockPhone), anyInt(), anyBoolean())).thenReturn(true);
         mListener.waitForRadioOn(mMockPhone, mCallback, false, false, 0);
         waitForHandlerAction(mListener.getHandler(), TIMEOUT_MS);
 
         mListener.getHandler().obtainMessage(RadioOnStateListener.MSG_SERVICE_STATE_CHANGED,
                 new AsyncResult(null, state, null)).sendToTarget();
+
+        waitForHandlerAction(mListener.getHandler(), TIMEOUT_MS);
+        verify(mCallback).onComplete(eq(mListener), eq(true));
+    }
+
+    /**
+     * {@link RadioOnStateListener.Callback#isOkToCall(Phone, int, boolean)} returns true after
+     * satellite modem state changes, so we are expecting
+     * {@link RadioOnStateListener.Callback#onComplete(RadioOnStateListener, boolean)} to
+     * return true.
+     */
+    @Test
+    public void testSatelliteChangeState_OkToCallTrue() {
+        ServiceState state = new ServiceState();
+        state.setState(ServiceState.STATE_IN_SERVICE);
+        when(mMockPhone.getServiceState()).thenReturn(state);
+        when(mMockPhone.getState()).thenReturn(PhoneConstants.State.IDLE);
+        when(mCallback.isOkToCall(eq(mMockPhone), anyInt(), anyBoolean())).thenReturn(true);
+        mListener.waitForRadioOn(mMockPhone, mCallback, false, false, 0);
+        waitForHandlerAction(mListener.getHandler(), TIMEOUT_MS);
+
+        mListener.getHandler().obtainMessage(RadioOnStateListener.MSG_SATELLITE_ENABLED_CHANGED)
+                .sendToTarget();
 
         waitForHandlerAction(mListener.getHandler(), TIMEOUT_MS);
         verify(mCallback).onComplete(eq(mListener), eq(true));
@@ -132,10 +170,8 @@ public class RadioOnStateListenerTest extends TelephonyTest {
         ServiceState state = new ServiceState();
         state.setState(ServiceState.STATE_OUT_OF_SERVICE);
         when(mMockPhone.getState()).thenReturn(PhoneConstants.State.IDLE);
-        when(mCallback.isOkToCall(eq(mMockPhone), anyInt(), anyBoolean()))
-                .thenReturn(false);
+        when(mCallback.isOkToCall(eq(mMockPhone), anyInt(), anyBoolean())).thenReturn(false);
         when(mMockPhone.getServiceState()).thenReturn(state);
-        mMockPhone.mCi = mMockCi;
         mListener.waitForRadioOn(mMockPhone, mCallback, false, false, 0);
         waitForHandlerAction(mListener.getHandler(), TIMEOUT_MS);
 
@@ -158,18 +194,18 @@ public class RadioOnStateListenerTest extends TelephonyTest {
         state.setState(ServiceState.STATE_POWER_OFF);
         when(mMockPhone.getState()).thenReturn(PhoneConstants.State.IDLE);
         when(mMockPhone.getServiceState()).thenReturn(state);
-        when(mCallback.isOkToCall(eq(mMockPhone), anyInt(), anyBoolean()))
-                .thenReturn(false);
+        when(mCallback.isOkToCall(eq(mMockPhone), anyInt(), anyBoolean())).thenReturn(false);
         mListener.setTimeBetweenRetriesMillis(0/* ms */);
         mListener.setMaxNumRetries(2);
 
         // Wait for the timer to expire and check state manually in onRetryTimeout
-        mMockPhone.mCi = mMockCi;
         mListener.waitForRadioOn(mMockPhone, mCallback, false, false, 0);
         waitForDelayedHandlerAction(mListener.getHandler(), TIMEOUT_MS /* delay */, TIMEOUT_MS);
 
         verify(mCallback).onComplete(eq(mListener), eq(false));
         verify(mMockPhone, times(2)).setRadioPower(eq(true), eq(false), eq(false), eq(false));
+        verify(mSatelliteController, never()).requestSatelliteEnabled(
+                anyInt(), eq(false), eq(false), any());
     }
 
     @Test
@@ -178,18 +214,39 @@ public class RadioOnStateListenerTest extends TelephonyTest {
         state.setState(ServiceState.STATE_POWER_OFF);
         when(mMockPhone.getState()).thenReturn(PhoneConstants.State.IDLE);
         when(mMockPhone.getServiceState()).thenReturn(state);
-        when(mCallback.isOkToCall(eq(mMockPhone), anyInt(), anyBoolean()))
-                .thenReturn(false);
+        when(mCallback.isOkToCall(eq(mMockPhone), anyInt(), anyBoolean())).thenReturn(false);
         mListener.setTimeBetweenRetriesMillis(0/* ms */);
         mListener.setMaxNumRetries(2);
 
         // Wait for the timer to expire and check state manually in onRetryTimeout
-        mMockPhone.mCi = mMockCi;
         mListener.waitForRadioOn(mMockPhone, mCallback, true, true, 0);
-        waitForDelayedHandlerAction(mListener.getHandler(), TIMEOUT_MS /* delay */, TIMEOUT_MS );
+        waitForDelayedHandlerAction(mListener.getHandler(), TIMEOUT_MS /* delay */, TIMEOUT_MS);
 
         verify(mCallback).onComplete(eq(mListener), eq(false));
         verify(mMockPhone, times(2)).setRadioPower(eq(true), eq(true), eq(true), eq(false));
+        verify(mSatelliteController, never()).requestSatelliteEnabled(
+                anyInt(), eq(false), eq(false), any());
+    }
+
+    @Test
+    public void testTimeout_RetryFailure_WithSatellite() {
+        doReturn(true).when(mSatelliteController).isSatelliteEnabled();
+        ServiceState state = new ServiceState();
+        state.setState(ServiceState.STATE_POWER_OFF);
+        when(mMockPhone.getState()).thenReturn(PhoneConstants.State.IDLE);
+        when(mMockPhone.getServiceState()).thenReturn(state);
+        when(mCallback.isOkToCall(eq(mMockPhone), anyInt(), anyBoolean())).thenReturn(false);
+        mListener.setTimeBetweenRetriesMillis(0/* ms */);
+        mListener.setMaxNumRetries(2);
+
+        // Wait for the timer to expire and check state manually in onRetryTimeout
+        mListener.waitForRadioOn(mMockPhone, mCallback, true, true, 0);
+        waitForDelayedHandlerAction(mListener.getHandler(), TIMEOUT_MS /* delay */, TIMEOUT_MS);
+
+        verify(mCallback).onComplete(eq(mListener), eq(false));
+        verify(mMockPhone, times(2)).setRadioPower(eq(true), eq(true), eq(true), eq(false));
+        verify(mSatelliteController, times(2)).requestSatelliteEnabled(
+                anyInt(), eq(false), eq(false), any());
     }
 
     @Test
@@ -206,7 +263,6 @@ public class RadioOnStateListenerTest extends TelephonyTest {
         mListener.setMaxNumRetries(1);
 
         // Wait for the timer to expire and check state manually in onRetryTimeout
-        mMockPhone.mCi = mMockCi;
         mListener.waitForRadioOn(mMockPhone, mCallback, true, true, 100);
         waitForDelayedHandlerAction(mListener.getHandler(), TIMEOUT_MS /* delay */, TIMEOUT_MS);
 
