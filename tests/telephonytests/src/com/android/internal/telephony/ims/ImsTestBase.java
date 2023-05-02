@@ -21,6 +21,8 @@ import static org.junit.Assert.fail;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Message;
+import android.os.MessageQueue;
 import android.testing.TestableLooper;
 
 import androidx.test.InstrumentationRegistry;
@@ -29,6 +31,7 @@ import com.android.internal.telephony.TelephonyTest;
 
 import org.mockito.MockitoAnnotations;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -38,6 +41,22 @@ import java.util.concurrent.TimeUnit;
  * Helper class to load Mockito Resources into a test.
  */
 public class ImsTestBase {
+    private static final Field MESSAGE_QUEUE_FIELD;
+    private static final Field MESSAGE_WHEN_FIELD;
+    private static final Field MESSAGE_NEXT_FIELD;
+
+    static {
+        try {
+            MESSAGE_QUEUE_FIELD = MessageQueue.class.getDeclaredField("mMessages");
+            MESSAGE_QUEUE_FIELD.setAccessible(true);
+            MESSAGE_WHEN_FIELD = Message.class.getDeclaredField("when");
+            MESSAGE_WHEN_FIELD.setAccessible(true);
+            MESSAGE_NEXT_FIELD = Message.class.getDeclaredField("next");
+            MESSAGE_NEXT_FIELD.setAccessible(true);
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException("Failed to initialize TelephonyTest", e);
+        }
+    }
 
     protected Context mContext;
     protected List<TestableLooper> mTestableLoopers = new ArrayList<>();
@@ -112,6 +131,52 @@ public class ImsTestBase {
     }
 
     /**
+     * @return The longest delay from all the message queues.
+     */
+    private long getLongestDelay() {
+        long delay = 0;
+        for (TestableLooper looper : mTestableLoopers) {
+            MessageQueue queue = looper.getLooper().getQueue();
+            try {
+                Message msg = (Message) MESSAGE_QUEUE_FIELD.get(queue);
+                while (msg != null) {
+                    delay = Math.max(msg.getWhen(), delay);
+                    msg = (Message) MESSAGE_NEXT_FIELD.get(msg);
+                }
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException("Access failed in TelephonyTest", e);
+            }
+        }
+        return delay;
+    }
+
+    /**
+     * @return {@code true} if there are any messages in the queue.
+     */
+    private boolean messagesExist() {
+        for (TestableLooper looper : mTestableLoopers) {
+            MessageQueue queue = looper.getLooper().getQueue();
+            try {
+                Message msg = (Message) MESSAGE_QUEUE_FIELD.get(queue);
+                if (msg != null) return true;
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException("Access failed in TelephonyTest", e);
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Handle all messages including the delayed messages.
+     */
+    public void processAllFutureMessages() {
+        while (messagesExist()) {
+            moveTimeForward(getLongestDelay());
+            processAllMessages();
+        }
+    }
+
+    /**
      * Check if there are any messages to be processed in any monitored TestableLooper
      * Delayed messages to be handled at a later time will be ignored
      * @return true if there are no messages that can be handled at the current time
@@ -122,5 +187,29 @@ public class ImsTestBase {
             if (!looper.getLooper().getQueue().isIdle()) return false;
         }
         return true;
+    }
+
+    /**
+     * Effectively moves time forward by reducing the time of all messages
+     * for all monitored TestableLoopers
+     * @param milliSeconds number of milliseconds to move time forward by
+     */
+    public void moveTimeForward(long milliSeconds) {
+        for (TestableLooper looper : mTestableLoopers) {
+            MessageQueue queue = looper.getLooper().getQueue();
+            try {
+                Message msg = (Message) MESSAGE_QUEUE_FIELD.get(queue);
+                while (msg != null) {
+                    long updatedWhen = msg.getWhen() - milliSeconds;
+                    if (updatedWhen < 0) {
+                        updatedWhen = 0;
+                    }
+                    MESSAGE_WHEN_FIELD.set(msg, updatedWhen);
+                    msg = (Message) MESSAGE_NEXT_FIELD.get(msg);
+                }
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException("Access failed in TelephonyTest", e);
+            }
+        }
     }
 }
