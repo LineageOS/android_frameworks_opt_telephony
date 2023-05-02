@@ -21,10 +21,14 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionManager;
+import android.telephony.satellite.ISatelliteStateCallback;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.os.SomeArgs;
+import com.android.internal.telephony.IIntegerConsumer;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.satellite.SatelliteController;
 import com.android.telephony.Rlog;
 
 import java.util.Locale;
@@ -37,7 +41,8 @@ public class RadioOnStateListener {
 
     public interface Callback {
         /**
-         * Receives the result of the RadioOnStateListener's attempt to turn on the radio.
+         * Receives the result of the RadioOnStateListener's attempt to turn on the radio
+         * and turn off the satellite modem.
          */
         void onComplete(RadioOnStateListener listener, boolean isRadioReady);
 
@@ -86,6 +91,8 @@ public class RadioOnStateListener {
     public static final int MSG_RADIO_OFF_OR_NOT_AVAILABLE = 5;
     public static final int MSG_IMS_CAPABILITY_CHANGED = 6;
     public static final int MSG_TIMEOUT_ONTIMEOUT_CALLBACK = 7;
+    @VisibleForTesting
+    public static final int MSG_SATELLITE_ENABLED_CHANGED = 8;
 
     private final Handler mHandler = new Handler(Looper.getMainLooper()) {
         @Override
@@ -123,6 +130,10 @@ public class RadioOnStateListener {
                     break;
                 case MSG_TIMEOUT_ONTIMEOUT_CALLBACK:
                     onTimeoutCallbackTimeout();
+                    break;
+                case MSG_SATELLITE_ENABLED_CHANGED:
+                    onSatelliteEnabledChanged();
+                    break;
                 default:
                     Rlog.w(TAG, String.format(Locale.getDefault(),
                         "handleMessage: unexpected message: %d.", msg.what));
@@ -131,8 +142,17 @@ public class RadioOnStateListener {
         }
     };
 
+    private final ISatelliteStateCallback mSatelliteCallback = new ISatelliteStateCallback.Stub() {
+        @Override
+        public void onSatelliteModemStateChanged(int state) {
+            mHandler.obtainMessage(MSG_SATELLITE_ENABLED_CHANGED).sendToTarget();
+        }
+    };
+
     private Callback mCallback; // The callback to notify upon completion.
     private Phone mPhone; // The phone that will attempt to place the call.
+    // SatelliteController instance to check whether satellite has been disabled.
+    private SatelliteController mSatelliteController;
     private boolean mForEmergencyCall; // Whether radio is being turned on for emergency call.
     // Whether this phone is selected to place emergency call. Can be true only if
     // mForEmergencyCall is true.
@@ -146,6 +166,7 @@ public class RadioOnStateListener {
      *
      * This method kicks off the following sequence:
      * - Listen for the service state change event telling us the radio has come up.
+     * - Listen for the satellite state changed event telling us the satellite service is disabled.
      * - Retry if we've gone {@link #TIME_BETWEEN_RETRIES_MILLIS} without any response from the
      *   radio.
      * - Finally, clean up any leftover state.
@@ -156,7 +177,7 @@ public class RadioOnStateListener {
      */
     public void waitForRadioOn(Phone phone, Callback callback,
             boolean forEmergencyCall, boolean isSelectedPhoneForEmergencyCall,
-            int onTimeoutCallbackInverval) {
+            int onTimeoutCallbackInterval) {
         Rlog.d(TAG, "waitForRadioOn: Phone " + phone.getPhoneId());
 
         if (mPhone != null) {
@@ -169,7 +190,7 @@ public class RadioOnStateListener {
         args.arg2 = callback;
         args.arg3 = forEmergencyCall;
         args.arg4 = isSelectedPhoneForEmergencyCall;
-        args.argi1 = onTimeoutCallbackInverval;
+        args.argi1 = onTimeoutCallbackInterval;
         mHandler.obtainMessage(MSG_START_SEQUENCE, args).sendToTarget();
     }
 
@@ -182,6 +203,7 @@ public class RadioOnStateListener {
             boolean forEmergencyCall, boolean isSelectedPhoneForEmergencyCall,
             int onTimeoutCallbackInterval) {
         Rlog.d(TAG, "startSequenceInternal: Phone " + phone.getPhoneId());
+        mSatelliteController = SatelliteController.getInstance();
 
         // First of all, clean up any state left over from a prior RadioOn call sequence. This
         // ensures that we'll behave sanely if another startTurnOnRadioSequence() comes in while
@@ -198,9 +220,14 @@ public class RadioOnStateListener {
         // Register for RADIO_OFF to handle cases where emergency call is dialed before
         // we receive UNSOL_RESPONSE_RADIO_STATE_CHANGED with RADIO_OFF.
         registerForRadioOff();
-        // Next step: when the SERVICE_STATE_CHANGED event comes in, we'll retry the call; see
-        // onServiceStateChanged(). But also, just in case, start a timer to make sure we'll retry
-        // the call even if the SERVICE_STATE_CHANGED event never comes in for some reason.
+        if (mSatelliteController.isSatelliteEnabled()) {
+            // Register for satellite modem state changed to notify when satellite is disabled.
+            registerForSatelliteEnabledChanged();
+        }
+        // Next step: when the SERVICE_STATE_CHANGED or SATELLITE_ENABLED_CHANGED event comes in,
+        // we'll retry the call; see onServiceStateChanged() and onSatelliteEnabledChanged().
+        // But also, just in case, start a timer to make sure we'll retry the call even if the
+        // SERVICE_STATE_CHANGED or SATELLITE_ENABLED_CHANGED events never come in for some reason.
         startRetryTimer();
         registerForImsCapabilityChanged();
         startOnTimeoutCallbackTimer();
@@ -292,6 +319,19 @@ public class RadioOnStateListener {
         }
     }
 
+    private void onSatelliteEnabledChanged() {
+        if (mPhone == null) {
+            return;
+        }
+        if (isOkToCall(mPhone.getServiceState().getState(),
+                mPhone.isVoiceOverCellularImsEnabled())) {
+            onComplete(true);
+            cleanup();
+        } else {
+            Rlog.d(TAG, "onSatelliteEnabledChanged: not ready to call yet, keep waiting.");
+        }
+    }
+
     /**
      * Callback to see if it is okay to call yet, given the current conditions.
      */
@@ -348,9 +388,20 @@ public class RadioOnStateListener {
                 Rlog.w(TAG, "Hit MAX_NUM_RETRIES; giving up.");
                 cleanup();
             } else {
-                Rlog.d(TAG, "Trying (again) to turn on the radio.");
+                Rlog.d(TAG, "Trying (again) to turn the radio on and satellite modem off.");
                 mPhone.setRadioPower(true, mForEmergencyCall, mSelectedPhoneForEmergencyCall,
                         false);
+                if (mSatelliteController.isSatelliteEnabled()) {
+                    mSatelliteController.requestSatelliteEnabled(mPhone.getSubId(),
+                            false /* enableSatellite */, false /* enableDemoMode */,
+                            new IIntegerConsumer.Stub() {
+                                @Override
+                                public void accept(int result) {
+                                    mHandler.obtainMessage(MSG_SATELLITE_ENABLED_CHANGED)
+                                            .sendToTarget();
+                                }
+                            });
+                }
                 startRetryTimer();
             }
         }
@@ -383,6 +434,7 @@ public class RadioOnStateListener {
         unregisterForServiceStateChanged();
         unregisterForRadioOff();
         unregisterForRadioOn();
+        unregisterForSatelliteEnabledChanged();
         cancelRetryTimer();
         unregisterForImsCapabilityChanged();
 
@@ -440,6 +492,20 @@ public class RadioOnStateListener {
             mPhone.mCi.unregisterForOn(mHandler); // Safe even if unnecessary
         }
         mHandler.removeMessages(MSG_RADIO_ON); // Clean up any pending messages too
+    }
+
+    private void registerForSatelliteEnabledChanged() {
+        mSatelliteController.registerForSatelliteModemStateChanged(
+                mPhone.getSubId(), mSatelliteCallback);
+    }
+
+    private void unregisterForSatelliteEnabledChanged() {
+        int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        if (mPhone != null) {
+            subId = mPhone.getSubId();
+        }
+        mSatelliteController.unregisterForSatelliteModemStateChanged(subId, mSatelliteCallback);
+        mHandler.removeMessages(MSG_SATELLITE_ENABLED_CHANGED);
     }
 
     private void registerForImsCapabilityChanged() {
