@@ -957,7 +957,7 @@ public class UiccController extends Handler {
             log("updateSimState: phoneId=" + phoneId + ", state=" + state + ", reason="
                     + reason);
             if (!SubscriptionManager.isValidPhoneId(phoneId)) {
-                Rlog.e(LOG_TAG, "updateInternalIccState: Invalid phone id " + phoneId);
+                Rlog.e(LOG_TAG, "updateSimState: Invalid phone id " + phoneId);
                 return;
             }
 

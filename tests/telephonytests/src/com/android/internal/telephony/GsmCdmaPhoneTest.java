@@ -2556,4 +2556,23 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 .getSubscriptionUserHandle(anyInt());
         assertNull(mPhoneUT.getUserHandle());
     }
+
+    @Test
+    public void testResetNetworkSelectionModeOnSimSwap() {
+        // Set current network selection manual mode.
+        mSimulatedCommands.setNetworkSelectionModeManual("123", 0, null);
+        clearInvocations(mSimulatedCommandsVerifier);
+
+        // SIM loaded.
+        Intent simLoadedIntent = new Intent(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
+        simLoadedIntent.putExtra(SubscriptionManager.EXTRA_SLOT_INDEX, mPhone.getPhoneId());
+        simLoadedIntent.putExtra(TelephonyManager.EXTRA_SIM_STATE,
+                TelephonyManager.SIM_STATE_LOADED);
+        mContext.sendBroadcast(simLoadedIntent);
+
+        processAllFutureMessages();
+        // Verify set network selection mode to be AUTO
+        verify(mSimulatedCommandsVerifier).getNetworkSelectionMode(any(Message.class));
+        verify(mSimulatedCommandsVerifier).setNetworkSelectionModeAutomatic(any(Message.class));
+    }
 }

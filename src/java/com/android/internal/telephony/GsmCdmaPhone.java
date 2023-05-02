@@ -172,6 +172,8 @@ public class GsmCdmaPhone extends Phone {
     // Key used to read/write the SIM IMSI used for storing the voice mail
     private static final String VM_SIM_IMSI = "vm_sim_imsi_key";
     /** List of Registrants to receive Supplementary Service Notifications. */
+    // Key used to read/write the current sub Id. Updated on SIM loaded.
+    public static final String CURR_SUBID = "curr_subid";
     private RegistrantList mSsnRegistrants = new RegistrantList();
 
     //CDMA
@@ -415,6 +417,17 @@ public class GsmCdmaPhone extends Phone {
                 int newPreferredTtyMode = intent.getIntExtra(
                         TelecomManager.EXTRA_TTY_PREFERRED_MODE, TelecomManager.TTY_MODE_OFF);
                 updateUiTtyMode(newPreferredTtyMode);
+            } else if (TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED.equals(action)) {
+                if (mPhoneId == intent.getIntExtra(
+                        SubscriptionManager.EXTRA_SLOT_INDEX,
+                        SubscriptionManager.INVALID_SIM_SLOT_INDEX)) {
+                    int simState = intent.getIntExtra(TelephonyManager.EXTRA_SIM_STATE,
+                            TelephonyManager.SIM_STATE_UNKNOWN);
+                    if (simState == TelephonyManager.SIM_STATE_LOADED
+                            && currentSlotSubIdChanged()) {
+                        setNetworkSelectionModeAutomatic(null);
+                    }
+                }
             }
         }
     };
@@ -477,6 +490,7 @@ public class GsmCdmaPhone extends Phone {
                 CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         filter.addAction(TelecomManager.ACTION_CURRENT_TTY_MODE_CHANGED);
         filter.addAction(TelecomManager.ACTION_TTY_PREFERRED_MODE_CHANGED);
+        filter.addAction(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
         mContext.registerReceiver(mBroadcastReceiver, filter,
                 android.Manifest.permission.MODIFY_PHONE_STATE, null, Context.RECEIVER_EXPORTED);
 
@@ -3532,6 +3546,27 @@ public class GsmCdmaPhone extends Phone {
             default:
                 super.handleMessage(msg);
         }
+    }
+
+    /**
+     * Check if a different SIM is inserted at this slot from the last time. Storing last subId
+     * in SharedPreference for now to detect SIM change.
+     *
+     * @return {@code true} if current slot mapping changed; {@code false} otherwise.
+     */
+    private boolean currentSlotSubIdChanged() {
+        SharedPreferences sp =
+                PreferenceManager.getDefaultSharedPreferences(mContext);
+        int storedSubId = sp.getInt(CURR_SUBID + mPhoneId, -1);
+        boolean changed = storedSubId != getSubId();
+        if (changed) {
+            // Update stored subId
+            SharedPreferences.Editor editor = sp.edit();
+            editor.putInt(CURR_SUBID + mPhoneId, getSubId());
+            editor.apply();
+        }
+        Rlog.d(LOG_TAG, "currentSlotSubIdChanged: changed=" + changed);
+        return changed;
     }
 
     public UiccCardApplication getUiccCardApplication() {
