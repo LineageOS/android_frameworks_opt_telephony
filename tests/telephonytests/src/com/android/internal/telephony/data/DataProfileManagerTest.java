@@ -873,8 +873,10 @@ public class DataProfileManagerTest extends TelephonyTest {
 
     @Test
     public void testSetInitialAttachDataProfileMultipleRequests() throws Exception {
+        // This test case only applies to legacy modem, see b/227579876
+        doReturn(false).when(mDataConfigManager).allowClearInitialAttachDataProfile();
+
         // Test: Modem Cleared IA, should always send IA to modem
-        // TODO(b/237444788): this case should be removed from U
         mDataProfileManagerUT.obtainMessage(3 /* EVENT_SIM_REFRESH */).sendToTarget();
         processAllMessages();
 
@@ -911,6 +913,14 @@ public class DataProfileManagerTest extends TelephonyTest {
 
     @Test
     public void testSimRemoval() {
+        // This test case applies to the latest modem, see b/227579876.
+        doReturn(true).when(mDataConfigManager).allowClearInitialAttachDataProfile();
+
+        // SIM inserted
+        mDataProfileManagerUT.obtainMessage(3 /* EVENT_SIM_REFRESH */).sendToTarget();
+        processAllMessages();
+
+        // SIM removed
         Mockito.clearInvocations(mDataProfileManagerCallback);
         mSimInserted = false;
         mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
@@ -943,6 +953,58 @@ public class DataProfileManagerTest extends TelephonyTest {
         dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
                 tnr, TelephonyManager.NETWORK_TYPE_LTE, false);
         assertThat(dataProfile).isEqualTo(null);
+
+        // Verify null as initial attached data profile is sent to modem
+        verify(mMockedWwanDataServiceManager).setInitialAttachApn(null, false, null);
+    }
+
+    @Test
+    public void testSimRemovalLegacy() {
+        // This test case only applies to legacy modem, see b/227579876, where null IA won't be
+        // updated to modem
+        doReturn(false).when(mDataConfigManager).allowClearInitialAttachDataProfile();
+
+        // SIM inserted
+        mDataProfileManagerUT.obtainMessage(3 /* EVENT_SIM_REFRESH */).sendToTarget();
+        processAllMessages();
+
+        // SIM removed
+        Mockito.clearInvocations(mDataProfileManagerCallback);
+        mSimInserted = false;
+        mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
+        processAllMessages();
+
+        verify(mDataProfileManagerCallback).onDataProfilesChanged();
+
+        TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .build(), mPhone);
+        DataProfile dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
+                tnr, TelephonyManager.NETWORK_TYPE_LTE, false);
+        assertThat(dataProfile).isNull();
+
+        // expect default EIMS when SIM absent
+        tnr = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)
+                        .build(), mPhone);
+        dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
+                tnr, TelephonyManager.NETWORK_TYPE_LTE, false);
+        assertThat(dataProfile.getApnSetting().getApnName()).isEqualTo("sos");
+
+        // expect no default IMS when SIM absent
+        tnr = new TelephonyNetworkRequest(
+                new NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_IMS)
+                        .build(), mPhone);
+        dataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
+                tnr, TelephonyManager.NETWORK_TYPE_LTE, false);
+        assertThat(dataProfile).isEqualTo(null);
+
+        // Verify in legacy mode, null IA should NOT be sent to modem
+        verify(mMockedWwanDataServiceManager, Mockito.never())
+                .setInitialAttachApn(null, false, null);
     }
 
     @Test
