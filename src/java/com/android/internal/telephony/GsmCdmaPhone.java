@@ -5130,7 +5130,7 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public void handleNullCipherEnabledChange() {
         if (!DeviceConfig.getBoolean(DeviceConfig.NAMESPACE_CELLULAR_SECURITY,
-                TelephonyManager.PROPERTY_ENABLE_NULL_CIPHER_TOGGLE, false)) {
+                TelephonyManager.PROPERTY_ENABLE_NULL_CIPHER_TOGGLE, true)) {
             logi("Not handling null cipher update. Feature disabled by DeviceConfig.");
             return;
         }
