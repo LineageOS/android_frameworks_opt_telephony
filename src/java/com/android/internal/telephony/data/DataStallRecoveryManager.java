@@ -187,6 +187,7 @@ public class DataStallRecoveryManager extends Handler {
 
     private DataStallRecoveryManagerCallback mDataStallRecoveryManagerCallback;
 
+    private final DataStallRecoveryStats mStats;
     /**
      * The data stall recovery manager callback. Note this is only used for passing information
      * internally in the data stack, should not be used externally.
@@ -248,6 +249,8 @@ public class DataStallRecoveryManager extends Handler {
         updateDataStallRecoveryConfigs();
 
         registerAllEvents();
+
+        mStats = new DataStallRecoveryStats(mPhone, dataNetworkController);
     }
 
     /** Register for all events that data stall monitor is interested. */
@@ -645,8 +648,9 @@ public class DataStallRecoveryManager extends Handler {
                    && !mIsAttemptedAllSteps)
                  || mLastAction == RECOVERY_ACTION_RESET_MODEM)
                  ? (int) getDurationOfCurrentRecoveryMs() : 0;
-            DataStallRecoveryStats.onDataStallEvent(
-                    mLastAction, mPhone, isValid, timeDuration, reason,
+
+            mStats.uploadMetrics(
+                    mLastAction, isValid, timeDuration, reason,
                     isFirstValidationAfterDoRecovery, timeDurationOfCurrentAction);
             logl(
                     "data stall: "
