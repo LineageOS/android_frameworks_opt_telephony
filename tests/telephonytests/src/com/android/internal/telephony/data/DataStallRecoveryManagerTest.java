@@ -93,22 +93,22 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
     private void sendValidationStatusCallback(@ValidationStatus int status) {
         ArgumentCaptor<DataNetworkControllerCallback> dataNetworkControllerCallbackCaptor =
                 ArgumentCaptor.forClass(DataNetworkControllerCallback.class);
-        verify(mDataNetworkController)
+        verify(mDataNetworkController, times(2))
                 .registerDataNetworkControllerCallback(
                         dataNetworkControllerCallbackCaptor.capture());
         DataNetworkControllerCallback dataNetworkControllerCallback =
-                dataNetworkControllerCallbackCaptor.getValue();
+                dataNetworkControllerCallbackCaptor.getAllValues().get(0);
         dataNetworkControllerCallback.onInternetDataNetworkValidationStatusChanged(status);
     }
 
     private void sendOnInternetDataNetworkCallback(boolean isConnected) {
         ArgumentCaptor<DataNetworkControllerCallback> dataNetworkControllerCallbackCaptor =
                 ArgumentCaptor.forClass(DataNetworkControllerCallback.class);
-        verify(mDataNetworkController)
+        verify(mDataNetworkController, times(2))
                 .registerDataNetworkControllerCallback(
                         dataNetworkControllerCallbackCaptor.capture());
         DataNetworkControllerCallback dataNetworkControllerCallback =
-                dataNetworkControllerCallbackCaptor.getValue();
+                dataNetworkControllerCallbackCaptor.getAllValues().get(0);
 
         if (isConnected) {
             List<DataNetwork> dataprofile = new ArrayList<>();
