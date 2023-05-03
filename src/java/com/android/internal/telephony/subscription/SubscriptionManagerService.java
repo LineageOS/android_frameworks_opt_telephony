@@ -1158,11 +1158,14 @@ public class SubscriptionManagerService extends ISub.Stub {
             } else {
                 loge("The eSIM profiles update was not successful.");
             }
+            log("updateEmbeddedSubscriptions: Finished embedded subscription update.");
+            // The runnable will be executed in the main thread. Pre Android-U behavior.
+            mHandler.post(() -> {
+                if (callback != null) {
+                    callback.run();
+                }
+            });
         });
-        log("updateEmbeddedSubscriptions: Finished embedded subscription update.");
-        if (callback != null) {
-            callback.run();
-        }
     }
 
     /**
