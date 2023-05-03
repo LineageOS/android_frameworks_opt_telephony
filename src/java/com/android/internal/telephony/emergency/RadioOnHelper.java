@@ -22,8 +22,10 @@ import android.os.UserHandle;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
 
+import com.android.internal.telephony.IIntegerConsumer;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.satellite.SatelliteController;
 import com.android.telephony.Rlog;
 
 import java.util.ArrayList;
@@ -44,7 +46,7 @@ public class RadioOnHelper implements RadioOnStateListener.Callback {
     private RadioOnStateListener.Callback mCallback;
     private List<RadioOnStateListener> mListeners;
     private List<RadioOnStateListener> mInProgressListeners;
-    private boolean mIsRadioOnCallingEnabled;
+    private boolean mIsRadioReady;
 
     public RadioOnHelper(Context context) {
         mContext = context;
@@ -72,9 +74,9 @@ public class RadioOnHelper implements RadioOnStateListener.Callback {
      * class.
      *
      * This method kicks off the following sequence:
-     * - Power on the radio for each Phone
-     * - Listen for radio events telling us the radio has come up.
-     * - Retry if we've gone a significant amount of time without any response from the radio.
+     * - Power on the radio for each Phone and disable the satellite modem
+     * - Listen for events telling us the radio has come up or the satellite modem is disabled.
+     * - Retry if we've gone a significant amount of time without any response.
      * - Finally, clean up any leftover state.
      *
      * This method is safe to call from any thread, since it simply posts a message to the
@@ -87,7 +89,7 @@ public class RadioOnHelper implements RadioOnStateListener.Callback {
         setupListeners();
         mCallback = callback;
         mInProgressListeners.clear();
-        mIsRadioOnCallingEnabled = false;
+        mIsRadioReady = false;
         for (int i = 0; i < TelephonyManager.from(mContext).getActiveModemCount(); i++) {
             Phone phone = PhoneFactory.getPhone(i);
             if (phone == null) {
@@ -101,6 +103,9 @@ public class RadioOnHelper implements RadioOnStateListener.Callback {
                     && phone == phoneForEmergencyCall, timeoutCallbackInterval);
         }
         powerOnRadio(forEmergencyCall, phoneForEmergencyCall, isTestEmergencyNumber);
+        if (SatelliteController.getInstance().isSatelliteEnabled()) {
+            powerOffSatellite(phoneForEmergencyCall);
+        }
     }
 
     /**
@@ -142,15 +147,31 @@ public class RadioOnHelper implements RadioOnStateListener.Callback {
     }
 
     /**
+     * Attempt to power off the satellite modem. We'll eventually get an
+     * onSatelliteModemStateChanged() callback when the satellite modem is successfully disabled.
+     */
+    private void powerOffSatellite(Phone phoneForEmergencyCall) {
+        SatelliteController satelliteController = SatelliteController.getInstance();
+        satelliteController.requestSatelliteEnabled(phoneForEmergencyCall.getSubId(),
+                false /* enableSatellite */, false /* enableDemoMode */,
+                new IIntegerConsumer.Stub() {
+                    @Override
+                    public void accept(int result) {
+
+                    }
+                });
+    }
+
+    /**
      * This method is called from multiple Listeners on the Main Looper. Synchronization is not
      * necessary.
      */
     @Override
     public void onComplete(RadioOnStateListener listener, boolean isRadioReady) {
-        mIsRadioOnCallingEnabled |= isRadioReady;
+        mIsRadioReady |= isRadioReady;
         mInProgressListeners.remove(listener);
         if (mCallback != null && mInProgressListeners.isEmpty()) {
-            mCallback.onComplete(null, mIsRadioOnCallingEnabled);
+            mCallback.onComplete(null, mIsRadioReady);
         }
     }
 
