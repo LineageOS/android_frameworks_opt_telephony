@@ -1340,13 +1340,14 @@ public class DataNetwork extends StateMachine {
                 }
             }
 
-            // If we've ever received PCO data before connected, now it's the time to
-            // process it.
+            // If we've ever received PCO data before connected, now it's the time to process it.
             mPcoData.getOrDefault(mCid.get(mTransport), Collections.emptyMap())
                     .forEach((pcoId, pcoData) -> {
                         onPcoDataChanged(pcoData);
                     });
 
+            mDataNetworkCallback.invokeFromExecutor(
+                    () -> mDataNetworkCallback.onLinkStatusChanged(DataNetwork.this, mLinkStatus));
             notifyPreciseDataConnectionState();
             updateSuspendState();
         }
@@ -1598,6 +1599,9 @@ public class DataNetwork extends StateMachine {
             //************************************************************//
 
             if (mEverConnected) {
+                mLinkStatus = DataCallResponse.LINK_STATUS_INACTIVE;
+                mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                        .onLinkStatusChanged(DataNetwork.this, mLinkStatus));
                 mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
                         .onDisconnected(DataNetwork.this, mFailCause, mTearDownReason));
                 if (mTransport == AccessNetworkConstants.TRANSPORT_TYPE_WWAN) {
@@ -2302,8 +2306,13 @@ public class DataNetwork extends StateMachine {
         if (mLinkStatus != response.getLinkStatus()) {
             mLinkStatus = response.getLinkStatus();
             log("Link status updated to " + DataUtils.linkStatusToString(mLinkStatus));
-            mDataNetworkCallback.invokeFromExecutor(
-                    () -> mDataNetworkCallback.onLinkStatusChanged(DataNetwork.this, mLinkStatus));
+            if (isConnected()) {
+                // If the data network is in a transition state, the link status will be notified
+                // upon entering connected or disconnected state. If the data network is already
+                // connected, send the updated link status from the updated data call response.
+                mDataNetworkCallback.invokeFromExecutor(() -> mDataNetworkCallback
+                        .onLinkStatusChanged(DataNetwork.this, mLinkStatus));
+            }
         }
 
         // Set link addresses

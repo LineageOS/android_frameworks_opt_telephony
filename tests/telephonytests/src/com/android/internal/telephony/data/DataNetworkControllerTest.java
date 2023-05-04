@@ -1299,6 +1299,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verifyAllDataDisconnected();
         verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(false));
         verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkDisconnected();
+        verify(mMockedDataNetworkControllerCallback).onPhysicalLinkStatusChanged(
+                eq(DataCallResponse.LINK_STATUS_INACTIVE));
     }
 
     @Test
@@ -1461,7 +1463,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verifyAllDataDisconnected();
         verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(false));
         verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkDisconnected();
-
+        verify(mMockedDataNetworkControllerCallback).onPhysicalLinkStatusChanged(
+                eq(DataCallResponse.LINK_STATUS_INACTIVE));
 
         Mockito.clearInvocations(mMockedDataNetworkControllerCallback);
         // Now RAT changes from GSM to UMTS
@@ -2335,6 +2338,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Verify all data disconnected.
         verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(false));
+        verify(mMockedDataNetworkControllerCallback).onPhysicalLinkStatusChanged(
+                eq(DataCallResponse.LINK_STATUS_INACTIVE));
 
         // A new data network should be connected on IWLAN
         List<DataNetwork> dataNetworkList = getDataNetworks();
@@ -2395,6 +2400,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Verify all data disconnected.
         verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(false));
+        verify(mMockedDataNetworkControllerCallback).onPhysicalLinkStatusChanged(
+                eq(DataCallResponse.LINK_STATUS_INACTIVE));
 
         // Should setup a new one instead of handover.
         verify(mMockedWwanDataServiceManager).setupDataCall(anyInt(), any(DataProfile.class),
@@ -4243,6 +4250,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verifyAllDataDisconnected();
         verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(false));
         verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkDisconnected();
+        verify(mMockedDataNetworkControllerCallback).onPhysicalLinkStatusChanged(
+                eq(DataCallResponse.LINK_STATUS_INACTIVE));
     }
 
     @Test
