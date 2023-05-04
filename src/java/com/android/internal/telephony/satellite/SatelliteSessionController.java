@@ -338,7 +338,8 @@ public class SatelliteSessionController extends StateMachine {
      *                   {@code false} : The listening timeout durations will be restored to
      *                   production mode
      */
-    void setDemoMode(boolean isDemoMode) {
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
+    public void setDemoMode(boolean isDemoMode) {
         mIsDemoMode = isDemoMode;
     }
 
