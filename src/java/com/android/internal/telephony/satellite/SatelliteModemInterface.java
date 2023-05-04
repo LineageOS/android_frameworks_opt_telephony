@@ -1015,7 +1015,8 @@ public class SatelliteModemInterface {
      * @return {@code true} if the satellite vendor service is set successfully,
      * {@code false} otherwise.
      */
-    boolean setSatelliteServicePackageName(@Nullable String servicePackageName) {
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
+    public boolean setSatelliteServicePackageName(@Nullable String servicePackageName) {
         if (!shouldAllowModifyingSatelliteServicePackageName()) {
             loge("setSatelliteServicePackageName: modifying satellite service package name "
                     + "is not allowed");
