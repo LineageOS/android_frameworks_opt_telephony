@@ -202,30 +202,8 @@ public class DataNetworkTest extends TelephonyTest {
         doAnswer(invocation -> {
             final Message msg = (Message) invocation.getArguments()[10];
 
-            DataCallResponse response = new DataCallResponse.Builder()
-                    .setCause(0)
-                    .setRetryDurationMillis(-1L)
-                    .setId(cid)
-                    .setLinkStatus(2)
-                    .setProtocolType(ApnSetting.PROTOCOL_IPV4V6)
-                    .setInterfaceName("ifname")
-                    .setAddresses(Arrays.asList(
-                            new LinkAddress(InetAddresses.parseNumericAddress(IPV4_ADDRESS), 32),
-                            new LinkAddress(IPV6_ADDRESS + "/64")))
-                    .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.3"),
-                            InetAddresses.parseNumericAddress("fd00:976a::9")))
-                    .setGatewayAddresses(Arrays.asList(
-                            InetAddresses.parseNumericAddress("10.0.2.15"),
-                            InetAddresses.parseNumericAddress("fe80::2")))
-                    .setPcscfAddresses(Arrays.asList(
-                            InetAddresses.parseNumericAddress("fd00:976a:c305:1d::8"),
-                            InetAddresses.parseNumericAddress("fd00:976a:c202:1d::7"),
-                            InetAddresses.parseNumericAddress("fd00:976a:c305:1d::5")))
-                    .setMtuV4(1234)
-                    .setPduSessionId(1)
-                    .setQosBearerSessions(new ArrayList<>())
-                    .setTrafficDescriptors(tds)
-                    .build();
+            DataCallResponse response = createDataCallResponse(
+                    cid, DataCallResponse.LINK_STATUS_ACTIVE, tds);
             msg.getData().putParcelable("data_call_response", response);
             msg.arg1 = DataServiceCallback.RESULT_SUCCESS;
             msg.sendToTarget();
@@ -233,6 +211,34 @@ public class DataNetworkTest extends TelephonyTest {
         }).when(dsm).setupDataCall(anyInt(), any(DataProfile.class), anyBoolean(),
                 anyBoolean(), anyInt(), any(), anyInt(), any(), any(), anyBoolean(),
                 any(Message.class));
+    }
+
+    private DataCallResponse createDataCallResponse(int cid, int linkStatus,
+            List<TrafficDescriptor> tds) {
+        return new DataCallResponse.Builder()
+                .setCause(0)
+                .setRetryDurationMillis(-1L)
+                .setId(cid)
+                .setLinkStatus(linkStatus)
+                .setProtocolType(ApnSetting.PROTOCOL_IPV4V6)
+                .setInterfaceName("ifname")
+                .setAddresses(Arrays.asList(
+                        new LinkAddress(InetAddresses.parseNumericAddress(IPV4_ADDRESS), 32),
+                        new LinkAddress(IPV6_ADDRESS + "/64")))
+                .setDnsAddresses(Arrays.asList(InetAddresses.parseNumericAddress("10.0.2.3"),
+                        InetAddresses.parseNumericAddress("fd00:976a::9")))
+                .setGatewayAddresses(Arrays.asList(
+                        InetAddresses.parseNumericAddress("10.0.2.15"),
+                        InetAddresses.parseNumericAddress("fe80::2")))
+                .setPcscfAddresses(Arrays.asList(
+                        InetAddresses.parseNumericAddress("fd00:976a:c305:1d::8"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c202:1d::7"),
+                        InetAddresses.parseNumericAddress("fd00:976a:c305:1d::5")))
+                .setMtuV4(1234)
+                .setPduSessionId(1)
+                .setQosBearerSessions(new ArrayList<>())
+                .setTrafficDescriptors(tds)
+                .build();
     }
 
     private void setFailedSetupDataResponse(DataServiceManager dsm,
@@ -1768,5 +1774,37 @@ public class DataNetworkTest extends TelephonyTest {
         // The network should have IPv6 address now
         assertThat(mDataNetworkUT.getLinkProperties().getAllAddresses()).containsExactly(
                 InetAddresses.parseNumericAddress(IPV4_ADDRESS));
+    }
+
+    @Test
+    public void testLinkStatusUpdate() throws Exception {
+        setupDataNetwork();
+
+        // verify link status sent on connected
+        verify(mDataNetworkCallback).onConnected(eq(mDataNetworkUT));
+        verify(mDataNetworkCallback).onLinkStatusChanged(eq(mDataNetworkUT),
+                eq(DataCallResponse.LINK_STATUS_ACTIVE));
+
+        // data state updated
+        DataCallResponse response = createDataCallResponse(123,
+                DataCallResponse.LINK_STATUS_DORMANT, Collections.emptyList());
+        mDataNetworkUT.sendMessage(8 /*EVENT_DATA_STATE_CHANGED*/, new AsyncResult(
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, List.of(response), null));
+        processAllMessages();
+
+        // verify link status sent on data state updated
+        assertThat(mDataNetworkUT.isConnected()).isTrue();
+        verify(mDataNetworkCallback).onLinkStatusChanged(eq(mDataNetworkUT),
+                eq(DataCallResponse.LINK_STATUS_DORMANT));
+
+        // RIL crash
+        mDataNetworkUT.sendMessage(4 /*EVENT_RADIO_NOT_AVAILABLE*/);
+        processAllMessages();
+
+        // verify link status sent on disconnected
+        verify(mDataNetworkCallback).onDisconnected(eq(mDataNetworkUT),
+                eq(DataFailCause.RADIO_NOT_AVAILABLE), eq(DataNetwork.TEAR_DOWN_REASON_NONE));
+        verify(mDataNetworkCallback).onLinkStatusChanged(eq(mDataNetworkUT),
+                eq(DataCallResponse.LINK_STATUS_INACTIVE));
     }
 }
