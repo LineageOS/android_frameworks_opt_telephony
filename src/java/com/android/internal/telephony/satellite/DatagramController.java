@@ -98,7 +98,7 @@ public class DatagramController {
      * @param pointingAppController PointingAppController is used to update PointingApp
      *                              about datagram transfer state changes.
      */
-    @VisibleForTesting
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected DatagramController(@NonNull Context context, @NonNull Looper  looper,
             @NonNull PointingAppController pointingAppController) {
         mContext = context;
@@ -264,7 +264,8 @@ public class DatagramController {
      * Set variables for {@link DatagramDispatcher} and {@link DatagramReceiver} to run demo mode
      * @param isDemoMode {@code true} means demo mode is on, {@code false} otherwise.
      */
-    void setDemoMode(boolean isDemoMode) {
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
+    public void setDemoMode(boolean isDemoMode) {
         mIsDemoMode = isDemoMode;
         mDatagramDispatcher.setDemoMode(isDemoMode);
         mDatagramReceiver.setDemoMode(isDemoMode);
@@ -275,7 +276,7 @@ public class DatagramController {
     }
 
     /** Get the last sent datagram for demo mode */
-    @VisibleForTesting
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
     public SatelliteDatagram getDemoModeDatagram() {
         return mDemoModeDatagram;
     }
@@ -285,7 +286,7 @@ public class DatagramController {
      * @param datagramType datagram type, only DATAGRAM_TYPE_SOS_MESSAGE will be saved
      * @param datagram datagram The last datagram saved when sendSatelliteDatagramForDemo is called
      */
-    @VisibleForTesting
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected void setDemoModeDatagram(@SatelliteManager.DatagramType int datagramType,
             SatelliteDatagram datagram) {
         if (mIsDemoMode &&  datagramType == SatelliteManager.DATAGRAM_TYPE_SOS_MESSAGE) {

@@ -283,7 +283,8 @@ public class SatelliteController extends Handler {
         }
     }
 
-    private void initializeSatelliteModeRadios() {
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    protected void initializeSatelliteModeRadios() {
         UwbManager uwbManager = mContext.getSystemService(UwbManager.class);
         NfcManager nfcManager = mContext.getSystemService(NfcManager.class);
         NfcAdapter nfcAdapter = null;
@@ -313,6 +314,10 @@ public class SatelliteController extends Handler {
                 // Read satellite mode radios from settings
                 String satelliteModeRadios = Settings.Global.getString(mContentResolver,
                         Settings.Global.SATELLITE_MODE_RADIOS);
+                if (satelliteModeRadios == null) {
+                    loge("initializeSatelliteModeRadios: satelliteModeRadios is null");
+                    return;
+                }
                 logd("Radios To be checked when satellite is on: " + satelliteModeRadios);
 
                 if (satelliteModeRadios.contains(Settings.Global.RADIO_BLUETOOTH)
@@ -1146,7 +1151,7 @@ public class SatelliteController extends Handler {
                 mSatelliteEnabledRequest = request;
             } else if (mSatelliteEnabledRequest.enableSatellite == request.enableSatellite) {
                 logd("requestSatelliteEnabled  enableSatellite: " + enableSatellite
-                                + " is already in progress.");
+                        + " is already in progress.");
                 result.accept(SatelliteManager.SATELLITE_REQUEST_IN_PROGRESS);
                 return;
             } else if (mSatelliteEnabledRequest.enableSatellite == false
@@ -1756,6 +1761,8 @@ public class SatelliteController extends Handler {
         boolean result = mSatelliteModemInterface.setSatelliteServicePackageName(
                 servicePackageName);
         if (result) {
+            logd("setSatelliteServicePackageName: Resetting cached states");
+
             // Cached states need to be cleared whenever switching satellite vendor services.
             synchronized (mIsSatelliteSupportedLock) {
                 mIsSatelliteSupported = null;
@@ -1847,7 +1854,8 @@ public class SatelliteController extends Handler {
      * Because satellite vendor service might have just come back from a crash, we need to disable
      * the satellite modem so that resources will be cleaned up and internal states will be reset.
      */
-    void onSatelliteServiceConnected() {
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
+    public void onSatelliteServiceConnected() {
         if (mSatelliteModemInterface.isSatelliteServiceSupported()) {
             synchronized (mIsSatelliteSupportedLock) {
                 if (mIsSatelliteSupported == null) {
@@ -2186,13 +2194,16 @@ public class SatelliteController extends Handler {
 
         mDatagramController.onSatelliteModemStateChanged(state);
     }
-    private void setSettingsKeyForSatelliteMode(int val) {
+
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    protected void setSettingsKeyForSatelliteMode(int val) {
         logd("setSettingsKeyForSatelliteMode val: " + val);
         Settings.Global.putInt(mContext.getContentResolver(),
                     Settings.Global.SATELLITE_MODE_ENABLED, val);
     }
 
-    private boolean areAllRadiosDisabled() {
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    protected boolean areAllRadiosDisabled() {
         synchronized (mRadioStateLock) {
             if ((mDisableBTOnSatelliteEnabled && mBTStateEnabled)
                     || (mDisableNFCOnSatelliteEnabled && mNfcStateEnabled)
