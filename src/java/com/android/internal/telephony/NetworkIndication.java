@@ -128,7 +128,7 @@ public class NetworkIndication extends IRadioNetworkIndication.Stub {
             android.hardware.radio.network.LinkCapacityEstimate lce) {
         mRil.processIndication(HAL_SERVICE_NETWORK, indicationType);
 
-        List<LinkCapacityEstimate> response = RILUtils.convertHalLceData(lce);
+        List<LinkCapacityEstimate> response = RILUtils.convertHalLinkCapacityEstimate(lce);
 
         if (mRil.isLogOrTrace()) mRil.unsljLogRet(RIL_UNSOL_LCEDATA_RECV, response);
 
@@ -204,9 +204,8 @@ public class NetworkIndication extends IRadioNetworkIndication.Stub {
             android.hardware.radio.network.SignalStrength signalStrength) {
         mRil.processIndication(HAL_SERVICE_NETWORK, indicationType);
 
-        SignalStrength ssInitial = RILUtils.convertHalSignalStrength(signalStrength);
+        SignalStrength ss = RILUtils.convertHalSignalStrength(signalStrength);
 
-        SignalStrength ss = mRil.fixupSignalStrength10(ssInitial);
         // Note this is set to "verbose" because it happens frequently
         if (mRil.isLogvOrTrace()) mRil.unsljLogvRet(RIL_UNSOL_SIGNAL_STRENGTH, ss);
 
