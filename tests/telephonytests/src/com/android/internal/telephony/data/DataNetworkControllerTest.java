@@ -522,14 +522,13 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
     }
 
-    private void setImsRegistered(boolean registered,
-            @ImsRegistrationImplBase.ImsRegistrationTech int regTech) {
+    private void setImsRegistered(boolean registered) {
         if (registered) {
             final ArraySet<String> features = new ArraySet<>();
             features.add("feature1");
             features.add("feature2");
-            ImsRegistrationAttributes attr = new ImsRegistrationAttributes.Builder(regTech)
-                    .setFeatureTags(features).build();
+            ImsRegistrationAttributes attr = new ImsRegistrationAttributes.Builder(
+                    ImsRegistrationImplBase.REGISTRATION_TECH_LTE).setFeatureTags(features).build();
 
             mMmtelRegCallback.onRegistered(attr);
         } else {
@@ -538,14 +537,13 @@ public class DataNetworkControllerTest extends TelephonyTest {
         }
     }
 
-    private void setRcsRegistered(boolean registered,
-            @ImsRegistrationImplBase.ImsRegistrationTech int regTech) {
+    private void setRcsRegistered(boolean registered) {
         if (registered) {
             final ArraySet<String> features = new ArraySet<>();
             features.add("feature1");
             features.add("feature2");
-            ImsRegistrationAttributes attr = new ImsRegistrationAttributes.Builder(regTech)
-                    .setFeatureTags(features).build();
+            ImsRegistrationAttributes attr = new ImsRegistrationAttributes.Builder(
+                    ImsRegistrationImplBase.REGISTRATION_TECH_LTE).setFeatureTags(features).build();
 
             mRcsRegCallback.onRegistered(attr);
         } else {
@@ -3574,14 +3572,9 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
     @Test
     public void testImsGracefulTearDown() throws Exception {
-        setImsRegistered(true, ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN);
-        setRcsRegistered(true, ImsRegistrationImplBase.REGISTRATION_TECH_LTE);
+        setImsRegistered(true);
+        setRcsRegistered(true);
 
-        // IMS preferred on Wifi
-        updateTransport(NetworkCapabilities.NET_CAPABILITY_IMS,
-                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
-
-        // IMS service requests an IMS network, expects the network on IWLAN.
         NetworkCapabilities netCaps = new NetworkCapabilities();
         netCaps.addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
         netCaps.setRequestorPackageName(FAKE_MMTEL_PACKAGE);
@@ -3592,52 +3585,33 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 nativeNetworkRequest, mPhone);
 
         mDataNetworkControllerUT.addNetworkRequest(networkRequest);
-        setSuccessfulSetupDataResponse(mMockedWlanDataServiceManager, 2/*cid*/);
-
-        // IMS service requests an internet network, expects the network on WWAN.
-        netCaps = new NetworkCapabilities();
-        netCaps.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-        netCaps.setRequestorPackageName(FAKE_MMTEL_PACKAGE);
-
-        nativeNetworkRequest = new NetworkRequest(netCaps,
-                ConnectivityManager.TYPE_MOBILE, ++mNetworkRequestId, NetworkRequest.Type.REQUEST);
-        networkRequest = new TelephonyNetworkRequest(
-                nativeNetworkRequest, mPhone);
-
-        mDataNetworkControllerUT.addNetworkRequest(networkRequest);
 
         processAllMessages();
         Mockito.clearInvocations(mPhone);
 
-        List<DataNetwork> networks = getDataNetworks();
-        assertEquals(2, networks.size());
-
-        // Turn on APM mode.
-        mDataNetworkControllerUT.onTearDownAllDataNetworks(DataNetwork
-                .TEAR_DOWN_REASON_AIRPLANE_MODE_ON);
+        // SIM removal
+        mDataNetworkControllerUT.obtainMessage(9/*EVENT_SIM_STATE_CHANGED*/,
+                TelephonyManager.SIM_STATE_ABSENT, 0).sendToTarget();
         processAllMessages();
 
-        // Expect the network on WWAN immediately disconnected because IMS registration is on IWLAN.
-        assertEquals(1, networks.size());
-        DataNetwork network = networks.get(0);
-        // Expect the network on IWLAN enters disconnecting state as part of waiting for dereg.
-        assertTrue(network.getNetworkCapabilities().hasCapability(NetworkCapabilities
-                .NET_CAPABILITY_IMS));
-        assertTrue(network.isDisconnecting());
+        // Make sure data network enters disconnecting state
+        ArgumentCaptor<PreciseDataConnectionState> pdcsCaptor =
+                ArgumentCaptor.forClass(PreciseDataConnectionState.class);
+        verify(mPhone).notifyDataConnection(pdcsCaptor.capture());
+        PreciseDataConnectionState pdcs = pdcsCaptor.getValue();
+        assertThat(pdcs.getState()).isEqualTo(TelephonyManager.DATA_DISCONNECTING);
 
         // IMS de-registered. Now data network is safe to be torn down.
         Mockito.clearInvocations(mPhone);
-        setImsRegistered(false, ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN);
-        setRcsRegistered(false, ImsRegistrationImplBase.REGISTRATION_TECH_LTE);
+        setImsRegistered(false);
+        setRcsRegistered(false);
         processAllMessages();
 
         // All data should be disconnected.
         verifyAllDataDisconnected();
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
-        ArgumentCaptor<PreciseDataConnectionState> pdcsCaptor =
-                ArgumentCaptor.forClass(PreciseDataConnectionState.class);
         verify(mPhone).notifyDataConnection(pdcsCaptor.capture());
-        PreciseDataConnectionState pdcs = pdcsCaptor.getValue();
+        pdcs = pdcsCaptor.getValue();
         assertThat(pdcs.getState()).isEqualTo(TelephonyManager.DATA_DISCONNECTED);
     }
 
