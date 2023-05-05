@@ -78,7 +78,6 @@ import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 import android.util.SparseArray;
 import android.util.SparseBooleanArray;
-import android.util.SparseIntArray;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
@@ -335,11 +334,8 @@ public class DataNetworkController extends Handler {
      */
     private final @NonNull SparseArray<ImsStateCallback> mImsStateCallbacks = new SparseArray<>();
 
-    /**
-     * The transport on which IMS features are registered. Key is the IMS feature, value is the
-     * transport. Unregistered IMS features are removed from the set.
-     */
-    private final @NonNull SparseIntArray mRegisteredImsFeaturesTransport = new SparseIntArray(2);
+    /** Registered IMS features. Unregistered IMS features are removed from the set. */
+    private final @NonNull Set<Integer> mRegisteredImsFeatures = new ArraySet<>();
 
     /** IMS feature package names. Key is the IMS feature, value is the package name. */
     private final @NonNull SparseArray<String> mImsFeaturePackageName = new SparseArray<>();
@@ -2204,18 +2200,17 @@ public class DataNetworkController extends Handler {
         RegistrationManager.RegistrationCallback callback =
                 new RegistrationManager.RegistrationCallback() {
                     @Override
-                    public void onRegistered(@NonNull ImsRegistrationAttributes attributes) {
+                    public void onRegistered(ImsRegistrationAttributes attributes) {
                         log("IMS " + DataUtils.imsFeatureToString(imsFeature)
                                 + " registered. Attributes=" + attributes);
-                        mRegisteredImsFeaturesTransport.put(
-                                imsFeature, attributes.getTransportType());
+                        mRegisteredImsFeatures.add(imsFeature);
                     }
 
                     @Override
                     public void onUnregistered(ImsReasonInfo info) {
                         log("IMS " + DataUtils.imsFeatureToString(imsFeature)
                                 + " deregistered. Info=" + info);
-                        mRegisteredImsFeaturesTransport.delete(imsFeature);
+                        mRegisteredImsFeatures.remove(imsFeature);
                         evaluatePendingImsDeregDataNetworks();
                     }
                 };
@@ -2907,16 +2902,6 @@ public class DataNetworkController extends Handler {
             mImsDataNetworkState = TelephonyManager.DATA_DISCONNECTED;
         }
 
-        if (!mPendingTearDownAllNetworks) {
-            // Immediately reestablish on target transport if network was torn down due to policy
-            long delayMillis = tearDownReason == DataNetwork.TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED
-                    ? 0 : mDataConfigManager.getRetrySetupAfterDisconnectMillis();
-            // Sometimes network was unsolicitedly reported lost for reasons. We should re-evaluate
-            // and see if data network can be re-established again.
-            sendMessageDelayed(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
-                    DataEvaluationReason.RETRY_AFTER_DISCONNECTED), delayMillis);
-        }
-
         if (mAnyDataNetworkExisting && mDataNetworkList.isEmpty()) {
             log("All data networks disconnected now.");
             mPendingTearDownAllNetworks = false;
@@ -2924,6 +2909,14 @@ public class DataNetworkController extends Handler {
             mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
                     () -> callback.onAnyDataNetworkExistingChanged(mAnyDataNetworkExisting)));
         }
+
+        // Immediately reestablish on target transport if network was torn down due to policy
+        long delayMillis = tearDownReason == DataNetwork.TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED
+                ? 0 : mDataConfigManager.getRetrySetupAfterDisconnectMillis();
+        // Sometimes network was unsolicitedly reported lost for reasons. We should re-evaluate
+        // and see if data network can be re-established again.
+        sendMessageDelayed(obtainMessage(EVENT_REEVALUATE_UNSATISFIED_NETWORK_REQUESTS,
+                        DataEvaluationReason.RETRY_AFTER_DISCONNECTED), delayMillis);
     }
 
     /**
@@ -3655,23 +3648,22 @@ public class DataNetworkController extends Handler {
     }
 
     /**
-     * Check if the data network is safe to tear down at this moment. A network is considered safe
-     * to tear down if No IMS/RCS registration is relying on it. We infer a network is Not safe to
-     * tear down if 1) the network is on the transport where the IMS/RCS feature registration
-     * took place, and 2) the network has requests originated from the IMS/RCS service.
+     * Check if the data network is safe to tear down at this moment.
      *
      * @param dataNetwork The data network.
-     * @return {@code true} if the data network is safe to tear down; {@code false} otherwise.
+     * @return {@code true} if the data network is safe to tear down. {@code false} indicates this
+     * data network has requests originated from the IMS/RCS service and IMS/RCS is not
+     * de-registered yet.
      */
     private boolean isSafeToTearDown(@NonNull DataNetwork dataNetwork) {
         for (int imsFeature : SUPPORTED_IMS_FEATURES) {
-            int registeredOnTransport = mRegisteredImsFeaturesTransport.get(imsFeature,
-                    AccessNetworkConstants.TRANSPORT_TYPE_INVALID);
-            if (dataNetwork.getTransport() == registeredOnTransport) {
-                String imsFeaturePackage = mImsFeaturePackageName.get(imsFeature);
-                if (imsFeaturePackage != null && dataNetwork.getAttachedNetworkRequestList()
+            String imsFeaturePackage = mImsFeaturePackageName.get(imsFeature);
+            if (imsFeaturePackage != null) {
+                if (dataNetwork.getAttachedNetworkRequestList()
                         .hasNetworkRequestsFromPackage(imsFeaturePackage)) {
-                    return false;
+                    if (mRegisteredImsFeatures.contains(imsFeature)) {
+                        return false;
+                    }
                 }
             }
         }
@@ -3695,19 +3687,13 @@ public class DataNetworkController extends Handler {
     private void tearDownGracefully(@NonNull DataNetwork dataNetwork, @TearDownReason int reason) {
         long deregDelay = mDataConfigManager.getImsDeregistrationDelay();
         if (isImsGracefulTearDownSupported() && !isSafeToTearDown(dataNetwork)) {
-            int mmtelTransport = mRegisteredImsFeaturesTransport.get(ImsFeature.FEATURE_MMTEL,
-                    AccessNetworkConstants.TRANSPORT_TYPE_INVALID);
-            int rcsTransport = mRegisteredImsFeaturesTransport.get(ImsFeature.FEATURE_RCS,
-                    AccessNetworkConstants.TRANSPORT_TYPE_INVALID);
             log("tearDownGracefully: Not safe to tear down " + dataNetwork
                     + " at this point. Wait for IMS de-registration or timeout. MMTEL="
-                    + (mmtelTransport != AccessNetworkConstants.TRANSPORT_TYPE_INVALID
-                    ? "registered on " + AccessNetworkConstants.transportTypeToString(
-                            mmtelTransport) : "not registered")
+                    + (mRegisteredImsFeatures.contains(ImsFeature.FEATURE_MMTEL)
+                    ? "registered" : "not registered")
                     + ", RCS="
-                    + (rcsTransport != AccessNetworkConstants.TRANSPORT_TYPE_INVALID
-                    ? "registered on " + AccessNetworkConstants.transportTypeToString(
-                            rcsTransport) : "not registered")
+                    + (mRegisteredImsFeatures.contains(ImsFeature.FEATURE_RCS)
+                    ? "registered" : "not registered")
             );
             Runnable runnable = dataNetwork.tearDownWhenConditionMet(reason, deregDelay);
             if (runnable != null) {
@@ -3820,18 +3806,13 @@ public class DataNetworkController extends Handler {
             pw.println(networkRequest);
         }
         pw.decreaseIndent();
-        int mmtelTransport = mRegisteredImsFeaturesTransport.get(ImsFeature.FEATURE_MMTEL,
-                AccessNetworkConstants.TRANSPORT_TYPE_INVALID);
-        int rcsTransport = mRegisteredImsFeaturesTransport.get(ImsFeature.FEATURE_RCS,
-                AccessNetworkConstants.TRANSPORT_TYPE_INVALID);
+
         pw.println("IMS features registration state: MMTEL="
-                + (mmtelTransport != AccessNetworkConstants.TRANSPORT_TYPE_INVALID
-                ? "registered on " + AccessNetworkConstants.transportTypeToString(
-                        mmtelTransport) : "not registered")
+                + (mRegisteredImsFeatures.contains(ImsFeature.FEATURE_MMTEL)
+                ? "registered" : "not registered")
                 + ", RCS="
-                + (rcsTransport != AccessNetworkConstants.TRANSPORT_TYPE_INVALID
-                ? "registered on " + AccessNetworkConstants.transportTypeToString(
-                rcsTransport) : "not registered"));
+                + (mRegisteredImsFeatures.contains(ImsFeature.FEATURE_RCS)
+                ? "registered" : "not registered"));
         pw.println("mServiceState=" + mServiceState);
         pw.println("mPsRestricted=" + mPsRestricted);
         pw.println("mAnyDataNetworkExisting=" + mAnyDataNetworkExisting);
