@@ -285,15 +285,6 @@ public class SatelliteController extends Handler {
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
     protected void initializeSatelliteModeRadios() {
-        UwbManager uwbManager = mContext.getSystemService(UwbManager.class);
-        NfcManager nfcManager = mContext.getSystemService(NfcManager.class);
-        NfcAdapter nfcAdapter = null;
-        if (nfcManager != null) {
-            nfcAdapter = nfcManager.getDefaultAdapter();
-        }
-        BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        WifiManager wifiManager = mContext.getSystemService(WifiManager.class);
-
         if (mContentResolver != null) {
             BTWifiNFCStateReceiver bTWifiNFCSateReceiver = new BTWifiNFCStateReceiver();
             UwbAdapterStateCallback uwbAdapterStateCallback = new UwbAdapterStateCallback();
@@ -320,38 +311,50 @@ public class SatelliteController extends Handler {
                 }
                 logd("Radios To be checked when satellite is on: " + satelliteModeRadios);
 
-                if (satelliteModeRadios.contains(Settings.Global.RADIO_BLUETOOTH)
-                        && bluetoothAdapter != null) {
-                    mDisableBTOnSatelliteEnabled = true;
-                    mBTStateEnabled = bluetoothAdapter.isEnabled();
-                    radioStateIntentFilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
+                if (satelliteModeRadios.contains(Settings.Global.RADIO_BLUETOOTH)) {
+                    BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                    if (bluetoothAdapter != null) {
+                        mDisableBTOnSatelliteEnabled = true;
+                        mBTStateEnabled = bluetoothAdapter.isEnabled();
+                        radioStateIntentFilter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
+                    }
                 }
 
-                if (satelliteModeRadios.contains(Settings.Global.RADIO_NFC)
-                        && nfcAdapter != null) {
-                    mDisableNFCOnSatelliteEnabled = true;
-                    mNfcStateEnabled = nfcAdapter.isEnabled();
-                    radioStateIntentFilter.addAction(NfcAdapter.ACTION_ADAPTER_STATE_CHANGED);
+                if (satelliteModeRadios.contains(Settings.Global.RADIO_NFC)) {
+                    Context applicationContext = mContext.getApplicationContext();
+                    NfcAdapter nfcAdapter = null;
+                    if (applicationContext != null) {
+                        nfcAdapter = NfcAdapter.getDefaultAdapter(mContext.getApplicationContext());
+                    }
+                    if (nfcAdapter != null) {
+                        mDisableNFCOnSatelliteEnabled = true;
+                        mNfcStateEnabled = nfcAdapter.isEnabled();
+                        radioStateIntentFilter.addAction(NfcAdapter.ACTION_ADAPTER_STATE_CHANGED);
+                    }
                 }
 
-                if (satelliteModeRadios.contains(Settings.Global.RADIO_WIFI)
-                        && wifiManager != null) {
-                    mDisableWifiOnSatelliteEnabled = true;
-                    mWifiStateEnabled = wifiManager.isWifiEnabled();
-                    radioStateIntentFilter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
+                if (satelliteModeRadios.contains(Settings.Global.RADIO_WIFI)) {
+                    WifiManager wifiManager = mContext.getSystemService(WifiManager.class);
+                    if (wifiManager != null) {
+                        mDisableWifiOnSatelliteEnabled = true;
+                        mWifiStateEnabled = wifiManager.isWifiEnabled();
+                        radioStateIntentFilter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
+                    }
                 }
                 mContext.registerReceiver(bTWifiNFCSateReceiver, radioStateIntentFilter);
 
-                if (satelliteModeRadios.contains(Settings.Global.RADIO_UWB)
-                        && uwbManager != null) {
-                    mDisableUWBOnSatelliteEnabled = true;
-                    mUwbStateEnabled = uwbManager.isUwbEnabled();
-                    final long identity = Binder.clearCallingIdentity();
-                    try {
-                        uwbManager.registerAdapterStateCallback(mContext.getMainExecutor(),
-                                uwbAdapterStateCallback);
-                    } finally {
-                        Binder.restoreCallingIdentity(identity);
+                if (satelliteModeRadios.contains(Settings.Global.RADIO_UWB)) {
+                    UwbManager uwbManager = mContext.getSystemService(UwbManager.class);
+                    if (uwbManager != null) {
+                        mDisableUWBOnSatelliteEnabled = true;
+                        mUwbStateEnabled = uwbManager.isUwbEnabled();
+                        final long identity = Binder.clearCallingIdentity();
+                        try {
+                            uwbManager.registerAdapterStateCallback(mContext.getMainExecutor(),
+                                    uwbAdapterStateCallback);
+                        } finally {
+                            Binder.restoreCallingIdentity(identity);
+                        }
                     }
                 }
 
