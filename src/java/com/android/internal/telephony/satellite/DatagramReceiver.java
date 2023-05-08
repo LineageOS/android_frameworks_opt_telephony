@@ -42,6 +42,7 @@ import android.telephony.satellite.SatelliteManager;
 import android.util.Pair;
 
 import com.android.internal.R;
+import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.IIntegerConsumer;
 import com.android.internal.telephony.IVoidConsumer;
@@ -79,6 +80,7 @@ public class DatagramReceiver extends Handler {
 
     private long mDatagramTransferStartTime = 0;
     private boolean mIsDemoMode = false;
+    @GuardedBy("mLock")
     private boolean mIsAligned = false;
     private DatagramReceiverHandlerRequest mPollPendingSatelliteDatagramsRequest = null;
     private final Object mLock = new Object();
@@ -96,7 +98,6 @@ public class DatagramReceiver extends Handler {
      */
     private final ConcurrentHashMap<Long, Integer>
             mPendingAckCountHashMap = new ConcurrentHashMap<>();
-
 
     /**
      * Create the DatagramReceiver singleton instance.
@@ -331,7 +332,7 @@ public class DatagramReceiver extends Handler {
                     logd("Received EVENT_SATELLITE_DATAGRAM_RECEIVED for subId=" + mSubId
                             + " pendingCount:" + pendingCount);
 
-                    if (pendingCount == 0 && satelliteDatagram == null) {
+                    if (pendingCount <= 0 && satelliteDatagram == null) {
                         sInstance.mDatagramController.updateReceiveStatus(mSubId,
                                 SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_NONE,
                                 pendingCount, SatelliteManager.SATELLITE_ERROR_NONE);
@@ -372,7 +373,7 @@ public class DatagramReceiver extends Handler {
                         };
                         Consumer<Integer> callback = FunctionalUtils.ignoreRemoteException(
                                 internalCallback::accept);
-                        sInstance.pollPendingSatelliteDatagrams(mSubId, callback);
+                        sInstance.pollPendingSatelliteDatagramsInternal(mSubId, callback);
                     }
 
                     // Send the captured data about incoming datagram to metric
@@ -583,6 +584,25 @@ public class DatagramReceiver extends Handler {
      * @param callback The callback to get {@link SatelliteManager.SatelliteError} of the request.
      */
     public void pollPendingSatelliteDatagrams(int subId, @NonNull Consumer<Integer> callback) {
+        if (!mDatagramController.isPollingInIdleState()) {
+            // Poll request should be sent to satellite modem only when it is free.
+            logd("pollPendingSatelliteDatagrams: satellite modem is busy receiving datagrams.");
+            callback.accept(SatelliteManager.SATELLITE_MODEM_BUSY);
+            return;
+        }
+
+        pollPendingSatelliteDatagramsInternal(subId, callback);
+    }
+
+    private void pollPendingSatelliteDatagramsInternal(int subId,
+            @NonNull Consumer<Integer> callback) {
+        if (!mDatagramController.isSendingInIdleState()) {
+            // Poll request should be sent to satellite modem only when it is free.
+            logd("pollPendingSatelliteDatagrams: satellite modem is busy sending datagrams.");
+            callback.accept(SatelliteManager.SATELLITE_MODEM_BUSY);
+            return;
+        }
+
         mDatagramController.updateReceiveStatus(subId,
                 SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING,
                 mDatagramController.getReceivePendingCount(),
@@ -615,13 +635,16 @@ public class DatagramReceiver extends Handler {
      * @param state Current satellite modem state.
      */
     public void onSatelliteModemStateChanged(@SatelliteManager.SatelliteModemState int state) {
-        if (state == SatelliteManager.SATELLITE_MODEM_STATE_OFF
-                || state == SatelliteManager.SATELLITE_MODEM_STATE_UNAVAILABLE) {
-            logd("onSatelliteModemStateChanged: cleaning up resources");
-            cleanUpResources();
+        synchronized (mLock) {
+            if (state == SatelliteManager.SATELLITE_MODEM_STATE_OFF
+                    || state == SatelliteManager.SATELLITE_MODEM_STATE_UNAVAILABLE) {
+                logd("onSatelliteModemStateChanged: cleaning up resources");
+                cleanUpResources();
+            }
         }
     }
 
+    @GuardedBy("mLock")
     private void cleanupDemoModeResources() {
         if (isSatelliteAlignedTimerStarted()) {
             stopSatelliteAlignedTimer();
@@ -639,19 +662,18 @@ public class DatagramReceiver extends Handler {
         mIsAligned = false;
     }
 
+    @GuardedBy("mLock")
     private void cleanUpResources() {
-        synchronized (mLock) {
-            if (mDatagramController.isReceivingDatagrams()) {
-                mDatagramController.updateReceiveStatus(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
-                        SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_FAILED,
-                        mDatagramController.getReceivePendingCount(),
-                        SatelliteManager.SATELLITE_REQUEST_ABORTED);
-            }
+        if (mDatagramController.isReceivingDatagrams()) {
             mDatagramController.updateReceiveStatus(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
-                    SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE, 0,
-                    SatelliteManager.SATELLITE_ERROR_NONE);
-            cleanupDemoModeResources();
+                    SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_FAILED,
+                    mDatagramController.getReceivePendingCount(),
+                    SatelliteManager.SATELLITE_REQUEST_ABORTED);
         }
+        mDatagramController.updateReceiveStatus(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+                SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE, 0,
+                SatelliteManager.SATELLITE_ERROR_NONE);
+        cleanupDemoModeResources();
     }
 
     /**
