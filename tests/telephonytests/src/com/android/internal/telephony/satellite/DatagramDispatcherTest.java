@@ -28,6 +28,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 import android.annotation.NonNull;
 import android.content.Context;
@@ -101,6 +102,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
         mResultListener = new LinkedBlockingQueue<>(1);
         mDatagram = new SatelliteDatagram(TEST_MESSAGE.getBytes());
         mInOrder = inOrder(mMockDatagramController);
+        when(mMockDatagramController.isPollingInIdleState()).thenReturn(true);
     }
 
     @After
@@ -133,6 +135,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
 
         processAllMessages();
 
+        mInOrder.verify(mMockDatagramController).isPollingInIdleState();
         mInOrder.verify(mMockDatagramController)
                 .updateSendStatus(eq(SUB_ID),
                         eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING), eq(1),
@@ -170,6 +173,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
 
         processAllMessages();
 
+        mInOrder.verify(mMockDatagramController).isPollingInIdleState();
         mInOrder.verify(mMockDatagramController)
                 .updateSendStatus(eq(SUB_ID),
                         eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING), eq(1),
@@ -197,6 +201,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
 
         processAllMessages();
 
+        mInOrder.verify(mMockDatagramController).isPollingInIdleState();
         mInOrder.verify(mMockDatagramController)
                 .updateSendStatus(eq(SUB_ID),
                         eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING), eq(1),
@@ -234,6 +239,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
 
         processAllMessages();
 
+        mInOrder.verify(mMockDatagramController).isPollingInIdleState();
         mInOrder.verify(mMockDatagramController)
                 .updateSendStatus(eq(SUB_ID),
                         eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING), eq(1),
@@ -272,6 +278,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
 
         processAllMessages();
 
+        mInOrder.verify(mMockDatagramController).isPollingInIdleState();
         mInOrder.verify(mMockDatagramController)
                 .updateSendStatus(eq(SUB_ID),
                         eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING), eq(1),
@@ -407,6 +414,18 @@ public class DatagramDispatcherTest extends TelephonyTest {
 
         mTestDemoModeDatagramDispatcher.setDemoMode(false);
         mTestDemoModeDatagramDispatcher.onDeviceAlignedWithSatellite(false);
+    }
+
+    @Test
+    public void testSatelliteModemBusy_modemPollingDatagram_sendingDelayed() {
+        when(mMockDatagramController.isPollingInIdleState()).thenReturn(false);
+
+        mDatagramDispatcherUT.sendSatelliteDatagram(SUB_ID, DATAGRAM_TYPE1, mDatagram,
+                true, mResultListener::offer);
+        processAllMessages();
+        // As modem is busy receiving datagrams, sending datagram did not proceed further.
+        mInOrder.verify(mMockDatagramController).isPollingInIdleState();
+        verifyNoMoreInteractions(mMockDatagramController);
     }
 
     private static class TestDatagramDispatcher extends DatagramDispatcher {
