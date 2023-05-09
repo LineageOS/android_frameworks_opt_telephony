@@ -38,7 +38,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-
 import android.os.AsyncResult;
 import android.os.Looper;
 import android.os.Message;
@@ -116,6 +115,8 @@ public class DatagramReceiverTest extends TelephonyTest {
         mDatagram = new SatelliteDatagram(TEST_MESSAGE.getBytes());
         mInOrder = inOrder(mMockDatagramController);
 
+        when(mMockDatagramController.isSendingInIdleState()).thenReturn(true);
+        when(mMockDatagramController.isPollingInIdleState()).thenReturn(true);
         processAllMessages();
     }
 
@@ -384,6 +385,25 @@ public class DatagramReceiverTest extends TelephonyTest {
         mTestDemoModeDatagramReceiver.setDemoMode(false);
         mTestDemoModeDatagramReceiver.onDeviceAlignedWithSatellite(false);
         mTestDemoModeDatagramReceiver.setDuration(previousTimer);
+    }
+
+    @Test
+    public void testSatelliteModemBusy_modemSendingDatagram_pollingFailure() {
+        when(mMockDatagramController.isSendingInIdleState()).thenReturn(false);
+
+        mDatagramReceiverUT.pollPendingSatelliteDatagrams(SUB_ID, mResultListener::offer);
+        processAllMessages();
+        assertThat(mResultListener.peek()).isEqualTo(SatelliteManager.SATELLITE_MODEM_BUSY);
+    }
+
+    @Test
+    public void testSatelliteModemBusy_modemPollingDatagrams_pollingFailure() {
+        when(mMockDatagramController.isSendingInIdleState()).thenReturn(false);
+        when(mMockDatagramController.isPollingInIdleState()).thenReturn(true);
+
+        mDatagramReceiverUT.pollPendingSatelliteDatagrams(SUB_ID, mResultListener::offer);
+        processAllMessages();
+        assertThat(mResultListener.peek()).isEqualTo(SatelliteManager.SATELLITE_MODEM_BUSY);
     }
 
     private static class TestDatagramReceiver extends DatagramReceiver {
