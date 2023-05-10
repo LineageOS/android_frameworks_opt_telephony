@@ -981,9 +981,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         verify(mSimulatedCommandsVerifier).getBasebandVersion(nullable(Message.class));
         verify(mSimulatedCommandsVerifier).getDeviceIdentity(nullable(Message.class));
         verify(mSimulatedCommandsVerifier).getRadioCapability(nullable(Message.class));
-        // once as part of constructor, and once on radio available
-        verify(mSimulatedCommandsVerifier, times(2)).startLceService(anyInt(), anyBoolean(),
-                nullable(Message.class));
 
         // EVENT_RADIO_ON
         verify(mSimulatedCommandsVerifier).getVoiceRadioTechnology(nullable(Message.class));
@@ -1006,8 +1003,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         // EVENT_RADIO_AVAILABLE
         verify(mSimulatedCommandsVerifier, times(2)).getBasebandVersion(nullable(Message.class));
         verify(mSimulatedCommandsVerifier, times(2)).getDeviceIdentity(nullable(Message.class));
-        verify(mSimulatedCommandsVerifier, times(3)).startLceService(anyInt(), anyBoolean(),
-                nullable(Message.class));
 
         // EVENT_RADIO_ON
         verify(mSimulatedCommandsVerifier, times(2)).getVoiceRadioTechnology(

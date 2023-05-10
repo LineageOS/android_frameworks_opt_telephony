@@ -905,18 +905,6 @@ public interface CommandsInterface {
      *  ar.exception carries exception on failure
      *  ar.userObject contains the orignal value of result.obj
      *  ar.result contains a List of DataCallResponse
-     *  @deprecated Do not use.
-     */
-    @UnsupportedAppUsage
-    @Deprecated
-    void getPDPContextList(Message result);
-
-    /**
-     *  returned message
-     *  retMsg.obj = AsyncResult ar
-     *  ar.exception carries exception on failure
-     *  ar.userObject contains the orignal value of result.obj
-     *  ar.result contains a List of DataCallResponse
      */
     @UnsupportedAppUsage
     void getDataCallList(Message result);
@@ -967,25 +955,6 @@ public interface CommandsInterface {
      *  ar.result is String containing IMSI on success
      */
     void getIMSIForApp(String aid, Message result);
-
-    /**
-     *  returned message
-     *  retMsg.obj = AsyncResult ar
-     *  ar.exception carries exception on failure
-     *  ar.userObject contains the orignal value of result.obj
-     *  ar.result is String containing IMEI on success
-     */
-    void getIMEI(Message result);
-
-    /**
-     *  returned message
-     *  retMsg.obj = AsyncResult ar
-     *  ar.exception carries exception on failure
-     *  ar.userObject contains the orignal value of result.obj
-     *  ar.result is String containing IMEISV on success
-     */
-    @UnsupportedAppUsage
-    void getIMEISV(Message result);
 
     /**
      * Hang up one individual connection.
@@ -1101,25 +1070,6 @@ public interface CommandsInterface {
      * - Cause 68: ACM >= ACMMax
      */
     void getLastCallFailCause (Message result);
-
-
-    /**
-     * Reason for last PDP context deactivate or failure to activate
-     * cause code returned as int[0] in Message.obj.response
-     * returns an integer cause code defined in TS 24.008
-     * section 6.1.3.1.3 or close approximation
-     * @deprecated Do not use.
-     */
-    @UnsupportedAppUsage
-    @Deprecated
-    void getLastPdpFailCause (Message result);
-
-    /**
-     * The preferred new alternative to getLastPdpFailCause
-     * that is also CDMA-compatible.
-     */
-    @UnsupportedAppUsage
-    void getLastDataCallFailCause (Message result);
 
     void setMute (boolean enableMute, Message response);
 
@@ -1549,8 +1499,6 @@ public interface CommandsInterface {
      */
     void cancelPendingUssd (Message response);
 
-    void resetRadio(Message result);
-
     /**
      * Assign a specified band for RF configuration.
      *
@@ -1681,28 +1629,14 @@ public interface CommandsInterface {
     @UnsupportedAppUsage
     void reportStkServiceIsRunning(Message result);
 
-    @UnsupportedAppUsage
-    void invokeOemRilRequestRaw(byte[] data, Message response);
-
     /**
      * Sends carrier specific information to the vendor ril that can be used to
      * encrypt the IMSI and IMPI.
      *
-     * @param publicKey the public key of the carrier used to encrypt IMSI/IMPI.
-     * @param keyIdentifier the key identifier is optional information that is carrier
-     *        specific.
+     * @param imsiEncryptionInfo the IMSI encryption info
      * @param response callback message
      */
-    void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo,
-                                         Message response);
-
-    void invokeOemRilRequestStrings(String[] strings, Message response);
-
-    /**
-     * Fires when RIL_UNSOL_OEM_HOOK_RAW is received from the RIL.
-     */
-    void setOnUnsolOemHookRaw(Handler h, int what, Object obj);
-    void unSetOnUnsolOemHookRaw(Handler h);
+    void setCarrierInfoForImsiEncryption(ImsiEncryptionInfo imsiEncryptionInfo, Message response);
 
     /**
      * Send TERMINAL RESPONSE to the SIM, after processing a proactive command
@@ -1879,15 +1813,13 @@ public interface CommandsInterface {
     void queryTTYMode(Message response);
 
     /**
-     * Setup a packet data connection On successful completion, the result
+     * Setup a packet data connection. On successful completion, the result
      * message will return a SetupDataResult object containing the connection information.
      *
      * @param accessNetworkType
      *            Access network to use. Values is one of AccessNetworkConstants.AccessNetworkType.
      * @param dataProfile
      *            Data profile for data call setup
-     * @param isRoaming
-     *            Device is roaming or not
      * @param allowRoaming
      *            Flag indicating data roaming is enabled or not
      * @param reason
@@ -1918,9 +1850,9 @@ public interface CommandsInterface {
      * @param result
      *            Callback message
      */
-    void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean isRoaming,
-            boolean allowRoaming, int reason, LinkProperties linkProperties, int pduSessionId,
-            NetworkSliceInfo sliceInfo, TrafficDescriptor trafficDescriptor,
+    void setupDataCall(int accessNetworkType, DataProfile dataProfile, boolean allowRoaming,
+            int reason, LinkProperties linkProperties, int pduSessionId, NetworkSliceInfo sliceInfo,
+            TrafficDescriptor trafficDescriptor,
             boolean matchAllRuleAllowed, Message result);
 
     /**
@@ -1980,22 +1912,6 @@ public interface CommandsInterface {
      */
     @UnsupportedAppUsage
     public void getIccCardStatus(Message result);
-
-    /**
-     * Request the status of all the physical UICC slots.
-     *
-     * @param result Callback message containing a {@link java.util.ArrayList} of
-     * {@link com.android.internal.telephony.uicc.IccSlotStatus} instances for all the slots.
-     */
-    void getIccSlotsStatus(Message result);
-
-    /**
-     * Set the mapping from logical slots to physical slots.
-     *
-     * @param physicalSlots Mapping from logical slots to physical slots.
-     * @param result Callback message is empty on completion.
-     */
-    void setLogicalToPhysicalSlotMapping(int[] physicalSlots, Message result);
 
     /**
      * Request the SIM application on the UICC to perform authentication
@@ -2074,24 +1990,20 @@ public interface CommandsInterface {
      *
      * @param dataProfile
      *            data profile for initial APN attach
-     * @param isRoaming
-     *            indicating the device is roaming or not
      * @param result
      *            callback message contains the information of SUCCESS/FAILURE
      */
-    void setInitialAttachApn(DataProfile dataProfile, boolean isRoaming, Message result);
+    void setInitialAttachApn(DataProfile dataProfile, Message result);
 
     /**
      * Set data profiles in modem
      *
      * @param dps
      *            Array of the data profiles set to modem
-     * @param isRoaming
-     *            Indicating if the device is roaming or not
      * @param result
      *            callback message contains the information of SUCCESS/FAILURE
      */
-    void setDataProfile(DataProfile[] dps, boolean isRoaming, Message result);
+    void setDataProfile(DataProfile[] dps, Message result);
 
     /**
      * Notifiy that we are testing an emergency call
@@ -2256,15 +2168,6 @@ public interface CommandsInterface {
             Message result);
 
     /**
-     * Whether the device modem supports reporting the EID in either the slot or card status or
-     * through ATR.
-     * @return true if the modem supports EID.
-     */
-    default boolean supportsEid() {
-        return false;
-    }
-
-    /**
      * Tells the modem if data is allowed or not.
      *
      * @param allowed
@@ -2316,34 +2219,6 @@ public interface CommandsInterface {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForRadioCapabilityChanged(Handler h);
-
-    /**
-     * Start LCE (Link Capacity Estimation) service with a desired reporting interval.
-     *
-     * @param reportIntervalMs
-     *        LCE info reporting interval (ms).
-     *
-     * @param result Callback message contains the current LCE status.
-     * {byte status, int actualIntervalMs}
-     */
-    public void startLceService(int reportIntervalMs, boolean pullMode, Message result);
-
-    /**
-     * Stop LCE service.
-     *
-     * @param result Callback message contains the current LCE status:
-     * {byte status, int actualIntervalMs}
-     *
-     */
-    public void stopLceService(Message result);
-
-    /**
-     * Pull LCE service for capacity data.
-     *
-     * @param result Callback message contains the capacity info:
-     * {int capacityKbps, byte confidenceLevel, byte lceSuspendedTemporarily}
-     */
-    public void pullLceData(Message result);
 
     /**
      * Register a LCE info listener.
