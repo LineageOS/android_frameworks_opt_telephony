@@ -3602,6 +3602,13 @@ public class SubscriptionManagerService extends ISub.Stub {
                 return true;
             }
 
+            List<Integer> subIdList = subInfoList.stream().map(SubscriptionInfo::getSubscriptionId)
+                    .collect(Collectors.toList());
+            if (!subIdList.contains(subscriptionId)) {
+                // Return true as this subscription is not available on the device.
+                return true;
+            }
+
             // Get list of subscriptions associated with this user.
             List<SubscriptionInfo> associatedSubscriptionsList =
                     getSubscriptionInfoListAssociatedWithUser(userHandle);
