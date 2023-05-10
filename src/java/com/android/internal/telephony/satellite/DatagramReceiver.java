@@ -404,6 +404,7 @@ public class DatagramReceiver extends Handler {
                         deleteDatagram(argument.datagramId);
                         sInstance.mPendingAckCountHashMap.remove(argument.datagramId);
                     }
+                    break;
                 }
 
                 default:
