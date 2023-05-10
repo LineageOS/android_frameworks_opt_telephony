@@ -671,7 +671,6 @@ public class SatelliteController extends Handler {
                         if (mNeedsSatellitePointing) {
                             mPointingAppController.startPointingUI(false);
                         }
-
                         evaluateToSendSatelliteEnabledSuccess();
                     } else {
                         synchronized (mSatelliteEnabledRequestLock) {
@@ -687,9 +686,12 @@ public class SatelliteController extends Handler {
                         resetSatelliteEnabledRequest();
 
                         setSettingsKeyForSatelliteMode(SATELLITE_MODE_ENABLED_FALSE);
+                        setDemoModeEnabled(argument.enableDemoMode);
+                        synchronized (mIsSatelliteEnabledLock) {
+                            mIsSatelliteEnabled = argument.enableSatellite;
+                        }
                         // If satellite is disabled, send success to callback immediately
                         argument.callback.accept(error);
-                        setIsDemoModeEnabled(argument.enableDemoMode);
                         updateSatelliteEnabledState(
                                 argument.enableSatellite, "EVENT_SET_SATELLITE_ENABLED_DONE");
                     }
@@ -2187,6 +2189,8 @@ public class SatelliteController extends Handler {
         logd("handleEventSatelliteModemStateChanged: state=" + state);
         if (state == SatelliteManager.SATELLITE_MODEM_STATE_OFF
                 || state == SatelliteManager.SATELLITE_MODEM_STATE_UNAVAILABLE) {
+            setSettingsKeyForSatelliteMode(SATELLITE_MODE_ENABLED_FALSE);
+            setDemoModeEnabled(false);
             updateSatelliteEnabledState(
                     false, "handleEventSatelliteModemStateChanged");
             cleanUpResources(state);
@@ -2223,10 +2227,14 @@ public class SatelliteController extends Handler {
             if (areAllRadiosDisabled() && (mSatelliteEnabledRequest != null)
                     && mWaitingForRadioDisabled) {
                 logd("Sending success to callback that sent enable satellite request");
-                setIsDemoModeEnabled(mSatelliteEnabledRequest.enableDemoMode);
-                updateSatelliteEnabledState(mSatelliteEnabledRequest.enableSatellite,
-                        "EVENT_SET_SATELLITE_ENABLED_DONE");
+                setDemoModeEnabled(mSatelliteEnabledRequest.enableDemoMode);
+                synchronized (mIsSatelliteEnabledLock) {
+                    mIsSatelliteEnabled = mSatelliteEnabledRequest.enableSatellite;
+                }
                 mSatelliteEnabledRequest.callback.accept(SatelliteManager.SATELLITE_ERROR_NONE);
+                updateSatelliteEnabledState(
+                        mSatelliteEnabledRequest.enableSatellite,
+                        "EVENT_SET_SATELLITE_ENABLED_DONE");
                 mSatelliteEnabledRequest = null;
                 mWaitingForRadioDisabled = false;
             }
@@ -2254,7 +2262,7 @@ public class SatelliteController extends Handler {
         }
     }
 
-    private void setIsDemoModeEnabled(boolean enabled) {
+    private void setDemoModeEnabled(boolean enabled) {
         mIsDemoModeEnabled = enabled;
         mDatagramController.setDemoMode(mIsDemoModeEnabled);
     }
