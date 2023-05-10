@@ -25,12 +25,10 @@ import android.os.AsyncResult;
 import android.telephony.BarringInfo;
 import android.telephony.CellInfo;
 import android.telephony.EmergencyRegResult;
-import android.telephony.LinkCapacityEstimate;
 import android.telephony.RadioAccessSpecifier;
 import android.telephony.SignalStrength;
 
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Interface declaring response functions to solicited radio requests for network APIs.
@@ -264,23 +262,6 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
                 RadioResponse.sendMessageResponse(rr.mResult, isEnabled);
             }
             mRil.processResponseDone(rr, responseInfo, isEnabled);
-        }
-    }
-
-    /**
-     * @param responseInfo Response info struct containing response type, serial no. and error
-     * @param lceInfo LceDataInfo indicating LCE data
-     */
-    public void pullLceDataResponse(RadioResponseInfo responseInfo,
-            android.hardware.radio.network.LceDataInfo lceInfo) {
-        RILRequest rr = mRil.processResponse(HAL_SERVICE_NETWORK, responseInfo);
-
-        if (rr != null) {
-            List<LinkCapacityEstimate> ret = RILUtils.convertHalLceData(lceInfo);
-            if (responseInfo.error == RadioError.NONE) {
-                RadioResponse.sendMessageResponse(rr.mResult, ret);
-            }
-            mRil.processResponseDone(rr, responseInfo, ret);
         }
     }
 

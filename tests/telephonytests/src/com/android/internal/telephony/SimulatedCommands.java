@@ -18,9 +18,10 @@ package com.android.internal.telephony.test;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.hardware.radio.RadioError;
-import android.hardware.radio.V1_0.DataRegStateResult;
-import android.hardware.radio.V1_0.SetupDataCallResult;
-import android.hardware.radio.V1_0.VoiceRegStateResult;
+import android.hardware.radio.V1_2.VoiceRegStateResult;
+import android.hardware.radio.V1_4.DataRegStateResult;
+import android.hardware.radio.V1_4.PdpProtocolType;
+import android.hardware.radio.V1_4.SetupDataCallResult;
 import android.hardware.radio.modem.ImeiInfo;
 import android.net.KeepalivePacketData;
 import android.net.LinkProperties;
@@ -592,7 +593,7 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void getDataCallList(Message result) {
-        ArrayList<SetupDataCallResult> dcCallList = new ArrayList<SetupDataCallResult>(0);
+        ArrayList<SetupDataCallResult> dcCallList = new ArrayList<>(0);
         SimulatedCommandsVerifier.getInstance().getDataCallList(result);
         if (mSetupDataCallResult != null) {
             dcCallList.add(mSetupDataCallResult);
@@ -1059,10 +1060,10 @@ public class SimulatedCommands extends BaseCommands
         Object ret = mDataRegStateResult;
         if (ret == null) {
             ret = new DataRegStateResult();
-            ((DataRegStateResult) ret).regState = mDataRegState;
-            ((DataRegStateResult) ret).rat = mDataRadioTech;
-            ((DataRegStateResult) ret).maxDataCalls = mMaxDataCalls;
-            ((DataRegStateResult) ret).reasonDataDenied = mReasonForDenial;
+            ((DataRegStateResult) ret).base.regState = mDataRegState;
+            ((DataRegStateResult) ret).base.rat = mDataRadioTech;
+            ((DataRegStateResult) ret).base.maxDataCalls = mMaxDataCalls;
+            ((DataRegStateResult) ret).base.reasonDataDenied = mReasonForDenial;
         }
 
         resultSuccess(result, ret);
@@ -1224,17 +1225,17 @@ public class SimulatedCommands extends BaseCommands
         if (mSetupDataCallResult == null) {
             try {
                 mSetupDataCallResult = new SetupDataCallResult();
-                mSetupDataCallResult.status = 0;
+                mSetupDataCallResult.cause = 0;
                 mSetupDataCallResult.suggestedRetryTime = -1;
                 mSetupDataCallResult.cid = 1;
                 mSetupDataCallResult.active = 2;
-                mSetupDataCallResult.type = "IP";
+                mSetupDataCallResult.type = PdpProtocolType.IP;
                 mSetupDataCallResult.ifname = "rmnet_data7";
-                mSetupDataCallResult.addresses = "12.34.56.78";
-                mSetupDataCallResult.dnses = "98.76.54.32";
-                mSetupDataCallResult.gateways = "11.22.33.44";
-                mSetupDataCallResult.pcscf =
-                        "fd00:976a:c305:1d::8 fd00:976a:c202:1d::7 fd00:976a:c305:1d::5";
+                mSetupDataCallResult.addresses = new ArrayList<>(List.of("12.34.56.78"));
+                mSetupDataCallResult.dnses = new ArrayList<>(List.of("98.76.54.32"));
+                mSetupDataCallResult.gateways = new ArrayList<>(List.of("11.22.33.44"));
+                mSetupDataCallResult.pcscf = new ArrayList<>(List.of(
+                        "fd00:976a:c305:1d::8 fd00:976a:c202:1d::7 fd00:976a:c305:1d::5"));
                 mSetupDataCallResult.mtu = 1440;
             } catch (Exception e) {
 

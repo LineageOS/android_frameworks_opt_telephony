@@ -135,11 +135,7 @@ public class RadioSatelliteProxy extends RadioServiceProxy {
      * @param features List of features to be provisioned.
      * @throws RemoteException Throws RemoteException when RadioSatellite service is not available.
      */
-    public void provisionService(
-            int serial,
-            String imei,
-            String msisdn,
-            String imsi,
+    public void provisionService(int serial, String imei, String msisdn, String imsi,
             int[] features) throws RemoteException {
         if (isEmpty()) return;
         if (isAidl()) {
