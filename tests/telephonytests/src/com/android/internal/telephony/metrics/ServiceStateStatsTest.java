@@ -19,6 +19,8 @@ package com.android.internal.telephony.metrics;
 import static android.telephony.TelephonyManager.DATA_CONNECTED;
 import static android.telephony.TelephonyManager.DATA_UNKNOWN;
 
+import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_SERVICE_STATE__FOLD_STATE__STATE_CLOSED;
+import static com.android.internal.telephony.TelephonyStatsLog.CELLULAR_SERVICE_STATE__FOLD_STATE__STATE_UNKNOWN;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_IMS;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_UNKNOWN;
@@ -991,6 +993,47 @@ public class ServiceStateStatsTest extends TelephonyTest {
                 mPhone, mServiceState, VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS));
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, mServiceStateStats.getVoiceRat(
                 mPhone, mServiceState, VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_UNKNOWN));
+    }
+
+    @Test
+    @SmallTest
+    public void onFoldStateChanged_modemOff() throws Exception {
+        doReturn(ServiceState.STATE_POWER_OFF).when(mServiceState).getVoiceRegState();
+        doReturn(ServiceState.STATE_POWER_OFF).when(mServiceState).getDataRegState();
+        doReturn(TelephonyManager.NETWORK_TYPE_UNKNOWN).when(mServiceState).getVoiceNetworkType();
+        doReturn(TelephonyManager.NETWORK_TYPE_UNKNOWN).when(mServiceState).getDataNetworkType();
+        mockWwanPsRat(TelephonyManager.NETWORK_TYPE_UNKNOWN);
+        doReturn(-1).when(mPhone).getCarrierId();
+        mServiceStateStats.onServiceStateChanged(mServiceState);
+        mServiceStateStats.incTimeMillis(100L);
+
+        mServiceStateStats.onFoldStateChanged(CELLULAR_SERVICE_STATE__FOLD_STATE__STATE_CLOSED);
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    @SmallTest
+    public void onFoldStateChanged_LTEMode() throws Exception {
+        // Using default service state for LTE with fold state unknown
+        mServiceStateStats.onServiceStateChanged(mServiceState);
+        mServiceStateStats.incTimeMillis(100L);
+        mServiceStateStats.onFoldStateChanged(CELLULAR_SERVICE_STATE__FOLD_STATE__STATE_CLOSED);
+        mServiceStateStats.incTimeMillis(1000L);
+        // Same fold state as before should not generate a new atom
+        mServiceStateStats.onFoldStateChanged(CELLULAR_SERVICE_STATE__FOLD_STATE__STATE_CLOSED);
+        mServiceStateStats.incTimeMillis(1000L);
+
+        // There should be 2 service state updates
+        mServiceStateStats.conclude();
+        ArgumentCaptor<CellularServiceState> captor =
+                ArgumentCaptor.forClass(CellularServiceState.class);
+        verify(mPersistAtomsStorage, times(2))
+                .addCellularServiceStateAndCellularDataServiceSwitch(captor.capture(), eq(null));
+        CellularServiceState state = captor.getAllValues().get(0);
+        assertEquals(CELLULAR_SERVICE_STATE__FOLD_STATE__STATE_UNKNOWN, state.foldState);
+        state = captor.getAllValues().get(1);
+        assertEquals(CELLULAR_SERVICE_STATE__FOLD_STATE__STATE_CLOSED, state.foldState);
+        verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
     private void mockWwanPsRat(@NetworkType int rat) {
