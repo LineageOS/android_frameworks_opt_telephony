@@ -375,6 +375,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                     15, /* SIGNAL_STRENGTH_GOOD */
                     30  /* SIGNAL_STRENGTH_GREAT */
                 });
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL,
+                true);
 
         sendCarrierConfigUpdate(PHONE_ID);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
@@ -2315,10 +2318,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     public void testPhyChanBandwidthRatchetedOnPhyChanBandwidth() {
-        mBundle.putBoolean(
-                CarrierConfigManager.KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL,
-                true);
-
         // LTE Cell with bandwidth = 10000
         CellIdentityLte cellIdentity10 =
                 new CellIdentityLte(1, 1, 1, 1, new int[] {1, 2}, 10000, "1", "1", "test",
@@ -2403,6 +2402,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     public void testPhyChanBandwidthForNr() {
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL,
+                false);
         // NR Cell with bandwidth = 10000
         CellIdentityNr nrCi = new CellIdentityNr(
                 0, 0, 0, new int[]{10000}, "", "", 5, "", "", Collections.emptyList());
