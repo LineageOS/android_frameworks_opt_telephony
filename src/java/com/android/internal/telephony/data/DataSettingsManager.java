@@ -723,23 +723,22 @@ public class DataSettingsManager extends Handler {
         boolean isNonDds = mPhone.getSubId() != SubscriptionManagerService.getInstance()
                 .getDefaultDataSubId();
 
+        Phone defaultDataPhone = PhoneFactory.getPhone(SubscriptionManagerService.getInstance()
+                .getPhoneId(SubscriptionManagerService.getInstance()
+                        .getDefaultDataSubId()));
+        boolean isDdsUserEnabled = defaultDataPhone != null && defaultDataPhone.isUserDataEnabled();
+
         // mobile data policy : data during call
         if (isMobileDataPolicyEnabled(TelephonyManager
                 .MOBILE_DATA_POLICY_DATA_ON_NON_DEFAULT_DURING_VOICE_CALL)) {
-            overridden = overridden || isNonDds && mPhone.getState() != PhoneConstants.State.IDLE;
+            overridden |= isNonDds && isDdsUserEnabled
+                    && mPhone.getState() != PhoneConstants.State.IDLE;
         }
 
         // mobile data policy : auto data switch
         if (isMobileDataPolicyEnabled(TelephonyManager.MOBILE_DATA_POLICY_AUTO_DATA_SWITCH)) {
             // check user enabled data on the default data phone
-            Phone defaultDataPhone = PhoneFactory.getPhone(SubscriptionManagerService.getInstance()
-                    .getPhoneId(SubscriptionManagerService.getInstance()
-                            .getDefaultDataSubId()));
-            if (defaultDataPhone == null) {
-                loge("isDataEnabledOverriddenForApn: unexpected defaultDataPhone is null");
-            } else {
-                overridden = overridden || isNonDds && defaultDataPhone.isUserDataEnabled();
-            }
+            overridden |= isNonDds && isDdsUserEnabled;
         }
         return overridden;
     }
