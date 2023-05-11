@@ -105,7 +105,7 @@ public class MetricsCollectorTest extends TelephonyTest {
         mActivePort = mock(UiccPort.class);
         mServiceStateStats = mock(ServiceStateStats.class);
         mMetricsCollector =
-                new MetricsCollector(mContext, mPersistAtomsStorage);
+                new MetricsCollector(mContext, mPersistAtomsStorage, mDeviceStateHelper);
         doReturn(mSST).when(mSecondPhone).getServiceStateTracker();
         doReturn(mServiceStateStats).when(mSST).getServiceStateStats();
     }
