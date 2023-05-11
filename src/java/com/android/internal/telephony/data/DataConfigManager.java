@@ -326,7 +326,7 @@ public class DataConfigManager extends Handler {
 
         // Register for device config update
         DeviceConfig.addOnPropertiesChangedListener(
-                DeviceConfig.NAMESPACE_TELEPHONY, this::post,
+                DeviceConfig.NAMESPACE_TELEPHONY, Runnable::run,
                 properties -> {
                     if (TextUtils.equals(DeviceConfig.NAMESPACE_TELEPHONY,
                             properties.getNamespace())) {
