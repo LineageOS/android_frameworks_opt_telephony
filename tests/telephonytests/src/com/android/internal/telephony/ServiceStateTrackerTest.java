@@ -29,6 +29,7 @@ import static org.mockito.Matchers.nullable;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.never;
@@ -260,7 +261,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(mIwlanNetworkServiceStub).when(mIwlanNetworkServiceStub).asBinder();
         addNetworkService();
 
-        doReturn(true).when(mDataNetworkController).areAllDataDisconnected();
+        doReturn(true).when(mDataNetworkController).areAllCellularDataDisconnected();
 
         doReturn(new ServiceState()).when(mPhone).getServiceState();
 
@@ -374,6 +375,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                     15, /* SIGNAL_STRENGTH_GOOD */
                     30  /* SIGNAL_STRENGTH_GREAT */
                 });
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL,
+                true);
 
         sendCarrierConfigUpdate(PHONE_ID);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
@@ -428,8 +432,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
         doReturn(dataNetworkController_phone2).when(phone2).getDataNetworkController();
         doReturn(mSST).when(phone2).getServiceStateTracker();
-        doReturn(false).when(mDataNetworkController).areAllDataDisconnected();
-        doReturn(false).when(dataNetworkController_phone2).areAllDataDisconnected();
+        doReturn(false).when(mDataNetworkController).areAllCellularDataDisconnected();
+        doReturn(false).when(dataNetworkController_phone2).areAllCellularDataDisconnected();
         doReturn(1).when(mPhone).getSubId();
         doReturn(2).when(phone2).getSubId();
 
@@ -442,9 +446,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sst.setRadioPower(false);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
-        verify(mDataNetworkController).tearDownAllDataNetworks(
+        verify(mDataNetworkController).tearDownAllCellularDataNetworks(
                 eq(3 /* TEAR_DOWN_REASON_AIRPLANE_MODE_ON */));
-        verify(dataNetworkController_phone2, never()).tearDownAllDataNetworks(anyInt());
+        verify(dataNetworkController_phone2, never()).tearDownAllCellularDataNetworks(anyInt());
         ArgumentCaptor<DataNetworkController.DataNetworkControllerCallback> callback1 =
                 ArgumentCaptor.forClass(DataNetworkController.DataNetworkControllerCallback.class);
         ArgumentCaptor<DataNetworkController.DataNetworkControllerCallback> callback2 =
@@ -455,16 +459,16 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 callback2.capture());
 
         // Data disconnected on sub 2, still waiting for data disconnected on sub 1
-        doReturn(true).when(dataNetworkController_phone2).areAllDataDisconnected();
-        callback2.getValue().onAnyDataNetworkExistingChanged(false);
+        doReturn(true).when(dataNetworkController_phone2).areAllCellularDataDisconnected();
+        callback2.getValue().onAnyCellularDataNetworkExistingChanged(false);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertEquals(TelephonyManager.RADIO_POWER_ON, mSimulatedCommands.getRadioState());
         verify(dataNetworkController_phone2, times(1)).unregisterDataNetworkControllerCallback(
                 any());
 
         // Data disconnected on sub 1, radio should power off now
-        doReturn(true).when(mDataNetworkController).areAllDataDisconnected();
-        callback1.getValue().onAnyDataNetworkExistingChanged(false);
+        doReturn(true).when(mDataNetworkController).areAllCellularDataDisconnected();
+        callback1.getValue().onAnyCellularDataNetworkExistingChanged(false);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         verify(mDataNetworkController, times(1)).unregisterDataNetworkControllerCallback(any());
         assertEquals(TelephonyManager.RADIO_POWER_OFF, mSimulatedCommands.getRadioState());
@@ -581,6 +585,38 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         assertTrue(sst.getRadioPowerOffReasons().size() == powerOffReasonSize);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
         assertTrue(mSimulatedCommands.getRadioState() == expectedRadioPowerState);
+    }
+
+    @Test
+    public void testSetRadioPowerForReasonKeepsWfc() {
+        mPhone.mCT = mCT;
+        mCT.mRingingCall = mGsmCdmaCall;
+        mCT.mBackgroundCall = mGsmCdmaCall;
+        mCT.mForegroundCall = mGsmCdmaCall;
+        doReturn(false).when(mPhone).isPhoneTypeGsm();
+
+        sst.updatePhoneType();
+
+        // Regular power off leads to call drop
+        sst.setRadioPower(true);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        clearInvocations(mGsmCdmaCall);
+        sst.setRadioPower(false);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        verify(mGsmCdmaCall, times(3)).hangupIfAlive();
+
+        // Any WFC should be kept
+        sst.setRadioPower(true);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        clearInvocations(mGsmCdmaCall);
+        doReturn(ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN).when(mPhone)
+                .getImsRegistrationTech();
+
+        sst.setRadioPower(false);
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+        verify(mGsmCdmaCall, never()).hangupIfAlive();
     }
 
     @Test
@@ -2282,10 +2318,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     public void testPhyChanBandwidthRatchetedOnPhyChanBandwidth() {
-        mBundle.putBoolean(
-                CarrierConfigManager.KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL,
-                true);
-
         // LTE Cell with bandwidth = 10000
         CellIdentityLte cellIdentity10 =
                 new CellIdentityLte(1, 1, 1, 1, new int[] {1, 2}, 10000, "1", "1", "test",
@@ -2370,6 +2402,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     public void testPhyChanBandwidthForNr() {
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL,
+                false);
         // NR Cell with bandwidth = 10000
         CellIdentityNr nrCi = new CellIdentityNr(
                 0, 0, 0, new int[]{10000}, "", "", 5, "", "", Collections.emptyList());
