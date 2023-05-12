@@ -276,7 +276,8 @@ public class DatagramController {
         mDatagramReceiver.onDeviceAlignedWithSatellite(isAligned);
     }
 
-    boolean isReceivingDatagrams() {
+    @VisibleForTesting
+    public boolean isReceivingDatagrams() {
         synchronized (mLock) {
             return (mReceiveDatagramTransferState
                     == SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVING);
