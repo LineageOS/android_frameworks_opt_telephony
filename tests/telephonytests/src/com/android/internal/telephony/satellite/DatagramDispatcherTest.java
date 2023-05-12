@@ -428,6 +428,47 @@ public class DatagramDispatcherTest extends TelephonyTest {
         verifyNoMoreInteractions(mMockDatagramController);
     }
 
+    @Test
+    public void testOnSatelliteModemStateChanged_modemStateListening() {
+        mDatagramDispatcherUT.onSatelliteModemStateChanged(
+                SatelliteManager.SATELLITE_MODEM_STATE_LISTENING);
+        processAllMessages();
+        verifyNoMoreInteractions(mMockDatagramController);
+    }
+
+    @Test
+    public void testOnSatelliteModemStateChanged_modemStateOff_modemSendingDatagrams() {
+        mDatagramDispatcherUT.sendSatelliteDatagram(SUB_ID, DATAGRAM_TYPE1, mDatagram,
+                true, mResultListener::offer);
+
+        mDatagramDispatcherUT.onSatelliteModemStateChanged(
+                SatelliteManager.SATELLITE_MODEM_STATE_OFF);
+
+        processAllMessages();
+
+        mInOrder.verify(mMockDatagramController)
+                .updateSendStatus(anyInt(),
+                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_FAILED),
+                        eq(1), eq(SatelliteManager.SATELLITE_REQUEST_ABORTED));
+        mInOrder.verify(mMockDatagramController)
+                .updateSendStatus(anyInt(),
+                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE),
+                        eq(0), eq(SatelliteManager.SATELLITE_ERROR_NONE));
+    }
+
+    @Test
+    public void testOnSatelliteModemStateChanged_modemStateOff_modemNotSendingDatagrams() {
+        mDatagramDispatcherUT.onSatelliteModemStateChanged(
+                SatelliteManager.SATELLITE_MODEM_STATE_OFF);
+
+        processAllMessages();
+
+        mInOrder.verify(mMockDatagramController)
+                .updateSendStatus(anyInt(),
+                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE),
+                        eq(0), eq(SatelliteManager.SATELLITE_ERROR_NONE));
+    }
+
     private static class TestDatagramDispatcher extends DatagramDispatcher {
         private long mLong = SATELLITE_ALIGN_TIMEOUT;
 
