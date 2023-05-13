@@ -2236,6 +2236,19 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     }
 
     @Test
+    public void testSimNotReadyBySimDeactivate() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        mSubscriptionManagerServiceUT.updateSimState(
+                0, TelephonyManager.SIM_STATE_NOT_READY, null, null);
+        doReturn(true).when(mUiccProfile).isEmptyProfile();
+        processAllMessages();
+
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false)).isEmpty();
+    }
+
+    @Test
     public void testInactiveSimRemoval() {
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
 
