@@ -1708,7 +1708,8 @@ public class PersistAtomsStorage {
                     && state.isMultiSim == key.isMultiSim
                     && state.carrierId == key.carrierId
                     && state.isEmergencyOnly == key.isEmergencyOnly
-                    && state.isInternetPdnUp == key.isInternetPdnUp) {
+                    && state.isInternetPdnUp == key.isInternetPdnUp
+                    && state.foldState == key.foldState) {
                 return state;
             }
         }

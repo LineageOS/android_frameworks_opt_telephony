@@ -16,7 +16,11 @@
 
 package com.android.internal.telephony.satellite;
 
+import static android.telephony.satellite.SatelliteManager.KEY_DEMO_MODE_ENABLED;
+import static android.telephony.satellite.SatelliteManager.KEY_SATELLITE_CAPABILITIES;
+import static android.telephony.satellite.SatelliteManager.KEY_SATELLITE_COMMUNICATION_ALLOWED;
 import static android.telephony.satellite.SatelliteManager.KEY_SATELLITE_ENABLED;
+import static android.telephony.satellite.SatelliteManager.KEY_SATELLITE_NEXT_VISIBILITY;
 import static android.telephony.satellite.SatelliteManager.KEY_SATELLITE_PROVISIONED;
 import static android.telephony.satellite.SatelliteManager.KEY_SATELLITE_SUPPORTED;
 import static android.telephony.satellite.SatelliteManager.NT_RADIO_TECHNOLOGY_EMTC_NTN;
@@ -29,17 +33,21 @@ import static android.telephony.satellite.SatelliteManager.SATELLITE_INVALID_MOD
 import static android.telephony.satellite.SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_MODEM_STATE_OFF;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_MODEM_STATE_UNAVAILABLE;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_NOT_AUTHORIZED;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_NOT_SUPPORTED;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_NO_RESOURCES;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_REQUEST_IN_PROGRESS;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_SERVICE_NOT_PROVISIONED;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_SERVICE_PROVISION_IN_PROGRESS;
 
 import static com.android.internal.telephony.satellite.SatelliteController.SATELLITE_MODE_ENABLED_FALSE;
 import static com.android.internal.telephony.satellite.SatelliteController.SATELLITE_MODE_ENABLED_TRUE;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -59,7 +67,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.AsyncResult;
 import android.os.Bundle;
+import android.os.CancellationSignal;
 import android.os.Handler;
+import android.os.ICancellationSignal;
 import android.os.Looper;
 import android.os.Message;
 import android.os.ResultReceiver;
@@ -67,6 +77,7 @@ import android.telephony.Rlog;
 import android.telephony.satellite.ISatelliteDatagramCallback;
 import android.telephony.satellite.ISatelliteProvisionStateCallback;
 import android.telephony.satellite.ISatelliteStateCallback;
+import android.telephony.satellite.ISatelliteTransmissionUpdateCallback;
 import android.telephony.satellite.SatelliteCapabilities;
 import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
@@ -76,6 +87,7 @@ import android.testing.TestableLooper;
 
 import com.android.internal.telephony.IIntegerConsumer;
 import com.android.internal.telephony.IVoidConsumer;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
 import com.android.internal.telephony.satellite.metrics.ProvisionMetricsStats;
@@ -105,6 +117,8 @@ public class SatelliteControllerTest extends TelephonyTest {
     private static final long TIMEOUT = 500;
     private static final int SUB_ID = 0;
     private static final int MAX_BYTES_PER_OUT_GOING_DATAGRAM = 339;
+    private static final String TEST_SATELLITE_TOKEN = "TEST_SATELLITE_TOKEN";
+    private static final String TEST_NEXT_SATELLITE_TOKEN = "TEST_NEXT_SATELLITE_TOKEN";
 
     private TestSatelliteController mSatelliteControllerUT;
     private TestSharedPreferences mSharedPreferences;
@@ -116,8 +130,9 @@ public class SatelliteControllerTest extends TelephonyTest {
     @Mock private ControllerMetricsStats mMockControllerMetricsStats;
     @Mock private ProvisionMetricsStats mMockProvisionMetricsStats;
     @Mock private SessionMetricsStats mMockSessionMetricsStats;
-
     private List<Integer> mIIntegerConsumerResults =  new ArrayList<>();
+    @Mock private ISatelliteTransmissionUpdateCallback mStartTransmissionUpdateCallback;
+    @Mock private ISatelliteTransmissionUpdateCallback mStopTransmissionUpdateCallback;
     private Semaphore mIIntegerConsumerSemaphore = new Semaphore(0);
     private IIntegerConsumer mIIntegerConsumer = new IIntegerConsumer.Stub() {
         @Override
@@ -141,6 +156,32 @@ public class SatelliteControllerTest extends TelephonyTest {
     private SatelliteCapabilities mSatelliteCapabilities = new SatelliteCapabilities(
             mSupportedRadioTechnologies, mIsPointingRequired, MAX_BYTES_PER_OUT_GOING_DATAGRAM,
             new HashMap<>());
+    private Semaphore mSatelliteCapabilitiesSemaphore = new Semaphore(0);
+    private SatelliteCapabilities mQueriedSatelliteCapabilities = null;
+    private int mQueriedSatelliteCapabilitiesResultCode = SATELLITE_ERROR_NONE;
+    private ResultReceiver mSatelliteCapabilitiesReceiver = new ResultReceiver(null) {
+        @Override
+        protected void onReceiveResult(int resultCode, Bundle resultData) {
+            mQueriedSatelliteCapabilitiesResultCode = resultCode;
+            if (resultCode == SATELLITE_ERROR_NONE) {
+                if (resultData.containsKey(KEY_SATELLITE_CAPABILITIES)) {
+                    mQueriedSatelliteCapabilities = resultData.getParcelable(
+                            KEY_SATELLITE_CAPABILITIES, SatelliteCapabilities.class);
+                } else {
+                    loge("KEY_SATELLITE_SUPPORTED does not exist.");
+                    mQueriedSatelliteCapabilities = null;
+                }
+            } else {
+                logd("mSatelliteSupportReceiver: resultCode=" + resultCode);
+                mQueriedSatelliteCapabilities = null;
+            }
+            try {
+                mSatelliteCapabilitiesSemaphore.release();
+            } catch (Exception ex) {
+                loge("mSatelliteSupportReceiver: Got exception in releasing semaphore, ex=" + ex);
+            }
+        }
+    };
 
     private boolean mQueriedSatelliteSupported = false;
     private int mQueriedSatelliteSupportedResultCode = SATELLITE_ERROR_NONE;
@@ -194,6 +235,32 @@ public class SatelliteControllerTest extends TelephonyTest {
         }
     };
 
+    private boolean mQueriedIsDemoModeEnabled = false;
+    private int mQueriedIsDemoModeEnabledResultCode = SATELLITE_ERROR_NONE;
+    private Semaphore mIsDemoModeEnabledSemaphore = new Semaphore(0);
+    private ResultReceiver mIsDemoModeEnabledReceiver = new ResultReceiver(null) {
+        @Override
+        protected void onReceiveResult(int resultCode, Bundle resultData) {
+            mQueriedIsDemoModeEnabledResultCode = resultCode;
+            if (resultCode == SATELLITE_ERROR_NONE) {
+                if (resultData.containsKey(KEY_DEMO_MODE_ENABLED)) {
+                    mQueriedIsDemoModeEnabled = resultData.getBoolean(KEY_DEMO_MODE_ENABLED);
+                } else {
+                    loge("KEY_DEMO_MODE_ENABLED does not exist.");
+                    mQueriedIsDemoModeEnabled = false;
+                }
+            } else {
+                logd("mIsSatelliteEnableReceiver: resultCode=" + resultCode);
+                mQueriedIsDemoModeEnabled = false;
+            }
+            try {
+                mIsDemoModeEnabledSemaphore.release();
+            } catch (Exception ex) {
+                loge("mIsDemoModeEnabledReceiver: Got exception in releasing semaphore, ex=" + ex);
+            }
+        }
+    };
+
     private boolean mQueriedIsSatelliteProvisioned = false;
     private int mQueriedIsSatelliteProvisionedResultCode = SATELLITE_ERROR_NONE;
     private Semaphore mIsSatelliteProvisionedSemaphore = new Semaphore(0);
@@ -220,6 +287,62 @@ public class SatelliteControllerTest extends TelephonyTest {
             }
         }
     };
+
+    private boolean mQueriedSatelliteAllowed = false;
+    private int mQueriedSatelliteAllowedResultCode = SATELLITE_ERROR_NONE;
+    private Semaphore mSatelliteAllowedSemaphore = new Semaphore(0);
+    private ResultReceiver mSatelliteAllowedReceiver = new ResultReceiver(null) {
+        @Override
+        protected void onReceiveResult(int resultCode, Bundle resultData) {
+            mQueriedSatelliteAllowedResultCode = resultCode;
+            if (resultCode == SATELLITE_ERROR_NONE) {
+                if (resultData.containsKey(KEY_SATELLITE_COMMUNICATION_ALLOWED)) {
+                    mQueriedSatelliteAllowed = resultData.getBoolean(
+                            KEY_SATELLITE_COMMUNICATION_ALLOWED);
+                } else {
+                    loge("KEY_SATELLITE_COMMUNICATION_ALLOWED does not exist.");
+                    mQueriedSatelliteAllowed = false;
+                }
+            } else {
+                logd("mSatelliteSupportReceiver: resultCode=" + resultCode);
+                mQueriedSatelliteAllowed = false;
+            }
+            try {
+                mSatelliteAllowedSemaphore.release();
+            } catch (Exception ex) {
+                loge("mSatelliteAllowedReceiver: Got exception in releasing semaphore, ex=" + ex);
+            }
+        }
+    };
+
+    private int mQueriedSatelliteVisibilityTime = -1;
+    private int mSatelliteNextVisibilityTime = 3600;
+    private int mQueriedSatelliteVisibilityTimeResultCode = SATELLITE_ERROR_NONE;
+    private Semaphore mSatelliteVisibilityTimeSemaphore = new Semaphore(0);
+    private ResultReceiver mSatelliteVisibilityTimeReceiver = new ResultReceiver(null) {
+        @Override
+        protected void onReceiveResult(int resultCode, Bundle resultData) {
+            mQueriedSatelliteVisibilityTimeResultCode = resultCode;
+            if (resultCode == SATELLITE_ERROR_NONE) {
+                if (resultData.containsKey(KEY_SATELLITE_NEXT_VISIBILITY)) {
+                    mQueriedSatelliteVisibilityTime = resultData.getInt(
+                            KEY_SATELLITE_NEXT_VISIBILITY);
+                } else {
+                    loge("KEY_SATELLITE_NEXT_VISIBILITY does not exist.");
+                    mQueriedSatelliteVisibilityTime = -1;
+                }
+            } else {
+                logd("mSatelliteSupportReceiver: resultCode=" + resultCode);
+                mQueriedSatelliteVisibilityTime = -1;
+            }
+            try {
+                mSatelliteVisibilityTimeSemaphore.release();
+            } catch (Exception ex) {
+                loge("mSatelliteAllowedReceiver: Got exception in releasing semaphore, ex=" + ex);
+            }
+        }
+    };
+
 
     @Before
     public void setUp() throws Exception {
@@ -262,6 +385,12 @@ public class SatelliteControllerTest extends TelephonyTest {
                 .when(mMockSessionMetricsStats).setRadioTechnology(anyInt());
         doNothing().when(mMockSessionMetricsStats).reportSessionMetrics();
 
+        doReturn(mMockProvisionMetricsStats).when(mMockProvisionMetricsStats)
+                .setResultCode(anyInt());
+        doReturn(mMockProvisionMetricsStats).when(mMockProvisionMetricsStats)
+                    .setIsProvisionRequest(eq(false));
+        doNothing().when(mMockProvisionMetricsStats).reportProvisionMetrics();
+        doNothing().when(mMockControllerMetricsStats).reportDeprovisionCount(anyInt());
         mSatelliteControllerUT = new TestSatelliteController(mContext, Looper.myLooper());
         verify(mMockSatelliteModemInterface).registerForSatelliteProvisionStateChanged(
                 any(Handler.class),
@@ -282,6 +411,140 @@ public class SatelliteControllerTest extends TelephonyTest {
         logd(TAG + " tearDown");
         mSatelliteControllerUT = null;
         super.tearDown();
+    }
+
+    @Test
+    public void testRequestIsSatelliteCommunicationAllowedForCurrentLocation() {
+        mSatelliteAllowedSemaphore.drainPermits();
+        setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(false, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.requestIsSatelliteCommunicationAllowedForCurrentLocation(SUB_ID,
+                mSatelliteAllowedReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestIsSatelliteAllowedForCurrentLocationResult(1));
+        assertEquals(SATELLITE_NOT_SUPPORTED, mQueriedSatelliteAllowedResultCode);
+
+        resetSatelliteControllerUT();
+        mSatelliteControllerUT.requestIsSatelliteCommunicationAllowedForCurrentLocation(SUB_ID,
+                mSatelliteAllowedReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestIsSatelliteAllowedForCurrentLocationResult(1));
+        assertEquals(SATELLITE_INVALID_TELEPHONY_STATE, mQueriedSatelliteAllowedResultCode);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteAllowedForCurrentLocation(true, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.requestIsSatelliteCommunicationAllowedForCurrentLocation(SUB_ID,
+                mSatelliteAllowedReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestIsSatelliteAllowedForCurrentLocationResult(1));
+        assertEquals(SATELLITE_ERROR_NONE, mQueriedSatelliteAllowedResultCode);
+        assertTrue(mQueriedSatelliteAllowed);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpNullResponseForRequestIsSatelliteAllowedForCurrentLocation(SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.requestIsSatelliteCommunicationAllowedForCurrentLocation(SUB_ID,
+                mSatelliteAllowedReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestIsSatelliteAllowedForCurrentLocationResult(1));
+        assertEquals(SATELLITE_INVALID_TELEPHONY_STATE, mQueriedSatelliteAllowedResultCode);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpNullResponseForRequestIsSatelliteAllowedForCurrentLocation(
+                SATELLITE_INVALID_MODEM_STATE);
+        mSatelliteControllerUT.requestIsSatelliteCommunicationAllowedForCurrentLocation(SUB_ID,
+                mSatelliteAllowedReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestIsSatelliteAllowedForCurrentLocationResult(1));
+        assertEquals(SATELLITE_INVALID_MODEM_STATE, mQueriedSatelliteAllowedResultCode);
+    }
+
+    @Test
+    public void testRequestTimeForNextSatelliteVisibility() {
+        mSatelliteVisibilityTimeSemaphore.drainPermits();
+        setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(false, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.requestTimeForNextSatelliteVisibility(SUB_ID,
+                mSatelliteVisibilityTimeReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestTimeForNextSatelliteVisibilityResult(1));
+        assertEquals(SATELLITE_NOT_SUPPORTED, mQueriedSatelliteVisibilityTimeResultCode);
+
+        resetSatelliteControllerUT();
+        mSatelliteControllerUT.requestTimeForNextSatelliteVisibility(SUB_ID,
+                mSatelliteVisibilityTimeReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestTimeForNextSatelliteVisibilityResult(1));
+        assertEquals(SATELLITE_INVALID_TELEPHONY_STATE, mQueriedSatelliteVisibilityTimeResultCode);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestTimeForNextSatelliteVisibility(mSatelliteNextVisibilityTime,
+                SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.requestTimeForNextSatelliteVisibility(SUB_ID,
+                mSatelliteVisibilityTimeReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestTimeForNextSatelliteVisibilityResult(1));
+        assertEquals(SATELLITE_INVALID_TELEPHONY_STATE, mQueriedSatelliteVisibilityTimeResultCode);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(false, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(false, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestTimeForNextSatelliteVisibility(mSatelliteNextVisibilityTime,
+                SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.requestTimeForNextSatelliteVisibility(SUB_ID,
+                mSatelliteVisibilityTimeReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestTimeForNextSatelliteVisibilityResult(1));
+        assertEquals(SATELLITE_SERVICE_NOT_PROVISIONED, mQueriedSatelliteVisibilityTimeResultCode);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestTimeForNextSatelliteVisibility(mSatelliteNextVisibilityTime,
+                SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.requestTimeForNextSatelliteVisibility(SUB_ID,
+                mSatelliteVisibilityTimeReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestTimeForNextSatelliteVisibilityResult(1));
+        assertEquals(SATELLITE_ERROR_NONE, mQueriedSatelliteVisibilityTimeResultCode);
+        assertEquals(mSatelliteNextVisibilityTime, mQueriedSatelliteVisibilityTime);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        setUpNullResponseForRequestTimeForNextSatelliteVisibility(
+                SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.requestTimeForNextSatelliteVisibility(SUB_ID,
+                mSatelliteVisibilityTimeReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestTimeForNextSatelliteVisibilityResult(1));
+        assertEquals(SATELLITE_INVALID_TELEPHONY_STATE, mQueriedSatelliteVisibilityTimeResultCode);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        setUpNullResponseForRequestTimeForNextSatelliteVisibility(
+                SATELLITE_INVALID_MODEM_STATE);
+        mSatelliteControllerUT.requestTimeForNextSatelliteVisibility(SUB_ID,
+                mSatelliteVisibilityTimeReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestTimeForNextSatelliteVisibilityResult(1));
+        assertEquals(SATELLITE_INVALID_MODEM_STATE, mQueriedSatelliteVisibilityTimeResultCode);
     }
 
     @Test
@@ -503,6 +766,258 @@ public class SatelliteControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testRequestSatelliteCapabilities() {
+        mSatelliteCapabilitiesSemaphore.drainPermits();
+        mSatelliteControllerUT.requestSatelliteCapabilities(SUB_ID, mSatelliteCapabilitiesReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestSatelliteCapabilitiesResult(1));
+        assertEquals(SATELLITE_INVALID_TELEPHONY_STATE, mQueriedSatelliteCapabilitiesResultCode);
+
+        setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(false, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.requestSatelliteCapabilities(SUB_ID, mSatelliteCapabilitiesReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestSatelliteCapabilitiesResult(1));
+        assertEquals(SATELLITE_NOT_SUPPORTED, mQueriedSatelliteCapabilitiesResultCode);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestSatelliteCapabilities(mSatelliteCapabilities, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.requestSatelliteCapabilities(SUB_ID, mSatelliteCapabilitiesReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestSatelliteCapabilitiesResult(1));
+        assertEquals(SATELLITE_ERROR_NONE, mQueriedSatelliteCapabilitiesResultCode);
+        assertEquals(mSatelliteCapabilities, mQueriedSatelliteCapabilities);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpNullResponseForRequestSatelliteCapabilities(SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.requestSatelliteCapabilities(SUB_ID, mSatelliteCapabilitiesReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestSatelliteCapabilitiesResult(1));
+        assertEquals(SATELLITE_INVALID_TELEPHONY_STATE, mQueriedSatelliteCapabilitiesResultCode);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpNullResponseForRequestSatelliteCapabilities(SATELLITE_INVALID_MODEM_STATE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.requestSatelliteCapabilities(SUB_ID, mSatelliteCapabilitiesReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestSatelliteCapabilitiesResult(1));
+        assertEquals(SATELLITE_INVALID_MODEM_STATE, mQueriedSatelliteCapabilitiesResultCode);
+    }
+
+    @Test
+    public void testStartSatelliteTransmissionUpdates() {
+        mIIntegerConsumerSemaphore.drainPermits();
+        mIIntegerConsumerResults.clear();
+        mSatelliteControllerUT.startSatelliteTransmissionUpdates(SUB_ID, mIIntegerConsumer,
+                mStartTransmissionUpdateCallback);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_INVALID_TELEPHONY_STATE, (long) mIIntegerConsumerResults.get(0));
+
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(false, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.startSatelliteTransmissionUpdates(SUB_ID, mIIntegerConsumer,
+                mStartTransmissionUpdateCallback);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_NOT_SUPPORTED, (long) mIIntegerConsumerResults.get(0));
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.startSatelliteTransmissionUpdates(SUB_ID, mIIntegerConsumer,
+                mStartTransmissionUpdateCallback);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_INVALID_TELEPHONY_STATE, (long) mIIntegerConsumerResults.get(0));
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(false, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(false, SATELLITE_ERROR_NONE);
+        setUpResponseForStartSatelliteTransmissionUpdates(SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.startSatelliteTransmissionUpdates(SUB_ID, mIIntegerConsumer,
+                mStartTransmissionUpdateCallback);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_SERVICE_NOT_PROVISIONED, (long) mIIntegerConsumerResults.get(0));
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        setUpResponseForStartSatelliteTransmissionUpdates(SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.startSatelliteTransmissionUpdates(SUB_ID, mIIntegerConsumer,
+                mStartTransmissionUpdateCallback);
+        verify(mMockPointingAppController).registerForSatelliteTransmissionUpdates(anyInt(),
+                eq(mStartTransmissionUpdateCallback), any());
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_ERROR_NONE, (long) mIIntegerConsumerResults.get(0));
+        verify(mMockPointingAppController).startSatelliteTransmissionUpdates(any(Message.class),
+                any(Phone.class));
+        verify(mMockPointingAppController).setStartedSatelliteTransmissionUpdates(eq(true));
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        setUpResponseForStartSatelliteTransmissionUpdates(SATELLITE_INVALID_TELEPHONY_STATE);
+        mSatelliteControllerUT.startSatelliteTransmissionUpdates(SUB_ID, mIIntegerConsumer,
+                mStartTransmissionUpdateCallback);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_INVALID_TELEPHONY_STATE, (long) mIIntegerConsumerResults.get(0));
+        verify(mMockPointingAppController).unregisterForSatelliteTransmissionUpdates(anyInt(),
+                any(),  eq(mStartTransmissionUpdateCallback), any(Phone.class));
+        verify(mMockPointingAppController).setStartedSatelliteTransmissionUpdates(eq(false));
+    }
+
+    @Test
+    public void testStopSatelliteTransmissionUpdates() {
+        mIIntegerConsumerSemaphore.drainPermits();
+        mIIntegerConsumerResults.clear();
+        mSatelliteControllerUT.stopSatelliteTransmissionUpdates(SUB_ID, mIIntegerConsumer,
+                mStopTransmissionUpdateCallback);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_INVALID_TELEPHONY_STATE, (long) mIIntegerConsumerResults.get(0));
+
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(false, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.stopSatelliteTransmissionUpdates(SUB_ID, mIIntegerConsumer,
+                mStopTransmissionUpdateCallback);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_NOT_SUPPORTED, (long) mIIntegerConsumerResults.get(0));
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.stopSatelliteTransmissionUpdates(SUB_ID, mIIntegerConsumer,
+                mStopTransmissionUpdateCallback);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_INVALID_TELEPHONY_STATE, (long) mIIntegerConsumerResults.get(0));
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(false, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(false, SATELLITE_ERROR_NONE);
+        setUpResponseForStopSatelliteTransmissionUpdates(SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.stopSatelliteTransmissionUpdates(SUB_ID, mIIntegerConsumer,
+                mStopTransmissionUpdateCallback);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_SERVICE_NOT_PROVISIONED, (long) mIIntegerConsumerResults.get(0));
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        setUpResponseForStopSatelliteTransmissionUpdates(SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.stopSatelliteTransmissionUpdates(SUB_ID, mIIntegerConsumer,
+                mStopTransmissionUpdateCallback);
+        verify(mMockPointingAppController).unregisterForSatelliteTransmissionUpdates(anyInt(),
+                any(),  eq(mStopTransmissionUpdateCallback), any(Phone.class));
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_ERROR_NONE, (long) mIIntegerConsumerResults.get(0));
+        verify(mMockPointingAppController).stopSatelliteTransmissionUpdates(any(Message.class),
+                any(Phone.class));
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        setUpResponseForStopSatelliteTransmissionUpdates(SATELLITE_INVALID_TELEPHONY_STATE);
+        mSatelliteControllerUT.stopSatelliteTransmissionUpdates(SUB_ID, mIIntegerConsumer,
+                mStopTransmissionUpdateCallback);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_INVALID_TELEPHONY_STATE, (long) mIIntegerConsumerResults.get(0));
+    }
+
+    @Test
+    public void testRequestIsDemoModeEnabled() {
+        mIsDemoModeEnabledSemaphore.drainPermits();
+        resetSatelliteControllerUT();
+        mSatelliteControllerUT.requestIsDemoModeEnabled(SUB_ID, mIsDemoModeEnabledReceiver);
+        assertTrue(waitForRequestIsDemoModeEnabledResult(1));
+        assertEquals(SATELLITE_INVALID_TELEPHONY_STATE, mQueriedIsDemoModeEnabledResultCode);
+        assertFalse(mQueriedIsDemoModeEnabled);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(false, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.requestIsDemoModeEnabled(SUB_ID, mIsDemoModeEnabledReceiver);
+        assertTrue(waitForRequestIsDemoModeEnabledResult(1));
+        assertEquals(SATELLITE_NOT_SUPPORTED, mQueriedIsDemoModeEnabledResultCode);
+        assertFalse(mQueriedIsDemoModeEnabled);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.requestIsDemoModeEnabled(SUB_ID, mIsDemoModeEnabledReceiver);
+        assertTrue(waitForRequestIsDemoModeEnabledResult(1));
+        assertEquals(SATELLITE_INVALID_TELEPHONY_STATE, mQueriedIsDemoModeEnabledResultCode);
+        assertFalse(mQueriedIsDemoModeEnabled);
+
+        resetSatelliteControllerUT();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(false, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(false, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.requestIsDemoModeEnabled(SUB_ID, mIsDemoModeEnabledReceiver);
+        assertTrue(waitForRequestIsDemoModeEnabledResult(1));
+        assertEquals(SATELLITE_SERVICE_NOT_PROVISIONED, mQueriedIsDemoModeEnabledResultCode);
+        assertFalse(mQueriedIsDemoModeEnabled);
+
+        resetSatelliteControllerUT();
+        boolean isDemoModeEnabled = mSatelliteControllerUT.isDemoModeEnabled();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.requestIsDemoModeEnabled(SUB_ID, mIsDemoModeEnabledReceiver);
+        assertTrue(waitForRequestIsDemoModeEnabledResult(1));
+        assertEquals(SATELLITE_ERROR_NONE, mQueriedIsDemoModeEnabledResultCode);
+        assertEquals(isDemoModeEnabled, mQueriedIsDemoModeEnabled);
+    }
+
+    @Test
+    public void testIsSatelliteEnabled() {
+        assertFalse(mSatelliteControllerUT.isSatelliteEnabled());
+        setUpResponseForRequestIsSatelliteEnabled(true, SATELLITE_ERROR_NONE);
+        mIsSatelliteEnabledSemaphore.drainPermits();
+        mSatelliteControllerUT.requestIsSatelliteEnabled(SUB_ID, mIsSatelliteEnabledReceiver);
+        processAllMessages();
+        assertTrue(waitForRequestIsSatelliteEnabledResult(1));
+        assertEquals(mSatelliteControllerUT.isSatelliteEnabled(), mQueriedIsSatelliteEnabled);
+    }
+
+    @Test
     public void testOnSatelliteServiceConnected() {
         verifySatelliteSupported(false, SATELLITE_RADIO_NOT_AVAILABLE);
         verifySatelliteEnabled(false, SATELLITE_INVALID_TELEPHONY_STATE);
@@ -715,6 +1230,191 @@ public class SatelliteControllerTest extends TelephonyTest {
         verify(mMockDatagramController, times(1)).pollPendingSatelliteDatagrams(anyInt(), any());
     }
 
+    @Test
+    public void testProvisionSatelliteService() {
+        String mText = "This is test provision data.";
+        byte[] testProvisionData = mText.getBytes();
+        CancellationSignal cancellationSignal = new CancellationSignal();
+        ICancellationSignal cancelRemote = null;
+        mIIntegerConsumerResults.clear();
+        cancelRemote = mSatelliteControllerUT.provisionSatelliteService(SUB_ID,
+                TEST_SATELLITE_TOKEN,
+                testProvisionData, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_INVALID_TELEPHONY_STATE, (long) mIIntegerConsumerResults.get(0));
+        assertNull(cancelRemote);
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(false, SATELLITE_ERROR_NONE);
+        cancelRemote = mSatelliteControllerUT.provisionSatelliteService(SUB_ID,
+                TEST_SATELLITE_TOKEN,
+                testProvisionData, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_NOT_SUPPORTED, (long) mIIntegerConsumerResults.get(0));
+        assertNull(cancelRemote);
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        cancelRemote = mSatelliteControllerUT.provisionSatelliteService(SUB_ID,
+                TEST_SATELLITE_TOKEN,
+                testProvisionData, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_ERROR_NONE, (long) mIIntegerConsumerResults.get(0));
+        assertNull(cancelRemote);
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(false, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(false, SATELLITE_ERROR_NONE);
+        setUpResponseForProvisionSatelliteService(TEST_SATELLITE_TOKEN, testProvisionData,
+                SATELLITE_ERROR_NONE);
+        cancelRemote = mSatelliteControllerUT.provisionSatelliteService(SUB_ID,
+                TEST_SATELLITE_TOKEN,
+                testProvisionData, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_ERROR_NONE, (long) mIIntegerConsumerResults.get(0));
+        assertNotNull(cancelRemote);
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(false, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(false, SATELLITE_ERROR_NONE);
+        setUpResponseForProvisionSatelliteService(TEST_SATELLITE_TOKEN, testProvisionData,
+                SATELLITE_NOT_AUTHORIZED);
+        cancelRemote = mSatelliteControllerUT.provisionSatelliteService(SUB_ID,
+                TEST_SATELLITE_TOKEN,
+                testProvisionData, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_NOT_AUTHORIZED, (long) mIIntegerConsumerResults.get(0));
+        assertNotNull(cancelRemote);
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(false, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(false, SATELLITE_ERROR_NONE);
+        setUpResponseForProvisionSatelliteService(TEST_NEXT_SATELLITE_TOKEN, testProvisionData,
+                SATELLITE_ERROR_NONE);
+        cancelRemote = mSatelliteControllerUT.provisionSatelliteService(SUB_ID,
+                TEST_NEXT_SATELLITE_TOKEN, testProvisionData, mIIntegerConsumer);
+        cancellationSignal.setRemote(cancelRemote);
+        cancellationSignal.cancel();
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_ERROR_NONE, (long) mIIntegerConsumerResults.get(0));
+        verify(mMockSatelliteModemInterface).deprovisionSatelliteService(
+                eq(TEST_NEXT_SATELLITE_TOKEN), any(Message.class));
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(false, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(false, SATELLITE_ERROR_NONE);
+        setUpNoResponseForProvisionSatelliteService(TEST_SATELLITE_TOKEN);
+        setUpResponseForProvisionSatelliteService(TEST_NEXT_SATELLITE_TOKEN, testProvisionData,
+                SATELLITE_ERROR_NONE);
+        cancelRemote = mSatelliteControllerUT.provisionSatelliteService(SUB_ID,
+                TEST_SATELLITE_TOKEN,
+                testProvisionData, mIIntegerConsumer);
+        cancelRemote = mSatelliteControllerUT.provisionSatelliteService(SUB_ID,
+                TEST_NEXT_SATELLITE_TOKEN,
+                testProvisionData, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_SERVICE_PROVISION_IN_PROGRESS,
+                (long) mIIntegerConsumerResults.get(0));
+    }
+
+    @Test
+    public void testDeprovisionSatelliteService() {
+        mIIntegerConsumerSemaphore.drainPermits();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(false, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.deprovisionSatelliteService(SUB_ID,
+                TEST_SATELLITE_TOKEN, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_NOT_SUPPORTED, (long) mIIntegerConsumerResults.get(0));
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        mSatelliteControllerUT.deprovisionSatelliteService(SUB_ID,
+                 TEST_SATELLITE_TOKEN, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_INVALID_TELEPHONY_STATE, (long) mIIntegerConsumerResults.get(0));
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForDeprovisionSatelliteService(TEST_SATELLITE_TOKEN, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.deprovisionSatelliteService(SUB_ID,
+                TEST_SATELLITE_TOKEN, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_INVALID_TELEPHONY_STATE, (long) mIIntegerConsumerResults.get(0));
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(false, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(false, SATELLITE_ERROR_NONE);
+        setUpResponseForDeprovisionSatelliteService(TEST_SATELLITE_TOKEN, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.deprovisionSatelliteService(SUB_ID,
+                TEST_SATELLITE_TOKEN, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_ERROR_NONE, (long) mIIntegerConsumerResults.get(0));
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        setUpResponseForDeprovisionSatelliteService(TEST_SATELLITE_TOKEN, SATELLITE_ERROR_NONE);
+        mSatelliteControllerUT.deprovisionSatelliteService(SUB_ID,
+                TEST_SATELLITE_TOKEN, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_ERROR_NONE, (long) mIIntegerConsumerResults.get(0));
+
+        resetSatelliteControllerUT();
+        mIIntegerConsumerResults.clear();
+        setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_ERROR_NONE);
+        setUpResponseForRequestIsSatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        verifySatelliteSupported(true, SATELLITE_ERROR_NONE);
+        verifySatelliteProvisioned(true, SATELLITE_ERROR_NONE);
+        setUpResponseForDeprovisionSatelliteService(TEST_SATELLITE_TOKEN,
+                SATELLITE_INVALID_MODEM_STATE);
+        mSatelliteControllerUT.deprovisionSatelliteService(SUB_ID,
+                TEST_SATELLITE_TOKEN, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_INVALID_MODEM_STATE, (long) mIIntegerConsumerResults.get(0));
+
+    }
+
     private void resetSatelliteControllerUTEnabledState() {
         logd("resetSatelliteControllerUTEnabledState");
         setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_RADIO_NOT_AVAILABLE);
@@ -773,6 +1473,18 @@ public class SatelliteControllerTest extends TelephonyTest {
         verifySatelliteEnabled(true, SATELLITE_ERROR_NONE);
     }
 
+    private void setUpResponseForRequestIsSatelliteEnabled(boolean isSatelliteEnabled,
+            @SatelliteManager.SatelliteError int error) {
+        SatelliteException exception = (error == SATELLITE_ERROR_NONE)
+                ? null : new SatelliteException(error);
+        doAnswer(invocation -> {
+            Message message = (Message) invocation.getArguments()[0];
+            AsyncResult.forMessage(message, isSatelliteEnabled, exception);
+            message.sendToTarget();
+            return null;
+        }).when(mMockSatelliteModemInterface).requestIsSatelliteEnabled(any(Message.class));
+    }
+
     private void setUpResponseForRequestIsSatelliteSupported(
             boolean isSatelliteSupported, @SatelliteManager.SatelliteError int error) {
         SatelliteException exception = (error == SATELLITE_ERROR_NONE)
@@ -783,6 +1495,59 @@ public class SatelliteControllerTest extends TelephonyTest {
             message.sendToTarget();
             return null;
         }).when(mMockSatelliteModemInterface).requestIsSatelliteSupported(any(Message.class));
+    }
+
+    private void setUpResponseForRequestIsSatelliteAllowedForCurrentLocation(
+            boolean isSatelliteAllowed, @SatelliteManager.SatelliteError int error) {
+        SatelliteException exception = (error == SATELLITE_ERROR_NONE)
+                ? null : new SatelliteException(error);
+        doAnswer(invocation -> {
+            Message message = (Message) invocation.getArguments()[0];
+            AsyncResult.forMessage(message, isSatelliteAllowed, exception);
+            message.sendToTarget();
+            return null;
+        }).when(mMockSatelliteModemInterface)
+                .requestIsSatelliteCommunicationAllowedForCurrentLocation(any(Message.class));
+    }
+
+    private void setUpNullResponseForRequestIsSatelliteAllowedForCurrentLocation(
+            @SatelliteManager.SatelliteError int error) {
+        SatelliteException exception = (error == SATELLITE_ERROR_NONE)
+                ? null : new SatelliteException(error);
+        doAnswer(invocation -> {
+            Message message = (Message) invocation.getArguments()[0];
+            AsyncResult.forMessage(message, null, exception);
+            message.sendToTarget();
+            return null;
+        }).when(mMockSatelliteModemInterface)
+                .requestIsSatelliteCommunicationAllowedForCurrentLocation(any(Message.class));
+    }
+
+    private void setUpResponseForRequestTimeForNextSatelliteVisibility(
+            int satelliteVisibilityTime, @SatelliteManager.SatelliteError int error) {
+        SatelliteException exception = (error == SATELLITE_ERROR_NONE)
+                ? null : new SatelliteException(error);
+        int[] visibilityTime = new int[] {satelliteVisibilityTime};
+        doAnswer(invocation -> {
+            Message message = (Message) invocation.getArguments()[0];
+            AsyncResult.forMessage(message, visibilityTime, exception);
+            message.sendToTarget();
+            return null;
+        }).when(mMockSatelliteModemInterface)
+                .requestTimeForNextSatelliteVisibility(any(Message.class));
+    }
+
+    private void setUpNullResponseForRequestTimeForNextSatelliteVisibility(
+            @SatelliteManager.SatelliteError int error) {
+        SatelliteException exception = (error == SATELLITE_ERROR_NONE)
+                ? null : new SatelliteException(error);
+        doAnswer(invocation -> {
+            Message message = (Message) invocation.getArguments()[0];
+            AsyncResult.forMessage(message, null, exception);
+            message.sendToTarget();
+            return null;
+        }).when(mMockSatelliteModemInterface)
+                .requestTimeForNextSatelliteVisibility(any(Message.class));
     }
 
     private void setUpResponseForRequestIsSatelliteProvisioned(
@@ -816,6 +1581,37 @@ public class SatelliteControllerTest extends TelephonyTest {
                 .requestSatelliteEnabled(eq(enabled), eq(demoMode), any(Message.class));
     }
 
+    private void setUpResponseForProvisionSatelliteService(
+            String token, byte[] provisionData, @SatelliteManager.SatelliteError int error) {
+        SatelliteException exception = (error == SATELLITE_ERROR_NONE)
+                ? null : new SatelliteException(error);
+        doAnswer(invocation -> {
+            Message message = (Message) invocation.getArguments()[2];
+            AsyncResult.forMessage(message, null, exception);
+            message.sendToTarget();
+            return null;
+        }).when(mMockSatelliteModemInterface)
+                .provisionSatelliteService(eq(token), any(byte[].class), any(Message.class));
+    }
+
+    private void setUpNoResponseForProvisionSatelliteService(String token) {
+        doNothing().when(mMockSatelliteModemInterface)
+                .provisionSatelliteService(eq(token), any(), any(Message.class));
+    }
+
+    private void setUpResponseForDeprovisionSatelliteService(String token,
+            @SatelliteManager.SatelliteError int error) {
+        SatelliteException exception = (error == SATELLITE_ERROR_NONE)
+                ? null : new SatelliteException(error);
+        doAnswer(invocation -> {
+            Message message = (Message) invocation.getArguments()[1];
+            AsyncResult.forMessage(message, null, exception);
+            message.sendToTarget();
+            return null;
+        }).when(mMockSatelliteModemInterface)
+                .deprovisionSatelliteService(eq(token), any(Message.class));
+    }
+
     private void setUpResponseForRequestSatelliteCapabilities(
             SatelliteCapabilities satelliteCapabilities,
             @SatelliteManager.SatelliteError int error) {
@@ -845,6 +1641,44 @@ public class SatelliteControllerTest extends TelephonyTest {
         return true;
     }
 
+    private void setUpNullResponseForRequestSatelliteCapabilities(
+            @SatelliteManager.SatelliteError int error) {
+        SatelliteException exception = (error == SATELLITE_ERROR_NONE)
+                ? null : new SatelliteException(error);
+        doAnswer(invocation -> {
+            Message message = (Message) invocation.getArguments()[0];
+            AsyncResult.forMessage(message, null, exception);
+            message.sendToTarget();
+            return null;
+        }).when(mMockSatelliteModemInterface).requestSatelliteCapabilities(any(Message.class));
+    }
+
+    private void setUpResponseForStartSatelliteTransmissionUpdates(
+            @SatelliteManager.SatelliteError int error) {
+        SatelliteException exception = (error == SATELLITE_ERROR_NONE)
+                ? null : new SatelliteException(error);
+        doAnswer(invocation -> {
+            Message message = (Message) invocation.getArguments()[0];
+            AsyncResult.forMessage(message, null, exception);
+            message.sendToTarget();
+            return null;
+        }).when(mMockPointingAppController).startSatelliteTransmissionUpdates(any(Message.class),
+                any());
+    }
+
+    private void setUpResponseForStopSatelliteTransmissionUpdates(
+            @SatelliteManager.SatelliteError int error) {
+        SatelliteException exception = (error == SATELLITE_ERROR_NONE)
+                ? null : new SatelliteException(error);
+        doAnswer(invocation -> {
+            Message message = (Message) invocation.getArguments()[0];
+            AsyncResult.forMessage(message, null, exception);
+            message.sendToTarget();
+            return null;
+        }).when(mMockPointingAppController).stopSatelliteTransmissionUpdates(any(Message.class),
+                any());
+    }
+
     private boolean waitForRequestIsSatelliteSupportedResult(int expectedNumberOfEvents) {
         for (int i = 0; i < expectedNumberOfEvents; i++) {
             try {
@@ -854,6 +1688,41 @@ public class SatelliteControllerTest extends TelephonyTest {
                 }
             } catch (Exception ex) {
                 loge("waitForRequestIsSatelliteSupportedResult: Got exception=" + ex);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean waitForRequestIsSatelliteAllowedForCurrentLocationResult(
+            int expectedNumberOfEvents) {
+        for (int i = 0; i < expectedNumberOfEvents; i++) {
+            try {
+                if (!mSatelliteAllowedSemaphore.tryAcquire(TIMEOUT, TimeUnit.MILLISECONDS)) {
+                    loge("Timeout to receive "
+                            + "requestIsSatelliteCommunicationAllowedForCurrentLocation()"
+                            + " callback");
+                    return false;
+                }
+            } catch (Exception ex) {
+                loge("waitForRequestIsSatelliteSupportedResult: Got exception=" + ex);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean waitForRequestTimeForNextSatelliteVisibilityResult(
+            int expectedNumberOfEvents) {
+        for (int i = 0; i < expectedNumberOfEvents; i++) {
+            try {
+                if (!mSatelliteVisibilityTimeSemaphore.tryAcquire(TIMEOUT, TimeUnit.MILLISECONDS)) {
+                    loge("Timeout to receive "
+                            + "requestTimeForNextSatelliteVisibility() callback");
+                    return false;
+                }
+            } catch (Exception ex) {
+                loge("waitForRequestTimeForNextSatelliteVisibilityResult: Got exception=" + ex);
                 return false;
             }
         }
@@ -884,6 +1753,36 @@ public class SatelliteControllerTest extends TelephonyTest {
                 }
             } catch (Exception ex) {
                 loge("waitForRequestIsSatelliteProvisionedResult: Got exception=" + ex);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean waitForRequestSatelliteCapabilitiesResult(int expectedNumberOfEvents) {
+        for (int i = 0; i < expectedNumberOfEvents; i++) {
+            try {
+                if (!mSatelliteCapabilitiesSemaphore.tryAcquire(TIMEOUT, TimeUnit.MILLISECONDS)) {
+                    loge("Timeout to receive requestSatelliteCapabilities() callback");
+                    return false;
+                }
+            } catch (Exception ex) {
+                loge("waitForRequestSatelliteCapabilitiesResult: Got exception=" + ex);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean waitForRequestIsDemoModeEnabledResult(int expectedNumberOfEvents) {
+        for (int i = 0; i < expectedNumberOfEvents; i++) {
+            try {
+                if (!mIsDemoModeEnabledSemaphore.tryAcquire(TIMEOUT, TimeUnit.MILLISECONDS)) {
+                    loge("Timeout to receive requestIsDemoModeEnabled() callback");
+                    return false;
+                }
+            } catch (Exception ex) {
+                loge("waitForRequestIsDemoModeEnabled: Got exception=" + ex);
                 return false;
             }
         }
