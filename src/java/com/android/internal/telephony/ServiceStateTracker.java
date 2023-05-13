@@ -1695,16 +1695,9 @@ public class ServiceStateTracker extends Handler {
                                 .findFirst()
                                 .orElse(PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN);
                     }
-                    boolean includeLte = mCarrierConfig.getBoolean(CarrierConfigManager
-                            .KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL);
                     int[] bandwidths = new int[0];
                     if (list != null) {
-                        bandwidths = list.stream()
-                                .filter(config -> includeLte || config.getNetworkType()
-                                        == TelephonyManager.NETWORK_TYPE_NR)
-                                .map(PhysicalChannelConfig::getCellBandwidthDownlinkKhz)
-                                .mapToInt(Integer::intValue)
-                                .toArray();
+                        bandwidths = getBandwidthsFromLastPhysicalChannelConfigs();
                     }
                     if (anchorNrCellId == mLastAnchorNrCellId
                             && anchorNrCellId != PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN) {
@@ -1712,7 +1705,8 @@ public class ServiceStateTracker extends Handler {
                         hasChanged |= RatRatcheter.updateBandwidths(bandwidths, mSS);
                     } else {
                         log("Do not ratchet bandwidths since anchor NR cell is different ("
-                                + mLastAnchorNrCellId + "->" + anchorNrCellId + ").");
+                                + mLastAnchorNrCellId + " -> " + anchorNrCellId
+                                + "). New bandwidths are " + Arrays.toString(bandwidths));
                         mLastAnchorNrCellId = anchorNrCellId;
                         hasChanged |= !Arrays.equals(mSS.getCellBandwidths(), bandwidths);
                         mSS.setCellBandwidths(bandwidths);
@@ -1796,8 +1790,12 @@ public class ServiceStateTracker extends Handler {
         return simAbsent;
     }
 
-    private static int[] getBandwidthsFromConfigs(List<PhysicalChannelConfig> list) {
-        return list.stream()
+    private int[] getBandwidthsFromLastPhysicalChannelConfigs() {
+        boolean includeLte = mCarrierConfig.getBoolean(
+                CarrierConfigManager.KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL);
+        return mLastPhysicalChannelConfigList.stream()
+                .filter(config -> includeLte
+                        || config.getNetworkType() == TelephonyManager.NETWORK_TYPE_NR)
                 .map(PhysicalChannelConfig::getCellBandwidthDownlinkKhz)
                 .mapToInt(Integer::intValue)
                 .toArray();
@@ -2557,7 +2555,7 @@ public class ServiceStateTracker extends Handler {
             // Prioritize the PhysicalChannelConfig list because we might already be in carrier
             // aggregation by the time poll state is performed.
             if (primaryPcc != null) {
-                bandwidths = getBandwidthsFromConfigs(mLastPhysicalChannelConfigList);
+                bandwidths = getBandwidthsFromLastPhysicalChannelConfigs();
                 for (int bw : bandwidths) {
                     if (!isValidLteBandwidthKhz(bw)) {
                         loge("Invalid LTE Bandwidth in RegistrationState, " + bw);
@@ -2593,7 +2591,7 @@ public class ServiceStateTracker extends Handler {
             // Prioritize the PhysicalChannelConfig list because we might already be in carrier
             // aggregation by the time poll state is performed.
             if (primaryPcc != null) {
-                bandwidths = getBandwidthsFromConfigs(mLastPhysicalChannelConfigList);
+                bandwidths = getBandwidthsFromLastPhysicalChannelConfigs();
                 for (int bw : bandwidths) {
                     if (!isValidNrBandwidthKhz(bw)) {
                         loge("Invalid NR Bandwidth in RegistrationState, " + bw);
