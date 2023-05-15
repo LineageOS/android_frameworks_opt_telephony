@@ -64,7 +64,6 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_NV_READ_IT
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_NV_RESET_CONFIG;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_NV_WRITE_ITEM;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_OPERATOR;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_PULL_LCEDATA;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_RADIO_POWER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_REPORT_SMS_MEMORY_STATUS;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING;
@@ -82,10 +81,8 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SIGNAL_STR
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SIM_AUTHENTICATION;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SIM_CLOSE_CHANNEL;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SIM_OPEN_CHANNEL;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_START_LCE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_START_NETWORK_SCAN;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STK_HANDLE_CALL_SETUP_REQUESTED_FROM_SIM;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_STOP_LCE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SWITCH_WAITING_OR_HOLDING_AND_ACTIVE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_UDUB;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_VOICE_RADIO_TECH;
@@ -117,7 +114,6 @@ import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.hardware.radio.V1_0.Carrier;
 import android.hardware.radio.V1_0.CdmaSmsMessage;
-import android.hardware.radio.V1_0.DataProfileInfo;
 import android.hardware.radio.V1_0.GsmSmsMessage;
 import android.hardware.radio.V1_0.ImsSmsMessage;
 import android.hardware.radio.V1_0.NvWriteItem;
@@ -501,7 +497,6 @@ public class RILTest extends TelephonyTest {
     @FlakyTest
     @Test
     public void testSupplySimDepersonalization() throws Exception {
-
         String controlKey = "1234";
         PersoSubState persoType = PersoSubState.PERSOSUBSTATE_SIM_NETWORK_PUK;
 
@@ -520,11 +515,7 @@ public class RILTest extends TelephonyTest {
         mRILUnderTest.supplySimDepersonalization(persoType, controlKey, obtainMessage());
         verify(mRadioProxy).supplySimDepersonalization(
                 mSerialNumberCaptor.capture(),
-                eq((int) invokeMethod(
-                        mRILInstance,
-                        "convertPersoTypeToHalPersoType",
-                        new Class<?>[] {PersoSubState.class},
-                        new Object[] {persoType})),
+                RILUtils.convertToHalPersoType(persoType),
                 eq(controlKey));
         verifyRILResponse(
                 mRILUnderTest,
@@ -558,11 +549,7 @@ public class RILTest extends TelephonyTest {
         mRILUnderTest.supplySimDepersonalization(persoType, controlKey, obtainMessage());
         verify(mRadioProxy).supplySimDepersonalization(
                 mSerialNumberCaptor.capture(),
-                eq((int) invokeMethod(
-                        mRILInstance,
-                        "convertPersoTypeToHalPersoType",
-                        new Class<?>[] {PersoSubState.class},
-                        new Object[] {persoType})),
+                RILUtils.convertToHalPersoType(persoType),
                 eq(controlKey));
         verifyRILResponse(
                 mRILUnderTest,
@@ -1156,18 +1143,11 @@ public class RILTest extends TelephonyTest {
                 .setApnSetting(apnSetting)
                 .setPreferred(false)
                 .build();
-        boolean isRoaming = false;
 
-        mRILUnderTest.setInitialAttachApn(dataProfile, isRoaming, obtainMessage());
-        verify(mRadioProxy).setInitialAttachApn(
+        mRILUnderTest.setInitialAttachApn(dataProfile, obtainMessage());
+        verify(mRadioProxy).setInitialAttachApn_1_4(
                 mSerialNumberCaptor.capture(),
-                eq((DataProfileInfo) invokeMethod(
-                        mRILInstance,
-                        "convertToHalDataProfile10",
-                        new Class<?>[] {DataProfile.class},
-                        new Object[] {dataProfile})),
-                eq(dataProfile.isPersistent()),
-                eq(isRoaming));
+                eq(RILUtils.convertToHalDataProfile14(dataProfile)));
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_SET_INITIAL_ATTACH_APN);
     }
@@ -1308,11 +1288,7 @@ public class RILTest extends TelephonyTest {
         mRILUnderTest.nvResetConfig(resetType, obtainMessage());
         verify(mRadioProxy).nvResetConfig(
                 mSerialNumberCaptor.capture(),
-                eq((Integer) invokeMethod(
-                        mRILInstance,
-                        "convertToHalResetNvType",
-                        new Class<?>[] {Integer.TYPE},
-                        new Object[] {resetType})));
+                RILUtils.convertToHalResetNvType(resetType));
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_NV_RESET_CONFIG);
     }
@@ -1363,33 +1339,6 @@ public class RILTest extends TelephonyTest {
         verify(mRadioProxy).getRadioCapability(mSerialNumberCaptor.capture());
         verifyRILResponse(
                 mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_GET_RADIO_CAPABILITY);
-    }
-
-    @FlakyTest
-    @Test
-    public void testStartLceService() throws Exception {
-        int reportIntervalMs = 1000;
-        boolean pullMode = false;
-        mRILUnderTest.startLceService(reportIntervalMs, pullMode, obtainMessage());
-        verify(mRadioProxy).startLceService(
-                mSerialNumberCaptor.capture(), eq(reportIntervalMs), eq(pullMode));
-        verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_START_LCE);
-    }
-
-    @FlakyTest
-    @Test
-    public void testStopLceService() throws Exception {
-        mRILUnderTest.stopLceService(obtainMessage());
-        verify(mRadioProxy).stopLceService(mSerialNumberCaptor.capture());
-        verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_STOP_LCE);
-    }
-
-    @FlakyTest
-    @Test
-    public void testPullLceData() throws Exception {
-        mRILUnderTest.pullLceData(obtainMessage());
-        verify(mRadioProxy).pullLceData(mSerialNumberCaptor.capture());
-        verifyRILResponse(mRILUnderTest, mSerialNumberCaptor.getValue(), RIL_REQUEST_PULL_LCEDATA);
     }
 
     @FlakyTest
@@ -2631,9 +2580,8 @@ public class RILTest extends TelephonyTest {
                 .setPreferred(false)
                 .build();
 
-        mRILUnderTest.setupDataCall(AccessNetworkConstants.AccessNetworkType.EUTRAN, dp, false,
-                false, 0, null, DataCallResponse.PDU_SESSION_ID_NOT_SET, null, null, true,
-                obtainMessage());
+        mRILUnderTest.setupDataCall(AccessNetworkConstants.AccessNetworkType.EUTRAN, dp, false, 0,
+                null, DataCallResponse.PDU_SESSION_ID_NOT_SET, null, null, true, obtainMessage());
         ArgumentCaptor<DataProfile> dpiCaptor = ArgumentCaptor.forClass(DataProfile.class);
         verify(mDataProxy).setupDataCall(mSerialNumberCaptor.capture(),
                 eq(AccessNetworkConstants.AccessNetworkType.EUTRAN), dpiCaptor.capture(),
