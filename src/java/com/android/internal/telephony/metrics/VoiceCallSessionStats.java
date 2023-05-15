@@ -157,6 +157,8 @@ public class VoiceCallSessionStats {
     private final PersistAtomsStorage mAtomsStorage =
             PhoneFactory.getMetricsCollector().getAtomsStorage();
     private final UiccController mUiccController = UiccController.getInstance();
+    private final DeviceStateHelper mDeviceStateHelper =
+            PhoneFactory.getMetricsCollector().getDeviceStateHelper();
 
     public VoiceCallSessionStats(int phoneId, Phone phone) {
         mPhoneId = phoneId;
@@ -513,6 +515,9 @@ public class VoiceCallSessionStats {
 
         // Update end RAT
         updateRatAtEnd(proto, getVoiceRatWithVoNRFix(mPhone, getServiceState(), proto.bearerAtEnd));
+
+        // Set device fold state
+        proto.foldState = mDeviceStateHelper.getFoldState();
 
         mAtomsStorage.addVoiceCallSession(proto);
 
