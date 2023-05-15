@@ -983,7 +983,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 session.ratAtConnected,
                 session.isMultiparty,
                 session.callDuration,
-                session.lastKnownRat);
+                session.lastKnownRat,
+                session.foldState);
     }
 
     private static StatsEvent buildStatsEvent(IncomingSms sms) {
