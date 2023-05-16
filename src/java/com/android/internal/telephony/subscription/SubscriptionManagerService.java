@@ -46,7 +46,6 @@ import android.os.Process;
 import android.os.RemoteException;
 import android.os.TelephonyServiceManager;
 import android.os.UserHandle;
-import android.provider.DeviceConfig;
 import android.provider.Settings;
 import android.provider.Telephony.SimInfo;
 import android.service.carrier.CarrierIdentifier;
@@ -1311,9 +1310,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                 log("updateSubscription: SIM_STATE_NOT_READY is not a final state. Will update "
                         + "subscription later.");
                 return;
-            }
-
-            if (!areUiccAppsEnabledOnCard(phoneId)) {
+            } else {
                 logl("updateSubscription: UICC app disabled on slot " + phoneId);
                 markSubscriptionsInactive(phoneId);
             }

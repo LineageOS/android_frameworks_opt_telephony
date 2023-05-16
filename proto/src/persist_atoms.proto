@@ -274,6 +274,7 @@ message VoiceCallSession {
     optional bool is_multiparty = 31;
     optional int32 call_duration = 32;
     optional int32 last_known_rat = 33;
+    optional int32 fold_state = 34;
 
     // Internal use only
     optional int64 setup_begin_millis = 10001;
