@@ -684,7 +684,7 @@ public class EmergencyNumberTracker extends Handler {
                 + countryIso);
         updateEmergencyCountryIso(countryIso.toLowerCase(Locale.ROOT));
         // Use cached country iso in APM to load emergency number database.
-        if (TextUtils.isEmpty(countryIso) && isAirplaneModeEnabled()) {
+        if (TextUtils.isEmpty(countryIso)) {
             countryIso = getCountryIsoForCachingDatabase();
             logd("updateEmergencyNumberListDatabaseAndNotify(): using cached APM country "
                     + countryIso);
