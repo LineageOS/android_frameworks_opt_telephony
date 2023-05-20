@@ -912,7 +912,7 @@ public class DataProfileManagerTest extends TelephonyTest {
     @Test
     public void testSimRemoval() {
         Mockito.clearInvocations(mDataProfileManagerCallback);
-        mSimInserted = false;
+        changeSimStateTo(TelephonyManager.SIM_STATE_ABSENT);
         mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
         processAllMessages();
 
@@ -954,7 +954,7 @@ public class DataProfileManagerTest extends TelephonyTest {
         doReturn(List.of(ApnSetting.TYPE_IMS))
                 .when(mDataConfigManager).getAllowedInitialAttachApnTypes();
 
-        mSimInserted = true;
+        changeSimStateTo(TelephonyManager.SIM_STATE_LOADED);
         mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
         processAllMessages();
 
@@ -1127,7 +1127,7 @@ public class DataProfileManagerTest extends TelephonyTest {
 
     @Test
     public void testResetApn() {
-        mSimInserted = true;
+        changeSimStateTo(TelephonyManager.SIM_STATE_LOADED);
         mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
         processAllMessages();
 
@@ -1196,7 +1196,7 @@ public class DataProfileManagerTest extends TelephonyTest {
                 new NetworkRequest.Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                         .build(), mPhone);
-        mSimInserted = true;
+        changeSimStateTo(TelephonyManager.SIM_STATE_LOADED);
         mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
         processAllMessages();
 
@@ -1307,7 +1307,7 @@ public class DataProfileManagerTest extends TelephonyTest {
     @Test
     public void testDataProfileCompatibility_FilteringWithPreferredApnSetIdAsDefault() {
         mApnSettingContentProvider.setPreferredApn(GENERAL_PURPOSE_APN);
-        mSimInserted = true;
+        changeSimStateTo(TelephonyManager.SIM_STATE_LOADED);
         mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
         processAllMessages();
 
@@ -1398,7 +1398,7 @@ public class DataProfileManagerTest extends TelephonyTest {
     @Test
     public void testDataProfileCompatibility_FilteringWithPreferredApnSetIdAs1() {
         mApnSettingContentProvider.setPreferredApn(APN_SET_ID_1_APN);
-        mSimInserted = true;
+        changeSimStateTo(TelephonyManager.SIM_STATE_LOADED);
         mDataProfileManagerUT.obtainMessage(2 /*EVENT_APN_DATABASE_CHANGED*/).sendToTarget();
         processAllMessages();
 
@@ -1527,5 +1527,10 @@ public class DataProfileManagerTest extends TelephonyTest {
         // so this should result in getting nothing.
         assertThat(mDataProfileManagerUT.getDataProfileForNetworkRequest(tnr,
                 TelephonyManager.NETWORK_TYPE_LTE, false)).isNull();
+    }
+
+    private void changeSimStateTo(@TelephonyManager.SimState int simState) {
+        mSimInserted = simState == TelephonyManager.SIM_STATE_LOADED;
+        mDataNetworkControllerCallback.onSimStateChanged(simState);
     }
 }

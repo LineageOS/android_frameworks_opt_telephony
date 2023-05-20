@@ -36,6 +36,7 @@ import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.TelephonyManager.SimState;
 import android.telephony.data.ApnSetting;
 import android.telephony.data.DataProfile;
 import android.telephony.data.TrafficDescriptor;
@@ -116,6 +117,9 @@ public class DataProfileManager extends Handler {
     private final @NonNull Set<DataProfileManagerCallback> mDataProfileManagerCallbacks =
             new ArraySet<>();
 
+    /** SIM state. */
+    private @SimState int mSimState = TelephonyManager.SIM_STATE_UNKNOWN;
+
     /**
      * Data profile manager callback. This should be only used by {@link DataNetworkController}.
      */
@@ -169,6 +173,11 @@ public class DataProfileManager extends Handler {
                     public void onInternetDataNetworkConnected(
                             @NonNull List<DataNetwork> internetNetworks) {
                         DataProfileManager.this.onInternetDataNetworkConnected(internetNetworks);
+                    }
+
+                    @Override
+                    public void onSimStateChanged(@SimState int simState) {
+                        DataProfileManager.this.mSimState = simState;
                     }
                 });
         mDataConfigManager.registerCallback(new DataConfigManagerCallback(this::post) {
@@ -291,7 +300,7 @@ public class DataProfileManager extends Handler {
 
         DataProfile dataProfile;
 
-        if (!profiles.isEmpty()) { // APN database has been read successfully after SIM loaded
+        if (mSimState == TelephonyManager.SIM_STATE_LOADED) {
             // Check if any of the profile already supports IMS, if not, add the default one.
             dataProfile = profiles.stream()
                     .filter(dp -> dp.canSatisfy(NetworkCapabilities.NET_CAPABILITY_IMS))
