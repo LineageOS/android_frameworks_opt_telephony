@@ -876,6 +876,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         expectedCall.mainCodecQuality =
                 VOICE_CALL_SESSION__MAIN_CODEC_QUALITY__CODEC_QUALITY_NARROWBAND;
         expectedCall.ratSwitchCount = 2L;
+        expectedCall.ratSwitchCountAfterConnected = 2L;
         expectedCall.ratAtEnd = TelephonyManager.NETWORK_TYPE_UMTS;
         expectedCall.bandAtEnd = 0;
         expectedCall.callDuration =
@@ -953,6 +954,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         expectedCall.mainCodecQuality =
                 VOICE_CALL_SESSION__MAIN_CODEC_QUALITY__CODEC_QUALITY_NARROWBAND;
         expectedCall.ratSwitchCount = 3L;
+        expectedCall.ratSwitchCountAfterConnected = 3L;
         expectedCall.ratAtEnd = TelephonyManager.NETWORK_TYPE_UNKNOWN;
         expectedCall.bandAtEnd = 0;
         expectedCall.callDuration =
@@ -1145,6 +1147,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         expectedCall0.concurrentCallCountAtStart = 0;
         expectedCall0.concurrentCallCountAtEnd = 1;
         expectedCall0.ratSwitchCount = 1L;
+        expectedCall0.ratSwitchCountAfterConnected = 1L;
         expectedCall0.ratAtEnd = TelephonyManager.NETWORK_TYPE_HSPA;
         expectedCall0.bandAtEnd = 0;
         expectedCall0.lastKnownRat = TelephonyManager.NETWORK_TYPE_HSPA;
@@ -1167,6 +1170,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         expectedCall1.concurrentCallCountAtStart = 1;
         expectedCall1.concurrentCallCountAtEnd = 0;
         expectedCall1.ratSwitchCount = 2L;
+        expectedCall1.ratSwitchCountAfterConnected = 2L;
         expectedCall1.ratAtEnd = TelephonyManager.NETWORK_TYPE_UMTS;
         expectedCall1.bandAtEnd = 0;
         expectedCall1.lastKnownRat = TelephonyManager.NETWORK_TYPE_UMTS;
@@ -1275,6 +1279,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         expectedCall0.concurrentCallCountAtStart = 0;
         expectedCall0.concurrentCallCountAtEnd = 0;
         expectedCall0.ratSwitchCount = 2L;
+        expectedCall0.ratSwitchCountAfterConnected = 2L;
         expectedCall0.ratAtEnd = TelephonyManager.NETWORK_TYPE_UMTS;
         expectedCall0.bandAtEnd = 0;
         expectedCall0.lastKnownRat = TelephonyManager.NETWORK_TYPE_UMTS;
@@ -1297,6 +1302,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         expectedCall1.concurrentCallCountAtStart = 1;
         expectedCall1.concurrentCallCountAtEnd = 1;
         expectedCall1.ratSwitchCount = 1L;
+        expectedCall1.ratSwitchCountAfterConnected = 1L;
         expectedCall1.ratAtEnd = TelephonyManager.NETWORK_TYPE_HSPA;
         expectedCall1.bandAtEnd = 0;
         expectedCall1.lastKnownRat = TelephonyManager.NETWORK_TYPE_HSPA;
@@ -1405,6 +1411,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         expectedCall0.concurrentCallCountAtStart = 0;
         expectedCall0.concurrentCallCountAtEnd = 1;
         expectedCall0.ratSwitchCount = 0L;
+        expectedCall0.ratSwitchCountAfterConnected = 0L;
         expectedCall0.ratAtEnd = TelephonyManager.NETWORK_TYPE_LTE;
         // call 1 starts later, MT
         doReturn(true).when(mImsConnection1).isIncoming();
@@ -1425,6 +1432,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         expectedCall1.concurrentCallCountAtStart = 1;
         expectedCall1.concurrentCallCountAtEnd = 0;
         expectedCall1.ratSwitchCount = 1L;
+        expectedCall1.ratSwitchCountAfterConnected = 1L;
         expectedCall1.ratAtEnd = TelephonyManager.NETWORK_TYPE_HSPA;
         expectedCall1.bandAtEnd = 0;
         expectedCall1.lastKnownRat = TelephonyManager.NETWORK_TYPE_HSPA;
@@ -1511,6 +1519,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         expectedCall.setupDurationMillis = 5000;
         expectedCall.disconnectExtraCode = PreciseDisconnectCause.CALL_REJECTED;
         expectedCall.ratSwitchCount = 1L;
+        expectedCall.ratSwitchCountAfterConnected = 0L;
         expectedCall.setupFailed = true;
         expectedCall.ratAtConnected = TelephonyManager.NETWORK_TYPE_UNKNOWN;
         expectedCall.codecBitmask = 1L << AudioCodec.AUDIO_CODEC_AMR;
@@ -1573,6 +1582,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         expectedCall.ratAtEnd = TelephonyManager.NETWORK_TYPE_UMTS;
         expectedCall.bandAtEnd = 0;
         expectedCall.ratSwitchCount = 1L;
+        expectedCall.ratSwitchCountAfterConnected = 0L;
         expectedCall.setupFailed = true;
         expectedCall.setupDurationMillis = 13000;
         expectedCall.ratAtConnected = TelephonyManager.NETWORK_TYPE_UNKNOWN;
@@ -1632,6 +1642,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         expectedCall.setupDurationMillis = 5000;
         expectedCall.disconnectExtraCode = PreciseDisconnectCause.NORMAL;
         expectedCall.ratSwitchCount = 1L;
+        expectedCall.ratSwitchCountAfterConnected = 0L;
         expectedCall.setupFailed = false;
         expectedCall.codecBitmask = 1L << AudioCodec.AUDIO_CODEC_AMR;
         expectedCall.mainCodecQuality =
@@ -1811,6 +1822,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         expectedCall.setupFailed = false;
         expectedCall.srvccFailureCount = 2L;
         expectedCall.ratSwitchCount = 1L;
+        expectedCall.ratSwitchCountAfterConnected = 1L;
         expectedCall.ratAtEnd = TelephonyManager.NETWORK_TYPE_UMTS;
         expectedCall.bandAtEnd = 0;
         expectedCall.codecBitmask = 1L << AudioCodec.AUDIO_CODEC_AMR;
@@ -1963,6 +1975,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         expectedCall.srvccCompleted = true;
         expectedCall.bearerAtEnd = VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS;
         expectedCall.ratSwitchCount = 1L;
+        expectedCall.ratSwitchCountAfterConnected = 1L;
         expectedCall.ratAtEnd = TelephonyManager.NETWORK_TYPE_UMTS;
         expectedCall.bandAtEnd = 0;
         expectedCall.codecBitmask = 1L << AudioCodec.AUDIO_CODEC_AMR;
@@ -2061,6 +2074,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         expectedCall0.concurrentCallCountAtStart = 0;
         expectedCall0.concurrentCallCountAtEnd = 1;
         expectedCall0.ratSwitchCount = 1L;
+        expectedCall0.ratSwitchCountAfterConnected = 1L;
         expectedCall0.ratAtEnd = TelephonyManager.NETWORK_TYPE_UMTS;
         expectedCall0.bandAtEnd = 0;
         expectedCall0.srvccCompleted = true;
@@ -2088,6 +2102,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         expectedCall1.concurrentCallCountAtStart = 1;
         expectedCall1.concurrentCallCountAtEnd = 0;
         expectedCall1.ratSwitchCount = 1L;
+        expectedCall1.ratSwitchCountAfterConnected = 1L;
         expectedCall1.ratAtEnd = TelephonyManager.NETWORK_TYPE_UMTS;
         expectedCall1.bandAtEnd = 0;
         expectedCall1.srvccCompleted = true;
@@ -2335,6 +2350,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         call.lastKnownRat = rat;
         call.bandAtEnd = 1;
         call.ratSwitchCount = 0L;
+        call.ratSwitchCountAfterConnected = 0L;
         call.codecBitmask = 0L;
         call.mainCodecQuality = VOICE_CALL_SESSION__MAIN_CODEC_QUALITY__CODEC_QUALITY_UNKNOWN;
         call.simSlotIndex = 0;
@@ -2369,6 +2385,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         call.lastKnownRat = rat;
         call.bandAtEnd = 1;
         call.ratSwitchCount = 0L;
+        call.ratSwitchCountAfterConnected = 0L;
         call.codecBitmask = 0L;
         call.mainCodecQuality = VOICE_CALL_SESSION__MAIN_CODEC_QUALITY__CODEC_QUALITY_UNKNOWN;
         call.simSlotIndex = 1;
