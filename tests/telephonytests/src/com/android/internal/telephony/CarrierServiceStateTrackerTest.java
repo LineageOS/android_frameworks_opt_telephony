@@ -16,12 +16,15 @@
 
 package com.android.internal.telephony;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.isA;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -97,6 +100,7 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
     private void setDefaultValues() {
         mBundle.putInt(CarrierConfigManager.KEY_PREF_NETWORK_NOTIFICATION_DELAY_INT, 0);
         mBundle.putInt(CarrierConfigManager.KEY_EMERGENCY_NOTIFICATION_DELAY_INT, 0);
+        mBundle.putBoolean(CarrierConfigManager.KEY_HIDE_PREFERRED_NETWORK_TYPE_BOOL, false);
     }
 
     @After
@@ -230,6 +234,41 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
         mSpyCarrierSST.handleMessage(notificationMsg);
         processAllMessages();
         verify(mNotificationManager, atLeast(2)).cancel(
+                CarrierServiceStateTracker.EMERGENCY_NOTIFICATION_TAG, SUB_ID);
+    }
+
+    @Test
+    public void testSetEnabledNotifications() {
+        logd(LOG_TAG + ":testSetEnabledNotifications()");
+
+        mBundle.putBoolean(CarrierConfigManager.KEY_HIDE_PREFERRED_NETWORK_TYPE_BOOL, true);
+
+        Notification.Builder mNotificationBuilder = new Notification.Builder(mContext);
+        doReturn(mNotificationBuilder).when(mSpyCarrierSST).getNotificationBuilder(any());
+        doReturn(mNotificationManager).when(mSpyCarrierSST).getNotificationManager(any());
+        doReturn(true).when(mPhone).isWifiCallingEnabled(); // notifiable for emergency
+        mCarrierConfigChangeListener.onCarrierConfigChanged(0 /* slotIndex */, SUB_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
+        processAllMessages();
+
+        Map<Integer, CarrierServiceStateTracker.NotificationType> notificationTypeMap =
+                mCarrierSST.getNotificationTypeMap();
+        CarrierServiceStateTracker.NotificationType prefNetworkNotification =
+                notificationTypeMap.get(CarrierServiceStateTracker.NOTIFICATION_PREF_NETWORK);
+        CarrierServiceStateTracker.NotificationType emergencyNetworkNotification =
+                notificationTypeMap.get(CarrierServiceStateTracker.NOTIFICATION_EMERGENCY_NETWORK);
+        assertFalse(prefNetworkNotification.isEnabled());
+        assertTrue(emergencyNetworkNotification.isEnabled());
+
+        verify(mNotificationManager, never()).notify(
+                eq(CarrierServiceStateTracker.PREF_NETWORK_NOTIFICATION_TAG),
+                eq(SUB_ID), isA(Notification.class));
+        verify(mNotificationManager, atLeast(1)).cancel(
+                CarrierServiceStateTracker.PREF_NETWORK_NOTIFICATION_TAG, SUB_ID);
+        verify(mNotificationManager, atLeast(1)).notify(
+                eq(CarrierServiceStateTracker.EMERGENCY_NOTIFICATION_TAG),
+                eq(SUB_ID), isA(Notification.class));
+        verify(mNotificationManager, never()).cancel(
                 CarrierServiceStateTracker.EMERGENCY_NOTIFICATION_TAG, SUB_ID);
     }
 }
