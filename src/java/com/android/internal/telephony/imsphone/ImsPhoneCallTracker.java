@@ -3389,6 +3389,13 @@ public class ImsPhoneCallTracker extends CallTracker implements ImsPullCall {
                 break;
 
             case ImsReasonInfo.CODE_SIP_BAD_REQUEST:
+                // Auto-missed/rejected calls can sometimes use this reason cause, but if we see it
+                // for outgoing calls it is just a server error.
+                if (callState == Call.State.DIALING || callState == Call.State.ALERTING) {
+                    return DisconnectCause.SERVER_ERROR;
+                } else {
+                    return DisconnectCause.INCOMING_AUTO_REJECTED;
+                }
             case ImsReasonInfo.CODE_REJECT_CALL_ON_OTHER_SUB:
             case ImsReasonInfo.CODE_REJECT_ONGOING_E911_CALL:
             case ImsReasonInfo.CODE_REJECT_ONGOING_CALL_SETUP:
