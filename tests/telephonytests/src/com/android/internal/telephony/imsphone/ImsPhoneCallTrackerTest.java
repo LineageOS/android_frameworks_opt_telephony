@@ -1425,6 +1425,43 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testAutoRejectedCauses() {
+        assertEquals(DisconnectCause.INCOMING_AUTO_REJECTED, mCTUT.getDisconnectCauseFromReasonInfo(
+                new ImsReasonInfo(ImsReasonInfo.CODE_REJECT_CALL_ON_OTHER_SUB, 0),
+                Call.State.INCOMING));
+        assertEquals(DisconnectCause.INCOMING_AUTO_REJECTED, mCTUT.getDisconnectCauseFromReasonInfo(
+                new ImsReasonInfo(ImsReasonInfo.CODE_REJECT_ONGOING_E911_CALL, 0),
+                Call.State.INCOMING));
+        assertEquals(DisconnectCause.INCOMING_AUTO_REJECTED, mCTUT.getDisconnectCauseFromReasonInfo(
+                new ImsReasonInfo(ImsReasonInfo.CODE_REJECT_ONGOING_CALL_SETUP, 0),
+                Call.State.INCOMING));
+        assertEquals(DisconnectCause.INCOMING_AUTO_REJECTED, mCTUT.getDisconnectCauseFromReasonInfo(
+                new ImsReasonInfo(ImsReasonInfo.CODE_REJECT_MAX_CALL_LIMIT_REACHED, 0),
+                Call.State.INCOMING));
+        assertEquals(DisconnectCause.INCOMING_AUTO_REJECTED, mCTUT.getDisconnectCauseFromReasonInfo(
+                new ImsReasonInfo(ImsReasonInfo.CODE_REJECT_ONGOING_CALL_TRANSFER, 0),
+                Call.State.INCOMING));
+        assertEquals(DisconnectCause.INCOMING_AUTO_REJECTED, mCTUT.getDisconnectCauseFromReasonInfo(
+                new ImsReasonInfo(ImsReasonInfo.CODE_REJECT_ONGOING_CONFERENCE_CALL, 0),
+                Call.State.INCOMING));
+        assertEquals(DisconnectCause.INCOMING_AUTO_REJECTED, mCTUT.getDisconnectCauseFromReasonInfo(
+                new ImsReasonInfo(ImsReasonInfo.CODE_REJECT_ONGOING_HANDOVER, 0),
+                Call.State.INCOMING));
+        assertEquals(DisconnectCause.INCOMING_AUTO_REJECTED, mCTUT.getDisconnectCauseFromReasonInfo(
+                new ImsReasonInfo(ImsReasonInfo.CODE_REJECT_ONGOING_CALL_UPGRADE, 0),
+                Call.State.INCOMING));
+        assertEquals(DisconnectCause.INCOMING_AUTO_REJECTED, mCTUT.getDisconnectCauseFromReasonInfo(
+                new ImsReasonInfo(ImsReasonInfo.CODE_SIP_BAD_REQUEST, 0), Call.State.INCOMING));
+        assertEquals(DisconnectCause.INCOMING_AUTO_REJECTED, mCTUT.getDisconnectCauseFromReasonInfo(
+                new ImsReasonInfo(ImsReasonInfo.CODE_SIP_BAD_REQUEST, 0), Call.State.WAITING));
+        assertEquals(DisconnectCause.SERVER_ERROR, mCTUT.getDisconnectCauseFromReasonInfo(
+                new ImsReasonInfo(ImsReasonInfo.CODE_SIP_BAD_REQUEST, 0), Call.State.DIALING));
+        assertEquals(DisconnectCause.SERVER_ERROR, mCTUT.getDisconnectCauseFromReasonInfo(
+                new ImsReasonInfo(ImsReasonInfo.CODE_SIP_BAD_REQUEST, 0), Call.State.ALERTING));
+    }
+
+    @Test
+    @SmallTest
     public void testImsAlternateEmergencyDisconnect() {
         assertEquals(DisconnectCause.IMS_SIP_ALTERNATE_EMERGENCY_CALL,
                 mCTUT.getDisconnectCauseFromReasonInfo(
