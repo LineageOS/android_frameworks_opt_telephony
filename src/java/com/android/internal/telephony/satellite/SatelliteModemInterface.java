@@ -24,14 +24,12 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.AsyncResult;
 import android.os.Binder;
-import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.os.RemoteException;
-import android.os.SystemProperties;
 import android.telephony.Rlog;
 import android.telephony.satellite.SatelliteCapabilities;
 import android.telephony.satellite.SatelliteDatagram;
@@ -57,8 +55,6 @@ import java.util.Arrays;
  */
 public class SatelliteModemInterface {
     private static final String TAG = "SatelliteModemInterface";
-    private static final String ALLOW_MOCK_MODEM_PROPERTY = "persist.radio.allow_mock_modem";
-    private static final boolean DEBUG = !"user".equals(Build.TYPE);
     private static final long REBIND_INITIAL_DELAY = 2 * 1000; // 2 seconds
     private static final long REBIND_MAXIMUM_DELAY = 64 * 1000; // 1 minute
     private static final int REBIND_MULTIPLIER = 2;
@@ -1016,13 +1012,7 @@ public class SatelliteModemInterface {
      * {@code false} otherwise.
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
-    public boolean setSatelliteServicePackageName(@Nullable String servicePackageName) {
-        if (!shouldAllowModifyingSatelliteServicePackageName()) {
-            loge("setSatelliteServicePackageName: modifying satellite service package name "
-                    + "is not allowed");
-            return false;
-        }
-
+    public void setSatelliteServicePackageName(@Nullable String servicePackageName) {
         logd("setSatelliteServicePackageName: config_satellite_service_package is "
                 + "updated, new packageName=" + servicePackageName);
         mExponentialBackoff.stop();
@@ -1042,8 +1032,6 @@ public class SatelliteModemInterface {
         mIsSatelliteServiceSupported = getSatelliteServiceSupport();
         bindService();
         mExponentialBackoff.start();
-
-        return true;
     }
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
@@ -1053,10 +1041,6 @@ public class SatelliteModemInterface {
                 ? null : new SatelliteException(error);
         AsyncResult.forMessage(message, result, exception);
         message.sendToTarget();
-    }
-
-    private boolean shouldAllowModifyingSatelliteServicePackageName() {
-        return (DEBUG || SystemProperties.getBoolean(ALLOW_MOCK_MODEM_PROPERTY, false));
     }
 
     private static void logd(@NonNull String log) {
