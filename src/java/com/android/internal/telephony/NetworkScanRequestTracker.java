@@ -43,6 +43,7 @@ import android.telephony.TelephonyScanManager;
 import android.util.Log;
 
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
+import com.android.internal.util.ArrayUtils;
 
 import java.util.Collection;
 import java.util.List;
@@ -131,7 +132,7 @@ public final class NetworkScanRequestTracker {
     }
 
     private boolean isValidScan(NetworkScanRequestInfo nsri) {
-        if (nsri.mRequest == null || nsri.mRequest.getSpecifiers() == null) {
+        if (nsri.mRequest == null || ArrayUtils.isEmpty(nsri.mRequest.getSpecifiers())) {
             return false;
         }
         if (nsri.mRequest.getSpecifiers().length > NetworkScanRequest.MAX_RADIO_ACCESS_NETWORKS) {
