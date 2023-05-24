@@ -74,6 +74,7 @@ import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.telephony.data.DataServiceCallback;
 import android.telephony.data.NetworkSliceInfo;
+import android.telephony.data.Qos;
 import android.telephony.data.QosBearerSession;
 import android.telephony.data.TrafficDescriptor;
 import android.telephony.data.TrafficDescriptor.OsAppId;
@@ -675,6 +676,9 @@ public class DataNetwork extends StateMachine {
 
     /** The QOS bearer sessions. */
     private final @NonNull List<QosBearerSession> mQosBearerSessions = new ArrayList<>();
+
+    /** The QOS for the Default Bearer, should be non-null on LTE and NR */
+    private @Nullable Qos mDefaultQos;
 
     /**
      * The UIDs of packages that have carrier privilege.
@@ -2408,6 +2412,8 @@ public class DataNetwork extends StateMachine {
         mTrafficDescriptors.clear();
         mTrafficDescriptors.addAll(response.getTrafficDescriptors());
 
+        mDefaultQos = response.getDefaultQos();
+
         mQosBearerSessions.clear();
         mQosBearerSessions.addAll(response.getQosBearerSessions());
         if (mQosCallbackTracker != null) {
@@ -3174,6 +3180,7 @@ public class DataNetwork extends StateMachine {
                 .setLinkProperties(mLinkProperties)
                 .setNetworkType(getDataNetworkType())
                 .setFailCause(mFailCause)
+                .setDefaultQos(mDefaultQos)
                 .build();
     }
 

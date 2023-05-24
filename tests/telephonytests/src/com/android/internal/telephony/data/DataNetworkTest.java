@@ -63,7 +63,9 @@ import android.telephony.data.DataCallResponse;
 import android.telephony.data.DataProfile;
 import android.telephony.data.DataService;
 import android.telephony.data.DataServiceCallback;
+import android.telephony.data.EpsQos;
 import android.telephony.data.NetworkSliceInfo;
+import android.telephony.data.Qos;
 import android.telephony.data.TrafficDescriptor;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
@@ -182,6 +184,11 @@ public class DataNetworkTest extends TelephonyTest {
                             "CBS", 1).getBytes()))
             .build();
 
+    private final Qos mDefaultQos = new EpsQos(
+            new Qos.QosBandwidth(1000, 1),
+            new Qos.QosBandwidth(1000, 0),
+            9 /* QCI */);
+
     // Mocked classes
     private DataNetworkCallback mDataNetworkCallback;
     private DataCallSessionStats mDataCallSessionStats;
@@ -194,16 +201,21 @@ public class DataNetworkTest extends TelephonyTest {
                     .build();
 
     private void setSuccessfulSetupDataResponse(DataServiceManager dsm, int cid) {
-        setSuccessfulSetupDataResponse(dsm, cid, Collections.emptyList());
+        setSuccessfulSetupDataResponse(dsm, cid, Collections.emptyList(), null);
     }
 
     private void setSuccessfulSetupDataResponse(DataServiceManager dsm, int cid,
             List<TrafficDescriptor> tds) {
+        setSuccessfulSetupDataResponse(dsm, cid, tds, null);
+    }
+
+    private void setSuccessfulSetupDataResponse(DataServiceManager dsm, int cid,
+            List<TrafficDescriptor> tds, Qos defaultQos) {
         doAnswer(invocation -> {
             final Message msg = (Message) invocation.getArguments()[10];
 
             DataCallResponse response = createDataCallResponse(
-                    cid, DataCallResponse.LINK_STATUS_ACTIVE, tds);
+                    cid, DataCallResponse.LINK_STATUS_ACTIVE, tds, defaultQos);
             msg.getData().putParcelable("data_call_response", response);
             msg.arg1 = DataServiceCallback.RESULT_SUCCESS;
             msg.sendToTarget();
@@ -214,7 +226,7 @@ public class DataNetworkTest extends TelephonyTest {
     }
 
     private DataCallResponse createDataCallResponse(int cid, int linkStatus,
-            List<TrafficDescriptor> tds) {
+            List<TrafficDescriptor> tds, Qos defaultQos) {
         return new DataCallResponse.Builder()
                 .setCause(0)
                 .setRetryDurationMillis(-1L)
@@ -238,6 +250,7 @@ public class DataNetworkTest extends TelephonyTest {
                 .setPduSessionId(1)
                 .setQosBearerSessions(new ArrayList<>())
                 .setTrafficDescriptors(tds)
+                .setDefaultQos(defaultQos)
                 .build();
     }
 
@@ -388,7 +401,8 @@ public class DataNetworkTest extends TelephonyTest {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build(), mPhone));
 
-        setSuccessfulSetupDataResponse(mMockedWwanDataServiceManager, 123);
+        setSuccessfulSetupDataResponse(
+                mMockedWwanDataServiceManager, 123, Collections.emptyList(), mDefaultQos);
 
         mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
                 mInternetDataProfile, networkRequestList,
@@ -448,6 +462,7 @@ public class DataNetworkTest extends TelephonyTest {
         assertThat(pdcsList.get(0).getTransportType())
                 .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
         assertThat(pdcsList.get(0).getLinkProperties()).isEqualTo(new LinkProperties());
+        assertThat(pdcsList.get(0).getDefaultQos()).isEqualTo(null);
 
         assertThat(pdcsList.get(1).getApnSetting()).isEqualTo(mInternetApnSetting);
         assertThat(pdcsList.get(1).getState()).isEqualTo(TelephonyManager.DATA_CONNECTED);
@@ -455,6 +470,7 @@ public class DataNetworkTest extends TelephonyTest {
         assertThat(pdcsList.get(1).getNetworkType()).isEqualTo(TelephonyManager.NETWORK_TYPE_LTE);
         assertThat(pdcsList.get(1).getTransportType())
                 .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        assertThat(pdcsList.get(1).getDefaultQos()).isEqualTo(mDefaultQos);
         assertThat(pdcsList.get(1).getLinkProperties().getAddresses().get(0))
                 .isEqualTo(InetAddresses.parseNumericAddress(IPV4_ADDRESS));
         assertThat(pdcsList.get(1).getLinkProperties().getAddresses().get(1))
@@ -1787,7 +1803,7 @@ public class DataNetworkTest extends TelephonyTest {
 
         // data state updated
         DataCallResponse response = createDataCallResponse(123,
-                DataCallResponse.LINK_STATUS_DORMANT, Collections.emptyList());
+                DataCallResponse.LINK_STATUS_DORMANT, Collections.emptyList(), null);
         mDataNetworkUT.sendMessage(8 /*EVENT_DATA_STATE_CHANGED*/, new AsyncResult(
                 AccessNetworkConstants.TRANSPORT_TYPE_WWAN, List.of(response), null));
         processAllMessages();
