@@ -37,7 +37,6 @@ import android.testing.TestableLooper;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -117,8 +116,7 @@ public class NetworkScanRequestTrackerTest extends TelephonyTest {
                 .startNetworkScan(any(), any());
     }
 
-    // TODO (b/284020271): turn case back on after fixing the bug
-    @Ignore
+    @Test
     public void testStartNetworkScan_requestWithEmptySpecifier_shouldNeverScan() throws Exception {
         RadioAccessSpecifier[] specifiers = new RadioAccessSpecifier[]{};
         NetworkScanRequest request = new NetworkScanRequest(
