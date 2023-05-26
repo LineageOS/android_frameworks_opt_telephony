@@ -24,6 +24,7 @@ import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.content.Intent;
 import android.net.NetworkAgent;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -127,6 +128,9 @@ public class DataStallRecoveryManager extends Handler {
     /** The data stall recovered by user (Mobile Data Power off/on). */
     private static final int RECOVERED_REASON_USER = 3;
 
+    /** Event for send data stall broadcast. */
+    private static final int EVENT_SEND_DATA_STALL_BROADCAST = 1;
+
     /** Event for triggering recovery action. */
     private static final int EVENT_DO_RECOVERY = 2;
 
@@ -188,6 +192,7 @@ public class DataStallRecoveryManager extends Handler {
     private DataStallRecoveryManagerCallback mDataStallRecoveryManagerCallback;
 
     private final DataStallRecoveryStats mStats;
+
     /**
      * The data stall recovery manager callback. Note this is only used for passing information
      * internally in the data stack, should not be used externally.
@@ -289,6 +294,19 @@ public class DataStallRecoveryManager extends Handler {
     public void handleMessage(Message msg) {
         logv("handleMessage = " + msg);
         switch (msg.what) {
+            case EVENT_SEND_DATA_STALL_BROADCAST:
+                mRecoveryTriggered = true;
+                // Verify that DSRM needs to process the recovery action
+                if (!isRecoveryNeeded(false)) {
+                    cancelNetworkCheckTimer();
+                    startNetworkCheckTimer(getRecoveryAction());
+                    return;
+                }
+                // Broadcast intent that data stall has been detected.
+                broadcastDataStallDetected(getRecoveryAction());
+                // Send EVENT_DO_RECOVERY to start recovery process.
+                sendMessage(obtainMessage(EVENT_DO_RECOVERY));
+                break;
             case EVENT_DO_RECOVERY:
                 doRecovery();
                 break;
@@ -388,7 +406,7 @@ public class DataStallRecoveryManager extends Handler {
             mIsValidNetwork = false;
             log("trigger data stall recovery");
             mTimeLastRecoveryStartMs = SystemClock.elapsedRealtime();
-            sendMessage(obtainMessage(EVENT_DO_RECOVERY));
+            sendMessage(obtainMessage(EVENT_SEND_DATA_STALL_BROADCAST));
         }
     }
 
@@ -493,6 +511,22 @@ public class DataStallRecoveryManager extends Handler {
         Intent intent = new Intent(TelephonyManager.ACTION_DATA_STALL_DETECTED);
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
         intent.putExtra(TelephonyManager.EXTRA_RECOVERY_ACTION, recoveryAction);
+
+        // Get the information for DSRS state
+        final boolean isRecovered = !mDataStalled;
+        final int duration = (int) (SystemClock.elapsedRealtime() - mDataStallStartMs);
+        final @RecoveredReason int reason = getRecoveredReason(mIsValidNetwork);
+        final boolean isFirstValidationOfAction = false;
+        final int durationOfAction = (int) getDurationOfCurrentRecoveryMs();
+
+        // Get the bundled DSRS stats.
+        Bundle bundle = mStats.getDataStallRecoveryMetricsData(
+                recoveryAction, isRecovered, duration, reason, isFirstValidationOfAction,
+                durationOfAction);
+
+        // Put the bundled stats extras on the intent.
+        intent.putExtra("EXTRA_DSRS_STATS_BUNDLE", bundle);
+
         mPhone.getContext().sendBroadcast(intent, READ_PRIVILEGED_PHONE_STATE);
     }
 
@@ -534,7 +568,8 @@ public class DataStallRecoveryManager extends Handler {
             mNetworkCheckTimerStarted = true;
             mTimeLastRecoveryStartMs = SystemClock.elapsedRealtime();
             sendMessageDelayed(
-                    obtainMessage(EVENT_DO_RECOVERY), getDataStallRecoveryDelayMillis(action));
+                    obtainMessage(EVENT_SEND_DATA_STALL_BROADCAST),
+                    getDataStallRecoveryDelayMillis(action));
         }
     }
 
@@ -543,7 +578,7 @@ public class DataStallRecoveryManager extends Handler {
         log("cancelNetworkCheckTimer()");
         if (mNetworkCheckTimerStarted) {
             mNetworkCheckTimerStarted = false;
-            removeMessages(EVENT_DO_RECOVERY);
+            removeMessages(EVENT_SEND_DATA_STALL_BROADCAST);
         }
     }
 
@@ -700,22 +735,12 @@ public class DataStallRecoveryManager extends Handler {
     private void doRecovery() {
         @RecoveryAction final int recoveryAction = getRecoveryAction();
         final int signalStrength = mPhone.getSignalStrength().getLevel();
-        mRecoveryTriggered = true;
-
-        // DSRM used sendMessageDelayed to process the next event EVENT_DO_RECOVERY, so it need
-        // to check the condition if DSRM need to process the recovery action.
-        if (!isRecoveryNeeded(false)) {
-            cancelNetworkCheckTimer();
-            startNetworkCheckTimer(recoveryAction);
-            return;
-        }
 
         TelephonyMetrics.getInstance()
                 .writeSignalStrengthEvent(mPhone.getPhoneId(), signalStrength);
         TelephonyMetrics.getInstance().writeDataStallEvent(mPhone.getPhoneId(), recoveryAction);
         mLastAction = recoveryAction;
         mLastActionReported = false;
-        broadcastDataStallDetected(recoveryAction);
         mNetworkCheckTimerStarted = false;
         mTimeElapsedOfCurrentAction = SystemClock.elapsedRealtime();
 
