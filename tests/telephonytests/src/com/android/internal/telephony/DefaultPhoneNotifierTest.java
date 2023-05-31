@@ -96,15 +96,30 @@ public class DefaultPhoneNotifierTest extends TelephonyTest {
     public void testNotifyDataActivity() throws Exception {
         //mock data activity state
         doReturn(TelephonyManager.DATA_ACTIVITY_NONE).when(mPhone).getDataActivityState();
+        doReturn(PHONE_ID).when(mPhone).getPhoneId();
         mDefaultPhoneNotifierUT.notifyDataActivity(mPhone);
-        verify(mTelephonyRegistryManager).notifyDataActivityChanged(eq(0),
+        verify(mTelephonyRegistryManager).notifyDataActivityChanged(eq(1), eq(0),
                 eq(TelephonyManager.DATA_ACTIVITY_NONE));
 
-        doReturn(1).when(mPhone).getSubId();
+        doReturn(1/*subId*/).when(mPhone).getSubId();
         doReturn(TelephonyManager.DATA_ACTIVITY_IN).when(mPhone).getDataActivityState();
         mDefaultPhoneNotifierUT.notifyDataActivity(mPhone);
-        verify(mTelephonyRegistryManager).notifyDataActivityChanged(eq(1),
+        verify(mTelephonyRegistryManager).notifyDataActivityChanged(eq(1), eq(1),
                 eq(TelephonyManager.DATA_ACTIVITY_IN));
+
+        doReturn(SUB_ID).when(mPhone).getSubId();
+        doReturn(TelephonyManager.DATA_ACTIVITY_NONE).when(mPhone).getDataActivityState();
+        doReturn(2/*phoneId*/).when(mPhone).getPhoneId();
+        mDefaultPhoneNotifierUT.notifyDataActivity(mPhone);
+        verify(mTelephonyRegistryManager).notifyDataActivityChanged(eq(2), eq(0),
+                eq(TelephonyManager.DATA_ACTIVITY_NONE));
+
+        doReturn(1/*subId*/).when(mPhone).getSubId();
+        doReturn(TelephonyManager.DATA_ACTIVITY_INOUT).when(mPhone).getDataActivityState();
+        mDefaultPhoneNotifierUT.notifyDataActivity(mPhone);
+        verify(mTelephonyRegistryManager).notifyDataActivityChanged(
+                eq(2), eq(1), eq(TelephonyManager.DATA_ACTIVITY_INOUT));
+
     }
 
     @Test @SmallTest
