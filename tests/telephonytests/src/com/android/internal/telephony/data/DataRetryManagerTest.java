@@ -850,7 +850,7 @@ public class DataRetryManagerTest extends TelephonyTest {
     @Test
     public void testRilCrashedReset() {
         testDataSetupRetryNetworkSuggestedNeverRetry();
-        Mockito.clearInvocations(mDataRetryManagerCallbackMock);
+        Mockito.clearInvocations(mDataRetryManagerCallbackMock, mDataProfileManager);
 
         // RIL crashed and came back online.
         mDataRetryManagerUT.obtainMessage(8/*EVENT_RADIO_ON*/,
@@ -870,12 +870,13 @@ public class DataRetryManagerTest extends TelephonyTest {
         assertThat(throttleStatus.getThrottleExpiryTimeMillis()).isEqualTo(-1);
         assertThat(throttleStatus.getTransportType())
                 .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        verify(mDataProfileManager).clearAllDataProfilePermanentFailures();
     }
 
     @Test
     public void testModemCrashedReset() {
         testDataSetupRetryNetworkSuggestedNeverRetry();
-        Mockito.clearInvocations(mDataRetryManagerCallbackMock);
+        Mockito.clearInvocations(mDataRetryManagerCallbackMock, mDataProfileManager);
 
         // RIL crashed and came back online.
         mDataRetryManagerUT.obtainMessage(10 /*EVENT_TAC_CHANGED*/,
@@ -895,6 +896,7 @@ public class DataRetryManagerTest extends TelephonyTest {
         assertThat(throttleStatus.getThrottleExpiryTimeMillis()).isEqualTo(-1);
         assertThat(throttleStatus.getTransportType())
                 .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        verify(mDataProfileManager).clearAllDataProfilePermanentFailures();
     }
 
     @Test
@@ -902,7 +904,7 @@ public class DataRetryManagerTest extends TelephonyTest {
         doReturn(true).when(mDataConfigManager).shouldResetDataThrottlingWhenTacChanges();
 
         testDataSetupRetryNetworkSuggestedNeverRetry();
-        Mockito.clearInvocations(mDataRetryManagerCallbackMock);
+        Mockito.clearInvocations(mDataRetryManagerCallbackMock, mDataProfileManager);
 
         // RIL crashed and came back online.
         mDataRetryManagerUT.obtainMessage(9/*EVENT_MODEM_RESET*/,
@@ -922,5 +924,6 @@ public class DataRetryManagerTest extends TelephonyTest {
         assertThat(throttleStatus.getThrottleExpiryTimeMillis()).isEqualTo(-1);
         assertThat(throttleStatus.getTransportType())
                 .isEqualTo(AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        verify(mDataProfileManager).clearAllDataProfilePermanentFailures();
     }
 }

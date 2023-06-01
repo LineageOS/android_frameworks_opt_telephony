@@ -1357,6 +1357,9 @@ public class DataRetryManager extends Handler {
         logl("Remove all retry and throttling entries, reason=" + resetReasonToString(reason));
         removeMessages(EVENT_DATA_SETUP_RETRY);
         removeMessages(EVENT_DATA_HANDOVER_RETRY);
+
+        mDataProfileManager.clearAllDataProfilePermanentFailures();
+
         mDataRetryEntries.stream()
                 .filter(entry -> entry.getState() == DataRetryEntry.RETRY_STATE_NOT_RETRIED)
                 .forEach(entry -> entry.setState(DataRetryEntry.RETRY_STATE_CANCELLED));

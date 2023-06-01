@@ -1007,6 +1007,16 @@ public class DataProfileManager extends Handler {
     }
 
     /**
+     * Called by {@link DataRetryManager} to clear all permanent failures upon reset.
+     */
+    public void clearAllDataProfilePermanentFailures() {
+        mAllDataProfiles.stream()
+                .map(DataProfile::getApnSetting)
+                .filter(Objects::nonNull)
+                .forEach(apnSetting -> apnSetting.setPermanentFailed(false));
+    }
+
+    /**
      * Check if the provided data profile is still compatible with the current environment. Note
      * this method ignores APN id check and traffic descriptor check. A data profile with traffic
      * descriptor only can always be used in any condition.
