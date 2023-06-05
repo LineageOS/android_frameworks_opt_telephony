@@ -989,8 +989,9 @@ public class RILUtils {
      * @param dp Data profile
      * @return The converted DataProfileInfo
      */
-    public static android.hardware.radio.data.DataProfileInfo convertToHalDataProfile(
+    public static android.hardware.radio.data.DataProfileInfo convertToHalDataProfile(@Nullable
             DataProfile dp) {
+        if (dp == null) return null;
         android.hardware.radio.data.DataProfileInfo dpi =
                 new android.hardware.radio.data.DataProfileInfo();
 
