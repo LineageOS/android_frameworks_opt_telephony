@@ -1264,6 +1264,15 @@ public class DataConfigManager extends Handler {
     }
 
     /**
+     * @return {@code true} if allow sending null data profile to ask modem to clear the initial
+     * attach data profile.
+     */
+    public boolean allowClearInitialAttachDataProfile() {
+        return mResources.getBoolean(
+                com.android.internal.R.bool.allow_clear_initial_attach_data_profile);
+    }
+
+    /**
      * Log debug messages.
      * @param s debug messages
      */
@@ -1359,6 +1368,7 @@ public class DataConfigManager extends Handler {
         pw.println("isEnhancedIwlanHandoverCheckEnabled=" + isEnhancedIwlanHandoverCheckEnabled());
         pw.println("isTetheringProfileDisabledForRoaming="
                 + isTetheringProfileDisabledForRoaming());
+        pw.println("allowClearInitialAttachDataProfile=" + allowClearInitialAttachDataProfile());
         pw.decreaseIndent();
     }
 }
