@@ -319,4 +319,19 @@ public class LocaleTrackerTest extends TelephonyTest {
         mLocaleTracker.updateOperatorNumeric(TEST_CELL_MCC + FAKE_MNC);
         verify(mNitzStateMachine, times(1)).handleCountryDetected("");
     }
+
+    @Test
+    public void testClearCellInfoForLostOperator() {
+        doReturn(true).when(mPhone).isRadioOn();
+        sendServiceState(ServiceState.STATE_OUT_OF_SERVICE);
+        processAllMessages();
+        assertTrue(mLocaleTracker.isTracking());
+        assertEquals(US_COUNTRY_CODE, mLocaleTracker.getCurrentCountry());
+
+        // airplane mode + VoWiFI case
+        doReturn(false).when(mPhone).isRadioOn();
+        sendServiceState(ServiceState.STATE_POWER_OFF);
+        sendServiceState(ServiceState.STATE_IN_SERVICE);
+        assertEquals(COUNTRY_CODE_UNAVAILABLE, mLocaleTracker.getCurrentCountry());
+    }
 }
