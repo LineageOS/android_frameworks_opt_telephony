@@ -946,6 +946,19 @@ public class SignalStrengthControllerTest extends TelephonyTest {
                 1 /*expectedNonEmptyThreshold*/);
     }
 
+    @Test
+    public void testSignalStrengthChangedCallback() {
+        Handler mockRegistrant = Mockito.mock(Handler.class);
+        int ssChangedEvent = 0;
+        mSsc.registerForSignalStrengthChanged(mockRegistrant, ssChangedEvent, null);
+        mSimulatedCommands.notifySignalStrength();
+        processAllMessages();
+
+        ArgumentCaptor<Message> msgCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mockRegistrant).sendMessageDelayed(msgCaptor.capture(), Mockito.anyLong());
+        assertThat(msgCaptor.getValue().what).isEqualTo(ssChangedEvent);
+    }
+
     private void verifyAllEmptyThresholdAreDisabledWhenSetSignalStrengthReportingCriteria(
             int expectedNonEmptyThreshold) {
         ArgumentCaptor<List<SignalThresholdInfo>> signalThresholdInfoCaptor =
