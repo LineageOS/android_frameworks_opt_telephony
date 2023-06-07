@@ -48,6 +48,8 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 import android.util.Log;
 
+import com.android.internal.telephony.NetworkScanRequestTracker.NetworkScanRequestInfo;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -68,7 +70,7 @@ import java.util.concurrent.TimeUnit;
 public class NetworkScanRequestTrackerTest extends TelephonyTest {
     private static final String TAG = "NetworkScanRequestTrackerTest";
 
-    private static final String CLIENT_PKG = "com.android.phone";
+    private static final String CLIENT_PKG = "com.android.testapp";
     private static final int CLIENT_UID = 123456;
 
     // Keep the same as in NetworkScanRequestTracker.
@@ -590,6 +592,20 @@ public class NetworkScanRequestTrackerTest extends TelephonyTest {
     }
 
     @Test
+    public void testStartNetworkScan_resultFromCopiedRequest_noMessagesNotified() throws Exception {
+        mScanId = scanNetworkWithOneShot(true /* renounceFineLocationAccess */);
+
+        // Scan result came but with copied (instead of original) NetworkScanRequestInfo
+        NetworkScanRequestInfo obsoletedNsri = createNetworkScanRequestInfo(mScanId);
+        verifyStartNetworkScanAndEmulateScanResult(obsoletedNsri,
+                new NetworkScanResult(NetworkScanResult.SCAN_STATUS_COMPLETE,
+                        NetworkScan.SUCCESS, List.of(new CellInfoLte())));
+
+        // No message should send to client
+        verifyMessages();
+    }
+
+    @Test
     public void testStartNetworkScan_multiResultsAndSuccess_allMessagesNotified() throws Exception {
         mMessageLatch = new CountDownLatch(4); // 4 messages expected
         mScanId = scanNetworkWithOneShot(true /* renounceFineLocationAccess */);
@@ -766,12 +782,31 @@ public class NetworkScanRequestTrackerTest extends TelephonyTest {
     /**
      * Verify both {@link CommandsInterface#startNetworkScan(NetworkScanRequest, Message)} and
      * {@link CommandsInterface#registerForNetworkScanResult(Handler, int, Object)} and sends
-     * emulated {@link NetworkScanResult} back through the captures.
+     * emulated {@link NetworkScanResult} with original NetworkScanRequestInfo back through the
+     * captures.
      */
     private void verifyStartNetworkScanAndEmulateScanResult(
             NetworkScanResult... networkScanResults) {
-        IBinder.DeathRecipient nsri = verifyStartNetworkScanAndGetNetworkScanInfo();
+        NetworkScanRequestInfo nsri = verifyStartNetworkScanAndGetNetworkScanInfo();
 
+        sendEmulatedScanResult(nsri, networkScanResults);
+    }
+
+    /**
+     * Similar as verifyStartNetworkScanAndEmulateScanResult(NetworkScanResult...) above but
+     * allows to set the customized NetworkScanRequestInfo other than original one.
+     */
+    private void verifyStartNetworkScanAndEmulateScanResult(
+            NetworkScanRequestInfo nsri,
+            NetworkScanResult... networkScanResults) {
+        // Ignore the original NSRI returned
+        verifyStartNetworkScanAndGetNetworkScanInfo();
+
+        sendEmulatedScanResult(nsri, networkScanResults);
+    }
+
+    private void sendEmulatedScanResult(NetworkScanRequestInfo nsri,
+            NetworkScanResult... networkScanResults) {
         ArgumentCaptor<Handler> handlerCaptor = ArgumentCaptor.forClass(Handler.class);
         verify(mPhone.mCi).registerForNetworkScanResult(handlerCaptor.capture(), anyInt(), any());
         Handler handler = handlerCaptor.getValue();
@@ -798,12 +833,12 @@ public class NetworkScanRequestTrackerTest extends TelephonyTest {
      * Verify {@link Phone#startNetworkScan(NetworkScanRequest, Message)} and
      * capture the NetworkScanRequestInfo for further usage.
      */
-    private IBinder.DeathRecipient verifyStartNetworkScanAndGetNetworkScanInfo() {
+    private NetworkScanRequestInfo verifyStartNetworkScanAndGetNetworkScanInfo() {
         ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mPhone).startNetworkScan(any(), messageCaptor.capture());
         Message responseMessage = messageCaptor.getValue();
         // NetworkScanRequestInfo is not public and can only be treated as IBinder.DeathRecipient
-        IBinder.DeathRecipient nsri = (IBinder.DeathRecipient) responseMessage.obj;
+        NetworkScanRequestInfo nsri = (NetworkScanRequestInfo) responseMessage.obj;
         AsyncResult.forMessage(responseMessage, nsri, null);
         responseMessage.sendToTarget();
         processAllMessages();
@@ -844,6 +879,24 @@ public class NetworkScanRequestTrackerTest extends TelephonyTest {
         processAllMessages();
 
         return scanId;
+    }
+
+    private NetworkScanRequestInfo createNetworkScanRequestInfo(int scanId) {
+        RadioAccessSpecifier[] specifiers = new RadioAccessSpecifier[]{
+                new RadioAccessSpecifier(AccessNetworkConstants.AccessNetworkType.EUTRAN, null,
+                        null)
+        };
+        NetworkScanRequest request = new NetworkScanRequest(
+                NetworkScanRequest.SCAN_TYPE_ONE_SHOT,
+                specifiers,
+                5 /* searchPeriodicity */,
+                60 /* maxSearchTime in seconds */,
+                true /* incrementalResults */,
+                5 /* incrementalResultsPeriodicity */,
+                null /* PLMNs */);
+        Messenger messenger = new Messenger(mHandler);
+        return mNetworkScanRequestTracker.new NetworkScanRequestInfo(request, messenger, mIBinder,
+                scanId, mPhone, CLIENT_UID, -1, CLIENT_PKG, true);
     }
 
     private void setHasLocationPermissions(boolean hasPermission) {
