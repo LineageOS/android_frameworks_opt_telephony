@@ -426,6 +426,7 @@ public class VoiceCallSessionStats {
         int bearer = getBearer(conn);
         ServiceState serviceState = getServiceState();
         @NetworkType int rat = getVoiceRatWithVoNRFix(mPhone, serviceState, bearer);
+        @VideoState int videoState = conn.getVideoState();
         VoiceCallSession proto = new VoiceCallSession();
 
         proto.bearerAtStart = bearer;
@@ -452,6 +453,7 @@ public class VoiceCallSessionStats {
         proto.isRoaming = serviceState != null ? serviceState.getVoiceRoaming() : false;
         proto.isMultiparty = conn.isMultiparty();
         proto.lastKnownRat = rat;
+        proto.videoEnabled = videoState != VideoProfile.STATE_AUDIO_ONLY ? true : false;
 
         // internal fields for tracking
         if (getDirection(conn) == VOICE_CALL_SESSION__DIRECTION__CALL_DIRECTION_MT) {
