@@ -449,6 +449,10 @@ public final class NetworkScanRequestTracker {
                 Log.e(TAG, "EVENT_RECEIVE_NETWORK_SCAN_RESULT: nsri is null");
                 return;
             }
+            if (nsri != mLiveRequestInfo) {
+                Log.e(TAG, "EVENT_RECEIVE_NETWORK_SCAN_RESULT received for inactive scan");
+                return;
+            }
             LocationAccessPolicy.LocationPermissionQuery locationQuery =
                     new LocationAccessPolicy.LocationPermissionQuery.Builder()
                     .setCallingPackage(nsri.mCallingPackage)
