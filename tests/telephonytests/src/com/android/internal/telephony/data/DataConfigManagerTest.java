@@ -130,19 +130,19 @@ public class DataConfigManagerTest extends TelephonyTest {
                         TelephonyManager.NETWORK_TYPE_LTE,
                         TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED, false/*isRoaming*/),
                 signalStrength)).isEqualTo(10227);
-        // Verify if entry contains any invalid negative scores, should yield -1.
+        // Verify if entry contains any invalid negative scores, should yield 0.
         doReturn(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN).when(signalStrength).getLevel();
         assertThat(mDataConfigManagerUT.getAutoDataSwitchScore(new TelephonyDisplayInfo(
                         TelephonyManager.NETWORK_TYPE_LTE,
                         TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, false/*isRoaming*/),
                 signalStrength))
-                .isEqualTo(-1/*INVALID_AUTO_DATA_SWITCH_SCORE*/);
+                .isEqualTo(0/*OUT_OF_SERVICE_AUTO_DATA_SWITCH_SCORE*/);
         // Verify non-existent entry should yield -1
         doReturn(SignalStrength.SIGNAL_STRENGTH_POOR).when(signalStrength).getLevel();
         assertThat(mDataConfigManagerUT.getAutoDataSwitchScore(new TelephonyDisplayInfo(
                         TelephonyManager.NETWORK_TYPE_EDGE,
                         TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, false/*isRoaming*/),
                 signalStrength))
-                .isEqualTo(-1/*INVALID_AUTO_DATA_SWITCH_SCORE*/);
+                .isEqualTo(0/*OUT_OF_SERVICE_AUTO_DATA_SWITCH_SCORE*/);
     }
 }
