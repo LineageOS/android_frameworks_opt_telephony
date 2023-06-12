@@ -1582,6 +1582,14 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Verify data is torn down.
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+
+        // Registration is back to HOME.
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        processAllFutureMessages();
+
+        // Verify data is restored.
+        verifyInternetConnected();
     }
 
     @Test
