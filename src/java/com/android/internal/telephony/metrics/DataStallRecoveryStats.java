@@ -16,7 +16,10 @@
 
 package com.android.internal.telephony.metrics;
 
+import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation.NetworkType;
+import android.telephony.CellSignalStrength;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 
@@ -61,8 +64,16 @@ public class DataStallRecoveryStats {
         boolean isOpportunistic = getIsOpportunistic(phone);
         boolean isMultiSim = SimSlotState.getCurrentState().numActiveSims > 1;
 
-        // Not use this field in Android S, so we send RECOVERED_REASON_NONE for default value.
+        // Not use these fields in Android S, so we set below parameter for default value.
         int recoveryReason = 0;
+        int otherSignalStrength = CellSignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN;
+        int otherNetworkRegState = NetworkRegistrationInfo
+                .REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING;
+        int phoneNetworkRegState = NetworkRegistrationInfo
+                .REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING;
+        boolean isFirstValidation = false;
+        int phoneId = 0;
+        int durationMillisOfCurrentAction = 0;
         TelephonyStatsLog.write(
                 TelephonyStatsLog.DATA_STALL_RECOVERY_REPORTED,
                 carrierId,
@@ -74,7 +85,13 @@ public class DataStallRecoveryStats {
                 band,
                 isRecovered,
                 durationMillis,
-                recoveryReason);
+                recoveryReason,
+                otherSignalStrength,
+                otherNetworkRegState,
+                phoneNetworkRegState,
+                isFirstValidation,
+                phoneId,
+                durationMillisOfCurrentAction);
     }
 
     /**
@@ -85,13 +102,16 @@ public class DataStallRecoveryStats {
      * @param isRecovered The data stall symptom recovered or not.
      * @param durationMillis The duration from data stall symptom occurred.
      * @param reason The recovered(data resume) reason.
+     * @param isFirstValidation The validation status if it's the first come after recovery.
      */
     public static void onDataStallEvent(
             @DataStallRecoveryManager.RecoveryAction int recoveryAction,
             Phone phone,
             boolean isRecovered,
             int durationMillis,
-            @DataStallRecoveryManager.RecoveredReason int reason) {
+            @DataStallRecoveryManager.RecoveredReason int reason,
+            boolean isFirstValidation,
+            int durationMillisOfCurrentAction) {
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             phone = phone.getDefaultPhone();
         }
@@ -111,6 +131,25 @@ public class DataStallRecoveryStats {
             recoveryAction = RECOVERY_ACTION_RESET_MODEM_MAPPING;
         }
 
+        // collect info of the other device in case of DSDS
+        int otherSignalStrength = CellSignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN;
+        // the number returned here matches the NetworkRegistrationState enum we have
+        int otherNetworkRegState = NetworkRegistrationInfo
+                .REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING;
+        // the number returned here matches the NetworkRegistrationState enum we have
+        int phoneNetworkRegState = NetworkRegistrationInfo
+                .REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING;
+
+        NetworkRegistrationInfo phoneRegInfo = phone.getServiceState()
+                        .getNetworkRegistrationInfo(NetworkRegistrationInfo.DOMAIN_PS,
+                                AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        if (phoneRegInfo != null) {
+            phoneNetworkRegState = phoneRegInfo.getRegistrationState();
+        }
+
+        // reserve 0 for default value
+        int phoneId = phone.getPhoneId() + 1;
+
         TelephonyStatsLog.write(
                 TelephonyStatsLog.DATA_STALL_RECOVERY_REPORTED,
                 carrierId,
@@ -122,7 +161,13 @@ public class DataStallRecoveryStats {
                 band,
                 isRecovered,
                 durationMillis,
-                reason);
+                reason,
+                otherSignalStrength,
+                otherNetworkRegState,
+                phoneNetworkRegState,
+                isFirstValidation,
+                phoneId,
+                durationMillisOfCurrentAction);
     }
 
     /** Returns the RAT used for data (including IWLAN). */

@@ -56,6 +56,7 @@ import android.telecom.VideoProfile.VideoState;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.AnomalyReporter;
 import android.telephony.DisconnectCause;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsReasonInfo;
@@ -73,6 +74,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneConnection;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
 import com.android.internal.telephony.nano.TelephonyProto.TelephonyCallSession.Event.AudioCodec;
@@ -379,9 +381,8 @@ public class VoiceCallSessionStats {
                     proto.srvccCompleted = true;
                     proto.bearerAtEnd = VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS;
                     // Call RAT may have changed (e.g. IWLAN -> UMTS) due to bearer change
-                    proto.ratAtEnd =
-                            ServiceStateStats.getVoiceRat(
-                                    mPhone, mPhone.getServiceState(), proto.bearerAtEnd);
+                    updateRatAtEnd(proto, getVoiceRatWithVoNRFix(
+                            mPhone, mPhone.getServiceState(), proto.bearerAtEnd));
                 }
                 break;
             case TelephonyManager.SRVCC_STATE_HANDOVER_FAILED:
@@ -436,8 +437,7 @@ public class VoiceCallSessionStats {
         }
         int bearer = getBearer(conn);
         ServiceState serviceState = getServiceState();
-        @NetworkType int rat = ServiceStateStats.getVoiceRat(mPhone, serviceState, bearer);
-
+        @NetworkType int rat = getVoiceRatWithVoNRFix(mPhone, serviceState, bearer);
         VoiceCallSession proto = new VoiceCallSession();
 
         proto.bearerAtStart = bearer;
@@ -527,15 +527,7 @@ public class VoiceCallSessionStats {
         }
 
         // Update end RAT
-        @NetworkType
-        int rat = ServiceStateStats.getVoiceRat(mPhone, getServiceState(), proto.bearerAtEnd);
-        if (proto.ratAtEnd != rat) {
-            proto.ratSwitchCount++;
-            proto.ratAtEnd = rat;
-            if (rat != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
-                proto.lastKnownRat = rat;
-            }
-        }
+        updateRatAtEnd(proto, getVoiceRatWithVoNRFix(mPhone, getServiceState(), proto.bearerAtEnd));
 
         mAtomsStorage.addVoiceCallSession(proto);
 
@@ -597,8 +589,7 @@ public class VoiceCallSessionStats {
             proto.setupFailed = false;
             // Track RAT when voice call is connected.
             ServiceState serviceState = getServiceState();
-            proto.ratAtConnected =
-                    ServiceStateStats.getVoiceRat(mPhone, serviceState, proto.bearerAtEnd);
+            proto.ratAtConnected = getVoiceRatWithVoNRFix(mPhone, serviceState, proto.bearerAtEnd);
             // Reset list of codecs with the last codec at the present time. In this way, we
             // track codec quality only after call is connected and not while ringing.
             resetCodecList(conn);
@@ -609,23 +600,28 @@ public class VoiceCallSessionStats {
         // RAT usage is not broken down by bearer. In case a CS call is made while there is IMS
         // voice registration, this may be inaccurate (i.e. there could be multiple RAT in use, but
         // we only pick the most feasible one).
-        @NetworkType int rat = ServiceStateStats.getVoiceRat(mPhone, state);
+        @NetworkType int rat = getVoiceRatWithVoNRFix(mPhone, state,
+                VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_UNKNOWN);
         mRatUsage.add(mPhone.getCarrierId(), rat, getTimeMillis(), getConnectionIds());
 
         for (int i = 0; i < mCallProtos.size(); i++) {
             VoiceCallSession proto = mCallProtos.valueAt(i);
-            rat = ServiceStateStats.getVoiceRat(mPhone, state, proto.bearerAtEnd);
-            if (proto.ratAtEnd != rat) {
-                proto.ratSwitchCount++;
-                proto.ratAtEnd = rat;
-                if (rat != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
-                    proto.lastKnownRat = rat;
-                }
-            }
+            rat = getVoiceRatWithVoNRFix(mPhone, state, proto.bearerAtEnd);
+            updateRatAtEnd(proto, rat);
             proto.bandAtEnd = (rat == TelephonyManager.NETWORK_TYPE_IWLAN)
                             ? 0
                             : ServiceStateStats.getBand(state);
             // assuming that SIM carrier ID does not change during the call
+        }
+    }
+
+    private void updateRatAtEnd(VoiceCallSession proto, @NetworkType int rat) {
+        if (proto.ratAtEnd != rat) {
+            proto.ratSwitchCount++;
+            proto.ratAtEnd = rat;
+            if (rat != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
+                proto.lastKnownRat = rat;
+            }
         }
     }
 
@@ -693,6 +689,43 @@ public class VoiceCallSessionStats {
     /** Returns the signal strength of cellular RAT. */
     private int getSignalStrengthCellular() {
         return mPhone.getSignalStrength().getLevel();
+    }
+
+    /**
+     * This is a copy of ServiceStateStats.getVoiceRat(Phone, ServiceState, int) with minimum fix
+     * required for tracking EPSFB correctly.
+     */
+    @VisibleForTesting private static @NetworkType int getVoiceRatWithVoNRFix(
+            Phone phone, @Nullable ServiceState state, int bearer) {
+        if (state == null) {
+            return TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        }
+        ImsPhone imsPhone = (ImsPhone) phone.getImsPhone();
+        if (bearer != VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS && imsPhone != null) {
+            @NetworkType int imsVoiceRat = imsPhone.getImsStats().getImsVoiceRadioTech();
+            @NetworkType int wwanPsRat =
+                    ServiceStateStats.getRat(state, NetworkRegistrationInfo.DOMAIN_PS);
+            if (imsVoiceRat != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
+                // If IMS is registered over WWAN but WWAN PS is not in service,
+                // fallback to WWAN CS RAT
+                boolean isImsVoiceRatValid =
+                        (imsVoiceRat == TelephonyManager.NETWORK_TYPE_IWLAN
+                                || wwanPsRat != TelephonyManager.NETWORK_TYPE_UNKNOWN);
+                if (isImsVoiceRatValid) {
+                    // Fix for VoNR and EPSFB, b/277906557
+                    @NetworkType int oldRat = ServiceStateStats.getVoiceRat(phone, state, bearer),
+                            rat = imsVoiceRat == TelephonyManager.NETWORK_TYPE_IWLAN
+                                    ? imsVoiceRat : wwanPsRat;
+                    logd("getVoiceRatWithVoNRFix: oldRat=%d, newRat=%d", oldRat, rat);
+                    return rat;
+                }
+            }
+        }
+        if (bearer == VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_IMS) {
+            return TelephonyManager.NETWORK_TYPE_UNKNOWN;
+        } else {
+            return ServiceStateStats.getRat(state, NetworkRegistrationInfo.DOMAIN_CS);
+        }
     }
 
     /** Resets the list of codecs used for the connection with only the codec currently in use. */
