@@ -46,6 +46,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceStat
 import com.android.telephony.Rlog;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /** Tracks service state duration and switch metrics for each phone. */
@@ -54,6 +55,7 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
 
     private final AtomicReference<TimestampedServiceState> mLastState =
             new AtomicReference<>(new TimestampedServiceState(null, 0L));
+    private final AtomicBoolean mOverrideVoiceService = new AtomicBoolean(false);
     private final Phone mPhone;
     private final PersistAtomsStorage mStorage;
     private final DeviceStateHelper mDeviceStateHelper;
@@ -127,6 +129,7 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
             newState.isEmergencyOnly = isEmergencyOnly(serviceState);
             newState.isInternetPdnUp = isInternetPdnUp(mPhone);
             newState.foldState = mDeviceStateHelper.getFoldState();
+            newState.overrideVoiceService = mOverrideVoiceService.get();
             TimestampedServiceState prevState =
                     mLastState.getAndSet(new TimestampedServiceState(newState, now));
             addServiceStateAndSwitch(
@@ -152,6 +155,26 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
                             });
             addServiceState(lastState, now);
         }
+    }
+
+    /** Updates override state for voice service state when voice calling capability changes */
+    public void onVoiceServiceStateOverrideChanged(boolean override) {
+        if (override == mOverrideVoiceService.get()) {
+            return;
+        }
+        mOverrideVoiceService.set(override);
+        final long now = getTimeMillis();
+        TimestampedServiceState lastState =
+                mLastState.getAndUpdate(
+                        state -> {
+                            if (state.mServiceState == null) {
+                                return new TimestampedServiceState(null, now);
+                            }
+                            CellularServiceState newServiceState = copyOf(state.mServiceState);
+                            newServiceState.overrideVoiceService = mOverrideVoiceService.get();
+                            return new TimestampedServiceState(newServiceState, now);
+                        });
+        addServiceState(lastState, now);
     }
 
     private void addServiceState(TimestampedServiceState prevState, long now) {
@@ -275,6 +298,7 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
         copy.isEmergencyOnly = state.isEmergencyOnly;
         copy.isInternetPdnUp = state.isInternetPdnUp;
         copy.foldState = state.foldState;
+        copy.overrideVoiceService = state.overrideVoiceService;
         return copy;
     }
 

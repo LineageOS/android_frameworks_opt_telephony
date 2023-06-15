@@ -1229,6 +1229,37 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(true, resultPs);
     }
 
+    @Test
+    @SmallTest
+    public void onVoiceServiceStateOverrideChanged_voiceCallingCapabilityChange() {
+        // Using default service state for LTE
+        mServiceStateStats.onServiceStateChanged(mServiceState);
+        mServiceStateStats.incTimeMillis(100L);
+        // Voice Calling registered
+        mServiceStateStats.onVoiceServiceStateOverrideChanged(true);
+        mServiceStateStats.incTimeMillis(100L);
+        // Voice Calling unregistered
+        mServiceStateStats.onVoiceServiceStateOverrideChanged(false);
+        mServiceStateStats.incTimeMillis(100L);
+        // Voice Calling unregistered again. Same state should not generate a new atom
+        mServiceStateStats.onVoiceServiceStateOverrideChanged(false);
+        mServiceStateStats.incTimeMillis(100L);
+
+        // There should be 3 service state updates
+        mServiceStateStats.conclude();
+        ArgumentCaptor<CellularServiceState> captor =
+                ArgumentCaptor.forClass(CellularServiceState.class);
+        verify(mPersistAtomsStorage, times(3))
+                .addCellularServiceStateAndCellularDataServiceSwitch(captor.capture(), eq(null));
+        CellularServiceState state = captor.getAllValues().get(0);
+        assertEquals(false, state.overrideVoiceService);
+        state = captor.getAllValues().get(1);
+        assertEquals(true, state.overrideVoiceService);
+        state = captor.getAllValues().get(2);
+        assertEquals(false, state.overrideVoiceService);
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
     private void mockWwanPsRat(@NetworkType int rat) {
         mockWwanRat(
                 NetworkRegistrationInfo.DOMAIN_PS,
