@@ -60,6 +60,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -123,8 +124,6 @@ import java.util.concurrent.TimeUnit;
 public class SatelliteControllerTest extends TelephonyTest {
     private static final String TAG = "SatelliteControllerTest";
 
-    private static final int EVENT_DEVICE_CONFIG_CHANGED = 29;
-
     private static final long TIMEOUT = 500;
     private static final int SUB_ID = 0;
     private static final int SUB_ID1 = 1;
@@ -133,9 +132,13 @@ public class SatelliteControllerTest extends TelephonyTest {
     private static final String TEST_NEXT_SATELLITE_TOKEN = "TEST_NEXT_SATELLITE_TOKEN";
     private static final String[] EMPTY_SATELLITE_SERVICES_SUPPORTED_BY_PROVIDERS_STRING_ARRAY = {};
     private static final int[] ACTIVE_SUB_IDS = {SUB_ID};
+    private ArrayList<String> mPlmnArrayList = new ArrayList<>();
+    private List<Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener>>
+            mCarrierConfigChangedListenerList = new ArrayList<>();
 
     private TestSatelliteController mSatelliteControllerUT;
     private TestSharedPreferences mSharedPreferences;
+    private PersistableBundle mCarrierConfigBundle;
 
     @Mock private DatagramController mMockDatagramController;
     @Mock private SatelliteModemInterface mMockSatelliteModemInterface;
@@ -357,10 +360,6 @@ public class SatelliteControllerTest extends TelephonyTest {
             }
         }
     };
-
-    private List<Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener>>
-            mCarrierConfigChangedListenerList = new ArrayList<>();
-    private PersistableBundle mCarrierConfigBundle;
 
     @Before
     public void setUp() throws Exception {
@@ -1587,6 +1586,41 @@ public class SatelliteControllerTest extends TelephonyTest {
         supportedSatelliteServices =
                 testSatelliteController.getSupportedSatelliteServices(SUB_ID1, "00103");
         assertTrue(supportedSatelliteServices.isEmpty());
+    }
+
+    @Test
+    public void testConfigureSatellitePlmnOnRadioStateChanged() {
+        logd("testConfigureSatellitePlmnOnRadioStateChanged");
+
+        String[] satelliteServicesSupportedByProviderStrArray =
+                {"00101:1,2", "00102:2,3", "00103:1,2", "00104:3,4", "00105:1"};
+        mContextFixture.putStringArrayResource(
+                R.array.config_satellite_services_supported_by_providers,
+                satelliteServicesSupportedByProviderStrArray);
+
+        /* Initially, the radio state is ON. In the constructor, satelliteController registers for
+         the radio state changed events and immediately gets the radio state changed event as ON. */
+        doReturn(false).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        TestSatelliteController testSatelliteController =
+                new TestSatelliteController(mContext, Looper.myLooper());
+        processAllMessages();
+        List<String> satellitePlmnList = testSatelliteController.getSatellitePlmnList();
+        verify(mPhone, times(1))
+                .setSatellitePlmn(any(Message.class), eq(satellitePlmnList));
+        reset(mPhone);
+
+        // Test setSatellitePlmn() when radio is turned off..
+        setRadioPower(false);
+        processAllMessages();
+        verify(mPhone, never()).setSatellitePlmn(any(), any());
+        reset(mPhone);
+
+        // Test setSatellitePlmn() when SatelliteService is supported.
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        setRadioPower(true);
+        processAllMessages();
+        verify(mPhone, never()).setSatellitePlmn(any(), any());
+        reset(mPhone);
     }
 
     private void resetSatelliteControllerUTEnabledState() {

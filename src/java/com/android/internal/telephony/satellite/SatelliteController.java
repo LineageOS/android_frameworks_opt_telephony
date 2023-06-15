@@ -68,6 +68,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IIntegerConsumer;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
 import com.android.internal.telephony.satellite.metrics.ProvisionMetricsStats;
 import com.android.internal.telephony.satellite.metrics.SessionMetricsStats;
@@ -127,6 +128,7 @@ public class SatelliteController extends Handler {
     private static final int EVENT_SATELLITE_PROVISION_STATE_CHANGED = 26;
     private static final int EVENT_PENDING_DATAGRAMS = 27;
     private static final int EVENT_SATELLITE_MODEM_STATE_CHANGED = 28;
+    private static final int EVENT_SET_ROAMING_PLMN_INFO_DONE = 29;
 
     @NonNull private static SatelliteController sInstance;
     @NonNull private final Context mContext;
@@ -1039,6 +1041,7 @@ public class SatelliteController extends Handler {
                                         SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, receiver);
                             }
                         }
+                        configureSatellitePlmn();
                     } else {
                         logd("EVENT_RADIO_STATE_CHANGED: Satellite vendor service is supported."
                                 + " Ignored the event");
@@ -1116,6 +1119,10 @@ public class SatelliteController extends Handler {
                 } else {
                     handleEventSatelliteModemStateChanged((int) ar.result);
                 }
+                break;
+
+            case EVENT_SET_ROAMING_PLMN_INFO_DONE:
+                handleSetRoamingPlmnInfoDoneEvent(msg);
                 break;
 
             default:
@@ -2382,6 +2389,33 @@ public class SatelliteController extends Handler {
 
     private boolean isMockModemAllowed() {
         return (DEBUG || SystemProperties.getBoolean(ALLOW_MOCK_MODEM_PROPERTY, false));
+    }
+
+    private void configureSatellitePlmn() {
+        logd("configureSatellitePlmn()");
+        if (mSatellitePlmnList != null && !mSatellitePlmnList.isEmpty()) {
+            Message onCompleted = obtainMessage(
+                    EVENT_SET_ROAMING_PLMN_INFO_DONE, mSatellitePlmnList);
+            Phone[] phones = PhoneFactory.getPhones();
+            for (Phone phone : phones) {
+                if (phone != null) {
+                    // TODO : This command should be sent to only phone/modem whose carrier
+                    //        supports satellite - next task
+                    phone.setSatellitePlmn(onCompleted, mSatellitePlmnList);
+                    logd("phone[" + phone.getPhoneId() + "].setSatellitePlmn()");
+                } else {
+                    loge("configureSatellitePlmn: No phone object");
+                }
+            }
+        } else {
+            logd("mSatellitePlmnList is empty");
+        }
+    }
+
+    private void handleSetRoamingPlmnInfoDoneEvent(Message msg) {
+        AsyncResult ar = (AsyncResult) msg.obj;
+        // Parse and log the result of the request setSatellitePlmn
+        SatelliteServiceUtils.getSatelliteError(ar, "handleSetRoamingPlmnInfoCmd");
     }
 
     private void updateSupportedSatelliteServicesForActiveSubscriptions() {
