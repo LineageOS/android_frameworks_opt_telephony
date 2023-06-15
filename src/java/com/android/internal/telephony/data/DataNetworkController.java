@@ -3413,7 +3413,8 @@ public class DataNetworkController extends Handler {
 
         if (oldPsNri == null
                 || oldPsNri.getAccessNetworkTechnology() != newPsNri.getAccessNetworkTechnology()
-                || (!oldPsNri.isInService() && newPsNri.isInService())) {
+                || (!oldPsNri.isInService() && newPsNri.isInService())
+                || (oldPsNri.isRoaming() && !newPsNri.isRoaming())) {
             return true;
         }
 
