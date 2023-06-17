@@ -20,10 +20,16 @@ import static com.google.common.truth.Truth.assertThat;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import android.os.Looper;
 import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
+import android.telephony.SignalStrength;
+import android.telephony.TelephonyDisplayInfo;
+import android.telephony.TelephonyManager;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -95,5 +101,48 @@ public class DataConfigManagerTest extends TelephonyTest {
                 .parseSlidingWindowCounterThreshold(null, defaultTimeWindow, defaultOccurrence);
         assertThat(invalidFormat3.timeWindow).isEqualTo(defaultValue.timeWindow);
         assertThat(invalidFormat3.eventNumOccurrence).isEqualTo(defaultValue.eventNumOccurrence);
+    }
+
+    @Test
+    public void testParseAutoDataSwitchScoreTable() {
+        SignalStrength signalStrength = mock(SignalStrength.class);
+        int tolerance = 100;
+        PersistableBundle auto_data_switch_rat_signal_score_string_bundle = new PersistableBundle();
+        auto_data_switch_rat_signal_score_string_bundle.putIntArray(
+                "NR_NSA_MMWAVE", new int[]{10000, 10227, 12488, 15017, 15278});
+        auto_data_switch_rat_signal_score_string_bundle.putIntArray(
+                "LTE", new int[]{-3731, 5965, 8618, 11179, 13384});
+        mBundle.putPersistableBundle(
+                CarrierConfigManager.KEY_AUTO_DATA_SWITCH_RAT_SIGNAL_SCORE_BUNDLE,
+                auto_data_switch_rat_signal_score_string_bundle);
+
+        mContextFixture.putIntResource(com.android.internal.R.integer
+                .auto_data_switch_score_tolerance, tolerance);
+
+        mDataConfigManagerUT.sendEmptyMessage(1/*EVENT_CARRIER_CONFIG_CHANGED*/);
+        processAllMessages();
+
+        assertThat(mDataConfigManagerUT.getAutoDataSwitchScoreTolerance()).isEqualTo(tolerance);
+
+        // Verify NSA_MMWAVE
+        doReturn(SignalStrength.SIGNAL_STRENGTH_POOR).when(signalStrength).getLevel();
+        assertThat(mDataConfigManagerUT.getAutoDataSwitchScore(new TelephonyDisplayInfo(
+                        TelephonyManager.NETWORK_TYPE_LTE,
+                        TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED, false/*isRoaming*/),
+                signalStrength)).isEqualTo(10227);
+        // Verify if entry contains any invalid negative scores, should yield -1.
+        doReturn(SignalStrength.SIGNAL_STRENGTH_NONE_OR_UNKNOWN).when(signalStrength).getLevel();
+        assertThat(mDataConfigManagerUT.getAutoDataSwitchScore(new TelephonyDisplayInfo(
+                        TelephonyManager.NETWORK_TYPE_LTE,
+                        TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, false/*isRoaming*/),
+                signalStrength))
+                .isEqualTo(-1/*INVALID_AUTO_DATA_SWITCH_SCORE*/);
+        // Verify non-existent entry should yield -1
+        doReturn(SignalStrength.SIGNAL_STRENGTH_POOR).when(signalStrength).getLevel();
+        assertThat(mDataConfigManagerUT.getAutoDataSwitchScore(new TelephonyDisplayInfo(
+                        TelephonyManager.NETWORK_TYPE_EDGE,
+                        TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, false/*isRoaming*/),
+                signalStrength))
+                .isEqualTo(-1/*INVALID_AUTO_DATA_SWITCH_SCORE*/);
     }
 }
