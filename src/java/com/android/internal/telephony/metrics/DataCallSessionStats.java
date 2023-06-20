@@ -24,6 +24,7 @@ import android.telephony.Annotation.ApnType;
 import android.telephony.Annotation.DataFailureCause;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.DataFailCause;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -319,7 +320,7 @@ public class DataCallSessionStats {
         ServiceStateTracker serviceStateTracker = mPhone.getServiceStateTracker();
         ServiceState serviceState =
                 serviceStateTracker != null ? serviceStateTracker.getServiceState() : null;
-        return serviceState != null && serviceState.getRoaming();
+        return ServiceStateStats.isNetworkRoaming(serviceState, NetworkRegistrationInfo.DOMAIN_PS);
     }
 
     private boolean getIsOpportunistic() {
