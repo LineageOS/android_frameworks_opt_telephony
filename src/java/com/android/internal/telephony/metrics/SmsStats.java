@@ -386,7 +386,7 @@ public class SmsStats {
 
     private boolean getIsRoaming() {
         ServiceState serviceState = getServiceState();
-        return serviceState != null ? serviceState.getRoaming() : false;
+        return ServiceStateStats.isNetworkRoaming(serviceState);
     }
 
     private int getCarrierId() {

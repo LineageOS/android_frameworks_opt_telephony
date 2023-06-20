@@ -15,6 +15,7 @@
  */
 
 package com.android.internal.telephony.metrics;
+
 import static android.telephony.TelephonyManager.DATA_CONNECTED;
 
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__BEARER_AT_END__CALL_BEARER_CS;
@@ -29,6 +30,7 @@ import android.telephony.AccessNetworkUtils;
 import android.telephony.Annotation.NetworkType;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
+import android.telephony.ServiceState.RoamingType;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -114,8 +116,10 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
             CellularServiceState newState = new CellularServiceState();
             newState.voiceRat = getVoiceRat(mPhone, serviceState);
             newState.dataRat = getRat(serviceState, NetworkRegistrationInfo.DOMAIN_PS);
-            newState.voiceRoamingType = serviceState.getVoiceRoamingType();
-            newState.dataRoamingType = serviceState.getDataRoamingType();
+            newState.voiceRoamingType =
+                    getNetworkRoamingState(serviceState, NetworkRegistrationInfo.DOMAIN_CS);
+            newState.dataRoamingType =
+                    getNetworkRoamingState(serviceState, NetworkRegistrationInfo.DOMAIN_PS);
             newState.isEndc = isEndc(serviceState);
             newState.simSlotIndex = mPhone.getPhoneId();
             newState.isMultiSim = SimSlotState.isMultiSim();
@@ -378,6 +382,39 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
                             return new TimestampedServiceState(newServiceState, now);
                         });
         addServiceState(lastState, now);
+    }
+
+    private static @RoamingType int getNetworkRoamingState(
+            ServiceState ss, @NetworkRegistrationInfo.Domain int domain) {
+        final NetworkRegistrationInfo nri =
+                ss.getNetworkRegistrationInfo(domain, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        if (nri == null) {
+            // No registration for domain
+            return ServiceState.ROAMING_TYPE_NOT_ROAMING;
+        }
+        @RoamingType int roamingType = nri.getRoamingType();
+        if (nri.isNetworkRoaming() && roamingType == ServiceState.ROAMING_TYPE_NOT_ROAMING) {
+            // Roaming is overridden, exact roaming type unknown.
+            return ServiceState.ROAMING_TYPE_UNKNOWN;
+        }
+        return roamingType;
+    }
+
+    /** Determines whether device is roaming, bypassing carrier overrides. */
+    public static boolean isNetworkRoaming(
+            ServiceState ss, @NetworkRegistrationInfo.Domain int domain) {
+        if (ss == null) {
+            return false;
+        }
+        final NetworkRegistrationInfo nri =
+                ss.getNetworkRegistrationInfo(domain, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        return nri != null && nri.isNetworkRoaming();
+    }
+
+    /** Determines whether device is roaming in any domain, bypassing carrier overrides. */
+    public static boolean isNetworkRoaming(ServiceState ss) {
+        return isNetworkRoaming(ss, NetworkRegistrationInfo.DOMAIN_CS)
+                || isNetworkRoaming(ss, NetworkRegistrationInfo.DOMAIN_PS);
     }
 
     @VisibleForTesting

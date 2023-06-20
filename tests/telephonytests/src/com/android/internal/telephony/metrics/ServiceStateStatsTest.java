@@ -30,6 +30,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
@@ -750,11 +751,31 @@ public class ServiceStateStatsTest extends TelephonyTest {
         mockWwanPsRat(TelephonyManager.NETWORK_TYPE_UMTS);
         mockWwanCsRat(TelephonyManager.NETWORK_TYPE_UMTS);
         doReturn(TelephonyManager.NETWORK_TYPE_UNKNOWN).when(mImsStats).getImsVoiceRadioTech();
-        doReturn(ServiceState.ROAMING_TYPE_INTERNATIONAL).when(mServiceState).getVoiceRoamingType();
+        NetworkRegistrationInfo voiceNri = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_UMTS)
+                // This sets mNetworkRegistrationState
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING)
+                .build();
+        voiceNri.setRoamingType(ServiceState.ROAMING_TYPE_INTERNATIONAL);
+        doReturn(voiceNri)
+                .when(mServiceState)
+                .getNetworkRegistrationInfo(
+                        NetworkRegistrationInfo.DOMAIN_CS,
+                        AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
         mServiceStateStats.onServiceStateChanged(mServiceState);
         mServiceStateStats.incTimeMillis(200L);
         // Voice and data roaming
-        doReturn(ServiceState.ROAMING_TYPE_INTERNATIONAL).when(mServiceState).getDataRoamingType();
+        NetworkRegistrationInfo dataNri = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_UMTS)
+                // This sets mNetworkRegistrationState
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING)
+                .build();
+        dataNri.setRoamingType(ServiceState.ROAMING_TYPE_INTERNATIONAL);
+        doReturn(dataNri)
+                .when(mServiceState)
+                .getNetworkRegistrationInfo(
+                        NetworkRegistrationInfo.DOMAIN_PS,
+                        AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
         mServiceStateStats.onServiceStateChanged(mServiceState);
         mServiceStateStats.incTimeMillis(400L);
 
@@ -812,6 +833,74 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(1, serviceSwitch.switchCount);
         assertNull(serviceSwitchCaptor.getAllValues().get(1));
         assertNull(serviceSwitchCaptor.getAllValues().get(2)); // produced by conclude()
+        verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    @SmallTest
+    public void onServiceStateChanged_roamingWithOverride() throws Exception {
+        // Using default service state for LTE
+
+        mServiceStateStats.onServiceStateChanged(mServiceState);
+        mServiceStateStats.incTimeMillis(100L);
+        // Voice roaming
+        doReturn(TelephonyManager.NETWORK_TYPE_UMTS).when(mServiceState).getVoiceNetworkType();
+        doReturn(TelephonyManager.NETWORK_TYPE_UMTS).when(mServiceState).getDataNetworkType();
+        NetworkRegistrationInfo roamingNri = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_UMTS)
+                // This sets mNetworkRegistrationState
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING)
+                .build();
+        roamingNri.setRoamingType(ServiceState.ROAMING_TYPE_NOT_ROAMING);
+        doReturn(roamingNri).when(mServiceState)
+                .getNetworkRegistrationInfo(
+                        anyInt(), eq(AccessNetworkConstants.TRANSPORT_TYPE_WWAN));
+        doReturn(TelephonyManager.NETWORK_TYPE_UNKNOWN).when(mImsStats).getImsVoiceRadioTech();
+        mServiceStateStats.onServiceStateChanged(mServiceState);
+        mServiceStateStats.incTimeMillis(400L);
+
+        // There should be 2 service states and 1 data service switch (LTE to UMTS)
+        mServiceStateStats.conclude();
+        ArgumentCaptor<CellularServiceState> serviceStateCaptor =
+                ArgumentCaptor.forClass(CellularServiceState.class);
+        ArgumentCaptor<CellularDataServiceSwitch> serviceSwitchCaptor =
+                ArgumentCaptor.forClass(CellularDataServiceSwitch.class);
+        verify(mPersistAtomsStorage, times(2))
+                .addCellularServiceStateAndCellularDataServiceSwitch(
+                        serviceStateCaptor.capture(), serviceSwitchCaptor.capture());
+        CellularServiceState state = serviceStateCaptor.getAllValues().get(0);
+        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.voiceRat);
+        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.dataRat);
+        assertEquals(ServiceState.ROAMING_TYPE_NOT_ROAMING, state.voiceRoamingType);
+        assertEquals(ServiceState.ROAMING_TYPE_NOT_ROAMING, state.dataRoamingType);
+        assertFalse(state.isEndc);
+        assertEquals(0, state.simSlotIndex);
+        assertFalse(state.isMultiSim);
+        assertEquals(CARRIER1_ID, state.carrierId);
+        assertEquals(100L, state.totalTimeMillis);
+        assertEquals(false, state.isEmergencyOnly);
+        assertEquals(true, state.isInternetPdnUp);
+        state = serviceStateCaptor.getAllValues().get(1);
+        assertEquals(TelephonyManager.NETWORK_TYPE_UMTS, state.voiceRat);
+        assertEquals(TelephonyManager.NETWORK_TYPE_UMTS, state.dataRat);
+        // Atom should show roaming, despite type being unknown
+        assertEquals(ServiceState.ROAMING_TYPE_UNKNOWN, state.voiceRoamingType);
+        assertEquals(ServiceState.ROAMING_TYPE_UNKNOWN, state.dataRoamingType);
+        assertFalse(state.isEndc);
+        assertEquals(0, state.simSlotIndex);
+        assertFalse(state.isMultiSim);
+        assertEquals(CARRIER1_ID, state.carrierId);
+        assertEquals(400L, state.totalTimeMillis);
+        assertEquals(false, state.isEmergencyOnly);
+        assertEquals(true, state.isInternetPdnUp);
+        CellularDataServiceSwitch serviceSwitch = serviceSwitchCaptor.getAllValues().get(0);
+        assertEquals(TelephonyManager.NETWORK_TYPE_LTE, serviceSwitch.ratFrom);
+        assertEquals(TelephonyManager.NETWORK_TYPE_UMTS, serviceSwitch.ratTo);
+        assertEquals(0, serviceSwitch.simSlotIndex);
+        assertFalse(serviceSwitch.isMultiSim);
+        assertEquals(CARRIER1_ID, serviceSwitch.carrierId);
+        assertEquals(1, serviceSwitch.switchCount);
+        assertNull(serviceSwitchCaptor.getAllValues().get(1)); // produced by conclude()
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -1034,6 +1123,110 @@ public class ServiceStateStatsTest extends TelephonyTest {
         state = captor.getAllValues().get(1);
         assertEquals(CELLULAR_SERVICE_STATE__FOLD_STATE__STATE_CLOSED, state.foldState);
         verifyNoMoreInteractions(mPersistAtomsStorage);
+    }
+
+    @Test
+    @SmallTest
+    public void isNetworkRoaming_nullServiceState() throws Exception {
+        boolean result = ServiceStateStats.isNetworkRoaming(null);
+
+        assertEquals(false, result);
+    }
+
+    @Test
+    @SmallTest
+    public void isNetworkRoaming_notRoaming() throws Exception {
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_UMTS)
+                // This sets mNetworkRegistrationState
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME)
+                .build();
+        nri.setRoamingType(ServiceState.ROAMING_TYPE_NOT_ROAMING);
+        doReturn(nri).when(mServiceState).getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        doReturn(nri).when(mServiceState).getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+
+        boolean result = ServiceStateStats.isNetworkRoaming(mServiceState);
+        boolean resultCs = ServiceStateStats.isNetworkRoaming(
+                mServiceState, NetworkRegistrationInfo.DOMAIN_CS);
+        boolean resultPs = ServiceStateStats.isNetworkRoaming(
+                mServiceState, NetworkRegistrationInfo.DOMAIN_PS);
+
+        assertEquals(false, result);
+        assertEquals(false, resultCs);
+        assertEquals(false, resultPs);
+    }
+
+    @Test
+    @SmallTest
+    public void isNetworkRoaming_csRoaming() throws Exception {
+        NetworkRegistrationInfo roamingNri = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_UMTS)
+                // This sets mNetworkRegistrationState
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING)
+                .build();
+        roamingNri.setRoamingType(ServiceState.ROAMING_TYPE_NOT_ROAMING);
+        doReturn(roamingNri).when(mServiceState).getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+
+        boolean result = ServiceStateStats.isNetworkRoaming(mServiceState);
+        boolean resultCs = ServiceStateStats.isNetworkRoaming(
+                mServiceState, NetworkRegistrationInfo.DOMAIN_CS);
+        boolean resultPs = ServiceStateStats.isNetworkRoaming(
+                mServiceState, NetworkRegistrationInfo.DOMAIN_PS);
+
+        assertEquals(true, result);
+        assertEquals(true, resultCs);
+        assertEquals(false, resultPs);
+    }
+
+    @Test
+    @SmallTest
+    public void isNetworkRoaming_psRoaming() throws Exception {
+        NetworkRegistrationInfo roamingNri = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_UMTS)
+                // This sets mNetworkRegistrationState
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING)
+                .build();
+        roamingNri.setRoamingType(ServiceState.ROAMING_TYPE_NOT_ROAMING);
+        doReturn(roamingNri).when(mServiceState).getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+
+        boolean result = ServiceStateStats.isNetworkRoaming(mServiceState);
+        boolean resultCs = ServiceStateStats.isNetworkRoaming(
+                mServiceState, NetworkRegistrationInfo.DOMAIN_CS);
+        boolean resultPs = ServiceStateStats.isNetworkRoaming(
+                mServiceState, NetworkRegistrationInfo.DOMAIN_PS);
+
+        assertEquals(true, result);
+        assertEquals(false, resultCs);
+        assertEquals(true, resultPs);
+    }
+
+    @Test
+    @SmallTest
+    public void isNetworkRoaming_bothRoaming() throws Exception {
+        NetworkRegistrationInfo roamingNri = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_UMTS)
+                // This sets mNetworkRegistrationState
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING)
+                .build();
+        roamingNri.setRoamingType(ServiceState.ROAMING_TYPE_NOT_ROAMING);
+        doReturn(roamingNri).when(mServiceState).getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        doReturn(roamingNri).when(mServiceState).getNetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+
+        boolean result = ServiceStateStats.isNetworkRoaming(mServiceState);
+        boolean resultCs = ServiceStateStats.isNetworkRoaming(
+                mServiceState, NetworkRegistrationInfo.DOMAIN_CS);
+        boolean resultPs = ServiceStateStats.isNetworkRoaming(
+                mServiceState, NetworkRegistrationInfo.DOMAIN_PS);
+
+        assertEquals(true, result);
+        assertEquals(true, resultCs);
+        assertEquals(true, resultPs);
     }
 
     private void mockWwanPsRat(@NetworkType int rat) {
