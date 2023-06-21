@@ -450,7 +450,7 @@ public class VoiceCallSessionStats {
         proto.srvccCancellationCount = 0L;
         proto.rttEnabled = false;
         proto.isEmergency = conn.isEmergencyCall() || conn.isNetworkIdentifiedEmergencyCall();
-        proto.isRoaming = serviceState != null ? serviceState.getVoiceRoaming() : false;
+        proto.isRoaming = ServiceStateStats.isNetworkRoaming(serviceState);
         proto.isMultiparty = conn.isMultiparty();
         proto.lastKnownRat = rat;
         proto.videoEnabled = videoState != VideoProfile.STATE_AUDIO_ONLY ? true : false;

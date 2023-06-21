@@ -166,9 +166,7 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
         doReturn(mSecondServiceState).when(mSecondServiceStateTracker).getServiceState();
 
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_UNKNOWN);
-        doReturn(false).when(mServiceState).getVoiceRoaming();
         setServiceState(mSecondServiceState, TelephonyManager.NETWORK_TYPE_UNKNOWN);
-        doReturn(false).when(mSecondServiceState).getVoiceRoaming();
 
         doReturn(true).when(mPhysicalSlot).isActive();
         doReturn(CardState.CARDSTATE_PRESENT).when(mPhysicalSlot).getCardState();
@@ -760,9 +758,17 @@ public class VoiceCallSessionStatsTest extends TelephonyTest {
     @SmallTest
     public void singleImsCall_roaming() {
         setServiceState(mServiceState, TelephonyManager.NETWORK_TYPE_LTE);
+        NetworkRegistrationInfo roamingNri = new NetworkRegistrationInfo.Builder()
+                .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_LTE)
+                // This sets mNetworkRegistrationState
+                .setRegistrationState(NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING)
+                .build();
+        doReturn(roamingNri).when(mServiceState)
+                .getNetworkRegistrationInfo(
+                        NetworkRegistrationInfo.DOMAIN_CS,
+                        AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
         doReturn(TelephonyManager.NETWORK_TYPE_LTE).when(mImsStats).getImsVoiceRadioTech();
         doReturn(mImsPhone).when(mPhone).getImsPhone();
-        doReturn(true).when(mServiceState).getVoiceRoaming();
         doReturn(true).when(mImsConnection0).isIncoming();
         doReturn(2000L).when(mImsConnection0).getCreateTime();
         doReturn(mImsCall0).when(mImsConnection0).getCall();
