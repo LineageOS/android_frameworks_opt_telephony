@@ -178,6 +178,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
     private AccessNetworksManagerCallback mAccessNetworksManagerCallback;
     private LinkBandwidthEstimatorCallback mLinkBandwidthEstimatorCallback;
 
+    private boolean mIsNonTerrestrialNetwork = false;
+
     private final DataProfile mGeneralPurposeDataProfile = new DataProfile.Builder()
             .setApnSetting(new ApnSetting.Builder()
                     .setId(2163)
@@ -610,6 +612,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .setRegistrationState(dataRegState)
                 .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
                 .setDataSpecificInfo(dsri)
+                .setIsNonTerrestrialNetwork(mIsNonTerrestrialNetwork)
                 .build());
 
         ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
@@ -617,6 +620,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .setAccessNetworkTechnology(TelephonyManager.NETWORK_TYPE_IWLAN)
                 .setRegistrationState(iwlanRegState)
                 .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
+                .setIsNonTerrestrialNetwork(mIsNonTerrestrialNetwork)
                 .build());
 
         ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
@@ -1550,6 +1554,28 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(false).when(mPhone).isInCdmaEcm();
         mDataNetworkControllerUT.obtainMessage(20/*EVENT_EMERGENCY_CALL_CHANGED*/).sendToTarget();
         processAllMessages();
+
+        // Verify data is restored.
+        verifyInternetConnected();
+    }
+
+    @Test
+    public void testNonTerrestrialNetworkChanged() throws Exception {
+        mIsNonTerrestrialNetwork = true;
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        processAllMessages();
+
+        // Data with internet capability should not be allowed
+        // when the device is using non-terrestrial network
+        verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+
+        mIsNonTerrestrialNetwork = false;
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
 
         // Verify data is restored.
         verifyInternetConnected();
