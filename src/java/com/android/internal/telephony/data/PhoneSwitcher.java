@@ -513,7 +513,7 @@ public class PhoneSwitcher extends Handler {
         TelephonyRegistryManager telephonyRegistryManager = (TelephonyRegistryManager)
                 context.getSystemService(Context.TELEPHONY_REGISTRY_SERVICE);
         telephonyRegistryManager.addOnSubscriptionsChangedListener(
-                mSubscriptionsChangedListener, mSubscriptionsChangedListener.getHandlerExecutor());
+                mSubscriptionsChangedListener, this::post);
 
         mConnectivityManager =
             (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
