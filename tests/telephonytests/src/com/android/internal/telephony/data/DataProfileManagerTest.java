@@ -841,20 +841,27 @@ public class DataProfileManagerTest extends TelephonyTest {
 
         assertThat(mDataProfileManagerUT.isDataProfilePreferred(legacyRatDataProfile)).isTrue();
 
-        // Test Another supl default internet network temporarily connected. Verify preferred
-        // doesn't change.
-        TelephonyNetworkRequest suplTnr = new TelephonyNetworkRequest(
+        // Test Another dun default internet network temporarily connected. Verify preferred
+        // doesn't change. Mock DUN | DEFAULT.
+        TelephonyNetworkRequest dunTnr = new TelephonyNetworkRequest(
                 new NetworkRequest.Builder()
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL)
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_DUN)
                         .build(), mPhone);
-        DataProfile suplDataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
-                suplTnr, TelephonyManager.NETWORK_TYPE_LTE, false);
-        DataNetwork suplInternetNetwork = Mockito.mock(DataNetwork.class);
-        doReturn(suplDataProfile).when(suplInternetNetwork).getDataProfile();
-        doReturn(new DataNetworkController.NetworkRequestList(List.of(suplTnr)))
-                .when(suplInternetNetwork).getAttachedNetworkRequestList();
+        DataProfile dunDataProfile = mDataProfileManagerUT.getDataProfileForNetworkRequest(
+                dunTnr, TelephonyManager.NETWORK_TYPE_LTE, false);
+        DataNetwork dunInternetNetwork = Mockito.mock(DataNetwork.class);
+        doReturn(dunDataProfile).when(dunInternetNetwork).getDataProfile();
+        doReturn(new DataNetworkController.NetworkRequestList(List.of(dunTnr)))
+                .when(dunInternetNetwork).getAttachedNetworkRequestList();
         mDataNetworkControllerCallback.onInternetDataNetworkConnected(List.of(
-                legacyRatInternetNetwork, suplInternetNetwork));
+                legacyRatInternetNetwork, dunInternetNetwork));
+        processAllMessages();
+
+        assertThat(mDataProfileManagerUT.isDataProfilePreferred(legacyRatDataProfile)).isTrue();
+
+        // Test a single dun default internet network temporarily connected. Verify preferred
+        // doesn't change. Mock DUN | DEFAULT and enforced single connection.
+        mDataNetworkControllerCallback.onInternetDataNetworkConnected(List.of(dunInternetNetwork));
         processAllMessages();
 
         assertThat(mDataProfileManagerUT.isDataProfilePreferred(legacyRatDataProfile)).isTrue();
@@ -1203,6 +1210,8 @@ public class DataProfileManagerTest extends TelephonyTest {
         dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
         DataNetwork internetNetwork = Mockito.mock(DataNetwork.class);
         doReturn(dataProfile).when(internetNetwork).getDataProfile();
+        doReturn(new DataNetworkController.NetworkRequestList(List.of(tnr)))
+                .when(internetNetwork).getAttachedNetworkRequestList();
         mDataNetworkControllerCallback.onInternetDataNetworkConnected(List.of(internetNetwork));
         processAllMessages();
 

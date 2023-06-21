@@ -410,23 +410,18 @@ public class DataProfileManager extends Handler {
      * @param internetNetworks The connected internet data networks.
      */
     private void onInternetDataNetworkConnected(@NonNull List<DataNetwork> internetNetworks) {
-        DataProfile defaultProfile = null;
-        if (internetNetworks.size() == 1) {
-            // Most of the cases there should be only one.
-            defaultProfile = internetNetworks.get(0).getDataProfile();
-        } else if (internetNetworks.size() > 1) {
-            // but in case there are multiple, find the default internet network, and choose the
-            // one which has longest life cycle.
-            logv("onInternetDataNetworkConnected: mPreferredDataProfile=" + mPreferredDataProfile
-                    + " internetNetworks=" + internetNetworks);
-            defaultProfile = internetNetworks.stream()
-                    .filter(network -> mPreferredDataProfile == null
-                            || canPreferredDataProfileSatisfy(
-                            network.getAttachedNetworkRequestList()))
-                    .map(DataNetwork::getDataProfile)
-                    .min(Comparator.comparingLong(DataProfile::getLastSetupTimestamp))
-                    .orElse(null);
-        }
+        // Most of the cases there should be only one.
+        // but in case there are multiple, find the default internet network, and choose the
+        // one which has longest life cycle.
+        DataProfile defaultProfile = internetNetworks.stream()
+                .filter(network -> mPreferredDataProfile == null
+                        // Find the one most resembles the current preferred profile,
+                        // avoiding e.g. DUN default network.
+                        || canPreferredDataProfileSatisfy(
+                        network.getAttachedNetworkRequestList()))
+                .map(DataNetwork::getDataProfile)
+                .min(Comparator.comparingLong(DataProfile::getLastSetupTimestamp))
+                .orElse(null);
 
         // Update a working internet data profile as a future candidate for preferred data profile
         // after APNs are reset to default
@@ -436,6 +431,9 @@ public class DataProfileManager extends Handler {
         // brought up a network means it passed sophisticated checks, update the preferred data
         // profile so that this network won't be torn down in future network evaluations.
         if (defaultProfile == null || defaultProfile.equals(mPreferredDataProfile)) return;
+        logv("onInternetDataNetworkConnected: defaultProfile=" + defaultProfile
+                + " previous preferredDataProfile=" + mPreferredDataProfile
+                + " internetNetworks=" + internetNetworks);
         // Save the preferred data profile into database.
         setPreferredDataProfile(defaultProfile);
         updateDataProfiles(false/*force update IA*/);
