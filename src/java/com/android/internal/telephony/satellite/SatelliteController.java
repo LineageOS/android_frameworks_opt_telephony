@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.satellite;
 
+import android.annotation.ArrayRes;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.bluetooth.BluetoothAdapter;
@@ -25,6 +26,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.net.wifi.WifiManager;
 import android.nfc.NfcAdapter;
@@ -34,15 +36,18 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.CancellationSignal;
 import android.os.Handler;
+import android.os.HandlerExecutor;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.ICancellationSignal;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.RemoteException;
 import android.os.ResultReceiver;
 import android.os.SystemProperties;
 import android.provider.Settings;
+import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -54,8 +59,10 @@ import android.telephony.satellite.SatelliteCapabilities;
 import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
 import android.util.Log;
+import android.util.SparseArray;
 import android.uwb.UwbManager;
 
+import com.android.internal.R;
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
@@ -64,10 +71,14 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
 import com.android.internal.telephony.satellite.metrics.ProvisionMetricsStats;
 import com.android.internal.telephony.satellite.metrics.SessionMetricsStats;
+import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.util.FunctionalUtils;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -199,6 +210,22 @@ public class SatelliteController extends Handler {
     private final Object mNeedsSatellitePointingLock = new Object();
     @GuardedBy("mNeedsSatellitePointingLock")
     private boolean mNeedsSatellitePointing = false;
+    /** Key: subId, value: (key: PLMN, value: set of
+     * {@link android.telephony.NetworkRegistrationInfo.ServiceType})
+     */
+    @GuardedBy("mSupportedSatelliteServicesLock")
+    @NonNull private final Map<Integer, Map<String, Set<Integer>>> mSupportedSatelliteServices =
+            new HashMap<>();
+    @NonNull private final Object mSupportedSatelliteServicesLock = new Object();
+    /** Key: PLMN, value: set of {@link android.telephony.NetworkRegistrationInfo.ServiceType} */
+    @NonNull private final Map<String, Set<Integer>> mSatelliteServicesSupportedByProviders;
+    @NonNull private final CarrierConfigManager mCarrierConfigManager;
+    @NonNull private final CarrierConfigManager.CarrierConfigChangeListener
+            mCarrierConfigChangeListener;
+    @NonNull private final Object mCarrierConfigArrayLock = new Object();
+    @GuardedBy("mCarrierConfigArrayLock")
+    @NonNull private final SparseArray<PersistableBundle> mCarrierConfigArray = new SparseArray<>();
+    @NonNull private final List<String> mSatellitePlmnList;
 
     /**
      * @return The singleton instance of SatelliteController.
@@ -266,6 +293,7 @@ public class SatelliteController extends Handler {
         registerForPendingDatagramCount();
         registerForSatelliteModemStateChanged();
         mContentResolver = mContext.getContentResolver();
+        mCarrierConfigManager = mContext.getSystemService(CarrierConfigManager.class);
 
         try {
             mSharedPreferences = mContext.getSharedPreferences(SATELLITE_SHARED_PREF,
@@ -287,6 +315,16 @@ public class SatelliteController extends Handler {
                     Settings.Global.getUriFor(Settings.Global.SATELLITE_MODE_RADIOS),
                     false, satelliteModeRadiosContentObserver);
         }
+
+        mSatelliteServicesSupportedByProviders = readSupportedSatelliteServicesFromOverlayConfig();
+        mSatellitePlmnList =
+                mSatelliteServicesSupportedByProviders.keySet().stream().toList();
+        updateSupportedSatelliteServicesForActiveSubscriptions();
+        mCarrierConfigChangeListener =
+                (slotIndex, subId, carrierId, specificCarrierId) ->
+                        handleCarrierConfigChanged(slotIndex, subId, carrierId, specificCarrierId);
+        mCarrierConfigManager.registerCarrierConfigChangeListener(
+                        new HandlerExecutor(new Handler(looper)), mCarrierConfigChangeListener);
     }
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
@@ -1902,6 +1940,40 @@ public class SatelliteController extends Handler {
     }
 
     /**
+     * @return The list of satellite PLMNs used for connecting to satellite networks.
+     */
+    @NonNull
+    public List<String> getSatellitePlmnList() {
+        return new ArrayList<>(mSatellitePlmnList);
+    }
+
+    /**
+     * @param subId Subscription ID.
+     * @param plmn The satellite roaming plmn.
+     * @return The list of services supported by the carrier associated with the {@code subId} for
+     * the satellite network {@code plmn}.
+     */
+    @NonNull
+    public List<Integer> getSupportedSatelliteServices(int subId, String plmn) {
+        synchronized (mSupportedSatelliteServicesLock) {
+            if (mSupportedSatelliteServices.containsKey(subId)) {
+                Map<String, Set<Integer>> supportedServices =
+                        mSupportedSatelliteServices.get(subId);
+                if (supportedServices != null && supportedServices.containsKey(plmn)) {
+                    return new ArrayList<>(supportedServices.get(plmn));
+                } else {
+                    loge("getSupportedSatelliteServices: subId=" + subId + ", supportedServices "
+                            + "does not contain key plmn=" + plmn);
+                }
+            } else {
+                loge("getSupportedSatelliteServices: mSupportedSatelliteServices does contain key"
+                        + " subId=" + subId);
+            }
+            return new ArrayList<>();
+        }
+    }
+
+    /**
      * If we have not successfully queried the satellite modem for its satellite service support,
      * we will retry the query one more time. Otherwise, we will return the cached result.
      */
@@ -2310,6 +2382,96 @@ public class SatelliteController extends Handler {
 
     private boolean isMockModemAllowed() {
         return (DEBUG || SystemProperties.getBoolean(ALLOW_MOCK_MODEM_PROPERTY, false));
+    }
+
+    private void updateSupportedSatelliteServicesForActiveSubscriptions() {
+        synchronized (mSupportedSatelliteServicesLock) {
+            mSupportedSatelliteServices.clear();
+            int[] activeSubIds = SubscriptionManagerService.getInstance().getActiveSubIdList(true);
+            if (activeSubIds != null) {
+                for (int subId : activeSubIds) {
+                    updateSupportedSatelliteServices(subId);
+                }
+            } else {
+                loge("updateSupportedSatelliteServicesForActiveSubscriptions: "
+                        + "activeSubIds is null");
+            }
+        }
+    }
+
+    private void updateSupportedSatelliteServices(int subId) {
+        Map<String, Set<Integer>> carrierSupportedSatelliteServicesPerPlmn =
+                readSupportedSatelliteServicesFromCarrierConfig(subId);
+        synchronized (mSupportedSatelliteServicesLock) {
+            mSupportedSatelliteServices.put(subId,
+                    SatelliteServiceUtils.mergeSupportedSatelliteServices(
+                            mSatelliteServicesSupportedByProviders,
+                            carrierSupportedSatelliteServicesPerPlmn));
+        }
+    }
+
+    @NonNull
+    private Map<String, Set<Integer>> readSupportedSatelliteServicesFromOverlayConfig() {
+        String[] supportedServices = readStringArrayFromOverlayConfig(
+                R.array.config_satellite_services_supported_by_providers);
+        return SatelliteServiceUtils.parseSupportedSatelliteServices(supportedServices);
+    }
+
+    @NonNull
+    private Map<String, Set<Integer>> readSupportedSatelliteServicesFromCarrierConfig(int subId) {
+        synchronized (mCarrierConfigArrayLock) {
+            PersistableBundle config = mCarrierConfigArray.get(subId);
+            if (config == null) {
+                config = getConfigForSubId(subId);
+                mCarrierConfigArray.put(subId, config);
+            }
+            return SatelliteServiceUtils.parseSupportedSatelliteServices(
+                    config.getPersistableBundle(CarrierConfigManager
+                            .KEY_CARRIER_SUPPORTED_SATELLITE_SERVICES_PER_PROVIDER_BUNDLE));
+        }
+    }
+
+    @NonNull private PersistableBundle getConfigForSubId(int subId) {
+        PersistableBundle config = mCarrierConfigManager.getConfigForSubId(subId,
+                CarrierConfigManager
+                        .KEY_CARRIER_SUPPORTED_SATELLITE_SERVICES_PER_PROVIDER_BUNDLE);
+        if (config == null || config.isEmpty()) {
+            config = CarrierConfigManager.getDefaultConfig();
+        }
+        return config;
+    }
+
+    private void handleCarrierConfigChanged(int slotIndex, int subId, int carrierId,
+            int specificCarrierId) {
+        logd("handleCarrierConfigChanged(): slotIndex(" + slotIndex + "), subId("
+                + subId + "), carrierId(" + carrierId + "), specificCarrierId("
+                + specificCarrierId + ")");
+        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            return;
+        }
+
+        updateCarrierConfig(subId);
+        updateSupportedSatelliteServicesForActiveSubscriptions();
+    }
+
+    private void updateCarrierConfig(int subId) {
+        synchronized (mCarrierConfigArrayLock) {
+            mCarrierConfigArray.put(subId, getConfigForSubId(subId));
+        }
+    }
+
+    @NonNull
+    private String[] readStringArrayFromOverlayConfig(@ArrayRes int id) {
+        String[] strArray = null;
+        try {
+            strArray = mContext.getResources().getStringArray(id);
+        } catch (Resources.NotFoundException ex) {
+            loge("readStringArrayFromOverlayConfig: id= " + id + ", ex=" + ex);
+        }
+        if (strArray == null) {
+            strArray = new String[0];
+        }
+        return strArray;
     }
 
     private static void logd(@NonNull String log) {

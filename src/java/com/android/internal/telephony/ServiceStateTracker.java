@@ -97,6 +97,7 @@ import com.android.internal.telephony.data.DataNetworkController.DataNetworkCont
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.metrics.ServiceStateStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
+import com.android.internal.telephony.satellite.NtnCapabilityResolver;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
@@ -3425,6 +3426,7 @@ public class ServiceStateTracker extends Handler {
 
         updateNrFrequencyRangeFromPhysicalChannelConfigs(mLastPhysicalChannelConfigList, mNewSS);
         updateNrStateFromPhysicalChannelConfigs(mLastPhysicalChannelConfigList, mNewSS);
+        updateNtnCapability();
 
         if (TelephonyUtils.IS_DEBUGGABLE && mPhone.getTelephonyTester() != null) {
             mPhone.getTelephonyTester().overrideServiceState(mNewSS);
@@ -5551,6 +5553,17 @@ public class ServiceStateTracker extends Handler {
                 log("pollStateDone: mNewSS = " + mNewSS);
             }
             return;
+        }
+    }
+
+    private void updateNtnCapability() {
+        for (NetworkRegistrationInfo nri : mNewSS.getNetworkRegistrationInfoListForTransportType(
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN)) {
+            NtnCapabilityResolver.resolveNtnCapability(nri, mSubId);
+            if (nri.isNonTerrestrialNetwork()) {
+                // Replace the existing NRI with the updated NRI.
+                mNewSS.addNetworkRegistrationInfo(nri);
+            }
         }
     }
 
