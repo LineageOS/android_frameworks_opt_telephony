@@ -278,15 +278,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 // UMTS < GPRS < EDGE
                 new String[]{"3,1,2"});
 
-        mBundle.putBoolean(CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL,
-                false);
-
-        mBundle.putBoolean(CarrierConfigManager.KEY_RATCHET_NR_ADVANCED_BANDWIDTH_IF_RRC_IDLE_BOOL,
-                true);
-
-        doReturn(true).when(mTelephonyManager).isRadioInterfaceCapabilitySupported(
-                TelephonyManager.CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED);
-
         mSimulatedCommands.setVoiceRegState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         mSimulatedCommands.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_HSPA);
         mSimulatedCommands.setDataRegState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
@@ -374,9 +365,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                     15, /* SIGNAL_STRENGTH_GOOD */
                     30  /* SIGNAL_STRENGTH_GREAT */
                 });
-        mBundle.putBoolean(
-                CarrierConfigManager.KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL,
-                true);
 
         sendCarrierConfigUpdate(PHONE_ID);
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
@@ -2369,21 +2357,13 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     public void testPhyChanBandwidthForNr() {
-        mBundle.putBoolean(
-                CarrierConfigManager.KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL,
-                false);
         // NR Cell with bandwidth = 10000
         CellIdentityNr nrCi = new CellIdentityNr(
-                0, 0, 0, new int[]{10000}, "", "", 5, "", "", Collections.emptyList());
+                0, 0, 0, new int[] {}, "", "", 5, "", "", Collections.emptyList());
 
-        sendRegStateUpdateForNrCellId(nrCi);
-        // should ratchet for NR
         sendPhyChanConfigChange(new int[] {10000, 5000}, TelephonyManager.NETWORK_TYPE_NR, 0);
-        assertArrayEquals(new int[]{10000, 5000}, sst.mSS.getCellBandwidths());
-
-        // should not ratchet for LTE
-        sendPhyChanConfigChange(new int[] {100}, TelephonyManager.NETWORK_TYPE_LTE, 0);
-        assertArrayEquals(new int[]{}, sst.mSS.getCellBandwidths());
+        sendRegStateUpdateForNrCellId(nrCi);
+        assertArrayEquals(new int[] {10000, 5000}, sst.mSS.getCellBandwidths());
     }
 
     /**
