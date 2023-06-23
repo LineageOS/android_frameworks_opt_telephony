@@ -1274,11 +1274,43 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         assertEquals("DefaultState", getCurrentState().getName());
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
-        doReturn(new int[] {20001}).when(mServiceState).getCellBandwidths();
+        List<PhysicalChannelConfig> lastPhysicalChannelConfigList = new ArrayList<>();
+        lastPhysicalChannelConfigList.add(new PhysicalChannelConfig.Builder()
+                .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
+                .setCellBandwidthDownlinkKhz(20001)
+                .build());
+        doReturn(lastPhysicalChannelConfigList).when(mSST).getPhysicalChannelConfigList();
         mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT, 20000);
         sendCarrierConfigChanged();
 
         mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED */);
+        processAllMessages();
+        assertEquals("connected_mmwave", getCurrentState().getName());
+    }
+
+    @Test
+    public void testTransitionToCurrentStateNrConnectedWithHighBandwidthIncludingLte()
+            throws Exception {
+        assertEquals("DefaultState", getCurrentState().getName());
+        doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
+        doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
+        List<PhysicalChannelConfig> lastPhysicalChannelConfigList = new ArrayList<>();
+        lastPhysicalChannelConfigList.add(new PhysicalChannelConfig.Builder()
+                .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
+                .setCellBandwidthDownlinkKhz(20000)
+                .build());
+        lastPhysicalChannelConfigList.add(new PhysicalChannelConfig.Builder()
+                .setNetworkType(TelephonyManager.NETWORK_TYPE_LTE)
+                .setCellBandwidthDownlinkKhz(10000)
+                .build());
+        doReturn(lastPhysicalChannelConfigList).when(mSST).getPhysicalChannelConfigList();
+        mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT, 20000);
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL,
+                true);
+        sendCarrierConfigChanged();
+
+        mNetworkTypeController.sendMessage(NetworkTypeController.EVENT_UPDATE);
         processAllMessages();
         assertEquals("connected_mmwave", getCurrentState().getName());
     }
