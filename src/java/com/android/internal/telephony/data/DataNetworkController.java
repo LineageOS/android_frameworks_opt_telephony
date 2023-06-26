@@ -1592,8 +1592,8 @@ public class DataNetworkController extends Handler {
                 // Check if it's SUPL during emergency call.
                 evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_SUPL);
             } else if (!networkRequest.hasCapability(
-                    NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED) && !networkRequest
-                    .hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN)) {
+                    NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                    && isValidRestrictedRequest(networkRequest)) {
                 // Check if request is restricted and not for tethering, which always comes with
                 // a restricted network request.
                 evaluation.addDataAllowedReason(DataAllowedReason.RESTRICTED_REQUEST);
@@ -1869,9 +1869,9 @@ public class DataNetworkController extends Handler {
                 evaluation.addDataAllowedReason(DataAllowedReason.EMERGENCY_SUPL);
             } else if (!dataNetwork.getNetworkCapabilities().hasCapability(
                     NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
-                    && !dataNetwork.hasNetworkCapabilityInNetworkRequests(
-                            NetworkCapabilities.NET_CAPABILITY_DUN)) {
-                // Check if request is restricted and there are no DUN network requests attached to
+                    && dataNetwork.getAttachedNetworkRequestList().stream()
+                            .allMatch(this::isValidRestrictedRequest)) {
+                // Check if request is restricted and there are no exceptional requests attached to
                 // the network.
                 evaluation.addDataAllowedReason(DataAllowedReason.RESTRICTED_REQUEST);
             } else if (dataNetwork.getTransport() == AccessNetworkConstants.TRANSPORT_TYPE_WLAN) {
@@ -1898,6 +1898,18 @@ public class DataNetworkController extends Handler {
 
         log("Evaluated " + dataNetwork + ", " + evaluation);
         return evaluation;
+    }
+
+    /**
+     * tethering and enterprise capabilities are not respected as restricted requests. For a request
+     * with these capabilities, any soft disallowed reasons are honored.
+     * @param networkRequest The network request to evaluate.
+     * @return {@code true} if the request doesn't contain any exceptional capabilities, its
+     * restricted capability, if any, is respected.
+     */
+    private boolean isValidRestrictedRequest(@NonNull TelephonyNetworkRequest networkRequest) {
+        return !(networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN)
+                || networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_ENTERPRISE));
     }
 
     /**
