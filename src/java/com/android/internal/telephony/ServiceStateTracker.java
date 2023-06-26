@@ -95,6 +95,7 @@ import com.android.internal.telephony.data.AccessNetworksManager.AccessNetworksM
 import com.android.internal.telephony.data.DataNetwork;
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
 import com.android.internal.telephony.imsphone.ImsPhone;
+import com.android.internal.telephony.metrics.RadioPowerStateStats;
 import com.android.internal.telephony.metrics.ServiceStateStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
@@ -1325,6 +1326,8 @@ public class ServiceStateTracker extends Handler {
                 break;
 
             case EVENT_RADIO_STATE_CHANGED:
+                RadioPowerStateStats.onRadioStateChanged(mCi.getRadioState());
+                // fall through, the code above only logs metrics when radio state changes
             case EVENT_PHONE_TYPE_SWITCHED:
                 if(!mPhone.isPhoneTypeGsm() &&
                         mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON) {
