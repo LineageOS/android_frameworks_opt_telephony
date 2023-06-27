@@ -1641,13 +1641,27 @@ public class DataNetworkControllerTest extends TelephonyTest {
         doReturn(true).when(controller).isCarrierConfigLoadedForAllSub();
         replaceInstance(MultiSimSettingController.class, "sInstance", null, controller);
 
+        // Mock Data Overall data is always enabled due to auto data switch,
+        // verify the test shouldn't rely on the overall data status
+        doReturn(1).when(mPhone).getSubId();
+        doReturn(2).when(mSubscriptionManagerService).getDefaultDataSubId();
+        Phone phone2 = Mockito.mock(Phone.class);
+        phone2.mCi = mSimulatedCommands;
+        doReturn(true).when(phone2).isUserDataEnabled();
+        doReturn(mDataSettingsManager).when(phone2).getDataSettingsManager();
+        replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[]{mPhone, phone2});
+        mDataNetworkControllerUT.getDataSettingsManager().setMobileDataPolicy(TelephonyManager
+                .MOBILE_DATA_POLICY_AUTO_DATA_SWITCH, true);
+        processAllMessages();
+        clearInvocations(mPhone);
+
         controller.notifyAllSubscriptionLoaded();
         mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
                 TelephonyManager.DATA_ENABLED_REASON_USER, !isDataEnabled,
                 mContext.getOpPackageName());
         processAllMessages();
 
-        // Verify not to notify MultiSimSettingController
+        // Verify not to notify MultiSimSettingController due to internal calling package
         verify(controller, never()).notifyUserDataEnabled(anyInt(), anyBoolean());
 
         mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
@@ -1655,7 +1669,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 mContext.getOpPackageName());
         processAllMessages();
 
-        // Verify not to notify MultiSimSettingController
+        // Verify not to notify MultiSimSettingController due to internal calling package
         verify(controller, never()).notifyUserDataEnabled(anyInt(), anyBoolean());
 
         mDataNetworkControllerUT.getDataSettingsManager().setDataEnabled(
@@ -1666,6 +1680,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Verify to notify MultiSimSettingController exactly 2 times
         verify(controller, times(2)).notifyUserDataEnabled(anyInt(), anyBoolean());
+        verify(mPhone, never()).notifyDataEnabled(anyBoolean(), anyInt());
     }
 
     @Test
