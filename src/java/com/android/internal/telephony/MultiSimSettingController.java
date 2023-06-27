@@ -163,15 +163,13 @@ public class MultiSimSettingController extends Handler {
         }
 
         @Override
-        public void onDataEnabledChanged(boolean enabled,
-                @TelephonyManager.DataEnabledChangedReason int reason, String callingPackage) {
+        public void onUserDataEnabledChanged(boolean enabled, @NonNull String callingPackage) {
             int subId = mPhone.getSubId();
-            // notifyUserDataEnabled if the change is called from external and reason is
-            // DATA_ENABLED_REASON_USER
+            // only notifyUserDataEnabled if the change is called from external to avoid
+            // setUserDataEnabledForGroup infinite loop
             if (SubscriptionManager.isValidSubscriptionId(subId)
-                    && reason == TelephonyManager.DATA_ENABLED_REASON_USER
                     && !getInstance().mContext.getOpPackageName().equals(callingPackage)) {
-                getInstance().notifyUserDataEnabled(mPhone.getSubId(), enabled);
+                getInstance().notifyUserDataEnabled(subId, enabled);
             }
         }
 
