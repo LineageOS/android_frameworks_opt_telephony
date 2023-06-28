@@ -1204,7 +1204,11 @@ public class RadioIndication extends IRadioIndication.Stub {
                     }
                     if (band == PhysicalChannelConfig.BAND_UNKNOWN) {
                         mRil.riljLoge("Unsupported unknown band.");
-                        return;
+                        // TODO, b/288310456,
+                        //  If the band is unknown, PhysicalChannelConfig can be built without
+                        //  setBand. It should be enforced not to allow "unknown" bands in the
+                        //  near future.
+                        // return;
                     } else {
                         builder.setBand(band);
                     }
