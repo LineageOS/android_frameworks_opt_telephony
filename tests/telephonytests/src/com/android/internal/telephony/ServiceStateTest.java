@@ -18,6 +18,8 @@ package com.android.internal.telephony;
 
 import static android.telephony.ServiceState.UNKNOWN_ID;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import android.os.Bundle;
 import android.os.Parcel;
 import android.telephony.AccessNetworkConstants;
@@ -442,6 +444,18 @@ public class ServiceStateTest extends TestCase {
         assertEquals(null, coarseLocationSanitizedSs.getOperatorNumeric());
         assertEquals(UNKNOWN_ID, coarseLocationSanitizedSs.getCdmaSystemId());
         assertEquals(UNKNOWN_ID, coarseLocationSanitizedSs.getCdmaNetworkId());
+    }
+
+    @SmallTest
+    public void testIsUsingNonTerrestrialNetwork() {
+        ServiceState ss = new ServiceState();
+        assertThat(ss.isUsingNonTerrestrialNetwork()).isEqualTo(false);
+
+        NetworkRegistrationInfo nri = new NetworkRegistrationInfo.Builder()
+                .setIsNonTerrestrialNetwork(true)
+                .build();
+        ss.addNetworkRegistrationInfo(nri);
+        assertThat(ss.isUsingNonTerrestrialNetwork()).isEqualTo(true);
     }
 
     private void assertCellIdentitiesSanitized(ServiceState ss) {
