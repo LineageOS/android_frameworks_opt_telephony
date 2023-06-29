@@ -801,7 +801,6 @@ public class DataProfileManagerTest extends TelephonyTest {
         assertThat(osAppId.getDifferentiator()).isEqualTo(1);
     }
 
-
     @Test
     public void testSetPreferredDataProfile() {
         TelephonyNetworkRequest tnr = new TelephonyNetworkRequest(
@@ -1062,6 +1061,7 @@ public class DataProfileManagerTest extends TelephonyTest {
         DataProfile dataProfile1 = new DataProfile.Builder()
                 .setApnSetting(new ApnSetting.Builder()
                         .setEntryName("general")
+                        .setOperatorNumeric("123456")
                         .setApnName("apn")
                         .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_MMS
                                 | ApnSetting.TYPE_SUPL | ApnSetting.TYPE_HIPRI)
@@ -1082,6 +1082,7 @@ public class DataProfileManagerTest extends TelephonyTest {
         DataProfile dataProfile2 = new DataProfile.Builder()
                 .setApnSetting(new ApnSetting.Builder()
                         .setEntryName("XCAP")
+                        .setOperatorNumeric("123456")
                         .setApnName("apn")
                         .setApnTypeBitmask(ApnSetting.TYPE_XCAP)
                         .setUser("user")
@@ -1351,6 +1352,7 @@ public class DataProfileManagerTest extends TelephonyTest {
                 .setApnSetting(new ApnSetting.Builder()
                         .setEntryName(GENERAL_PURPOSE_APN)
                         .setId(1)
+                        .setOperatorNumeric(PLMN)
                         .setApnName(GENERAL_PURPOSE_APN)
                         .setProxyAddress("")
                         .setMmsProxyAddress("")

@@ -977,6 +977,7 @@ public class DataProfileManager extends Handler {
         // The following fields in apn1 and apn2 should be the same, otherwise ApnSetting.similar()
         // should fail earlier.
         apnBuilder.setApnName(apn1.getApnName());
+        apnBuilder.setOperatorNumeric(apn1.getOperatorNumeric());
         apnBuilder.setProtocol(apn1.getProtocol());
         apnBuilder.setRoamingProtocol(apn1.getRoamingProtocol());
         apnBuilder.setCarrierEnabled(apn1.isEnabled());
