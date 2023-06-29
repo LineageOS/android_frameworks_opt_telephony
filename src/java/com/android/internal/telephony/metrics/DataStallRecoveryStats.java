@@ -19,6 +19,7 @@ package com.android.internal.telephony.metrics;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.net.NetworkCapabilities;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.telephony.AccessNetworkConstants;
@@ -302,6 +303,46 @@ public class DataStallRecoveryStats {
                 break;
             }
         }
+    }
+
+    /**
+     * Return bundled data stall recovery metrics data.
+     *
+     * @param action The recovery action.
+     * @param isRecovered Whether the data stall has been recovered.
+     * @param duration The duration from data stall occurred in milliseconds.
+     * @param reason The reason for the recovery.
+     * @param isFirstValidation Whether this is the first validation after recovery.
+     * @param durationOfAction The duration of the current action in milliseconds.
+     */
+    public Bundle getDataStallRecoveryMetricsData(
+            @DataStallRecoveryManager.RecoveryAction int action,
+            boolean isRecovered,
+            int duration,
+            @DataStallRecoveryManager.RecoveredReason int reason,
+            boolean isFirstValidation,
+            int durationOfAction) {
+        Bundle bundle = new Bundle();
+        bundle.putInt("Action", action);
+        bundle.putBoolean("IsRecovered", isRecovered);
+        bundle.putInt("Duration", duration);
+        bundle.putInt("Reason", reason);
+        bundle.putBoolean("IsFirstValidation", isFirstValidation);
+        bundle.putInt("DurationOfAction", durationOfAction);
+        bundle.putInt("PhoneId", mPhoneId);
+        bundle.putInt("CarrierId", mCarrierId);
+        bundle.putInt("SignalStrength", mSignalStrength);
+        bundle.putInt("Band", mBand);
+        bundle.putInt("Rat", mRat);
+        bundle.putBoolean("IsOpportunistic", mIsOpportunistic);
+        bundle.putBoolean("IsMultiSim", mIsMultiSim);
+        bundle.putInt("NetworkRegState", mNetworkRegState);
+        bundle.putInt("OtherSignalStrength", mOtherSignalStrength);
+        bundle.putInt("OtherNetworkRegState", mOtherNetworkRegState);
+        bundle.putInt("InternetLinkStatus", mInternetLinkStatus);
+        bundle.putInt("LinkDownBandwidthKbps", mLinkDownBandwidthKbps);
+        bundle.putInt("LinkUpBandwidthKbps", mLinkUpBandwidthKbps);
+        return bundle;
     }
 
     private void log(@NonNull String s) {

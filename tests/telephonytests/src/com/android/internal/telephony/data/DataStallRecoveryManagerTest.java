@@ -18,6 +18,7 @@ package com.android.internal.telephony.data;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assert.assertNotNull;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
@@ -25,9 +26,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import android.content.Intent;
 import android.net.NetworkAgent;
+import android.os.Bundle;
 import android.telephony.Annotation.ValidationStatus;
 import android.telephony.CarrierConfigManager;
+import android.telephony.TelephonyManager;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -362,5 +366,47 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
             moveTimeForward(101);
         }
         assertThat(mDataStallRecoveryManager.mDataStallStartMs != 0).isTrue();
+    }
+
+    /**
+     * Tests the DSRM process to send three intents for three action changes.
+     */
+    @Test
+    public void testSendDSRMData() throws Exception {
+        ArgumentCaptor<Intent> captorIntent = ArgumentCaptor.forClass(Intent.class);
+
+        logd("Set phone status to normal status.");
+        sendOnInternetDataNetworkCallback(true);
+        doReturn(mSignalStrength).when(mPhone).getSignalStrength();
+        doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
+
+        // Set the expected behavior of the DataStallRecoveryManager.
+        logd("Start DSRM process, set action to 1");
+        mDataStallRecoveryManager.setRecoveryAction(1);
+        logd("Sending validation failed callback");
+        sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_NOT_VALID);
+        processAllFutureMessages();
+
+        logd("Verify that the DataStallRecoveryManager sends the expected intents.");
+        verify(mPhone.getContext(), times(3)).sendBroadcast(captorIntent.capture());
+        logd(captorIntent.getAllValues().toString());
+        for (int i = 0; i < captorIntent.getAllValues().size(); i++) {
+            Intent intent = captorIntent.getAllValues().get(i);
+            // Check and assert if intent is null
+            assertNotNull(intent);
+            // Check and assert if intent is not ACTION_DATA_STALL_DETECTED
+            assertThat(intent.getAction()).isEqualTo(
+                    TelephonyManager.ACTION_DATA_STALL_DETECTED);
+            // Get the extra data
+            Bundle bundle = (Bundle) intent.getExtra("EXTRA_DSRS_STATS_BUNDLE");
+            // Check and assert if bundle is null
+            assertNotNull(bundle);
+            // Dump bundle data
+            logd(bundle.toString());
+            int size = bundle.size();
+            logd("bundle size is " + size);
+            // Check if bundle size is 19
+            assertThat(size).isEqualTo(19);
+        }
     }
 }
