@@ -175,7 +175,7 @@ public class DataSettingsManagerTest extends TelephonyTest {
 
         // Verify the override takes effect upon DDS user enabled.
         doReturn(true).when(phone2).isUserDataEnabled();
-        callback.onUserDataEnabledChanged(true);
+        callback.onUserDataEnabledChanged(true, "callingPackage");
         verify(mPhone).notifyDataEnabled(true, TelephonyManager.DATA_ENABLED_REASON_OVERRIDE);
     }
 }
