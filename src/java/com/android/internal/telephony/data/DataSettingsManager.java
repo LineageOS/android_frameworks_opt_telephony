@@ -133,8 +133,9 @@ public class DataSettingsManager extends Handler {
          * Called when user data enabled state changed.
          *
          * @param enabled {@code true} indicates user mobile data is enabled.
+         * @param callingPackage The package that changed the data enabled state.
          */
-        public void onUserDataEnabledChanged(boolean enabled) {}
+        public void onUserDataEnabledChanged(boolean enabled, @NonNull String callingPackage) {}
 
         /**
          * Called when overall data enabled state changed.
@@ -302,9 +303,11 @@ public class DataSettingsManager extends Handler {
                 phone.getDataSettingsManager().registerCallback(new DataSettingsManagerCallback(
                         this::post) {
                     @Override
-                    public void onUserDataEnabledChanged(boolean enabled) {
+                    public void onUserDataEnabledChanged(boolean enabled,
+                            @NonNull String callingPackage) {
                         log("phone" + phone.getPhoneId() + " onUserDataEnabledChanged "
-                                + enabled + ", reevaluating mobile data policies");
+                                + enabled + " by " + callingPackage
+                                + ", reevaluating mobile data policies");
                         DataSettingsManager.this.updateDataEnabledAndNotify(
                                 TelephonyManager.DATA_ENABLED_REASON_OVERRIDE);
                     }
@@ -439,7 +442,7 @@ public class DataSettingsManager extends Handler {
             logl("UserDataEnabled changed to " + enabled);
             mPhone.notifyUserMobileDataStateChanged(enabled);
             mDataSettingsManagerCallbacks.forEach(callback -> callback.invokeFromExecutor(
-                    () -> callback.onUserDataEnabledChanged(enabled)));
+                    () -> callback.onUserDataEnabledChanged(enabled, callingPackage)));
             updateDataEnabledAndNotify(TelephonyManager.DATA_ENABLED_REASON_USER, callingPackage);
         }
     }
