@@ -139,6 +139,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 /**
  * {@hide}
@@ -2539,10 +2540,6 @@ public class ImsPhone extends ImsPhoneBase {
     /** Sets the IMS phone number from IMS associated URIs, if any found. */
     @VisibleForTesting
     public void setPhoneNumberForSourceIms(Uri[] uris) {
-        String phoneNumber = extractPhoneNumberFromAssociatedUris(uris);
-        if (phoneNumber == null) {
-            return;
-        }
         int subId = getSubId();
         if (!SubscriptionManager.isValidSubscriptionId(subId)) {
             // Defending b/219080264:
@@ -2551,16 +2548,33 @@ public class ImsPhone extends ImsPhoneBase {
             // IMS callbacks are sent back to telephony after SIM state changed.
             return;
         }
-
         SubscriptionInfoInternal subInfo = mSubscriptionManagerService
                 .getSubscriptionInfoInternal(subId);
-        if (subInfo != null) {
-            phoneNumber = PhoneNumberUtils.formatNumberToE164(phoneNumber,
-                    subInfo.getCountryIso());
+        if (subInfo == null) {
+            loge("trigger setPhoneNumberForSourceIms, but subInfo is null");
+            return;
+        }
+        String subCountryIso = subInfo.getCountryIso();
+        String phoneNumber = extractPhoneNumberFromAssociatedUris(uris, /*isGlobalFormat*/true);
+        if (phoneNumber != null) {
+            phoneNumber = PhoneNumberUtils.formatNumberToE164(phoneNumber, subCountryIso);
             if (phoneNumber == null) {
+                loge("format to E164 failed");
                 return;
             }
             mSubscriptionManagerService.setNumberFromIms(subId, phoneNumber);
+        } else if (isAllowNonGlobalNumberFormat()) {
+            // If carrier config has true for KEY_IGNORE_GLOBAL_PHONE_NUMBER_FORMAT_BOOL and
+            // P-Associated-Uri does not have global number,
+            // try to find phone number excluding '+' one more time.
+            phoneNumber = extractPhoneNumberFromAssociatedUris(uris, /*isGlobalFormat*/false);
+            if (phoneNumber == null) {
+                loge("extract phone number without '+' failed");
+                return;
+            }
+            mSubscriptionManagerService.setNumberFromIms(subId, phoneNumber);
+        } else {
+            logd("extract phone number failed");
         }
     }
 
@@ -2570,24 +2584,40 @@ public class ImsPhone extends ImsPhoneBase {
      * <p>Associated URIs are public user identities, and phone number could be used:
      * see 3GPP TS 24.229 5.4.1.2 and 3GPP TS 23.003 13.4. This algotihm look for the
      * possible "global number" in E.164 format.
+     * <p>If true try finding phone number even if the P-Associated-Uri does not have global
+     * number format.
      */
-    private static String extractPhoneNumberFromAssociatedUris(Uri[] uris) {
+    private static String extractPhoneNumberFromAssociatedUris(Uri[] uris, boolean isGlobalFormat) {
         if (uris == null) {
             return null;
         }
-        return Arrays.stream(uris)
+
+        Stream<String> intermediate = Arrays.stream(uris)
                 // Phone number is an opaque URI "tel:<phone-number>" or "sip:<phone-number>@<...>"
                 .filter(u -> u != null && u.isOpaque())
                 .filter(u -> "tel".equalsIgnoreCase(u.getScheme())
                         || "sip".equalsIgnoreCase(u.getScheme()))
-                .map(Uri::getSchemeSpecificPart)
-                // "Global number" should be in E.164 format starting with "+" e.g. "+447539447777"
-                .filter(ssp -> ssp != null && ssp.startsWith("+"))
-                // Remove whatever after "@" for sip URI
-                .map(ssp -> ssp.split("@")[0])
-                // Returns the first winner
-                .findFirst()
-                .orElse(null);
+                .map(Uri::getSchemeSpecificPart);
+
+        if (isGlobalFormat) {
+            // "Global number" should be in E.164 format starting with "+" e.g. "+447539447777"
+            return intermediate.filter(ssp -> ssp != null && ssp.startsWith("+"))
+                    // Remove whatever after "@" for sip URI
+                    .map(ssp -> ssp.split("@")[0])
+                    // Returns the first winner
+                    .findFirst()
+                    .orElse(null);
+        } else {
+            // non global number format
+            return intermediate.filter(ssp -> ssp != null)
+                    // Remove whatever after "@" for sip URI
+                    .map(ssp -> ssp.split("@")[0])
+                    // regular expression, allow only number
+                    .filter(ssp -> ssp.matches("^[0-9]+$"))
+                    // Returns the first winner
+                    .findFirst()
+                    .orElse(null);
+        }
     }
 
     public IccRecords getIccRecords() {
@@ -2788,6 +2818,22 @@ public class ImsPhone extends ImsPhoneBase {
         mRegLocalLog.dump(pw);
         pw.decreaseIndent();
         pw.flush();
+    }
+
+    private boolean isAllowNonGlobalNumberFormat() {
+        PersistableBundle persistableBundle = null;
+        CarrierConfigManager carrierConfigManager = (CarrierConfigManager) mContext
+                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (carrierConfigManager != null) {
+            persistableBundle = carrierConfigManager.getConfigForSubId(getSubId(),
+                    CarrierConfigManager.Ims.KEY_ALLOW_NON_GLOBAL_PHONE_NUMBER_FORMAT_BOOL);
+        }
+        if (persistableBundle != null) {
+            return persistableBundle.getBoolean(
+                    CarrierConfigManager.Ims.KEY_ALLOW_NON_GLOBAL_PHONE_NUMBER_FORMAT_BOOL, false);
+        }
+
+        return false;
     }
 
     private void logi(String s) {
