@@ -378,6 +378,7 @@ message CellularServiceState {
     optional bool is_emergency_only = 10;
     optional bool is_internet_pdn_up = 11;
     optional int32 fold_state = 12;
+    optional bool override_voice_service = 13;
 
     // Internal use only
     optional int64 last_used_millis = 10001;
