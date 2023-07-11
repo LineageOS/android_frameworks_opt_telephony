@@ -680,6 +680,7 @@ public class GsmCdmaPhone extends Phone {
         mTelecomVoiceServiceStateOverride = newOverride;
         if (changed && mSST != null) {
             mSST.onTelecomVoiceServiceStateOverrideChanged();
+            mSST.getServiceStateStats().onVoiceServiceStateOverrideChanged(hasService);
         }
     }
 
