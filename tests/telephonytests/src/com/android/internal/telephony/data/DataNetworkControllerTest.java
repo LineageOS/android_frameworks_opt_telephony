@@ -179,6 +179,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
     private LinkBandwidthEstimatorCallback mLinkBandwidthEstimatorCallback;
 
     private boolean mIsNonTerrestrialNetwork = false;
+    private ArrayList<Integer> mCarrierSupportedSatelliteServices = new ArrayList<>();
 
     private final DataProfile mGeneralPurposeDataProfile = new DataProfile.Builder()
             .setApnSetting(new ApnSetting.Builder()
@@ -613,6 +614,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
                 .setDataSpecificInfo(dsri)
                 .setIsNonTerrestrialNetwork(mIsNonTerrestrialNetwork)
+                .setAvailableServices(mCarrierSupportedSatelliteServices)
                 .build());
 
         ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
@@ -621,6 +623,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 .setRegistrationState(iwlanRegState)
                 .setDomain(NetworkRegistrationInfo.DOMAIN_PS)
                 .setIsNonTerrestrialNetwork(mIsNonTerrestrialNetwork)
+                .setAvailableServices(mCarrierSupportedSatelliteServices)
                 .build());
 
         ss.addNetworkRegistrationInfo(new NetworkRegistrationInfo.Builder()
@@ -1560,8 +1563,10 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     @Test
-    public void testNonTerrestrialNetworkChanged() throws Exception {
+    public void testNonTerrestrialNetworkChangedWithoutDataSupport() throws Exception {
         mIsNonTerrestrialNetwork = true;
+        // Data is not supported while using satellite
+        mCarrierSupportedSatelliteServices.add(NetworkRegistrationInfo.SERVICE_TYPE_VOICE);
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
 
@@ -1574,11 +1579,31 @@ public class DataNetworkControllerTest extends TelephonyTest {
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
 
         mIsNonTerrestrialNetwork = false;
+        mCarrierSupportedSatelliteServices.clear();
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
 
         // Verify data is restored.
         verifyInternetConnected();
+    }
+
+    @Test
+    public void testNonTerrestrialNetworkWithDataSupport() throws Exception {
+        mIsNonTerrestrialNetwork = true;
+        // Data is supported while using satellite
+        mCarrierSupportedSatelliteServices.add(NetworkRegistrationInfo.SERVICE_TYPE_DATA);
+        serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
+                NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        processAllMessages();
+
+        // Verify data is connected.
+        verifyInternetConnected();
+
+        mIsNonTerrestrialNetwork = false;
+        mCarrierSupportedSatelliteServices.clear();
     }
 
     @Test

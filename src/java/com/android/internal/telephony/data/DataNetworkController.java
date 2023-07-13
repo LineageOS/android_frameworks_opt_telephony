@@ -1552,9 +1552,8 @@ public class DataNetworkController extends Handler {
             evaluation.addDataDisallowedReason(DataDisallowedReason.CDMA_EMERGENCY_CALLBACK_MODE);
         }
 
-        // Check if device is connected to satellite
-        if (mServiceState.isUsingNonTerrestrialNetwork()
-                && isDataDisallowedDueToSatellite(networkRequest.getCapabilities())) {
+        // Check whether data is disallowed while using satellite
+        if (isDataDisallowedDueToSatellite(networkRequest.getCapabilities())) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.SATELLITE_ENABLED);
         }
 
@@ -1735,9 +1734,9 @@ public class DataNetworkController extends Handler {
             evaluation.addDataDisallowedReason(DataDisallowedReason.CDMA_EMERGENCY_CALLBACK_MODE);
         }
 
-        // Check if device is connected to satellite
-        if (mServiceState.isUsingNonTerrestrialNetwork() && isDataDisallowedDueToSatellite(
-                dataNetwork.getNetworkCapabilities().getCapabilities())) {
+        // Check whether data is disallowed while using satellite
+        if (isDataDisallowedDueToSatellite(dataNetwork.getNetworkCapabilities()
+                .getCapabilities())) {
             evaluation.addDataDisallowedReason(DataDisallowedReason.SATELLITE_ENABLED);
         }
 
@@ -3860,14 +3859,33 @@ public class DataNetworkController extends Handler {
 
     /**
      * Check whether data is disallowed while using satellite
-     * @param capabilities The Network Capabilities to be checked
+     * @param capabilities An array of the NetworkCapabilities to be checked
      * @return {@code true} if the capabilities contain any capability that are restricted
      * while using satellite else {@code false}
      */
     private boolean isDataDisallowedDueToSatellite(@NetCapability int[] capabilities) {
-        // TODO: Disallow data when connected to satellite based on device config or carrier config.
+        if (!mServiceState.isUsingNonTerrestrialNetwork()) {
+            // Device is not connected to satellite
+            return false;
+        }
+
         Set<Integer> restrictedCapabilities = Set.of(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-        return Arrays.stream(capabilities).anyMatch(restrictedCapabilities::contains);
+        if (Arrays.stream(capabilities).noneMatch(restrictedCapabilities::contains)) {
+            // Only internet data disallowed while using satellite
+            return false;
+        }
+
+        for (NetworkRegistrationInfo nri : mServiceState.getNetworkRegistrationInfoList()) {
+            if (nri.isNonTerrestrialNetwork()
+                    && nri.getAvailableServices().contains(
+                            NetworkRegistrationInfo.SERVICE_TYPE_DATA)) {
+                // Data is supported while using satellite
+                return false;
+            }
+        }
+
+        // Data is disallowed while using satellite
+        return true;
     }
 
     /**
