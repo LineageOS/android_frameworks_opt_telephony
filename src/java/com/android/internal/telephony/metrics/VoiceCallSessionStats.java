@@ -66,6 +66,8 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
+import com.android.internal.telephony.analytics.TelephonyAnalytics;
+import com.android.internal.telephony.analytics.TelephonyAnalytics.CallAnalytics;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneConnection;
 import com.android.internal.telephony.nano.PersistAtomsProto.VoiceCallSession;
@@ -211,6 +213,19 @@ public class VoiceCallSessionStats {
                     proto.disconnectExtraCode = conn.getPreciseDisconnectCause();
                     proto.disconnectExtraMessage = conn.getVendorDisconnectCause();
                     proto.callDuration = classifyCallDuration(conn.getDurationMillis());
+                    if (mPhone != null) {
+                        TelephonyAnalytics telephonyAnalytics = mPhone.getTelephonyAnalytics();
+                        if (telephonyAnalytics != null) {
+                            CallAnalytics callAnalytics = telephonyAnalytics.getCallAnalytics();
+                            if (callAnalytics != null) {
+                                callAnalytics.onCallTerminated(proto.isEmergency,
+                                        false /* isOverIms */,
+                                        getVoiceRatWithVoNRFix(mPhone, mPhone.getServiceState(),
+                                                proto.bearerAtEnd),
+                                        proto.simSlotIndex, proto.disconnectReasonCode);
+                            }
+                        }
+                    }
                     finishCall(id);
                 }
             }
@@ -640,6 +655,18 @@ public class VoiceCallSessionStats {
         proto.disconnectExtraCode = reasonInfo.mExtraCode;
         proto.disconnectExtraMessage = ImsStats.filterExtraMessage(reasonInfo.mExtraMessage);
         proto.callDuration = classifyCallDuration(durationMillis);
+        if (mPhone != null) {
+            TelephonyAnalytics telephonyAnalytics = mPhone.getTelephonyAnalytics();
+            if (telephonyAnalytics != null) {
+                CallAnalytics callAnalytics = telephonyAnalytics.getCallAnalytics();
+                if (callAnalytics != null) {
+                    callAnalytics.onCallTerminated(proto.isEmergency, true /* isOverIms */ ,
+                            getVoiceRatWithVoNRFix(
+                                    mPhone, mPhone.getServiceState(), proto.bearerAtEnd),
+                            proto.simSlotIndex, proto.disconnectReasonCode);
+                }
+            }
+        }
         finishCall(id);
     }
 
