@@ -1856,15 +1856,15 @@ public class GsmCdmaPhone extends Phone {
                 String spName = isPhoneTypeGsm() ? VM_NUMBER : VM_NUMBER_CDMA;
                 number = sp.getString(spName + getPhoneId(), null);
                 logd("getVoiceMailNumber: from " + spName + " number="
-                        + Rlog.pii(LOG_TAG, number));
+                        + Rlog.piiHandle(number));
             } else {
-                logd("getVoiceMailNumber: from IccRecords number=" + Rlog.pii(LOG_TAG, number));
+                logd("getVoiceMailNumber: from IccRecords number=" + Rlog.piiHandle(number));
             }
         }
         if (!isPhoneTypeGsm() && TextUtils.isEmpty(number)) {
             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
             number = sp.getString(VM_NUMBER_CDMA + getPhoneId(), null);
-            logd("getVoiceMailNumber: from VM_NUMBER_CDMA number=" + Rlog.pii(LOG_TAG, number));
+            logd("getVoiceMailNumber: from VM_NUMBER_CDMA number=" + Rlog.piiHandle(number));
         }
 
         if (TextUtils.isEmpty(number)) {
@@ -1887,12 +1887,12 @@ public class GsmCdmaPhone extends Phone {
                         // roaming and IMS unregistered case if CC configured
                         number = defaultVmNumberRoamingAndImsUnregistered;
                         logd("getVoiceMailNumber: from defaultVmNumberRoamingAndImsUnregistered "
-                                + "number=" + Rlog.pii(LOG_TAG, number));
+                                + "number=" + Rlog.piiHandle(number));
                     } else if (!TextUtils.isEmpty(defaultVmNumberRoaming)) {
                         // roaming default case if CC configured
                         number = defaultVmNumberRoaming;
                         logd("getVoiceMailNumber: from defaultVmNumberRoaming number=" +
-                                Rlog.pii(LOG_TAG, number));
+                                Rlog.piiHandle(number));
                     }
                 }
             }
@@ -1906,13 +1906,12 @@ public class GsmCdmaPhone extends Phone {
             if (b != null && b.getBoolean(
                     CarrierConfigManager.KEY_CONFIG_TELEPHONY_USE_OWN_NUMBER_FOR_VOICEMAIL_BOOL)) {
                 number = getLine1Number();
-                logd("getVoiceMailNumber: from MSISDN number=" + Rlog.pii(LOG_TAG, number));
+                logd("getVoiceMailNumber: from MSISDN number=" + Rlog.piiHandle(number));
             }
         }
-
-        logd("getVoiceMailNumber: returning number=" + Rlog.pii(LOG_TAG, number));
         return number;
     }
+
 
     private String getVmSimImsi() {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
