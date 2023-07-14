@@ -16,6 +16,10 @@
 
 package com.android.internal.telephony.satellite;
 
+import static android.telephony.SubscriptionManager.SATELLITE_ATTACH_ENABLED_FOR_CARRIER;
+import static android.telephony.SubscriptionManager.isValidSubscriptionId;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER;
+
 import android.annotation.ArrayRes;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -67,7 +71,6 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IIntegerConsumer;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
 import com.android.internal.telephony.satellite.metrics.ProvisionMetricsStats;
 import com.android.internal.telephony.satellite.metrics.SessionMetricsStats;
@@ -75,7 +78,9 @@ import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.util.FunctionalUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -127,7 +132,9 @@ public class SatelliteController extends Handler {
     private static final int EVENT_SATELLITE_PROVISION_STATE_CHANGED = 26;
     private static final int EVENT_PENDING_DATAGRAMS = 27;
     private static final int EVENT_SATELLITE_MODEM_STATE_CHANGED = 28;
-    private static final int EVENT_SET_ROAMING_PLMN_INFO_DONE = 29;
+    private static final int EVENT_SET_SATELLITE_PLMN_INFO_DONE = 29;
+    private static final int CMD_EVALUATE_SATELLITE_ATTACH_RESTRICTION_CHANGE = 30;
+    private static final int EVENT_EVALUATE_SATELLITE_ATTACH_RESTRICTION_CHANGE_DONE = 31;
 
     @NonNull private static SatelliteController sInstance;
     @NonNull private final Context mContext;
@@ -137,6 +144,7 @@ public class SatelliteController extends Handler {
     @NonNull private final DatagramController mDatagramController;
     @NonNull private final ControllerMetricsStats mControllerMetricsStats;
     @NonNull private final ProvisionMetricsStats mProvisionMetricsStats;
+    @NonNull private final SubscriptionManagerService mSubscriptionManagerService;
     private final CommandsInterface mCi;
     private ContentResolver mContentResolver = null;
 
@@ -225,7 +233,15 @@ public class SatelliteController extends Handler {
     @NonNull private final Object mCarrierConfigArrayLock = new Object();
     @GuardedBy("mCarrierConfigArrayLock")
     @NonNull private final SparseArray<PersistableBundle> mCarrierConfigArray = new SparseArray<>();
-
+    @GuardedBy("mIsSatelliteEnabledLock")
+    /** Key: Subscription ID, value: set of restriction reasons for satellite communication.*/
+    @NonNull private final Map<Integer, Set<Integer>> mSatelliteAttachRestrictionForCarrierArray =
+            new HashMap<>();
+    @GuardedBy("mIsSatelliteEnabledLock")
+    /** Key: Subscription ID, value: the actual satellite enabled state in the modem -
+     * {@code true} for enabled and {@code false} for disabled. */
+    @NonNull private final Map<Integer, Boolean> mIsSatelliteAttachEnabledForCarrierArrayPerSub =
+            new HashMap<>();
     /**
      * @return The singleton instance of SatelliteController.
      */
@@ -274,6 +290,7 @@ public class SatelliteController extends Handler {
         // should be called before making DatagramController
         mControllerMetricsStats = ControllerMetricsStats.make(mContext);
         mProvisionMetricsStats = ProvisionMetricsStats.getOrCreateInstance();
+        mSubscriptionManagerService = SubscriptionManagerService.getInstance();
 
         // Create the DatagramController singleton,
         // which is used to send and receive satellite datagrams.
@@ -527,6 +544,21 @@ public class SatelliteController extends Handler {
                 Consumer<Integer> callback) {
             this.enableSatellite = enableSatellite;
             this.enableDemoMode = enableDemoMode;
+            this.callback = callback;
+        }
+    }
+
+    private static final class RequestHandleSatelliteAttachRestrictionForCarrierArgument {
+        public int subId;
+        @SatelliteManager.SatelliteCommunicationRestrictionReason
+        public int reason;
+        @NonNull public Consumer<Integer> callback;
+
+        RequestHandleSatelliteAttachRestrictionForCarrierArgument(int subId,
+                @SatelliteManager.SatelliteCommunicationRestrictionReason int reason,
+                Consumer<Integer> callback) {
+            this.subId = subId;
+            this.reason = reason;
             this.callback = callback;
         }
     }
@@ -1039,10 +1071,6 @@ public class SatelliteController extends Handler {
                                         SubscriptionManager.DEFAULT_SUBSCRIPTION_ID, receiver);
                             }
                         }
-                        configureSatellitePlmn();
-                    } else {
-                        logd("EVENT_RADIO_STATE_CHANGED: Satellite vendor service is supported."
-                                + " Ignored the event");
                     }
                 }
                 break;
@@ -1119,9 +1147,40 @@ public class SatelliteController extends Handler {
                 }
                 break;
 
-            case EVENT_SET_ROAMING_PLMN_INFO_DONE:
-                handleSetRoamingPlmnInfoDoneEvent(msg);
+            case EVENT_SET_SATELLITE_PLMN_INFO_DONE:
+                handleSetSatellitePlmnInfoDoneEvent(msg);
                 break;
+
+            case CMD_EVALUATE_SATELLITE_ATTACH_RESTRICTION_CHANGE: {
+                logd("CMD_EVALUATE_SATELLITE_ATTACH_RESTRICTION_CHANGE");
+                request = (SatelliteControllerHandlerRequest) msg.obj;
+                handleRequestSatelliteAttachRestrictionForCarrierCmd(request);
+                break;
+            }
+
+            case EVENT_EVALUATE_SATELLITE_ATTACH_RESTRICTION_CHANGE_DONE: {
+                ar = (AsyncResult) msg.obj;
+                request = (SatelliteControllerHandlerRequest) ar.userObj;
+                RequestHandleSatelliteAttachRestrictionForCarrierArgument argument =
+                        (RequestHandleSatelliteAttachRestrictionForCarrierArgument)
+                                request.argument;
+                int subId = argument.subId;
+                int error =  SatelliteServiceUtils.getSatelliteError(ar,
+                        "requestSetSatelliteEnabledForCarrier");
+
+                synchronized (mIsSatelliteEnabledLock) {
+                    if (error == SatelliteManager.SATELLITE_RESULT_SUCCESS) {
+                        boolean enableSatellite = mSatelliteAttachRestrictionForCarrierArray
+                                .getOrDefault(argument.subId, Collections.emptySet()).isEmpty();
+                        mIsSatelliteAttachEnabledForCarrierArrayPerSub.put(subId, enableSatellite);
+                    } else {
+                        mIsSatelliteAttachEnabledForCarrierArrayPerSub.remove(subId);
+                    }
+                }
+
+                argument.callback.accept(error);
+                break;
+            }
 
             default:
                 Log.w(TAG, "SatelliteControllerHandler: unexpected message code: " +
@@ -1820,6 +1879,89 @@ public class SatelliteController extends Handler {
     }
 
     /**
+     * Add a restriction reason for disallowing carrier supported satellite plmn scan and attach
+     * by modem. After updating restriction list, evaluate if satellite should be enabled/disabled,
+     * and request modem to enable/disable satellite accordingly if the desired state does not match
+     * the current state.
+     *
+     * @param subId The subId of the subscription to request for.
+     * @param reason Reason for disallowing satellite communication for carrier.
+     * @param callback The callback to get the result of the request.
+     */
+    public void addSatelliteAttachRestrictionForCarrier(int subId,
+            @SatelliteManager.SatelliteCommunicationRestrictionReason int reason,
+            @NonNull IIntegerConsumer callback) {
+        if (DBG) logd("addSatelliteAttachRestrictionForCarrier(" + subId + ", " + reason + ")");
+        Consumer<Integer> result = FunctionalUtils.ignoreRemoteException(callback::accept);
+
+        synchronized (mIsSatelliteEnabledLock) {
+            if (mSatelliteAttachRestrictionForCarrierArray.getOrDefault(
+                    subId, Collections.emptySet()).isEmpty()) {
+                mSatelliteAttachRestrictionForCarrierArray.put(subId, new HashSet<>());
+            } else if (mSatelliteAttachRestrictionForCarrierArray.get(subId).contains(reason)) {
+                result.accept(SatelliteManager.SATELLITE_RESULT_SUCCESS);
+                return;
+            }
+            mSatelliteAttachRestrictionForCarrierArray.get(subId).add(reason);
+        }
+        RequestHandleSatelliteAttachRestrictionForCarrierArgument request =
+                new RequestHandleSatelliteAttachRestrictionForCarrierArgument(subId, reason,
+                        result);
+        sendRequestAsync(CMD_EVALUATE_SATELLITE_ATTACH_RESTRICTION_CHANGE, request,
+                SatelliteServiceUtils.getPhone(subId));
+    }
+
+    /**
+     * Remove a restriction reason for disallowing carrier supported satellite plmn scan and attach
+     * by modem. After updating restriction list, evaluate if satellite should be enabled/disabled,
+     * and request modem to enable/disable satellite accordingly if the desired state does not match
+     * the current state.
+     *
+     * @param subId The subId of the subscription to request for.
+     * @param reason Reason for disallowing satellite communication.
+     * @param callback The callback to get the result of the request.
+     */
+    public void removeSatelliteAttachRestrictionForCarrier(int subId,
+            @SatelliteManager.SatelliteCommunicationRestrictionReason int reason,
+            @NonNull IIntegerConsumer callback) {
+        Consumer<Integer> result = FunctionalUtils.ignoreRemoteException(callback::accept);
+        if (DBG) logd("removeSatelliteAttachRestrictionForCarrier(" + subId + ", " + reason + ")");
+        synchronized (mIsSatelliteEnabledLock) {
+            if (mSatelliteAttachRestrictionForCarrierArray.getOrDefault(
+                    subId, Collections.emptySet()).isEmpty()
+                    || !mSatelliteAttachRestrictionForCarrierArray.get(subId).contains(reason)) {
+                result.accept(SatelliteManager.SATELLITE_RESULT_SUCCESS);
+                return;
+            }
+            mSatelliteAttachRestrictionForCarrierArray.get(subId).remove(reason);
+        }
+        RequestHandleSatelliteAttachRestrictionForCarrierArgument request =
+                new RequestHandleSatelliteAttachRestrictionForCarrierArgument(subId, reason,
+                        result);
+        sendRequestAsync(CMD_EVALUATE_SATELLITE_ATTACH_RESTRICTION_CHANGE, request,
+                SatelliteServiceUtils.getPhone(subId));
+    }
+
+    /**
+     * Get reasons for disallowing satellite communication, as requested by
+     * {@link #addSatelliteAttachRestrictionForCarrier(int, int, IIntegerConsumer)}.
+     *
+     * @param subId The subId of the subscription to request for.
+     *
+     * @return Set of reasons for disallowing satellite attach for carrier.
+     */
+    public @NonNull Set<Integer> getSatelliteAttachRestrictionReasonsForCarrier(int subId) {
+        synchronized (mIsSatelliteEnabledLock) {
+            Set<Integer> resultSet =
+                    mSatelliteAttachRestrictionForCarrierArray.get(subId);
+            if (resultSet == null) {
+                return new HashSet<>();
+            }
+            return new HashSet<>(resultSet);
+        }
+    }
+
+    /**
      * This API can be used by only CTS to update satellite vendor service package name.
      *
      * @param servicePackageName The package name of the satellite vendor service.
@@ -1962,7 +2104,7 @@ public class SatelliteController extends Handler {
 
     /**
      * @param subId Subscription ID.
-     * @param plmn The satellite roaming plmn.
+     * @param plmn The satellite plmn.
      * @return The list of services supported by the carrier associated with the {@code subId} for
      * the satellite network {@code plmn}.
      */
@@ -2164,6 +2306,21 @@ public class SatelliteController extends Handler {
             loge("requestSatelliteEnabled: No phone object");
             argument.callback.accept(SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE);
         }
+    }
+
+    private void handleRequestSatelliteAttachRestrictionForCarrierCmd(
+            SatelliteControllerHandlerRequest request) {
+        RequestHandleSatelliteAttachRestrictionForCarrierArgument argument =
+                (RequestHandleSatelliteAttachRestrictionForCarrierArgument) request.argument;
+
+        if (argument.reason == SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER) {
+            if (!persistSatelliteAttachEnabledForCarrierSetting(argument.subId)) {
+                argument.callback.accept(SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE);
+                return;
+            }
+        }
+
+        evaluateEnablingSatelliteForCarrier(argument.subId, argument.reason, argument.callback);
     }
 
     private void updateSatelliteSupportedStateWhenSatelliteServiceConnected(boolean supported) {
@@ -2397,33 +2554,25 @@ public class SatelliteController extends Handler {
         return (DEBUG || SystemProperties.getBoolean(ALLOW_MOCK_MODEM_PROPERTY, false));
     }
 
-    private void configureSatellitePlmn() {
-        logd("configureSatellitePlmn()");
-        Phone[] phones = PhoneFactory.getPhones();
-        for (Phone phone : phones) {
-            if (phone != null) {
-                List<String> satellitePlmns = getSatellitePlmnList(phone.getSubId());
-                // TODO b/295267706 move setSatellitePlmn() from Radio Network Hal to Satellite
-                //  Modem Interface
-                //phone.setSatellitePlmn(
-                //        obtainMessage(EVENT_SET_ROAMING_PLMN_INFO_DONE), satellitePlmns);
-                logd("phone[" + phone.getPhoneId() + "].setSatellitePlmn()");
-            } else {
-                loge("configureSatellitePlmn: No phone object");
-            }
+    private void configureSatellitePlmnForCarrier(int subId) {
+        logd("configureSatellitePlmnForCarrier()");
+        List<String> satellitePlmnList = getSatellitePlmnList(subId);
+        if (!satellitePlmnList.isEmpty()) {
+            int slotId = SubscriptionManager.getSlotIndex(subId);
+            mSatelliteModemInterface.setSatellitePlmn(slotId, satellitePlmnList,
+                    obtainMessage(EVENT_SET_SATELLITE_PLMN_INFO_DONE));
         }
     }
 
-    private void handleSetRoamingPlmnInfoDoneEvent(Message msg) {
+    private void handleSetSatellitePlmnInfoDoneEvent(Message msg) {
         AsyncResult ar = (AsyncResult) msg.obj;
-        // Parse and log the result of the request setSatellitePlmn
-        SatelliteServiceUtils.getSatelliteError(ar, "handleSetRoamingPlmnInfoCmd");
+        SatelliteServiceUtils.getSatelliteError(ar, "handleSetSatellitePlmnInfoCmd");
     }
 
     private void updateSupportedSatelliteServicesForActiveSubscriptions() {
         synchronized (mSupportedSatelliteServicesLock) {
             mSupportedSatelliteServices.clear();
-            int[] activeSubIds = SubscriptionManagerService.getInstance().getActiveSubIdList(true);
+            int[] activeSubIds = mSubscriptionManagerService.getActiveSubIdList(true);
             if (activeSubIds != null) {
                 for (int subId : activeSubIds) {
                     updateSupportedSatelliteServices(subId);
@@ -2470,7 +2619,8 @@ public class SatelliteController extends Handler {
     @NonNull private PersistableBundle getConfigForSubId(int subId) {
         PersistableBundle config = mCarrierConfigManager.getConfigForSubId(subId,
                 CarrierConfigManager
-                        .KEY_CARRIER_SUPPORTED_SATELLITE_SERVICES_PER_PROVIDER_BUNDLE);
+                        .KEY_CARRIER_SUPPORTED_SATELLITE_SERVICES_PER_PROVIDER_BUNDLE,
+                CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL);
         if (config == null || config.isEmpty()) {
             config = CarrierConfigManager.getDefaultConfig();
         }
@@ -2488,12 +2638,37 @@ public class SatelliteController extends Handler {
 
         updateCarrierConfig(subId);
         updateSupportedSatelliteServicesForActiveSubscriptions();
-        configureSatellitePlmn();
+        configureSatellitePlmnForCarrier(subId);
+
+        synchronized (mIsSatelliteEnabledLock) {
+            mSatelliteAttachRestrictionForCarrierArray.clear();
+            mIsSatelliteAttachEnabledForCarrierArrayPerSub.clear();
+        }
+
+        setSatelliteAttachEnabledForCarrierOnSimLoaded(subId);
     }
 
-    private void updateCarrierConfig(int subId) {
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    protected void updateCarrierConfig(int subId) {
         synchronized (mCarrierConfigArrayLock) {
             mCarrierConfigArray.put(subId, getConfigForSubId(subId));
+        }
+    }
+
+    /**
+     * When a SIM is loaded, we need to check if users has enabled satellite attach for the carrier
+     * associated with the SIM, and evaluate if satellite should be enabled for the carrier.
+     *
+     * @param subId Subscription ID.
+     */
+    private void setSatelliteAttachEnabledForCarrierOnSimLoaded(int subId) {
+        synchronized (mIsSatelliteEnabledLock) {
+            if (isSatelliteAttachEnabledForCarrierByUser(subId)
+                    && !mIsSatelliteAttachEnabledForCarrierArrayPerSub.getOrDefault(subId,
+                    false)) {
+                evaluateEnablingSatelliteForCarrier(subId,
+                        SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER, null);
+            }
         }
     }
 
@@ -2509,6 +2684,188 @@ public class SatelliteController extends Handler {
             strArray = new String[0];
         }
         return strArray;
+    }
+
+    private boolean isSatelliteSupportedForCarrier(int subId) {
+        return getConfigForSubId(subId)
+                .getBoolean(CarrierConfigManager
+                        .KEY_SATELLITE_ATTACH_SUPPORTED_BOOL);
+    }
+
+    /**
+     * Check if satellite attach is enabled by user for the carrier associated with the
+     * {@code subId}.
+     *
+     * @param subId Subscription ID.
+     *
+     * @return Returns {@code true} if satellite attach for carrier is enabled by user,
+     * {@code false} otherwise.
+     */
+    private boolean isSatelliteAttachEnabledForCarrierByUser(int subId) {
+        synchronized (mIsSatelliteEnabledLock) {
+            Set<Integer> cachedRestrictionSet =
+                    mSatelliteAttachRestrictionForCarrierArray.get(subId);
+            if (cachedRestrictionSet != null) {
+                return !cachedRestrictionSet.contains(
+                        SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER);
+            } else {
+                logd("isSatelliteAttachEnabledForCarrierByUser() no correspondent cache, "
+                        + "load from persist storage");
+                try {
+                    String enabled =
+                            mSubscriptionManagerService.getSubscriptionProperty(subId,
+                                    SATELLITE_ATTACH_ENABLED_FOR_CARRIER,
+                                    mContext.getOpPackageName(), mContext.getAttributionTag());
+
+                    if (enabled == null) {
+                        loge("isSatelliteAttachEnabledForCarrierByUser: invalid subId, subId="
+                                + subId);
+                        return false;
+                    }
+
+                    if (enabled.isEmpty()) {
+                        loge("isSatelliteAttachEnabledForCarrierByUser: no data for subId(" + subId
+                                + ")");
+                        return false;
+                    }
+
+                    synchronized (mIsSatelliteEnabledLock) {
+                        boolean result = enabled.equals("1");
+                        if (!result) {
+                            mSatelliteAttachRestrictionForCarrierArray.put(subId, new HashSet<>());
+                            mSatelliteAttachRestrictionForCarrierArray.get(subId).add(
+                                    SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER);
+                        }
+                        return result;
+                    }
+                } catch (IllegalArgumentException | SecurityException ex) {
+                    loge("isSatelliteAttachEnabledForCarrierByUser: ex=" + ex);
+                    return false;
+                }
+            }
+        }
+    }
+
+    /**
+     * Check whether there is any reason to restrict satellite communication for the carrier
+     * associated with the {@code subId}.
+     *
+     * @param subId Subscription ID
+     * @return {@code true} when there is at least on reason, {@code false} otherwise.
+     */
+    private boolean hasReasonToRestrictSatelliteCommunicationForCarrier(int subId) {
+        synchronized (mIsSatelliteEnabledLock) {
+            return !mSatelliteAttachRestrictionForCarrierArray
+                    .getOrDefault(subId, Collections.emptySet()).isEmpty();
+        }
+    }
+
+    /**
+     * Save user setting for enabling satellite attach for the carrier associated with the
+     * {@code subId} to persistent storage.
+     *
+     * @param subId Subscription ID.
+     *
+     * @return {@code true} if persist successful, {@code false} otherwise.
+     */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    protected boolean persistSatelliteAttachEnabledForCarrierSetting(int subId) {
+        logd("persistSatelliteAttachEnabledForCarrierSetting");
+        if (!isValidSubscriptionId(subId)) {
+            loge("persistSatelliteAttachEnabledForCarrierSetting: subId is not valid,"
+                    + " subId=" + subId);
+            return false;
+        }
+
+        synchronized (mIsSatelliteEnabledLock) {
+            try {
+                mSubscriptionManagerService.setSubscriptionProperty(subId,
+                        SATELLITE_ATTACH_ENABLED_FOR_CARRIER,
+                        mSatelliteAttachRestrictionForCarrierArray.get(subId)
+                                .contains(SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER)
+                                ? "0" : "1");
+            } catch (IllegalArgumentException | SecurityException ex) {
+                loge("persistSatelliteAttachEnabledForCarrierSetting, ex=" + ex);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Evaluate whether satellite attach for carrier should be restricted.
+     *
+     * @param subId Subscription Id to evaluate for.
+     * @return {@code true} satellite attach is restricted, {@code false} otherwise.
+     */
+    private boolean isSatelliteRestrictedForCarrier(int subId) {
+        return !isSatelliteAttachEnabledForCarrierByUser(subId)
+                || hasReasonToRestrictSatelliteCommunicationForCarrier(subId);
+    }
+
+    /**
+     * Check whether satellite is enabled for carrier at modem.
+     *
+     * @param subId Subscription ID to check for.
+     * @return {@code true} if satellite modem is enabled, {@code false} otherwise.
+     */
+    private boolean isSatelliteEnabledForCarrierAtModem(int subId) {
+        synchronized (mIsSatelliteEnabledLock) {
+            return mIsSatelliteAttachEnabledForCarrierArrayPerSub.getOrDefault(subId, false);
+        }
+    }
+
+    /**
+     * Evaluate whether satellite modem for carrier should be enabled or not.
+     * <p>
+     * Satellite will be enabled only when the following conditions are met:
+     * <ul>
+     * <li>Users want to enable it.</li>
+     * <li>There is no satellite communication restriction, which is added by
+     * {@link #addSatelliteAttachRestrictionForCarrier(int, int, IIntegerConsumer)}</li>
+     * <li>The carrier config {@link
+     * android.telephony.CarrierConfigManager#KEY_SATELLITE_ATTACH_SUPPORTED_BOOL} is set to
+     * {@code true}.</li>
+     * </ul>
+     *
+     * @param subId Subscription Id for evaluate for.
+     * @param callback The callback for getting the result of enabling satellite.
+     */
+    private void evaluateEnablingSatelliteForCarrier(int subId, int reason,
+            @Nullable Consumer<Integer> callback) {
+        if (callback == null) {
+            callback = errorCode -> logd("evaluateEnablingSatelliteForCarrier: "
+                    + "SetSatelliteAttachEnableForCarrier error code =" + errorCode);
+        }
+
+        if (!isSatelliteSupportedForCarrier(subId)) {
+            logd("Satellite for carrier is not supported. Only user setting is stored");
+            callback.accept(SatelliteManager.SATELLITE_RESULT_SUCCESS);
+            return;
+        }
+
+        /* Request to enable or disable the satellite in the cellular modem only when the desired
+        state and the current state are different. */
+        boolean isSatelliteExpectedToBeEnabled = !isSatelliteRestrictedForCarrier(subId);
+        if (isSatelliteExpectedToBeEnabled != isSatelliteEnabledForCarrierAtModem(subId)) {
+            if (mSatelliteModemInterface.isSatelliteServiceSupported()) {
+                int simSlot = SubscriptionManager.getSlotIndex(subId);
+                RequestHandleSatelliteAttachRestrictionForCarrierArgument argument =
+                        new RequestHandleSatelliteAttachRestrictionForCarrierArgument(subId,
+                                reason, callback);
+                SatelliteControllerHandlerRequest request =
+                        new SatelliteControllerHandlerRequest(argument,
+                                SatelliteServiceUtils.getPhone(subId));
+                Message onCompleted = obtainMessage(
+                        EVENT_EVALUATE_SATELLITE_ATTACH_RESTRICTION_CHANGE_DONE, request);
+                mSatelliteModemInterface.requestSetSatelliteEnabledForCarrier(simSlot,
+                        isSatelliteExpectedToBeEnabled, onCompleted);
+            } else {
+                callback.accept(SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE);
+            }
+        } else {
+            callback.accept(SatelliteManager.SATELLITE_RESULT_SUCCESS);
+        }
     }
 
     private static void logd(@NonNull String log) {

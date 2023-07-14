@@ -410,6 +410,15 @@ public class SatelliteServiceUtils {
         return PhoneFactory.getPhone(0);
     }
 
+    /**
+     * Return phone associated with subscription ID.
+     *
+     * @return phone associated with {@code subId} or {@code null} if it doesn't exist.
+     */
+    public static @Nullable Phone getPhone(int subId) {
+        return PhoneFactory.getPhone(subId);
+    }
+
     private static void logd(@NonNull String log) {
         Rlog.d(TAG, log);
     }

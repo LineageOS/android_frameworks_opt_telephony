@@ -26,6 +26,8 @@ import static android.telephony.satellite.SatelliteManager.KEY_SATELLITE_SUPPORT
 import static android.telephony.satellite.SatelliteManager.NT_RADIO_TECHNOLOGY_EMTC_NTN;
 import static android.telephony.satellite.SatelliteManager.NT_RADIO_TECHNOLOGY_NR_NTN;
 import static android.telephony.satellite.SatelliteManager.NT_RADIO_TECHNOLOGY_PROPRIETARY;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_COMMUNICATION_RESTRICTION_REASON_GEOLOCATION;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_MODEM_STATE_OFF;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_MODEM_STATE_UNAVAILABLE;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_ERROR;
@@ -52,6 +54,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.anyVararg;
 import static org.mockito.ArgumentMatchers.eq;
@@ -60,6 +63,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -469,7 +473,8 @@ public class SatelliteControllerTest extends TelephonyTest {
         resetSatelliteControllerUT();
         setUpResponseForRequestIsSatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
         verifySatelliteSupported(true, SATELLITE_RESULT_SUCCESS);
-        setUpResponseForRequestIsSatelliteAllowedForCurrentLocation(true, SATELLITE_RESULT_SUCCESS);
+        setUpResponseForRequestIsSatelliteAllowedForCurrentLocation(true,
+                SATELLITE_RESULT_SUCCESS);
         mSatelliteControllerUT.requestIsSatelliteCommunicationAllowedForCurrentLocation(SUB_ID,
                 mSatelliteAllowedReceiver);
         processAllMessages();
@@ -1622,6 +1627,190 @@ public class SatelliteControllerTest extends TelephonyTest {
                         .toArray()));
     }
 
+    @Test
+    public void testConfigureSatellitePlmnOnCarrierConfigChanged() {
+        logd("testConfigureSatellitePlmnOnCarrierConfigChanged");
+
+        String[] satelliteServicesSupportedByProviderStrArray =
+                {"00101:1,2", "00102:2,3", "00103:1,2", "00104:3,4", "00105:1"};
+        mContextFixture.putStringArrayResource(
+                R.array.config_satellite_services_supported_by_providers,
+                satelliteServicesSupportedByProviderStrArray);
+
+        /* Initially, the radio state is ON. In the constructor, satelliteController registers for
+         the radio state changed events and immediately gets the radio state changed event as ON. */
+        doReturn(false).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        TestSatelliteController testSatelliteController =
+                new TestSatelliteController(mContext, Looper.myLooper());
+        processAllMessages();
+        List<String> satellitePlmnList = testSatelliteController.getSatellitePlmnList(SUB_ID);
+        verify(mMockSatelliteModemInterface, never())
+                .setSatellitePlmn(anyInt(), eq(satellitePlmnList), any(Message.class));
+        reset(mMockSatelliteModemInterface);
+
+        // Test setSatellitePlmn() when Carrier Config change event triggered.
+        mCarrierConfigBundle.putBoolean(CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL,
+                true);
+        for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
+                : mCarrierConfigChangedListenerList) {
+            pair.first.execute(() -> pair.second.onCarrierConfigChanged(
+                    /*slotIndex*/ 0, /*subId*/ SUB_ID, /*carrierId*/ 0, /*specificCarrierId*/ 0)
+            );
+        }
+        processAllMessages();
+        verify(mMockSatelliteModemInterface, times(1)).setSatellitePlmn(anyInt(), anyList(), any(
+                Message.class));
+        reset(mMockSatelliteModemInterface);
+
+        /* setSatellitePlmn() is called regardless whether satellite attach for carrier is
+           supported. */
+        mCarrierConfigBundle.putBoolean(CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL,
+                true);
+        for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
+                : mCarrierConfigChangedListenerList) {
+            pair.first.execute(() -> pair.second.onCarrierConfigChanged(
+                    /*slotIndex*/ 0, /*subId*/ SUB_ID, /*carrierId*/ 0, /*specificCarrierId*/ 0)
+            );
+        }
+        processAllMessages();
+        verify(mMockSatelliteModemInterface, times(1)).setSatellitePlmn(anyInt(), anyList(), any(
+                Message.class));
+        reset(mMockSatelliteModemInterface);
+    }
+
+    @Test
+    public void testSatelliteCommunicationRestriction() {
+        mCarrierConfigBundle.putBoolean(
+                CarrierConfigManager.KEY_SATELLITE_ATTACH_SUPPORTED_BOOL, true);
+        for (Pair<Executor, CarrierConfigManager.CarrierConfigChangeListener> pair
+                : mCarrierConfigChangedListenerList) {
+            pair.first.execute(() -> pair.second.onCarrierConfigChanged(
+                    /*slotIndex*/ 0, /*subId*/ SUB_ID, /*carrierId*/ 0, /*specificCarrierId*/ 0)
+            );
+        }
+        processAllMessages();
+
+        // Remove restriction reason if exist
+        mIIntegerConsumerResults.clear();
+        reset(mMockSatelliteModemInterface);
+        setUpResponseForRequestSetSatelliteEnabledForCarrier(true, SATELLITE_RESULT_SUCCESS);
+        setUpResponseForRequestSetSatelliteEnabledForCarrier(false, SATELLITE_RESULT_SUCCESS);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        mSatelliteControllerUT.removeSatelliteAttachRestrictionForCarrier(SUB_ID,
+                SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER, mIIntegerConsumer);
+        mSatelliteControllerUT.removeSatelliteAttachRestrictionForCarrier(SUB_ID,
+                SATELLITE_COMMUNICATION_RESTRICTION_REASON_GEOLOCATION, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(2));
+
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(1));
+
+        Set<Integer> restrictionSet =
+                mSatelliteControllerUT.getSatelliteAttachRestrictionReasonsForCarrier(SUB_ID);
+        assertTrue(!restrictionSet.contains(SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER));
+        assertTrue(!restrictionSet.contains(
+                SATELLITE_COMMUNICATION_RESTRICTION_REASON_GEOLOCATION));
+
+        // Add satellite attach restriction reason by user
+        mIIntegerConsumerResults.clear();
+        reset(mMockSatelliteModemInterface);
+        setUpResponseForRequestSetSatelliteEnabledForCarrier(false, SATELLITE_RESULT_SUCCESS);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        mSatelliteControllerUT.addSatelliteAttachRestrictionForCarrier(SUB_ID,
+                SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER, mIIntegerConsumer);
+        processAllMessages();
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        verify(mMockSatelliteModemInterface, never())
+                .requestSetSatelliteEnabledForCarrier(anyInt(), anyBoolean(), any(Message.class));
+        assertTrue(waitForIIntegerConsumerResult(1));
+        restrictionSet =
+                mSatelliteControllerUT.getSatelliteAttachRestrictionReasonsForCarrier(SUB_ID);
+        assertTrue(restrictionSet.contains(SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER));
+
+        // remove satellite restriction reason by user
+        mIIntegerConsumerResults.clear();
+        reset(mMockSatelliteModemInterface);
+        setUpResponseForRequestSetSatelliteEnabledForCarrier(true, SATELLITE_RESULT_SUCCESS);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        mSatelliteControllerUT.removeSatelliteAttachRestrictionForCarrier(SUB_ID,
+                SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        restrictionSet =
+                mSatelliteControllerUT.getSatelliteAttachRestrictionReasonsForCarrier(SUB_ID);
+        assertTrue(!restrictionSet.contains(SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER));
+        verify(mMockSatelliteModemInterface, times(1))
+                .requestSetSatelliteEnabledForCarrier(anyInt(), anyBoolean(), any(Message.class));
+
+        // Add satellite attach restriction reason by user
+        mIIntegerConsumerResults.clear();
+        reset(mMockSatelliteModemInterface);
+        setUpResponseForRequestSetSatelliteEnabledForCarrier(false, SATELLITE_RESULT_SUCCESS);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        mSatelliteControllerUT.addSatelliteAttachRestrictionForCarrier(SUB_ID,
+                SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER, mIIntegerConsumer);
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        restrictionSet =
+                mSatelliteControllerUT.getSatelliteAttachRestrictionReasonsForCarrier(SUB_ID);
+        assertTrue(restrictionSet.contains(SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER));
+        verify(mMockSatelliteModemInterface, times(1))
+                .requestSetSatelliteEnabledForCarrier(anyInt(), eq(false), any(Message.class));
+
+        // add satellite attach restriction reason by geolocation
+        mIIntegerConsumerResults.clear();
+        reset(mMockSatelliteModemInterface);
+        setUpResponseForRequestSetSatelliteEnabledForCarrier(false, SATELLITE_RESULT_SUCCESS);
+        mSatelliteControllerUT.addSatelliteAttachRestrictionForCarrier(SUB_ID,
+                SATELLITE_COMMUNICATION_RESTRICTION_REASON_GEOLOCATION, mIIntegerConsumer);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        restrictionSet =
+                mSatelliteControllerUT.getSatelliteAttachRestrictionReasonsForCarrier(SUB_ID);
+        assertTrue(restrictionSet.contains(SATELLITE_COMMUNICATION_RESTRICTION_REASON_GEOLOCATION));
+        verify(mMockSatelliteModemInterface, never())
+                .requestSetSatelliteEnabledForCarrier(anyInt(), anyBoolean(), any(Message.class));
+
+        // remove satellite attach restriction reason by geolocation
+        mIIntegerConsumerResults.clear();
+        reset(mMockSatelliteModemInterface);
+        setUpResponseForRequestSetSatelliteEnabledForCarrier(true, SATELLITE_RESULT_SUCCESS);
+        mSatelliteControllerUT.removeSatelliteAttachRestrictionForCarrier(SUB_ID,
+                SATELLITE_COMMUNICATION_RESTRICTION_REASON_GEOLOCATION, mIIntegerConsumer);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        restrictionSet =
+                mSatelliteControllerUT.getSatelliteAttachRestrictionReasonsForCarrier(SUB_ID);
+        assertTrue(!restrictionSet.contains(
+                SATELLITE_COMMUNICATION_RESTRICTION_REASON_GEOLOCATION));
+        verify(mMockSatelliteModemInterface, never())
+                .requestSetSatelliteEnabledForCarrier(anyInt(), anyBoolean(), any(Message.class));
+
+        // remove satellite restriction reason by user
+        mIIntegerConsumerResults.clear();
+        reset(mMockSatelliteModemInterface);
+        setUpResponseForRequestSetSatelliteEnabledForCarrier(true, SATELLITE_RESULT_SUCCESS);
+        mSatelliteControllerUT.removeSatelliteAttachRestrictionForCarrier(SUB_ID,
+                SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER, mIIntegerConsumer);
+        doReturn(true).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
+        processAllMessages();
+        assertTrue(waitForIIntegerConsumerResult(1));
+        assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
+        restrictionSet =
+                mSatelliteControllerUT.getSatelliteAttachRestrictionReasonsForCarrier(SUB_ID);
+        assertTrue(!restrictionSet.contains(SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER));
+        verify(mMockSatelliteModemInterface, times(1))
+                .requestSetSatelliteEnabledForCarrier(anyInt(), eq(true), any(Message.class));
+        reset(mMockSatelliteModemInterface);
+    }
+
     private void resetSatelliteControllerUTEnabledState() {
         logd("resetSatelliteControllerUTEnabledState");
         setUpResponseForRequestIsSatelliteSupported(false, SATELLITE_RESULT_RADIO_NOT_AVAILABLE);
@@ -1785,6 +1974,19 @@ public class SatelliteControllerTest extends TelephonyTest {
             return null;
         }).when(mMockSatelliteModemInterface)
                 .requestSatelliteEnabled(eq(enabled), eq(demoMode), any(Message.class));
+    }
+
+    private void setUpResponseForRequestSetSatelliteEnabledForCarrier(
+            boolean enabled, @SatelliteManager.SatelliteResult int error) {
+        SatelliteException exception = (error == SATELLITE_RESULT_SUCCESS)
+                ? null : new SatelliteException(error);
+        doAnswer(invocation -> {
+            Message message = (Message) invocation.getArguments()[2];
+            AsyncResult.forMessage(message, null, exception);
+            message.sendToTarget();
+            return null;
+        }).when(mMockSatelliteModemInterface)
+                .requestSetSatelliteEnabledForCarrier(anyInt(), eq(enabled), any(Message.class));
     }
 
     private void setUpNoResponseForRequestSatelliteEnabled(boolean enabled, boolean demoMode) {
