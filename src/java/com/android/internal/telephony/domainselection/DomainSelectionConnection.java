@@ -66,6 +66,8 @@ public class DomainSelectionConnection {
     protected static final int EVENT_QUALIFIED_NETWORKS_CHANGED = 2;
     protected static final int EVENT_SERVICE_CONNECTED = 3;
     protected static final int EVENT_SERVICE_BINDING_TIMEOUT = 4;
+    protected static final int EVENT_RESET_NETWORK_SCAN_DONE = 5;
+    protected static final int EVENT_LAST = EVENT_RESET_NETWORK_SCAN_DONE;
 
     private static final int DEFAULT_BIND_RETRY_TIMEOUT_MS = 4 * 1000;
 
@@ -73,6 +75,7 @@ public class DomainSelectionConnection {
     private static final int STATUS_DOMAIN_SELECTED  = 1 << 1;
     private static final int STATUS_WAIT_BINDING     = 1 << 2;
     private static final int STATUS_WAIT_SCAN_RESULT = 1 << 3;
+    private static final int STATUS_WAIT_RESET_SCAN_RESULT = 1 << 4;
 
     /** Callback to receive responses from DomainSelectionConnection. */
     public interface DomainSelectionConnectionCallback {
@@ -83,6 +86,16 @@ public class DomainSelectionConnection {
          * @param cause Indicates the reason.
          */
         void onSelectionTerminated(@DisconnectCauses int cause);
+    }
+
+    private static class ScanRequest {
+        final int[] mPreferredNetworks;
+        final int mScanType;
+
+        ScanRequest(int[] preferredNetworks, int scanType) {
+            mPreferredNetworks = preferredNetworks;
+            mScanType = scanType;
+        }
     }
 
     /**
@@ -166,7 +179,8 @@ public class DomainSelectionConnection {
         @Override
         public void onRequestEmergencyNetworkScan(
                 @NonNull @RadioAccessNetworkType int[] preferredNetworks,
-                @EmergencyScanType int scanType, @NonNull IWwanSelectorResultCallback cb) {
+                @EmergencyScanType int scanType, boolean resetScan,
+                @NonNull IWwanSelectorResultCallback cb) {
             synchronized (mLock) {
                 if (checkState(STATUS_DISPOSED)) {
                     return;
@@ -176,7 +190,7 @@ public class DomainSelectionConnection {
                 mHandler.post(() -> {
                     synchronized (mLock) {
                         DomainSelectionConnection.this.onRequestEmergencyNetworkScan(
-                                preferredNetworks, scanType);
+                                preferredNetworks, scanType, resetScan);
                     }
                 });
             }
@@ -261,6 +275,17 @@ public class DomainSelectionConnection {
                         }
                     }
                     break;
+                case EVENT_RESET_NETWORK_SCAN_DONE:
+                    synchronized (mLock) {
+                        clearState(STATUS_WAIT_RESET_SCAN_RESULT);
+                        if (checkState(STATUS_DISPOSED)
+                                || (mPendingScanRequest == null)) {
+                            return;
+                        }
+                        onRequestEmergencyNetworkScan(mPendingScanRequest.mPreferredNetworks,
+                                mPendingScanRequest.mScanType, false);
+                    }
+                    break;
                 default:
                     loge("handleMessage unexpected msg=" + msg.what);
                     break;
@@ -305,6 +330,8 @@ public class DomainSelectionConnection {
     private boolean mRegisteredRegistrant;
 
     private @NonNull AndroidFuture<Integer> mOnComplete;
+
+    private @Nullable ScanRequest mPendingScanRequest;
 
     /**
      * Creates an instance.
@@ -435,10 +462,11 @@ public class DomainSelectionConnection {
      *
      * @param preferredNetworks The ordered list of preferred networks to scan.
      * @param scanType Indicates the scan preference, such as full service or limited service.
+     * @param resetScan Indicates that the previous scan result shall be reset before scanning.
      */
     public void onRequestEmergencyNetworkScan(
             @NonNull @RadioAccessNetworkType int[] preferredNetworks,
-            @EmergencyScanType int scanType) {
+            @EmergencyScanType int scanType, boolean resetScan) {
         // Can be overridden if required
 
         synchronized (mLock) {
@@ -450,6 +478,29 @@ public class DomainSelectionConnection {
                 return;
             }
 
+            if (checkState(STATUS_WAIT_RESET_SCAN_RESULT)) {
+                if (mPendingScanRequest != null) {
+                    /* Consecutive scan requests without cancellation is not an expected use case.
+                     * DomainSelector should cancel the previous request or wait for the result
+                     * before requesting a new scan.*/
+                    logi("onRequestEmergencyNetworkScan consecutive scan requests");
+                    return;
+                } else {
+                    // The reset has not been completed.
+                    // case1) Long delay in cancelEmergencyNetworkScan by modem.
+                    // case2) A consecutive scan requests with short interval from DomainSelector.
+                    logi("onRequestEmergencyNetworkScan reset not completed");
+                }
+                mPendingScanRequest = new ScanRequest(preferredNetworks, scanType);
+                return;
+            } else if (resetScan) {
+                setState(STATUS_WAIT_RESET_SCAN_RESULT);
+                mPendingScanRequest = new ScanRequest(preferredNetworks, scanType);
+                mPhone.cancelEmergencyNetworkScan(resetScan,
+                        mHandler.obtainMessage(EVENT_RESET_NETWORK_SCAN_DONE));
+                return;
+            }
+
             if (!mRegisteredRegistrant) {
                 mPhone.registerForEmergencyNetworkScan(mHandler,
                         EVENT_EMERGENCY_NETWORK_SCAN_RESULT, null);
@@ -457,6 +508,7 @@ public class DomainSelectionConnection {
             }
             setState(STATUS_WAIT_SCAN_RESULT);
             mPhone.triggerEmergencyNetworkScan(preferredNetworks, scanType, null);
+            mPendingScanRequest = null;
         }
     }
 
@@ -492,6 +544,7 @@ public class DomainSelectionConnection {
     }
 
     private void onCancel(boolean resetScan) {
+        mPendingScanRequest = null;
         if (checkState(STATUS_WAIT_SCAN_RESULT)) {
             clearState(STATUS_WAIT_SCAN_RESULT);
             mPhone.cancelEmergencyNetworkScan(resetScan, null);
