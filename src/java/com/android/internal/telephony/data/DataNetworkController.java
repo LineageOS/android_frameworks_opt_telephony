@@ -1554,7 +1554,7 @@ public class DataNetworkController extends Handler {
 
         // Check whether data is disallowed while using satellite
         if (isDataDisallowedDueToSatellite(networkRequest.getCapabilities())) {
-            evaluation.addDataDisallowedReason(DataDisallowedReason.SATELLITE_ENABLED);
+            evaluation.addDataDisallowedReason(DataDisallowedReason.SERVICE_OPTION_NOT_SUPPORTED);
         }
 
         // Check if only one data network is allowed.
@@ -1737,7 +1737,7 @@ public class DataNetworkController extends Handler {
         // Check whether data is disallowed while using satellite
         if (isDataDisallowedDueToSatellite(dataNetwork.getNetworkCapabilities()
                 .getCapabilities())) {
-            evaluation.addDataDisallowedReason(DataDisallowedReason.SATELLITE_ENABLED);
+            evaluation.addDataDisallowedReason(DataDisallowedReason.SERVICE_OPTION_NOT_SUPPORTED);
         }
 
         // Check if there are other network that has higher priority, and only single data network
@@ -2091,8 +2091,8 @@ public class DataNetworkController extends Handler {
                     return DataNetwork.TEAR_DOWN_REASON_SIM_REMOVAL;
                 case CONCURRENT_VOICE_DATA_NOT_ALLOWED:
                     return DataNetwork.TEAR_DOWN_REASON_CONCURRENT_VOICE_DATA_NOT_ALLOWED;
-                case SATELLITE_ENABLED:
-                    return DataNetwork.TEAR_DOWN_REASON_SATELLITE_ENABLED;
+                case SERVICE_OPTION_NOT_SUPPORTED:
+                    return DataNetwork.TEAR_DOWN_REASON_SERVICE_OPTION_NOT_SUPPORTED;
                 case RADIO_POWER_OFF:
                     return DataNetwork.TEAR_DOWN_REASON_AIRPLANE_MODE_ON;
                 case PENDING_TEAR_DOWN_ALL:
