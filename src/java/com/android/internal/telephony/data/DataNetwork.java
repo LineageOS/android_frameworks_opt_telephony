@@ -279,7 +279,7 @@ public class DataNetwork extends StateMachine {
                     TEAR_DOWN_REASON_RAT_NOT_ALLOWED,
                     TEAR_DOWN_REASON_ROAMING_DISABLED,
                     TEAR_DOWN_REASON_CONCURRENT_VOICE_DATA_NOT_ALLOWED,
-                    TEAR_DOWN_REASON_SATELLITE_ENABLED,
+                    TEAR_DOWN_REASON_SERVICE_OPTION_NOT_SUPPORTED,
                     TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY,
                     TEAR_DOWN_REASON_POWER_OFF_BY_CARRIER,
                     TEAR_DOWN_REASON_DATA_STALL,
@@ -331,8 +331,8 @@ public class DataNetwork extends StateMachine {
     /** Data network tear down due to concurrent voice/data not allowed. */
     public static final int TEAR_DOWN_REASON_CONCURRENT_VOICE_DATA_NOT_ALLOWED = 8;
 
-    /** Data network tear down due to device is connected to satellite. */
-    public static final int TEAR_DOWN_REASON_SATELLITE_ENABLED = 9;
+    /** Data network tear down due to service option is not supported. */
+    public static final int TEAR_DOWN_REASON_SERVICE_OPTION_NOT_SUPPORTED = 9;
 
     /** Data network tear down due to data service unbound. */
     public static final int TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY = 10;
@@ -3491,8 +3491,8 @@ public class DataNetwork extends StateMachine {
                 return "TEAR_DOWN_REASON_ROAMING_DISABLED";
             case TEAR_DOWN_REASON_CONCURRENT_VOICE_DATA_NOT_ALLOWED:
                 return "TEAR_DOWN_REASON_CONCURRENT_VOICE_DATA_NOT_ALLOWED";
-            case TEAR_DOWN_REASON_SATELLITE_ENABLED:
-                return "TEAR_DOWN_REASON_SATELLITE_ENABLED";
+            case TEAR_DOWN_REASON_SERVICE_OPTION_NOT_SUPPORTED:
+                return "TEAR_DOWN_REASON_SERVICE_OPTION_NOT_SUPPORTED";
             case TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY:
                 return "TEAR_DOWN_REASON_DATA_SERVICE_NOT_READY";
             case TEAR_DOWN_REASON_POWER_OFF_BY_CARRIER:
