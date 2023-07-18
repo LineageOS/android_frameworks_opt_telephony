@@ -173,6 +173,8 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         mContextFixture.putBooleanResource(com.android.internal.R.bool
                 .config_subscription_database_async_update, true);
         mContextFixture.putIntArrayResource(com.android.internal.R.array.sim_colors, new int[0]);
+        mContextFixture.putResource(com.android.internal.R.string.default_card_name,
+                FAKE_DEFAULT_CARD_NAME);
 
         mContextFixture.addSystemFeature(PackageManager.FEATURE_TELEPHONY_EUICC);
         setupMocksForTelephonyPermissions(Build.VERSION_CODES.UPSIDE_DOWN_CAKE);
@@ -1870,12 +1872,16 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(mSubscriptionManagerServiceUT.getSlotIndex(1)).isEqualTo(0);
         assertThat(mSubscriptionManagerServiceUT.getPhoneId(1)).isEqualTo(0);
 
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1);
+        assertThat(subInfo.getDisplayName()).isEqualTo("CARD 1");
+
         mSubscriptionManagerServiceUT.setCarrierId(1, FAKE_CARRIER_ID1);
         mSubscriptionManagerServiceUT.setDisplayNameUsingSrc(FAKE_CARRIER_NAME1, 1,
                 SubscriptionManager.NAME_SOURCE_SIM_SPN);
         mSubscriptionManagerServiceUT.setCarrierName(1, FAKE_CARRIER_NAME1);
 
-        SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
+        subInfo = mSubscriptionManagerServiceUT
                 .getSubscriptionInfoInternal(1);
         assertThat(subInfo.getSubscriptionId()).isEqualTo(1);
         assertThat(subInfo.getSimSlotIndex()).isEqualTo(0);
@@ -2193,9 +2199,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
     @Test
     public void testInactiveSimInserted() {
-        mContextFixture.putResource(com.android.internal.R.string.default_card_name,
-                FAKE_DEFAULT_CARD_NAME);
-
         doReturn(0).when(mUiccSlot).getPortIndexFromIccId(eq(FAKE_ICCID1));
 
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
@@ -2373,7 +2376,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 .getSubscriptionInfoInternal(1);
         assertThat(subInfo.getSubscriptionId()).isEqualTo(1);
         assertThat(subInfo.getIccId()).isEqualTo(FAKE_ICCID1);
-        assertThat(subInfo.getDisplayName()).isEqualTo("");
+        assertThat(subInfo.getDisplayName()).isEqualTo("CARD 1");
         assertThat(subInfo.getDisplayNameSource()).isEqualTo(
                 SubscriptionManager.NAME_SOURCE_UNKNOWN);
         assertThat(subInfo.getMcc()).isEqualTo("");
@@ -2385,7 +2388,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         subInfo = mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2);
         assertThat(subInfo.getSubscriptionId()).isEqualTo(2);
         assertThat(subInfo.getIccId()).isEqualTo(FAKE_ICCID2);
-        assertThat(subInfo.getDisplayName()).isEqualTo("");
+        assertThat(subInfo.getDisplayName()).isEqualTo("CARD 2");
         assertThat(subInfo.getDisplayNameSource()).isEqualTo(
                 SubscriptionManager.NAME_SOURCE_UNKNOWN);
         assertThat(subInfo.getMcc()).isEqualTo(FAKE_MCC2);

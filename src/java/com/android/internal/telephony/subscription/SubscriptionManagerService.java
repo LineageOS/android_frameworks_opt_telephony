@@ -1068,6 +1068,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                         int subId = insertSubscriptionInfo(embeddedProfile.getIccid(),
                                 SubscriptionManager.INVALID_SIM_SLOT_INDEX,
                                 null, SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+                        mSubscriptionDatabaseManager.setDisplayName(subId, mContext.getResources()
+                                .getString(R.string.default_card_name, subId));
                         subInfo = mSubscriptionDatabaseManager.getSubscriptionInfoInternal(subId);
                     }
 
@@ -1344,6 +1346,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                     // This is a new SIM card. Insert a new record.
                     subId = insertSubscriptionInfo(iccId, phoneId, null,
                             SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM);
+                    mSubscriptionDatabaseManager.setDisplayName(subId,
+                            mContext.getResources().getString(R.string.default_card_name, subId));
                 } else {
                     subId = subInfo.getSubscriptionId();
                     log("updateSubscription: Found existing subscription. subId= " + subId
