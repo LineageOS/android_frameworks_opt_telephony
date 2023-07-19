@@ -294,31 +294,38 @@ public class SignalStrengthController extends Handler {
     }
 
     /**
-     * send signal-strength-changed notification if changed Called both for
-     * solicited and unsolicited signal strength updates
-     *
-     * @return true if the signal strength changed and a notification was sent.
+     * Send signal-strength-changed notification if changed. Called for both solicited and
+     * unsolicited signal strength updates.
      */
-    private boolean onSignalStrengthResult(@NonNull AsyncResult ar) {
+    private void onSignalStrengthResult(@NonNull AsyncResult ar) {
+        // This signal is used for both voice and data radio signal so parse all fields.
 
-        // This signal is used for both voice and data radio signal so parse
-        // all fields
-
+        SignalStrength signalStrength;
         if ((ar.exception == null) && (ar.result != null)) {
-            mSignalStrength = (SignalStrength) ar.result;
-
-            if (mPhone.getServiceStateTracker() != null) {
-                mSignalStrength.updateLevel(mCarrierConfig, mPhone.getServiceStateTracker().mSS);
-            }
+            signalStrength = (SignalStrength) ar.result;
         } else {
-            log("onSignalStrengthResult() Exception from RIL : " + ar.exception);
-            mSignalStrength = new SignalStrength();
+            loge("onSignalStrengthResult() Exception from RIL : " + ar.exception);
+            signalStrength = new SignalStrength();
+        }
+        updateSignalStrength(signalStrength);
+    }
+
+    /**
+     * Set {@code mSignalStrength} to the input argument {@code signalStrength}, update its level,
+     * and send signal-strength-changed notification if changed.
+     *
+     * @param signalStrength The new SignalStrength used for updating {@code mSignalStrength}.
+     */
+    private void updateSignalStrength(@NonNull SignalStrength signalStrength) {
+        mSignalStrength = signalStrength;
+        ServiceStateTracker serviceStateTracker = mPhone.getServiceStateTracker();
+        if (serviceStateTracker != null) {
+            mSignalStrength.updateLevel(mCarrierConfig, serviceStateTracker.mSS);
+        } else {
+            loge("updateSignalStrength: serviceStateTracker is null");
         }
         mSignalStrengthUpdatedTime = System.currentTimeMillis();
-
-        boolean ssChanged = notifySignalStrength();
-
-        return ssChanged;
+        notifySignalStrength();
     }
 
     /**
@@ -720,20 +727,17 @@ public class SignalStrengthController extends Handler {
         mSignalStrengthUpdatedTime = System.currentTimeMillis();
     }
 
-    boolean notifySignalStrength() {
-        boolean notified = false;
+    void notifySignalStrength() {
         if (!mSignalStrength.equals(mLastSignalStrength)) {
             try {
                 mSignalStrengthChangedRegistrants.notifyRegistrants();
                 mPhone.notifySignalStrength();
-                notified = true;
                 mLastSignalStrength = mSignalStrength;
             } catch (NullPointerException ex) {
-                log("updateSignalStrength() Phone already destroyed: " + ex
+                loge("updateSignalStrength() Phone already destroyed: " + ex
                         + "SignalStrength not notified");
             }
         }
-        return notified;
     }
 
     /**
@@ -1132,6 +1136,7 @@ public class SignalStrengthController extends Handler {
 
         updateArfcnLists();
         updateReportingCriteria();
+        updateSignalStrength(new SignalStrength(mSignalStrength));
     }
 
     private static SignalThresholdInfo createSignalThresholdsInfo(
