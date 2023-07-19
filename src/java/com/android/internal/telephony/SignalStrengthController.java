@@ -26,6 +26,8 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.PersistableBundle;
+import android.os.Registrant;
+import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
@@ -102,7 +104,8 @@ public class SignalStrengthController extends Handler {
     private final Phone mPhone;
     @NonNull
     private final CommandsInterface mCi;
-
+    @NonNull
+    private final RegistrantList mSignalStrengthChangedRegistrants = new RegistrantList();
     @NonNull
     private SignalStrength mSignalStrength;
     private long mSignalStrengthUpdatedTime;
@@ -721,6 +724,7 @@ public class SignalStrengthController extends Handler {
         boolean notified = false;
         if (!mSignalStrength.equals(mLastSignalStrength)) {
             try {
+                mSignalStrengthChangedRegistrants.notifyRegistrants();
                 mPhone.notifySignalStrength();
                 notified = true;
                 mLastSignalStrength = mSignalStrength;
@@ -730,6 +734,25 @@ public class SignalStrengthController extends Handler {
             }
         }
         return notified;
+    }
+
+    /**
+     * Register for SignalStrength changed.
+     * @param h Handler to notify
+     * @param what msg.what when the message is delivered
+     * @param obj msg.obj when the message is delivered
+     */
+    public void registerForSignalStrengthChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mSignalStrengthChangedRegistrants.add(r);
+    }
+
+    /**
+     * Unregister for SignalStrength changed.
+     * @param h Handler to notify
+     */
+    public void unregisterForSignalStrengthChanged(Handler h) {
+        mSignalStrengthChangedRegistrants.remove(h);
     }
 
     /**
