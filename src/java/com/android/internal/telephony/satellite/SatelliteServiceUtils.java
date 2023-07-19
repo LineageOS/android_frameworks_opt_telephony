@@ -16,11 +16,16 @@
 
 package com.android.internal.telephony.satellite;
 
+import static android.telephony.NetworkRegistrationInfo.FIRST_SERVICE_TYPE;
+import static android.telephony.NetworkRegistrationInfo.LAST_SERVICE_TYPE;
+
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Binder;
+import android.os.PersistableBundle;
+import android.telephony.NetworkRegistrationInfo;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.satellite.AntennaPosition;
@@ -40,7 +45,9 @@ import com.android.internal.telephony.subscription.SubscriptionManagerService;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -264,6 +271,127 @@ public class SatelliteServiceUtils {
         }
         logd("getValidSatelliteSubId: use DEFAULT_SUBSCRIPTION_ID for subId=" + subId);
         return SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
+    }
+
+    /**
+     * Expected format of each input string in the array: "PLMN_1:service_1,service_2,..."
+     *
+     * @return The map of supported services with key: PLMN, value: set of services supported by
+     * the PLMN.
+     */
+    @NonNull
+    @NetworkRegistrationInfo.ServiceType
+    public static Map<String, Set<Integer>> parseSupportedSatelliteServices(
+            String[] supportedSatelliteServicesStrArray) {
+        Map<String, Set<Integer>> supportedServicesMap = new HashMap<>();
+        if (supportedSatelliteServicesStrArray == null
+                || supportedSatelliteServicesStrArray.length == 0) {
+            return supportedServicesMap;
+        }
+
+        for (String supportedServicesPerPlmnStr : supportedSatelliteServicesStrArray) {
+            String[] pairOfPlmnAndsupportedServicesStr =
+                    supportedServicesPerPlmnStr.split(":");
+            if (pairOfPlmnAndsupportedServicesStr != null
+                    && (pairOfPlmnAndsupportedServicesStr.length == 1
+                    || pairOfPlmnAndsupportedServicesStr.length == 2)) {
+                String plmn = pairOfPlmnAndsupportedServicesStr[0];
+                Set<Integer> supportedServicesSet = new HashSet<>();
+                if (pairOfPlmnAndsupportedServicesStr.length == 2) {
+                    String[] supportedServicesStrArray =
+                            pairOfPlmnAndsupportedServicesStr[1].split(",");
+                    for (String service : supportedServicesStrArray) {
+                        try {
+                            int serviceType = Integer.parseInt(service);
+                            if (isServiceTypeValid(serviceType)) {
+                                supportedServicesSet.add(serviceType);
+                            } else {
+                                loge("parseSupportedSatelliteServices: invalid serviceType="
+                                        + serviceType);
+                            }
+                        } catch (NumberFormatException e) {
+                            loge("parseSupportedSatelliteServices: supportedServicesPerPlmnStr="
+                                    + supportedServicesPerPlmnStr + ", service=" + service
+                                    + ", e=" + e);
+                        }
+                    }
+                }
+                supportedServicesMap.put(plmn, supportedServicesSet);
+            } else {
+                loge("parseSupportedSatelliteServices: invalid format input, "
+                        + "supportedServicesPerPlmnStr=" + supportedServicesPerPlmnStr);
+            }
+        }
+        return supportedServicesMap;
+    }
+
+    /**
+     * Expected format of the input dictionary bundle is:
+     * <ul>
+     *     <li>Key: PLMN string.</li>
+     *     <li>Value: A string with format "service_1,service_2,..."</li>
+     * </ul>
+     * @return The map of supported services with key: PLMN, value: set of services supported by
+     * the PLMN.
+     */
+    @NonNull
+    @NetworkRegistrationInfo.ServiceType
+    public static Map<String, Set<Integer>> parseSupportedSatelliteServices(
+            PersistableBundle supportedServicesBundle) {
+        Map<String, Set<Integer>> supportedServicesMap = new HashMap<>();
+        if (supportedServicesBundle == null || supportedServicesBundle.isEmpty()) {
+            return supportedServicesMap;
+        }
+
+        for (String plmn : supportedServicesBundle.keySet()) {
+            Set<Integer> supportedServicesSet = new HashSet<>();
+            for (int serviceType : supportedServicesBundle.getIntArray(plmn)) {
+                if (isServiceTypeValid(serviceType)) {
+                    supportedServicesSet.add(serviceType);
+                } else {
+                    loge("parseSupportedSatelliteServices: invalid service type=" + serviceType
+                            + " for plmn=" + plmn);
+                }
+            }
+            supportedServicesMap.put(plmn, supportedServicesSet);
+        }
+        return supportedServicesMap;
+    }
+
+    /**
+     * For the PLMN that exists in both {@code providerSupportedServices} and
+     * {@code carrierSupportedServices}, the supported services will be the intersection of the two
+     * sets. For the PLMN that is present in {@code providerSupportedServices} but not in
+     * {@code carrierSupportedServices}, the provider supported services will be used. The rest
+     * will not be used.
+     *
+     * @param providerSupportedServices Satellite provider supported satellite services.
+     * @param carrierSupportedServices Carrier supported satellite services.
+     * @return The supported satellite services by the device for the corresponding carrier and the
+     * satellite provider.
+     */
+    @NonNull
+    @NetworkRegistrationInfo.ServiceType
+    public static Map<String, Set<Integer>> mergeSupportedSatelliteServices(
+            @NonNull @NetworkRegistrationInfo.ServiceType Map<String, Set<Integer>>
+                    providerSupportedServices,
+            @NonNull @NetworkRegistrationInfo.ServiceType Map<String, Set<Integer>>
+                    carrierSupportedServices) {
+        Map<String, Set<Integer>> supportedServicesMap = new HashMap<>();
+        for (Map.Entry<String, Set<Integer>> entry : providerSupportedServices.entrySet()) {
+            Set<Integer> supportedServices = new HashSet<>(entry.getValue());
+            if (carrierSupportedServices.containsKey(entry.getKey())) {
+                supportedServices.retainAll(carrierSupportedServices.get(entry.getKey()));
+            }
+            if (!supportedServices.isEmpty()) {
+                supportedServicesMap.put(entry.getKey(), supportedServices);
+            }
+        }
+        return supportedServicesMap;
+    }
+
+    private static boolean isServiceTypeValid(int serviceType) {
+        return (serviceType >= FIRST_SERVICE_TYPE && serviceType <= LAST_SERVICE_TYPE);
     }
 
     /**
