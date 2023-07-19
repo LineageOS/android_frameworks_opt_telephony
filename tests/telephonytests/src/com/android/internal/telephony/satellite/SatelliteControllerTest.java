@@ -1474,7 +1474,7 @@ public class SatelliteControllerTest extends TelephonyTest {
 
     @Test
     public void testSupportedSatelliteServices() {
-        List<String> satellitePlmnList = mSatelliteControllerUT.getSatellitePlmnList();
+        List<String> satellitePlmnList = mSatelliteControllerUT.getSatellitePlmnList(SUB_ID);
         assertEquals(EMPTY_SATELLITE_SERVICES_SUPPORTED_BY_PROVIDERS_STRING_ARRAY.length,
                 satellitePlmnList.size());
         List<Integer> supportedSatelliteServices =
@@ -1492,7 +1492,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         TestSatelliteController testSatelliteController =
                 new TestSatelliteController(mContext, Looper.myLooper());
 
-        satellitePlmnList = testSatelliteController.getSatellitePlmnList();
+        satellitePlmnList = testSatelliteController.getSatellitePlmnList(SUB_ID);
         assertTrue(Arrays.equals(satellitePlmnArray, satellitePlmnList.stream().toArray()));
 
         supportedSatelliteServices =
@@ -1513,11 +1513,12 @@ public class SatelliteControllerTest extends TelephonyTest {
 
         // Carrier config changed
         int[] expectedSupportedServices3 = {2};
-        int[] supportedServices = {1, 3};
+        int[] expectedSupportedServices4 = {1, 3};
         PersistableBundle carrierSupportedSatelliteServicesPerProvider = new PersistableBundle();
         carrierSupportedSatelliteServicesPerProvider.putIntArray(
                 "00102", expectedSupportedServices3);
-        carrierSupportedSatelliteServicesPerProvider.putIntArray("00103", supportedServices);
+        carrierSupportedSatelliteServicesPerProvider.putIntArray(
+                "00103", expectedSupportedServices4);
         mCarrierConfigBundle.putPersistableBundle(CarrierConfigManager
                         .KEY_CARRIER_SUPPORTED_SATELLITE_SERVICES_PER_PROVIDER_BUNDLE,
                 carrierSupportedSatelliteServicesPerProvider);
@@ -1547,7 +1548,10 @@ public class SatelliteControllerTest extends TelephonyTest {
 
         supportedSatelliteServices =
                 mSatelliteControllerUT.getSupportedSatelliteServices(SUB_ID, "00103");
-        assertTrue(supportedSatelliteServices.isEmpty());
+        assertTrue(Arrays.equals(expectedSupportedServices4,
+                supportedSatelliteServices.stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray()));
 
         // Subscriptions changed
         int[] newActiveSubIds = {SUB_ID1};
@@ -1565,6 +1569,9 @@ public class SatelliteControllerTest extends TelephonyTest {
         assertTrue(supportedSatelliteServices.isEmpty());
         supportedSatelliteServices =
                 testSatelliteController.getSupportedSatelliteServices(SUB_ID, "00102");
+        assertTrue(supportedSatelliteServices.isEmpty());
+        supportedSatelliteServices =
+                testSatelliteController.getSupportedSatelliteServices(SUB_ID, "00103");
         assertTrue(supportedSatelliteServices.isEmpty());
 
         supportedSatelliteServices =
@@ -1585,7 +1592,10 @@ public class SatelliteControllerTest extends TelephonyTest {
 
         supportedSatelliteServices =
                 testSatelliteController.getSupportedSatelliteServices(SUB_ID1, "00103");
-        assertTrue(supportedSatelliteServices.isEmpty());
+        assertTrue(Arrays.equals(expectedSupportedServices4,
+                supportedSatelliteServices.stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray()));
     }
 
     @Test
@@ -1604,7 +1614,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         TestSatelliteController testSatelliteController =
                 new TestSatelliteController(mContext, Looper.myLooper());
         processAllMessages();
-        List<String> satellitePlmnList = testSatelliteController.getSatellitePlmnList();
+        List<String> satellitePlmnList = testSatelliteController.getSatellitePlmnList(SUB_ID);
         verify(mPhone, times(1))
                 .setSatellitePlmn(any(Message.class), eq(satellitePlmnList));
         reset(mPhone);

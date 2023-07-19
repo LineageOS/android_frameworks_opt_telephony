@@ -28,6 +28,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
 
 import android.annotation.NonNull;
@@ -75,7 +76,7 @@ public class NtnCapabilityResolverTest extends TelephonyTest {
         replaceInstance(SatelliteController.class, "sInstance", null,
                 mMockSatelliteController);
         doReturn(Arrays.asList(SATELLITE_PLMN_ARRAY))
-                .when(mMockSatelliteController).getSatellitePlmnList();
+                .when(mMockSatelliteController).getSatellitePlmnList(anyInt());
         doReturn(mSatelliteSupportedServiceList).when(mMockSatelliteController)
                 .getSupportedSatelliteServices(SUB_ID, SATELLITE_PLMN);
     }
