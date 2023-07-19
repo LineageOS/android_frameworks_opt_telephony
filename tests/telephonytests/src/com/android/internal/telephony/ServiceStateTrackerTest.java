@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony;
 
+import static android.telephony.NetworkRegistrationInfo.SERVICE_TYPE_EMERGENCY;
+import static android.telephony.NetworkRegistrationInfo.SERVICE_TYPE_SMS;
+
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -97,6 +100,7 @@ import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.data.AccessNetworksManager;
 import com.android.internal.telephony.data.DataNetworkController;
 import com.android.internal.telephony.metrics.ServiceStateStats;
+import com.android.internal.telephony.satellite.SatelliteController;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
@@ -117,6 +121,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.Executor;
+import java.util.stream.Collectors;
 
 public class ServiceStateTrackerTest extends TelephonyTest {
     // Mocked classes
@@ -139,6 +144,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     private ServiceStateTracker sst;
     private ServiceStateTrackerTestHandler mSSTTestHandler;
     private PersistableBundle mBundle;
+    private SatelliteController mSatelliteController;
 
     private static final int EVENT_REGISTERED_TO_NETWORK = 1;
     private static final int EVENT_SUBSCRIPTION_INFO_READY = 2;
@@ -248,6 +254,11 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSubInfo = Mockito.mock(SubscriptionInfo.class);
         mSubInfoInternal = new SubscriptionInfoInternal.Builder().setId(1).build();
         mServiceStateStats = Mockito.mock(ServiceStateStats.class);
+
+        mSatelliteController = Mockito.mock(SatelliteController.class);
+        replaceInstance(SatelliteController.class, "sInstance", null,
+                mSatelliteController);
+        doReturn(new ArrayList<>()).when(mSatelliteController).getSatellitePlmnList();
 
         mContextFixture.putResource(R.string.kg_text_message_separator, " \u2014 ");
 
@@ -3240,5 +3251,56 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
 
         assertTrue(sst.mSS.isIwlanPreferred());
+    }
+
+    @Test
+    public void testRegisterToSatellite() {
+        int[] satelliteSupportedServices = {SERVICE_TYPE_SMS, SERVICE_TYPE_EMERGENCY};
+        List<Integer> satelliteSupportedServiceList =
+                Arrays.stream(satelliteSupportedServices).boxed().collect(Collectors.toList());
+        CellIdentityGsm cellIdentity =
+                new CellIdentityGsm(0, 1, 900, 5, "101", "23", "test", "tst",
+                        Collections.emptyList());
+        doReturn(Arrays.asList("10123")).when(mSatelliteController).getSatellitePlmnList();
+        doReturn(satelliteSupportedServiceList).when(mSatelliteController)
+                .getSupportedSatelliteServices(sst.mSubId, "10123");
+
+        assertFalse(sst.mSS.isUsingNonTerrestrialNetwork());
+
+        // Data registered to satellite roaming PLMN - "00101"
+        NetworkRegistrationInfo dataReg = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                5, 16, 0, false, null, cellIdentity, getPlmnFromCellIdentity(cellIdentity),
+                1, false, false, false, null);
+
+        // CS out of service
+        NetworkRegistrationInfo voiceReg = new NetworkRegistrationInfo(
+                NetworkRegistrationInfo.DOMAIN_CS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
+                0, 16, 0, true, null, cellIdentity, getPlmnFromCellIdentity(cellIdentity),
+                false, 0, 0, 0);
+
+        sst.mPollingContext[0] = 2;
+        // Update voice reg state to be in oos
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, voiceReg, null)));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        // Update data registered to satellite roaming PLMN
+        sst.sendMessage(sst.obtainMessage(
+                ServiceStateTracker.EVENT_POLL_STATE_PS_CELLULAR_REGISTRATION,
+                new AsyncResult(sst.mPollingContext, dataReg, null)));
+        waitForLastHandlerAction(mSSTTestHandler.getThreadHandler());
+
+        assertTrue(sst.mSS.isUsingNonTerrestrialNetwork());
+        List<NetworkRegistrationInfo> nriList =
+                sst.mSS.getNetworkRegistrationInfoListForTransportType(
+                        AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
+        assertEquals(2, nriList.size());
+        for (NetworkRegistrationInfo nri : nriList) {
+            assertTrue(Arrays.equals(satelliteSupportedServices, nri.getAvailableServices().stream()
+                    .mapToInt(Integer::intValue)
+                    .toArray()));
+        }
     }
 }
