@@ -269,6 +269,8 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
         private final List<String> mAllColumns;
 
+        private boolean mDatabaseChanged;
+
         SubscriptionProvider() {
             mAllColumns = SimInfo.getAllColumns();
         }
@@ -378,7 +380,17 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
         @Override
         public Bundle call(String method, @Nullable String args, @Nullable Bundle bundle) {
-            return new Bundle();
+            Bundle result = new Bundle();
+            if (method.equals(SubscriptionManager.RESTORE_SIM_SPECIFIC_SETTINGS_METHOD_NAME)) {
+                result.putBoolean(
+                        SubscriptionManager.RESTORE_SIM_SPECIFIC_SETTINGS_DATABASE_UPDATED,
+                        mDatabaseChanged);
+            }
+            return result;
+        }
+
+        public void setRestoreDatabaseChanged(boolean changed) {
+            mDatabaseChanged = changed;
         }
     }
 
@@ -422,7 +434,7 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 .that(mDatabaseManagerUT.getSubscriptionInfoInternal(subId)).isEqualTo(subInfo);
 
         // Load subscription info from the database.
-        mDatabaseManagerUT.reloadDatabase();
+        mDatabaseManagerUT.reloadDatabaseSync();
         processAllMessages();
 
         // Verify the database value is same as the inserted one.
