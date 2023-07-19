@@ -341,7 +341,7 @@ public class GsmCdmaPhone extends Phone {
 
         // phone type needs to be set before other initialization as other objects rely on it
         mPrecisePhoneType = precisePhoneType;
-        mVoiceCallSessionStats = new VoiceCallSessionStats(mPhoneId, this);
+        mVoiceCallSessionStats = new VoiceCallSessionStats(mPhoneId, this, featureFlags);
         mImsManagerFactory = imsManagerFactory;
         initOnce(ci);
         initRatSpecific(precisePhoneType);

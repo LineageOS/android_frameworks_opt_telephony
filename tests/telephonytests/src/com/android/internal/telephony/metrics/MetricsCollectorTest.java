@@ -92,6 +92,7 @@ public class MetricsCollectorTest extends TelephonyTest {
     private UiccCard mActiveCard;
     private UiccPort mActivePort;
     private ServiceStateStats mServiceStateStats;
+    private VonrHelper mVonrHelper;
 
     private MetricsCollector mMetricsCollector;
 
@@ -104,8 +105,10 @@ public class MetricsCollectorTest extends TelephonyTest {
         mActiveCard = mock(UiccCard.class);
         mActivePort = mock(UiccPort.class);
         mServiceStateStats = mock(ServiceStateStats.class);
+        mVonrHelper = mock(VonrHelper.class);
         mMetricsCollector =
-                new MetricsCollector(mContext, mPersistAtomsStorage, mDeviceStateHelper);
+                new MetricsCollector(mContext, mPersistAtomsStorage,
+                        mDeviceStateHelper, mVonrHelper);
         doReturn(mSST).when(mSecondPhone).getServiceStateTracker();
         doReturn(mServiceStateStats).when(mSST).getServiceStateStats();
     }

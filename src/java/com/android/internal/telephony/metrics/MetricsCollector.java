@@ -54,6 +54,7 @@ import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_RAT_US
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION;
 import static com.android.internal.telephony.TelephonyStatsLog.VOICE_CALL_SESSION__CALL_DURATION__CALL_DURATION_UNKNOWN;
 
+import android.annotation.NonNull;
 import android.app.StatsManager;
 import android.content.Context;
 import android.telephony.SubscriptionManager;
@@ -65,6 +66,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
@@ -149,21 +151,25 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     private final PersistAtomsStorage mStorage;
     private final DeviceStateHelper mDeviceStateHelper;
     private final StatsManager mStatsManager;
+    private final VonrHelper mVonrHelper;
     private final AirplaneModeStats mAirplaneModeStats;
     private final Set<DataCallSessionStats> mOngoingDataCallStats = ConcurrentHashMap.newKeySet();
     private static final Random sRandom = new Random();
 
-    public MetricsCollector(Context context) {
-        this(context, new PersistAtomsStorage(context), new DeviceStateHelper(context));
+    public MetricsCollector(Context context, @NonNull FeatureFlags featureFlags) {
+        this(context, new PersistAtomsStorage(context),
+                new DeviceStateHelper(context), new VonrHelper(featureFlags));
     }
 
     /** Allows dependency injection. Used during unit tests. */
     @VisibleForTesting
     public MetricsCollector(
-            Context context, PersistAtomsStorage storage, DeviceStateHelper deviceStateHelper) {
+            Context context, PersistAtomsStorage storage, DeviceStateHelper deviceStateHelper,
+                    VonrHelper vonrHelper) {
         mStorage = storage;
         mDeviceStateHelper = deviceStateHelper;
         mStatsManager = (StatsManager) context.getSystemService(Context.STATS_MANAGER);
+        mVonrHelper = vonrHelper;
         if (mStatsManager != null) {
             // Most (but not all) of these are subject to cooldown specified by MIN_COOLDOWN_MILLIS.
             registerAtom(CELLULAR_DATA_SERVICE_SWITCH);
@@ -306,6 +312,11 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
     /** Returns the {@link DeviceStateHelper}. */
     public DeviceStateHelper getDeviceStateHelper() {
         return mDeviceStateHelper;
+    }
+
+    /** Returns the {@link VonrHelper}. */
+    public VonrHelper getVonrHelper() {
+        return mVonrHelper;
     }
 
     /** Updates duration segments and calls {@link PersistAtomsStorage#flushAtoms()}. */
@@ -993,7 +1004,9 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 session.handoverInProgress,
                 session.isIwlanCrossSimAtStart,
                 session.isIwlanCrossSimAtEnd,
-                session.isIwlanCrossSimAtConnected);
+                session.isIwlanCrossSimAtConnected,
+                session.vonrEnabled);
+
     }
 
     private static StatsEvent buildStatsEvent(IncomingSms sms) {
