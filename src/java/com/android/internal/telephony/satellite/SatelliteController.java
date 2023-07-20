@@ -227,7 +227,6 @@ public class SatelliteController extends Handler {
     @NonNull private final Object mCarrierConfigArrayLock = new Object();
     @GuardedBy("mCarrierConfigArrayLock")
     @NonNull private final SparseArray<PersistableBundle> mCarrierConfigArray = new SparseArray<>();
-    @NonNull private final List<String> mSatellitePlmnList;
 
     /**
      * @return The singleton instance of SatelliteController.
@@ -319,8 +318,6 @@ public class SatelliteController extends Handler {
         }
 
         mSatelliteServicesSupportedByProviders = readSupportedSatelliteServicesFromOverlayConfig();
-        mSatellitePlmnList =
-                mSatelliteServicesSupportedByProviders.keySet().stream().toList();
         updateSupportedSatelliteServicesForActiveSubscriptions();
         mCarrierConfigChangeListener =
                 (slotIndex, subId, carrierId, specificCarrierId) ->
@@ -1947,11 +1944,18 @@ public class SatelliteController extends Handler {
     }
 
     /**
+     * @param subId Subscription ID.
      * @return The list of satellite PLMNs used for connecting to satellite networks.
      */
     @NonNull
-    public List<String> getSatellitePlmnList() {
-        return new ArrayList<>(mSatellitePlmnList);
+    public List<String> getSatellitePlmnList(int subId) {
+        synchronized (mSupportedSatelliteServicesLock) {
+            if (mSupportedSatelliteServices.containsKey(subId)) {
+                return new ArrayList<>(mSupportedSatelliteServices.get(subId).keySet());
+            } else {
+                return new ArrayList<>();
+            }
+        }
     }
 
     /**
@@ -2393,22 +2397,16 @@ public class SatelliteController extends Handler {
 
     private void configureSatellitePlmn() {
         logd("configureSatellitePlmn()");
-        if (mSatellitePlmnList != null && !mSatellitePlmnList.isEmpty()) {
-            Message onCompleted = obtainMessage(
-                    EVENT_SET_ROAMING_PLMN_INFO_DONE, mSatellitePlmnList);
-            Phone[] phones = PhoneFactory.getPhones();
-            for (Phone phone : phones) {
-                if (phone != null) {
-                    // TODO : This command should be sent to only phone/modem whose carrier
-                    //        supports satellite - next task
-                    phone.setSatellitePlmn(onCompleted, mSatellitePlmnList);
-                    logd("phone[" + phone.getPhoneId() + "].setSatellitePlmn()");
-                } else {
-                    loge("configureSatellitePlmn: No phone object");
-                }
+        Phone[] phones = PhoneFactory.getPhones();
+        for (Phone phone : phones) {
+            if (phone != null) {
+                List<String> satellitePlmns = getSatellitePlmnList(phone.getSubId());
+                phone.setSatellitePlmn(
+                        obtainMessage(EVENT_SET_ROAMING_PLMN_INFO_DONE), satellitePlmns);
+                logd("phone[" + phone.getPhoneId() + "].setSatellitePlmn()");
+            } else {
+                loge("configureSatellitePlmn: No phone object");
             }
-        } else {
-            logd("mSatellitePlmnList is empty");
         }
     }
 
@@ -2486,6 +2484,7 @@ public class SatelliteController extends Handler {
 
         updateCarrierConfig(subId);
         updateSupportedSatelliteServicesForActiveSubscriptions();
+        configureSatellitePlmn();
     }
 
     private void updateCarrierConfig(int subId) {

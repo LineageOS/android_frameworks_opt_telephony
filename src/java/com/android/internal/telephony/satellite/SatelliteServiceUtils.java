@@ -19,6 +19,8 @@ package com.android.internal.telephony.satellite;
 import static android.telephony.NetworkRegistrationInfo.FIRST_SERVICE_TYPE;
 import static android.telephony.NetworkRegistrationInfo.LAST_SERVICE_TYPE;
 
+import static java.util.stream.Collectors.joining;
+
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
@@ -316,6 +318,9 @@ public class SatelliteServiceUtils {
                         }
                     }
                 }
+                logd("parseSupportedSatelliteServices: plmn=" + plmn + ", supportedServicesSet="
+                        + supportedServicesSet.stream().map(String::valueOf).collect(
+                                joining(",")));
                 supportedServicesMap.put(plmn, supportedServicesSet);
             } else {
                 loge("parseSupportedSatelliteServices: invalid format input, "
@@ -353,17 +358,18 @@ public class SatelliteServiceUtils {
                             + " for plmn=" + plmn);
                 }
             }
+            logd("parseSupportedSatelliteServices: plmn=" + plmn + ", supportedServicesSet="
+                    + supportedServicesSet.stream().map(String::valueOf).collect(
+                            joining(",")));
             supportedServicesMap.put(plmn, supportedServicesSet);
         }
         return supportedServicesMap;
     }
 
     /**
-     * For the PLMN that exists in both {@code providerSupportedServices} and
-     * {@code carrierSupportedServices}, the supported services will be the intersection of the two
-     * sets. For the PLMN that is present in {@code providerSupportedServices} but not in
-     * {@code carrierSupportedServices}, the provider supported services will be used. The rest
-     * will not be used.
+     * For the PLMN that exists in {@code carrierSupportedServices}, the carrier supported services
+     * will be used. For the PLMN that is present in {@code providerSupportedServices} but not in
+     * {@code carrierSupportedServices}, the provider supported services will be used.
      *
      * @param providerSupportedServices Satellite provider supported satellite services.
      * @param carrierSupportedServices Carrier supported satellite services.
@@ -379,12 +385,15 @@ public class SatelliteServiceUtils {
                     carrierSupportedServices) {
         Map<String, Set<Integer>> supportedServicesMap = new HashMap<>();
         for (Map.Entry<String, Set<Integer>> entry : providerSupportedServices.entrySet()) {
-            Set<Integer> supportedServices = new HashSet<>(entry.getValue());
-            if (carrierSupportedServices.containsKey(entry.getKey())) {
-                supportedServices.retainAll(carrierSupportedServices.get(entry.getKey()));
+            if (!entry.getValue().isEmpty()) {
+                supportedServicesMap.put(entry.getKey(), entry.getValue());
             }
-            if (!supportedServices.isEmpty()) {
-                supportedServicesMap.put(entry.getKey(), supportedServices);
+        }
+        for (Map.Entry<String, Set<Integer>> entry : carrierSupportedServices.entrySet()) {
+            if (entry.getValue().isEmpty()) {
+                supportedServicesMap.remove(entry.getKey());
+            } else {
+                supportedServicesMap.put(entry.getKey(), entry.getValue());
             }
         }
         return supportedServicesMap;

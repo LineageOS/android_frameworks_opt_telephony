@@ -157,6 +157,7 @@ public class SatelliteServiceUtilsTest extends TelephonyTest {
         String plmn1 = "00101";
         String plmn2 = "00102";
         String plmn3 = "00103";
+        String plmn4 = "00104";
 
         Integer[] providerSupportedServicesForPlmn1 = {1, 2, 3};
         Integer[] providerSupportedServicesForPlmn2 = {3, 4};
@@ -165,8 +166,9 @@ public class SatelliteServiceUtilsTest extends TelephonyTest {
                 plmn1, new HashSet<>(Arrays.asList(providerSupportedServicesForPlmn1)));
         providerSupportedServicesMap.put(
                 plmn2, new HashSet<>(Arrays.asList(providerSupportedServicesForPlmn2)));
+        providerSupportedServicesMap.put(plmn4, new HashSet<>());
 
-        Integer[] carrierSupportedServicesForPlmn2 = {3};
+        Integer[] carrierSupportedServicesForPlmn2 = {};
         Integer[] carrierSupportedServicesForPlmn3 = {1, 3, 4};
         Map<String, Set<Integer>> carrierSupportedServicesMap = new HashMap<>();
         carrierSupportedServicesMap.put(
@@ -174,24 +176,25 @@ public class SatelliteServiceUtilsTest extends TelephonyTest {
         carrierSupportedServicesMap.put(
                 plmn3, new HashSet<>(Arrays.asList(carrierSupportedServicesForPlmn3)));
 
-        // {@code plmn1} is present in only provider support services.
+        // Come from device config.
         int[] expectedSupportedServicesForPlmn1 = {1, 2, 3};
-        // Intersection of {3,4} and {3}.
-        int[] expectedSupportedServicesForPlmn2 = {3};
+        // Come from carrier config.
+        int[] expectedSupportedServicesForPlmn3 = {1, 3, 4};
         Map<String, Set<Integer>> supportedServicesMap =
                 SatelliteServiceUtils.mergeSupportedSatelliteServices(
                         providerSupportedServicesMap, carrierSupportedServicesMap);
 
         assertEquals(2, supportedServicesMap.size());
         assertTrue(supportedServicesMap.containsKey(plmn1));
-        assertTrue(supportedServicesMap.containsKey(plmn2));
-        assertFalse(supportedServicesMap.containsKey(plmn3));
+        assertTrue(supportedServicesMap.containsKey(plmn3));
+        assertFalse(supportedServicesMap.containsKey(plmn2));
+        assertFalse(supportedServicesMap.containsKey(plmn4));
         assertTrue(Arrays.equals(expectedSupportedServicesForPlmn1,
                 supportedServicesMap.get(plmn1).stream()
                         .mapToInt(Integer::intValue)
                         .toArray()));
-        assertTrue(Arrays.equals(expectedSupportedServicesForPlmn2,
-                supportedServicesMap.get(plmn2).stream()
+        assertTrue(Arrays.equals(expectedSupportedServicesForPlmn3,
+                supportedServicesMap.get(plmn3).stream()
                         .mapToInt(Integer::intValue)
                         .toArray()));
     }
