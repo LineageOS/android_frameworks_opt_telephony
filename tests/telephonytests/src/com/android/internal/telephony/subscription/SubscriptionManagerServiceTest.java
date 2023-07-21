@@ -1064,6 +1064,19 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     }
 
     @Test
+    public void testGetSubscriptionUserHandleUnknownSubscription() {
+        mContextFixture.addCallingOrSelfPermission(
+                Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
+
+        // getSubscriptionUserHandle() returns null when subscription is not available on the device
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionUserHandle(10))
+                .isEqualTo(null);
+
+        mContextFixture.removeCallingOrSelfPermission(
+                Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
+    }
+
+    @Test
     public void testIsSubscriptionAssociatedWithUser() {
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
 

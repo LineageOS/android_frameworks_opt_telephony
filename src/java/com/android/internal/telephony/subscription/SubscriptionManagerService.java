@@ -3546,10 +3546,10 @@ public class SubscriptionManagerService extends ISub.Stub {
      *
      * @param subId the unique SubscriptionInfo index in database
      * @return userHandle associated with this subscription
-     * or {@code null} if subscription is not associated with any user.
+     * or {@code null} if subscription is not associated with any user
+     * or {code null} if subscripiton is not available on the device.
      *
      * @throws SecurityException if doesn't have required permission.
-     * @throws IllegalArgumentException if {@code subId} is invalid.
      */
     @Override
     @Nullable
@@ -3562,8 +3562,7 @@ public class SubscriptionManagerService extends ISub.Stub {
             SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
                     .getSubscriptionInfoInternal(subId);
             if (subInfo == null) {
-                throw new IllegalArgumentException("getSubscriptionUserHandle: Invalid subId: "
-                        + subId);
+                return null;
             }
 
             UserHandle userHandle = UserHandle.of(subInfo.getUserId());
