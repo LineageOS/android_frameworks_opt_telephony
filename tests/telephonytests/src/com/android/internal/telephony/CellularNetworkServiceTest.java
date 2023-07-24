@@ -39,6 +39,7 @@ import android.telephony.NetworkService;
 import android.telephony.NetworkServiceCallback;
 import android.telephony.NrVopsSupportInfo;
 import android.telephony.ServiceState;
+import android.telephony.SmsManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.VopsSupportInfo;
@@ -91,6 +92,9 @@ public class CellularNetworkServiceTest extends TelephonyTest {
 
         int dds = SubscriptionManager.getDefaultDataSubscriptionId();
         doReturn(dds).when(mPhone).getSubId();
+
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                SmsManager.MMS_CONFIG_MMS_ENABLED, false);
 
         logd("CellularNetworkServiceTest -Setup!");
     }
@@ -509,5 +513,49 @@ public class CellularNetworkServiceTest extends TelephonyTest {
                         TelephonyManager.NETWORK_TYPE_UNKNOWN,
                         new CellIdentityWcdma(),
                         mPhone.getCarrierId()));
+    }
+
+    @Test
+    public void testGetAvailableServices_withMmsEnabled() {
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                SmsManager.MMS_CONFIG_MMS_ENABLED, true);
+
+        VopsSupportInfo lteVopsSupportInfo =
+                new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE,
+                        LteVopsSupportInfo.LTE_STATUS_NOT_AVAILABLE);
+        int voiceRegState = NetworkRegistrationInfo.REGISTRATION_STATE_HOME;
+        int voiceRadioTech = ServiceState.RIL_RADIO_TECHNOLOGY_UMTS;
+        int reasonForDenial = 0;
+        int maxDataCalls = 4;
+
+        mSimulatedCommands.setVoiceRegState(voiceRegState);
+        mSimulatedCommands.setVoiceRadioTech(voiceRadioTech);
+        mSimulatedCommands.mReasonForDenial = reasonForDenial;
+        mSimulatedCommands.mMaxDataCalls = maxDataCalls;
+        mSimulatedCommands.notifyNetworkStateChanged();
+
+        int domain = NetworkRegistrationInfo.DOMAIN_PS;
+        List<Integer> availableServices = Arrays.asList(
+                NetworkRegistrationInfo.SERVICE_TYPE_DATA,
+                NetworkRegistrationInfo.SERVICE_TYPE_MMS);
+        try {
+            mBinder.requestNetworkRegistrationInfo(0, domain, mCallback);
+        } catch (RemoteException e) {
+            assertTrue(false);
+        }
+
+        NetworkRegistrationInfo expectedState = new NetworkRegistrationInfo(
+                domain, AccessNetworkConstants.TRANSPORT_TYPE_WWAN, voiceRegState,
+                ServiceState.rilRadioTechnologyToNetworkType(voiceRadioTech), reasonForDenial,
+                false, availableServices, null, "", maxDataCalls,
+                false, false, false, lteVopsSupportInfo);
+
+        try {
+            verify(mCallback, timeout(1000).times(1))
+                    .onRequestNetworkRegistrationInfoComplete(
+                            eq(NetworkServiceCallback.RESULT_SUCCESS), eq(expectedState));
+        } catch (RemoteException e) {
+            assertTrue(false);
+        }
     }
 }
