@@ -2018,21 +2018,21 @@ public class SubscriptionDatabaseManager extends Handler {
     }
 
     /**
-     * Reload the database from content provider to the cache.
+     * Reload the database from content provider to the cache. This must be a synchronous operation
+     * to prevent cache/database out-of-sync. Callers should be cautious to call this method because
+     * it might take longer time to complete.
      */
-    public void reloadDatabase() {
-        if (mAsyncMode) {
-            post(this::loadDatabaseInternal);
-        } else {
-            loadDatabaseInternal();
-        }
+    public void reloadDatabaseSync() {
+        logl("reloadDatabaseSync");
+        // Synchronously load the database into the cache.
+        loadDatabaseInternal();
     }
 
     /**
      * Load the database from content provider to the cache.
      */
     private void loadDatabaseInternal() {
-        log("loadDatabaseInternal");
+        logl("loadDatabaseInternal");
         try (Cursor cursor = mContext.getContentResolver().query(
                 SimInfo.CONTENT_URI, null, null, null, null)) {
             mReadWriteLock.writeLock().lock();
