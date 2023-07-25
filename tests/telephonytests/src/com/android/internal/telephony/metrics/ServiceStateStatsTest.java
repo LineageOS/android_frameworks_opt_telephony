@@ -31,6 +31,7 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
@@ -47,6 +48,7 @@ import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.data.DataNetwork;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataServiceSwitch;
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
@@ -56,6 +58,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+
+import java.util.Collections;
+import java.util.Set;
 
 public class ServiceStateStatsTest extends TelephonyTest {
     private static final long START_TIME_MILLIS = 2000L;
@@ -394,9 +399,12 @@ public class ServiceStateStatsTest extends TelephonyTest {
     public void onInternetDataNetworkDisconnected() throws Exception {
          // Using default service state for LTE
         mServiceStateStats.onServiceStateChanged(mServiceState);
+        // Set internet network connected
+        mServiceStateStats.onConnectedInternetDataNetworksChanged(Set.of(mock(DataNetwork.class)));
+        clearInvocations(mPersistAtomsStorage);
 
         mServiceStateStats.incTimeMillis(100L);
-        mServiceStateStats.onInternetDataNetworkDisconnected();
+        mServiceStateStats.onConnectedInternetDataNetworksChanged(Collections.emptySet());
         mServiceStateStats.incTimeMillis(200L);
         mServiceStateStats.conclude();
 

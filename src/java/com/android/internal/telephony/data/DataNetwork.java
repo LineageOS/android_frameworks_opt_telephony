@@ -3164,13 +3164,7 @@ public class DataNetwork extends StateMachine {
      * @return {@code true} if this data network supports internet.
      */
     public boolean isInternetSupported() {
-        return mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                && mNetworkCapabilities.hasCapability(
-                        NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
-                && mNetworkCapabilities.hasCapability(
-                        NetworkCapabilities.NET_CAPABILITY_TRUSTED)
-                && mNetworkCapabilities.hasCapability(
-                        NetworkCapabilities.NET_CAPABILITY_NOT_VPN);
+        return mNetworkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
     }
 
     /**

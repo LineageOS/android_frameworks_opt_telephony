@@ -45,7 +45,7 @@ import com.android.internal.telephony.nano.PersistAtomsProto.CellularDataService
 import com.android.internal.telephony.nano.PersistAtomsProto.CellularServiceState;
 import com.android.telephony.Rlog;
 
-import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -59,6 +59,7 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
     private final Phone mPhone;
     private final PersistAtomsStorage mStorage;
     private final DeviceStateHelper mDeviceStateHelper;
+    private boolean mExistAnyConnectedInternetPdn;
 
     public ServiceStateStats(Phone phone) {
         super(Runnable::run);
@@ -98,14 +99,14 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
         mPhone.getDataNetworkController().registerDataNetworkControllerCallback(this);
     }
 
-    /** Updates service state when internet pdn gets connected. */
-    public void onInternetDataNetworkConnected(@NonNull List<DataNetwork> internetNetworks) {
-        onInternetDataNetworkChanged(true);
-    }
-
-    /** Updates service state when internet pdn gets disconnected. */
-    public void onInternetDataNetworkDisconnected() {
-        onInternetDataNetworkChanged(false);
+    /** Updates service state when internet pdn changed. */
+    @Override
+    public void onConnectedInternetDataNetworksChanged(@NonNull Set<DataNetwork> internetNetworks) {
+        boolean existAnyConnectedInternetPdn = !internetNetworks.isEmpty();
+        if (mExistAnyConnectedInternetPdn != existAnyConnectedInternetPdn) {
+            mExistAnyConnectedInternetPdn = existAnyConnectedInternetPdn;
+            onInternetDataNetworkChanged(mExistAnyConnectedInternetPdn);
+        }
     }
 
     /** Updates the current service state. */
