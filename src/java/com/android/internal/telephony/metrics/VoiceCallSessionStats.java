@@ -440,6 +440,7 @@ public class VoiceCallSessionStats {
         proto.ratAtConnected = TelephonyManager.NETWORK_TYPE_UNKNOWN;
         proto.ratAtEnd = rat;
         proto.ratSwitchCount = 0L;
+        proto.ratSwitchCountAfterConnected = 0L;
         proto.codecBitmask = 0L;
         proto.simSlotIndex = mPhoneId;
         proto.isMultiSim = SimSlotState.isMultiSim();
@@ -609,6 +610,9 @@ public class VoiceCallSessionStats {
     private void updateRatAtEnd(VoiceCallSession proto, @NetworkType int rat) {
         if (proto.ratAtEnd != rat) {
             proto.ratSwitchCount++;
+            if (!proto.setupFailed) {
+                proto.ratSwitchCountAfterConnected++;
+            }
             proto.ratAtEnd = rat;
             if (rat != TelephonyManager.NETWORK_TYPE_UNKNOWN) {
                 proto.lastKnownRat = rat;
