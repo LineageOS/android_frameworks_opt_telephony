@@ -4360,9 +4360,12 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             subInfo = subInfoInternal.toSubscriptionInfo();
         }
 
-        if (subInfo == null
-                || subInfo.getUsageSetting() == SubscriptionManager.USAGE_SETTING_UNKNOWN) {
+        if (subInfo == null) {
             loge("Failed to get SubscriptionInfo for subId=" + subId);
+            return SubscriptionManager.USAGE_SETTING_UNKNOWN;
+        }
+
+        if (subInfo.getUsageSetting() == SubscriptionManager.USAGE_SETTING_UNKNOWN) {
             return SubscriptionManager.USAGE_SETTING_UNKNOWN;
         }
 
