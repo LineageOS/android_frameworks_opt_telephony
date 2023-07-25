@@ -2807,6 +2807,11 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         ss.setEmergencyOnly(true);
         sst.mSS = ss;
 
+        // The other phone is in service
+        ss = new ServiceState();
+        doReturn(ss).when(mSST).getServiceState();
+        doReturn(ServiceState.STATE_IN_SERVICE).when(mSST).getCombinedRegState(ss);
+
         // update the spn
         sst.updateSpnDisplay();
 

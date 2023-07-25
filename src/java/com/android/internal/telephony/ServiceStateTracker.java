@@ -2942,8 +2942,8 @@ public class ServiceStateTracker extends Handler {
 
                 // Force display no service
                 final boolean forceDisplayNoService = shouldForceDisplayNoService() && !mIsSimReady;
-                if (!forceDisplayNoService && Phone.isEmergencyCallOnly()) {
-                    // No service but emergency call allowed
+                if (!forceDisplayNoService && (mEmergencyOnly || Phone.isEmergencyCallOnly())) {
+                    // The slot is emc only or the slot is masked as oos due to device is emc only
                     plmn = Resources.getSystem()
                             .getText(com.android.internal.R.string.emergency_calls_only).toString();
                 } else {
