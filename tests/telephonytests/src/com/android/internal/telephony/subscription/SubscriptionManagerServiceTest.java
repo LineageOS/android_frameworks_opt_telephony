@@ -228,12 +228,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
             SubscriptionDatabaseManager sdbm =
                     (SubscriptionDatabaseManager) field.get(mSubscriptionManagerServiceUT);
 
-            Class[] cArgs = new Class[1];
-            cArgs[0] = SubscriptionInfoInternal.class;
-            Method method = SubscriptionDatabaseManager.class.getDeclaredMethod(
-                    "insertSubscriptionInfo", cArgs);
-            method.setAccessible(true);
-            int subId = (int) method.invoke(sdbm, subInfo);
+            int subId = sdbm.insertSubscriptionInfo(subInfo);
 
             // Insertion is sync, but the onSubscriptionChanged callback is handled by the handler.
             processAllMessages();
@@ -243,11 +238,11 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
             field = SubscriptionManagerService.class.getDeclaredField("mSlotIndexToSubId");
             field.setAccessible(true);
             Object map = field.get(mSubscriptionManagerServiceUT);
-            cArgs = new Class[2];
+            Class[] cArgs = new Class[2];
             cArgs[0] = Object.class;
             cArgs[1] = Object.class;
 
-            method = WatchedMapClass.getDeclaredMethod("put", cArgs);
+            Method method = WatchedMapClass.getDeclaredMethod("put", cArgs);
             method.setAccessible(true);
             method.invoke(map, subInfo.getSimSlotIndex(), subId);
             mContextFixture.removeCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
@@ -1816,5 +1811,18 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(2).isGroupDisabled())
                 .isFalse();
+    }
+
+    @Test
+    public void testGetPhoneNumber() {
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        testSetPhoneNumber();
+        assertThat(mSubscriptionManagerServiceUT.getPhoneNumber(1,
+                SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER, CALLING_PACKAGE, CALLING_FEATURE))
+                .isEqualTo(FAKE_PHONE_NUMBER2);
+        assertThat(mSubscriptionManagerServiceUT.getPhoneNumber(
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID,
+                SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER, CALLING_PACKAGE, CALLING_FEATURE))
+                .isEmpty();
     }
 }

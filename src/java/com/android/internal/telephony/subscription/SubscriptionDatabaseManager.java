@@ -505,8 +505,9 @@ public class SubscriptionDatabaseManager extends Handler {
     private final Map<Integer, SubscriptionInfoInternal> mAllSubscriptionInfoInternalCache =
             new HashMap<>(16);
 
-    /** Whether database has been loaded into the cache after boot up. */
-    private boolean mDatabaseLoaded = false;
+    /** Whether database has been initialized after boot up. */
+    @GuardedBy("mDatabaseInitialized")
+    private Boolean mDatabaseInitialized = false;
 
     /**
      * This is the callback used for listening events from {@link SubscriptionDatabaseManager}.
@@ -542,9 +543,9 @@ public class SubscriptionDatabaseManager extends Handler {
         }
 
         /**
-         * Called when database has been loaded into the cache.
+         * Called when database has been initialized.
          */
-        public abstract void onDatabaseLoaded();
+        public abstract void onInitialized();
 
         /**
          * Called when subscription changed.
@@ -578,7 +579,7 @@ public class SubscriptionDatabaseManager extends Handler {
         mUiccController = UiccController.getInstance();
         mAsyncMode = mContext.getResources().getBoolean(
                 com.android.internal.R.bool.config_subscription_database_async_update);
-        loadFromDatabase();
+        initializeDatabase();
     }
 
     /**
@@ -757,9 +758,12 @@ public class SubscriptionDatabaseManager extends Handler {
                     + "insert. subInfo=" + subInfo);
         }
 
-        if (!mDatabaseLoaded) {
-            throw new IllegalStateException("Database has not been loaded. Can't insert new "
-                    + "record at this point.");
+        synchronized (mDatabaseInitialized) {
+            if (!mDatabaseInitialized) {
+                throw new IllegalStateException(
+                        "Database has not been initialized. Can't insert new "
+                                + "record at this point.");
+            }
         }
 
         int subId;
@@ -826,10 +830,12 @@ public class SubscriptionDatabaseManager extends Handler {
     private int updateDatabase(int subId, @NonNull ContentValues contentValues) {
         logv("updateDatabase: prepare to update sub " + subId);
 
-        if (!mDatabaseLoaded) {
-            logel("updateDatabase: Database has not been loaded. Can't update database at this "
-                    + "point. contentValues=" + contentValues);
-            return 0;
+        synchronized (mDatabaseInitialized) {
+            if (!mDatabaseInitialized) {
+                logel("updateDatabase: Database has not been initialized. Can't update database at "
+                        + "this point. contentValues=" + contentValues);
+                return 0;
+            }
         }
 
         if (mAsyncMode) {
@@ -1794,39 +1800,68 @@ public class SubscriptionDatabaseManager extends Handler {
     }
 
     /**
-     * Load the entire database into the cache.
+     * Reload the database from content provider to the cache.
      */
-    private void loadFromDatabase() {
-        // Perform the task in the handler thread.
-        Runnable r = () -> {
-            try (Cursor cursor = mContext.getContentResolver().query(
-                    SimInfo.CONTENT_URI, null, null, null, null)) {
-                mReadWriteLock.writeLock().lock();
-                try {
-                    mAllSubscriptionInfoInternalCache.clear();
-                    while (cursor != null && cursor.moveToNext()) {
-                        SubscriptionInfoInternal subInfo = createSubscriptionInfoFromCursor(cursor);
-                        if (subInfo != null) {
-                            mAllSubscriptionInfoInternalCache
-                                    .put(subInfo.getSubscriptionId(), subInfo);
-                        }
-                    }
-                    mDatabaseLoaded = true;
-                    mCallback.invokeFromExecutor(mCallback::onDatabaseLoaded);
-                    log("Loaded " + mAllSubscriptionInfoInternalCache.size()
-                            + " records from the subscription database.");
-                } finally {
-                    mReadWriteLock.writeLock().unlock();
-                }
-            }
-        };
+    public void reloadDatabase() {
+        if (mAsyncMode) {
+            post(this::loadDatabaseInternal);
+        } else {
+            loadDatabaseInternal();
+        }
+    }
 
+    /**
+     * Load the database from content provider to the cache.
+     */
+    private void loadDatabaseInternal() {
+        logl("loadDatabaseInternal");
+        try (Cursor cursor = mContext.getContentResolver().query(
+                SimInfo.CONTENT_URI, null, null, null, null)) {
+            mReadWriteLock.writeLock().lock();
+            try {
+                Map<Integer, SubscriptionInfoInternal> newAllSubscriptionInfoInternalCache =
+                        new HashMap<>();
+                while (cursor != null && cursor.moveToNext()) {
+                    SubscriptionInfoInternal subInfo = createSubscriptionInfoFromCursor(cursor);
+                    newAllSubscriptionInfoInternalCache.put(subInfo.getSubscriptionId(), subInfo);
+                    if (!Objects.equals(mAllSubscriptionInfoInternalCache
+                            .get(subInfo.getSubscriptionId()), subInfo)) {
+                        mCallback.invokeFromExecutor(() -> mCallback.onSubscriptionChanged(
+                                subInfo.getSubscriptionId()));
+                    }
+                }
+
+                mAllSubscriptionInfoInternalCache.clear();
+                mAllSubscriptionInfoInternalCache.putAll(newAllSubscriptionInfoInternalCache);
+
+                logl("Loaded " + mAllSubscriptionInfoInternalCache.size()
+                        + " records from the subscription database.");
+            } finally {
+                mReadWriteLock.writeLock().unlock();
+            }
+        }
+    }
+
+    /**
+     * Initialize the database cache. Load the entire database into the cache.
+     */
+    private void initializeDatabase() {
         if (mAsyncMode) {
             // Load the database asynchronously.
-            post(r);
+            post(() -> {
+                synchronized (mDatabaseInitialized) {
+                    loadDatabaseInternal();
+                    mDatabaseInitialized = true;
+                    mCallback.invokeFromExecutor(mCallback::onInitialized);
+                }
+            });
         } else {
             // Load the database synchronously.
-            r.run();
+            synchronized (mDatabaseInitialized) {
+                loadDatabaseInternal();
+                mDatabaseInitialized = true;
+                mCallback.invokeFromExecutor(mCallback::onInitialized);
+            }
         }
     }
 
@@ -1837,7 +1872,7 @@ public class SubscriptionDatabaseManager extends Handler {
      *
      * @return The subscription info from a single database record.
      */
-    @Nullable
+    @NonNull
     private SubscriptionInfoInternal createSubscriptionInfoFromCursor(@NonNull Cursor cursor) {
         SubscriptionInfoInternal.Builder builder = new SubscriptionInfoInternal.Builder();
         int id = cursor.getInt(cursor.getColumnIndexOrThrow(

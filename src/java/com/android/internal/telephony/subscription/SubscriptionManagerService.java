@@ -33,13 +33,16 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.ParcelUuid;
 import android.os.PersistableBundle;
+import android.os.Process;
 import android.os.RemoteException;
 import android.os.TelephonyServiceManager;
 import android.os.UserHandle;
@@ -220,7 +223,7 @@ public class SubscriptionManagerService extends ISub.Stub {
 
     /** Local log for most important debug messages. */
     @NonNull
-    private final LocalLog mLocalLog = new LocalLog(128);
+    private final LocalLog mLocalLog = new LocalLog(256);
 
     /** The subscription database manager. */
     @NonNull
@@ -398,14 +401,6 @@ public class SubscriptionManagerService extends ISub.Stub {
 
         mBackgroundHandler = new Handler(backgroundThread.getLooper());
 
-        TelephonyServiceManager.ServiceRegisterer subscriptionServiceRegisterer =
-                TelephonyFrameworkInitializer
-                        .getTelephonyServiceManager()
-                        .getSubscriptionServiceRegisterer();
-        if (subscriptionServiceRegisterer.get() == null) {
-            subscriptionServiceRegisterer.register(this);
-        }
-
         mDefaultVoiceSubId = new WatchedInt(Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION,
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID)) {
@@ -469,8 +464,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                      * Called when database has been loaded into the cache.
                      */
                     @Override
-                    public void onDatabaseLoaded() {
-                        log("Subscription database has been loaded.");
+                    public void onInitialized() {
+                        log("Subscription database has been initialized.");
                         for (int phoneId = 0; phoneId < mTelephonyManager.getActiveModemCount()
                                 ; phoneId++) {
                             markSubscriptionsInactive(phoneId);
@@ -524,6 +519,14 @@ public class SubscriptionManagerService extends ISub.Stub {
 
         updateDefaultSubId();
 
+        TelephonyServiceManager.ServiceRegisterer subscriptionServiceRegisterer =
+                TelephonyFrameworkInitializer
+                        .getTelephonyServiceManager()
+                        .getSubscriptionServiceRegisterer();
+        if (subscriptionServiceRegisterer.get() == null) {
+            subscriptionServiceRegisterer.register(this);
+        }
+
         mHandler.post(() -> {
             // EuiccController is created after SubscriptionManagerService. So we need to get
             // the instance later in the handler.
@@ -542,6 +545,7 @@ public class SubscriptionManagerService extends ISub.Stub {
 
         SubscriptionManager.invalidateSubscriptionManagerServiceCaches();
         SubscriptionManager.invalidateSubscriptionManagerServiceEnabledCaches();
+        logl("created");
     }
 
     /**
@@ -1310,7 +1314,11 @@ public class SubscriptionManagerService extends ISub.Stub {
                 }
 
                 // Attempt to restore SIM specific settings when SIM is loaded.
-                mSubscriptionManager.restoreSimSpecificSettingsForIccIdFromBackup(iccId);
+                mContext.getContentResolver().call(
+                        SubscriptionManager.SIM_INFO_BACKUP_AND_RESTORE_CONTENT_URI,
+                        SubscriptionManager.RESTORE_SIM_SPECIFIC_SETTINGS_METHOD_NAME,
+                        iccId, null);
+                mSubscriptionDatabaseManager.reloadDatabase();
             }
         } else {
             log("updateSubscriptions: No ICCID available for phone " + phoneId);
@@ -2829,7 +2837,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         final long token = Binder.clearCallingIdentity();
         try {
             logl("setSubscriptionProperty: subId=" + subId + ", columnName=" + columnName
-                    + ", value=" + value);
+                    + ", value=" + value + ", calling package=" + getCallingPackage());
 
             if (!SimInfo.getAllColumns().contains(columnName)) {
                 throw new IllegalArgumentException("Invalid column name " + columnName);
@@ -3209,15 +3217,12 @@ public class SubscriptionManagerService extends ISub.Stub {
      *
      * @return The phone number, or an empty string if not available.
      *
-     * @throws IllegalArgumentException if {@code source} or {@code subId} is invalid.
+     * @throws IllegalArgumentException if {@code source} is invalid.
      * @throws SecurityException if the caller doesn't have permissions required.
      *
      * @see SubscriptionManager#PHONE_NUMBER_SOURCE_UICC
      * @see SubscriptionManager#PHONE_NUMBER_SOURCE_CARRIER
      * @see SubscriptionManager#PHONE_NUMBER_SOURCE_IMS
-     *
-     * @throws IllegalArgumentException if {@code subId} is invalid.
-     * @throws SecurityException if callers do not hold the required permission.
      */
     @Override
     @NonNull
@@ -3239,7 +3244,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                 .getSubscriptionInfoInternal(subId);
 
         if (subInfo == null) {
-            throw new IllegalArgumentException("Invalid sub id " + subId);
+            loge("Invalid sub id " + subId + ", callingPackage=" + callingPackage);
+            return "";
         }
 
         try {
@@ -3464,7 +3470,7 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @param subscriptionId the subId of the subscription
      * @param userHandle user handle of the user
      * @return {@code true} if subscription is associated with user
-     * {code true} if there are no subscriptions on device
+     * {@code true} if there are no subscriptions on device
      * else {@code false} if subscription is not associated with user.
      *
      * @throws SecurityException if the caller doesn't have permissions required.
@@ -3561,6 +3567,42 @@ public class SubscriptionManagerService extends ISub.Stub {
     @Override
     public boolean isSubscriptionManagerServiceEnabled() {
         return true;
+    }
+
+    /**
+     * Called during setup wizard restore flow to attempt to restore the backed up sim-specific
+     * configs to device for all existing SIMs in the subscription database {@link SimInfo}.
+     * Internally, it will store the backup data in an internal file. This file will persist on
+     * device for device's lifetime and will be used later on when a SIM is inserted to restore that
+     * specific SIM's settings. End result is subscription database is modified to match any backed
+     * up configs for the appropriate inserted SIMs.
+     *
+     * <p>
+     * The {@link Uri} {@link SubscriptionManager#SIM_INFO_BACKUP_AND_RESTORE_CONTENT_URI} is
+     * notified if any {@link SimInfo} entry is updated as the result of this method call.
+     *
+     * @param data with the sim specific configs to be backed up.
+     */
+    @RequiresPermission(Manifest.permission.MODIFY_PHONE_STATE)
+    @Override
+    public void restoreAllSimSpecificSettingsFromBackup(@NonNull byte[] data) {
+        enforcePermissions("restoreAllSimSpecificSettingsFromBackup",
+                Manifest.permission.MODIFY_PHONE_STATE);
+
+        long token = Binder.clearCallingIdentity();
+        try {
+            Bundle bundle = new Bundle();
+            bundle.putByteArray(SubscriptionManager.KEY_SIM_SPECIFIC_SETTINGS_DATA, data);
+            logl("restoreAllSimSpecificSettingsFromBackup");
+            mContext.getContentResolver().call(
+                    SubscriptionManager.SIM_INFO_BACKUP_AND_RESTORE_CONTENT_URI,
+                    SubscriptionManager.RESTORE_SIM_SPECIFIC_SETTINGS_METHOD_NAME,
+                    null, bundle);
+            // After restoring, we need to reload the content provider into the cache.
+            mSubscriptionDatabaseManager.reloadDatabase();
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
     }
 
     /**
@@ -3692,6 +3734,10 @@ public class SubscriptionManagerService extends ISub.Stub {
      */
     @NonNull
     private String getCallingPackage() {
+        if (Binder.getCallingUid() == Process.PHONE_UID) {
+            // Too many packages running with phone uid. Just return one here.
+            return "com.android.phone";
+        }
         return Arrays.toString(mContext.getPackageManager().getPackagesForUid(
                 Binder.getCallingUid()));
     }
