@@ -648,7 +648,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             mCi.registerForSrvccStateChanged(this, EVENT_SRVCC_STATE_CHANGED, null);
         }
         //Initialize Telephony Analytics
-        mTelephonyAnalytics = new TelephonyAnalytics(this);
+        if (isTelephonyAnalyticsEnabled()) {
+            mTelephonyAnalytics = new TelephonyAnalytics(this);
+        }
     }
 
     /**
@@ -4743,6 +4745,12 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public TelephonyAnalytics getTelephonyAnalytics() {
         return mTelephonyAnalytics;
     }
+
+    public boolean isTelephonyAnalyticsEnabled() {
+        return mContext.getResources().getBoolean(
+                com.android.internal.R.bool.telephony_analytics_switch);
+    }
+
     /** @hide */
     public CarrierPrivilegesTracker getCarrierPrivilegesTracker() {
         return null;
