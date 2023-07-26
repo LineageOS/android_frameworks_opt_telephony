@@ -1387,7 +1387,7 @@ public class PhoneSwitcher extends Handler {
         return defaultDataPhone != null // check user enabled data
                 && defaultDataPhone.isUserDataEnabled()
                 && voicePhone != null // check user enabled voice during call feature
-                && voicePhone.isDataAllowed();
+                && voicePhone.getDataSettingsManager().isDataEnabled();
     }
 
     protected void transitionToEmergencyPhone() {
