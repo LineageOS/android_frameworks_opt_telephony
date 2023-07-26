@@ -1050,7 +1050,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
                 .getSubscriptionInfoInternal(1);
         assertThat(subInfo).isNotNull();
-        assertThat(subInfo.getDisplayName()).isEqualTo(FAKE_PHONE_NUMBER2);
+        assertThat(subInfo.getNumber()).isEqualTo(FAKE_PHONE_NUMBER2);
     }
 
     @Test

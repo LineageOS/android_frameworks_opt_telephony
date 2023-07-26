@@ -1966,6 +1966,7 @@ public class SubscriptionManagerService extends ISub.Stub {
             @SimDisplayNameSource int nameSource) {
         enforcePermissions("setDisplayNameUsingSrc", Manifest.permission.MODIFY_PHONE_STATE);
 
+        String callingPackage = getCallingPackage();
         final long identity = Binder.clearCallingIdentity();
         try {
             Objects.requireNonNull(displayName, "setDisplayNameUsingSrc");
@@ -2013,6 +2014,9 @@ public class SubscriptionManagerService extends ISub.Stub {
                 nameToSet = displayName;
             }
 
+            logl("setDisplayNameUsingSrc: subId=" + subId + ", name=" + nameToSet
+                    + ", nameSource=" + SubscriptionManager.displayNameSourceToString(nameSource)
+                    + ", calling package=" + callingPackage);
             mSubscriptionDatabaseManager.setDisplayName(subId, nameToSet);
             mSubscriptionDatabaseManager.setDisplayNameSource(subId, nameSource);
 
@@ -2050,11 +2054,12 @@ public class SubscriptionManagerService extends ISub.Stub {
     @RequiresPermission(Manifest.permission.MODIFY_PHONE_STATE)
     public int setDisplayNumber(@NonNull String number, int subId) {
         enforcePermissions("setDisplayNumber", Manifest.permission.MODIFY_PHONE_STATE);
-
+        logl("setDisplayNumber: subId=" + subId + ", number=" + number
+                + ", calling package=" + getCallingPackage());
         // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
         try {
-            mSubscriptionDatabaseManager.setDisplayName(subId, number);
+            mSubscriptionDatabaseManager.setNumber(subId, number);
             return 1;
         } finally {
             Binder.restoreCallingIdentity(identity);
@@ -3089,8 +3094,15 @@ public class SubscriptionManagerService extends ISub.Stub {
     public int setUiccApplicationsEnabled(boolean enabled, int subId) {
         enforcePermissions("setUiccApplicationsEnabled",
                 Manifest.permission.MODIFY_PHONE_STATE);
-        logl("setUiccApplicationsEnabled: subId=" + subId + ", enabled=" + enabled);
-        mSubscriptionDatabaseManager.setUiccApplicationsEnabled(subId, enabled);
+        logl("setUiccApplicationsEnabled: subId=" + subId + ", enabled=" + enabled
+                + ", calling package=" + getCallingPackage());
+
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            mSubscriptionDatabaseManager.setUiccApplicationsEnabled(subId, enabled);
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
         return 1;
     }
 
@@ -3679,6 +3691,17 @@ public class SubscriptionManagerService extends ISub.Stub {
                 executor.execute(updateCompleteCallback);
             }
         });
+    }
+
+    /**
+     * Get the calling package(s).
+     *
+     * @return The calling package(s).
+     */
+    @NonNull
+    private String getCallingPackage() {
+        return Arrays.toString(mContext.getPackageManager().getPackagesForUid(
+                Binder.getCallingUid()));
     }
 
     /**
