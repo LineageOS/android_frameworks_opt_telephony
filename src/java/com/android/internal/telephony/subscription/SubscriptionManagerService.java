@@ -898,9 +898,9 @@ public class SubscriptionManagerService extends ISub.Stub {
                 .forEach(subInfo -> {
                     mSubscriptionDatabaseManager.setSimSlotIndex(subInfo.getSubscriptionId(),
                             SubscriptionManager.INVALID_SIM_SLOT_INDEX);
-                    mSlotIndexToSubId.remove(simSlotIndex);
                 });
         updateGroupDisabled();
+        logl("markSubscriptionsInactive: " + slotMappingToString());
     }
 
     /**
@@ -1002,6 +1002,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                 return;
             }
 
+            Set<Integer> embeddedSubs = new ArraySet<>();
             log("updateEmbeddedSubscriptions: start to get euicc profiles.");
             for (int cardId : cardIds) {
                 GetEuiccProfileInfoListResult result = mEuiccController
@@ -1078,11 +1079,27 @@ public class SubscriptionManagerService extends ISub.Stub {
                         builder.setCardString(mUiccController.convertToCardString(cardId));
                     }
 
+                    embeddedSubs.add(subInfo.getSubscriptionId());
                     subInfo = builder.build();
                     log("updateEmbeddedSubscriptions: update subscription " + subInfo);
                     mSubscriptionDatabaseManager.updateSubscription(subInfo);
                 }
             }
+
+            // embeddedSubs contains all the existing embedded subs queried from EuiccManager,
+            // including active or inactive. If there are any embedded subscription in the database
+            // that is not in embeddedSubs, mark them as non-embedded. These were deleted embedded
+            // subscriptions, so we treated them as non-embedded (pre-U behavior) and they don't
+            // show up in Settings SIM page.
+            mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                    .filter(SubscriptionInfoInternal::isEmbedded)
+                    .filter(subInfo -> !embeddedSubs.contains(subInfo.getSubscriptionId()))
+                    .forEach(subInfo -> {
+                        logl("updateEmbeddedSubscriptions: Mark the deleted sub "
+                                + subInfo.getSubscriptionId() + " as non-embedded.");
+                        mSubscriptionDatabaseManager.setEmbedded(
+                                subInfo.getSubscriptionId(), false);
+                    });
         });
         log("updateEmbeddedSubscriptions: Finished embedded subscription update.");
         if (callback != null) {
@@ -1225,6 +1242,19 @@ public class SubscriptionManagerService extends ISub.Stub {
         }
 
         String iccId = getIccId(phoneId);
+        log("updateSubscriptions: Found iccId=" + SubscriptionInfo.givePrintableIccid(iccId)
+                + " on phone " + phoneId);
+
+        // For eSIM switching, SIM absent will not happen. Below is to exam if we find ICCID
+        // mismatch on the SIM slot, we need to mark all subscriptions on that logical slot invalid
+        // first. The correct subscription will be assigned the correct slot later.
+        if (mSubscriptionDatabaseManager.getAllSubscriptions().stream()
+                .anyMatch(subInfo -> subInfo.getSimSlotIndex() == phoneId
+                        && !iccId.equals(subInfo.getIccId()))) {
+            log("updateSubscriptions: iccId changed for phone " + phoneId);
+            markSubscriptionsInactive(phoneId);
+        }
+
         if (!TextUtils.isEmpty(iccId)) {
             // Check if the subscription already existed.
             SubscriptionInfoInternal subInfo = mSubscriptionDatabaseManager
@@ -1247,6 +1277,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                 mSlotIndexToSubId.put(phoneId, subId);
                 // Update the SIM slot index. This will make the subscription active.
                 mSubscriptionDatabaseManager.setSimSlotIndex(subId, phoneId);
+                logl("updateSubscriptions: " + slotMappingToString());
             }
 
             // Update the card id.
@@ -1323,6 +1354,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         } else {
             log("updateSubscriptions: No ICCID available for phone " + phoneId);
             mSlotIndexToSubId.remove(phoneId);
+            logl("updateSubscriptions: " + slotMappingToString());
         }
 
         if (areAllSubscriptionsLoaded()) {
@@ -1889,6 +1921,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                 int subId = insertSubscriptionInfo(iccId, slotIndex, displayName, subscriptionType);
                 updateGroupDisabled();
                 mSlotIndexToSubId.put(slotIndex, subId);
+                logl("addSubInfo: " + slotMappingToString());
             } else {
                 // Record already exists.
                 loge("Subscription record already existed.");
@@ -2572,11 +2605,6 @@ public class SubscriptionManagerService extends ISub.Stub {
 
         return mSlotIndexToSubId.getOrDefault(slotIndex,
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID);
-    }
-
-    @Override
-    public int[] getSubIds(int slotIndex) {
-        return new int[]{getSubId(slotIndex)};
     }
 
     /**
@@ -3765,6 +3793,16 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
+     * @return The logical SIM slot/sub mapping to string.
+     */
+    @NonNull
+    private String slotMappingToString() {
+        return mSlotIndexToSubId.entrySet().stream()
+                .map(e -> "Slot " + e.getKey() + ": subId=" + e.getValue())
+                .collect(Collectors.joining(", "));
+    }
+
+    /**
      * Log debug messages.
      *
      * @param s debug messages
@@ -3817,6 +3855,12 @@ public class SubscriptionManagerService extends ISub.Stub {
         pw.increaseIndent();
         mSlotIndexToSubId.forEach((slotIndex, subId)
                 -> pw.println("Logical SIM slot " + slotIndex + ": subId=" + subId));
+        pw.decreaseIndent();
+        pw.println("ICCID:");
+        pw.increaseIndent();
+        for (int i = 0; i < mTelephonyManager.getActiveModemCount(); i++) {
+            pw.println("slot " + i + ": " + getIccId(i));
+        }
         pw.decreaseIndent();
         pw.println();
         pw.println("defaultSubId=" + getDefaultSubId());
