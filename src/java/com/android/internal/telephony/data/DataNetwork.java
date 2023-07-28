@@ -1250,6 +1250,8 @@ public class DataNetwork extends StateMachine {
      * @see DataNetwork for the state machine diagram.
      */
     private final class ConnectingState extends State {
+        /** Used for checking setup response IP mismatch. */
+        @NetworkRegistrationInfo.RegistrationState private int mRegStateWhenSetup;
         @Override
         public void enter() {
             sendMessageDelayed(EVENT_STUCK_IN_TRANSIENT_STATE,
@@ -1321,6 +1323,136 @@ public class DataNetwork extends StateMachine {
                     return NOT_HANDLED;
             }
             return HANDLED;
+        }
+
+        /**
+         * Setup a data network.
+         */
+        private void setupData() {
+            int dataNetworkType = getDataNetworkType();
+
+            NetworkRegistrationInfo nri = getNetworkRegistrationInfo();
+            mRegStateWhenSetup = nri != null
+                    ? nri.getNetworkRegistrationState()
+                    : NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN;
+            // We need to use the actual modem roaming state instead of the framework roaming state
+            // here. This flag is only passed down to ril_service for picking the correct protocol
+            // (for old modem backward compatibility).
+            boolean isModemRoaming = mPhone.getServiceState().getDataRoamingFromRegistration();
+
+            // Set this flag to true if the user turns on data roaming. Or if we override the
+            // roaming state in framework, we should set this flag to true as well so the modem will
+            // not reject the data call setup (because the modem thinks the device is roaming).
+            boolean allowRoaming = mPhone.getDataRoamingEnabled()
+                    || (isModemRoaming && (!mPhone.getServiceState().getDataRoaming()
+                    /*|| isUnmeteredUseOnly()*/));
+
+            TrafficDescriptor trafficDescriptor = mDataProfile.getTrafficDescriptor();
+            final boolean matchAllRuleAllowed = trafficDescriptor == null
+                    || !TextUtils.isEmpty(trafficDescriptor.getDataNetworkName());
+
+            int accessNetwork = DataUtils.networkTypeToAccessNetworkType(dataNetworkType);
+
+            mDataServiceManagers.get(mTransport)
+                    .setupDataCall(accessNetwork, mDataProfile, isModemRoaming, allowRoaming,
+                            DataService.REQUEST_REASON_NORMAL, null, mPduSessionId, null,
+                            trafficDescriptor, matchAllRuleAllowed,
+                            obtainMessage(EVENT_SETUP_DATA_NETWORK_RESPONSE));
+
+            int apnTypeBitmask = mDataProfile.getApnSetting() != null
+                    ? mDataProfile.getApnSetting().getApnTypeBitmask() : ApnSetting.TYPE_NONE;
+            mDataCallSessionStats.onSetupDataCall(apnTypeBitmask);
+
+            logl("setupData: accessNetwork="
+                    + AccessNetworkType.toString(accessNetwork) + ", " + mDataProfile
+                    + ", isModemRoaming=" + isModemRoaming + ", allowRoaming=" + allowRoaming
+                    + ", PDU session id=" + mPduSessionId + ", matchAllRuleAllowed="
+                    + matchAllRuleAllowed);
+            TelephonyMetrics.getInstance().writeSetupDataCall(mPhone.getPhoneId(),
+                    ServiceState.networkTypeToRilRadioTechnology(dataNetworkType),
+                    mDataProfile.getProfileId(), mDataProfile.getApn(),
+                    mDataProfile.getProtocolType());
+        }
+
+        /**
+         * Called when receiving setup data network response from the data service.
+         *
+         * @param resultCode The result code.
+         * @param response The response.
+         */
+        private void onSetupResponse(@DataServiceCallback.ResultCode int resultCode,
+                @Nullable DataCallResponse response) {
+            logl("onSetupResponse: resultCode=" + DataServiceCallback.resultCodeToString(resultCode)
+                    + ", response=" + response);
+            mFailCause = getFailCauseFromDataCallResponse(resultCode, response);
+            validateDataCallResponse(response, mRegStateWhenSetup);
+            if (mFailCause == DataFailCause.NONE) {
+                DataNetwork dataNetwork = mDataNetworkController.getDataNetworkByInterface(
+                        response.getInterfaceName());
+                if (dataNetwork != null) {
+                    logl("Interface " + response.getInterfaceName() + " has been already used by "
+                            + dataNetwork + ". Silently tear down now.");
+                    // If this is a pre-5G data setup, that means APN database has some problems.
+                    // For example, different APN settings have the same APN name.
+                    if (response.getTrafficDescriptors().isEmpty() && dataNetwork.isConnected()) {
+                        reportAnomaly("Duplicate network interface " + response.getInterfaceName()
+                                + " detected.", "62f66e7e-8d71-45de-a57b-dc5c78223fd5");
+                    }
+
+                    // Do not actually invoke onTearDown, otherwise the existing data network will
+                    // be torn down.
+                    mRetryDelayMillis = DataCallResponse.RETRY_DURATION_UNDEFINED;
+                    mFailCause = DataFailCause.NO_RETRY_FAILURE;
+                    transitionTo(mDisconnectedState);
+                    return;
+                }
+
+                updateDataNetwork(response);
+
+                // TODO: Evaluate all network requests and see if each request still can be
+                //  satisfied.
+                //  For requests that can't be satisfied anymore, we need to put them back to the
+                //  unsatisfied pool. If none of network requests can be satisfied, then there is no
+                //  need to mark network agent connected. Just silently deactivate the data network.
+                if (mAttachedNetworkRequestList.size() == 0) {
+                    log("Tear down the network since there is no live network request.");
+                    // Directly call onTearDown here. Calling tearDown will cause deadlock because
+                    // EVENT_TEAR_DOWN_NETWORK is deferred until state machine enters connected
+                    // state, which will never happen in this case.
+                    onTearDown(TEAR_DOWN_REASON_NO_LIVE_REQUEST);
+                    return;
+                }
+
+                if (mVcnManager != null && mVcnManager.applyVcnNetworkPolicy(mNetworkCapabilities,
+                        mLinkProperties).isTeardownRequested()) {
+                    log("VCN service requested to tear down the network.");
+                    // Directly call onTearDown here. Calling tearDown will cause deadlock because
+                    // EVENT_TEAR_DOWN_NETWORK is deferred until state machine enters connected
+                    // state, which will never happen in this case.
+                    onTearDown(TEAR_DOWN_REASON_VCN_REQUESTED);
+                    return;
+                }
+
+                transitionTo(mConnectedState);
+            } else {
+                // Setup data failed.
+                mRetryDelayMillis = response != null ? response.getRetryDurationMillis()
+                        : DataCallResponse.RETRY_DURATION_UNDEFINED;
+                transitionTo(mDisconnectedState);
+            }
+
+            int apnTypeBitmask = ApnSetting.TYPE_NONE;
+            int protocol = ApnSetting.PROTOCOL_UNKNOWN;
+            if (mDataProfile.getApnSetting() != null) {
+                apnTypeBitmask = mDataProfile.getApnSetting().getApnTypeBitmask();
+                protocol = mDataProfile.getApnSetting().getProtocol();
+            }
+            mDataCallSessionStats.onSetupDataCallResponse(response,
+                    getDataNetworkType(),
+                    apnTypeBitmask,
+                    protocol,
+                    // Log the raw fail cause to avoid large amount of UNKNOWN showing on metrics.
+                    response != null ? response.getCause() : mFailCause);
         }
     }
 
@@ -2234,50 +2366,6 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
-     * Setup a data network.
-     */
-    private void setupData() {
-        int dataNetworkType = getDataNetworkType();
-
-        // We need to use the actual modem roaming state instead of the framework roaming state
-        // here. This flag is only passed down to ril_service for picking the correct protocol (for
-        // old modem backward compatibility).
-        boolean isModemRoaming = mPhone.getServiceState().getDataRoamingFromRegistration();
-
-        // Set this flag to true if the user turns on data roaming. Or if we override the roaming
-        // state in framework, we should set this flag to true as well so the modem will not reject
-        // the data call setup (because the modem actually thinks the device is roaming).
-        boolean allowRoaming = mPhone.getDataRoamingEnabled()
-                || (isModemRoaming && (!mPhone.getServiceState().getDataRoaming()
-                /*|| isUnmeteredUseOnly()*/));
-
-        TrafficDescriptor trafficDescriptor = mDataProfile.getTrafficDescriptor();
-        final boolean matchAllRuleAllowed = trafficDescriptor == null
-                || !TextUtils.isEmpty(trafficDescriptor.getDataNetworkName());
-
-        int accessNetwork = DataUtils.networkTypeToAccessNetworkType(dataNetworkType);
-
-        mDataServiceManagers.get(mTransport)
-                .setupDataCall(accessNetwork, mDataProfile, isModemRoaming, allowRoaming,
-                        DataService.REQUEST_REASON_NORMAL, null, mPduSessionId, null,
-                        trafficDescriptor, matchAllRuleAllowed,
-                        obtainMessage(EVENT_SETUP_DATA_NETWORK_RESPONSE));
-
-        int apnTypeBitmask = mDataProfile.getApnSetting() != null
-                ? mDataProfile.getApnSetting().getApnTypeBitmask() : ApnSetting.TYPE_NONE;
-        mDataCallSessionStats.onSetupDataCall(apnTypeBitmask);
-
-        logl("setupData: accessNetwork="
-                + AccessNetworkType.toString(accessNetwork) + ", " + mDataProfile
-                + ", isModemRoaming=" + isModemRoaming + ", allowRoaming=" + allowRoaming
-                + ", PDU session id=" + mPduSessionId + ", matchAllRuleAllowed="
-                + matchAllRuleAllowed);
-        TelephonyMetrics.getInstance().writeSetupDataCall(mPhone.getPhoneId(),
-                ServiceState.networkTypeToRilRadioTechnology(dataNetworkType),
-                mDataProfile.getProfileId(), mDataProfile.getApn(), mDataProfile.getProtocolType());
-    }
-
-    /**
      * Get fail cause from {@link DataCallResponse} and the result code.
      *
      * @param resultCode The result code returned from
@@ -2459,93 +2547,13 @@ public class DataNetwork extends StateMachine {
     }
 
     /**
-     * Called when receiving setup data network response from the data service.
-     *
-     * @param resultCode The result code.
-     * @param response The response.
-     */
-    private void onSetupResponse(@DataServiceCallback.ResultCode int resultCode,
-            @Nullable DataCallResponse response) {
-        logl("onSetupResponse: resultCode=" + DataServiceCallback.resultCodeToString(resultCode)
-                + ", response=" + response);
-        mFailCause = getFailCauseFromDataCallResponse(resultCode, response);
-        validateDataCallResponse(response, true /*isSetupResponse*/);
-        if (mFailCause == DataFailCause.NONE) {
-            DataNetwork dataNetwork = mDataNetworkController.getDataNetworkByInterface(
-                    response.getInterfaceName());
-            if (dataNetwork != null) {
-                logl("Interface " + response.getInterfaceName() + " has been already used by "
-                        + dataNetwork + ". Silently tear down now.");
-                // If this is a pre-5G data setup, that means APN database has some problems. For
-                // example, different APN settings have the same APN name.
-                if (response.getTrafficDescriptors().isEmpty() && dataNetwork.isConnected()) {
-                    reportAnomaly("Duplicate network interface " + response.getInterfaceName()
-                            + " detected.", "62f66e7e-8d71-45de-a57b-dc5c78223fd5");
-                }
-
-                // Do not actually invoke onTearDown, otherwise the existing data network will be
-                // torn down.
-                mRetryDelayMillis = DataCallResponse.RETRY_DURATION_UNDEFINED;
-                mFailCause = DataFailCause.NO_RETRY_FAILURE;
-                transitionTo(mDisconnectedState);
-                return;
-            }
-
-            updateDataNetwork(response);
-
-            // TODO: Evaluate all network requests and see if each request still can be satisfied.
-            //  For requests that can't be satisfied anymore, we need to put them back to the
-            //  unsatisfied pool. If none of network requests can be satisfied, then there is no
-            //  need to mark network agent connected. Just silently deactivate the data network.
-            if (mAttachedNetworkRequestList.size() == 0) {
-                log("Tear down the network since there is no live network request.");
-                // Directly call onTearDown here. Calling tearDown will cause deadlock because
-                // EVENT_TEAR_DOWN_NETWORK is deferred until state machine enters connected state,
-                // which will never happen in this case.
-                onTearDown(TEAR_DOWN_REASON_NO_LIVE_REQUEST);
-                return;
-            }
-
-            if (mVcnManager != null && mVcnManager.applyVcnNetworkPolicy(mNetworkCapabilities,
-                    mLinkProperties).isTeardownRequested()) {
-                log("VCN service requested to tear down the network.");
-                // Directly call onTearDown here. Calling tearDown will cause deadlock because
-                // EVENT_TEAR_DOWN_NETWORK is deferred until state machine enters connected state,
-                // which will never happen in this case.
-                onTearDown(TEAR_DOWN_REASON_VCN_REQUESTED);
-                return;
-            }
-
-            transitionTo(mConnectedState);
-        } else {
-            // Setup data failed.
-            mRetryDelayMillis = response != null ? response.getRetryDurationMillis()
-                    : DataCallResponse.RETRY_DURATION_UNDEFINED;
-            transitionTo(mDisconnectedState);
-        }
-
-        int apnTypeBitmask = ApnSetting.TYPE_NONE;
-        int protocol = ApnSetting.PROTOCOL_UNKNOWN;
-        if (mDataProfile.getApnSetting() != null) {
-            apnTypeBitmask = mDataProfile.getApnSetting().getApnTypeBitmask();
-            protocol = mDataProfile.getApnSetting().getProtocol();
-        }
-        mDataCallSessionStats.onSetupDataCallResponse(response,
-                getDataNetworkType(),
-                apnTypeBitmask,
-                protocol,
-                // Log the raw fail cause to avoid large amount of UNKNOWN showing on metrics.
-                response != null ? response.getCause() : mFailCause);
-    }
-
-    /**
      * If the {@link DataCallResponse} contains invalid info, triggers an anomaly report.
      *
      * @param response The response to be validated
-     * @param isSetupResponse {@code true} if the response is for initial data call setup
+     * @param setupRegState Registration state if the response is for initial data call setup.
      */
     private void validateDataCallResponse(@Nullable DataCallResponse response,
-            boolean isSetupResponse) {
+            @NetworkRegistrationInfo.RegistrationState int setupRegState) {
         if (response == null
                 || response.getLinkStatus() == DataCallResponse.LINK_STATUS_INACTIVE) return;
         int failCause = response.getCause();
@@ -2567,32 +2575,36 @@ public class DataNetwork extends StateMachine {
             }
             // Check IP for initial setup response
             NetworkRegistrationInfo nri = getNetworkRegistrationInfo();
-            if (isSetupResponse
+            if (setupRegState != -1 // Is setup response
                     && mDataProfile.getApnSetting() != null && nri != null && nri.isInService()) {
+                boolean wasRoaming = setupRegState
+                        == NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING;
                 boolean isRoaming = nri.getNetworkRegistrationState()
                         == NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING;
-                int protocol = isRoaming ? mDataProfile.getApnSetting().getRoamingProtocol()
-                        : mDataProfile.getApnSetting().getProtocol();
-                String underlyingDataService = mTransport
-                        == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
-                        ? "RIL" : "IWLAN data service";
-                if (protocol == ApnSetting.PROTOCOL_IP) {
-                    if (response.getAddresses().stream().anyMatch(
-                            la -> la.getAddress() instanceof java.net.Inet6Address)) {
-                        loge("Invalid DataCallResponse. Requested IPv4 but got IPv6 address. "
-                                + response);
-                        reportAnomaly(underlyingDataService + " reported mismatched IP "
-                                + "type. Requested IPv4 but got IPv6 address.",
-                                "7744f920-fb64-4db0-ba47-de0eae485a80");
-                    }
-                } else if (protocol == ApnSetting.PROTOCOL_IPV6) {
-                    if (response.getAddresses().stream().anyMatch(
-                            la -> la.getAddress() instanceof java.net.Inet4Address)) {
-                        loge("Invalid DataCallResponse. Requested IPv6 but got IPv4 address. "
-                                + response);
-                        reportAnomaly(underlyingDataService + " reported mismatched IP "
-                                        + "type. Requested IPv6 but got IPv4 address.",
-                                "7744f920-fb64-4db0-ba47-de0eae485a80");
+                if (wasRoaming == isRoaming) { // Ignore check if in race condition.
+                    int protocol = isRoaming ? mDataProfile.getApnSetting().getRoamingProtocol()
+                            : mDataProfile.getApnSetting().getProtocol();
+                    String underlyingDataService = mTransport
+                            == AccessNetworkConstants.TRANSPORT_TYPE_WWAN
+                            ? "RIL" : "IWLAN data service";
+                    if (protocol == ApnSetting.PROTOCOL_IP) {
+                        if (response.getAddresses().stream().anyMatch(
+                                la -> la.getAddress() instanceof java.net.Inet6Address)) {
+                            loge("Invalid DataCallResponse. Requested IPv4 but got IPv6 address."
+                                    + response);
+                            reportAnomaly(underlyingDataService + " reported mismatched IP "
+                                            + "type. Requested IPv4 but got IPv6 address.",
+                                    "7744f920-fb64-4db0-ba47-de0eae485a81");
+                        }
+                    } else if (protocol == ApnSetting.PROTOCOL_IPV6) {
+                        if (response.getAddresses().stream().anyMatch(
+                                la -> la.getAddress() instanceof java.net.Inet4Address)) {
+                            loge("Invalid DataCallResponse. Requested IPv6 but got IPv4 address."
+                                    + response);
+                            reportAnomaly(underlyingDataService + " reported mismatched IP "
+                                            + "type. Requested IPv6 but got IPv4 address.",
+                                    "7744f920-fb64-4db0-ba47-de0eae485a81");
+                        }
                     }
                 }
             }
@@ -2729,7 +2741,7 @@ public class DataNetwork extends StateMachine {
         if (response != null) {
             if (!response.equals(mDataCallResponse)) {
                 log("onDataStateChanged: " + response);
-                validateDataCallResponse(response, false /*isSetupResponse*/);
+                validateDataCallResponse(response, -1 /*setupRegState setup only*/);
                 mDataCallResponse = response;
                 if (response.getLinkStatus() != DataCallResponse.LINK_STATUS_INACTIVE) {
                     updateDataNetwork(response);
@@ -3311,7 +3323,7 @@ public class DataNetwork extends StateMachine {
         logl("onHandoverResponse: resultCode=" + DataServiceCallback.resultCodeToString(resultCode)
                 + ", response=" + response);
         mFailCause = getFailCauseFromDataCallResponse(resultCode, response);
-        validateDataCallResponse(response, false /*isSetupResponse*/);
+        validateDataCallResponse(response, -1 /*setupRegState setup only*/);
         if (mFailCause == DataFailCause.NONE) {
             // Handover succeeded.
 
