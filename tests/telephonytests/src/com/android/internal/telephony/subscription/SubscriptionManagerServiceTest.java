@@ -59,6 +59,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -1268,11 +1269,20 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         mSubscriptionManagerServiceUT.setUiccApplicationsEnabled(false, 1);
         processAllMessages();
         verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(1));
+        verify(mMockedSubscriptionManagerServiceCallback).onUiccApplicationsEnabledChanged(eq(1));
 
         SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
                 .getSubscriptionInfoInternal(1);
         assertThat(subInfo).isNotNull();
         assertThat(subInfo.areUiccApplicationsEnabled()).isFalse();
+
+        Mockito.clearInvocations(mMockedSubscriptionManagerServiceCallback);
+        mSubscriptionManagerServiceUT.setUiccApplicationsEnabled(false, 1);
+        processAllMessages();
+
+        verify(mMockedSubscriptionManagerServiceCallback, never()).onSubscriptionChanged(eq(1));
+        verify(mMockedSubscriptionManagerServiceCallback, never())
+                .onUiccApplicationsEnabledChanged(eq(1));
     }
 
     @Test
@@ -2029,9 +2039,9 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         SubscriptionManagerServiceCallback callback =
                 new SubscriptionManagerServiceCallback(Runnable::run) {
                     @Override
-                    public void onUiccApplicationsEnabled(int subId) {
+                    public void onUiccApplicationsEnabledChanged(int subId) {
                         latch.countDown();
-                        logd("testOnSubscriptionChanged: onUiccApplicationsEnabled");
+                        logd("testOnSubscriptionChanged: onUiccApplicationsEnabledChanged");
                     }
                 };
         mSubscriptionManagerServiceUT.registerCallback(callback);
