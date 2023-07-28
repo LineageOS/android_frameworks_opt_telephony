@@ -647,6 +647,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         mSubscriptionManagerServiceUT.setDefaultDataSubId(1);
         assertThat(mSubscriptionManagerServiceUT.getDefaultDataSubId()).isEqualTo(1);
+        verify(mProxyController).setRadioCapability(any());
 
         assertThat(Settings.Global.getInt(mContext.getContentResolver(),
                         Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION)).isEqualTo(1);
