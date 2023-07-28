@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.uicc.euicc;
 
+import android.annotation.NonNull;
 import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -23,6 +24,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.IndentingPrintWriter;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
@@ -175,10 +177,14 @@ public class EuiccCard extends UiccCard {
         }
     }
 
+    @NonNull
     @Override
-    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        super.dump(fd, pw, args);
+    public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
+        super.dump(fd, printWriter, args);
+        IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
         pw.println("EuiccCard:");
-        pw.println(" mEid=" + mEid);
+        pw.increaseIndent();
+        pw.println("mEid=" + mEid);
+        pw.decreaseIndent();
     }
 }
