@@ -63,6 +63,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
 
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
@@ -1672,5 +1674,39 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(2)).isNull();
         assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(3)).isNull();
         verify(mSubscriptionDatabaseManagerCallback).onSubscriptionChanged(eq(3));
+    }
+
+    @Test
+    public void testCallback() {
+        CountDownLatch latch = new CountDownLatch(2);
+        Executor executor = Runnable::run;
+        SubscriptionDatabaseManagerCallback callback =
+                new SubscriptionDatabaseManagerCallback(executor) {
+                    @Override
+                    public void onInitialized() {
+                        latch.countDown();
+                        logd("onInitialized");
+                    }
+
+                    @Override
+                    public void onSubscriptionChanged(int subId) {
+                        latch.countDown();
+                        logd("onSubscriptionChanged");
+                    }
+                };
+        assertThat(callback.getExecutor()).isEqualTo(executor);
+        mDatabaseManagerUT = new SubscriptionDatabaseManager(mContext, Looper.myLooper(), callback);
+        processAllMessages();
+
+        assertThat(latch.getCount()).isEqualTo(1);
+
+        mDatabaseManagerUT.insertSubscriptionInfo(
+                new SubscriptionInfoInternal.Builder()
+                        .setId(SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+                        .setIccId(FAKE_ICCID1)
+                        .setSimSlotIndex(0)
+                        .build());
+        processAllMessages();
+        assertThat(latch.getCount()).isEqualTo(0);
     }
 }
