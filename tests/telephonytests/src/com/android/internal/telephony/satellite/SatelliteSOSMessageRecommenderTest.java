@@ -26,6 +26,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.annotation.NonNull;
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.AsyncResult;
@@ -105,6 +106,10 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
                 .thenReturn("SubscriptionManager");
         when(mMockContext.getSystemService(SubscriptionManager.class))
                 .thenReturn(mSubscriptionManager);
+        when(mMockContext.getSystemServiceName(ActivityManager.class))
+                .thenReturn("ActivityManager");
+        when(mMockContext.getSystemService(ActivityManager.class))
+                .thenReturn(mActivityManager);
         mTestSatelliteController = new TestSatelliteController(mMockContext,
                 Looper.myLooper());
         mTestImsManager = new TestImsManager(

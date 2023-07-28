@@ -725,6 +725,13 @@ public class SatelliteController extends Handler {
                         }
                         evaluateToSendSatelliteEnabledSuccess();
                     } else {
+                        /**
+                         * Unregister Importance Listener for Pointing UI
+                         * when Satellite is disabled
+                         */
+                        if (mNeedsSatellitePointing) {
+                            mPointingAppController.removeListenerForPointingUI();
+                        }
                         synchronized (mSatelliteEnabledRequestLock) {
                             if (mSatelliteEnabledRequest != null &&
                                     mSatelliteEnabledRequest.enableSatellite == true &&

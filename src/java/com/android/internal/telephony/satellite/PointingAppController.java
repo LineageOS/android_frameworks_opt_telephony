@@ -16,12 +16,16 @@
 
 package com.android.internal.telephony.satellite;
 
+import static android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_GONE;
+
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.app.ActivityManager;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
@@ -41,6 +45,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -57,9 +62,12 @@ public class PointingAppController {
     private static PointingAppController sInstance;
     @NonNull private final Context mContext;
     private boolean mStartedSatelliteTransmissionUpdates;
+    private boolean mLastNeedFullScreenPointingUI;
+    private boolean mListenerForPointingUIRegistered;
     @NonNull private String mPointingUiPackageName = "";
     @NonNull private String mPointingUiClassName = "";
-
+    @NonNull private ActivityManager mActivityManager;
+    @NonNull public UidImportanceListener mUidImportanceListener = new UidImportanceListener();
     /**
      * Map key: subId, value: SatelliteTransmissionUpdateHandler to notify registrants.
      */
@@ -97,6 +105,9 @@ public class PointingAppController {
     public PointingAppController(@NonNull Context context) {
         mContext = context;
         mStartedSatelliteTransmissionUpdates = false;
+        mLastNeedFullScreenPointingUI = false;
+        mListenerForPointingUIRegistered = false;
+        mActivityManager = mContext.getSystemService(ActivityManager.class);
     }
 
     /**
@@ -117,6 +128,36 @@ public class PointingAppController {
     @VisibleForTesting
     public boolean getStartedSatelliteTransmissionUpdates() {
         return mStartedSatelliteTransmissionUpdates;
+    }
+
+    /**
+     * Get the flag mStartedSatelliteTransmissionUpdates
+     * @return returns mStartedSatelliteTransmissionUpdates
+     */
+    @VisibleForTesting
+    public boolean getLastNeedFullScreenPointingUI() {
+        return mLastNeedFullScreenPointingUI;
+    }
+
+    /**
+     * Listener for handling pointing UI App in the event of crash
+     */
+    @VisibleForTesting
+    public class UidImportanceListener implements ActivityManager.OnUidImportanceListener {
+        @Override
+        public void onUidImportance(int uid, int importance) {
+            if (importance != IMPORTANCE_GONE) return;
+            final PackageManager pm = mContext.getPackageManager();
+            final String[] callerPackages = pm.getPackagesForUid(uid);
+            String pointingUiPackage = getPointingUiPackageName();
+
+            if (callerPackages != null) {
+                if (Arrays.stream(callerPackages).anyMatch(pointingUiPackage::contains)) {
+                    logd("Restarting pointingUI");
+                    startPointingUI(mLastNeedFullScreenPointingUI);
+                }
+            }
+        }
     }
 
     private static final class DatagramTransferStateHandlerRequest {
@@ -379,9 +420,25 @@ public class PointingAppController {
         launchIntent.putExtra("needFullScreen", needFullScreenPointingUI);
 
         try {
+            if (!mListenerForPointingUIRegistered) {
+                mActivityManager.addOnUidImportanceListener(mUidImportanceListener,
+                        IMPORTANCE_GONE);
+                mListenerForPointingUIRegistered = true;
+            }
+            mLastNeedFullScreenPointingUI = needFullScreenPointingUI;
             mContext.startActivity(launchIntent);
         } catch (ActivityNotFoundException ex) {
             loge("startPointingUI: Pointing UI app activity is not found, ex=" + ex);
+        }
+    }
+
+    /**
+     * Remove the Importance Listener For Pointing UI App once the satellite is disabled
+     */
+    public void removeListenerForPointingUI() {
+        if (mListenerForPointingUIRegistered) {
+            mActivityManager.removeOnUidImportanceListener(mUidImportanceListener);
+            mListenerForPointingUIRegistered = false;
         }
     }
 

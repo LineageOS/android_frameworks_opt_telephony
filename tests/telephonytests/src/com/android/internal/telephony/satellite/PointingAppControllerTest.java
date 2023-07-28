@@ -16,10 +16,7 @@
 
 package com.android.internal.telephony.satellite;
 
-import android.os.Bundle;
-import android.os.Handler;
-import android.testing.AndroidTestingRunner;
-import android.testing.TestableLooper;
+import static android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_GONE;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -27,20 +24,27 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.AsyncResult;
+import android.os.Bundle;
+import android.os.Handler;
 import android.os.Message;
 import android.telephony.satellite.ISatelliteTransmissionUpdateCallback;
 import android.telephony.satellite.PointingInfo;
 import android.telephony.satellite.SatelliteManager;
 import android.telephony.satellite.SatelliteManager.SatelliteException;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
 import android.util.Log;
 
 import com.android.internal.R;
@@ -75,9 +79,11 @@ public class PointingAppControllerTest extends TelephonyTest {
 
     private PointingAppController mPointingAppController;
     InOrder mInOrder;
+    InOrder mInOrderForPointingUi;
 
     @Mock private SatelliteModemInterface mMockSatelliteModemInterface;
     @Mock private SatelliteController mMockSatelliteController;
+    @Mock private PackageManager mPackageManager;
 
     private TestSatelliteTransmissionUpdateCallback mSatelliteTransmissionUpdateCallback;
     private TestSatelliteControllerHandler mTestSatelliteControllerHandler;
@@ -92,7 +98,7 @@ public class PointingAppControllerTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
         MockitoAnnotations.initMocks(this);
         logd(TAG + " Setup!");
-
+        mInOrderForPointingUi = inOrder(mContext);
         replaceInstance(SatelliteModemInterface.class, "sInstance", null,
                 mMockSatelliteModemInterface);
         replaceInstance(SatelliteController.class, "sInstance", null,
@@ -111,7 +117,7 @@ public class PointingAppControllerTest extends TelephonyTest {
     public void tearDown() throws Exception {
         logd(TAG + " tearDown");
         mResultListener = null;
-
+        mInOrderForPointingUi = null;
         mSatelliteTransmissionUpdateCallback = null;
         super.tearDown();
     }
@@ -414,6 +420,32 @@ public class PointingAppControllerTest extends TelephonyTest {
         Bundle b = intent.getExtras();
         assertTrue(b.containsKey(KEY_NEED_FULL_SCREEN));
         assertTrue(b.getBoolean(KEY_NEED_FULL_SCREEN));
+    }
+
+    @Test
+    public void testRestartPointingUi() throws Exception {
+        mPointingAppController.startPointingUI(true);
+        mInOrderForPointingUi.verify(mContext).startActivity(any(Intent.class));
+        testRestartPointingUi(true);
+        mPointingAppController.startPointingUI(false);
+        mInOrderForPointingUi.verify(mContext).startActivity(any(Intent.class));
+        testRestartPointingUi(false);
+    }
+
+    private void testRestartPointingUi(boolean expectedFullScreen) {
+        when(mContext.getPackageManager()).thenReturn(mPackageManager);
+        doReturn(new String[]{KEY_POINTING_UI_PACKAGE_NAME}).when(mPackageManager)
+            .getPackagesForUid(anyInt());
+        mPointingAppController.mUidImportanceListener.onUidImportance(1, IMPORTANCE_GONE);
+        ArgumentCaptor<Intent> restartedIntentCaptor = ArgumentCaptor.forClass(Intent.class);
+        mInOrderForPointingUi.verify(mContext).startActivity(restartedIntentCaptor.capture());
+        Intent restartIntent = restartedIntentCaptor.getValue();
+        assertEquals(KEY_POINTING_UI_PACKAGE_NAME, restartIntent.getComponent().getPackageName());
+        assertEquals(KEY_POINTING_UI_CLASS_NAME, restartIntent.getComponent().getClassName());
+        Bundle b = restartIntent.getExtras();
+        assertTrue(b.containsKey(KEY_NEED_FULL_SCREEN));
+        // Checking if last value of KEY_NEED_FULL_SCREEN is taken or not
+        assertEquals(expectedFullScreen, b.getBoolean(KEY_NEED_FULL_SCREEN));
     }
 
     @Test
