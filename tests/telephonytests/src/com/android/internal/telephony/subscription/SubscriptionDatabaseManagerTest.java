@@ -70,7 +70,7 @@ import java.util.concurrent.Executor;
 @TestableLooper.RunWithLooper
 public class SubscriptionDatabaseManagerTest extends TelephonyTest {
 
-    static final String FAKE_DEFAULT_CARD_NAME = "CARD NAME";
+    static final String FAKE_DEFAULT_CARD_NAME = "CARD %d";
     static final String FAKE_ICCID1 = "123456";
     static final String FAKE_ICCID2 = "456789";
     static final String FAKE_PHONE_NUMBER1 = "6502530000";
