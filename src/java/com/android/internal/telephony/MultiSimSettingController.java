@@ -33,10 +33,8 @@ import android.annotation.CallbackExecutor;
 import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
@@ -85,7 +83,6 @@ public class MultiSimSettingController extends Handler {
     private static final int EVENT_SUBSCRIPTION_INFO_CHANGED         = 4;
     private static final int EVENT_SUBSCRIPTION_GROUP_CHANGED        = 5;
     private static final int EVENT_DEFAULT_DATA_SUBSCRIPTION_CHANGED = 6;
-    private static final int EVENT_CARRIER_CONFIG_CHANGED            = 7;
     private static final int EVENT_MULTI_SIM_CONFIG_CHANGED          = 8;
     @VisibleForTesting
     public static final int EVENT_RADIO_STATE_CHANGED                = 9;
@@ -162,19 +159,6 @@ public class MultiSimSettingController extends Handler {
 
     private static final String SETTING_USER_PREF_DATA_SUB = "user_preferred_data_sub";
 
-    private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED.equals(intent.getAction())) {
-                int phoneId = intent.getIntExtra(CarrierConfigManager.EXTRA_SLOT_INDEX,
-                        SubscriptionManager.INVALID_SIM_SLOT_INDEX);
-                int subId = intent.getIntExtra(CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX,
-                        SubscriptionManager.INVALID_SUBSCRIPTION_ID);
-                notifyCarrierConfigChanged(phoneId, subId);
-            }
-        }
-    };
-
     private static class DataSettingsControllerCallback extends DataSettingsManagerCallback {
         private final Phone mPhone;
 
@@ -250,8 +234,12 @@ public class MultiSimSettingController extends Handler {
 
         mIsAskEverytimeSupportedForSms = mContext.getResources()
                 .getBoolean(com.android.internal.R.bool.config_sms_ask_every_time_support);
-        context.registerReceiver(mIntentReceiver, new IntentFilter(
-                CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+
+        CarrierConfigManager ccm = mContext.getSystemService(CarrierConfigManager.class);
+        // Listener callback is executed on handler thread to directly handle config change
+        ccm.registerCarrierConfigChangeListener(this::post,
+                (slotIndex, subId, carrierId, specificCarrierId) ->
+                        onCarrierConfigChanged(slotIndex, subId));
     }
 
     /**
@@ -329,11 +317,6 @@ public class MultiSimSettingController extends Handler {
                 break;
             case EVENT_DEFAULT_DATA_SUBSCRIPTION_CHANGED:
                 onDefaultDataSettingChanged();
-                break;
-            case EVENT_CARRIER_CONFIG_CHANGED:
-                int phoneId = msg.arg1;
-                int subId = msg.arg2;
-                onCarrierConfigChanged(phoneId, subId);
                 break;
             case EVENT_MULTI_SIM_CONFIG_CHANGED:
                 int activeModems = (int) ((AsyncResult) msg.obj).result;
@@ -442,14 +425,6 @@ public class MultiSimSettingController extends Handler {
                     + "MultiSimSettingController.");
         }
         reEvaluateAll();
-    }
-
-    /**
-     * Called when carrier config changes on any phone.
-     */
-    @VisibleForTesting
-    public void notifyCarrierConfigChanged(int phoneId, int subId) {
-        obtainMessage(EVENT_CARRIER_CONFIG_CHANGED, phoneId, subId).sendToTarget();
     }
 
     private void onCarrierConfigChanged(int phoneId, int subId) {
