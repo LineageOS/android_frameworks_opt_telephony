@@ -53,7 +53,6 @@ import static org.mockito.Mockito.when;
 import android.annotation.Nullable;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.NetworkStats;
@@ -141,6 +140,7 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     private ImsPhoneConnection mImsPhoneConnection;
     private INetworkStatsProviderCallback mVtDataUsageProviderCb;
     private ImsPhoneCallTracker.ConnectorFactory mConnectorFactory;
+    private CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener;
 
     private final Executor mExecutor = Runnable::run;
 
@@ -244,7 +244,13 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
             return mMockConnector;
         }).when(mConnectorFactory).create(any(), anyInt(), anyString(), any(), any());
 
+        // Capture CarrierConfigChangeListener to emulate the carrier config change notification
+        ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
+                ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
         mCTUT = new ImsPhoneCallTracker(mImsPhone, mConnectorFactory, Runnable::run);
+        verify(mCarrierConfigManager).registerCarrierConfigChangeListener(any(),
+                listenerArgumentCaptor.capture());
+        mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(0);
         mCTUT.setDataEnabled(true);
 
         final ArgumentCaptor<VtDataUsageProvider> vtDataUsageProviderCaptor =
@@ -1931,10 +1937,8 @@ public class ImsPhoneCallTrackerTest extends TelephonyTest {
     }
 
     private void sendCarrierConfigChanged() {
-        Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        intent.putExtra(CarrierConfigManager.EXTRA_SUBSCRIPTION_INDEX, mPhone.getSubId());
-        intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, mPhone.getPhoneId());
-        mBroadcastReceiver.onReceive(mContext, intent);
+        mCarrierConfigChangeListener.onCarrierConfigChanged(mPhone.getPhoneId(), mPhone.getSubId(),
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
         processAllMessages();
     }
 
