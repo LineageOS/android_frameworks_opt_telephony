@@ -232,6 +232,10 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mSubInfoInternal = new SubscriptionInfoInternal.Builder().setId(1).build();
         mServiceStateStats = Mockito.mock(ServiceStateStats.class);
 
+        mContextFixture.putResource(R.string.kg_text_message_separator, " \u2014 ");
+
+        doReturn(mSubInfoInternal).when(mSubscriptionManagerService)
+                .getSubscriptionInfoInternal(anyInt());
         mContextFixture.putResource(R.string.config_wwan_network_service_package,
                 "com.android.phone");
         mContextFixture.putResource(R.string.config_wlan_network_service_package,
