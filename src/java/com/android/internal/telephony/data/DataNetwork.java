@@ -496,7 +496,7 @@ public class DataNetwork extends StateMachine {
     private final int mSubId;
 
     /** The network score of this network. */
-    private int mNetworkScore;
+    private @NonNull NetworkScore mNetworkScore;
 
     /**
      * Indicates that
@@ -1036,10 +1036,11 @@ public class DataNetwork extends StateMachine {
                 mPhone.getPhoneId());
         final NetworkProvider provider = (null == factory) ? null : factory.getProvider();
 
-        mNetworkScore = getNetworkScore();
+        mNetworkScore = new NetworkScore.Builder().setKeepConnectedReason(
+                        isHandoverInProgress() ? NetworkScore.KEEP_CONNECTED_FOR_HANDOVER
+                                : NetworkScore.KEEP_CONNECTED_NONE).build();
         return new TelephonyNetworkAgent(mPhone, getHandler().getLooper(), this,
-                new NetworkScore.Builder().setLegacyInt(mNetworkScore).build(),
-                configBuilder.build(), provider,
+                mNetworkScore, configBuilder.build(), provider,
                 new TelephonyNetworkAgentCallback(getHandler()::post) {
                     @Override
                     public void onValidationStatus(@ValidationStatus int status,
@@ -1169,13 +1170,13 @@ public class DataNetwork extends StateMachine {
                 }
                 case EVENT_ATTACH_NETWORK_REQUEST: {
                     onAttachNetworkRequests((NetworkRequestList) msg.obj);
-                    updateNetworkScore();
+                    updateNetworkScore(isHandoverInProgress());
                     break;
                 }
                 case EVENT_DETACH_NETWORK_REQUEST: {
                     onDetachNetworkRequest((TelephonyNetworkRequest) msg.obj,
                             msg.arg1 != 0 /* shouldRetry */);
-                    updateNetworkScore();
+                    updateNetworkScore(isHandoverInProgress());
                     break;
                 }
                 case EVENT_DETACH_ALL_NETWORK_REQUESTS: {
@@ -1593,11 +1594,13 @@ public class DataNetwork extends StateMachine {
             notifyPreciseDataConnectionState();
             mDataNetworkCallback.invokeFromExecutor(
                     () -> mDataNetworkCallback.onHandoverStarted(DataNetwork.this));
+            updateNetworkScore(true /* keepConnectedForHandover */);
         }
 
         @Override
         public void exit() {
             removeMessages(EVENT_STUCK_IN_TRANSIENT_STATE);
+            updateNetworkScore(false /* keepConnectedForHandover */);
         }
 
         @Override
@@ -3002,36 +3005,20 @@ public class DataNetwork extends StateMachine {
         return mLinkStatus;
     }
 
+
     /**
      * Update the network score and report to connectivity service if necessary.
+     *
+     * @param keepConnectedForHandover indicate handover is in progress or not.
      */
-    private void updateNetworkScore() {
-        int networkScore = getNetworkScore();
-        if (networkScore != mNetworkScore) {
-            logl("Updating score from " + mNetworkScore + " to " + networkScore);
-            mNetworkScore = networkScore;
+    private void updateNetworkScore(boolean keepConnectedForHandover) {
+        int connectedReason = keepConnectedForHandover
+                ? NetworkScore.KEEP_CONNECTED_FOR_HANDOVER : NetworkScore.KEEP_CONNECTED_NONE;
+        if (mNetworkScore.getKeepConnectedReason() != connectedReason) {
+            mNetworkScore = new NetworkScore.Builder()
+                    .setKeepConnectedReason(connectedReason).build();
             mNetworkAgent.sendNetworkScore(mNetworkScore);
         }
-    }
-
-    /**
-     * @return The network score. The higher score of the network has higher chance to be
-     * selected by the connectivity service as active network.
-     */
-    private int getNetworkScore() {
-        // If it's serving a network request that asks NET_CAPABILITY_INTERNET and doesn't have
-        // specify a sub id, this data network is considered to be default internet data
-        // connection. In this case we assign a slightly higher score of 50. The intention is
-        // it will not be replaced by other data networks accidentally in DSDS use case.
-        int score = OTHER_NETWORK_SCORE;
-        for (TelephonyNetworkRequest networkRequest : mAttachedNetworkRequestList) {
-            if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                    && networkRequest.getNetworkSpecifier() == null) {
-                score = DEFAULT_INTERNET_NETWORK_SCORE;
-            }
-        }
-
-        return score;
     }
 
     /**
