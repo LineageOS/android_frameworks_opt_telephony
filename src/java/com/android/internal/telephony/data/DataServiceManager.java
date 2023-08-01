@@ -630,13 +630,13 @@ public class DataServiceManager extends Handler {
 
     @NonNull
     private PersistableBundle getCarrierConfigSubset(String key) {
-        PersistableBundle configs = new PersistableBundle();
+        PersistableBundle configs = null;
         try {
             configs = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId(), key);
         } catch (RuntimeException e) {
             loge("CarrierConfigLoader is not available.");
         }
-        return configs;
+        return configs != null ? configs : new PersistableBundle();
     }
 
     private void sendCompleteMessage(Message msg, @DataServiceCallback.ResultCode int code) {
