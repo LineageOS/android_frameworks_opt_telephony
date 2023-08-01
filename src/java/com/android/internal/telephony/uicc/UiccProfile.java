@@ -1819,13 +1819,13 @@ public class UiccProfile extends IccCard {
 
     @NonNull
     private PersistableBundle getCarrierConfigSubset(int subId, String... keys) {
-        PersistableBundle bundle = new PersistableBundle();
+        PersistableBundle bundle = null;
         try {
             bundle = mCarrierConfigManager.getConfigForSubId(subId, keys);
         } catch (RuntimeException e) {
             loge("CarrierConfigLoader is not available.");
         }
-        return bundle;
+        return bundle != null ? bundle : new PersistableBundle();
     }
 
     private static String eventToString(int event) {

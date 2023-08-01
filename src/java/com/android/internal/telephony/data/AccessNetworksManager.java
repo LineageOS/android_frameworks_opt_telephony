@@ -20,13 +20,10 @@ import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.StringDef;
-import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -35,7 +32,6 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.os.SystemProperties;
-import android.os.UserHandle;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AccessNetworkConstants.RadioAccessNetworkType;
@@ -153,22 +149,6 @@ public class AccessNetworksManager extends Handler {
     private final @TransportType int[] mAvailableTransports;
 
     private final RegistrantList mQualifiedNetworksChangedRegistrants = new RegistrantList();
-
-    private final BroadcastReceiver mConfigChangedReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            final String action = intent.getAction();
-            if (CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED.equals(action)
-                    && mPhone.getPhoneId() == intent.getIntExtra(
-                    CarrierConfigManager.EXTRA_SLOT_INDEX, 0)) {
-                // We should wait for carrier config changed event because the target binding
-                // package name can come from the carrier config. Note that we still get this event
-                // even when SIM is absent.
-                if (DBG) log("Carrier config changed. Try to bind qualified network service.");
-                bindQualifiedNetworksService();
-            }
-        }
-    };
 
     /**
      * The preferred transport of the APN type. The key is the APN type, and the value is the
@@ -376,16 +356,24 @@ public class AccessNetworksManager extends Handler {
             log("operates in AP-assisted mode.");
             mAvailableTransports = new int[]{AccessNetworkConstants.TRANSPORT_TYPE_WWAN,
                     AccessNetworkConstants.TRANSPORT_TYPE_WLAN};
-            IntentFilter intentFilter = new IntentFilter();
-            intentFilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-            try {
-                Context contextAsUser = phone.getContext().createPackageContextAsUser(
-                        phone.getContext().getPackageName(), 0, UserHandle.ALL);
-                contextAsUser.registerReceiver(mConfigChangedReceiver, intentFilter,
-                        null /* broadcastPermission */, null);
-            } catch (PackageManager.NameNotFoundException e) {
-                loge("Package name not found: ", e);
-            }
+
+            // bindQualifiedNetworksService posts real work to handler thread. So here we can
+            // let the callback execute in binder thread to avoid post twice.
+            mCarrierConfigManager.registerCarrierConfigChangeListener(Runnable::run,
+                    (slotIndex, subId, carrierId, specificCarrierId) -> {
+                        if (slotIndex != mPhone.getPhoneId()) return;
+                        // We should wait for carrier config changed event because the target
+                        // binding
+                        // package name can come from the carrier config. Note that we still get
+                        // this
+                        // event even when SIM is absent.
+                        if (DBG) {
+                            log(
+                                    "Carrier config changed. Try to bind qualified network "
+                                            + "service.");
+                        }
+                        bindQualifiedNetworksService();
+                    });
             bindQualifiedNetworksService();
         }
 
@@ -498,16 +486,22 @@ public class AccessNetworksManager extends Handler {
         String packageName = mPhone.getContext().getResources().getString(
                 com.android.internal.R.string.config_qualified_networks_service_package);
 
-        PersistableBundle b = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId());
-
-        if (b != null) {
-            // If carrier config overrides it, use the one from carrier config
-            String carrierConfigPackageName =  b.getString(CarrierConfigManager
-                    .KEY_CARRIER_QUALIFIED_NETWORKS_SERVICE_PACKAGE_OVERRIDE_STRING);
-            if (!TextUtils.isEmpty(carrierConfigPackageName)) {
-                if (DBG) log("Found carrier config override " + carrierConfigPackageName);
-                packageName = carrierConfigPackageName;
+        PersistableBundle b;
+        try {
+            b = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId(),
+                    CarrierConfigManager
+                            .KEY_CARRIER_QUALIFIED_NETWORKS_SERVICE_PACKAGE_OVERRIDE_STRING);
+            if (b != null && !b.isEmpty()) {
+                // If carrier config overrides it, use the one from carrier config
+                String carrierConfigPackageName = b.getString(CarrierConfigManager
+                        .KEY_CARRIER_QUALIFIED_NETWORKS_SERVICE_PACKAGE_OVERRIDE_STRING);
+                if (!TextUtils.isEmpty(carrierConfigPackageName)) {
+                    if (DBG) log("Found carrier config override " + carrierConfigPackageName);
+                    packageName = carrierConfigPackageName;
+                }
             }
+        } catch (RuntimeException e) {
+            loge("Carrier config loader is not available.");
         }
 
         return packageName;
@@ -523,16 +517,22 @@ public class AccessNetworksManager extends Handler {
         String className = mPhone.getContext().getResources().getString(
                 com.android.internal.R.string.config_qualified_networks_service_class);
 
-        PersistableBundle b = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId());
-
-        if (b != null) {
-            // If carrier config overrides it, use the one from carrier config
-            String carrierConfigClassName =  b.getString(CarrierConfigManager
-                    .KEY_CARRIER_QUALIFIED_NETWORKS_SERVICE_CLASS_OVERRIDE_STRING);
-            if (!TextUtils.isEmpty(carrierConfigClassName)) {
-                if (DBG) log("Found carrier config override " + carrierConfigClassName);
-                className = carrierConfigClassName;
+        PersistableBundle b;
+        try {
+            b = mCarrierConfigManager.getConfigForSubId(mPhone.getSubId(),
+                    CarrierConfigManager
+                            .KEY_CARRIER_QUALIFIED_NETWORKS_SERVICE_CLASS_OVERRIDE_STRING);
+            if (b != null && !b.isEmpty()) {
+                // If carrier config overrides it, use the one from carrier config
+                String carrierConfigClassName = b.getString(CarrierConfigManager
+                        .KEY_CARRIER_QUALIFIED_NETWORKS_SERVICE_CLASS_OVERRIDE_STRING);
+                if (!TextUtils.isEmpty(carrierConfigClassName)) {
+                    if (DBG) log("Found carrier config override " + carrierConfigClassName);
+                    className = carrierConfigClassName;
+                }
             }
+        } catch (RuntimeException e) {
+            loge("Carrier config loader is not available.");
         }
 
         return className;
