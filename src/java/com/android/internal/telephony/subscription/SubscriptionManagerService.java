@@ -1424,6 +1424,9 @@ public class SubscriptionManagerService extends ISub.Stub {
                         loge("updateSubscription: ICC card is not available.");
                     }
 
+                    // Clear the cached Ims phone number before proceeding with Ims Registration
+                    setNumberFromIms(subId, new String(""));
+
                     // Attempt to restore SIM specific settings when SIM is loaded.
                     Bundle result = mContext.getContentResolver().call(
                             SubscriptionManager.SIM_INFO_BACKUP_AND_RESTORE_CONTENT_URI,

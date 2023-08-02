@@ -1111,6 +1111,34 @@ public class ImsPhoneTest extends TelephonyTest {
         mContextFixture.addCallingOrSelfPermission("");
     }
 
+    @Test
+    @SmallTest
+    public void testClearPhoneNumberForSourceIms() {
+        // In reality the method under test runs in phone process so has MODIFY_PHONE_STATE
+        mContextFixture.addCallingOrSelfPermission(MODIFY_PHONE_STATE);
+        int subId = 1;
+        doReturn(subId).when(mPhone).getSubId();
+        doReturn(new SubscriptionInfoInternal.Builder().setId(subId).setSimSlotIndex(0)
+                .setCountryIso("gb").build()).when(mSubscriptionManagerService)
+                .getSubscriptionInfoInternal(subId);
+
+        // 1. Two valid phone number; 1st is set.
+        Uri[] associatedUris = new Uri[] {
+                Uri.parse("sip:+447539447777@ims.x.com"),
+                Uri.parse("tel:+447539446666")
+        };
+        mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
+
+        verify(mSubscriptionManagerService).setNumberFromIms(subId, "+447539447777");
+
+        mImsPhoneUT.clearPhoneNumberForSourceIms();
+
+        verify(mSubscriptionManagerService).setNumberFromIms(subId, "");
+
+        // Clean up
+        mContextFixture.addCallingOrSelfPermission("");
+    }
+
     /**
      * Verifies that valid radio technology is passed to RIL
      * when IMS registration state changes to registered.
