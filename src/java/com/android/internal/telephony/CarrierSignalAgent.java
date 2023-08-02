@@ -20,11 +20,8 @@ import static android.telephony.CarrierConfigManager.KEY_CARRIER_APP_WAKE_SIGNAL
 
 import android.annotation.Nullable;
 import android.content.ActivityNotFoundException;
-import android.content.BroadcastReceiver;
 import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.Network;
@@ -125,25 +122,21 @@ public class CarrierSignalAgent extends Handler {
 
     private final LocalLog mErrorLocalLog = new LocalLog(16);
 
-    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            if (DBG) log("CarrierSignalAgent receiver action: " + action);
-            if (action.equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
-                loadCarrierConfig();
-            }
-        }
-    };
-
     private ConnectivityManager.NetworkCallback mNetworkCallback;
 
     /** Constructor */
     public CarrierSignalAgent(Phone phone) {
         mPhone = phone;
+        CarrierConfigManager carrierConfigManager = mPhone.getContext().getSystemService(
+                CarrierConfigManager.class);
         loadCarrierConfig();
-        // reload configurations on CARRIER_CONFIG_CHANGED
-        mPhone.getContext().registerReceiver(mReceiver,
-                new IntentFilter(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        carrierConfigManager.registerCarrierConfigChangeListener(
+                mPhone.getContext().getMainExecutor(),
+                (slotIndex, subId, carrierId, specificCarrierId) -> {
+                    if (slotIndex == mPhone.getPhoneId()) {
+                        loadCarrierConfig();
+                    }
+                });
         mPhone.getCarrierActionAgent().registerForCarrierAction(
                 CarrierActionAgent.CARRIER_ACTION_REPORT_DEFAULT_NETWORK_STATUS, this,
                 EVENT_REGISTER_DEFAULT_NETWORK_AVAIL, null, false);
@@ -205,45 +198,47 @@ public class CarrierSignalAgent extends Handler {
      * load carrier config and cached the results into a hashMap action -> array list of components.
      */
     private void loadCarrierConfig() {
-        CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
-                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        PersistableBundle b = null;
-        if (configManager != null) {
-            b = configManager.getConfigForSubId(mPhone.getSubId());
+        PersistableBundle b =
+                CarrierConfigManager.getCarrierConfigSubset(
+                        mPhone.getContext(),
+                        mPhone.getSubId(),
+                        KEY_CARRIER_APP_WAKE_SIGNAL_CONFIG_STRING_ARRAY,
+                        KEY_CARRIER_APP_NO_WAKE_SIGNAL_CONFIG_STRING_ARRAY);
+        if (b.isEmpty()) {
+            return;
         }
-        if (b != null) {
-            synchronized (mCachedWakeSignalConfigs) {
-                log("Loading carrier config: " + KEY_CARRIER_APP_WAKE_SIGNAL_CONFIG_STRING_ARRAY);
-                Map<String, Set<ComponentName>> config = parseAndCache(
-                        b.getStringArray(KEY_CARRIER_APP_WAKE_SIGNAL_CONFIG_STRING_ARRAY));
-                // In some rare cases, up-to-date config could be fetched with delay and all signals
-                // have already been delivered the receivers from the default carrier config.
-                // To handle this raciness, we should notify those receivers (from old configs)
-                // and reset carrier actions. This should be done before cached Config got purged
-                // and written with the up-to-date value, Otherwise those receivers from the
-                // old config might lingers without properly clean-up.
-                if (!mCachedWakeSignalConfigs.isEmpty()
-                        && !config.equals(mCachedWakeSignalConfigs)) {
-                    if (VDBG) log("carrier config changed, reset receivers from old config");
-                    mPhone.getCarrierActionAgent().sendEmptyMessage(
-                            CarrierActionAgent.CARRIER_ACTION_RESET);
-                }
-                mCachedWakeSignalConfigs = config;
-            }
 
-            synchronized (mCachedNoWakeSignalConfigs) {
-                log("Loading carrier config: "
-                        + KEY_CARRIER_APP_NO_WAKE_SIGNAL_CONFIG_STRING_ARRAY);
-                Map<String, Set<ComponentName>> config = parseAndCache(
-                        b.getStringArray(KEY_CARRIER_APP_NO_WAKE_SIGNAL_CONFIG_STRING_ARRAY));
-                if (!mCachedNoWakeSignalConfigs.isEmpty()
-                        && !config.equals(mCachedNoWakeSignalConfigs)) {
-                    if (VDBG) log("carrier config changed, reset receivers from old config");
-                    mPhone.getCarrierActionAgent().sendEmptyMessage(
-                            CarrierActionAgent.CARRIER_ACTION_RESET);
-                }
-                mCachedNoWakeSignalConfigs = config;
+        synchronized (mCachedWakeSignalConfigs) {
+            log("Loading carrier config: " + KEY_CARRIER_APP_WAKE_SIGNAL_CONFIG_STRING_ARRAY);
+            Map<String, Set<ComponentName>> config = parseAndCache(
+                    b.getStringArray(KEY_CARRIER_APP_WAKE_SIGNAL_CONFIG_STRING_ARRAY));
+            // In some rare cases, up-to-date config could be fetched with delay and all signals
+            // have already been delivered the receivers from the default carrier config.
+            // To handle this raciness, we should notify those receivers (from old configs)
+            // and reset carrier actions. This should be done before cached Config got purged
+            // and written with the up-to-date value, Otherwise those receivers from the
+            // old config might lingers without properly clean-up.
+            if (!mCachedWakeSignalConfigs.isEmpty()
+                    && !config.equals(mCachedWakeSignalConfigs)) {
+                if (VDBG) log("carrier config changed, reset receivers from old config");
+                mPhone.getCarrierActionAgent().sendEmptyMessage(
+                        CarrierActionAgent.CARRIER_ACTION_RESET);
             }
+            mCachedWakeSignalConfigs = config;
+        }
+
+        synchronized (mCachedNoWakeSignalConfigs) {
+            log("Loading carrier config: "
+                    + KEY_CARRIER_APP_NO_WAKE_SIGNAL_CONFIG_STRING_ARRAY);
+            Map<String, Set<ComponentName>> config = parseAndCache(
+                    b.getStringArray(KEY_CARRIER_APP_NO_WAKE_SIGNAL_CONFIG_STRING_ARRAY));
+            if (!mCachedNoWakeSignalConfigs.isEmpty()
+                    && !config.equals(mCachedNoWakeSignalConfigs)) {
+                if (VDBG) log("carrier config changed, reset receivers from old config");
+                mPhone.getCarrierActionAgent().sendEmptyMessage(
+                        CarrierActionAgent.CARRIER_ACTION_RESET);
+            }
+            mCachedNoWakeSignalConfigs = config;
         }
     }
 
