@@ -228,7 +228,7 @@ public class ServiceStateTracker extends Handler {
     public static final int DEFAULT_GPRS_CHECK_PERIOD_MILLIS = 60 * 1000;
 
     /**
-     * The timer value to wait for all cellular data networks to be torn down.
+     * The timer value to wait for all data networks to be torn down.
      */
     private static final long POWER_OFF_ALL_DATA_NETWORKS_DISCONNECTED_TIMEOUT =
             TimeUnit.SECONDS.toMillis(10);
@@ -272,7 +272,7 @@ public class ServiceStateTracker extends Handler {
     protected static final int EVENT_IMS_STATE_CHANGED                 = 46;
     protected static final int EVENT_IMS_STATE_DONE                    = 47;
     protected static final int EVENT_IMS_CAPABILITY_CHANGED            = 48;
-    protected static final int EVENT_ALL_CELLULAR_DATA_DISCONNECTED = 49;
+    protected static final int EVENT_ALL_DATA_DISCONNECTED             = 49;
     protected static final int EVENT_PHONE_TYPE_SWITCHED               = 50;
     protected static final int EVENT_RADIO_POWER_FROM_CARRIER          = 51;
     protected static final int EVENT_IMS_SERVICE_STATE_CHANGED         = 53;
@@ -605,11 +605,11 @@ public class ServiceStateTracker extends Handler {
     private int mLastKnownAreaCode = CellInfo.UNAVAILABLE;
 
     /**
-     * Data network controller callback for all cellular data disconnected. This is used when
-     * turning on airplane mode, where service state tracker should wait for all cellular data
-     * disconnected on all subscriptions before powering down the modem.
+     * Data network controller callback for all data disconnected. This is used when turning on
+     * airplane mode, where service state tracker should wait for all data disconnected on all
+     * subscriptions before powering down the modem.
      */
-    private DataNetworkControllerCallback mAllCellularDataDisconnectedCallback;
+    private DataNetworkControllerCallback mDataDisconnectedCallback;
 
     /**
      * AccessNetworksManagerCallback is used for preferred on the IWLAN when preferred transport
@@ -715,13 +715,12 @@ public class ServiceStateTracker extends Handler {
         registerForImsCapabilityChanged(mCSST,
                 CarrierServiceStateTracker.CARRIER_EVENT_IMS_CAPABILITIES_CHANGED, null);
 
-        mAllCellularDataDisconnectedCallback = new DataNetworkControllerCallback(this::post) {
+        mDataDisconnectedCallback = new DataNetworkControllerCallback(this::post) {
             @Override
-            public void onAnyCellularDataNetworkExistingChanged(boolean anyCellularDataExisting) {
-                log("onAnyCellularDataNetworkExistingChanged: anyCellularDataExisting="
-                        + anyCellularDataExisting);
-                if (!anyCellularDataExisting) {
-                    sendEmptyMessage(EVENT_ALL_CELLULAR_DATA_DISCONNECTED);
+            public void onAnyDataNetworkExistingChanged(boolean anyDataExisting) {
+                log("onAnyDataNetworkExistingChanged: anyDataExisting=" + anyDataExisting);
+                if (!anyDataExisting) {
+                    sendEmptyMessage(EVENT_ALL_DATA_DISCONNECTED);
                 }
             }
         };
@@ -1202,7 +1201,7 @@ public class ServiceStateTracker extends Handler {
             case EVENT_SET_RADIO_POWER_OFF:
                 synchronized(this) {
                     mPendingRadioPowerOffAfterDataOff = false;
-                    log("Wait for all cellular data networks torn down timed out. Power off now.");
+                    log("Wait for all data networks torn down timed out. Power off now.");
                     hangupAndPowerOff();
                 }
                 break;
@@ -1470,18 +1469,18 @@ public class ServiceStateTracker extends Handler {
                 }
                 break;
 
-            case EVENT_ALL_CELLULAR_DATA_DISCONNECTED:
-                log("EVENT_ALL_CELLULAR_DATA_DISCONNECTED");
+            case EVENT_ALL_DATA_DISCONNECTED:
+                log("EVENT_ALL_DATA_DISCONNECTED");
                 synchronized (this) {
                     if (!mPendingRadioPowerOffAfterDataOff) return;
                     boolean areAllDataDisconnectedOnAllPhones = true;
                     for (Phone phone : PhoneFactory.getPhones()) {
-                        if (phone.getDataNetworkController().areAllCellularDataDisconnected()) {
+                        if (phone.getDataNetworkController().areAllDataDisconnected()) {
                             phone.getDataNetworkController()
                                 .unregisterDataNetworkControllerCallback(
-                                        mAllCellularDataDisconnectedCallback);
+                                        mDataDisconnectedCallback);
                         } else {
-                            log("Still waiting for all cellular data disconnected on phone: "
+                            log("Still waiting for all data disconnected on phone: "
                                     + phone.getSubId());
                             areAllDataDisconnectedOnAllPhones = false;
                         }
@@ -4964,17 +4963,17 @@ public class ServiceStateTracker extends Handler {
                 }
 
                 for (Phone phone : PhoneFactory.getPhones()) {
-                    if (!phone.getDataNetworkController().areAllCellularDataDisconnected()) {
+                    if (!phone.getDataNetworkController().areAllDataDisconnected()) {
                         log("powerOffRadioSafely: Data is active on phone " + phone.getSubId()
-                                + ". Wait for all cellular data disconnect.");
+                                + ". Wait for all data disconnect.");
                         mPendingRadioPowerOffAfterDataOff = true;
                         phone.getDataNetworkController().registerDataNetworkControllerCallback(
-                                mAllCellularDataDisconnectedCallback);
+                                mDataDisconnectedCallback);
                     }
                 }
 
                 // Tear down outside of the disconnected check to prevent race conditions.
-                mPhone.getDataNetworkController().tearDownAllCellularDataNetworks(
+                mPhone.getDataNetworkController().tearDownAllDataNetworks(
                         DataNetwork.TEAR_DOWN_REASON_AIRPLANE_MODE_ON);
 
                 if (mPendingRadioPowerOffAfterDataOff) {
@@ -5032,11 +5031,8 @@ public class ServiceStateTracker extends Handler {
      */
     protected void hangupAndPowerOff() {
         if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF) return;
-        // hang up all active non-WFC voice calls
-        boolean isWfc = mPhone.getImsRegistrationTech() == ImsRegistrationImplBase
-                .REGISTRATION_TECH_IWLAN;
-        if (isWfc) log("hangupAndPowerOff: VoWifi registered.");
-        if ((!mPhone.isPhoneTypeGsm() || mPhone.isInCall()) && !isWfc) {
+        // hang up all active voice calls
+        if (!mPhone.isPhoneTypeGsm() || mPhone.isInCall()) {
             mPhone.mCT.mRingingCall.hangupIfAlive();
             mPhone.mCT.mBackgroundCall.hangupIfAlive();
             mPhone.mCT.mForegroundCall.hangupIfAlive();
