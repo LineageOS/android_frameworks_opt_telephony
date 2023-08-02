@@ -1065,7 +1065,7 @@ public class DataNetwork extends StateMachine {
                                 message,
                                 privilegedUids.stream().mapToInt(i -> i).toArray(),
                                 null /* ex */);
-                        message.sendToTarget();
+                        sendMessage(message);
                     };
             TelephonyManager tm = mPhone.getContext().getSystemService(TelephonyManager.class);
             if (tm != null) {
