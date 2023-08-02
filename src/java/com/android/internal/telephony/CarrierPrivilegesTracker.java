@@ -128,13 +128,6 @@ public class CarrierPrivilegesTracker extends Handler {
                     | PackageManager.MATCH_HIDDEN_UNTIL_INSTALLED_COMPONENTS;
 
     /**
-     * All carrier config keys used in this class should list here in alphabetical order.
-     */
-    private static final String[] CARRIER_CONFIG_KEYS = {
-            KEY_CARRIER_CERTIFICATE_STRING_ARRAY,
-    };
-
-    /**
      * Action to register a Registrant with this Tracker.
      * obj: Registrant that will be notified of Carrier Privileged UID changes.
      */
@@ -472,13 +465,9 @@ public class CarrierPrivilegesTracker extends Handler {
 
     @NonNull
     private List<UiccAccessRule> getCarrierConfigRules(int subId) {
-        PersistableBundle carrierConfigs = null;
-        try {
-            carrierConfigs = mCarrierConfigManager.getConfigForSubId(subId, CARRIER_CONFIG_KEYS);
-        } catch (RuntimeException e) {
-            mLocalLog.log("CarrierConfigLoader is not available, try it later.");
-        }
-
+        PersistableBundle carrierConfigs =
+                CarrierConfigManager.getCarrierConfigSubset(
+                        mContext, subId, KEY_CARRIER_CERTIFICATE_STRING_ARRAY);
         // CarrierConfigManager#isConfigForIdentifiedCarrier can handle null or empty bundle
         if (!mCarrierConfigManager.isConfigForIdentifiedCarrier(carrierConfigs)) {
             return Collections.EMPTY_LIST;

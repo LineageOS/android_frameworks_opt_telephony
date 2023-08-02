@@ -20,7 +20,6 @@ import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT
 import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_VERIFICATION_FAILURE;
 import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_VERIFICATION_SUCCESS;
 
-import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.app.usage.UsageStatsManager;
@@ -462,7 +461,8 @@ public class UiccProfile extends IccCard {
         }
 
         PersistableBundle config =
-                getCarrierConfigSubset(
+                CarrierConfigManager.getCarrierConfigSubset(
+                        mContext,
                         subId,
                         CarrierConfigManager.KEY_CARRIER_NAME_OVERRIDE_BOOL,
                         CarrierConfigManager.KEY_CARRIER_NAME_STRING);
@@ -534,8 +534,8 @@ public class UiccProfile extends IccCard {
         }
 
         PersistableBundle config =
-                getCarrierConfigSubset(
-                        subId, CarrierConfigManager.KEY_SIM_COUNTRY_ISO_OVERRIDE_STRING);
+                CarrierConfigManager.getCarrierConfigSubset(
+                        mContext, subId, CarrierConfigManager.KEY_SIM_COUNTRY_ISO_OVERRIDE_STRING);
         if (config.isEmpty()) {
             loge("handleSimCountryIsoOverride: fail to get carrier configs.");
             return;
@@ -1815,17 +1815,6 @@ public class UiccProfile extends IccCard {
             }
         }
         return null;
-    }
-
-    @NonNull
-    private PersistableBundle getCarrierConfigSubset(int subId, String... keys) {
-        PersistableBundle bundle = null;
-        try {
-            bundle = mCarrierConfigManager.getConfigForSubId(subId, keys);
-        } catch (RuntimeException e) {
-            loge("CarrierConfigLoader is not available.");
-        }
-        return bundle != null ? bundle : new PersistableBundle();
     }
 
     private static String eventToString(int event) {
