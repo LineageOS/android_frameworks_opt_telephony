@@ -678,6 +678,9 @@ public class DataNetwork extends StateMachine {
      */
     private @NonNull int[] mAdministratorUids = new int[0];
 
+    /** Carrier privileges callback to monitor administrator UID change. */
+    private @Nullable TelephonyManager.CarrierPrivilegesCallback mCarrierPrivilegesCallback;
+
     /**
      * Carrier service package uid. This UID will not change through the life cycle of data network.
      */
@@ -1053,8 +1056,22 @@ public class DataNetwork extends StateMachine {
                 mDataServiceManagers.get(transport)
                         .registerForDataCallListChanged(getHandler(), EVENT_DATA_STATE_CHANGED);
             }
-            mPhone.getCarrierPrivilegesTracker().registerCarrierPrivilegesListener(getHandler(),
-                    EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED, null);
+
+            mCarrierPrivilegesCallback =
+                    (Set<String> privilegedPackageNames, Set<Integer> privilegedUids) -> {
+                        log("onCarrierPrivilegesChanged, Uids=" + privilegedUids.toString());
+                        Message message = obtainMessage(EVENT_CARRIER_PRIVILEGED_UIDS_CHANGED);
+                        AsyncResult.forMessage(
+                                message,
+                                privilegedUids.stream().mapToInt(i -> i).toArray(),
+                                null /* ex */);
+                        sendMessage(message);
+                    };
+            TelephonyManager tm = mPhone.getContext().getSystemService(TelephonyManager.class);
+            if (tm != null) {
+                tm.registerCarrierPrivilegesCallback(
+                        mPhone.getPhoneId(), getHandler()::post, mCarrierPrivilegesCallback);
+            }
 
             mPhone.getServiceStateTracker().registerForCssIndicatorChanged(
                     getHandler(), EVENT_CSS_INDICATOR_CHANGED, null);
@@ -1088,7 +1105,10 @@ public class DataNetwork extends StateMachine {
             mPhone.getCallTracker().unregisterForVoiceCallEnded(getHandler());
 
             mPhone.getServiceStateTracker().unregisterForCssIndicatorChanged(getHandler());
-            mPhone.getCarrierPrivilegesTracker().unregisterCarrierPrivilegesListener(getHandler());
+            TelephonyManager tm = mPhone.getContext().getSystemService(TelephonyManager.class);
+            if (tm != null && mCarrierPrivilegesCallback != null) {
+                tm.unregisterCarrierPrivilegesCallback(mCarrierPrivilegesCallback);
+            }
             for (int transport : mAccessNetworksManager.getAvailableTransports()) {
                 mDataServiceManagers.get(transport)
                         .unregisterForDataCallListChanged(getHandler());
