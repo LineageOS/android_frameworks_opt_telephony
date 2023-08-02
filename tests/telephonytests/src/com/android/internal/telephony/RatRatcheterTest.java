@@ -18,6 +18,11 @@ package com.android.internal.telephony;
 import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertTrue;
 
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.when;
+
 import android.os.PersistableBundle;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
@@ -31,6 +36,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.concurrent.Executor;
 
 /** Tests for RatRatcheter. */
 public class RatRatcheterTest extends TelephonyTest {
@@ -41,6 +47,7 @@ public class RatRatcheterTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        doReturn((Executor) Runnable::run).when(mContext).getMainExecutor();
         mServiceState = new ServiceState();
     }
 
@@ -135,6 +142,7 @@ public class RatRatcheterTest extends TelephonyTest {
         ServiceState newSS = new ServiceState();
 
         mBundle = mContextFixture.getCarrierConfigBundle();
+        when(mCarrierConfigManager.getConfigForSubId(anyInt(), any())).thenReturn(mBundle);
         mBundle.putStringArray(CarrierConfigManager.KEY_RATCHET_RAT_FAMILIES,
                 new String[]{"14,19"});
 
@@ -153,6 +161,7 @@ public class RatRatcheterTest extends TelephonyTest {
         ServiceState newSS = new ServiceState();
 
         mBundle = mContextFixture.getCarrierConfigBundle();
+        when(mCarrierConfigManager.getConfigForSubId(anyInt(), any())).thenReturn(mBundle);
         mBundle.putStringArray(CarrierConfigManager.KEY_RATCHET_RAT_FAMILIES, new String[]{});
 
         setNetworkRegistrationInfo(oldSS, TelephonyManager.NETWORK_TYPE_LTE_CA);
