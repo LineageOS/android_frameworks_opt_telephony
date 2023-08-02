@@ -146,7 +146,7 @@ public class DataStallRecoveryManager extends Handler {
     private final @NonNull DataServiceManager mWwanDataServiceManager;
 
     /** The data stall recovery action. */
-    private @RecoveryAction int mRecovryAction;
+    private @RecoveryAction int mRecoveryAction;
     /** The elapsed real time of last recovery attempted */
     private @ElapsedRealtimeLong long mTimeLastRecoveryStartMs;
     /** Whether current network is good or not */
@@ -365,7 +365,7 @@ public class DataStallRecoveryManager extends Handler {
         cancelNetworkCheckTimer();
         mTimeLastRecoveryStartMs = 0;
         mLastAction = RECOVERY_ACTION_GET_DATA_CALL_LIST;
-        mRecovryAction = RECOVERY_ACTION_GET_DATA_CALL_LIST;
+        mRecoveryAction = RECOVERY_ACTION_GET_DATA_CALL_LIST;
     }
 
     /**
@@ -405,8 +405,8 @@ public class DataStallRecoveryManager extends Handler {
     @VisibleForTesting
     @RecoveryAction
     public int getRecoveryAction() {
-        log("getRecoveryAction: " + recoveryActionToString(mRecovryAction));
-        return mRecovryAction;
+        log("getRecoveryAction: " + recoveryActionToString(mRecoveryAction));
+        return mRecoveryAction;
     }
 
     /**
@@ -416,24 +416,24 @@ public class DataStallRecoveryManager extends Handler {
      */
     @VisibleForTesting
     public void setRecoveryAction(@RecoveryAction int action) {
-        mRecovryAction = action;
+        mRecoveryAction = action;
 
         // Check if the mobile data enabled is TRUE, it means that the mobile data setting changed
         // from DISABLED to ENABLED, we will set the next recovery action to
         // RECOVERY_ACTION_RADIO_RESTART due to already did the RECOVERY_ACTION_CLEANUP.
         if (mMobileDataChangedToEnabledDuringDataStall
-                && mRecovryAction < RECOVERY_ACTION_RADIO_RESTART) {
-            mRecovryAction = RECOVERY_ACTION_RADIO_RESTART;
+                && mRecoveryAction < RECOVERY_ACTION_RADIO_RESTART) {
+            mRecoveryAction = RECOVERY_ACTION_RADIO_RESTART;
         }
         // Check if the radio state changed from off to on, it means that the modem already
         // did the radio restart, we will set the next action to RECOVERY_ACTION_RESET_MODEM.
         if (mRadioStateChangedDuringDataStall
                 && mRadioPowerState == TelephonyManager.RADIO_POWER_ON) {
-            mRecovryAction = RECOVERY_ACTION_RESET_MODEM;
+            mRecoveryAction = RECOVERY_ACTION_RESET_MODEM;
         }
         // To check the flag from DataConfigManager if we need to skip the step.
-        if (shouldSkipRecoveryAction(mRecovryAction)) {
-            switch (mRecovryAction) {
+        if (shouldSkipRecoveryAction(mRecoveryAction)) {
+            switch (mRecoveryAction) {
                 case RECOVERY_ACTION_GET_DATA_CALL_LIST:
                     setRecoveryAction(RECOVERY_ACTION_CLEANUP);
                     break;
@@ -449,7 +449,7 @@ public class DataStallRecoveryManager extends Handler {
             }
         }
 
-        log("setRecoveryAction: " + recoveryActionToString(mRecovryAction));
+        log("setRecoveryAction: " + recoveryActionToString(mRecoveryAction));
     }
 
     /**
