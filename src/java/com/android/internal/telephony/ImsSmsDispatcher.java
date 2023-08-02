@@ -39,6 +39,8 @@ import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
+import com.android.internal.telephony.analytics.TelephonyAnalytics;
+import com.android.internal.telephony.analytics.TelephonyAnalytics.SmsMmsAnalytics;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.util.SMSDispatcherUtil;
@@ -242,6 +244,18 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                         tracker.mMessageId,
                         tracker.isFromDefaultSmsApplication(mContext),
                         tracker.getInterval());
+                if (mPhone != null) {
+                    TelephonyAnalytics telephonyAnalytics = mPhone.getTelephonyAnalytics();
+                    if (telephonyAnalytics != null) {
+                        SmsMmsAnalytics smsMmsAnalytics = telephonyAnalytics.getSmsMmsAnalytics();
+                        if (smsMmsAnalytics != null) {
+                            smsMmsAnalytics.onOutgoingSms(
+                                    true /* isOverIms */,
+                                    reason);
+                        }
+                    }
+                }
+
             } finally {
                 Binder.restoreCallingIdentity(identity);
             }
@@ -642,6 +656,18 @@ public class ImsSmsDispatcher extends SMSDispatcher {
                     tracker.mMessageId,
                     tracker.isFromDefaultSmsApplication(mContext),
                     tracker.getInterval());
+            if (mPhone != null) {
+                TelephonyAnalytics telephonyAnalytics = mPhone.getTelephonyAnalytics();
+                if (telephonyAnalytics != null) {
+                    SmsMmsAnalytics smsMmsAnalytics = telephonyAnalytics.getSmsMmsAnalytics();
+                    if (smsMmsAnalytics != null) {
+                        smsMmsAnalytics.onOutgoingSms(
+                                true /* isOverIms */,
+                                SmsManager.RESULT_SYSTEM_ERROR
+                        );
+                    }
+                }
+            }
         }
     }
 
