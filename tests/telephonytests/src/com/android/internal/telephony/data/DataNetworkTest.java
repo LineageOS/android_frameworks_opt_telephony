@@ -1122,8 +1122,7 @@ public class DataNetworkTest extends TelephonyTest {
                 any(Handler.class), anyInt());
         verify(mMockedWlanDataServiceManager).registerForDataCallListChanged(
                 any(Handler.class), anyInt());
-        verify(mCarrierPrivilegesTracker).registerCarrierPrivilegesListener(any(Handler.class),
-                anyInt(), eq(null));
+        verify(mTelephonyManager).registerCarrierPrivilegesCallback(anyInt(), any(), any());
         verify(mLinkBandwidthEstimator).registerCallback(
                 any(LinkBandwidthEstimatorCallback.class));
         verify(mSimulatedCommandsVerifier).registerForNattKeepaliveStatus(any(Handler.class),
@@ -1146,7 +1145,7 @@ public class DataNetworkTest extends TelephonyTest {
         verify(mDisplayInfoController).unregisterForTelephonyDisplayInfoChanged(any(Handler.class));
         verify(mMockedWwanDataServiceManager).unregisterForDataCallListChanged(any(Handler.class));
         verify(mMockedWlanDataServiceManager).unregisterForDataCallListChanged(any(Handler.class));
-        verify(mCarrierPrivilegesTracker).unregisterCarrierPrivilegesListener(any(Handler.class));
+        verify(mTelephonyManager).unregisterCarrierPrivilegesCallback(any());
         verify(mLinkBandwidthEstimator).unregisterCallback(
                 any(LinkBandwidthEstimatorCallback.class));
         verify(mSimulatedCommandsVerifier).unregisterForNattKeepaliveStatus(any(Handler.class));

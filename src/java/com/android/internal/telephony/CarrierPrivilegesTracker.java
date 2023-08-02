@@ -862,20 +862,20 @@ public class CarrierPrivilegesTracker extends Handler {
      * <p>After being registered, the Registrant will be notified with the current Carrier
      * Privileged UIDs for this Phone.
      *
-     * @deprecated Use {@link TelephonyManager#addCarrierPrivilegesListener} instead, which also
-     *     provides package names
+     * @deprecated Use {@link TelephonyManager#registerCarrierPrivilegesCallback} instead, which
+     *     also provides package names
      *     <p>TODO(b/211658797) migrate callers, then delete all Registrant logic from CPT
      */
     @Deprecated
-    public void registerCarrierPrivilegesListener(@NonNull Handler h, int what,
-            @Nullable Object obj) {
+    public void registerCarrierPrivilegesListener(
+            @NonNull Handler h, int what, @Nullable Object obj) {
         sendMessage(obtainMessage(ACTION_REGISTER_LISTENER, new Registrant(h, what, obj)));
     }
 
     /**
      * Unregisters the given listener with this tracker.
      *
-     * @deprecated Use {@link TelephonyManager#removeCarrierPrivilegesListener} instead
+     * @deprecated Use {@link TelephonyManager#unregisterCarrierPrivilegesCallback} instead
      *     <p>TODO(b/211658797) migrate callers, then delete all Registrant logic from CPT
      */
     @Deprecated
