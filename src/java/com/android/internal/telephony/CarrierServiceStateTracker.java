@@ -19,10 +19,8 @@ package com.android.internal.telephony;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.os.Handler;
 import android.os.HandlerExecutor;
@@ -102,8 +100,34 @@ public class CarrierServiceStateTracker extends Handler {
         this.mSST = sst;
         mTelephonyManager = mPhone.getContext().getSystemService(
                 TelephonyManager.class).createForSubscriptionId(mPhone.getSubId());
-        phone.getContext().registerReceiver(mBroadcastReceiver, new IntentFilter(
-                CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        CarrierConfigManager ccm = mPhone.getContext().getSystemService(CarrierConfigManager.class);
+        ccm.registerCarrierConfigChangeListener(
+                mPhone.getContext().getMainExecutor(),
+                (slotIndex, subId, carrierId, specificCarrierId) -> {
+                    if (slotIndex != mPhone.getPhoneId()) return;
+
+                    Rlog.d(LOG_TAG, "onCarrierConfigChanged: slotIndex=" + slotIndex
+                            + ", subId=" + subId + ", carrierId=" + carrierId);
+
+                    // Only get carrier configs used for EmergencyNetworkNotification
+                    // and PrefNetworkNotification
+                    PersistableBundle b =
+                            CarrierConfigManager.getCarrierConfigSubset(
+                                    mPhone.getContext(),
+                                    mPhone.getSubId(),
+                                    CarrierConfigManager.KEY_EMERGENCY_NOTIFICATION_DELAY_INT,
+                                    CarrierConfigManager
+                                            .KEY_PREF_NETWORK_NOTIFICATION_DELAY_INT);
+                    if (b.isEmpty()) return;
+
+                    for (Map.Entry<Integer, NotificationType> entry :
+                            mNotificationTypeMap.entrySet()) {
+                        NotificationType notificationType = entry.getValue();
+                        notificationType.setDelay(b);
+                    }
+                    handleConfigChanges();
+                });
+
         // Listen for subscriber changes
         SubscriptionManager.from(mPhone.getContext()).addOnSubscriptionsChangedListener(
                 new OnSubscriptionsChangedListener(this.getLooper()) {
@@ -246,7 +270,7 @@ public class CarrierServiceStateTracker extends Handler {
         TelephonyManager tm = ((TelephonyManager) context.getSystemService(
                 Context.TELEPHONY_SERVICE)).createForSubscriptionId(mPhone.getSubId());
 
-        boolean isCarrierConfigEnabled = isCarrierConfigEnableNr(context);
+        boolean isCarrierConfigEnabled = isCarrierConfigEnableNr();
         boolean isRadioAccessFamilySupported = checkSupportedBitmask(
                 tm.getSupportedRadioAccessFamily(), TelephonyManager.NETWORK_TYPE_BITMASK_NR);
         boolean isNrNetworkTypeAllowed = checkSupportedBitmask(
@@ -261,15 +285,13 @@ public class CarrierServiceStateTracker extends Handler {
         return (isCarrierConfigEnabled && isRadioAccessFamilySupported && isNrNetworkTypeAllowed);
     }
 
-    private boolean isCarrierConfigEnableNr(Context context) {
-        CarrierConfigManager carrierConfigManager = (CarrierConfigManager)
-                context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        if (carrierConfigManager == null) {
-            Rlog.e(LOG_TAG, "isCarrierConfigEnableNr: CarrierConfigManager is null");
-            return false;
-        }
-        PersistableBundle config = carrierConfigManager.getConfigForSubId(mPhone.getSubId());
-        if (config == null) {
+    private boolean isCarrierConfigEnableNr() {
+        PersistableBundle config =
+                CarrierConfigManager.getCarrierConfigSubset(
+                        mPhone.getContext(),
+                        mPhone.getSubId(),
+                        CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY);
+        if (config.isEmpty()) {
             Rlog.e(LOG_TAG, "isCarrierConfigEnableNr: Cannot get config " + mPhone.getSubId());
             return false;
         }
@@ -347,21 +369,6 @@ public class CarrierServiceStateTracker extends Handler {
     public NotificationManager getNotificationManager(Context context) {
         return (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
     }
-
-    private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            CarrierConfigManager carrierConfigManager = (CarrierConfigManager)
-                    context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
-            PersistableBundle b = carrierConfigManager.getConfigForSubId(mPhone.getSubId());
-
-            for (Map.Entry<Integer, NotificationType> entry : mNotificationTypeMap.entrySet()) {
-                NotificationType notificationType = entry.getValue();
-                notificationType.setDelay(b);
-            }
-            handleConfigChanges();
-        }
-    };
 
     /**
      * Post a notification to the NotificationManager for changing network type.

@@ -112,6 +112,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.Executor;
 
 public class ServiceStateTrackerTest extends TelephonyTest {
     // Mocked classes
@@ -236,6 +237,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         doReturn(mSubInfoInternal).when(mSubscriptionManagerService)
                 .getSubscriptionInfoInternal(anyInt());
+        doReturn((Executor) Runnable::run).when(mContext).getMainExecutor();
         mContextFixture.putResource(R.string.config_wwan_network_service_package,
                 "com.android.phone");
         mContextFixture.putResource(R.string.config_wlan_network_service_package,
@@ -249,6 +251,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         replaceInstance(ProxyController.class, "sProxyController", null, mProxyController);
         mBundle = mContextFixture.getCarrierConfigBundle();
+        when(mCarrierConfigManager.getConfigForSubId(anyInt(), any())).thenReturn(mBundle);
         mBundle.putStringArray(
                 CarrierConfigManager.KEY_ROAMING_OPERATOR_STRING_ARRAY, new String[]{"123456"});
 

@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
@@ -28,7 +29,6 @@ import static org.mockito.Mockito.when;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
-import android.content.Intent;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
@@ -43,9 +43,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockitoAnnotations;
 
 import java.util.Map;
+import java.util.concurrent.Executor;
 
 /**
  * Unit tests for {@link com.android.internal.telephony.CarrierServiceStateTracker}.
@@ -57,6 +59,7 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
 
     private CarrierServiceStateTracker mSpyCarrierSST;
     private CarrierServiceStateTracker mCarrierSST;
+    private CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener;
 
     private static final int SUB_ID = 1;
 
@@ -68,10 +71,18 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
         MockitoAnnotations.initMocks(this);
         logd(LOG_TAG + "Setup!");
         super.setUp(getClass().getSimpleName());
+        doReturn((Executor) Runnable::run).when(mContext).getMainExecutor();
         mBundle = mContextFixture.getCarrierConfigBundle();
         when(mPhone.getSubId()).thenReturn(SUB_ID);
+        when(mCarrierConfigManager.getConfigForSubId(anyInt(), any())).thenReturn(mBundle);
 
+        // Capture listener to emulate the carrier config change notification used later
+        ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
+                ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
         mCarrierSST = new CarrierServiceStateTracker(mPhone, mSST);
+        verify(mCarrierConfigManager).registerCarrierConfigChangeListener(any(),
+                listenerArgumentCaptor.capture());
+        mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(0);
         mSpyCarrierSST = spy(mCarrierSST);
 
         mNotificationManager = (NotificationManager) mContext.getSystemService(
@@ -140,8 +151,8 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
     @SmallTest
     public void testSendPrefNetworkNotification() {
         logd(LOG_TAG + ":testSendPrefNetworkNotification()");
-        Intent intent = new Intent().setAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        mContext.sendBroadcast(intent);
+        mCarrierConfigChangeListener.onCarrierConfigChanged(0 /* slotIndex */, SUB_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
         processAllMessages();
 
         Map<Integer, CarrierServiceStateTracker.NotificationType> notificationTypeMap =
@@ -190,8 +201,8 @@ public class CarrierServiceStateTrackerTest extends TelephonyTest {
     @SmallTest
     public void testSendEmergencyNetworkNotification() {
         logd(LOG_TAG + ":testSendEmergencyNetworkNotification()");
-        Intent intent = new Intent().setAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        mContext.sendBroadcast(intent);
+        mCarrierConfigChangeListener.onCarrierConfigChanged(0 /* slotIndex */, SUB_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
         processAllMessages();
 
         Map<Integer, CarrierServiceStateTracker.NotificationType> notificationTypeMap =
