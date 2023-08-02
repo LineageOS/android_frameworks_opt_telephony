@@ -39,6 +39,7 @@ import android.telephony.data.DataCallResponse.LinkStatus;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.data.DataNetworkController.DataNetworkControllerCallback;
+import com.android.internal.telephony.data.DataUtils;
 import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.util.IState;
 import com.android.internal.util.IndentingPrintWriter;
@@ -149,7 +150,7 @@ public class NetworkTypeController extends StateMachine {
     private boolean mIsPhysicalChannelConfigOn;
     private boolean mIsPrimaryTimerActive;
     private boolean mIsSecondaryTimerActive;
-    private boolean mIsTimerResetEnabledForLegacyStateRRCIdle;
+    private boolean mIsTimerResetEnabledForLegacyStateRrcIdle;
     private int mLtePlusThresholdBandwidth;
     private int mNrAdvancedThresholdBandwidth;
     private boolean mIncludeLteForNrAdvancedThresholdBandwidth;
@@ -180,12 +181,13 @@ public class NetworkTypeController extends StateMachine {
         mDisplayInfoController = displayInfoController;
         mOverrideNetworkType = TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE;
         mIsPhysicalChannelConfigOn = true;
-        addState(mDefaultState);
-        addState(mLegacyState, mDefaultState);
-        addState(mIdleState, mDefaultState);
-        addState(mLteConnectedState, mDefaultState);
-        addState(mNrConnectedState, mDefaultState);
-        setInitialState(mDefaultState);
+        DefaultState defaultState = new DefaultState();
+        addState(defaultState);
+        addState(mLegacyState, defaultState);
+        addState(mIdleState, defaultState);
+        addState(mLteConnectedState, defaultState);
+        addState(mNrConnectedState, defaultState);
+        setInitialState(defaultState);
         start();
         sendMessage(EVENT_INITIALIZE);
     }
@@ -245,69 +247,34 @@ public class NetworkTypeController extends StateMachine {
     }
 
     private void parseCarrierConfigs() {
-        String nrIconConfiguration = CarrierConfigManager.getDefaultConfig().getString(
-                CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING);
-        String overrideTimerRule = CarrierConfigManager.getDefaultConfig().getString(
-                CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING);
-        String overrideSecondaryTimerRule = CarrierConfigManager.getDefaultConfig().getString(
-                CarrierConfigManager.KEY_5G_ICON_DISPLAY_SECONDARY_GRACE_PERIOD_STRING);
-        mLteEnhancedPattern = CarrierConfigManager.getDefaultConfig().getString(
-                CarrierConfigManager.KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING);
-        mIsTimerResetEnabledForLegacyStateRRCIdle =
-                CarrierConfigManager.getDefaultConfig().getBoolean(
-                        CarrierConfigManager.KEY_NR_TIMERS_RESET_IF_NON_ENDC_AND_RRC_IDLE_BOOL);
-        mLtePlusThresholdBandwidth = CarrierConfigManager.getDefaultConfig().getInt(
-                CarrierConfigManager.KEY_LTE_PLUS_THRESHOLD_BANDWIDTH_KHZ_INT);
-        mNrAdvancedThresholdBandwidth = CarrierConfigManager.getDefaultConfig().getInt(
-                CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT);
-        mIncludeLteForNrAdvancedThresholdBandwidth = CarrierConfigManager.getDefaultConfig()
-                .getBoolean(CarrierConfigManager
-                        .KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL);
-        mEnableNrAdvancedWhileRoaming = CarrierConfigManager.getDefaultConfig().getBoolean(
-                CarrierConfigManager.KEY_ENABLE_NR_ADVANCED_WHILE_ROAMING_BOOL);
-
-        CarrierConfigManager configManager = (CarrierConfigManager) mPhone.getContext()
-                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle config = CarrierConfigManager.getDefaultConfig();
+        CarrierConfigManager configManager =
+                mPhone.getContext().getSystemService(CarrierConfigManager.class);
         if (configManager != null) {
             PersistableBundle b = configManager.getConfigForSubId(mPhone.getSubId());
             if (b != null) {
-                if (b.getString(CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING) != null) {
-                    nrIconConfiguration = b.getString(
-                            CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING);
-                }
-                if (b.getString(CarrierConfigManager
-                        .KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING) != null) {
-                    overrideTimerRule = b.getString(
-                            CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING);
-                }
-                if (b.getString(CarrierConfigManager
-                        .KEY_5G_ICON_DISPLAY_SECONDARY_GRACE_PERIOD_STRING) != null) {
-                    overrideSecondaryTimerRule = b.getString(
-                            CarrierConfigManager.KEY_5G_ICON_DISPLAY_SECONDARY_GRACE_PERIOD_STRING);
-                }
-                if (b.getString(CarrierConfigManager
-                        .KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING) != null) {
-                    mLteEnhancedPattern = b.getString(
-                            CarrierConfigManager.KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING);
-                }
-                mIsTimerResetEnabledForLegacyStateRRCIdle = b.getBoolean(
-                        CarrierConfigManager.KEY_NR_TIMERS_RESET_IF_NON_ENDC_AND_RRC_IDLE_BOOL);
-                mLtePlusThresholdBandwidth = b.getInt(
-                        CarrierConfigManager.KEY_LTE_PLUS_THRESHOLD_BANDWIDTH_KHZ_INT,
-                        mLtePlusThresholdBandwidth);
-                mNrAdvancedThresholdBandwidth = b.getInt(
-                        CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT,
-                        mNrAdvancedThresholdBandwidth);
-                mIncludeLteForNrAdvancedThresholdBandwidth = b.getBoolean(CarrierConfigManager
-                        .KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL,
-                        mIncludeLteForNrAdvancedThresholdBandwidth);
-                mAdditionalNrAdvancedBandsList = b.getIntArray(
-                        CarrierConfigManager.KEY_ADDITIONAL_NR_ADVANCED_BANDS_INT_ARRAY);
-                mNrAdvancedCapablePcoId = b.getInt(
-                        CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT);
-                if (mNrAdvancedCapablePcoId > 0 && mNrAdvancedCapableByPcoChangedCallback == null) {
-                    mNrAdvancedCapableByPcoChangedCallback =
-                            new DataNetworkControllerCallback(getHandler()::post) {
+                config = b;
+            }
+        }
+        mLteEnhancedPattern = config.getString(
+                CarrierConfigManager.KEY_SHOW_CARRIER_DATA_ICON_PATTERN_STRING);
+        mIsTimerResetEnabledForLegacyStateRrcIdle = config.getBoolean(
+                CarrierConfigManager.KEY_NR_TIMERS_RESET_IF_NON_ENDC_AND_RRC_IDLE_BOOL);
+        mLtePlusThresholdBandwidth = config.getInt(
+                CarrierConfigManager.KEY_LTE_PLUS_THRESHOLD_BANDWIDTH_KHZ_INT);
+        mNrAdvancedThresholdBandwidth = config.getInt(
+                CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT);
+        mIncludeLteForNrAdvancedThresholdBandwidth = config.getBoolean(
+                CarrierConfigManager.KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL);
+        mEnableNrAdvancedWhileRoaming = config.getBoolean(
+                CarrierConfigManager.KEY_ENABLE_NR_ADVANCED_WHILE_ROAMING_BOOL);
+        mAdditionalNrAdvancedBandsList = config.getIntArray(
+                CarrierConfigManager.KEY_ADDITIONAL_NR_ADVANCED_BANDS_INT_ARRAY);
+        mNrAdvancedCapablePcoId = config.getInt(
+                CarrierConfigManager.KEY_NR_ADVANCED_CAPABLE_PCO_ID_INT);
+        if (mNrAdvancedCapablePcoId > 0 && mNrAdvancedCapableByPcoChangedCallback == null) {
+            mNrAdvancedCapableByPcoChangedCallback =
+                    new DataNetworkControllerCallback(getHandler()::post) {
                         @Override
                         public void onNrAdvancedCapableByPcoChanged(
                                 boolean nrAdvancedCapable) {
@@ -316,39 +283,39 @@ public class NetworkTypeController extends StateMachine {
                             sendMessage(EVENT_UPDATE_NR_ADVANCED_STATE);
                         }
                     };
-                    mPhone.getDataNetworkController().registerDataNetworkControllerCallback(
-                            mNrAdvancedCapableByPcoChangedCallback);
-                } else if (mNrAdvancedCapablePcoId == 0
-                        && mNrAdvancedCapableByPcoChangedCallback != null) {
-                    mPhone.getDataNetworkController().unregisterDataNetworkControllerCallback(
-                            mNrAdvancedCapableByPcoChangedCallback);
-                    mNrAdvancedCapableByPcoChangedCallback = null;
-                }
-                mEnableNrAdvancedWhileRoaming = b.getBoolean(
-                        CarrierConfigManager.KEY_ENABLE_NR_ADVANCED_WHILE_ROAMING_BOOL);
-                mIsUsingUserDataForRrcDetection = b.getBoolean(
-                        CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL);
-                if (!mIsPhysicalChannelConfig16Supported || mIsUsingUserDataForRrcDetection) {
-                    if (mNrPhysicalLinkStatusChangedCallback == null) {
-                        mNrPhysicalLinkStatusChangedCallback =
-                                new DataNetworkControllerCallback(getHandler()::post) {
-                            @Override
-                            public void onPhysicalLinkStatusChanged(
-                                    @LinkStatus int status) {
-                                sendMessage(obtainMessage(
-                                        EVENT_PHYSICAL_LINK_STATUS_CHANGED,
-                                        new AsyncResult(null, status, null)));
-                            }};
-                        mPhone.getDataNetworkController().registerDataNetworkControllerCallback(
-                                mNrPhysicalLinkStatusChangedCallback);
-                    }
-                } else if (mNrPhysicalLinkStatusChangedCallback != null) {
-                    mPhone.getDataNetworkController().unregisterDataNetworkControllerCallback(
-                            mNrPhysicalLinkStatusChangedCallback);
-                    mNrPhysicalLinkStatusChangedCallback = null;
-                }
-            }
+            mPhone.getDataNetworkController().registerDataNetworkControllerCallback(
+                    mNrAdvancedCapableByPcoChangedCallback);
+        } else if (mNrAdvancedCapablePcoId == 0 && mNrAdvancedCapableByPcoChangedCallback != null) {
+            mPhone.getDataNetworkController().unregisterDataNetworkControllerCallback(
+                    mNrAdvancedCapableByPcoChangedCallback);
+            mNrAdvancedCapableByPcoChangedCallback = null;
         }
+        mIsUsingUserDataForRrcDetection = config.getBoolean(
+                CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL);
+        if (!isUsingPhysicalChannelConfigForRrcDetection()) {
+            if (mNrPhysicalLinkStatusChangedCallback == null) {
+                mNrPhysicalLinkStatusChangedCallback =
+                        new DataNetworkControllerCallback(getHandler()::post) {
+                            @Override
+                            public void onPhysicalLinkStatusChanged(@LinkStatus int status) {
+                                sendMessage(obtainMessage(EVENT_PHYSICAL_LINK_STATUS_CHANGED,
+                                        new AsyncResult(null, status, null)));
+                            }
+                        };
+                mPhone.getDataNetworkController().registerDataNetworkControllerCallback(
+                        mNrPhysicalLinkStatusChangedCallback);
+            }
+        } else if (mNrPhysicalLinkStatusChangedCallback != null) {
+            mPhone.getDataNetworkController().unregisterDataNetworkControllerCallback(
+                    mNrPhysicalLinkStatusChangedCallback);
+            mNrPhysicalLinkStatusChangedCallback = null;
+        }
+        String nrIconConfiguration = config.getString(
+                CarrierConfigManager.KEY_5G_ICON_CONFIGURATION_STRING);
+        String overrideTimerRule = config.getString(
+                CarrierConfigManager.KEY_5G_ICON_DISPLAY_GRACE_PERIOD_STRING);
+        String overrideSecondaryTimerRule = config.getString(
+                CarrierConfigManager.KEY_5G_ICON_DISPLAY_SECONDARY_GRACE_PERIOD_STRING);
         createTimerRules(nrIconConfiguration, overrideTimerRule, overrideSecondaryTimerRule);
     }
 
@@ -642,8 +609,6 @@ public class NetworkTypeController extends StateMachine {
         }
     }
 
-    private final DefaultState mDefaultState = new DefaultState();
-
     /**
      * Device does not have NR available, due to any of the below reasons:
      * <ul>
@@ -705,7 +670,7 @@ public class NetworkTypeController extends StateMachine {
                 case EVENT_PHYSICAL_CHANNEL_CONFIG_CHANGED:
                     if (isUsingPhysicalChannelConfigForRrcDetection()) {
                         mPhysicalLinkStatus = getPhysicalLinkStatusFromPhysicalChannelConfig();
-                        if (mIsTimerResetEnabledForLegacyStateRRCIdle && !isPhysicalLinkActive()) {
+                        if (mIsTimerResetEnabledForLegacyStateRrcIdle && !isPhysicalLinkActive()) {
                             if (DBG) log("Reset timers since timer reset is enabled for RRC idle.");
                             resetAllTimers();
                         }
@@ -716,7 +681,7 @@ public class NetworkTypeController extends StateMachine {
                 case EVENT_PHYSICAL_LINK_STATUS_CHANGED:
                     AsyncResult ar = (AsyncResult) msg.obj;
                     mPhysicalLinkStatus = (int) ar.result;
-                    if (mIsTimerResetEnabledForLegacyStateRRCIdle && !isPhysicalLinkActive()) {
+                    if (mIsTimerResetEnabledForLegacyStateRrcIdle && !isPhysicalLinkActive()) {
                         if (DBG) log("Reset timers since timer reset is enabled for RRC idle.");
                         resetAllTimers();
                         updateOverrideNetworkType();
@@ -1350,16 +1315,16 @@ public class NetworkTypeController extends StateMachine {
         pw.println("mIsPhysicalChannelConfigOn=" + mIsPhysicalChannelConfigOn);
         pw.println("mIsPrimaryTimerActive=" + mIsPrimaryTimerActive);
         pw.println("mIsSecondaryTimerActive=" + mIsSecondaryTimerActive);
-        pw.println("mIsTimerRestEnabledForLegacyStateRRCIdle="
-                + mIsTimerResetEnabledForLegacyStateRRCIdle);
+        pw.println("mIsTimerResetEnabledForLegacyStateRrcIdle="
+                + mIsTimerResetEnabledForLegacyStateRrcIdle);
         pw.println("mLtePlusThresholdBandwidth=" + mLtePlusThresholdBandwidth);
         pw.println("mNrAdvancedThresholdBandwidth=" + mNrAdvancedThresholdBandwidth);
+        pw.println("mAdditionalNrAdvancedBandsList="
+                + Arrays.toString(mAdditionalNrAdvancedBandsList));
         pw.println("mPrimaryTimerState=" + mPrimaryTimerState);
         pw.println("mSecondaryTimerState=" + mSecondaryTimerState);
         pw.println("mPreviousState=" + mPreviousState);
-        pw.println("mPhysicalLinkStatus=" + mPhysicalLinkStatus);
-        pw.println("mAdditionalNrAdvancedBandsList="
-                + Arrays.toString(mAdditionalNrAdvancedBandsList));
+        pw.println("mPhysicalLinkStatus=" + DataUtils.linkStatusToString(mPhysicalLinkStatus));
         pw.println("mIsPhysicalChannelConfig16Supported=" + mIsPhysicalChannelConfig16Supported);
         pw.println("mIsNrAdvancedAllowedByPco=" + mIsNrAdvancedAllowedByPco);
         pw.println("mNrAdvancedCapablePcoId=" + mNrAdvancedCapablePcoId);
