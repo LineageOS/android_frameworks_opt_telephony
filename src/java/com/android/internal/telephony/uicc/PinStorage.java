@@ -992,15 +992,13 @@ public class PinStorage extends Handler {
         PersistableBundle config = null;
         CarrierConfigManager configManager =
                 mContext.getSystemService(CarrierConfigManager.class);
-        if (configManager != null) {
-            Phone phone = PhoneFactory.getPhone(slotId);
-            try {
-                // If an invalid subId is used, this bundle will contain default values.
-                config = configManager.getConfigForSubId(phone.getSubId(),
-                        CarrierConfigManager.KEY_STORE_SIM_PIN_FOR_UNATTENDED_REBOOT_BOOL);
-            } catch (RuntimeException e) {
-                loge("Can't get carrier config subset.");
-            }
+        Phone phone = PhoneFactory.getPhone(slotId);
+        if (configManager != null && phone != null) {
+            config =
+                    CarrierConfigManager.getCarrierConfigSubset(
+                            mContext,
+                            phone.getSubId(),
+                            CarrierConfigManager.KEY_STORE_SIM_PIN_FOR_UNATTENDED_REBOOT_BOOL);
         }
         if (config == null || config.isEmpty()) {
             config = CarrierConfigManager.getDefaultConfig();
