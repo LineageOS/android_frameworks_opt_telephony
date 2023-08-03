@@ -1024,6 +1024,90 @@ public class CarrierPrivilegesTrackerTest extends TelephonyTest {
         verify(mPackageManager).queryIntentServices(any(), anyInt());
     }
 
+    @Test
+    public void testSetCarrierServiceOverride_noCarrierPrivileges() throws Exception {
+        // Setup one package, without a matching cert to grant carrier privileges
+        setupInstalledPackages(new PackageCertInfo(PACKAGE_1, CERT_1, USER_1, UID_1));
+        ResolveInfo carrierService = new ResolveInfoBuilder().setService(PACKAGE_1).build();
+
+        doReturn(List.of(carrierService))
+                .when(mPackageManager)
+                .queryIntentServices(any(), anyInt());
+        when(mPackageManager.getPackageUid(eq(PACKAGE_1), anyInt())).thenReturn(UID_1);
+
+        // Set override, and verify the carrier service package was not set due to a lack of a
+        // matching cert.
+        mCarrierPrivilegesTracker = createCarrierPrivilegesTracker();
+        mCarrierPrivilegesTracker.setTestOverrideCarrierServicePackage(PACKAGE_1);
+        mTestableLooper.processAllMessages();
+
+        assertNull(mCarrierPrivilegesTracker.getCarrierServicePackageName());
+        assertEquals(Process.INVALID_UID, mCarrierPrivilegesTracker.getCarrierServicePackageUid());
+    }
+
+    @Test
+    public void testSetCarrierServiceOverride_withCarrierConfigCarrierPrivileges()
+            throws Exception {
+        // Setup two packages with matching carrier config certificates
+        setupCarrierConfigRules(carrierConfigRuleString(getHash(CERT_1)));
+        setupInstalledPackages(
+                new PackageCertInfo(PACKAGE_1, CERT_1, USER_1, UID_1),
+                new PackageCertInfo(PACKAGE_2, CERT_1, USER_1, UID_2));
+        ResolveInfo service1 = new ResolveInfoBuilder().setService(PACKAGE_1).build();
+        ResolveInfo service2 = new ResolveInfoBuilder().setService(PACKAGE_2).build();
+
+        doReturn(List.of(service1, service2))
+                .when(mPackageManager)
+                .queryIntentServices(any(), anyInt());
+        when(mPackageManager.getPackageUid(eq(PACKAGE_1), anyInt())).thenReturn(UID_1);
+        when(mPackageManager.getPackageUid(eq(PACKAGE_2), anyInt())).thenReturn(UID_2);
+
+        mCarrierPrivilegesTracker = createCarrierPrivilegesTracker();
+
+        // Set override, and verify the carrier service package was truly set.
+        mCarrierPrivilegesTracker.setTestOverrideCarrierServicePackage(PACKAGE_1);
+        mTestableLooper.processAllMessages();
+
+        assertEquals(PACKAGE_1, mCarrierPrivilegesTracker.getCarrierServicePackageName());
+        assertEquals(UID_1, mCarrierPrivilegesTracker.getCarrierServicePackageUid());
+
+        // Set other package as override, and verify the carrier service package was truly set.
+        mCarrierPrivilegesTracker.setTestOverrideCarrierServicePackage(PACKAGE_2);
+        mTestableLooper.processAllMessages();
+
+        assertEquals(PACKAGE_2, mCarrierPrivilegesTracker.getCarrierServicePackageName());
+        assertEquals(UID_2, mCarrierPrivilegesTracker.getCarrierServicePackageUid());
+
+        // Clear override, and verify that everything went back to null.
+        mCarrierPrivilegesTracker.setTestOverrideCarrierServicePackage(null);
+        mTestableLooper.processAllMessages();
+
+        assertNull(mCarrierPrivilegesTracker.getCarrierServicePackageName());
+        assertEquals(Process.INVALID_UID, mCarrierPrivilegesTracker.getCarrierServicePackageUid());
+    }
+
+    @Test
+    public void testSetCarrierServiceOverride_invalidPackage() throws Exception {
+        // Setup one package, without a matching cert to grant carrier privileges
+        setupCarrierConfigRules(carrierConfigRuleString(getHash(CERT_1)));
+        setupInstalledPackages(new PackageCertInfo(PACKAGE_1, CERT_1, USER_1, UID_1));
+        ResolveInfo carrierService = new ResolveInfoBuilder().setService(PACKAGE_1).build();
+
+        doReturn(List.of(carrierService))
+                .when(mPackageManager)
+                .queryIntentServices(any(), anyInt());
+        when(mPackageManager.getPackageUid(eq(PACKAGE_1), anyInt())).thenReturn(UID_1);
+
+        // Set override, and expect that an invalid package name would not be selected as the
+        // carrier config service.
+        mCarrierPrivilegesTracker = createCarrierPrivilegesTracker();
+        mCarrierPrivilegesTracker.setTestOverrideCarrierServicePackage("invalid.package");
+        mTestableLooper.processAllMessages();
+
+        assertNull(mCarrierPrivilegesTracker.getCarrierServicePackageName());
+        assertEquals(Process.INVALID_UID, mCarrierPrivilegesTracker.getCarrierServicePackageUid());
+    }
+
     private void sendCarrierConfigChanged(int subId, int phoneId) {
         mCarrierConfigChangeListener.onCarrierConfigChanged(phoneId, subId,
                 TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
