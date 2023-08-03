@@ -103,6 +103,7 @@ public class CarrierPrivilegesTracker extends Handler {
     private static final int PACKAGE_NOT_PRIVILEGED = 0;
     private static final int PACKAGE_PRIVILEGED_FROM_CARRIER_CONFIG = 1;
     private static final int PACKAGE_PRIVILEGED_FROM_SIM = 2;
+    private static final int PACKAGE_PRIVILEGED_FROM_CARRIER_SERVICE_TEST_OVERRIDE = 3;
 
     // TODO(b/232273884): Turn feature on when find solution to handle the inter-carriers switching
     /**
@@ -165,6 +166,14 @@ public class CarrierPrivilegesTracker extends Handler {
      */
     private static final int ACTION_UICC_ACCESS_RULES_LOADED = 10;
 
+    /**
+     * Action to set the test override rule through {@link
+     * TelephonyManager#setCarrierServicePackageOverride}.
+     *
+     * <p>obj: String of the carrierServicePackage from method setCarrierServicePackageOverride.
+     */
+    private static final int ACTION_SET_TEST_OVERRIDE_CARRIER_SERVICE_PACKAGE = 11;
+
     private final Context mContext;
     private final Phone mPhone;
     private final PackageManager mPackageManager;
@@ -183,6 +192,7 @@ public class CarrierPrivilegesTracker extends Handler {
     // - Empty list indicates test override to simulate no rules (CC and UICC rules are ignored)
     // - Non-empty list indicates test override with specific rules (CC and UICC rules are ignored)
     @Nullable private List<UiccAccessRule> mTestOverrideRules = null;
+    @Nullable private String mTestOverrideCarrierServicePackage = null;
     // Map of PackageName -> Certificate hashes for that Package
     @NonNull private final Map<String, Set<String>> mInstalledPackageCerts = new ArrayMap<>();
     // Map of PackageName -> UIDs for that Package
@@ -394,6 +404,11 @@ public class CarrierPrivilegesTracker extends Handler {
             }
             case ACTION_UICC_ACCESS_RULES_LOADED: {
                 handleUiccAccessRulesLoaded();
+                break;
+            }
+            case ACTION_SET_TEST_OVERRIDE_CARRIER_SERVICE_PACKAGE: {
+                String carrierServicePackage = (String) msg.obj;
+                handleSetTestOverrideCarrierServicePackage(carrierServicePackage);
                 break;
             }
             default: {
@@ -696,6 +711,7 @@ public class CarrierPrivilegesTracker extends Handler {
             final int priv = getPackagePrivilegedStatus(e.getKey(), e.getValue());
             switch (priv) {
                 case PACKAGE_PRIVILEGED_FROM_SIM:
+                case PACKAGE_PRIVILEGED_FROM_CARRIER_SERVICE_TEST_OVERRIDE: // fallthrough
                     carrierServiceEligiblePackages.add(e.getKey());
                     // fallthrough
                 case PACKAGE_PRIVILEGED_FROM_CARRIER_CONFIG:
@@ -737,7 +753,9 @@ public class CarrierPrivilegesTracker extends Handler {
                 }
                 for (UiccAccessRule rule : mCarrierConfigRules) {
                     if (rule.matches(cert, pkgName)) {
-                        return PACKAGE_PRIVILEGED_FROM_CARRIER_CONFIG;
+                        return pkgName.equals(mTestOverrideCarrierServicePackage)
+                                ? PACKAGE_PRIVILEGED_FROM_CARRIER_SERVICE_TEST_OVERRIDE
+                                : PACKAGE_PRIVILEGED_FROM_CARRIER_CONFIG;
                     }
                 }
             }
@@ -820,6 +838,30 @@ public class CarrierPrivilegesTracker extends Handler {
      */
     public void setTestOverrideCarrierPrivilegeRules(@Nullable String carrierPrivilegeRules) {
         sendMessage(obtainMessage(ACTION_SET_TEST_OVERRIDE_RULE, carrierPrivilegeRules));
+    }
+
+    /**
+     * Override the carrier provisioning package, if it exists.
+     *
+     * <p>This API is to be used ONLY for testing, and requires the provided package to be carrier
+     * privileged. While this override is set, ONLY the specified package will be considered
+     * eligible to be bound as the carrier provisioning package, and any existing bindings will be
+     * terminated.
+     *
+     * @param carrierServicePackage the package to be used as the overridden carrier service
+     *     package, or {@code null} to reset override
+     * @see TelephonyManager#setCarrierServicePackageOverride
+     */
+    public void setTestOverrideCarrierServicePackage(@Nullable String carrierServicePackage) {
+        sendMessage(obtainMessage(
+                ACTION_SET_TEST_OVERRIDE_CARRIER_SERVICE_PACKAGE, carrierServicePackage));
+    }
+
+    private void handleSetTestOverrideCarrierServicePackage(
+            @Nullable String carrierServicePackage) {
+        mTestOverrideCarrierServicePackage = carrierServicePackage;
+        refreshInstalledPackageCache();
+        maybeUpdatePrivilegedPackagesAndNotifyRegistrants();
     }
 
     private void handleSetTestOverrideRules(@Nullable String carrierPrivilegeRules) {
@@ -990,6 +1032,11 @@ public class CarrierPrivilegesTracker extends Handler {
         String carrierServicePackageName = null;
         for (ResolveInfo resolveInfo : carrierServiceResolveInfos) {
             String packageName = getPackageName(resolveInfo);
+            if (mTestOverrideCarrierServicePackage != null
+                    && !mTestOverrideCarrierServicePackage.equals(packageName)) {
+                continue;
+            }
+
             if (simPrivilegedPackages.contains(packageName)) {
                 carrierServicePackageName = packageName;
                 break;
