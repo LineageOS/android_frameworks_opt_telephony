@@ -18,13 +18,12 @@ package com.android.internal.telephony;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
-import android.content.Context;
-import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.HandlerThread;
 import android.os.PersistableBundle;
@@ -36,6 +35,7 @@ import android.telephony.CellIdentityLte;
 import android.telephony.LteVopsSupportInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
 import android.testing.AndroidTestingRunner;
@@ -46,7 +46,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mockito;
+import org.mockito.ArgumentCaptor;
 
 import java.util.Collections;
 import java.util.concurrent.Executor;
@@ -66,6 +66,7 @@ public class DisplayInfoControllerTest extends TelephonyTest {
     private ServiceStateTrackerTestHandler mSstHandler;
     private SignalStrengthController mSsc;
     private PersistableBundle mBundle;
+    private CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener;
 
     private class ServiceStateTrackerTestHandler extends HandlerThread {
         private ServiceStateTrackerTestHandler(String name) {
@@ -80,7 +81,16 @@ public class DisplayInfoControllerTest extends TelephonyTest {
             doReturn(NUMERIC).when(mTelephonyManager).getSimOperatorNumericForPhone(eq(PHONE_ID));
             doReturn(NETWORK).when(mTelephonyManager).getSimOperatorNameForPhone(eq(PHONE_ID));
 
+            // Capture listener registered for ServiceStateTracker to emulate the carrier config
+            // change notification used later. In this test, it's the second one. The first one
+            // comes from RatRatcheter.
+            ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener>
+                    listenerArgumentCaptor = ArgumentCaptor.forClass(
+                    CarrierConfigManager.CarrierConfigChangeListener.class);
             mSst = new ServiceStateTracker(mPhone, mSimulatedCommands);
+            verify(mCarrierConfigManager, atLeast(2)).registerCarrierConfigChangeListener(any(),
+                    listenerArgumentCaptor.capture());
+            mCarrierConfigChangeListener = listenerArgumentCaptor.getAllValues().get(1);
             doReturn(mSst).when(mPhone).getServiceStateTracker();
             setReady(true);
         }
@@ -92,6 +102,8 @@ public class DisplayInfoControllerTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
 
         doReturn((Executor) Runnable::run).when(mContext).getMainExecutor();
+
+        mBundle = mContextFixture.getCarrierConfigBundle();
         mSstHandler = new ServiceStateTrackerTestHandler(getClass().getSimpleName());
         mSstHandler.start();
         waitUntilReady();
@@ -106,18 +118,14 @@ public class DisplayInfoControllerTest extends TelephonyTest {
         mSstHandler.join();
         mSstHandler = null;
         mBundle = null;
+        mCarrierConfigChangeListener = null;
         super.tearDown();
     }
 
     private void sendCarrierConfigUpdate() {
-        CarrierConfigManager mockConfigManager = Mockito.mock(CarrierConfigManager.class);
-        when(mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE))
-                .thenReturn(mockConfigManager);
-        when(mockConfigManager.getConfigForSubId(anyInt())).thenReturn(mBundle);
-
-        Intent intent = new Intent().setAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        intent.putExtra(CarrierConfigManager.EXTRA_SLOT_INDEX, PHONE_ID);
-        mContext.sendBroadcast(intent);
+        mCarrierConfigChangeListener.onCarrierConfigChanged(PHONE_ID,
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID, TelephonyManager.UNKNOWN_CARRIER_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID);
         waitForLastHandlerAction(mSstHandler.getThreadHandler());
     }
 
@@ -174,7 +182,6 @@ public class DisplayInfoControllerTest extends TelephonyTest {
     public void testIsRoamingOverride_NonRoamingOperator() {
         doReturn(true).when(mPhone).isPhoneTypeGsm();
 
-        mBundle = mContextFixture.getCarrierConfigBundle();
         mBundle.putStringArray(
                 CarrierConfigManager.KEY_NON_ROAMING_OPERATOR_STRING_ARRAY, new String[] {NUMERIC});
         sendCarrierConfigUpdate();
@@ -196,7 +203,6 @@ public class DisplayInfoControllerTest extends TelephonyTest {
     public void testIsRoamingOverride_ForceHomeNetwork() {
         doReturn(true).when(mPhone).isPhoneTypeGsm();
 
-        mBundle = mContextFixture.getCarrierConfigBundle();
         mBundle.putBoolean(CarrierConfigManager.KEY_FORCE_HOME_NETWORK_BOOL, true);
         sendCarrierConfigUpdate();
 
@@ -217,7 +223,6 @@ public class DisplayInfoControllerTest extends TelephonyTest {
     public void testIsRoamingOverride_RoamingOperator() {
         doReturn(true).when(mPhone).isPhoneTypeGsm();
 
-        mBundle = mContextFixture.getCarrierConfigBundle();
         mBundle.putStringArray(
                 CarrierConfigManager.KEY_ROAMING_OPERATOR_STRING_ARRAY, new String[] {"60101"});
         sendCarrierConfigUpdate();
@@ -239,7 +244,6 @@ public class DisplayInfoControllerTest extends TelephonyTest {
     public void testIsRoamingOverride_NonRoamingGsmOperator() {
         doReturn(true).when(mPhone).isPhoneTypeGsm();
 
-        mBundle = mContextFixture.getCarrierConfigBundle();
         mBundle.putStringArray(
                 CarrierConfigManager.KEY_GSM_NONROAMING_NETWORKS_STRING_ARRAY,
                 new String[] {NUMERIC});
@@ -262,7 +266,6 @@ public class DisplayInfoControllerTest extends TelephonyTest {
     public void testIsRoamingOverride_RoamingGsmOperator() {
         doReturn(true).when(mPhone).isPhoneTypeGsm();
 
-        mBundle = mContextFixture.getCarrierConfigBundle();
         mBundle.putStringArray(
                 CarrierConfigManager.KEY_GSM_ROAMING_NETWORKS_STRING_ARRAY, new String[] {NUMERIC});
         sendCarrierConfigUpdate();
