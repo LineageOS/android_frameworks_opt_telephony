@@ -33,8 +33,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.app.AlarmManager;
-import android.app.PendingIntent;
-import android.content.Intent;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.os.AsyncResult;
@@ -793,16 +791,15 @@ public class DataRetryManagerTest extends TelephonyTest {
         processAllFutureMessages();
 
         // Verify scheduled via Alarm Manager
-        ArgumentCaptor<PendingIntent> pendingIntentArgumentCaptor =
-                ArgumentCaptor.forClass(PendingIntent.class);
-        verify(mAlarmManager).setExactAndAllowWhileIdle(anyInt(), anyLong(),
-                pendingIntentArgumentCaptor.capture());
+        ArgumentCaptor<AlarmManager.OnAlarmListener> alarmListenerCaptor =
+                ArgumentCaptor.forClass(AlarmManager.OnAlarmListener.class);
+        verify(mAlarmManager).setExactAndAllowWhileIdle(anyInt(), anyLong(), any(), any(), any(),
+                alarmListenerCaptor.capture());
 
-        // Verify starts retry attempt after receiving intent
-        PendingIntent pendingIntent = pendingIntentArgumentCaptor.getValue();
-        Intent intent = pendingIntent.getIntent();
-        mContext.sendBroadcast(intent);
-        processAllFutureMessages();
+        // Verify starts retry attempt after alarm fires.
+        AlarmManager.OnAlarmListener alarmListener = alarmListenerCaptor.getValue();
+        alarmListener.onAlarm();
+        processAllMessages();
 
         verify(mDataRetryManagerCallbackMock)
                 .onDataNetworkSetupRetry(any(DataSetupRetryEntry.class));
