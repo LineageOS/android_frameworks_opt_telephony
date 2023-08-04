@@ -165,6 +165,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         // Dual-SIM configuration
         mPhones = new Phone[] {mPhone, mPhone2};
         replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
+        doReturn(FAKE_PHONE_NUMBER1).when(mPhone).getLine1Number();
         doReturn(2).when(mTelephonyManager).getActiveModemCount();
         doReturn(2).when(mTelephonyManager).getSupportedModemCount();
         doReturn(mUiccProfile).when(mPhone2).getIccCard();
@@ -1852,7 +1853,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         doReturn(FAKE_IMSI1).when(mTelephonyManager).getSubscriberId();
         doReturn(FAKE_MCC1 + FAKE_MNC1).when(mTelephonyManager).getSimOperatorNumeric(anyInt());
-        doReturn(FAKE_PHONE_NUMBER1).when(mTelephonyManager).getLine1Number(anyInt());
         doReturn(FAKE_EHPLMNS1.split(",")).when(mSimRecords).getEhplmns();
         doReturn(FAKE_HPLMNS1.split(",")).when(mSimRecords).getPlmnsFromHplmnActRecord();
         doReturn(0).when(mUiccSlot).getPortIndexFromIccId(anyString());
@@ -1924,6 +1924,24 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID,
                 SubscriptionManager.PHONE_NUMBER_SOURCE_CARRIER, CALLING_PACKAGE, CALLING_FEATURE))
                 .isEmpty();
+    }
+
+    @Test
+    public void testGetPhoneNumberFromInactiveSubscription() {
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        testInactiveSimRemoval();
+
+        int subId = insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        assertThat(subId).isEqualTo(2);
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false)).hasLength(1);
+        assertThat(mSubscriptionManagerServiceUT.getAllSubInfoList(CALLING_PACKAGE,
+                CALLING_FEATURE)).hasSize(2);
+
+        assertThat(mSubscriptionManagerServiceUT.getPhoneNumberFromFirstAvailableSource(1,
+                CALLING_PACKAGE, CALLING_FEATURE)).isEqualTo(FAKE_PHONE_NUMBER2);
+        assertThat(mSubscriptionManagerServiceUT.getPhoneNumber(1,
+                SubscriptionManager.PHONE_NUMBER_SOURCE_UICC, CALLING_PACKAGE, CALLING_FEATURE))
+                .isEqualTo(FAKE_PHONE_NUMBER2);
     }
 
     @Test
@@ -2014,6 +2032,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 0, TelephonyManager.SIM_STATE_READY, null, null);
         processAllMessages();
 
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
         mSubscriptionManagerServiceUT.updateSimState(
                 0, TelephonyManager.SIM_STATE_LOADED, null, null);
         processAllMessages();
