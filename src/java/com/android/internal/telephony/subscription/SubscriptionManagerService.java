@@ -1390,7 +1390,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                         loge("updateSubscription: sim country iso is null");
                     }
 
-                    String msisdn = mTelephonyManager.getLine1Number(subId);
+                    String msisdn = PhoneFactory.getPhone(phoneId).getLine1Number();
                     if (!TextUtils.isEmpty(msisdn)) {
                         setDisplayNumber(msisdn, subId);
                     }
@@ -3390,7 +3390,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         try {
             switch(source) {
                 case SubscriptionManager.PHONE_NUMBER_SOURCE_UICC:
-                    Phone phone = PhoneFactory.getPhone(getPhoneId(subId));
+                    Phone phone = PhoneFactory.getPhone(getSlotIndex(subId));
                     if (phone != null) {
                         return TextUtils.emptyIfNull(phone.getLine1Number());
                     } else {
@@ -3875,10 +3875,13 @@ public class SubscriptionManagerService extends ISub.Stub {
                 case TelephonyManager.SIM_STATE_PUK_REQUIRED:
                 case TelephonyManager.SIM_STATE_NETWORK_LOCKED:
                 case TelephonyManager.SIM_STATE_PERM_DISABLED:
-                case TelephonyManager.SIM_STATE_READY:
                 case TelephonyManager.SIM_STATE_CARD_IO_ERROR:
                 case TelephonyManager.SIM_STATE_LOADED:
+                    updateSubscription(slotIndex);
+                    break;
                 case TelephonyManager.SIM_STATE_NOT_READY:
+                case TelephonyManager.SIM_STATE_READY:
+                    updateEmbeddedSubscriptions();
                     updateSubscription(slotIndex);
                     break;
                 case TelephonyManager.SIM_STATE_CARD_RESTRICTED:
