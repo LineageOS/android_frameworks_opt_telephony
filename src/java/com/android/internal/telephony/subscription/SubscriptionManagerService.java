@@ -173,7 +173,8 @@ public class SubscriptionManagerService extends ISub.Stub {
             SimInfo.COLUMN_VOIMS_OPT_IN_STATUS,
             SimInfo.COLUMN_D2D_STATUS_SHARING_SELECTED_CONTACTS,
             SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED,
-            SimInfo.COLUMN_SATELLITE_ENABLED
+            SimInfo.COLUMN_SATELLITE_ENABLED,
+            SimInfo.COLUMN_SATELLITE_ATTACH_ENABLED_FOR_CARRIER
     );
 
     /**

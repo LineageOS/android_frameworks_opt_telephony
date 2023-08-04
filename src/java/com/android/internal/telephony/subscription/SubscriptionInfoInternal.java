@@ -442,6 +442,12 @@ public class SubscriptionInfoInternal {
      */
     private final int mIsSatelliteEnabled;
 
+    /**
+     * Whether satellite attach for carrier is enabled or disabled by user.
+     * By default, its disabled. It is intended to use integer to fit the database format.
+     */
+    private final int mIsSatelliteAttachEnabledForCarrier;
+
     // Below are the fields that do not exist in the SimInfo table.
     /**
      * The card ID of the SIM card. This maps uniquely to {@link #mCardString}.
@@ -524,6 +530,8 @@ public class SubscriptionInfoInternal {
         this.mLastUsedTPMessageReference = builder.mLastUsedTPMessageReference;
         this.mUserId = builder.mUserId;
         this.mIsSatelliteEnabled = builder.mIsSatelliteEnabled;
+        this.mIsSatelliteAttachEnabledForCarrier =
+                builder.mIsSatelliteAttachEnabledForCarrier;
 
         // Below are the fields that do not exist in the SimInfo table.
         this.mCardId = builder.mCardId;
@@ -1128,6 +1136,13 @@ public class SubscriptionInfoInternal {
         return mIsSatelliteEnabled;
     }
 
+    /**
+     * @return {@code 1} if satellite attach for carrier is enabled by user.
+     */
+    public int getSatelliteAttachEnabledForCarrier() {
+        return mIsSatelliteAttachEnabledForCarrier;
+    }
+
     // Below are the fields that do not exist in SimInfo table.
     /**
      * @return The card ID of the SIM card which contains the subscription.
@@ -1253,6 +1268,7 @@ public class SubscriptionInfoInternal {
                 + " numberFromIms=" + Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, mNumberFromIms)
                 + " userId=" + mUserId
                 + " isSatelliteEnabled=" + mIsSatelliteEnabled
+                + " satellite_attach_enabled_for_carrier=" + mIsSatelliteAttachEnabledForCarrier
                 + " isGroupDisabled=" + mIsGroupDisabled
                 + "]";
     }
@@ -1308,7 +1324,8 @@ public class SubscriptionInfoInternal {
                 mRcsConfig, that.mRcsConfig) && mAllowedNetworkTypesForReasons.equals(
                 that.mAllowedNetworkTypesForReasons) && mDeviceToDeviceStatusSharingContacts.equals(
                 that.mDeviceToDeviceStatusSharingContacts) && mNumberFromCarrier.equals(
-                that.mNumberFromCarrier) && mNumberFromIms.equals(that.mNumberFromIms);
+                that.mNumberFromCarrier) && mNumberFromIms.equals(that.mNumberFromIms)
+                && mIsSatelliteAttachEnabledForCarrier == that.mIsSatelliteAttachEnabledForCarrier;
     }
 
     @Override
@@ -1329,7 +1346,8 @@ public class SubscriptionInfoInternal {
                 mDeviceToDeviceStatusSharingContacts, mIsNrAdvancedCallingEnabled,
                 mNumberFromCarrier,
                 mNumberFromIms, mPortIndex, mUsageSetting, mLastUsedTPMessageReference, mUserId,
-                mIsSatelliteEnabled, mCardId, mIsGroupDisabled);
+                mIsSatelliteEnabled, mCardId, mIsGroupDisabled,
+                mIsSatelliteAttachEnabledForCarrier);
         result = 31 * result + Arrays.hashCode(mNativeAccessRules);
         result = 31 * result + Arrays.hashCode(mCarrierConfigAccessRules);
         result = 31 * result + Arrays.hashCode(mRcsConfig);
@@ -1692,6 +1710,11 @@ public class SubscriptionInfoInternal {
          */
         private int mIsSatelliteEnabled = -1;
 
+        /**
+         * Whether satellite attach for carrier is enabled by user.
+         */
+        private int mIsSatelliteAttachEnabledForCarrier = -1;
+
         // The following fields do not exist in the SimInfo table.
         /**
          * The card ID of the SIM card which contains the subscription.
@@ -1779,6 +1802,7 @@ public class SubscriptionInfoInternal {
             mLastUsedTPMessageReference = info.getLastUsedTPMessageReference();
             mUserId = info.mUserId;
             mIsSatelliteEnabled = info.mIsSatelliteEnabled;
+            mIsSatelliteAttachEnabledForCarrier = info.mIsSatelliteAttachEnabledForCarrier;
             // Below are the fields that do not exist in the SimInfo table.
             mCardId = info.mCardId;
             mIsGroupDisabled = info.mIsGroupDisabled;
@@ -2646,6 +2670,19 @@ public class SubscriptionInfoInternal {
         @NonNull
         public Builder setSatelliteEnabled(int isSatelliteEnabled) {
             mIsSatelliteEnabled = isSatelliteEnabled;
+            return this;
+        }
+
+        /**
+         * Set whether satellite attach for carrier is enabled or disabled by user.
+         * @param isSatelliteAttachEnabledForCarrier {@code 1} if satellite attach for carrier is
+         * enabled.
+         * @return The builder.
+         */
+        @NonNull
+        public Builder setSatelliteAttachEnabledForCarrier(
+                @NonNull int isSatelliteAttachEnabledForCarrier) {
+            mIsSatelliteAttachEnabledForCarrier = isSatelliteAttachEnabledForCarrier;
             return this;
         }
 

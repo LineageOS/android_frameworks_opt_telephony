@@ -274,7 +274,11 @@ public class SubscriptionDatabaseManager extends Handler {
                     SubscriptionInfoInternal::getUserId),
             new AbstractMap.SimpleImmutableEntry<>(
                     SimInfo.COLUMN_SATELLITE_ENABLED,
-                    SubscriptionInfoInternal::getSatelliteEnabled)
+                    SubscriptionInfoInternal::getSatelliteEnabled),
+            new AbstractMap.SimpleImmutableEntry<>(
+                    SimInfo.COLUMN_SATELLITE_ATTACH_ENABLED_FOR_CARRIER,
+                    SubscriptionInfoInternal::getSatelliteAttachEnabledForCarrier)
+
     );
 
     /**
@@ -399,7 +403,10 @@ public class SubscriptionDatabaseManager extends Handler {
                     SubscriptionDatabaseManager::setUserId),
             new AbstractMap.SimpleImmutableEntry<>(
                     SimInfo.COLUMN_SATELLITE_ENABLED,
-                    SubscriptionDatabaseManager::setSatelliteEnabled)
+                    SubscriptionDatabaseManager::setSatelliteEnabled),
+            new AbstractMap.SimpleImmutableEntry<>(
+                    SimInfo.COLUMN_SATELLITE_ATTACH_ENABLED_FOR_CARRIER,
+                    SubscriptionDatabaseManager::setSatelliteAttachEnabledForCarrier)
     );
 
     /**
@@ -508,7 +515,9 @@ public class SubscriptionDatabaseManager extends Handler {
             SimInfo.COLUMN_VOIMS_OPT_IN_STATUS,
             SimInfo.COLUMN_D2D_STATUS_SHARING_SELECTED_CONTACTS,
             SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED,
-            SimInfo.COLUMN_USER_HANDLE
+            SimInfo.COLUMN_USER_HANDLE,
+            SimInfo.COLUMN_SATELLITE_ENABLED,
+            SimInfo.COLUMN_SATELLITE_ATTACH_ENABLED_FOR_CARRIER
     );
 
     /**
@@ -1988,6 +1997,23 @@ public class SubscriptionDatabaseManager extends Handler {
     }
 
     /**
+     * Set whether satellite attach for carrier is enabled or disabled by user.
+     *
+     * @param subId Subscription id.
+     * @param isSatelliteAttachEnabledForCarrier Whether satellite attach for carrier is enabled or
+     * disabled.
+     *
+     * @throws IllegalArgumentException if the subscription does not exist.
+     */
+    public void setSatelliteAttachEnabledForCarrier(int subId,
+            int isSatelliteAttachEnabledForCarrier) {
+        writeDatabaseAndCacheHelper(subId,
+                SimInfo.COLUMN_SATELLITE_ATTACH_ENABLED_FOR_CARRIER,
+                isSatelliteAttachEnabledForCarrier,
+                SubscriptionInfoInternal.Builder::setSatelliteAttachEnabledForCarrier);
+    }
+
+    /**
      * Set whether group of the subscription is disabled. This is only useful if it's a grouped
      * opportunistic subscription. In this case, if all primary (non-opportunistic)
      * subscriptions in the group are deactivated (unplugged pSIM or deactivated eSIM profile),
@@ -2243,7 +2269,10 @@ public class SubscriptionDatabaseManager extends Handler {
                 .setUserId(cursor.getInt(cursor.getColumnIndexOrThrow(
                         SimInfo.COLUMN_USER_HANDLE)))
                 .setSatelliteEnabled(cursor.getInt(cursor.getColumnIndexOrThrow(
-                        SimInfo.COLUMN_SATELLITE_ENABLED)));
+                        SimInfo.COLUMN_SATELLITE_ENABLED)))
+                .setSatelliteAttachEnabledForCarrier(cursor.getInt(
+                        cursor.getColumnIndexOrThrow(
+                        SimInfo.COLUMN_SATELLITE_ATTACH_ENABLED_FOR_CARRIER)));
         return builder.build();
     }
 

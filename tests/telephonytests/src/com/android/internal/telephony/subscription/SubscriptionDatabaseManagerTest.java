@@ -117,6 +117,8 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
     static final int FAKE_TP_MESSAGE_REFERENCE2 = 456;
     static final int FAKE_USER_ID1 = 10;
     static final int FAKE_USER_ID2 = 11;
+    static final int FAKE_SATELLITE_ATTACH_FOR_CARRIER_ENABLED = 1;
+    static final int FAKE_SATELLITE_ATTACH_FOR_CARRIER_DISABLED = 0;
 
     static final String FAKE_MAC_ADDRESS1 = "DC:E5:5B:38:7D:40";
     static final String FAKE_MAC_ADDRESS2 = "DC:B5:4F:47:F3:4C";
@@ -186,6 +188,8 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                     .setLastUsedTPMessageReference(FAKE_TP_MESSAGE_REFERENCE1)
                     .setUserId(FAKE_USER_ID1)
                     .setSatelliteEnabled(0)
+                    .setSatelliteAttachEnabledForCarrier(
+                            FAKE_SATELLITE_ATTACH_FOR_CARRIER_DISABLED)
                     .setGroupDisabled(false)
                     .build();
 
@@ -254,6 +258,8 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                     .setLastUsedTPMessageReference(FAKE_TP_MESSAGE_REFERENCE2)
                     .setUserId(FAKE_USER_ID2)
                     .setSatelliteEnabled(1)
+                    .setSatelliteAttachEnabledForCarrier(
+                            FAKE_SATELLITE_ATTACH_FOR_CARRIER_ENABLED)
                     .setGroupDisabled(false)
                     .build();
 
@@ -1927,6 +1933,41 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(
                 FAKE_SUBSCRIPTION_INFO1.getSubscriptionId()).getSatelliteEnabled())
                 .isEqualTo(0);
+    }
+
+    @Test
+    public void testUpdateCarrierHandoverToSatelliteEnabled() throws Exception {
+        // exception is expected if there is nothing in the database.
+        assertThrows(IllegalArgumentException.class,
+                () -> mDatabaseManagerUT.setSatelliteAttachEnabledForCarrier(
+                        FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(),
+                        FAKE_SATELLITE_ATTACH_FOR_CARRIER_ENABLED));
+
+        SubscriptionInfoInternal subInfo = insertSubscriptionAndVerify(FAKE_SUBSCRIPTION_INFO1);
+        mDatabaseManagerUT.setSatelliteAttachEnabledForCarrier(
+                FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(),
+                FAKE_SATELLITE_ATTACH_FOR_CARRIER_ENABLED);
+        processAllMessages();
+
+        subInfo = new SubscriptionInfoInternal.Builder(subInfo)
+                .setSatelliteAttachEnabledForCarrier(
+                        FAKE_SATELLITE_ATTACH_FOR_CARRIER_ENABLED)
+                .build();
+        verifySubscription(subInfo);
+        verify(mSubscriptionDatabaseManagerCallback, times(2)).onSubscriptionChanged(eq(1));
+
+        assertThat(mDatabaseManagerUT.getSubscriptionProperty(
+                FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(),
+                SimInfo.COLUMN_SATELLITE_ATTACH_ENABLED_FOR_CARRIER))
+                .isEqualTo(FAKE_SATELLITE_ATTACH_FOR_CARRIER_ENABLED);
+
+        mDatabaseManagerUT.setSubscriptionProperty(FAKE_SUBSCRIPTION_INFO1.getSubscriptionId(),
+                SimInfo.COLUMN_SATELLITE_ATTACH_ENABLED_FOR_CARRIER,
+                FAKE_SATELLITE_ATTACH_FOR_CARRIER_DISABLED);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(
+                FAKE_SUBSCRIPTION_INFO1.getSubscriptionId())
+                .getSatelliteAttachEnabledForCarrier())
+                .isEqualTo(FAKE_SATELLITE_ATTACH_FOR_CARRIER_DISABLED);
     }
 
     @Test
