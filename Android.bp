@@ -109,13 +109,6 @@ java_library {
         "modules-utils-statemachine",
     ],
 
-    product_variables: {
-        pdk: {
-            // enable this build only when platform library is available
-            enabled: false,
-        },
-    },
-
     optimize: {
         enabled: true,
         shrink: true,
