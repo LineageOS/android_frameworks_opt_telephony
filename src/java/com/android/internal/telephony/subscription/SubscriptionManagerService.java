@@ -3881,10 +3881,13 @@ public class SubscriptionManagerService extends ISub.Stub {
                 case TelephonyManager.SIM_STATE_PUK_REQUIRED:
                 case TelephonyManager.SIM_STATE_NETWORK_LOCKED:
                 case TelephonyManager.SIM_STATE_PERM_DISABLED:
-                case TelephonyManager.SIM_STATE_READY:
                 case TelephonyManager.SIM_STATE_CARD_IO_ERROR:
                 case TelephonyManager.SIM_STATE_LOADED:
+                    updateSubscription(slotIndex);
+                    break;
                 case TelephonyManager.SIM_STATE_NOT_READY:
+                case TelephonyManager.SIM_STATE_READY:
+                    updateEmbeddedSubscriptions();
                     updateSubscription(slotIndex);
                     break;
                 case TelephonyManager.SIM_STATE_CARD_RESTRICTED:
