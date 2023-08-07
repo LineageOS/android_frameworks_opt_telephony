@@ -997,6 +997,12 @@ public class UiccController extends Handler {
                             return;
                         }
 
+                        if (!SubscriptionManager.isValidPhoneId(phoneId)) {
+                            Rlog.e(LOG_TAG, "updateSimState: Cannot update carrier services. "
+                                    + "Invalid phone id " + phoneId);
+                            return;
+                        }
+
                         // At this point, the SIM state must be a final state (meaning we won't
                         // get more SIM state updates). So resolve the carrier id and update the
                         // carrier services.
