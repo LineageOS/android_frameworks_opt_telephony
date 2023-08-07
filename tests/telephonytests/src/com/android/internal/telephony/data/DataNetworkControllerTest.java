@@ -388,6 +388,17 @@ public class DataNetworkControllerTest extends TelephonyTest {
                             "PRIORITIZE_LATENCY", 1).getBytes()))
             .build();
 
+    private final DataProfile mMmsOnWlanDataProfile = new DataProfile.Builder()
+            .setApnSetting(new ApnSetting.Builder()
+                    .setEntryName("mms_wlan")
+                    .setApnName("mms_wlan")
+                    .setApnTypeBitmask(ApnSetting.TYPE_MMS)
+                    .setCarrierEnabled(true)
+                    .setNetworkTypeBitmask((int) TelephonyManager.NETWORK_TYPE_BITMASK_IWLAN)
+                    .build())
+            .setPreferred(false)
+            .build();
+
     /** Data call response map. The first key is the transport type, the second key is the cid. */
     private final Map<Integer, Map<Integer, DataCallResponse>> mDataCallResponses = new HashMap<>();
 
@@ -4636,5 +4647,34 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 NetworkCapabilities.NET_CAPABILITY_ENTERPRISE)).isFalse();
         assertThat(dataNetworkList.get(1).getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_PRIORITIZE_LATENCY)).isTrue();
+    }
+
+    @Test
+    public void testAllowBringUpWithDifferentDataProfileForWlan() throws Exception {
+        // Mock MMS preferred on WLAN
+        doReturn(AccessNetworkConstants.TRANSPORT_TYPE_WLAN).when(mAccessNetworksManager)
+                .getPreferredTransportByNetworkCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+
+        // Setup a default cellular network that's capable of MMS
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_INTERNET));
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_IMS));
+        processAllMessages();
+        verifyConnectedNetworkHasDataProfile(mGeneralPurposeDataProfile);
+        verifyConnectedNetworkHasDataProfile(mGeneralPurposeDataProfile);
+
+        // Mock the designated MMS profile when WLAN is preferred
+        doReturn(mMmsOnWlanDataProfile).when(mDataProfileManager).getDataProfileForNetworkRequest(
+                any(TelephonyNetworkRequest.class), eq(TelephonyManager.NETWORK_TYPE_IWLAN),
+                anyBoolean());
+        setSuccessfulSetupDataResponse(mMockedWlanDataServiceManager,
+                createDataCallResponse(2, DataCallResponse.LINK_STATUS_ACTIVE));
+
+        // Verify the designated MMS profile is used to satisfy MMS request
+        mDataNetworkControllerUT.addNetworkRequest(
+                createNetworkRequest(NetworkCapabilities.NET_CAPABILITY_MMS));
+        processAllMessages();
+        verifyConnectedNetworkHasDataProfile(mMmsOnWlanDataProfile);
     }
 }
