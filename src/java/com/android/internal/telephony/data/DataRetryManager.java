@@ -22,11 +22,6 @@ import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.AlarmManager;
-import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.net.NetworkCapabilities;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -77,11 +72,6 @@ import java.util.stream.Stream;
  */
 public class DataRetryManager extends Handler {
     private static final boolean VDBG = false;
-
-    /** Intent of Alarm Manager for long retry timer. */
-    private static final String ACTION_RETRY = "com.android.internal.telephony.data.ACTION_RETRY";
-    /** The extra key for the hashcode of the retry entry for Alarm Manager. */
-    private static final String ACTION_RETRY_EXTRA_HASHCODE = "extra_retry_hashcode";
 
     /** Event for data setup retry. */
     private static final int EVENT_DATA_SETUP_RETRY = 3;
@@ -1018,19 +1008,6 @@ public class DataRetryManager extends Handler {
         mRil.registerForOn(this, EVENT_RADIO_ON, null);
         mRil.registerForModemReset(this, EVENT_MODEM_RESET, null);
 
-        // Register intent of alarm manager for long retry timer
-        IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(ACTION_RETRY);
-        mPhone.getContext().registerReceiver(new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (ACTION_RETRY.equals(intent.getAction())) {
-                    DataRetryManager.this.onAlarmIntentRetry(
-                            intent.getIntExtra(ACTION_RETRY_EXTRA_HASHCODE, -1 /*Bad hashcode*/));
-                }
-            }
-        }, intentFilter);
-
         if (mDataConfigManager.shouldResetDataThrottlingWhenTacChanges()) {
             mPhone.getServiceStateTracker().registerForAreaCodeChanged(this, EVENT_TAC_CHANGED,
                     null);
@@ -1450,8 +1427,7 @@ public class DataRetryManager extends Handler {
      * @param dataRetryEntry The data retry entry.
      */
     private void schedule(@NonNull DataRetryEntry dataRetryEntry) {
-        logl("Scheduled data retry " + dataRetryEntry
-                + " hashcode=" + dataRetryEntry.hashCode());
+        logl("Scheduled data retry " + dataRetryEntry + " hashcode=" + dataRetryEntry.hashCode());
         mDataRetryEntries.add(dataRetryEntry);
         if (mDataRetryEntries.size() >= MAXIMUM_HISTORICAL_ENTRIES) {
             // Discard the oldest retry entry.
@@ -1467,32 +1443,19 @@ public class DataRetryManager extends Handler {
                             ? EVENT_DATA_SETUP_RETRY : EVENT_DATA_HANDOVER_RETRY, dataRetryEntry),
                     dataRetryEntry.retryDelayMillis);
         } else {
-            Intent intent = new Intent(ACTION_RETRY);
-            intent.putExtra(ACTION_RETRY_EXTRA_HASHCODE, dataRetryEntry.hashCode());
             // No need to wake up the device, the retry can wait util next time the device wake up
             // to save power.
             mAlarmManager.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME,
                     dataRetryEntry.retryElapsedTime,
-                    PendingIntent.getBroadcast(mPhone.getContext(),
-                            dataRetryEntry.hashCode() /*Unique identifier of this retry attempt*/,
-                            intent,
-                            PendingIntent.FLAG_IMMUTABLE));
-        }
-    }
-
-    /**
-     * Called when it's time to retry scheduled by Alarm Manager.
-     * @param retryHashcode The hashcode is the unique identifier of which retry entry to retry.
-     */
-    private void onAlarmIntentRetry(int retryHashcode) {
-        DataRetryEntry dataRetryEntry = mDataRetryEntries.stream()
-                .filter(entry -> entry.hashCode() == retryHashcode)
-                .findAny()
-                .orElse(null);
-        logl("onAlarmIntentRetry: found " + dataRetryEntry + " with hashcode " + retryHashcode);
-        if (dataRetryEntry != null) {
-            sendMessage(obtainMessage(dataRetryEntry instanceof DataSetupRetryEntry
-                    ? EVENT_DATA_SETUP_RETRY : EVENT_DATA_HANDOVER_RETRY, dataRetryEntry));
+                    "dataRetryHash-" + dataRetryEntry.hashCode() /*debug tag*/,
+                    Runnable::run,
+                    null /*worksource*/,
+                    () -> {
+                        logl("onAlarm retry " + dataRetryEntry);
+                        sendMessage(obtainMessage(dataRetryEntry instanceof DataSetupRetryEntry
+                                ? EVENT_DATA_SETUP_RETRY : EVENT_DATA_HANDOVER_RETRY,
+                                dataRetryEntry));
+                    });
         }
     }
 
