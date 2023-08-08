@@ -813,12 +813,6 @@ public class DataNetwork extends StateMachine {
                 @DataFailureCause int cause, @TearDownReason int tearDownReason);
 
         /**
-         * Called when handover between IWLAN and cellular network started.
-         * @param dataNetwork The data network.
-         */
-        public abstract void onHandoverStarted(@NonNull DataNetwork dataNetwork);
-
-        /**
          * Called when handover between IWLAN and cellular network succeeded.
          *
          * @param dataNetwork The data network.
@@ -1453,8 +1447,6 @@ public class DataNetwork extends StateMachine {
             sendMessageDelayed(EVENT_STUCK_IN_TRANSIENT_STATE,
                     mDataConfigManager.getNetworkHandoverTimeoutMs());
             notifyPreciseDataConnectionState();
-            mDataNetworkCallback.invokeFromExecutor(
-                    () -> mDataNetworkCallback.onHandoverStarted(DataNetwork.this));
         }
 
         @Override

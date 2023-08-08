@@ -69,8 +69,10 @@ import android.annotation.NonNull;
 import android.app.AppOpsManager;
 import android.app.PropertyInvalidatedCache;
 import android.compat.testing.PlatformCompatChangeRule;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -2212,16 +2214,40 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     }
 
     @Test
-    public void testRestoreAllSimSpecificSettingsFromBackup() {
+    public void testRestoreAllSimSpecificSettingsFromBackup() throws Exception {
         assertThrows(SecurityException.class, ()
                 -> mSubscriptionManagerServiceUT.restoreAllSimSpecificSettingsFromBackup(
                         new byte[0]));
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
 
-        // TODO: Briefly copy the logic from TelephonyProvider to
-        //  SubscriptionDatabaseManagerTest.SubscriptionProvider
+
+        // getSubscriptionDatabaseManager().setWifiCallingEnabled(1, 0);
+
+        // Simulate restoration altered the database directly.
+        ContentValues cvs = new ContentValues();
+        cvs.put(SimInfo.COLUMN_WFC_IMS_ENABLED, 0);
+        mSubscriptionProvider.update(Uri.withAppendedPath(SimInfo.CONTENT_URI, "1"), cvs, null,
+                null);
+
+        // Setting this to false to prevent database reload.
+        mSubscriptionProvider.setRestoreDatabaseChanged(false);
         mSubscriptionManagerServiceUT.restoreAllSimSpecificSettingsFromBackup(
                 new byte[0]);
+
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1);
+        // Since reload didn't happen, WFC should remains enabled.
+        assertThat(subInfo.getWifiCallingEnabled()).isEqualTo(1);
+
+        // Now the database reload should happen
+        mSubscriptionProvider.setRestoreDatabaseChanged(true);
+        mSubscriptionManagerServiceUT.restoreAllSimSpecificSettingsFromBackup(
+                new byte[0]);
+
+        subInfo = mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(1);
+        // Since reload didn't happen, WFC should remains enabled.
+        assertThat(subInfo.getWifiCallingEnabled()).isEqualTo(0);
     }
 
     @Test
