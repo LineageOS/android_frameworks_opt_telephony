@@ -3151,16 +3151,4 @@ public interface CommandsInterface {
      * @param h Handler to be removed from the registrant list.
      */
     default void unregisterForSatelliteProvisionStateChanged(@NonNull Handler h) {}
-
-    /**
-     * Set the non-terrestrial PLMN with lower priority than terrestrial networks.
-     * MCC/MNC broadcast by the non-terrestrial networks may not be included in OPLMNwACT file on
-     * SIM profile. Acquisition of satellite based system is lower priority to terrestrial
-     * networks. UE shall make all attempts to acquire terrestrial service prior to camping on
-     * satellite LTE service.
-     *
-     * @param result Message that will be sent back to the requester.
-     * @param plmnList The list of roaming PLMN used for connecting to satellite networks.
-     */
-    default void setSatellitePlmn(@NonNull Message result, @NonNull List<String> plmnList) {}
 }

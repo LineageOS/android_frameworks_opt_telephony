@@ -2408,8 +2408,10 @@ public class SatelliteController extends Handler {
         for (Phone phone : phones) {
             if (phone != null) {
                 List<String> satellitePlmns = getSatellitePlmnList(phone.getSubId());
-                phone.setSatellitePlmn(
-                        obtainMessage(EVENT_SET_ROAMING_PLMN_INFO_DONE), satellitePlmns);
+                // TODO b/295267706 move setSatellitePlmn() from Radio Network Hal to Satellite
+                //  Modem Interface
+                //phone.setSatellitePlmn(
+                //        obtainMessage(EVENT_SET_ROAMING_PLMN_INFO_DONE), satellitePlmns);
                 logd("phone[" + phone.getPhoneId() + "].setSatellitePlmn()");
             } else {
                 loge("configureSatellitePlmn: No phone object");

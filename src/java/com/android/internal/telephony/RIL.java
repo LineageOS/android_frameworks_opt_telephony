@@ -5539,6 +5539,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 mRILDefaultWorkSource);
 
         if (RILJ_LOGD) {
+            // Do not log function arg for privacy
             riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest));
         }
 
@@ -5546,37 +5547,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 () -> {
                     satelliteProxy.getTimeForNextSatelliteVisibility(rr.mSerial);
                 });
-    }
-
-    /**
-     * Set the non-terrestrial PLMN with lower priority than terrestrial networks.
-     * MCC/MNC broadcast by the non-terrestrial networks may not be included in OPLMNwACT file on
-     * SIM profile. Acquisition of satellite based system is lower priority to terrestrial
-     * networks. UE shall make all attempts to acquire terrestrial service prior to camping on
-     * satellite LTE service.
-     *
-     * @param result Message that will be sent back to the requester.
-     * @param plmnList The list of roaming PLMN used for connecting to satellite networks.
-     */
-    @Override
-    public void setSatellitePlmn(Message result, List<String> plmnList) {
-        RadioNetworkProxy networkProxy = getRadioServiceProxy(RadioNetworkProxy.class);
-        if (!canMakeRequest("setSatellitePlmn", networkProxy, result,
-                RADIO_HAL_VERSION_2_2)) {
-            return;
-        }
-
-        RILRequest rr = obtainRequest(RIL_REQUEST_SET_SATELLITE_PLMN, result,
-                mRILDefaultWorkSource);
-
-        if (RILJ_LOGD) {
-            riljLog(rr.serialString() + "> " + RILUtils.requestToString(rr.mRequest)
-                    + " plmnList=" + plmnList);
-        }
-
-        radioServiceInvokeHelper(HAL_SERVICE_NETWORK, rr, "setSatellitePlmn", () -> {
-            networkProxy.setSatellitePlmn(rr.mSerial, plmnList);
-        });
     }
 
     //***** Private Methods

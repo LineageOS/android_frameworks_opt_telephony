@@ -187,7 +187,6 @@ import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_PREFER
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_RADIO_CAPABILITY;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SATELLITE_INDICATION_FILTER;
-import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SATELLITE_PLMN;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SATELLITE_POWER;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SIGNAL_STRENGTH_REPORTING_CRITERIA;
 import static com.android.internal.telephony.RILConstants.RIL_REQUEST_SET_SIM_CARD_POWER;
@@ -5174,8 +5173,6 @@ public class RILUtils {
                 return "GET_MAX_CHARACTERS_PER_SATELLITE_TEXT_MESSAGE";
             case RIL_REQUEST_GET_TIME_FOR_NEXT_SATELLITE_VISIBILITY:
                 return "GET_TIME_FOR_NEXT_SATELLITE_VISIBILITY";
-            case RIL_REQUEST_SET_SATELLITE_PLMN:
-                return "SET_SATELLITE_PLMN";
             default:
                 return "<unknown request " + request + ">";
         }

@@ -504,13 +504,6 @@ public class NetworkResponse extends IRadioNetworkResponse.Stub {
         RadioResponse.responseVoid(HAL_SERVICE_NETWORK, mRil, responseInfo);
     }
 
-    /**
-     * @param responseInfo Response info struct containing serial no. and error
-     */
-    public void setSatellitePlmnResponse(RadioResponseInfo responseInfo) {
-        RadioResponse.responseVoid(HAL_SERVICE_NETWORK, mRil, responseInfo);
-    }
-
     @Override
     public String getInterfaceHash() {
         return IRadioNetworkResponse.HASH;

@@ -5435,21 +5435,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
-     * Set the non-terrestrial PLMN with lower priority than terrestrial networks.
-     * MCC/MNC broadcast by the non-terrestrial networks may not be included in OPLMNwACT file on
-     * SIM profile. Acquisition of satellite based system is lower priority to terrestrial
-     * networks. UE shall make all attempts to acquire terrestrial service prior to camping on
-     * satellite LTE service.
-     *
-     * @param result The result receiver that returns whether the modem has
-     *               successfully set the satellite PLMN
-     * @param plmnList The list of roaming PLMN used for connecting to satellite networks.
-     */
-    public void setSatellitePlmn(@NonNull Message result, @NonNull List<String> plmnList) {
-        mCi.setSatellitePlmn(result, plmnList);
-    }
-
-    /**
      * Start callback mode
      * @param type for callback mode entry.
      */
