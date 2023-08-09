@@ -139,12 +139,6 @@ public class DatagramReceiver extends Handler {
         } catch (Exception e) {
             loge("Cannot get default shared preferences: " + e);
         }
-
-        if ((mSharedPreferences != null) &&
-                (!mSharedPreferences.contains(SATELLITE_DATAGRAM_ID_KEY))) {
-            mSharedPreferences.edit().putLong(SATELLITE_DATAGRAM_ID_KEY, mNextDatagramId.get())
-                    .commit();
-        }
     }
 
     private static final class DatagramReceiverHandlerRequest {
