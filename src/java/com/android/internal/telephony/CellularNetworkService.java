@@ -25,9 +25,11 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.AccessNetworkConstants.AccessNetworkType;
 import android.telephony.AnomalyReporter;
+import android.telephony.CarrierConfigManager;
 import android.telephony.CellIdentity;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellIdentityGsm;
@@ -42,6 +44,7 @@ import android.telephony.NetworkService;
 import android.telephony.NetworkServiceCallback;
 import android.telephony.NrVopsSupportInfo;
 import android.telephony.ServiceState;
+import android.telephony.SmsManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.VopsSupportInfo;
@@ -230,6 +233,10 @@ public class CellularNetworkService extends NetworkService {
                     || regState == NetworkRegistrationInfo.REGISTRATION_STATE_HOME) {
                 if (domain == NetworkRegistrationInfo.DOMAIN_PS) {
                     availableServices.add(NetworkRegistrationInfo.SERVICE_TYPE_DATA);
+                    if (isMmsEnabled(mPhone)) {
+                        // Add SERVICE_TYPE_MMS only if MMS is enabled
+                        availableServices.add(NetworkRegistrationInfo.SERVICE_TYPE_MMS);
+                    }
                 } else if (domain == NetworkRegistrationInfo.DOMAIN_CS) {
                     availableServices.add(NetworkRegistrationInfo.SERVICE_TYPE_VOICE);
                     availableServices.add(NetworkRegistrationInfo.SERVICE_TYPE_SMS);
@@ -748,6 +755,23 @@ public class CellularNetworkService extends NetworkService {
             return null;
         }
         return new CellularNetworkServiceProvider(slotIndex);
+    }
+
+    private boolean isMmsEnabled(Phone phone) {
+        CarrierConfigManager carrierConfigManager = phone.getContext()
+                .getSystemService(CarrierConfigManager.class);
+        if (carrierConfigManager != null) {
+            PersistableBundle config = carrierConfigManager.getConfigForSubId(
+                    phone.getSubId(), SmsManager.MMS_CONFIG_MMS_ENABLED);
+            if (config == null || config.isEmpty()) {
+                config = CarrierConfigManager.getDefaultConfig();
+            }
+
+            return config.getBoolean(SmsManager.MMS_CONFIG_MMS_ENABLED);
+        } else {
+            loge("isMmsEnabled: CarrierConfigManager is null");
+            return false;
+        }
     }
 
     private static void log(String s) {
