@@ -674,6 +674,26 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     }
 
     @Test
+    public void testSingleSimSetDefaultDataSubId() {
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+        doReturn(1).when(mProxyController).getMinRafSupported();
+        doReturn(2).when(mProxyController).getMaxRafSupported();
+        insertSubscription(FAKE_SUBSCRIPTION_INFO2);
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+
+        mSubscriptionManagerServiceUT.setDefaultDataSubId(1);
+        assertThat(mSubscriptionManagerServiceUT.getDefaultDataSubId()).isEqualTo(1);
+        ArgumentCaptor<RadioAccessFamily[]> rafsCaptor = ArgumentCaptor.forClass(
+                RadioAccessFamily[].class);
+        verify(mProxyController).setRadioCapability(rafsCaptor.capture());
+        RadioAccessFamily[] rafs = (RadioAccessFamily[]) rafsCaptor.getValue();
+        assertThat(rafs[0].getRadioAccessFamily()).isEqualTo(1);
+        assertThat(rafs[1].getRadioAccessFamily()).isEqualTo(2);
+    }
+
+    @Test
     public void testSetDefaultSmsSubId() throws Exception {
         clearInvocations(mContext);
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
