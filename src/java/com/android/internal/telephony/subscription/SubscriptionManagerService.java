@@ -2826,7 +2826,8 @@ public class SubscriptionManagerService extends ISub.Stub {
         ProxyController proxyController = ProxyController.getInstance();
         RadioAccessFamily[] rafs = new RadioAccessFamily[mTelephonyManager.getActiveModemCount()];
         for (int phoneId = 0; phoneId < rafs.length; phoneId++) {
-            int raf = mSlotIndexToSubId.get(phoneId) == getDefaultDataSubId()
+            int raf = mSlotIndexToSubId.getOrDefault(phoneId,
+                    SubscriptionManager.INVALID_SUBSCRIPTION_ID) == getDefaultDataSubId()
                     ? proxyController.getMaxRafSupported() : proxyController.getMinRafSupported();
             rafs[phoneId] = new RadioAccessFamily(phoneId, raf);
         }
