@@ -3521,13 +3521,14 @@ public class GsmCdmaPhone extends Phone {
             case EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE:
                 logd("EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE");
                 ar = (AsyncResult) msg.obj;
+                // Only test for a success here in order to flip the support flag.
+                // Testing for the negative case, e.g. REQUEST_NOT_SUPPORTED, is insufficient
+                // because the modem or the RIL could still return exceptions for temporary
+                // failures even when the feature is unsupported.
                 if (ar == null || ar.exception == null) {
                     mIsNullCipherAndIntegritySupported = true;
                     return;
                 }
-                CommandException.Error error = ((CommandException) ar.exception).getCommandError();
-                mIsNullCipherAndIntegritySupported = !error.equals(
-                        CommandException.Error.REQUEST_NOT_SUPPORTED);
                 break;
 
             case EVENT_IMS_DEREGISTRATION_TRIGGERED:
