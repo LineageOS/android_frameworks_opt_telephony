@@ -25,7 +25,6 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.net.wifi.WifiManager;
@@ -138,7 +137,6 @@ public class SatelliteController extends Handler {
     @NonNull private final DatagramController mDatagramController;
     @NonNull private final ControllerMetricsStats mControllerMetricsStats;
     @NonNull private final ProvisionMetricsStats mProvisionMetricsStats;
-    private SharedPreferences mSharedPreferences = null;
     private final CommandsInterface mCi;
     private ContentResolver mContentResolver = null;
 
@@ -295,13 +293,6 @@ public class SatelliteController extends Handler {
         registerForSatelliteModemStateChanged();
         mContentResolver = mContext.getContentResolver();
         mCarrierConfigManager = mContext.getSystemService(CarrierConfigManager.class);
-
-        try {
-            mSharedPreferences = mContext.getSharedPreferences(SATELLITE_SHARED_PREF,
-                    Context.MODE_PRIVATE);
-        } catch (Exception e) {
-            loge("Cannot get default shared preferences: " + e);
-        }
 
         initializeSatelliteModeRadios();
 
