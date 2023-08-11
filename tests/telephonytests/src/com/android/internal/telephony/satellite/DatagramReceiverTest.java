@@ -18,14 +18,6 @@ package com.android.internal.telephony.satellite;
 
 import static com.android.internal.telephony.satellite.DatagramController.SATELLITE_ALIGN_TIMEOUT;
 
-import android.annotation.NonNull;
-import android.content.Context;
-import android.provider.Telephony;
-import android.telephony.satellite.ISatelliteDatagramCallback;
-import android.test.mock.MockContentResolver;
-import android.testing.AndroidTestingRunner;
-import android.testing.TestableLooper;
-
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -40,13 +32,20 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import android.annotation.NonNull;
+import android.content.Context;
 import android.os.AsyncResult;
+import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
-import android.os.IBinder;
 import android.os.RemoteException;
+import android.provider.Telephony;
+import android.telephony.satellite.ISatelliteDatagramCallback;
 import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
+import android.test.mock.MockContentResolver;
+import android.testing.AndroidTestingRunner;
+import android.testing.TestableLooper;
 import android.util.Pair;
 
 import com.android.internal.telephony.IVoidConsumer;
@@ -335,7 +334,7 @@ public class DatagramReceiverTest extends TelephonyTest {
     public void testPollPendingSatelliteDatagrams_DemoMode_Align_succeed() throws Exception {
         // Checks invalid case only as SatelliteController does not exist in unit test
         mTestDemoModeDatagramReceiver.setDemoMode(true);
-        mTestDemoModeDatagramReceiver.onDeviceAlignedWithSatellite(true);
+        mTestDemoModeDatagramReceiver.setDeviceAlignedWithSatellite(true);
         when(mMockDatagramController.getDemoModeDatagram()).thenReturn(mDatagram);
         mTestDemoModeDatagramReceiver.pollPendingSatelliteDatagrams(SUB_ID, mResultListener::offer);
         processAllMessages();
@@ -365,7 +364,7 @@ public class DatagramReceiverTest extends TelephonyTest {
         long previousTimer = mTestDemoModeDatagramReceiver.getSatelliteAlignedTimeoutDuration();
         mTestDemoModeDatagramReceiver.setDemoMode(true);
         mTestDemoModeDatagramReceiver.setDuration(TEST_EXPIRE_TIMER_SATELLITE_ALIGN);
-        mTestDemoModeDatagramReceiver.onDeviceAlignedWithSatellite(false);
+        mTestDemoModeDatagramReceiver.setDeviceAlignedWithSatellite(false);
         when(mMockDatagramController.getDemoModeDatagram()).thenReturn(mDatagram);
         mTestDemoModeDatagramReceiver.pollPendingSatelliteDatagrams(SUB_ID, mResultListener::offer);
         processAllMessages();
@@ -390,7 +389,7 @@ public class DatagramReceiverTest extends TelephonyTest {
                 .isEqualTo(SatelliteManager.SATELLITE_NOT_REACHABLE);
 
         mTestDemoModeDatagramReceiver.setDemoMode(false);
-        mTestDemoModeDatagramReceiver.onDeviceAlignedWithSatellite(false);
+        mTestDemoModeDatagramReceiver.setDeviceAlignedWithSatellite(false);
         mTestDemoModeDatagramReceiver.setDuration(previousTimer);
     }
 
@@ -491,8 +490,8 @@ public class DatagramReceiverTest extends TelephonyTest {
         }
 
         @Override
-        protected void onDeviceAlignedWithSatellite(boolean isAligned) {
-            super.onDeviceAlignedWithSatellite(isAligned);
+        protected void setDeviceAlignedWithSatellite(boolean isAligned) {
+            super.setDeviceAlignedWithSatellite(isAligned);
         }
 
         @Override

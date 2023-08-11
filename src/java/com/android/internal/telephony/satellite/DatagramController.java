@@ -271,9 +271,9 @@ public class DatagramController {
         mDatagramReceiver.onSatelliteModemStateChanged(state);
     }
 
-    void onDeviceAlignedWithSatellite(boolean isAligned) {
-        mDatagramDispatcher.onDeviceAlignedWithSatellite(isAligned);
-        mDatagramReceiver.onDeviceAlignedWithSatellite(isAligned);
+    void setDeviceAlignedWithSatellite(boolean isAligned) {
+        mDatagramDispatcher.setDeviceAlignedWithSatellite(isAligned);
+        mDatagramReceiver.setDeviceAlignedWithSatellite(isAligned);
     }
 
     @VisibleForTesting
