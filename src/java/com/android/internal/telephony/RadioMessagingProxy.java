@@ -308,6 +308,7 @@ public class RadioMessagingProxy extends RadioServiceProxy {
                 msg.cdmaMessage = new android.hardware.radio.messaging.CdmaSmsMessage[0];
             }
             if (cdmaPdu != null) {
+                msg.tech = android.hardware.radio.RadioTechnologyFamily.THREE_GPP2;
                 msg.gsmMessage = new android.hardware.radio.messaging.GsmSmsMessage[0];
                 msg.cdmaMessage = new android.hardware.radio.messaging.CdmaSmsMessage[]{
                         RILUtils.convertToHalCdmaSmsMessageAidl(cdmaPdu)};
@@ -323,6 +324,7 @@ public class RadioMessagingProxy extends RadioServiceProxy {
                 msg.gsmMessage.add(RILUtils.convertToHalGsmSmsMessage(smscPdu, gsmPdu));
             }
             if (cdmaPdu != null) {
+                msg.tech = android.hardware.radio.RadioTechnologyFamily.THREE_GPP2;
                 msg.cdmaMessage.add(RILUtils.convertToHalCdmaSmsMessage(cdmaPdu));
             }
             mRadioProxy.sendImsSms(serial, msg);
