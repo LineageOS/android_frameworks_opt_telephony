@@ -67,6 +67,23 @@
       "message": "removing CR only so I can update the commit message later, per Nolen\u0027s comments",
       "revId": "cecb081d21a090670e5279cfe40ccdbef15c3be1",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7cb0d93c_efec519c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 11801
+      },
+      "writtenOn": "2023-08-13T16:11:49Z",
+      "side": 1,
+      "message": "not sure if the legacy ril fixes topic makes sense here -- thoughts? it may get lost otherwise, so I\u0027m okay with that, but curious what you all think.",
+      "revId": "cecb081d21a090670e5279cfe40ccdbef15c3be1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
