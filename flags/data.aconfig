@@ -13,3 +13,10 @@ flag {
   description: "Relax handover tear down if the device is currently in voice call."
   bug: "270895912"
 }
+
+flag {
+  name: "allow_mmtel_in_non_vops"
+  namespace: "telephony"
+  description: "Allow bring up MMTEL in nonVops area specified by carrier config."
+  bug: "241198464"
+}

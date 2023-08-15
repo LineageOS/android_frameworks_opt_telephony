@@ -52,7 +52,7 @@ public class DataConfigManagerTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
         mBundle = mContextFixture.getCarrierConfigBundle();
         when(mCarrierConfigManager.getConfigForSubId(anyInt(), any())).thenReturn(mBundle);
-        mDataConfigManagerUT = new DataConfigManager(mPhone, Looper.myLooper());
+        mDataConfigManagerUT = new DataConfigManager(mPhone, Looper.myLooper(), mFeatureFlags);
         logd("DataConfigManagerTest -Setup!");
     }
 
