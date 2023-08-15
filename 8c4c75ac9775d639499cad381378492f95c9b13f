@@ -33,6 +33,23 @@
       "message": "wahoo: VZW SMS works\nlake: VZW SMS works (but data doesn\u0027t on my device, unrelated to this, need to look into it lol)\ncoral/sargo: VZW SMS works\nmata: VZW SMS works\naura: VZW SMS works",
       "revId": "8c4c75ac9775d639499cad381378492f95c9b13f",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b722757a_a189b492",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16185
+      },
+      "writtenOn": "2023-08-15T21:54:55Z",
+      "side": 1,
+      "message": "to clarify, on this SIM Wahoo was also broken before this.",
+      "revId": "8c4c75ac9775d639499cad381378492f95c9b13f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
