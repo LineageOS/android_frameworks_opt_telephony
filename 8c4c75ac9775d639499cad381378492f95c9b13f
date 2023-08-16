@@ -101,6 +101,24 @@
       "message": "Oops -- this should\u0027ve been radio.V1_0. It doesn\u0027t functionally matter, but I\u0027ll keep an eye out for this on the 14 bringup.",
       "revId": "8c4c75ac9775d639499cad381378492f95c9b13f",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bd8f094d_c5aad419",
+        "filename": "src/java/com/android/internal/telephony/RadioMessagingProxy.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 11801
+      },
+      "writtenOn": "2023-08-16T20:32:16Z",
+      "side": 1,
+      "message": "Fixed in 364635",
+      "parentUuid": "80fb0ad6_df5bffdf",
+      "revId": "8c4c75ac9775d639499cad381378492f95c9b13f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ],
   "submitRequirementResults": []
