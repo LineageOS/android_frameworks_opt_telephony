@@ -67,6 +67,23 @@
       "message": "that\u0027s enough data points for me to submit this",
       "revId": "8c4c75ac9775d639499cad381378492f95c9b13f",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb717b27_bb0c0bc7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 19252
+      },
+      "writtenOn": "2023-08-16T01:08:25Z",
+      "side": 1,
+      "message": "I know it\u0027s merged already, but a Payton user did get back to me saying VZW SMS outbound works for him now compared to before when it didn\u0027t so this did fix it for him",
+      "revId": "8c4c75ac9775d639499cad381378492f95c9b13f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ],
   "submitRequirementResults": []
