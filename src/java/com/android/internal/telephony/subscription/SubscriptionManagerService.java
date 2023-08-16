@@ -1119,6 +1119,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                     // CARD_ID field should not contain the EID
                     if (cardId >= 0 && mUiccController.getCardIdForDefaultEuicc()
                             != TelephonyManager.UNSUPPORTED_CARD_ID) {
+                        builder.setCardId(cardId);
                         builder.setCardString(mUiccController.convertToCardString(cardId));
                     }
 
