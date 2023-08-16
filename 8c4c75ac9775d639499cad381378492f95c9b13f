@@ -84,6 +84,23 @@
       "message": "I know it\u0027s merged already, but a Payton user did get back to me saying VZW SMS outbound works for him now compared to before when it didn\u0027t so this did fix it for him",
       "revId": "8c4c75ac9775d639499cad381378492f95c9b13f",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "80fb0ad6_df5bffdf",
+        "filename": "src/java/com/android/internal/telephony/RadioMessagingProxy.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 11801
+      },
+      "writtenOn": "2023-08-16T20:19:28Z",
+      "side": 1,
+      "message": "Oops -- this should\u0027ve been radio.V1_0. It doesn\u0027t functionally matter, but I\u0027ll keep an eye out for this on the 14 bringup.",
+      "revId": "8c4c75ac9775d639499cad381378492f95c9b13f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ],
   "submitRequirementResults": []
