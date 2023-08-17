@@ -182,6 +182,28 @@ public class DataNetworkTest extends TelephonyTest {
                             "CBS", 1).getBytes()))
             .build();
 
+    private final DataProfile m5gDataProfile = new DataProfile.Builder()
+            .setApnSetting(new ApnSetting.Builder()
+                    .setId(2163)
+                    .setOperatorNumeric("12345")
+                    .setEntryName("fake_apn")
+                    .setApnName(null /*empty name*/)
+                    .setUser("user")
+                    .setPassword("passwd")
+                    .setApnTypeBitmask(ApnSetting.TYPE_DEFAULT | ApnSetting.TYPE_SUPL)
+                    .setProtocol(ApnSetting.PROTOCOL_IPV6)
+                    .setRoamingProtocol(ApnSetting.PROTOCOL_IP)
+                    .setCarrierEnabled(true)
+                    .setNetworkTypeBitmask((int) (TelephonyManager.NETWORK_TYPE_BITMASK_LTE
+                            | TelephonyManager.NETWORK_TYPE_BITMASK_NR))
+                    .setProfileId(1234)
+                    .setMaxConns(321)
+                    .setWaitTime(456)
+                    .setMaxConnsTime(789)
+                    .build())
+            .setTrafficDescriptor(new TrafficDescriptor(null, null))
+            .build();
+
     // Mocked classes
     private DataNetworkCallback mDataNetworkCallback;
     private DataCallSessionStats mDataCallSessionStats;
@@ -1774,6 +1796,28 @@ public class DataNetworkTest extends TelephonyTest {
         // The network should have IPv6 address now
         assertThat(mDataNetworkUT.getLinkProperties().getAllAddresses()).containsExactly(
                 InetAddresses.parseNumericAddress(IPV4_ADDRESS));
+    }
+
+    @Test
+    public void testPrivateNetwork() throws Exception {
+        NetworkRequestList networkRequestList = new NetworkRequestList();
+        networkRequestList.add(new TelephonyNetworkRequest(new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build(), mPhone));
+        mDataNetworkUT = new DataNetwork(mPhone, Looper.myLooper(), mDataServiceManagers,
+                m5gDataProfile, networkRequestList,
+                AccessNetworkConstants.TRANSPORT_TYPE_WWAN, DataAllowedReason.NORMAL,
+                mDataNetworkCallback);
+        replaceInstance(DataNetwork.class, "mDataCallSessionStats",
+                mDataNetworkUT, mDataCallSessionStats);
+        processAllMessages();
+
+        verify(mMockedWwanDataServiceManager).setupDataCall(anyInt(),
+                eq(m5gDataProfile), eq(false), eq(false),
+                eq(DataService.REQUEST_REASON_NORMAL), nullable(LinkProperties.class),
+                eq(DataCallResponse.PDU_SESSION_ID_NOT_SET), nullable(NetworkSliceInfo.class),
+                // Verify matchAllRuleAllowed is flagged true
+                any(TrafficDescriptor.class), eq(true), any(Message.class));
     }
 
     @Test
