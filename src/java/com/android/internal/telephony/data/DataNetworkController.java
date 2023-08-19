@@ -2200,7 +2200,8 @@ public class DataNetworkController extends Handler {
     @Nullable
     public DataNetwork getDataNetworkByInterface(@NonNull String interfaceName) {
         return mDataNetworkList.stream()
-                .filter(dataNetwork -> !dataNetwork.isDisconnecting())
+                .filter(dataNetwork -> !(dataNetwork.isDisconnecting()
+                        || dataNetwork.isDisconnected()))
                 .filter(dataNetwork -> interfaceName.equals(
                         dataNetwork.getLinkProperties().getInterfaceName()))
                 .findFirst()
