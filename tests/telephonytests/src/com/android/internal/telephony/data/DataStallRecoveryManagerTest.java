@@ -107,7 +107,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
         doReturn(dataStallRecoveryStepsArray)
                 .when(mDataConfigManager)
                 .getDataStallRecoveryShouldSkipArray();
-        doReturn(true).when(mDataNetworkController).isInternetDataAllowed();
+        doReturn(true).when(mDataNetworkController).isInternetDataAllowed(true);
 
         doAnswer(invocation -> {
             ((Runnable) invocation.getArguments()[0]).run();
@@ -347,7 +347,7 @@ public class DataStallRecoveryManagerTest extends TelephonyTest {
         mDataStallRecoveryManager.setRecoveryAction(1);
         doReturn(mSignalStrength).when(mPhone).getSignalStrength();
         doReturn(PhoneConstants.State.IDLE).when(mPhone).getState();
-        doReturn(false).when(mDataNetworkController).isInternetDataAllowed();
+        doReturn(false).when(mDataNetworkController).isInternetDataAllowed(true);
 
         logd("Sending validation failed callback");
         sendValidationStatusCallback(NetworkAgent.VALIDATION_STATUS_NOT_VALID);

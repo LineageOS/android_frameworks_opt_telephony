@@ -781,7 +781,7 @@ public class DataStallRecoveryManager extends Handler {
             return false;
         }
 
-        if (!mDataNetworkController.isInternetDataAllowed()) {
+        if (!mDataNetworkController.isInternetDataAllowed(true/* ignoreExistingNetworks */)) {
             logl("skip data stall recovery as data not allowed.");
             return false;
         }

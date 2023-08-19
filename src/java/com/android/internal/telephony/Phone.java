@@ -3749,7 +3749,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @return {@code true} if internet data is allowed to be established.
      */
     public boolean isDataAllowed() {
-        return getDataNetworkController().isInternetDataAllowed();
+        return getDataNetworkController().isInternetDataAllowed(false/* ignoreExistingNetworks */);
     }
 
     /**
