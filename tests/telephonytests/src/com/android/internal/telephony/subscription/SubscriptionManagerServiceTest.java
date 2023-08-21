@@ -104,6 +104,7 @@ import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.euicc.EuiccController;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.SubscriptionProvider;
 import com.android.internal.telephony.subscription.SubscriptionManagerService.SubscriptionManagerServiceCallback;
 import com.android.internal.telephony.subscription.SubscriptionManagerService.SubscriptionMap;
@@ -153,7 +154,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     // mocked
     private SubscriptionManagerServiceCallback mMockedSubscriptionManagerServiceCallback;
     private EuiccController mEuiccController;
-
+    private FeatureFlags mFlags;
     private Set<Integer> mActiveSubs = new ArraySet<>();
 
     @Rule
@@ -199,7 +200,9 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
                 Telephony.Carriers.CONTENT_URI.getAuthority(), mSubscriptionProvider);
 
-        mSubscriptionManagerServiceUT = new SubscriptionManagerService(mContext, Looper.myLooper());
+        mFlags = Mockito.mock(FeatureFlags.class);
+        mSubscriptionManagerServiceUT = new SubscriptionManagerService(mContext, Looper.myLooper(),
+                mFlags);
 
         monitorTestableLooper(new TestableLooper(getBackgroundHandler().getLooper()));
         monitorTestableLooper(new TestableLooper(getSubscriptionDatabaseManager().getLooper()));

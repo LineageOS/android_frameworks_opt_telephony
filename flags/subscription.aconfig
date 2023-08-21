@@ -1,0 +1,8 @@
+package: "com.android.internal.telephony.flags"
+
+flag {
+  name: "work_profile_api_split"
+  namespace: "telephony"
+  description: "To support separation between personal and work from TelephonyManager and SubscriptionManager API perspective."
+  bug: "296076674"
+}
