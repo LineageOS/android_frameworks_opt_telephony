@@ -34,12 +34,12 @@ import android.os.Bundle;
 import android.os.Looper;
 import android.os.RemoteException;
 import android.os.ResultReceiver;
-import android.telecom.Call;
 import android.telecom.Connection;
 import android.telephony.BinderCacheManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.satellite.ISatelliteProvisionStateCallback;
 import android.telephony.satellite.SatelliteManager;
@@ -139,7 +139,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         processAllMessages();
 
         assertRegisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
-        assertTrue(mTestConnection.isEventSent(Call.EVENT_DISPLAY_SOS_MESSAGE));
+        assertTrue(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_SOS_MESSAGE));
         assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
     }
 
@@ -165,7 +165,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         mTestImsManager.sendImsRegistrationStateChangedEvent(true);
         processAllMessages();
 
-        assertFalse(mTestConnection.isEventSent(Call.EVENT_DISPLAY_SOS_MESSAGE));
+        assertFalse(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_SOS_MESSAGE));
         assertFalse(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(1, mTestSOSMessageRecommender.getCountOfTimerStarted());
         assertUnregisterForStateChangedEventsTriggered(mPhone, 0, 0, 0);
@@ -178,7 +178,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         moveTimeForward(TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS);
         processAllMessages();
 
-        assertTrue(mTestConnection.isEventSent(Call.EVENT_DISPLAY_SOS_MESSAGE));
+        assertTrue(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_SOS_MESSAGE));
         assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
         assertEquals(0, mTestSOSMessageRecommender.getCountOfTimerStarted());
     }
@@ -213,7 +213,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         moveTimeForward(TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS);
         processAllMessages();
 
-        assertTrue(mTestConnection.isEventSent(Call.EVENT_DISPLAY_SOS_MESSAGE));
+        assertTrue(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_SOS_MESSAGE));
         assertFalse(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(0, mTestSOSMessageRecommender.getCountOfTimerStarted());
         assertUnregisterForStateChangedEventsTriggered(mPhone, 2, 2, 2);
@@ -252,7 +252,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         moveTimeForward(TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS);
         processAllMessages();
 
-        assertTrue(mTestConnection.isEventSent(Call.EVENT_DISPLAY_SOS_MESSAGE));
+        assertTrue(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_SOS_MESSAGE));
         /**
          * Since {@link SatelliteSOSMessageRecommender} always uses
          * {@link SubscriptionManager#DEFAULT_SUBSCRIPTION_ID} when unregistering for provision
@@ -303,7 +303,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
                 WRONG_CALL_ID, Connection.STATE_ACTIVE);
         processAllMessages();
 
-        assertFalse(mTestConnection.isEventSent(Call.EVENT_DISPLAY_SOS_MESSAGE));
+        assertFalse(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_SOS_MESSAGE));
         assertFalse(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(0, mTestSOSMessageRecommender.getCountOfTimerStarted());
         assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
@@ -354,7 +354,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         mTestSOSMessageRecommender.onEmergencyCallConnectionStateChanged(CALL_ID, connectionState);
         processAllMessages();
 
-        assertFalse(mTestConnection.isEventSent(Call.EVENT_DISPLAY_SOS_MESSAGE));
+        assertFalse(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_SOS_MESSAGE));
         assertFalse(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(0, mTestSOSMessageRecommender.getCountOfTimerStarted());
         assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
@@ -373,7 +373,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         mTestSOSMessageRecommender.sendServiceStateChangedEvent(availableServiceState);
         processAllMessages();
 
-        assertFalse(mTestConnection.isEventSent(Call.EVENT_DISPLAY_SOS_MESSAGE));
+        assertFalse(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_SOS_MESSAGE));
         assertFalse(mTestSOSMessageRecommender.isTimerStarted());
         assertEquals(1, mTestSOSMessageRecommender.getCountOfTimerStarted());
         assertUnregisterForStateChangedEventsTriggered(mPhone, 0, 0, 0);
@@ -386,7 +386,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         moveTimeForward(TEST_EMERGENCY_CALL_TO_SOS_MSG_HYSTERESIS_TIMEOUT_MILLIS);
         processAllMessages();
 
-        assertTrue(mTestConnection.isEventSent(Call.EVENT_DISPLAY_SOS_MESSAGE));
+        assertTrue(mTestConnection.isEventSent(TelephonyManager.EVENT_DISPLAY_SOS_MESSAGE));
         assertUnregisterForStateChangedEventsTriggered(mPhone, 1, 1, 1);
         assertEquals(0, mTestSOSMessageRecommender.getCountOfTimerStarted());
     }

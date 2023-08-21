@@ -27,11 +27,11 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.ResultReceiver;
 import android.provider.DeviceConfig;
-import android.telecom.Call;
 import android.telecom.Connection;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsRegistrationAttributes;
 import android.telephony.ims.RegistrationManager;
@@ -259,7 +259,8 @@ public class SatelliteSOSMessageRecommender extends Handler {
                 && mSatelliteController.isSatelliteProvisioned()
                 && shouldTrackCall(mEmergencyConnection.getState())) {
             logd("handleTimeoutEvent: Sending EVENT_DISPLAY_SOS_MESSAGE to Dialer...");
-            mEmergencyConnection.sendConnectionEvent(Call.EVENT_DISPLAY_SOS_MESSAGE, null);
+            mEmergencyConnection.sendConnectionEvent(TelephonyManager.EVENT_DISPLAY_SOS_MESSAGE,
+                    null);
             isDialerNotified = true;
         }
         reportEsosRecommenderDecision(isDialerNotified);
