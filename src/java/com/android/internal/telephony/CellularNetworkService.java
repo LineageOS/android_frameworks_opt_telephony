@@ -18,9 +18,9 @@ package com.android.internal.telephony;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
-import android.hardware.radio.V1_0.RegState;
 import android.hardware.radio.V1_4.DataRegStateResult.VopsInfo.hidl_discriminator;
 import android.hardware.radio.V1_6.RegStateResult.AccessTechnologySpecificInfo;
+import android.hardware.radio.network.RegState;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
@@ -35,6 +35,7 @@ import android.telephony.CellIdentityLte;
 import android.telephony.CellIdentityNr;
 import android.telephony.CellIdentityTdscdma;
 import android.telephony.CellIdentityWcdma;
+import android.telephony.DataSpecificRegistrationInfo;
 import android.telephony.LteVopsSupportInfo;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.NetworkService;
@@ -190,6 +191,8 @@ public class CellularNetworkService extends NetworkService {
                     return NetworkRegistrationInfo.REGISTRATION_STATE_UNKNOWN;
                 case RegState.REG_ROAMING:
                     return NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING;
+                case RegState.REG_EM:
+                    return NetworkRegistrationInfo.REGISTRATION_STATE_EMERGENCY;
                 default:
                     return NetworkRegistrationInfo.REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING;
             }
@@ -201,6 +204,7 @@ public class CellularNetworkService extends NetworkService {
                 case RegState.NOT_REG_MT_SEARCHING_OP_EM:
                 case RegState.REG_DENIED_EM:
                 case RegState.UNKNOWN_EM:
+                case RegState.REG_EM:
                     return true;
                 case RegState.NOT_REG_MT_NOT_SEARCHING_OP:
                 case RegState.REG_HOME:
@@ -504,7 +508,7 @@ public class CellularNetworkService extends NetworkService {
                     && reasonForDenial
                     == android.hardware.radio.network.RegistrationFailCause.NONE) {
                 AnomalyReporter.reportAnomaly(
-                        UUID.fromString("62ed270f-e139-418a-a427-8bcc1bca8f20"),
+                        UUID.fromString("62ed270f-e139-418a-a427-8bcc1bca8f21"),
                             "RIL Missing Reg Fail Reason", mPhone.getCarrierId());
             }
 
@@ -522,6 +526,8 @@ public class CellularNetworkService extends NetworkService {
             boolean isNrAvailable = false;
             boolean isDcNrRestricted = false;
             VopsSupportInfo vopsInfo = null;
+            int lteAttachResultType = 0;
+            int lteAttachExtraInfo = 0;
 
             android.hardware.radio.network.AccessTechnologySpecificInfo info =
                     regResult.accessTechnologySpecificInfo;
@@ -540,6 +546,8 @@ public class CellularNetworkService extends NetworkService {
                     vopsInfo = convertHalLteVopsSupportInfo(
                             info.getEutranInfo().lteVopsInfo.isVopsSupported,
                             info.getEutranInfo().lteVopsInfo.isEmcBearerSupported);
+                    lteAttachResultType = info.getEutranInfo().lteAttachResultType;
+                    lteAttachExtraInfo = info.getEutranInfo().extraInfo;
                     break;
                 case android.hardware.radio.network.AccessTechnologySpecificInfo.ngranNrVopsInfo:
                     vopsInfo = new NrVopsSupportInfo(info.getNgranNrVopsInfo().vopsSupported,
@@ -565,10 +573,26 @@ public class CellularNetworkService extends NetworkService {
                     loge("Unknown domain passed to CellularNetworkService= " + domain);
                     // fall through
                 case NetworkRegistrationInfo.DOMAIN_PS:
-                    return new NetworkRegistrationInfo(domain, transportType, regState, networkType,
-                            reasonForDenial, isEmergencyOnly, availableServices, cellIdentity,
-                            rplmn, MAX_DATA_CALLS, isDcNrRestricted, isNrAvailable, isEndcAvailable,
-                            vopsInfo);
+                    return new NetworkRegistrationInfo.Builder()
+                        .setDomain(domain)
+                        .setTransportType(transportType)
+                        .setRegistrationState(regState)
+                        .setAccessNetworkTechnology(networkType)
+                        .setRejectCause(reasonForDenial)
+                        .setEmergencyOnly(isEmergencyOnly)
+                        .setAvailableServices(availableServices)
+                        .setCellIdentity(cellIdentity)
+                        .setRegisteredPlmn(rplmn)
+                        .setDataSpecificInfo(
+                                new DataSpecificRegistrationInfo.Builder(MAX_DATA_CALLS)
+                                     .setDcNrRestricted(isDcNrRestricted)
+                                     .setNrAvailable(isNrAvailable)
+                                     .setEnDcAvailable(isEndcAvailable)
+                                     .setVopsSupportInfo(vopsInfo)
+                                     .setLteAttachResultType(lteAttachResultType)
+                                     .setLteAttachExtraInfo(lteAttachExtraInfo)
+                                     .build())
+                        .build();
             }
         }
 
@@ -594,7 +618,7 @@ public class CellularNetworkService extends NetworkService {
                     && reasonForDenial
                     == android.hardware.radio.network.RegistrationFailCause.NONE) {
                 AnomalyReporter.reportAnomaly(
-                        UUID.fromString("62ed270f-e139-418a-a427-8bcc1bca8f20"),
+                        UUID.fromString("62ed270f-e139-418a-a427-8bcc1bca8f21"),
                             "RIL Missing Reg Fail Reason", mPhone.getCarrierId());
             }
 

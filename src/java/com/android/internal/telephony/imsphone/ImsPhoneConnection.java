@@ -152,6 +152,11 @@ public class ImsPhoneConnection extends Connection implements
      */
     private ImsReasonInfo mImsReasonInfo;
 
+    /**
+     * Used to indicate that this call is held by remote party.
+     */
+    private boolean mIsHeldByRemote = false;
+
     //***** Event Constants
     private static final int EVENT_DTMF_DONE = 1;
     private static final int EVENT_PAUSE_DONE = 2;
@@ -244,7 +249,8 @@ public class ImsPhoneConnection extends Connection implements
 
     /** This is an MO call, created when dialing */
     public ImsPhoneConnection(Phone phone, String dialString, ImsPhoneCallTracker ct,
-            ImsPhoneCall parent, boolean isEmergency, boolean isWpsCall) {
+            ImsPhoneCall parent, boolean isEmergency, boolean isWpsCall,
+            ImsPhone.ImsDialArgs dialArgs) {
         super(PhoneConstants.PHONE_TYPE_IMS);
         createWakeLock(phone.getContext());
         acquireWakeLock();
@@ -272,6 +278,13 @@ public class ImsPhoneConnection extends Connection implements
         mIsEmergency = isEmergency;
         if (isEmergency) {
             setEmergencyCallInfo(mOwner);
+
+            if (getEmergencyNumberInfo() == null) {
+                // There was no emergency number info found for this call, however it is
+                // still marked as an emergency number. This may happen if it was a redialed
+                // non-detectable emergency call from IMS.
+                setNonDetectableEmergencyCallInfo(dialArgs.eccCategory);
+            }
         }
 
         mIsWpsCall = isWpsCall;
@@ -1580,7 +1593,30 @@ public class ImsPhoneConnection extends Connection implements
      */
     public void handleMergeComplete() {
         mIsMergeInProcess = false;
-        onConnectionEvent(android.telecom.Connection.EVENT_MERGE_COMPLETE, null);
+    }
+
+    /**
+     * Mark the call is held by remote party and inform to the UI.
+     */
+    public void setRemotelyHeld() {
+        mIsHeldByRemote = true;
+        onConnectionEvent(android.telecom.Connection.EVENT_CALL_REMOTELY_HELD, null);
+    }
+
+    /**
+     * Mark the call is Unheld by remote party and inform to the UI.
+     */
+    public void setRemotelyUnheld() {
+        mIsHeldByRemote = false;
+        onConnectionEvent(android.telecom.Connection.EVENT_CALL_REMOTELY_UNHELD, null);
+    }
+
+    /**
+     * @return whether the remote party is holding the call.
+     */
+    public boolean isHeldByRemote() {
+        Rlog.i(LOG_TAG, "isHeldByRemote=" + mIsHeldByRemote);
+        return mIsHeldByRemote;
     }
 
     public void changeToPausedState() {

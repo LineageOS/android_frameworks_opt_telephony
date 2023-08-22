@@ -102,7 +102,6 @@ public class DisplayInfoControllerTest extends TelephonyTest {
         super.setUp(getClass().getSimpleName());
 
         doReturn((Executor) Runnable::run).when(mContext).getMainExecutor();
-
         mBundle = mContextFixture.getCarrierConfigBundle();
         mSstHandler = new ServiceStateTrackerTestHandler(getClass().getSimpleName());
         mSstHandler.start();

@@ -49,6 +49,7 @@ import android.text.TextUtils;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CallStateException;
+import com.android.internal.telephony.CallWaitingController;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.GsmCdmaPhone;
@@ -1168,11 +1169,25 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 int serviceClass = siToServiceClass(mSia);
 
                 if (isActivate() || isDeactivate()) {
+                    if (serviceClass == SERVICE_CLASS_NONE
+                            || (serviceClass & SERVICE_CLASS_VOICE) == SERVICE_CLASS_VOICE) {
+                        if (mPhone.getTerminalBasedCallWaitingState(true)
+                                != CallWaitingController.TERMINAL_BASED_NOT_SUPPORTED) {
+                            mPhone.setCallWaiting(isActivate(), serviceClass,
+                                    obtainMessage(EVENT_SET_COMPLETE, this));
+                            return;
+                        }
+                    }
                     mPhone.mCi.setCallWaiting(isActivate(), serviceClass,
                             obtainMessage(EVENT_SET_COMPLETE, this));
                 } else if (isInterrogate()) {
-                    mPhone.mCi.queryCallWaiting(serviceClass,
-                            obtainMessage(EVENT_QUERY_COMPLETE, this));
+                    if (mPhone.getTerminalBasedCallWaitingState(true)
+                            != CallWaitingController.TERMINAL_BASED_NOT_SUPPORTED) {
+                        mPhone.getCallWaiting(obtainMessage(EVENT_QUERY_COMPLETE, this));
+                    } else {
+                        mPhone.mCi.queryCallWaiting(serviceClass,
+                                obtainMessage(EVENT_QUERY_COMPLETE, this));
+                    }
                 } else {
                     throw new RuntimeException ("Invalid or Unsupported MMI Code");
                 }

@@ -341,7 +341,6 @@ public class CommandException extends RuntimeException {
                 return new CommandException(Error.RF_HARDWARE_ISSUE);
             case RILConstants.NO_RF_CALIBRATION_INFO:
                 return new CommandException(Error.NO_RF_CALIBRATION_INFO);
-
             default:
                 Rlog.e("GSM", "Unrecognized RIL errno " + ril_errno);
                 return new CommandException(Error.INVALID_RESPONSE);

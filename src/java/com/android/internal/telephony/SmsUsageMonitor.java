@@ -43,6 +43,7 @@ import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlSerializer;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -72,6 +73,8 @@ public class SmsUsageMonitor {
     private static final boolean VDBG = false;
 
     private static final String SHORT_CODE_PATH = "/data/misc/sms/codes";
+
+    private static final String SHORT_CODE_VERSION_PATH = "/data/misc/sms/metadata/version";
 
     /** Default checking period for SMS sent without user permission. */
     private static final int DEFAULT_SMS_CHECK_PERIOD = 60000;      // 1 minute
@@ -127,6 +130,8 @@ public class SmsUsageMonitor {
 
     /** Last modified time for pattern file */
     private long mPatternFileLastModified = 0;
+
+    private int mPatternFileVersion = -1;
 
     private RoleManager mRoleManager;
 
@@ -415,9 +420,11 @@ public class SmsUsageMonitor {
                     if (mPatternFile.exists()) {
                         if (DBG) Rlog.d(TAG, "Loading SMS Short Code patterns from file");
                         mCurrentPatternMatcher = getPatternMatcherFromFile(countryIso);
+                        mPatternFileVersion = getPatternFileVersionFromFile();
                     } else {
                         if (DBG) Rlog.d(TAG, "Loading SMS Short Code patterns from resource");
                         mCurrentPatternMatcher = getPatternMatcherFromResource(countryIso);
+                        mPatternFileVersion = -1;
                     }
                     mCurrentCountry = countryIso;
                 }
@@ -653,6 +660,37 @@ public class SmsUsageMonitor {
             return true;
         }
         return false;
+    }
+
+    private int getPatternFileVersionFromFile() {
+        File versionFile = new File(SHORT_CODE_VERSION_PATH);
+        if (versionFile.exists()) {
+            BufferedReader reader = null;
+            try {
+                reader = new BufferedReader(new FileReader(versionFile));
+                String version = reader.readLine();
+                if (version != null) {
+                    return Integer.parseInt(version);
+                }
+            } catch (IOException e) {
+                Rlog.e(TAG, "File reader exception reading short code "
+                        + "pattern file version", e);
+            } finally {
+                try {
+                    if (reader != null) {
+                        reader.close();
+                    }
+                } catch (IOException e) {
+                    Rlog.e(TAG, "File reader exception closing short code "
+                            + "pattern file version reader", e);
+                }
+            }
+        }
+        return -1;
+    }
+
+    public int getShortCodeXmlFileVersion() {
+        return mPatternFileVersion;
     }
 
     private static void log(String msg) {

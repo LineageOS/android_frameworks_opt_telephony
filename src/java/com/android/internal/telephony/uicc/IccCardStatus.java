@@ -20,6 +20,7 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.os.Build;
 import android.telephony.SubscriptionInfo;
 
+import com.android.internal.telephony.uicc.IccSlotStatus.MultipleEnabledProfilesMode;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
@@ -89,6 +90,30 @@ public class IccCardStatus {
     public IccCardApplicationStatus[] mApplications;
 
     public IccSlotPortMapping mSlotPortMapping;
+
+    public MultipleEnabledProfilesMode mSupportedMepMode = MultipleEnabledProfilesMode.NONE;
+
+    /**
+     * Set the MultipleEnabledProfilesMode according to the input mode.
+     */
+    public void setMultipleEnabledProfilesMode(int mode) {
+        switch(mode) {
+            case 0:
+                mSupportedMepMode = MultipleEnabledProfilesMode.NONE;
+                break;
+            case 1:
+                mSupportedMepMode = MultipleEnabledProfilesMode.MEP_A1;
+                break;
+            case 2:
+                mSupportedMepMode = MultipleEnabledProfilesMode.MEP_A2;
+                break;
+            case 3:
+                mSupportedMepMode = MultipleEnabledProfilesMode.MEP_B;
+                break;
+            default:
+                throw new RuntimeException("Unrecognized RIL_MultipleEnabledProfilesMode: " + mode);
+        }
+    }
 
     public void setCardState(int state) {
         switch(state) {
@@ -172,8 +197,9 @@ public class IccCardStatus {
         }
 
         sb.append(",atr=").append(atr);
-        sb.append(",iccid=").append(SubscriptionInfo.givePrintableIccid(iccid));
+        sb.append(",iccid=").append(SubscriptionInfo.getPrintableId(iccid));
         sb.append(",eid=").append(Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, eid));
+        sb.append(",SupportedMepMode=").append(mSupportedMepMode);
         sb.append(",SlotPortMapping=").append(mSlotPortMapping);
 
         sb.append("}");

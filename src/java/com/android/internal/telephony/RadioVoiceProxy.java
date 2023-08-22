@@ -35,12 +35,23 @@ public class RadioVoiceProxy extends RadioServiceProxy {
      * Set IRadioVoice as the AIDL implementation for RadioServiceProxy
      * @param halVersion Radio HAL version
      * @param voice IRadioVoice implementation
+     *
+     * @return updated HAL version
      */
-    public void setAidl(HalVersion halVersion, android.hardware.radio.voice.IRadioVoice voice) {
-        mHalVersion = halVersion;
+    public HalVersion setAidl(HalVersion halVersion,
+            android.hardware.radio.voice.IRadioVoice voice) {
+        HalVersion version = halVersion;
+        try {
+            version = RIL.getServiceHalVersion(voice.getInterfaceVersion());
+        } catch (RemoteException e) {
+            Rlog.e(TAG, "setAidl: " + e);
+        }
+        mHalVersion = version;
         mVoiceProxy = voice;
         mIsAidl = true;
-        Rlog.d(TAG, "AIDL initialized");
+
+        Rlog.d(TAG, "AIDL initialized mHalVersion=" + mHalVersion);
+        return mHalVersion;
     }
 
     /**

@@ -383,6 +383,7 @@ public class CarrierServiceStateTracker extends Handler {
         Notification.Builder builder = getNotificationBuilder(notificationType);
         // set some common attributes
         builder.setWhen(System.currentTimeMillis())
+                .setShowWhen(true)
                 .setAutoCancel(true)
                 .setSmallIcon(com.android.internal.R.drawable.stat_sys_warning)
                 .setColor(context.getResources().getColor(

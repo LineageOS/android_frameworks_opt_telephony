@@ -58,6 +58,7 @@ import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.GsmCdmaCall;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.imsphone.ImsPhone.ImsDialArgs;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.metrics.VoiceCallSessionStats;
 
@@ -144,7 +145,8 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
 
         logd("Testing initial state of MO ImsPhoneConnection");
         mConnectionUT = new ImsPhoneConnection(mImsPhone, String.format("+1 (700).555-41NN%c1234",
-                PhoneNumberUtils.PAUSE), mImsCT, mForeGroundCall, false, false);
+                PhoneNumberUtils.PAUSE), mImsCT, mForeGroundCall, false, false,
+                new ImsDialArgs.Builder().build());
         assertEquals(PhoneConstants.PRESENTATION_ALLOWED, mConnectionUT.getNumberPresentation());
         assertEquals(PhoneConstants.PRESENTATION_ALLOWED, mConnectionUT.getCnapNamePresentation());
         assertEquals("+1 (700).555-41NN,1234", mConnectionUT.getOrigDialString());
@@ -157,7 +159,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
     public void testImsUpdateStateForeGround() {
         // MO Foreground Connection dailing -> active
         mConnectionUT = new ImsPhoneConnection(mImsPhone, "+1 (700).555-41NN1234", mImsCT,
-                mForeGroundCall, false, false);
+                mForeGroundCall, false, false, new ImsDialArgs.Builder().build());
         // initially in dialing state
         doReturn(Call.State.DIALING).when(mForeGroundCall).getState();
         assertTrue(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
@@ -172,7 +174,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
     public void testUpdateCodec() {
         // MO Foreground Connection dailing -> active
         mConnectionUT = new ImsPhoneConnection(mImsPhone, "+1 (700).555-41NN1234", mImsCT,
-                mForeGroundCall, false, false);
+                mForeGroundCall, false, false, new ImsDialArgs.Builder().build());
         doReturn(Call.State.ACTIVE).when(mForeGroundCall).getState();
         assertTrue(mConnectionUT.updateMediaCapabilities(mImsCall));
     }
@@ -195,7 +197,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
     @SmallTest
     public void testImsUpdateStatePendingHold() {
         mConnectionUT = new ImsPhoneConnection(mImsPhone, "+1 (700).555-41NN1234", mImsCT,
-                mForeGroundCall, false, false);
+                mForeGroundCall, false, false, new ImsDialArgs.Builder().build());
         doReturn(true).when(mImsCall).isPendingHold();
         assertFalse(mConnectionUT.update(mImsCall, Call.State.ACTIVE));
         verify(mForeGroundCall, times(0)).update(eq(mConnectionUT), eq(mImsCall),
@@ -240,7 +242,8 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
     @SmallTest
     public void testPostDialWait() {
         mConnectionUT = new ImsPhoneConnection(mImsPhone, String.format("+1 (700).555-41NN%c1234",
-                PhoneNumberUtils.WAIT), mImsCT, mForeGroundCall, false, false);
+                PhoneNumberUtils.WAIT), mImsCT, mForeGroundCall, false, false,
+                new ImsDialArgs.Builder().build());
         doReturn(Call.State.DIALING).when(mForeGroundCall).getState();
         doAnswer(new Answer() {
             @Override
@@ -263,7 +266,8 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
     @MediumTest
     public void testPostDialPause() {
         mConnectionUT = new ImsPhoneConnection(mImsPhone, String.format("+1 (700).555-41NN%c1234",
-                PhoneNumberUtils.PAUSE), mImsCT, mForeGroundCall, false, false);
+                PhoneNumberUtils.PAUSE), mImsCT, mForeGroundCall, false, false,
+                new ImsDialArgs.Builder().build());
         doReturn(Call.State.DIALING).when(mForeGroundCall).getState();
         doAnswer(new Answer() {
             @Override
@@ -385,7 +389,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
                 {"12345*00000", "12346", "12346"}};
         for (String[] testAddress : testAddressMappingSet) {
             mConnectionUT = new ImsPhoneConnection(mImsPhone, testAddress[0], mImsCT,
-                    mForeGroundCall, false, false);
+                    mForeGroundCall, false, false, new ImsDialArgs.Builder().build());
             mConnectionUT.setIsIncoming(true);
             mImsCallProfile.setCallExtra(ImsCallProfile.EXTRA_OI, testAddress[1]);
             mConnectionUT.updateAddressDisplay(mImsCall);
@@ -403,7 +407,7 @@ public class ImsPhoneConnectionTest extends TelephonyTest {
         String updateAddress = "6789";
 
         mConnectionUT = new ImsPhoneConnection(mImsPhone, inputAddress, mImsCT, mForeGroundCall,
-                false, false);
+                false, false, new ImsDialArgs.Builder().build());
         mConnectionUT.setIsIncoming(false);
         mImsCallProfile.setCallExtra(ImsCallProfile.EXTRA_OI, updateAddress);
         mConnectionUT.updateAddressDisplay(mImsCall);

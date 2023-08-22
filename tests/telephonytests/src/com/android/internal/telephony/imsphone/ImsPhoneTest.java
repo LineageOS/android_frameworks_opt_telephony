@@ -17,14 +17,23 @@
 package com.android.internal.telephony.imsphone;
 
 import static android.Manifest.permission.MODIFY_PHONE_STATE;
-import static android.provider.Telephony.SimInfo.COLUMN_PHONE_NUMBER_SOURCE_IMS;
 import static android.telephony.CarrierConfigManager.USSD_OVER_CS_ONLY;
 import static android.telephony.CarrierConfigManager.USSD_OVER_CS_PREFERRED;
 import static android.telephony.CarrierConfigManager.USSD_OVER_IMS_ONLY;
 import static android.telephony.CarrierConfigManager.USSD_OVER_IMS_PREFERRED;
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_NONE;
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK;
+import static android.telephony.ims.RegistrationManager.SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_3G;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_LTE;
+import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NR;
 
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
+import static com.android.internal.telephony.CommandsInterface.IMS_MMTEL_CAPABILITY_SMS;
+import static com.android.internal.telephony.CommandsInterface.IMS_MMTEL_CAPABILITY_VIDEO;
+import static com.android.internal.telephony.CommandsInterface.IMS_MMTEL_CAPABILITY_VOICE;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -66,6 +75,7 @@ import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.ImsRegistrationAttributes;
 import android.telephony.ims.RegistrationManager;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.telephony.ims.stub.ImsUtImplBase;
@@ -85,6 +95,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.imsphone.ImsPhone.SS;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
@@ -110,6 +121,7 @@ public class ImsPhoneTest extends TelephonyTest {
     private ImsPhoneCall mBackgroundCall;
     private ImsPhoneCall mRingingCall;
     private Handler mTestHandler;
+    private DomainSelectionResolver mDomainSelectionResolver;
     Connection mConnection;
     ImsUtInterface mImsUtInterface;
 
@@ -135,6 +147,9 @@ public class ImsPhoneTest extends TelephonyTest {
         mTestHandler = mock(Handler.class);
         mConnection = mock(Connection.class);
         mImsUtInterface = mock(ImsUtInterface.class);
+        mDomainSelectionResolver = mock(DomainSelectionResolver.class);
+        doReturn(false).when(mDomainSelectionResolver).isDomainSelectionSupported();
+        DomainSelectionResolver.setDomainSelectionResolver(mDomainSelectionResolver);
 
         mImsCT.mForegroundCall = mForegroundCall;
         mImsCT.mBackgroundCall = mBackgroundCall;
@@ -178,6 +193,7 @@ public class ImsPhoneTest extends TelephonyTest {
     public void tearDown() throws Exception {
         mImsPhoneUT = null;
         mBundle = null;
+        DomainSelectionResolver.setDomainSelectionResolver(null);
         super.tearDown();
     }
 
@@ -631,6 +647,21 @@ public class ImsPhoneTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testEcbmWhenDomainSelectionEnabled() {
+        DomainSelectionResolver dsResolver = mock(DomainSelectionResolver.class);
+        doReturn(true).when(dsResolver).isDomainSelectionSupported();
+        DomainSelectionResolver.setDomainSelectionResolver(dsResolver);
+
+        ImsEcbmStateListener imsEcbmStateListener = mImsPhoneUT.getImsEcbmStateListener();
+        imsEcbmStateListener.onECBMEntered();
+        imsEcbmStateListener.onECBMExited();
+
+        verify(mPhone, never()).setIsInEcm(anyBoolean());
+        verify(mContext, never()).sendStickyBroadcastAsUser(any(), any());
+    }
+
+    @Test
+    @SmallTest
     public void testProcessDisconnectReason() throws Exception {
         // set up CarrierConfig
         mBundle.putStringArray(CarrierConfigManager.KEY_WFC_OPERATOR_ERROR_CODES_STRING_ARRAY,
@@ -736,7 +767,6 @@ public class ImsPhoneTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testRoamingToAirplanModeIwlanInService() throws Exception {
-        doReturn(true).when(mAccessNetworksManager).isInLegacyMode();
         doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
         doReturn(true).when(mPhone).isRadioOn();
 
@@ -764,7 +794,6 @@ public class ImsPhoneTest extends TelephonyTest {
     @Test
     @SmallTest
     public void testRoamingToOutOfService() throws Exception {
-        doReturn(true).when(mAccessNetworksManager).isInLegacyMode();
         doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
         doReturn(true).when(mPhone).isRadioOn();
 
@@ -784,83 +813,6 @@ public class ImsPhoneTest extends TelephonyTest {
 
         // setWfcMode should not be called again, out_of_service should not trigger move out of
         // roaming.
-        verify(mImsManager, times(1)).setWfcMode(anyInt(), anyBoolean());
-    }
-
-    @Test
-    @SmallTest
-    public void testRoamingChangeForLteInLegacyMode() throws Exception {
-        doReturn(true).when(mAccessNetworksManager).isInLegacyMode();
-        doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
-        doReturn(true).when(mPhone).isRadioOn();
-
-        //roaming - data registration only on LTE
-        Message m = getServiceStateChangedMessage(getServiceStateDataOnly(
-                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.STATE_IN_SERVICE, true));
-        // Inject the message synchronously instead of waiting for the thread to do it.
-        mImsPhoneUT.handleMessage(m);
-        m.recycle();
-
-        verify(mImsManager, times(1)).setWfcMode(anyInt(), eq(true));
-
-        // not roaming - data registration on LTE
-        m = getServiceStateChangedMessage(getServiceStateDataOnly(
-                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.STATE_IN_SERVICE, false));
-        mImsPhoneUT.handleMessage(m);
-        m.recycle();
-
-        verify(mImsManager, times(1)).setWfcMode(anyInt(), eq(false));
-    }
-
-    @Test
-    @SmallTest
-    public void testDataOnlyRoamingCellToIWlanInLegacyMode() throws Exception {
-        doReturn(true).when(mAccessNetworksManager).isInLegacyMode();
-        doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
-        doReturn(true).when(mPhone).isRadioOn();
-
-        //roaming - data registration only on LTE
-        Message m = getServiceStateChangedMessage(getServiceStateDataOnly(
-                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.STATE_IN_SERVICE, true));
-        // Inject the message synchronously instead of waiting for the thread to do it.
-        mImsPhoneUT.handleMessage(m);
-        m.recycle();
-
-        verify(mImsManager, times(1)).setWfcMode(anyInt(), eq(true));
-
-        // not roaming - data registration onto IWLAN
-        m = getServiceStateChangedMessage(getServiceStateDataOnly(
-                ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN, ServiceState.STATE_IN_SERVICE, false));
-        mImsPhoneUT.handleMessage(m);
-        m.recycle();
-
-        // Verify that it hasn't been called again.
-        verify(mImsManager, times(1)).setWfcMode(anyInt(), anyBoolean());
-    }
-
-    @Test
-    @SmallTest
-    public void testCellVoiceDataChangeToWlanInLegacyMode() throws Exception {
-        doReturn(true).when(mAccessNetworksManager).isInLegacyMode();
-        doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
-        doReturn(true).when(mPhone).isRadioOn();
-
-        //roaming - voice/data registration on LTE
-        ServiceState ss = getServiceStateDataAndVoice(
-                ServiceState.RIL_RADIO_TECHNOLOGY_LTE, ServiceState.STATE_IN_SERVICE, true);
-        Message m = getServiceStateChangedMessage(ss);
-        // Inject the message synchronously instead of waiting for the thread to do it.
-        mImsPhoneUT.handleMessage(m);
-
-        verify(mImsManager, times(1)).setWfcMode(anyInt(), eq(true));
-
-        // roaming - voice LTE, data registration onto IWLAN
-        modifyServiceStateData(ss, ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN,
-                ServiceState.STATE_IN_SERVICE, false);
-        mImsPhoneUT.handleMessage(m);
-        m.recycle();
-
-        // Verify that it hasn't been called again.
         verify(mImsManager, times(1)).setWfcMode(anyInt(), anyBoolean());
     }
 
@@ -1018,7 +970,6 @@ public class ImsPhoneTest extends TelephonyTest {
         doReturn(subId).when(mPhone).getSubId();
         SubscriptionInfo subInfo = mock(SubscriptionInfo.class);
         doReturn("gb").when(subInfo).getCountryIso();
-        doReturn(subInfo).when(mSubscriptionController).getSubscriptionInfo(subId);
         doReturn(new SubscriptionInfoInternal.Builder().setId(subId).setSimSlotIndex(0)
                 .setCountryIso("gb").build()).when(mSubscriptionManagerService)
                 .getSubscriptionInfoInternal(subId);
@@ -1030,12 +981,7 @@ public class ImsPhoneTest extends TelephonyTest {
         };
         mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
 
-        if (isSubscriptionManagerServiceEnabled()) {
-            verify(mSubscriptionManagerService).setNumberFromIms(subId, "+447539447777");
-        } else {
-            verify(mSubscriptionController).setSubscriptionProperty(
-                    subId, COLUMN_PHONE_NUMBER_SOURCE_IMS, "+447539447777");
-        }
+        verify(mSubscriptionManagerService).setNumberFromIms(subId, "+447539447777");
 
         // 2. 1st invalid and 2nd valid: 2nd is set.
         associatedUris = new Uri[] {
@@ -1044,12 +990,7 @@ public class ImsPhoneTest extends TelephonyTest {
         };
         mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
 
-        if (isSubscriptionManagerServiceEnabled()) {
-            verify(mSubscriptionManagerService).setNumberFromIms(subId, "+447539446666");
-        } else {
-            verify(mSubscriptionController).setSubscriptionProperty(
-                    subId, COLUMN_PHONE_NUMBER_SOURCE_IMS, "+447539446666");
-        }
+        verify(mSubscriptionManagerService).setNumberFromIms(subId, "+447539446666");
 
         // 3. 1st sip-uri is not phone number and 2nd valid: 2nd is set.
         associatedUris = new Uri[] {
@@ -1059,12 +1000,7 @@ public class ImsPhoneTest extends TelephonyTest {
         };
         mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
 
-        if (isSubscriptionManagerServiceEnabled()) {
-            verify(mSubscriptionManagerService).setNumberFromIms(subId, "+447539446677");
-        } else {
-            verify(mSubscriptionController).setSubscriptionProperty(
-                    subId, COLUMN_PHONE_NUMBER_SOURCE_IMS, "+447539446677");
-        }
+        verify(mSubscriptionManagerService).setNumberFromIms(subId, "+447539446677");
 
         // Clean up
         mContextFixture.addCallingOrSelfPermission("");
@@ -1079,7 +1015,6 @@ public class ImsPhoneTest extends TelephonyTest {
         doReturn(subId).when(mPhone).getSubId();
         SubscriptionInfo subInfo = mock(SubscriptionInfo.class);
         doReturn("gb").when(subInfo).getCountryIso();
-        doReturn(subInfo).when(mSubscriptionController).getSubscriptionInfo(subId);
         doReturn(new SubscriptionInfoInternal.Builder().setId(subId).setSimSlotIndex(0)
                 .setCountryIso("gb").build()).when(mSubscriptionManagerService)
                 .getSubscriptionInfoInternal(0);
@@ -1091,47 +1026,365 @@ public class ImsPhoneTest extends TelephonyTest {
         };
         mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
 
-        if (isSubscriptionManagerServiceEnabled()) {
-            verify(mSubscriptionManagerService, never()).setNumberFromIms(anyInt(), anyString());
-        } else {
-            verify(mSubscriptionController, never()).setSubscriptionProperty(
-                    anyInt(), any(), any());
-        }
+        verify(mSubscriptionManagerService, never()).setNumberFromIms(anyInt(), anyString());
 
         // 2. no URI; do not set
         associatedUris = new Uri[] {};
         mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
 
-        if (isSubscriptionManagerServiceEnabled()) {
-            verify(mSubscriptionManagerService, never()).setNumberFromIms(anyInt(), anyString());
-        } else {
-            verify(mSubscriptionController, never()).setSubscriptionProperty(
-                    anyInt(), any(), any());
-        }
+        verify(mSubscriptionManagerService, never()).setNumberFromIms(anyInt(), anyString());
 
         // 3. null URI; do not set
         associatedUris = new Uri[] { null };
         mImsPhoneUT.setPhoneNumberForSourceIms(associatedUris);
 
-        if (isSubscriptionManagerServiceEnabled()) {
-            verify(mSubscriptionManagerService, never()).setNumberFromIms(anyInt(), anyString());
-        } else {
-            verify(mSubscriptionController, never()).setSubscriptionProperty(
-                    anyInt(), any(), any());
-        }
+        verify(mSubscriptionManagerService, never()).setNumberFromIms(anyInt(), anyString());
 
         // 4. null pointer; do not set
         mImsPhoneUT.setPhoneNumberForSourceIms(null);
 
-        if (isSubscriptionManagerServiceEnabled()) {
-            verify(mSubscriptionManagerService, never()).setNumberFromIms(anyInt(), anyString());
-        } else {
-            verify(mSubscriptionController, never()).setSubscriptionProperty(
-                    anyInt(), any(), any());
-        }
+        verify(mSubscriptionManagerService, never()).setNumberFromIms(anyInt(), anyString());
 
         // Clean up
         mContextFixture.addCallingOrSelfPermission("");
+    }
+
+    /**
+     * Verifies that valid radio technology is passed to RIL
+     * when IMS registration state changes to registered.
+     */
+    @Test
+    @SmallTest
+    public void testUpdateImsRegistrationInfoRadioTech() {
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+
+        int[] regInfo = mSimulatedCommands.getImsRegistrationInfo();
+        assertNotNull(regInfo);
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        RegistrationManager.RegistrationCallback registrationCallback =
+                mImsPhoneUT.getImsMmTelRegistrationCallback();
+
+        ImsRegistrationAttributes attr = new ImsRegistrationAttributes.Builder(
+                REGISTRATION_TECH_LTE).build();
+        registrationCallback.onRegistered(attr);
+        mImsPhoneUT.updateImsRegistrationInfo(IMS_MMTEL_CAPABILITY_VOICE);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_LTE
+                && regInfo[3] == IMS_MMTEL_CAPABILITY_VOICE);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // duplicated notification with the same radio technology
+        attr = new ImsRegistrationAttributes.Builder(REGISTRATION_TECH_LTE).build();
+        registrationCallback.onRegistered(attr);
+
+        // verify that there is no change in SimulatedCommands
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // radio technology changed
+        attr = new ImsRegistrationAttributes.Builder(REGISTRATION_TECH_NR).build();
+        registrationCallback.onRegistered(attr);
+
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_NR
+                && regInfo[3] == IMS_MMTEL_CAPABILITY_VOICE);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // duplicated notification with the same radio technology
+        attr = new ImsRegistrationAttributes.Builder(REGISTRATION_TECH_NR).build();
+        registrationCallback.onRegistered(attr);
+
+        // verify that there is no change in SimulatedCommands
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // radio technology changed
+        attr = new ImsRegistrationAttributes.Builder(REGISTRATION_TECH_IWLAN).build();
+        registrationCallback.onRegistered(attr);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_IWLAN
+                && regInfo[3] == IMS_MMTEL_CAPABILITY_VOICE);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // duplicated notification with the same radio technology
+        attr = new ImsRegistrationAttributes.Builder(REGISTRATION_TECH_IWLAN).build();
+        registrationCallback.onRegistered(attr);
+
+        // verify that there is no change in SimulatedCommands
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // radio technology changed
+        attr = new ImsRegistrationAttributes.Builder(REGISTRATION_TECH_3G).build();
+        registrationCallback.onRegistered(attr);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_3G
+                && regInfo[3] == IMS_MMTEL_CAPABILITY_VOICE);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // duplicated notification with the same radio technology
+        attr = new ImsRegistrationAttributes.Builder(REGISTRATION_TECH_3G).build();
+        registrationCallback.onRegistered(attr);
+
+        // verify that there is no change in SimulatedCommands
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+    }
+
+    /**
+     * Verifies that valid capabilities is passed to RIL
+     * when IMS registration state changes to registered.
+     */
+    @Test
+    @SmallTest
+    public void testUpdateImsRegistrationInfoCapabilities() {
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+
+        int[] regInfo = mSimulatedCommands.getImsRegistrationInfo();
+        assertNotNull(regInfo);
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        RegistrationManager.RegistrationCallback registrationCallback =
+                mImsPhoneUT.getImsMmTelRegistrationCallback();
+
+        ImsRegistrationAttributes attr = new ImsRegistrationAttributes.Builder(
+                REGISTRATION_TECH_LTE).build();
+        registrationCallback.onRegistered(attr);
+        mImsPhoneUT.updateImsRegistrationInfo(IMS_MMTEL_CAPABILITY_VOICE);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_LTE
+                && regInfo[3] == IMS_MMTEL_CAPABILITY_VOICE);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // duplicated notification with the same capability
+        mImsPhoneUT.updateImsRegistrationInfo(IMS_MMTEL_CAPABILITY_VOICE);
+
+        // verify that there is no change in SimulatedCommands
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // capability changed
+        mImsPhoneUT.updateImsRegistrationInfo(IMS_MMTEL_CAPABILITY_VIDEO);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_LTE
+                && regInfo[3] == IMS_MMTEL_CAPABILITY_VIDEO);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // duplicated notification with the same capability
+        mImsPhoneUT.updateImsRegistrationInfo(IMS_MMTEL_CAPABILITY_VIDEO);
+
+        // verify that there is no change in SimulatedCommands
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // capability changed
+        mImsPhoneUT.updateImsRegistrationInfo(IMS_MMTEL_CAPABILITY_SMS);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_LTE
+                && regInfo[3] == IMS_MMTEL_CAPABILITY_SMS);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // duplicated notification with the same capability
+        mImsPhoneUT.updateImsRegistrationInfo(IMS_MMTEL_CAPABILITY_SMS);
+
+        // verify that there is no change in SimulatedCommands
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+
+        // capability changed, but no capability
+        mImsPhoneUT.updateImsRegistrationInfo(IMS_MMTEL_CAPABILITY_SMS);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        // verify that there is no change in SimulatedCommands.
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[3] == 0);
+    }
+
+    /**
+     * Verifies that valid state and reason is passed to RIL
+     * when IMS registration state changes to unregistered.
+     */
+    @Test
+    @SmallTest
+    public void testUpdateImsRegistrationInfo() {
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+
+        int[] regInfo = mSimulatedCommands.getImsRegistrationInfo();
+        assertNotNull(regInfo);
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[2] == 0);
+
+        RegistrationManager.RegistrationCallback registrationCallback =
+                mImsPhoneUT.getImsMmTelRegistrationCallback();
+
+        ImsReasonInfo reasonInfo = new ImsReasonInfo(ImsReasonInfo.CODE_REGISTRATION_ERROR,
+                ImsReasonInfo.CODE_UNSPECIFIED, "");
+
+        // unregistered with fatal error
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK, REGISTRATION_TECH_NR);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_NR
+                && regInfo[2] == SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[2] == 0);
+
+        // unregistered with fatal error but rat changed
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK, REGISTRATION_TECH_LTE);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_LTE
+                && regInfo[2] == SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[2] == 0);
+
+        // duplicated notification with the same suggested action
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK, REGISTRATION_TECH_LTE);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        // verify that there is no update in the SimulatedCommands
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[2] == 0);
+
+        // unregistered with repeated error
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT,
+                REGISTRATION_TECH_LTE);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_LTE
+                && regInfo[2] == SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT);
+
+        // reset the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(0, 0, 0, 0, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[2] == 0);
+
+        // duplicated notification with the same suggested action
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK_WITH_TIMEOUT,
+                REGISTRATION_TECH_LTE);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        // verify that there is no update in the SimulatedCommands
+        assertTrue(regInfo[0] == 0 && regInfo[1] == 0 && regInfo[2] == 0);
+
+        // unregistered with temporary error
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_NONE, REGISTRATION_TECH_LTE);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_LTE
+                && regInfo[2] == SUGGESTED_ACTION_NONE);
+
+        // verifies that reason codes except ImsReasonInfo.CODE_REGISTRATION_ERROR are discarded.
+        reasonInfo = new ImsReasonInfo(ImsReasonInfo.CODE_LOCAL_NETWORK_NO_SERVICE,
+                ImsReasonInfo.CODE_UNSPECIFIED, "");
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_TRIGGER_PLMN_BLOCK, REGISTRATION_TECH_NR);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED
+                && regInfo[1] == REGISTRATION_TECH_NR
+                && regInfo[2] == SUGGESTED_ACTION_NONE);
+
+        // change the registration info saved in the SimulatedCommands
+        mSimulatedCommands.updateImsRegistrationInfo(1, 1, 1, 1, null);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        assertTrue(regInfo[0] == 1 && regInfo[1] == 1 && regInfo[2] == 1);
+
+        // duplicated notification with the same suggested action
+        registrationCallback.onUnregistered(reasonInfo,
+                SUGGESTED_ACTION_NONE, REGISTRATION_TECH_NR);
+        regInfo = mSimulatedCommands.getImsRegistrationInfo();
+
+        // verify that there is no update in the SimulatedCommands
+        assertTrue(regInfo[0] == 1 && regInfo[1] == 1 && regInfo[2] == 1);
+    }
+
+    @Test
+    @SmallTest
+    public void testImsDialArgsBuilderFromForAlternateService() {
+        ImsPhone.ImsDialArgs dialArgs = new ImsPhone.ImsDialArgs.Builder()
+                .setIsEmergency(true)
+                .setEccCategory(2)
+                .build();
+
+        ImsPhone.ImsDialArgs copiedDialArgs =
+                ImsPhone.ImsDialArgs.Builder.from(dialArgs).build();
+
+        assertTrue(copiedDialArgs.isEmergency);
+        assertEquals(2, copiedDialArgs.eccCategory);
     }
 
     private ServiceState getServiceStateDataAndVoice(int rat, int regState, boolean isRoaming) {

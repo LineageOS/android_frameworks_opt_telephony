@@ -22,6 +22,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 
 import java.util.ArrayList;
@@ -108,7 +109,7 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     protected final String mAid;
 
-    static class LoadLinearFixedContext {
+    public static class LoadLinearFixedContext {
 
         int mEfid;
         @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
@@ -145,14 +146,11 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
             mOnLoaded = onLoaded;
             mPath = path;
         }
+    }
 
-        LoadLinearFixedContext(int efid, Message onLoaded) {
-            mEfid = efid;
-            mRecordNum = 1;
-            mLoadAll = true;
-            mOnLoaded = onLoaded;
-            mPath = null;
-        }
+    @VisibleForTesting
+    public int getEfid(LoadLinearFixedContext lc) {
+        return lc.mEfid;
     }
 
     /**
@@ -161,6 +159,13 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
     protected IccFileHandler(UiccCardApplication app, String aid, CommandsInterface ci) {
         mParentApp = app;
         mAid = aid;
+        mCi = ci;
+    }
+
+    @VisibleForTesting
+    public IccFileHandler(CommandsInterface ci) {
+        mParentApp = null;
+        mAid = null;
         mCi = ci;
     }
 
@@ -267,8 +272,7 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
      * @param path Path of the EF on the card
      * @param onLoaded ((AsnyncResult)(onLoaded.obj)).result is the size of data int
      */
-    public void getEFTransparentRecordSize(int fileid, String path, Message onLoaded) {
-        String efPath = (path == null) ? getEFPath(fileid) : path;
+    public void getEFTransparentRecordSize(int fileid, Message onLoaded) {
         Message response = obtainMessage(EVENT_GET_EF_TRANSPARENT_SIZE_DONE, fileid, 0, onLoaded);
         mCi.iccIOForApp(
                 COMMAND_GET_RESPONSE,
@@ -281,16 +285,6 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                 null,
                 mAid,
                 response);
-    }
-
-    /**
-     * Get record size for a transparent EF
-     *
-     * @param fileid EF id
-     * @param onLoaded ((AsnyncResult)(onLoaded.obj)).result is the size of the data int
-     */
-    public void getEFTransparentRecordSize(int fileid, Message onLoaded) {
-        getEFTransparentRecordSize(fileid, getEFPath(fileid), onLoaded);
     }
 
     /**

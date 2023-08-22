@@ -60,7 +60,6 @@ import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -72,7 +71,6 @@ import android.app.PropertyInvalidatedCache;
 import android.compat.testing.PlatformCompatChangeRule;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.res.Resources;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -161,7 +159,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     public void setUp() throws Exception {
         logd("SubscriptionManagerServiceTest +Setup!");
         super.setUp(getClass().getSimpleName());
-        enableSubscriptionManagerService(true);
 
         // Dual-SIM configuration
         mPhones = new Phone[] {mPhone, mPhone2};
@@ -195,6 +192,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
                 Telephony.Carriers.CONTENT_URI.getAuthority(), mSubscriptionProvider);
+
         mSubscriptionManagerServiceUT = new SubscriptionManagerService(mContext, Looper.myLooper());
 
         monitorTestableLooper(new TestableLooper(getBackgroundHandler().getLooper()));
@@ -300,13 +298,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
             fail("Failed to insert subscription. e=" + e);
         }
         return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-    }
-
-    private void enableGetSubscriptionUserHandle() {
-        Resources mResources = mock(Resources.class);
-        doReturn(true).when(mResources).getBoolean(
-                eq(com.android.internal.R.bool.config_enable_get_subscription_user_handle));
-        doReturn(mResources).when(mContext).getResources();
     }
 
     @Test
@@ -1057,7 +1048,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     @Test
     public void testSetGetSubscriptionUserHandle() {
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
-        enableGetSubscriptionUserHandle();
 
         // Should fail without MANAGE_SUBSCRIPTION_USER_ASSOCIATION
         assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
@@ -1091,7 +1081,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     @Test
     public void testIsSubscriptionAssociatedWithUser() {
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
-        enableGetSubscriptionUserHandle();
 
         // Should fail without MANAGE_SUBSCRIPTION_USER_ASSOCIATION
         assertThrows(SecurityException.class, () -> mSubscriptionManagerServiceUT
@@ -1810,9 +1799,9 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
 
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
         assertThat(mSubscriptionManagerServiceUT.removeSubInfo(FAKE_ICCID1,
-                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM)).isEqualTo(0);
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM)).isEqualTo(true);
         assertThat(mSubscriptionManagerServiceUT.removeSubInfo(FAKE_ICCID2,
-                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM)).isEqualTo(0);
+                SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM)).isEqualTo(true);
 
         mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
         assertThat(mSubscriptionManagerServiceUT.getAllSubInfoList(
@@ -2157,8 +2146,13 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
 
-        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
         final StringWriter stringWriter = new StringWriter();
+        assertThrows(SecurityException.class, ()
+                -> mSubscriptionManagerServiceUT.dump(new FileDescriptor(),
+                new PrintWriter(stringWriter), null));
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.DUMP);
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
         mSubscriptionManagerServiceUT.dump(new FileDescriptor(), new PrintWriter(stringWriter),
                 null);
         assertThat(stringWriter.toString().length()).isGreaterThan(0);
@@ -2248,7 +2242,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM);
 
         assertThat(mSubscriptionManagerServiceUT.removeSubInfo(FAKE_MAC_ADDRESS1,
-                SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM)).isEqualTo(0);
+                SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM)).isEqualTo(true);
         assertThat(mSubscriptionManagerServiceUT.getAllSubInfoList(
                 CALLING_PACKAGE, CALLING_FEATURE)).isEmpty();
         assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false)).isEmpty();
@@ -2363,6 +2357,19 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     }
 
     @Test
+    public void testSimNotReadyBySimDeactivate() {
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        mSubscriptionManagerServiceUT.updateSimState(
+                0, TelephonyManager.SIM_STATE_NOT_READY, null, null);
+        doReturn(true).when(mUiccProfile).isEmptyProfile();
+        processAllMessages();
+
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false)).isEmpty();
+    }
+
+    @Test
     public void testInactiveSimRemoval() {
         insertSubscription(FAKE_SUBSCRIPTION_INFO2);
 
@@ -2437,5 +2444,63 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
                 .isEqualTo(FAKE_ICCID2);
         assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(2).isEmbedded())
                 .isEqualTo(true);
+    }
+
+
+    @Test
+    public void testNonNullSubInfoBuilderFromEmbeddedProfile() {
+        EuiccProfileInfo profileInfo1 = new EuiccProfileInfo.Builder(FAKE_ICCID1)
+                .setIccid(FAKE_ICCID1) //can't build profile with null iccid.
+                .setNickname(null) //nullable
+                .setServiceProviderName(null) //nullable
+                .setProfileName(null) //nullable
+                .setCarrierIdentifier(null) //nullable
+                .setUiccAccessRule(null) //nullable
+                .build();
+
+        EuiccProfileInfo profileInfo2 = new EuiccProfileInfo.Builder(FAKE_ICCID2)
+                .setIccid(FAKE_ICCID2) //impossible to build profile with null iccid.
+                .setNickname(null) //nullable
+                .setCarrierIdentifier(new CarrierIdentifier(FAKE_MCC2, FAKE_MNC2, null, null, null,
+                        null, FAKE_CARRIER_ID2, FAKE_CARRIER_ID2)) //not allow null mcc/mnc.
+                .setUiccAccessRule(null) //nullable
+                .build();
+
+        GetEuiccProfileInfoListResult result = new GetEuiccProfileInfoListResult(
+                EuiccService.RESULT_OK, new EuiccProfileInfo[]{profileInfo1}, false);
+        doReturn(result).when(mEuiccController).blockingGetEuiccProfileInfoList(eq(1));
+        result = new GetEuiccProfileInfoListResult(EuiccService.RESULT_OK,
+                new EuiccProfileInfo[]{profileInfo2}, false);
+        doReturn(result).when(mEuiccController).blockingGetEuiccProfileInfoList(eq(2));
+        doReturn(TelephonyManager.INVALID_PORT_INDEX).when(mUiccSlot)
+                .getPortIndexFromIccId(anyString());
+
+        mSubscriptionManagerServiceUT.updateEmbeddedSubscriptions(List.of(1, 2), null);
+        processAllMessages();
+
+        SubscriptionInfoInternal subInfo = mSubscriptionManagerServiceUT
+                .getSubscriptionInfoInternal(1);
+        assertThat(subInfo.getSubscriptionId()).isEqualTo(1);
+        assertThat(subInfo.getIccId()).isEqualTo(FAKE_ICCID1);
+        assertThat(subInfo.getDisplayName()).isEqualTo("");
+        assertThat(subInfo.getDisplayNameSource()).isEqualTo(
+                SubscriptionManager.NAME_SOURCE_UNKNOWN);
+        assertThat(subInfo.getMcc()).isEqualTo("");
+        assertThat(subInfo.getMnc()).isEqualTo("");
+        assertThat(subInfo.isEmbedded()).isTrue();
+        assertThat(subInfo.isRemovableEmbedded()).isFalse();
+        assertThat(subInfo.getNativeAccessRules()).isEqualTo(new byte[]{});
+
+        subInfo = mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2);
+        assertThat(subInfo.getSubscriptionId()).isEqualTo(2);
+        assertThat(subInfo.getIccId()).isEqualTo(FAKE_ICCID2);
+        assertThat(subInfo.getDisplayName()).isEqualTo("");
+        assertThat(subInfo.getDisplayNameSource()).isEqualTo(
+                SubscriptionManager.NAME_SOURCE_UNKNOWN);
+        assertThat(subInfo.getMcc()).isEqualTo(FAKE_MCC2);
+        assertThat(subInfo.getMnc()).isEqualTo(FAKE_MNC2);
+        assertThat(subInfo.isEmbedded()).isTrue();
+        assertThat(subInfo.isRemovableEmbedded()).isFalse();
+        assertThat(subInfo.getNativeAccessRules()).isEqualTo(new byte[]{});
     }
 }

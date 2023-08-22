@@ -218,6 +218,7 @@ public class SubscriptionInfoInternalTest {
     public void testEquals() {
         SubscriptionInfoInternal another = new SubscriptionInfoInternal.Builder(mSubInfo).build();
         assertThat(another).isEqualTo(mSubInfo);
+        assertThat(another.hashCode()).isEqualTo(mSubInfo.hashCode());
     }
 
     @Test

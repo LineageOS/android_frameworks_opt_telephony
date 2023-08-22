@@ -49,6 +49,7 @@ import android.annotation.Nullable;
 import android.content.Context;
 import android.os.Build;
 import android.telephony.DisconnectCause;
+import android.telephony.SatelliteProtoEnums;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyProtoEnums;
@@ -68,10 +69,17 @@ import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationFeat
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationServiceDescStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.ImsRegistrationTermination;
+import com.android.internal.telephony.nano.PersistAtomsProto.OutgoingShortCodeSms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PersistAtoms;
 import com.android.internal.telephony.nano.PersistAtomsProto.PresenceNotifyEvent;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsAcsProvisioningStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.RcsClientProvisioningStats;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteController;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteIncomingDatagram;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteOutgoingDatagram;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteProvision;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteSession;
+import com.android.internal.telephony.nano.PersistAtomsProto.SatelliteSosMessageRecommender;
 import com.android.internal.telephony.nano.PersistAtomsProto.SipDelegateStats;
 import com.android.internal.telephony.nano.PersistAtomsProto.SipMessageResponse;
 import com.android.internal.telephony.nano.PersistAtomsProto.SipTransportFeatureTagStats;
@@ -140,7 +148,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     private CellularDataServiceSwitch mServiceSwitch1Proto;
     private CellularDataServiceSwitch mServiceSwitch2Proto;
 
-    // service states for slot 0 and 1
+    // Service states for slot 0 and 1
     private CellularServiceState mServiceState1Proto;
     private CellularServiceState mServiceState2Proto;
     private CellularServiceState mServiceState3Proto;
@@ -223,6 +231,34 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     private SipTransportSession mSipTransportSession1;
     private SipTransportSession mSipTransportSession2;
     private SipTransportSession[] mSipTransportSession;
+
+    private OutgoingShortCodeSms mOutgoingShortCodeSms1;
+    private OutgoingShortCodeSms mOutgoingShortCodeSms2;
+    private OutgoingShortCodeSms[] mOutgoingShortCodeSms;
+
+    private SatelliteController mSatelliteController1;
+    private SatelliteController mSatelliteController2;
+    private SatelliteController[] mSatelliteControllers;
+
+    private SatelliteSession mSatelliteSession1;
+    private SatelliteSession mSatelliteSession2;
+    private SatelliteSession[] mSatelliteSessions;
+
+    private SatelliteIncomingDatagram mSatelliteIncomingDatagram1;
+    private SatelliteIncomingDatagram mSatelliteIncomingDatagram2;
+    private SatelliteIncomingDatagram[] mSatelliteIncomingDatagrams;
+
+    private SatelliteOutgoingDatagram mSatelliteOutgoingDatagram1;
+    private SatelliteOutgoingDatagram mSatelliteOutgoingDatagram2;
+    private SatelliteOutgoingDatagram[] mSatelliteOutgoingDatagrams;
+
+    private SatelliteProvision mSatelliteProvision1;
+    private SatelliteProvision mSatelliteProvision2;
+    private SatelliteProvision[] mSatelliteProvisions;
+
+    private SatelliteSosMessageRecommender mSatelliteSosMessageRecommender1;
+    private SatelliteSosMessageRecommender mSatelliteSosMessageRecommender2;
+    private SatelliteSosMessageRecommender[] mSatelliteSosMessageRecommenders;
 
     private void makeTestData() {
         // MO call with SRVCC (LTE to UMTS)
@@ -859,6 +895,158 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
         mSipTransportSession =
                 new SipTransportSession[] {mSipTransportSession1, mSipTransportSession2};
+
+        mOutgoingShortCodeSms1 = new OutgoingShortCodeSms();
+        mOutgoingShortCodeSms1.category = 1;
+        mOutgoingShortCodeSms1.xmlVersion = 30;
+        mOutgoingShortCodeSms1.shortCodeSmsCount = 1;
+
+        mOutgoingShortCodeSms2 = new OutgoingShortCodeSms();
+        mOutgoingShortCodeSms2.category = 2;
+        mOutgoingShortCodeSms2.xmlVersion  = 31;
+        mOutgoingShortCodeSms2.shortCodeSmsCount = 1;
+
+        mOutgoingShortCodeSms = new OutgoingShortCodeSms[] {mOutgoingShortCodeSms1,
+                mOutgoingShortCodeSms2};
+
+        generateTestSatelliteData();
+    }
+
+    private void generateTestSatelliteData() {
+        mSatelliteController1 = new SatelliteController();
+        mSatelliteController1.countOfSatelliteServiceEnablementsSuccess = 2;
+        mSatelliteController1.countOfSatelliteServiceEnablementsFail = 0;
+        mSatelliteController1.countOfOutgoingDatagramSuccess = 8;
+        mSatelliteController1.countOfOutgoingDatagramFail = 9;
+        mSatelliteController1.countOfIncomingDatagramSuccess = 10;
+        mSatelliteController1.countOfIncomingDatagramFail = 11;
+        mSatelliteController1.countOfDatagramTypeSosSmsSuccess = 5;
+        mSatelliteController1.countOfDatagramTypeSosSmsFail = 5;
+        mSatelliteController1.countOfDatagramTypeLocationSharingSuccess = 6;
+        mSatelliteController1.countOfDatagramTypeLocationSharingFail = 6;
+        mSatelliteController1.countOfProvisionSuccess = 3;
+        mSatelliteController1.countOfProvisionFail = 4;
+        mSatelliteController1.countOfDeprovisionSuccess = 5;
+        mSatelliteController1.countOfDeprovisionFail = 6;
+        mSatelliteController1.totalServiceUptimeSec = 60 * 60 * 24 * 7;
+        mSatelliteController1.totalBatteryConsumptionPercent = 7;
+        mSatelliteController1.totalBatteryChargedTimeSec = 60 * 60 * 3 * 1;
+
+        mSatelliteController2 = new SatelliteController();
+        mSatelliteController2.countOfSatelliteServiceEnablementsSuccess = 2 + 1;
+        mSatelliteController2.countOfSatelliteServiceEnablementsFail = 0 + 1;
+        mSatelliteController2.countOfOutgoingDatagramSuccess = 8 + 1;
+        mSatelliteController2.countOfOutgoingDatagramFail = 9 + 1;
+        mSatelliteController2.countOfIncomingDatagramSuccess = 10 + 1;
+        mSatelliteController2.countOfIncomingDatagramFail = 11 + 1;
+        mSatelliteController2.countOfDatagramTypeSosSmsSuccess = 5 + 1;
+        mSatelliteController2.countOfDatagramTypeSosSmsFail = 5 + 1;
+        mSatelliteController2.countOfDatagramTypeLocationSharingSuccess = 6 + 1;
+        mSatelliteController2.countOfDatagramTypeLocationSharingFail = 6 + 1;
+        mSatelliteController2.countOfProvisionSuccess = 13;
+        mSatelliteController2.countOfProvisionFail = 14;
+        mSatelliteController2.countOfDeprovisionSuccess = 15;
+        mSatelliteController2.countOfDeprovisionFail = 16;
+        mSatelliteController2.totalServiceUptimeSec = 60 * 60 * 12;
+        mSatelliteController2.totalBatteryConsumptionPercent = 14;
+        mSatelliteController1.totalBatteryChargedTimeSec = 60 * 60 * 3;
+
+        // SatelliteController atom has one data point
+        mSatelliteControllers =
+                new SatelliteController[] {
+                        mSatelliteController1
+                };
+
+        mSatelliteSession1 = new SatelliteSession();
+        mSatelliteSession1.satelliteServiceInitializationResult =
+                SatelliteProtoEnums.SATELLITE_ERROR_NONE;
+        mSatelliteSession1.satelliteTechnology =
+                SatelliteProtoEnums.NT_RADIO_TECHNOLOGY_PROPRIETARY;
+        mSatelliteSession1.count = 1;
+
+        mSatelliteSession2 = new SatelliteSession();
+        mSatelliteSession2.satelliteServiceInitializationResult =
+                SatelliteProtoEnums.SATELLITE_MODEM_ERROR;
+        mSatelliteSession2.satelliteTechnology =
+                SatelliteProtoEnums.NT_RADIO_TECHNOLOGY_NB_IOT_NTN;
+        mSatelliteSession2.count = 1;
+
+        mSatelliteSessions =
+                new SatelliteSession[] {
+                        mSatelliteSession1, mSatelliteSession2
+                };
+
+        mSatelliteIncomingDatagram1 = new SatelliteIncomingDatagram();
+        mSatelliteIncomingDatagram1.resultCode = SatelliteProtoEnums.SATELLITE_ERROR_NONE;
+        mSatelliteIncomingDatagram1.datagramSizeBytes = 1 * 1024;
+        mSatelliteIncomingDatagram1.datagramTransferTimeMillis = 3 * 1000;
+
+        mSatelliteIncomingDatagram2 = new SatelliteIncomingDatagram();
+        mSatelliteIncomingDatagram2.resultCode = SatelliteProtoEnums.SATELLITE_MODEM_ERROR;
+        mSatelliteIncomingDatagram2.datagramSizeBytes = 512;
+        mSatelliteIncomingDatagram2.datagramTransferTimeMillis = 1 * 1000;
+
+        mSatelliteIncomingDatagrams =
+                new SatelliteIncomingDatagram[] {
+                        mSatelliteIncomingDatagram1, mSatelliteIncomingDatagram2
+                };
+
+        mSatelliteOutgoingDatagram1 = new SatelliteOutgoingDatagram();
+        mSatelliteOutgoingDatagram1.datagramType =
+                SatelliteProtoEnums.DATAGRAM_TYPE_LOCATION_SHARING;
+        mSatelliteOutgoingDatagram1.resultCode = SatelliteProtoEnums.SATELLITE_ERROR_NONE;
+        mSatelliteOutgoingDatagram1.datagramSizeBytes = 1 * 1024;
+        mSatelliteOutgoingDatagram1.datagramTransferTimeMillis = 3 * 1000;
+
+        mSatelliteOutgoingDatagram2 = new SatelliteOutgoingDatagram();
+        mSatelliteOutgoingDatagram2.datagramType =
+                SatelliteProtoEnums.DATAGRAM_TYPE_SOS_MESSAGE;
+        mSatelliteOutgoingDatagram2.resultCode = SatelliteProtoEnums.SATELLITE_MODEM_ERROR;
+        mSatelliteOutgoingDatagram2.datagramSizeBytes = 512;
+        mSatelliteOutgoingDatagram2.datagramTransferTimeMillis = 1 * 1000;
+
+        mSatelliteOutgoingDatagrams =
+                new SatelliteOutgoingDatagram[] {
+                        mSatelliteOutgoingDatagram1, mSatelliteOutgoingDatagram2
+                };
+
+        mSatelliteProvision1 = new SatelliteProvision();
+        mSatelliteProvision1.resultCode = SatelliteProtoEnums.SATELLITE_ERROR_NONE;
+        mSatelliteProvision1.provisioningTimeSec = 3 * 60;
+        mSatelliteProvision1.isProvisionRequest = true;
+        mSatelliteProvision1.isCanceled = false;
+
+        mSatelliteProvision2 = new SatelliteProvision();
+        mSatelliteProvision2.resultCode = SatelliteProtoEnums.SATELLITE_SERVICE_NOT_PROVISIONED;
+        mSatelliteProvision2.provisioningTimeSec = 0;
+        mSatelliteProvision2.isProvisionRequest = false;
+        mSatelliteProvision2.isCanceled = true;
+
+        mSatelliteProvisions =
+                new SatelliteProvision[] {
+                        mSatelliteProvision1, mSatelliteProvision2
+                };
+
+        mSatelliteSosMessageRecommender1 = new SatelliteSosMessageRecommender();
+        mSatelliteSosMessageRecommender1.isDisplaySosMessageSent = true;
+        mSatelliteSosMessageRecommender1.countOfTimerStarted = 5;
+        mSatelliteSosMessageRecommender1.isImsRegistered = false;
+        mSatelliteSosMessageRecommender1.cellularServiceState =
+                TelephonyProtoEnums.SERVICE_STATE_OUT_OF_SERVICE;
+        mSatelliteSosMessageRecommender1.count = 1;
+
+        mSatelliteSosMessageRecommender2 = new SatelliteSosMessageRecommender();
+        mSatelliteSosMessageRecommender2.isDisplaySosMessageSent = false;
+        mSatelliteSosMessageRecommender2.countOfTimerStarted = 3;
+        mSatelliteSosMessageRecommender2.isImsRegistered = true;
+        mSatelliteSosMessageRecommender2.cellularServiceState =
+                TelephonyProtoEnums.SERVICE_STATE_POWER_OFF;
+        mSatelliteSosMessageRecommender2.count = 1;
+
+        mSatelliteSosMessageRecommenders =
+                new SatelliteSosMessageRecommender[] {
+                        mSatelliteSosMessageRecommender1, mSatelliteSosMessageRecommender2
+                };
     }
 
     private static class TestablePersistAtomsStorage extends PersistAtomsStorage {
@@ -997,6 +1185,27 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSipTransportSession1 = null;
         mSipTransportSession2 = null;
         mSipTransportSession = null;
+        mOutgoingShortCodeSms1 = null;
+        mOutgoingShortCodeSms2 = null;
+        mOutgoingShortCodeSms = null;
+        mSatelliteController1 = null;
+        mSatelliteController2 = null;
+        mSatelliteControllers = null;
+        mSatelliteSession1 = null;
+        mSatelliteSession2 = null;
+        mSatelliteSessions = null;
+        mSatelliteIncomingDatagram1 = null;
+        mSatelliteIncomingDatagram2 = null;
+        mSatelliteIncomingDatagrams = null;
+        mSatelliteOutgoingDatagram1 = null;
+        mSatelliteOutgoingDatagram2 = null;
+        mSatelliteOutgoingDatagrams = null;
+        mSatelliteProvision1 = null;
+        mSatelliteProvision2 = null;
+        mSatelliteProvisions = null;
+        mSatelliteSosMessageRecommender1 = null;
+        mSatelliteSosMessageRecommender2 = null;
+        mSatelliteSosMessageRecommenders = null;
         super.tearDown();
     }
 
@@ -1226,7 +1435,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
         VoiceCallRatUsage[] voiceCallRatUsage = mPersistAtomsStorage.getVoiceCallRatUsages(100L);
 
-        // should be denied
+        // Should be denied
         assertNull(voiceCallRatUsage);
     }
 
@@ -1244,7 +1453,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                 mPersistAtomsStorage.getAtomsProto().voiceCallSessionPullTimestampMillis;
         VoiceCallSession[] voiceCallSession = mPersistAtomsStorage.getVoiceCallSessions(50L);
 
-        // first set of results should equal to file contents, second should be empty, corresponding
+        // First set of results should equal to file contents, second should be empty, corresponding
         // pull timestamp should be updated and saved, other fields should be unaffected
         assertProtoArrayEquals(mVoiceCallRatUsages, voiceCallRatUsage1);
         assertProtoArrayIsEmpty(voiceCallRatUsage2);
@@ -1275,7 +1484,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
         VoiceCallSession[] voiceCallSession = mPersistAtomsStorage.getVoiceCallSessions(100L);
 
-        // should be denied
+        // Should be denied
         assertNull(voiceCallSession);
     }
 
@@ -1293,7 +1502,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                 mPersistAtomsStorage.getAtomsProto().voiceCallRatUsagePullTimestampMillis;
         VoiceCallRatUsage[] voiceCallRatUsage = mPersistAtomsStorage.getVoiceCallRatUsages(50L);
 
-        // first set of results should equal to file contents, second should be empty, corresponding
+        // First set of results should equal to file contents, second should be empty, corresponding
         // pull timestamp should be updated and saved, other fields should be unaffected
         assertProtoArrayEquals(mVoiceCallSessions, voiceCallSession1);
         assertProtoArrayIsEmpty(voiceCallSession2);
@@ -1325,7 +1534,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                 mServiceState1Proto, mServiceSwitch1Proto);
         mPersistAtomsStorage.incTimeMillis(100L);
 
-        // service state and service switch should be added successfully
+        // Service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
         CellularServiceState[] serviceStates = mPersistAtomsStorage.getCellularServiceStates(0L);
         CellularDataServiceSwitch[] serviceSwitches =
@@ -1348,7 +1557,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                 mServiceState2Proto, mServiceSwitch2Proto);
         mPersistAtomsStorage.incTimeMillis(100L);
 
-        // service state and service switch should be added successfully
+        // Service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
         CellularServiceState[] serviceStates = mPersistAtomsStorage.getCellularServiceStates(0L);
         CellularDataServiceSwitch[] serviceSwitches =
@@ -1442,7 +1651,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         CellularDataServiceSwitch[] serviceSwitches =
                 mPersistAtomsStorage.getCellularDataServiceSwitches(100L);
 
-        // should be denied
+        // Should be denied
         assertNull(serviceSwitches);
     }
 
@@ -1459,7 +1668,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         CellularDataServiceSwitch[] serviceSwitches2 =
                 mPersistAtomsStorage.getCellularDataServiceSwitches(50L);
 
-        // first set of results should equal to file contents, second should be empty, corresponding
+        // First set of results should equal to file contents, second should be empty, corresponding
         // pull timestamp should be updated and saved
         assertProtoArrayEqualsIgnoringOrder(
                 new CellularDataServiceSwitch[] {mServiceSwitch1Proto, mServiceSwitch2Proto},
@@ -1487,7 +1696,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
         CellularServiceState[] serviceStates = mPersistAtomsStorage.getCellularServiceStates(100L);
 
-        // should be denied
+        // Should be denied
         assertNull(serviceStates);
     }
 
@@ -1502,7 +1711,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(100L);
         CellularServiceState[] serviceStates2 = mPersistAtomsStorage.getCellularServiceStates(50L);
 
-        // first set of results should equal to file contents, second should be empty, corresponding
+        // First set of results should equal to file contents, second should be empty, corresponding
         // pull timestamp should be updated and saved
         assertProtoArrayEqualsIgnoringOrder(
                 new CellularServiceState[] {
@@ -1536,7 +1745,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.addImsRegistrationStats(copyOf(mImsRegistrationStatsLte0));
         mPersistAtomsStorage.incTimeMillis(DAY_IN_MILLIS);
 
-        // service state and service switch should be added successfully
+        // Service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
         ImsRegistrationStats[] regStats = mPersistAtomsStorage.getImsRegistrationStats(0L);
         assertProtoArrayEquals(new ImsRegistrationStats[] {mImsRegistrationStatsLte0}, regStats);
@@ -1552,7 +1761,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.addImsRegistrationStats(copyOf(mImsRegistrationStatsWifi0));
         mPersistAtomsStorage.incTimeMillis(DAY_IN_MILLIS);
 
-        // service state and service switch should be added successfully
+        // Service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
         ImsRegistrationStats[] regStats = mPersistAtomsStorage.getImsRegistrationStats(0L);
         assertProtoArrayEqualsIgnoringOrder(
@@ -1624,7 +1833,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.addImsRegistrationTermination(mImsRegistrationTerminationLte);
         mPersistAtomsStorage.incTimeMillis(100L);
 
-        // service state and service switch should be added successfully
+        // Service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
         ImsRegistrationTermination[] terminations =
                 mPersistAtomsStorage.getImsRegistrationTerminations(0L);
@@ -1642,7 +1851,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.addImsRegistrationTermination(mImsRegistrationTerminationWifi);
         mPersistAtomsStorage.incTimeMillis(100L);
 
-        // service state and service switch should be added successfully
+        // Service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
         ImsRegistrationTermination[] terminations =
                 mPersistAtomsStorage.getImsRegistrationTerminations(0L);
@@ -1707,7 +1916,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
         ImsRegistrationStats[] stats = mPersistAtomsStorage.getImsRegistrationStats(100L);
 
-        // should be denied
+        // Should be denied
         assertNull(stats);
     }
 
@@ -1722,7 +1931,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(100L);
         ImsRegistrationStats[] stats2 = mPersistAtomsStorage.getImsRegistrationStats(50L);
 
-        // first set of results should equal to file contents, second should be empty, corresponding
+        // First set of results should equal to file contents, second should be empty, corresponding
         // pull timestamp should be updated and saved
         assertProtoArrayEqualsIgnoringOrder(
                 new ImsRegistrationStats[] {
@@ -1753,7 +1962,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         ImsRegistrationTermination[] terminations =
                 mPersistAtomsStorage.getImsRegistrationTerminations(100L);
 
-        // should be denied
+        // Should be denied
         assertNull(terminations);
     }
 
@@ -1770,7 +1979,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         ImsRegistrationTermination[] terminations2 =
                 mPersistAtomsStorage.getImsRegistrationTerminations(50L);
 
-        // first set of results should equal to file contents, second should be empty, corresponding
+        // First set of results should equal to file contents, second should be empty, corresponding
         // pull timestamp should be updated and saved
         assertProtoArrayEqualsIgnoringOrder(
                 new ImsRegistrationTermination[] {
@@ -1935,7 +2144,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         ImsRegistrationFeatureTagStats[] result =
                 mPersistAtomsStorage.getImsRegistrationFeatureTagStats(100L);
 
-        // should be denied
+        // Should be denied
         assertNull(result);
     }
 
@@ -1952,7 +2161,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         ImsRegistrationFeatureTagStats[] statses2 =
                 mPersistAtomsStorage.getImsRegistrationFeatureTagStats(50L);
 
-        // first results of get should have two atoms, second should be empty
+        // First results of get should have two atoms, second should be empty
         // pull timestamp should be updated and saved
         assertProtoArrayEqualsIgnoringOrder(mImsRegistrationFeatureTagStatses, statses1);
         assertProtoArrayEquals(new ImsRegistrationFeatureTagStats[0], statses2);
@@ -2002,13 +2211,13 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
 
-        // store 11 same atoms, but only 1 atoms stored with count 11
+        // Store 11 same atoms, but only 1 atoms stored with count 11
         for (int i = 0; i < 11; i++) {
             mPersistAtomsStorage
                     .addRcsClientProvisioningStats(mRcsClientProvisioningStats1Proto);
             mPersistAtomsStorage.incTimeMillis(100L);
         }
-        // store 1 different atom and count 1
+        // Store 1 different atom and count 1
         mPersistAtomsStorage
                 .addRcsClientProvisioningStats(mRcsClientProvisioningStats2Proto);
 
@@ -2017,7 +2226,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         RcsClientProvisioningStats[] result =
                 mPersistAtomsStorage.getRcsClientProvisioningStats(0L);
 
-        // first atom has count 11, the other has 1
+        // First atom has count 11, the other has 1
         assertHasStatsAndCount(result, mRcsClientProvisioningStats1Proto, 11);
         assertHasStatsAndCount(result, mRcsClientProvisioningStats2Proto, 1);
     }
@@ -2032,7 +2241,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         RcsClientProvisioningStats[] result =
                 mPersistAtomsStorage.getRcsClientProvisioningStats(100L);
 
-        // should be denied
+        // Should be denied
         assertNull(result);
     }
 
@@ -2049,7 +2258,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         RcsClientProvisioningStats[] statses2 =
                 mPersistAtomsStorage.getRcsClientProvisioningStats(50L);
 
-        // first results of get should have two atoms, second should be empty
+        // First results of get should have two atoms, second should be empty
         // pull timestamp should be updated and saved
         assertProtoArrayEqualsIgnoringOrder(mRcsClientProvisioningStatses, statses1);
         assertProtoArrayEquals(new RcsClientProvisioningStats[0], statses2);
@@ -2101,8 +2310,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
 
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
 
-        // store 5 same atoms (1Proto), but only 1 atoms stored with count 5, total time 2000L * 5
-        // store 5 same atoms (2Proto), but only 1 atoms stored with count 5, total time 2000L * 5
+        // Store 5 same atoms (1Proto), but only 1 atoms stored with count 5, total time 2000L * 5
+        // Store 5 same atoms (2Proto), but only 1 atoms stored with count 5, total time 2000L * 5
 
         for (int i = 0; i < maxCount; i++) {
             mPersistAtomsStorage
@@ -2140,7 +2349,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         RcsAcsProvisioningStats[] result =
                 mPersistAtomsStorage.getRcsAcsProvisioningStats(100L);
 
-        // should be denied
+        // Should be denied
         assertNull(result);
     }
 
@@ -2157,7 +2366,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         RcsAcsProvisioningStats[] statses2 =
                 mPersistAtomsStorage.getRcsAcsProvisioningStats(DAY_IN_MILLIS - HOUR_IN_MILLIS);
 
-        // first results of get should have two atoms, second should be empty
+        // First results of get should have two atoms, second should be empty
         // pull timestamp should be updated and saved
         assertProtoArrayEqualsIgnoringOrder(mRcsAcsProvisioningStatses, statses1);
         assertProtoArrayEquals(new RcsAcsProvisioningStats[0], statses2);
@@ -2183,7 +2392,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.addImsRegistrationServiceDescStats(mImsRegistrationServiceIm);
         mPersistAtomsStorage.incTimeMillis(100L);
 
-        // service state and service switch should be added successfully
+        // Service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
         ImsRegistrationServiceDescStats[] outputs =
             mPersistAtomsStorage.getImsRegistrationServiceDescStats(0L);
@@ -2201,7 +2410,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.addImsRegistrationServiceDescStats(mImsRegistrationServiceFt);
         mPersistAtomsStorage.incTimeMillis(100L);
 
-        // service state and service switch should be added successfully
+        // Service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
         ImsRegistrationServiceDescStats[] output =
             mPersistAtomsStorage.getImsRegistrationServiceDescStats(0L);
@@ -2248,7 +2457,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         ImsRegistrationServiceDescStats[] output =
             mPersistAtomsStorage.getImsRegistrationServiceDescStats(100L);
 
-        // should be denied
+        // Should be denied
         assertNull(output);
     }
 
@@ -2265,7 +2474,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         ImsRegistrationServiceDescStats[] output2 =
             mPersistAtomsStorage.getImsRegistrationServiceDescStats(50L);
 
-        // first set of results should equal to file contents, second should be empty, corresponding
+        // First set of results should equal to file contents, second should be empty, corresponding
         // pull timestamp should be updated and saved
         assertProtoArrayEqualsIgnoringOrder(
                 new ImsRegistrationServiceDescStats[] {
@@ -2436,7 +2645,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.addImsDedicatedBearerListenerEvent(mImsDedicatedBearerListenerEvent1);
         mPersistAtomsStorage.incTimeMillis(100L);
 
-        // service state and service switch should be added successfully
+        // Service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
         ImsDedicatedBearerListenerEvent[] outputs =
                 mPersistAtomsStorage.getImsDedicatedBearerListenerEvent(0L);
@@ -2454,7 +2663,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.addImsDedicatedBearerListenerEvent(mImsDedicatedBearerListenerEvent2);
         mPersistAtomsStorage.incTimeMillis(100L);
 
-        // service state and service switch should be added successfully
+        // Service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
         ImsDedicatedBearerListenerEvent[] output =
                 mPersistAtomsStorage.getImsDedicatedBearerListenerEvent(0L);
@@ -2495,7 +2704,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.addImsDedicatedBearerEvent(mImsDedicatedBearerEvent1);
         mPersistAtomsStorage.incTimeMillis(100L);
 
-        // service state and service switch should be added successfully
+        // Service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
         ImsDedicatedBearerEvent[] outputs =
             mPersistAtomsStorage.getImsDedicatedBearerEvent(0L);
@@ -2513,7 +2722,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.addImsDedicatedBearerEvent(mImsDedicatedBearerEvent2);
         mPersistAtomsStorage.incTimeMillis(100L);
 
-        // service state and service switch should be added successfully
+        // Service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
         ImsDedicatedBearerEvent[] output =
             mPersistAtomsStorage.getImsDedicatedBearerEvent(0L);
@@ -2588,7 +2797,6 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                 mImsDedicatedBearerEvent2, newStats}, stats);
     }
 
-
     @Test
     @SmallTest
     public void addUceEventStats_emptyProto() throws Exception {
@@ -2597,7 +2805,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.addUceEventStats(mUceEventStats1);
         mPersistAtomsStorage.incTimeMillis(100L);
 
-        // service state and service switch should be added successfully
+        // Service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
         UceEventStats[] outputs = mPersistAtomsStorage.getUceEventStats(0L);
         assertProtoArrayEquals(
@@ -2614,7 +2822,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.addUceEventStats(mUceEventStats2);
         mPersistAtomsStorage.incTimeMillis(100L);
 
-        // service state and service switch should be added successfully
+        // Service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
         UceEventStats[] output = mPersistAtomsStorage.getUceEventStats(0L);
         assertProtoArrayEqualsIgnoringOrder(
@@ -2688,7 +2896,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.addPresenceNotifyEvent(mPresenceNotifyEvent2);
         mPersistAtomsStorage.incTimeMillis(100L);
 
-        // service state and service switch should be added successfully
+        // Service state and service switch should be added successfully
         verifyCurrentStateSavedToFileOnce();
         PresenceNotifyEvent[] output = mPersistAtomsStorage.getPresenceNotifyEvent(0L);
         assertProtoArrayEqualsIgnoringOrder(
@@ -2704,7 +2912,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
         PresenceNotifyEvent[] output = mPersistAtomsStorage.getPresenceNotifyEvent(100L);
 
-        // should be denied
+        // Should be denied
         assertNull(output);
     }
 
@@ -2719,7 +2927,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(100L);
         PresenceNotifyEvent[] output2 = mPersistAtomsStorage.getPresenceNotifyEvent(50L);
 
-        // first set of results should equal to file contents, second should be empty, corresponding
+        // First set of results should equal to file contents, second should be empty, corresponding
         // pull timestamp should be updated and saved
         assertProtoArrayEqualsIgnoringOrder(
                 new PresenceNotifyEvent[] {mPresenceNotifyEvent1, mPresenceNotifyEvent2}, output1);
@@ -2846,7 +3054,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         SipTransportFeatureTagStats[] outputs =
                 mPersistAtomsStorage.getSipTransportFeatureTagStats(100L);
 
-        // should be denied
+        // Should be denied
         assertNull(outputs);
     }
 
@@ -2865,7 +3073,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         SipTransportFeatureTagStats[] output2 =
                 mPersistAtomsStorage.getSipTransportFeatureTagStats(50L);
 
-        // first set of results should equal to file contents, second should be empty, corresponding
+        // First set of results should equal to file contents, second should be empty, corresponding
         // pull timestamp should be updated and saved
         assertProtoArrayEqualsIgnoringOrder(
                 new SipTransportFeatureTagStats[] {
@@ -2988,7 +3196,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
 
         SipDelegateStats[] outputs = mPersistAtomsStorage.getSipDelegateStats(100L);
-        // should be denied
+        // Should be denied
         assertNull(outputs);
     }
 
@@ -3005,7 +3213,7 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mPersistAtomsStorage.incTimeMillis(100L);
         SipDelegateStats[] output2 = mPersistAtomsStorage.getSipDelegateStats(50L);
 
-        // first set of results should equal to file contents, second should be empty, corresponding
+        // First set of results should equal to file contents, second should be empty, corresponding
         // pull timestamp should be updated and saved
         assertProtoArrayEqualsIgnoringOrder(
                 new SipDelegateStats[] {
@@ -3131,18 +3339,18 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         createEmptyTestFile();
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
 
-        // store 11 same atoms, but only 1 atoms stored with count 11
+        // Store 11 same atoms, but only 1 atoms stored with count 11
         for (int i = 0; i < 11; i++) {
             mPersistAtomsStorage.addSipMessageResponse(mSipMessageResponse1);
             mPersistAtomsStorage.incTimeMillis(100L);
         }
-        // store 1 different atom and count 1
+        // Store 1 different atom and count 1
         mPersistAtomsStorage.addSipMessageResponse(mSipMessageResponse2);
 
         verifyCurrentStateSavedToFileOnce();
         SipMessageResponse[] result = mPersistAtomsStorage.getSipMessageResponse(0L);
 
-        // first atom has count 11, the other has 1
+        // First atom has count 11, the other has 1
         assertHasStats(result, mSipMessageResponse1, 11);
         assertHasStats(result, mSipMessageResponse2, 1);
     }
@@ -3200,18 +3408,18 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         createEmptyTestFile();
         mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
 
-        // store 11 same atoms, but only 1 atoms stored with count 11
+        // Store 11 same atoms, but only 1 atoms stored with count 11
         for (int i = 0; i < 11; i++) {
             mPersistAtomsStorage.addCompleteSipTransportSession(mSipTransportSession1);
             mPersistAtomsStorage.incTimeMillis(100L);
         }
-        // store 1 different atom and count 1
+        // Store 1 different atom and count 1
         mPersistAtomsStorage.addCompleteSipTransportSession(mSipTransportSession2);
 
         verifyCurrentStateSavedToFileOnce();
         SipTransportSession[] result = mPersistAtomsStorage.getSipTransportSession(0L);
 
-        // first atom has count 11, the other has 1
+        // First atom has count 11, the other has 1
         assertHasStats(result, mSipTransportSession1, 11);
         assertHasStats(result, mSipTransportSession2, 1);
     }
@@ -3399,6 +3607,599 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     }
 
     @Test
+    public void addOutgoingShortCodeSms_emptyProto() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addOutgoingShortCodeSms(mOutgoingShortCodeSms1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // OutgoingShortCodeSms should be added successfully, changes should be saved.
+        verifyCurrentStateSavedToFileOnce();
+        OutgoingShortCodeSms[] expectedList = new OutgoingShortCodeSms[] {mOutgoingShortCodeSms1};
+        assertProtoArrayEquals(expectedList,
+                mPersistAtomsStorage.getOutgoingShortCodeSms(0L));
+    }
+
+    @Test
+    public void addOutgoingShortCodeSms_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addOutgoingShortCodeSms(mOutgoingShortCodeSms1);
+        mPersistAtomsStorage.addOutgoingShortCodeSms(mOutgoingShortCodeSms2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // OutgoingShortCodeSms should be added successfully.
+        verifyCurrentStateSavedToFileOnce();
+        OutgoingShortCodeSms[] expectedList = new OutgoingShortCodeSms[] {mOutgoingShortCodeSms1,
+                mOutgoingShortCodeSms2};
+        assertProtoArrayEqualsIgnoringOrder(expectedList,
+                mPersistAtomsStorage.getOutgoingShortCodeSms(0L));
+    }
+
+    @Test
+    public void addOutgoingShortCodeSms_updateExistingEntries() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        // Add copy of mOutgoingShortCodeSms1.
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addOutgoingShortCodeSms(copyOf(mOutgoingShortCodeSms1));
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // mOutgoingShortCodeSms1's short code sms count should be increased by 1.
+        verifyCurrentStateSavedToFileOnce();
+        OutgoingShortCodeSms newOutgoingShortCodeSms1 = copyOf(mOutgoingShortCodeSms1);
+        newOutgoingShortCodeSms1.shortCodeSmsCount = 2;
+        OutgoingShortCodeSms[] expectedList = new OutgoingShortCodeSms[] {newOutgoingShortCodeSms1,
+                mOutgoingShortCodeSms2};
+        assertProtoArrayEqualsIgnoringOrder(expectedList,
+                mPersistAtomsStorage.getOutgoingShortCodeSms(0L));
+    }
+
+    @Test
+    public void addOutgoingShortCodeSms_tooManyEntries() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        // Store mOutgoingShortCodeSms1 11 times.
+        for (int i = 0; i < 11; i++) {
+            mPersistAtomsStorage.addOutgoingShortCodeSms(mOutgoingShortCodeSms1);
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+        // Store mOutgoingShortCodeSms2 1 time.
+        mPersistAtomsStorage.addOutgoingShortCodeSms(mOutgoingShortCodeSms2);
+
+        verifyCurrentStateSavedToFileOnce();
+        OutgoingShortCodeSms[] result = mPersistAtomsStorage
+                .getOutgoingShortCodeSms(0L);
+        assertHasStatsAndCount(result, mOutgoingShortCodeSms1, 11);
+        assertHasStatsAndCount(result, mOutgoingShortCodeSms2, 1);
+    }
+
+    @Test
+    public void getOutgoingShortCodeSms_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        // Pull interval less than minimum.
+        mPersistAtomsStorage.incTimeMillis(50L);
+        OutgoingShortCodeSms[] outgoingShortCodeSmsList = mPersistAtomsStorage
+                .getOutgoingShortCodeSms(100L);
+        // Should be denied.
+        assertNull(outgoingShortCodeSmsList);
+    }
+
+    @Test
+    public void getOutgoingShortCodeSms_withSavedAtoms() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        OutgoingShortCodeSms[] outgoingShortCodeSmsList1 = mPersistAtomsStorage
+                .getOutgoingShortCodeSms(50L);
+        mPersistAtomsStorage.incTimeMillis(100L);
+        OutgoingShortCodeSms[] outgoingShortCodeSmsList2 = mPersistAtomsStorage
+                .getOutgoingShortCodeSms(50L);
+
+        // First set of results should be equal to file contents.
+        OutgoingShortCodeSms[] expectedOutgoingShortCodeSmsList =
+                new OutgoingShortCodeSms[] {mOutgoingShortCodeSms1, mOutgoingShortCodeSms2};
+        assertProtoArrayEqualsIgnoringOrder(expectedOutgoingShortCodeSmsList,
+                outgoingShortCodeSmsList1);
+        // Second set of results should be empty.
+        assertProtoArrayEquals(new OutgoingShortCodeSms[0], outgoingShortCodeSmsList2);
+        // Corresponding pull timestamp should be updated and saved.
+        assertEquals(START_TIME_MILLIS + 200L, mPersistAtomsStorage
+                .getAtomsProto().outgoingShortCodeSmsPullTimestampMillis);
+        InOrder inOrder = inOrder(mTestFileOutputStream);
+        assertEquals(START_TIME_MILLIS + 100L,
+                getAtomsWritten(inOrder).outgoingShortCodeSmsPullTimestampMillis);
+        assertEquals(START_TIME_MILLIS + 200L,
+                getAtomsWritten(inOrder).outgoingShortCodeSmsPullTimestampMillis);
+        inOrder.verifyNoMoreInteractions();
+    }
+
+    @Test
+    public void addSatelliteControllerStats_emptyProto() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSatelliteControllerStats(mSatelliteController1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // Service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        SatelliteController[] output =
+                mPersistAtomsStorage.getSatelliteControllerStats(0L);
+        assertProtoArrayEquals(
+                new SatelliteController[] {mSatelliteController1}, output);
+    }
+
+    @Test
+    public void addSatelliteControllerStats_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSatelliteControllerStats(mSatelliteController1);
+        mPersistAtomsStorage.addSatelliteControllerStats(mSatelliteController2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        SatelliteController expected = new SatelliteController();
+        expected.countOfSatelliteServiceEnablementsSuccess =
+                mSatelliteController1.countOfSatelliteServiceEnablementsSuccess
+                        + mSatelliteController2.countOfSatelliteServiceEnablementsSuccess;
+        expected.countOfSatelliteServiceEnablementsFail =
+                mSatelliteController1.countOfSatelliteServiceEnablementsFail
+                        + mSatelliteController2.countOfSatelliteServiceEnablementsFail;
+        expected.countOfOutgoingDatagramSuccess =
+                mSatelliteController1.countOfOutgoingDatagramSuccess
+                        + mSatelliteController2.countOfOutgoingDatagramSuccess;
+        expected.countOfOutgoingDatagramFail =
+                mSatelliteController1.countOfOutgoingDatagramFail
+                        + mSatelliteController2.countOfOutgoingDatagramFail;
+        expected.countOfIncomingDatagramSuccess =
+                mSatelliteController1.countOfIncomingDatagramSuccess
+                        + mSatelliteController2.countOfIncomingDatagramSuccess;
+        expected.countOfIncomingDatagramFail =
+                mSatelliteController1.countOfIncomingDatagramFail
+                        + mSatelliteController2.countOfIncomingDatagramFail;
+        expected.countOfDatagramTypeSosSmsSuccess =
+                mSatelliteController1.countOfDatagramTypeSosSmsSuccess
+                        + mSatelliteController2.countOfDatagramTypeSosSmsSuccess;
+        expected.countOfDatagramTypeSosSmsFail =
+                mSatelliteController1.countOfDatagramTypeSosSmsFail
+                        + mSatelliteController2.countOfDatagramTypeSosSmsFail;
+        expected.countOfDatagramTypeLocationSharingSuccess =
+                mSatelliteController1.countOfDatagramTypeLocationSharingSuccess
+                        + mSatelliteController2.countOfDatagramTypeLocationSharingSuccess;
+        expected.countOfDatagramTypeLocationSharingFail =
+                mSatelliteController1.countOfDatagramTypeLocationSharingFail
+                        + mSatelliteController2.countOfDatagramTypeLocationSharingFail;
+        expected.countOfProvisionSuccess =
+                mSatelliteController1.countOfProvisionSuccess
+                        + mSatelliteController2.countOfProvisionSuccess;
+        expected.countOfProvisionFail =
+                mSatelliteController1.countOfProvisionFail
+                        + mSatelliteController2.countOfProvisionFail;
+        expected.countOfDeprovisionSuccess =
+                mSatelliteController1.countOfDeprovisionSuccess
+                        + mSatelliteController2.countOfDeprovisionSuccess;
+        expected.countOfDeprovisionFail =
+                mSatelliteController1.countOfDeprovisionFail
+                        + mSatelliteController2.countOfDeprovisionFail;
+        expected.totalServiceUptimeSec =
+                mSatelliteController1.totalServiceUptimeSec
+                        + mSatelliteController2.totalServiceUptimeSec;
+        expected.totalBatteryConsumptionPercent =
+                mSatelliteController1.totalBatteryConsumptionPercent
+                        + mSatelliteController2.totalBatteryConsumptionPercent;
+        expected.totalBatteryChargedTimeSec =
+                mSatelliteController1.totalBatteryChargedTimeSec
+                        + mSatelliteController2.totalBatteryChargedTimeSec;
+
+        // Service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        SatelliteController[] output =
+                mPersistAtomsStorage.getSatelliteControllerStats(0L);
+        assertHasStats(output, expected);
+    }
+
+    @Test
+    public void getSatelliteControllerStats_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
+        SatelliteController[] output =
+                mPersistAtomsStorage.getSatelliteControllerStats(100L);
+
+        // Should be denied
+        assertNull(output);
+    }
+
+    @Test
+    public void addSatelliteSessionStats_emptyProto() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSatelliteSessionStats(
+                mSatelliteSession1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // Service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        SatelliteSession[] output =
+                mPersistAtomsStorage.getSatelliteSessionStats(0L);
+        assertProtoArrayEquals(
+                new SatelliteSession[] {mSatelliteSession1}, output);
+    }
+
+    @Test
+    public void addSatelliteSessionStats_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSatelliteSessionStats(
+                mSatelliteSession1);
+        mPersistAtomsStorage.addSatelliteSessionStats(
+                mSatelliteSession2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // Service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        SatelliteSession[] output =
+                mPersistAtomsStorage.getSatelliteSessionStats(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new SatelliteSession[] {
+                        mSatelliteSession1, mSatelliteSession2},
+                output);
+    }
+
+    @Test
+    public void addSatelliteSessionStats_tooManyEntries() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        // Store atoms up to maximum number + 1
+        int maxCount = 15 + 1;
+        for (int i = 0; i < maxCount; i++) {
+            mPersistAtomsStorage
+                    .addSatelliteSessionStats(
+                            copyOf(mSatelliteSession1));
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+
+        // Store 1 different atom
+        mPersistAtomsStorage
+                .addSatelliteSessionStats(mSatelliteSession2);
+
+        verifyCurrentStateSavedToFileOnce();
+
+        SatelliteSession[] result =
+                mPersistAtomsStorage.getSatelliteSessionStats(0L);
+
+        // First atom has count 16, the other has 1
+        assertHasStatsAndCount(result, mSatelliteSession1, 16);
+        assertHasStatsAndCount(result, mSatelliteSession2, 1);
+
+    }
+
+    @Test
+    public void getSatelliteSessionStats_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
+        SatelliteSession[] output =
+                mPersistAtomsStorage.getSatelliteSessionStats(100L);
+
+        // Should be denied
+        assertNull(output);
+    }
+
+
+
+    @Test
+    public void addSatelliteIncomingDatagramStats_emptyProto() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSatelliteIncomingDatagramStats(mSatelliteIncomingDatagram1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // Service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        SatelliteIncomingDatagram[] output =
+                mPersistAtomsStorage.getSatelliteIncomingDatagramStats(0L);
+        assertProtoArrayEquals(
+                new SatelliteIncomingDatagram[] {mSatelliteIncomingDatagram1}, output);
+    }
+
+    @Test
+    public void addSatelliteIncomingDatagramStats_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSatelliteIncomingDatagramStats(mSatelliteIncomingDatagram1);
+        mPersistAtomsStorage.addSatelliteIncomingDatagramStats(mSatelliteIncomingDatagram2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // Service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        SatelliteIncomingDatagram[] output =
+                mPersistAtomsStorage.getSatelliteIncomingDatagramStats(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new SatelliteIncomingDatagram[] {
+                        mSatelliteIncomingDatagram1, mSatelliteIncomingDatagram2}, output);
+    }
+
+    @Test
+    public void addSatelliteIncomingDatagramStats_tooManyEntries() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        // Store atoms up to maximum number + 1
+        int maxCount = 15 + 1;
+        for (int i = 0; i < maxCount; i++) {
+            mPersistAtomsStorage
+                    .addSatelliteIncomingDatagramStats(copyOf(mSatelliteIncomingDatagram1));
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+
+        // Store 1 different atom
+        mPersistAtomsStorage
+                .addSatelliteIncomingDatagramStats(mSatelliteIncomingDatagram2);
+
+        verifyCurrentStateSavedToFileOnce();
+
+        SatelliteIncomingDatagram[] result =
+                mPersistAtomsStorage.getSatelliteIncomingDatagramStats(0L);
+
+        // First atom has count 14, the other has 1
+        assertHasStatsAndCount(result, mSatelliteIncomingDatagram1, 14);
+        assertHasStatsAndCount(result, mSatelliteIncomingDatagram2, 1);
+
+    }
+
+    @Test
+    public void getSatelliteIncomingDatagramStats_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
+        SatelliteIncomingDatagram[] output =
+                mPersistAtomsStorage.getSatelliteIncomingDatagramStats(100L);
+
+        // Should be denied
+        assertNull(output);
+    }
+
+    @Test
+    public void addSatelliteOutgoingDatagramStats_emptyProto() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSatelliteOutgoingDatagramStats(mSatelliteOutgoingDatagram1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // Service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        SatelliteOutgoingDatagram[] output =
+                mPersistAtomsStorage.getSatelliteOutgoingDatagramStats(0L);
+        assertProtoArrayEquals(
+                new SatelliteOutgoingDatagram[] {mSatelliteOutgoingDatagram1}, output);
+    }
+
+    @Test
+    public void addSatelliteOutgoingDatagramStats_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSatelliteOutgoingDatagramStats(mSatelliteOutgoingDatagram1);
+        mPersistAtomsStorage.addSatelliteOutgoingDatagramStats(mSatelliteOutgoingDatagram2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // Service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        SatelliteOutgoingDatagram[] output =
+                mPersistAtomsStorage.getSatelliteOutgoingDatagramStats(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new SatelliteOutgoingDatagram[] {
+                        mSatelliteOutgoingDatagram1, mSatelliteOutgoingDatagram2}, output);
+    }
+
+    @Test
+    public void addSatelliteOutgoingDatagramStats_tooManyEntries() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        // Store atoms up to maximum number + 1
+        int maxCount = 15 + 1;
+        for (int i = 0; i < maxCount; i++) {
+            mPersistAtomsStorage
+                    .addSatelliteOutgoingDatagramStats(copyOf(mSatelliteOutgoingDatagram1));
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+
+        // Store 1 different atom
+        mPersistAtomsStorage
+                .addSatelliteOutgoingDatagramStats(mSatelliteOutgoingDatagram2);
+
+        verifyCurrentStateSavedToFileOnce();
+
+        SatelliteOutgoingDatagram[] result =
+                mPersistAtomsStorage.getSatelliteOutgoingDatagramStats(0L);
+
+        // First atom has count 14, the other has 1
+        assertHasStatsAndCount(result, mSatelliteOutgoingDatagram1, 14);
+        assertHasStatsAndCount(result, mSatelliteOutgoingDatagram2, 1);
+
+    }
+
+    @Test
+    public void getSatelliteOutgoingDatagramStats_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
+        SatelliteOutgoingDatagram[] output =
+                mPersistAtomsStorage.getSatelliteOutgoingDatagramStats(100L);
+
+        // Should be denied
+        assertNull(output);
+    }
+
+    @Test
+    public void addSatelliteProvisionStats_emptyProto() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSatelliteProvisionStats(mSatelliteProvision1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // Service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        SatelliteProvision[] output =
+                mPersistAtomsStorage.getSatelliteProvisionStats(0L);
+        assertProtoArrayEquals(
+                new SatelliteProvision[] {mSatelliteProvision1}, output);
+    }
+
+    @Test
+    public void addSatelliteProvisionStats_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSatelliteProvisionStats(mSatelliteProvision1);
+        mPersistAtomsStorage.addSatelliteProvisionStats(mSatelliteProvision2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // Service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        SatelliteProvision[] output =
+                mPersistAtomsStorage.getSatelliteProvisionStats(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new SatelliteProvision[] {
+                        mSatelliteProvision1, mSatelliteProvision2}, output);
+    }
+
+    @Test
+    public void addSatelliteProvisionStats_tooManyEntries() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        // Store atoms up to maximum number + 1
+        int maxCount = 15 + 1;
+        for (int i = 0; i < maxCount; i++) {
+            mPersistAtomsStorage
+                    .addSatelliteProvisionStats(copyOf(mSatelliteProvision1));
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+
+        // Store 1 different atom
+        mPersistAtomsStorage
+                .addSatelliteProvisionStats(mSatelliteProvision2);
+
+        verifyCurrentStateSavedToFileOnce();
+
+        SatelliteProvision[] result =
+                mPersistAtomsStorage.getSatelliteProvisionStats(0L);
+
+        // First atom has count 14, the other has 1
+        assertHasStatsAndCount(result, mSatelliteProvision1, 14);
+        assertHasStatsAndCount(result, mSatelliteProvision2, 1);
+
+    }
+
+    @Test
+    public void getSatelliteProvisionStats_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
+        SatelliteProvision[] output =
+                mPersistAtomsStorage.getSatelliteProvisionStats(100L);
+
+        // Should be denied
+        assertNull(output);
+    }
+
+    @Test
+    public void addSatelliteSosMessageRecommenderStats_emptyProto() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSatelliteSosMessageRecommenderStats(
+                mSatelliteSosMessageRecommender1);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // Service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        SatelliteSosMessageRecommender[] output =
+                mPersistAtomsStorage.getSatelliteSosMessageRecommenderStats(0L);
+        assertProtoArrayEquals(
+                new SatelliteSosMessageRecommender[] {mSatelliteSosMessageRecommender1}, output);
+    }
+
+    @Test
+    public void addSatelliteSosMessageRecommenderStats_withExistingEntries() throws Exception {
+        createEmptyTestFile();
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.addSatelliteSosMessageRecommenderStats(
+                mSatelliteSosMessageRecommender1);
+        mPersistAtomsStorage.addSatelliteSosMessageRecommenderStats(
+                mSatelliteSosMessageRecommender2);
+        mPersistAtomsStorage.incTimeMillis(100L);
+
+        // Service state and service switch should be added successfully
+        verifyCurrentStateSavedToFileOnce();
+        SatelliteSosMessageRecommender[] output =
+                mPersistAtomsStorage.getSatelliteSosMessageRecommenderStats(0L);
+        assertProtoArrayEqualsIgnoringOrder(
+                new SatelliteSosMessageRecommender[] {
+                        mSatelliteSosMessageRecommender1, mSatelliteSosMessageRecommender2},
+                output);
+    }
+
+    @Test
+    public void addSatelliteSosMessageRecommenderStats_tooManyEntries() throws Exception {
+        createEmptyTestFile();
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+
+        // Store atoms up to maximum number + 1
+        int maxCount = 15 + 1;
+        for (int i = 0; i < maxCount; i++) {
+            mPersistAtomsStorage
+                    .addSatelliteSosMessageRecommenderStats(
+                            copyOf(mSatelliteSosMessageRecommender1));
+            mPersistAtomsStorage.incTimeMillis(100L);
+        }
+
+        // Store 1 different atom
+        mPersistAtomsStorage
+                .addSatelliteSosMessageRecommenderStats(mSatelliteSosMessageRecommender2);
+
+        verifyCurrentStateSavedToFileOnce();
+
+        SatelliteSosMessageRecommender[] result =
+                mPersistAtomsStorage.getSatelliteSosMessageRecommenderStats(0L);
+
+        // First atom has count 16, the other has 1
+        assertHasStatsAndCount(result, mSatelliteSosMessageRecommender1, 16);
+        assertHasStatsAndCount(result, mSatelliteSosMessageRecommender2, 1);
+
+    }
+
+    @Test
+    public void getSatelliteSosMessageRecommenderStats_tooFrequent() throws Exception {
+        createTestFile(START_TIME_MILLIS);
+
+        mPersistAtomsStorage = new TestablePersistAtomsStorage(mContext);
+        mPersistAtomsStorage.incTimeMillis(50L); // pull interval less than minimum
+        SatelliteSosMessageRecommender[] output =
+                mPersistAtomsStorage.getSatelliteSosMessageRecommenderStats(100L);
+
+        // Should be denied
+        assertNull(output);
+    }
+
+    @Test
     @SmallTest
     public void clearAtoms() throws Exception {
         createTestFile(START_TIME_MILLIS);
@@ -3469,6 +4270,20 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         atoms.sipMessageResponse = mSipMessageResponse;
         atoms.sipTransportSessionPullTimestampMillis = lastPullTimeMillis;
         atoms.sipTransportSession = mSipTransportSession;
+        atoms.outgoingShortCodeSms = mOutgoingShortCodeSms;
+        atoms.outgoingShortCodeSmsPullTimestampMillis = lastPullTimeMillis;
+        atoms.satelliteController = mSatelliteControllers;
+        atoms.satelliteControllerPullTimestampMillis = lastPullTimeMillis;
+        atoms.satelliteSession = mSatelliteSessions;
+        atoms.satelliteSessionPullTimestampMillis = lastPullTimeMillis;
+        atoms.satelliteIncomingDatagram = mSatelliteIncomingDatagrams;
+        atoms.satelliteIncomingDatagramPullTimestampMillis = lastPullTimeMillis;
+        atoms.satelliteOutgoingDatagram = mSatelliteOutgoingDatagrams;
+        atoms.satelliteOutgoingDatagramPullTimestampMillis = lastPullTimeMillis;
+        atoms.satelliteProvision = mSatelliteProvisions;
+        atoms.satelliteProvisionPullTimestampMillis = lastPullTimeMillis;
+        atoms.satelliteSosMessageRecommender = mSatelliteSosMessageRecommenders;
+        atoms.satelliteSosMessageRecommenderPullTimestampMillis = lastPullTimeMillis;
         FileOutputStream stream = new FileOutputStream(mTestFile);
         stream.write(PersistAtoms.toByteArray(atoms));
         stream.close();
@@ -3585,6 +4400,41 @@ public class PersistAtomsStorageTest extends TelephonyTest {
     private static SipTransportSession copyOf(SipTransportSession source)
             throws Exception {
         return SipTransportSession.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static OutgoingShortCodeSms copyOf(OutgoingShortCodeSms source)
+            throws Exception {
+        return OutgoingShortCodeSms.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static SatelliteController copyOf(SatelliteController source)
+            throws Exception {
+        return SatelliteController.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static SatelliteSession copyOf(SatelliteSession source)
+            throws Exception {
+        return SatelliteSession.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static SatelliteIncomingDatagram copyOf(SatelliteIncomingDatagram source)
+            throws Exception {
+        return SatelliteIncomingDatagram.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static SatelliteOutgoingDatagram copyOf(SatelliteOutgoingDatagram source)
+            throws Exception {
+        return SatelliteOutgoingDatagram.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static SatelliteProvision copyOf(SatelliteProvision source)
+            throws Exception {
+        return SatelliteProvision.parseFrom(MessageNano.toByteArray(source));
+    }
+
+    private static SatelliteSosMessageRecommender copyOf(SatelliteSosMessageRecommender source)
+            throws Exception {
+        return SatelliteSosMessageRecommender.parseFrom(MessageNano.toByteArray(source));
     }
 
     private void assertAllPullTimestampEquals(long timestamp) {
@@ -3732,6 +4582,119 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         assertEquals(expectedCount, actualCount);
     }
 
+    private static void assertHasStats(
+            SatelliteController[] tested,
+            @Nullable SatelliteController expectedStats) {
+        assertNotNull(tested);
+        assertEquals(tested[0].countOfSatelliteServiceEnablementsSuccess,
+                expectedStats.countOfSatelliteServiceEnablementsSuccess);
+        assertEquals(tested[0].countOfSatelliteServiceEnablementsFail,
+                expectedStats.countOfSatelliteServiceEnablementsFail);
+        assertEquals(tested[0].countOfOutgoingDatagramSuccess,
+                expectedStats.countOfOutgoingDatagramSuccess);
+        assertEquals(tested[0].countOfOutgoingDatagramFail,
+                expectedStats.countOfOutgoingDatagramFail);
+        assertEquals(tested[0].countOfIncomingDatagramSuccess,
+                expectedStats.countOfIncomingDatagramSuccess);
+        assertEquals(tested[0].countOfIncomingDatagramFail,
+                expectedStats.countOfIncomingDatagramFail);
+        assertEquals(tested[0].countOfDatagramTypeSosSmsSuccess,
+                expectedStats.countOfDatagramTypeSosSmsSuccess);
+        assertEquals(tested[0].countOfDatagramTypeSosSmsFail,
+                expectedStats.countOfDatagramTypeSosSmsFail);
+        assertEquals(tested[0].countOfDatagramTypeLocationSharingSuccess,
+                expectedStats.countOfDatagramTypeLocationSharingSuccess);
+        assertEquals(tested[0].countOfDatagramTypeLocationSharingFail,
+                expectedStats.countOfDatagramTypeLocationSharingFail);
+        assertEquals(tested[0].totalServiceUptimeSec,
+                expectedStats.totalServiceUptimeSec);
+        assertEquals(tested[0].totalBatteryConsumptionPercent,
+                expectedStats.totalBatteryConsumptionPercent);
+        assertEquals(tested[0].totalBatteryChargedTimeSec,
+                expectedStats.totalBatteryChargedTimeSec);
+    }
+
+    private static void assertHasStatsAndCount(
+            SatelliteSession[] tested,
+            @Nullable SatelliteSession expectedStats, int expectedCount) {
+        assertNotNull(tested);
+        int actualCount = 0;
+        for (SatelliteSession stats : tested) {
+            if (stats.satelliteServiceInitializationResult
+                    == expectedStats.satelliteServiceInitializationResult
+                    && stats.satelliteTechnology == expectedStats.satelliteTechnology) {
+                actualCount = stats.count;
+            }
+        }
+        assertEquals(expectedCount, actualCount);
+    }
+
+    private static void assertHasStatsAndCount(
+            SatelliteIncomingDatagram[] tested,
+            @Nullable SatelliteIncomingDatagram expectedStats, int expectedCount) {
+        assertNotNull(tested);
+        int actualCount = 0;
+        for (SatelliteIncomingDatagram stats : tested) {
+            if (stats.resultCode == expectedStats.resultCode
+                    && stats.datagramSizeBytes == expectedStats.datagramSizeBytes
+                    && stats.datagramTransferTimeMillis
+                        == expectedStats.datagramTransferTimeMillis) {
+                actualCount++;
+            }
+        }
+        assertEquals(expectedCount, actualCount);
+    }
+
+    private static void assertHasStatsAndCount(
+            SatelliteOutgoingDatagram[] tested,
+            @Nullable SatelliteOutgoingDatagram expectedStats, int expectedCount) {
+        assertNotNull(tested);
+        int actualCount = 0;
+        for (SatelliteOutgoingDatagram stats : tested) {
+            if (stats.datagramType == expectedStats.datagramType
+                    && stats.resultCode == expectedStats.resultCode
+                    && stats.datagramSizeBytes == expectedStats.datagramSizeBytes
+                    && stats.datagramTransferTimeMillis
+                        == expectedStats.datagramTransferTimeMillis) {
+                actualCount++;
+            }
+        }
+        assertEquals(expectedCount, actualCount);
+    }
+
+    private static void assertHasStatsAndCount(
+            SatelliteProvision[] tested,
+            @Nullable SatelliteProvision expectedStats, int expectedCount) {
+        assertNotNull(tested);
+        int actualCount = 0;
+        for (SatelliteProvision stats : tested) {
+            if (stats.resultCode == expectedStats.resultCode
+                    && stats.provisioningTimeSec == expectedStats.provisioningTimeSec
+                    && stats.isProvisionRequest == expectedStats.isProvisionRequest
+                    && stats.isCanceled == expectedStats.isCanceled) {
+                actualCount++;
+            }
+        }
+        assertEquals(expectedCount, actualCount);
+    }
+
+    private static void assertHasStatsAndCount(
+            SatelliteSosMessageRecommender[] tested,
+            @Nullable SatelliteSosMessageRecommender expectedStats, int expectedCount) {
+        assertNotNull(tested);
+        int actualCount = 0;
+        for (SatelliteSosMessageRecommender stats : tested) {
+            if (stats.isDisplaySosMessageSent
+                    == expectedStats.isDisplaySosMessageSent
+                    && stats.countOfTimerStarted == expectedStats.countOfTimerStarted
+                    && stats.isImsRegistered == expectedStats.isImsRegistered
+                    && stats.cellularServiceState == expectedStats.cellularServiceState) {
+                actualCount = stats.count;
+            }
+        }
+        assertEquals(expectedCount, actualCount);
+    }
+
     private static void assertHasStatsAndCountDuration(
             RcsAcsProvisioningStats[] statses,
             @Nullable RcsAcsProvisioningStats expectedStats, int count, long duration) {
@@ -3862,6 +4825,20 @@ public class PersistAtomsStorageTest extends TelephonyTest {
                     && stats.sipMessageDirection == expectedStats.sipMessageDirection
                     && stats.sipResponse == expectedStats.sipResponse) {
                 actualCount = stats.sessionCount;
+            }
+        }
+        assertEquals(expectedCount, actualCount);
+    }
+
+    private static void assertHasStatsAndCount(
+            OutgoingShortCodeSms[] outgoingShortCodeSmsList,
+            @Nullable OutgoingShortCodeSms expectedOutgoingShortCodeSms, int expectedCount) {
+        assertNotNull(outgoingShortCodeSmsList);
+        int actualCount = -1;
+        for (OutgoingShortCodeSms outgoingShortCodeSms : outgoingShortCodeSmsList) {
+            if (outgoingShortCodeSms.category == expectedOutgoingShortCodeSms.category
+                    && outgoingShortCodeSms.xmlVersion == expectedOutgoingShortCodeSms.xmlVersion) {
+                actualCount = outgoingShortCodeSms.shortCodeSmsCount;
             }
         }
         assertEquals(expectedCount, actualCount);

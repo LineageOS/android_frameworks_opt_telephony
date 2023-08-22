@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -37,6 +38,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.ServiceManager;
+import android.os.UserHandle;
 import android.permission.LegacyPermissionManager;
 import android.provider.DeviceConfig;
 import android.provider.Settings;
@@ -528,6 +530,14 @@ public class TelephonyPermissionsTest {
         } catch (SecurityException se) {
             fail("Should NOT throw SecurityException");
         }
+    }
+
+    @Test
+    public void testCheckSubscriptionAssociatedWithUser_emergencyNumber() {
+        doReturn(true).when(mTelephonyManagerMock).isEmergencyNumber(anyString());
+
+        assertTrue(TelephonyPermissions.checkSubscriptionAssociatedWithUser(mMockContext, SUB_ID,
+                UserHandle.SYSTEM, "911"));
     }
 
     // Put mMockTelephony into service cache so that TELEPHONY_SUPPLIER will get it.

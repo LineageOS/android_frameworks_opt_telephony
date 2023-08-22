@@ -22,16 +22,16 @@ import android.os.Build;
 
 /**
  * Container class for proactive command parameters.
- *
+ * @hide
  */
-class CommandParams {
+public class CommandParams {
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     CommandDetails mCmdDet;
     // Variable to track if an optional icon load has failed.
     boolean mLoadIconFailed = false;
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
-    CommandParams(CommandDetails cmdDet) {
+    public CommandParams(CommandDetails cmdDet) {
         mCmdDet = cmdDet;
     }
 

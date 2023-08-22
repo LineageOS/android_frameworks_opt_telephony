@@ -18,6 +18,7 @@ package com.android.internal.telephony.uicc.euicc;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -34,6 +35,7 @@ import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccSlotPortMapping;
+import com.android.internal.telephony.uicc.IccSlotStatus;
 import com.android.internal.telephony.uicc.euicc.apdu.LogicalChannelMocker;
 import com.android.internal.telephony.uicc.euicc.async.AsyncResultCallback;
 
@@ -94,7 +96,7 @@ public class EuiccCardTest extends TelephonyTest {
 
         mEuiccCard =
             new EuiccCard(mContext, mMockCi, mMockIccCardStatus,
-                0 /* phoneId */, new Object(), false) {
+                0 /* phoneId */, new Object(), IccSlotStatus.MultipleEnabledProfilesMode.NONE) {
 
                 @Override
                 protected void loadEidAndNotifyRegistrants() {}
@@ -133,7 +135,8 @@ public class EuiccCardTest extends TelephonyTest {
     public void testPassEidInConstructor() {
         mMockIccCardStatus.eid = "1A2B3C4D";
         mEuiccCard = new EuiccCard(mContextFixture.getTestDouble(), mMockCi,
-                mMockIccCardStatus, 0 /* phoneId */, new Object(), false);
+                mMockIccCardStatus, 0 /* phoneId */, new Object(),
+                IccSlotStatus.MultipleEnabledProfilesMode.NONE);
 
         final int eventEidReady = 0;
         Handler handler = new Handler(Looper.myLooper()) {
@@ -154,7 +157,8 @@ public class EuiccCardTest extends TelephonyTest {
         int channel = mockLogicalChannelResponses("BF3E065A041A2B3C4D9000");
         mHandler.post(() -> {
             mEuiccCard = new EuiccCard(mContextFixture.getTestDouble(), mMockCi,
-                    mMockIccCardStatus, 0 /* phoneId */, new Object(), false);
+                    mMockIccCardStatus, 0 /* phoneId */, new Object(),
+                    IccSlotStatus.MultipleEnabledProfilesMode.NONE);
         });
         processAllMessages();
 
@@ -188,7 +192,7 @@ public class EuiccCardTest extends TelephonyTest {
     private void verifyStoreData(int channel, String command) {
         verify(mMockCi, times(1))
                 .iccTransmitApduLogicalChannel(eq(channel), eq(0x80 | channel), eq(0xE2), eq(0x91),
-                        eq(0), eq(command.length() / 2), eq(command), any());
+                        eq(0), eq(command.length() / 2), eq(command), anyBoolean(), any());
     }
 
     private int mockLogicalChannelResponses(Object... responses) {

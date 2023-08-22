@@ -20,27 +20,38 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import android.content.Context;
+import android.content.ContextWrapper;
+import android.content.IntentFilter;
+import android.content.res.AssetManager;
+import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
+import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
+import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.emergency.EmergencyNumber;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import androidx.test.InstrumentationRegistry;
 
-import com.android.internal.telephony.HalVersion;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneFactory;
-import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyTest;
 
 import com.google.i18n.phonenumbers.ShortNumberInfo;
@@ -49,6 +60,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -74,6 +87,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     private static final String EMERGENCY_NUMBER_DB_OTA_FILE = "eccdata_ota";
     private static final int CONFIG_UNIT_TEST_EMERGENCY_NUMBER_DB_VERSION = 99999;
     private static final String CONFIG_EMERGENCY_NUMBER_ADDRESS = "54321";
+    private static final String CONFIG_EMERGENCY_DUPLICATE_NUMBER = "4321";
     private static final String CONFIG_EMERGENCY_NUMBER_COUNTRY = "us";
     private static final String CONFIG_EMERGENCY_NUMBER_MNC = "";
     private static final String NON_3GPP_EMERGENCY_TEST_NUMBER = "9876543";
@@ -102,7 +116,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     private static final int INVALID_SLOT_INDEX_VALID = SubscriptionManager.INVALID_SIM_SLOT_INDEX;
     private ParcelFileDescriptor mOtaParcelFileDescriptor = null;
     // Mocked classes
-    private SubscriptionController mSubControllerMock;
+    private CarrierConfigManager mCarrierConfigManagerMock;
 
     // mEmergencyNumberTrackerMock for mPhone
     private EmergencyNumberTracker mEmergencyNumberTrackerMock;
@@ -115,14 +129,19 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
 
     private File mLocalDownloadDirectory;
     private ShortNumberInfo mShortNumberInfo;
+    private Context mMockContext;
+    private Resources mResources;
 
     @Before
     public void setUp() throws Exception {
         logd("EmergencyNumberTrackerTest +Setup!");
         super.setUp(getClass().getSimpleName());
         mShortNumberInfo = mock(ShortNumberInfo.class);
-        mSubControllerMock = mock(SubscriptionController.class);
-        mContext = InstrumentationRegistry.getTargetContext();
+        mCarrierConfigManagerMock = mock(CarrierConfigManager.class);
+
+        mContext = new ContextWrapper(InstrumentationRegistry.getTargetContext());
+        mMockContext = mock(Context.class);
+        mResources = mock(Resources.class);
 
         doReturn(mContext).when(mPhone).getContext();
         doReturn(0).when(mPhone).getPhoneId();
@@ -140,6 +159,9 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
 
         // Copy an OTA file to the test directory to similate the OTA mechanism
         simulateOtaEmergencyNumberDb(mPhone);
+
+        AssetManager am = new AssetManager.Builder().build();
+        doReturn(am).when(mMockContext).getAssets();
 
         processAllMessages();
         logd("EmergencyNumberTrackerTest -Setup!");
@@ -180,6 +202,14 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
                 | EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE, new ArrayList<String>(),
             EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
             EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+        mEmergencyNumberListTestSample.add(emergencyNumberForTest);
+
+        emergencyNumberForTest = new EmergencyNumber(
+                CONFIG_EMERGENCY_DUPLICATE_NUMBER, CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                "", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
         mEmergencyNumberListTestSample.add(emergencyNumberForTest);
     }
 
@@ -267,6 +297,11 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         }
     }
 
+    private boolean hasDbEmergencyNumbers(List<EmergencyNumber> subList,
+            List<EmergencyNumber> list) {
+        return list.containsAll(subList);
+    }
+
     private boolean hasDbEmergencyNumber(EmergencyNumber number, List<EmergencyNumber> list) {
         return list.contains(number);
     }
@@ -297,13 +332,6 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     @Test
     public void testIsSimAbsent() throws Exception {
         setDsdsPhones();
-        replaceInstance(SubscriptionController.class, "sInstance", null, mSubControllerMock);
-
-        // Both sim slots are active
-        doReturn(VALID_SLOT_INDEX_VALID_1).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_1));
-        doReturn(VALID_SLOT_INDEX_VALID_2).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_2));
         doReturn(VALID_SLOT_INDEX_VALID_1).when(mSubscriptionManagerService).getSlotIndex(
                 eq(SUB_ID_PHONE_1));
         doReturn(VALID_SLOT_INDEX_VALID_2).when(mSubscriptionManagerService).getSlotIndex(
@@ -311,10 +339,6 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         assertFalse(mEmergencyNumberTrackerMock.isSimAbsent());
 
         // One sim slot is active; the other one is not active
-        doReturn(VALID_SLOT_INDEX_VALID_1).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_1));
-        doReturn(INVALID_SLOT_INDEX_VALID).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_2));
         doReturn(VALID_SLOT_INDEX_VALID_1).when(mSubscriptionManagerService).getSlotIndex(
                 eq(SUB_ID_PHONE_1));
         doReturn(INVALID_SLOT_INDEX_VALID).when(mSubscriptionManagerService).getSlotIndex(
@@ -322,10 +346,6 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         assertFalse(mEmergencyNumberTrackerMock.isSimAbsent());
 
         // Both sim slots are not active
-        doReturn(INVALID_SLOT_INDEX_VALID).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_1));
-        doReturn(INVALID_SLOT_INDEX_VALID).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_2));
         doReturn(INVALID_SLOT_INDEX_VALID).when(mSubscriptionManagerService).getSlotIndex(
                 anyInt());
         assertTrue(mEmergencyNumberTrackerMock.isSimAbsent());
@@ -339,7 +359,42 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     }
 
     @Test
-    public void testUpdateEmergencyCountryIso() throws Exception {
+    public void testRegistrationForCountryChangeIntent() throws Exception {
+        EmergencyNumberTracker localEmergencyNumberTracker;
+        Context spyContext = spy(mContext);
+        doReturn(spyContext).when(mPhone).getContext();
+        ArgumentCaptor<IntentFilter> intentCaptor = ArgumentCaptor.forClass(IntentFilter.class);
+
+        localEmergencyNumberTracker = new EmergencyNumberTracker(mPhone, mSimulatedCommands);
+        verify(spyContext, times(1)).registerReceiver(any(), intentCaptor.capture());
+        IntentFilter ifilter = intentCaptor.getValue();
+        assertTrue(ifilter.hasAction(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED));
+    }
+
+    @Test
+    public void testUpdateEmergencyCountryIso_whenStatePowerOff() throws Exception {
+        testUpdateEmergencyCountryIso(ServiceState.STATE_POWER_OFF);
+    }
+
+    @Test
+    public void testUpdateEmergencyCountryIso_whenStateInService() throws Exception {
+        testUpdateEmergencyCountryIso(ServiceState.STATE_IN_SERVICE);
+    }
+
+    @Test
+    public void testUpdateEmergencyCountryIso_whenStateOos() throws Exception {
+        testUpdateEmergencyCountryIso(ServiceState.STATE_OUT_OF_SERVICE);
+    }
+
+    @Test
+    public void testUpdateEmergencyCountryIso_whenStateEmergencyOnly() throws Exception {
+        testUpdateEmergencyCountryIso(ServiceState.STATE_EMERGENCY_ONLY);
+    }
+
+    private void testUpdateEmergencyCountryIso(int ss) throws Exception {
+        doReturn(mLocaleTracker).when(mSST).getLocaleTracker();
+        doReturn("us").when(mLocaleTracker).getLastKnownCountryIso();
+
         sendEmergencyNumberPrefix(mEmergencyNumberTrackerMock);
 
         mEmergencyNumberTrackerMock.updateEmergencyNumberDatabaseCountryChange("us");
@@ -347,10 +402,14 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         assertTrue(mEmergencyNumberTrackerMock.getEmergencyCountryIso().equals("us"));
         assertTrue(mEmergencyNumberTrackerMock.getLastKnownEmergencyCountryIso().equals("us"));
 
+        doReturn(ss).when(mServiceState).getState();
         mEmergencyNumberTrackerMock.updateEmergencyNumberDatabaseCountryChange("");
         processAllMessages();
         assertTrue(mEmergencyNumberTrackerMock.getEmergencyCountryIso().equals(""));
         assertTrue(mEmergencyNumberTrackerMock.getLastKnownEmergencyCountryIso().equals("us"));
+
+        //make sure we look up cached location whenever current iso is null
+        verify(mLocaleTracker).getLastKnownCountryIso();
     }
 
     @Test
@@ -376,18 +435,9 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
 
     @Test
     public void testIsEmergencyNumber_FallbackToShortNumberXml_NoSims() throws Exception {
-        // Set up the Hal version as 1.4
-        doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion();
-        doReturn(new HalVersion(1, 4)).when(mPhone2).getHalVersion();
-
         setDsdsPhones();
-        replaceInstance(SubscriptionController.class, "sInstance", null, mSubControllerMock);
 
         // Both sim slots are not active
-        doReturn(INVALID_SLOT_INDEX_VALID).when(mSubControllerMock).getSlotIndex(
-            eq(SUB_ID_PHONE_1));
-        doReturn(INVALID_SLOT_INDEX_VALID).when(mSubControllerMock).getSlotIndex(
-            eq(SUB_ID_PHONE_2));
         doReturn(INVALID_SLOT_INDEX_VALID).when(mSubscriptionManagerService).getSlotIndex(
                 anyInt());
         assertTrue(mEmergencyNumberTrackerMock.isSimAbsent());
@@ -399,7 +449,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         processAllMessages();
 
         replaceInstance(ShortNumberInfo.class, "INSTANCE", null, mShortNumberInfo);
-        mEmergencyNumberTrackerMock.isEmergencyNumber(NON_3GPP_EMERGENCY_TEST_NUMBER, true);
+        mEmergencyNumberTrackerMock.isEmergencyNumber(NON_3GPP_EMERGENCY_TEST_NUMBER);
 
         //verify that we fall back to shortnumber xml when there are no SIMs
         verify(mShortNumberInfo).isEmergencyNumber(NON_3GPP_EMERGENCY_TEST_NUMBER, "JP");
@@ -416,30 +466,17 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     }
 
     private void testIsEmergencyNumber_NoFallbackToShortNumberXml(int numSims) throws Exception {
-        // Set up the Hal version as 1.4
-        doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion();
-        doReturn(new HalVersion(1, 4)).when(mPhone2).getHalVersion();
-
         assertTrue((numSims > 0 && numSims < 3));
         setDsdsPhones();
-        replaceInstance(SubscriptionController.class, "sInstance", null, mSubControllerMock);
 
         if (numSims == 1) {
             // One sim slot is active; the other one is not active
-            doReturn(VALID_SLOT_INDEX_VALID_1).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_1));
-            doReturn(INVALID_SLOT_INDEX_VALID).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_2));
             doReturn(VALID_SLOT_INDEX_VALID_1).when(mSubscriptionManagerService).getSlotIndex(
                     eq(SUB_ID_PHONE_1));
             doReturn(INVALID_SLOT_INDEX_VALID).when(mSubscriptionManagerService).getSlotIndex(
                     eq(SUB_ID_PHONE_2));
         } else {
             //both slots active
-            doReturn(VALID_SLOT_INDEX_VALID_1).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_1));
-            doReturn(VALID_SLOT_INDEX_VALID_2).when(mSubControllerMock).getSlotIndex(
-                eq(SUB_ID_PHONE_2));
             doReturn(VALID_SLOT_INDEX_VALID_1).when(mSubscriptionManagerService).getSlotIndex(
                     eq(SUB_ID_PHONE_1));
             doReturn(VALID_SLOT_INDEX_VALID_2).when(mSubscriptionManagerService).getSlotIndex(
@@ -455,7 +492,7 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         processAllMessages();
 
         replaceInstance(ShortNumberInfo.class, "INSTANCE", null, mShortNumberInfo);
-        mEmergencyNumberTrackerMock.isEmergencyNumber(NON_3GPP_EMERGENCY_TEST_NUMBER, true);
+        mEmergencyNumberTrackerMock.isEmergencyNumber(NON_3GPP_EMERGENCY_TEST_NUMBER);
 
         //verify we do not use ShortNumber xml
         verify(mShortNumberInfo, never()).isEmergencyNumber(anyString(), anyString());
@@ -495,38 +532,236 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
     }
 
     /**
-     * In 1.3 or less HAL. we should not use database number.
-     */
-    @Test
-    public void testUsingEmergencyNumberDatabaseWheneverHal_1_3() {
-        doReturn(new HalVersion(1, 3)).when(mPhone).getHalVersion();
-
-        sendEmergencyNumberPrefix(mEmergencyNumberTrackerMock);
-        mEmergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("us");
-        processAllMessages();
-
-        boolean hasDatabaseNumber = false;
-        for (EmergencyNumber number : mEmergencyNumberTrackerMock.getEmergencyNumberList()) {
-            if (number.isFromSources(EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE)) {
-                hasDatabaseNumber = true;
-                break;
-            }
-        }
-        assertFalse(hasDatabaseNumber);
-    }
-
-    /**
      * In 1.4 or above HAL, we should use database number.
      */
     @Test
     public void testUsingEmergencyNumberDatabaseWheneverHal_1_4() {
-        doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion();
+        doReturn(mMockContext).when(mPhone).getContext();
+        doReturn(mContext.getAssets()).when(mMockContext).getAssets();
+        doReturn(mResources).when(mMockContext).getResources();
+        doReturn(true).when(mResources).getBoolean(
+                com.android.internal.R.bool.ignore_emergency_number_routing_from_db);
 
-        sendEmergencyNumberPrefix(mEmergencyNumberTrackerMock);
-        mEmergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("us");
+        EmergencyNumberTracker emergencyNumberTrackerMock = new EmergencyNumberTracker(
+                mPhone, mSimulatedCommands);
+        emergencyNumberTrackerMock.sendMessage(
+                emergencyNumberTrackerMock.obtainMessage(
+                        1 /* EVENT_UNSOL_EMERGENCY_NUMBER_LIST */,
+                        new AsyncResult(null, mEmergencyNumberListTestSample, null)));
+        sendEmergencyNumberPrefix(emergencyNumberTrackerMock);
+        emergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("us");
         processAllMessages();
+        /* case 1: check DB number exist or not */
         assertTrue(hasDbEmergencyNumber(CONFIG_EMERGENCY_NUMBER,
-                mEmergencyNumberTrackerMock.getEmergencyNumberList()));
+                emergencyNumberTrackerMock.getEmergencyNumberList()));
+
+        /* case 2: since ignore_emergency_routing_from_db is true. check for all DB numbers with
+        routing value as unknown by ignoring DB value */
+        List<EmergencyNumber> completeEmergencyNumberList = new ArrayList<>();
+        EmergencyNumber emergencyNumber = new EmergencyNumber(
+                "888", CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                "", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+        completeEmergencyNumberList.add(emergencyNumber);
+
+        emergencyNumber = new EmergencyNumber(
+                "54321", CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                "", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+        completeEmergencyNumberList.add(emergencyNumber);
+
+        emergencyNumber = new EmergencyNumber(
+                "654321", CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                "", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+        completeEmergencyNumberList.add(emergencyNumber);
+
+        emergencyNumber = new EmergencyNumber(
+                "7654321", CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                "", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+        completeEmergencyNumberList.add(emergencyNumber);
+
+        assertTrue(hasDbEmergencyNumbers(completeEmergencyNumberList,
+                emergencyNumberTrackerMock.getEmergencyNumberList()));
+
+        /* case 3: check the routing type of merged duplicate numbers
+            between DB number and radio list. */
+        EmergencyNumber duplicateEmergencyNumber = new EmergencyNumber(
+                CONFIG_EMERGENCY_DUPLICATE_NUMBER, CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                "", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE
+                | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+        assertTrue(hasDbEmergencyNumber(duplicateEmergencyNumber,
+                emergencyNumberTrackerMock.getEmergencyNumberList()));
+    }
+
+    @Test
+    public void testUsingEmergencyNumberDatabaseWithRouting() {
+        doReturn(mMockContext).when(mPhone).getContext();
+        doReturn(mContext.getAssets()).when(mMockContext).getAssets();
+        doReturn(mResources).when(mMockContext).getResources();
+        doReturn("05").when(mCellIdentity).getMncString();
+        doReturn(false).when(mResources).getBoolean(
+                com.android.internal.R.bool.ignore_emergency_number_routing_from_db);
+
+        EmergencyNumberTracker emergencyNumberTrackerMock = new EmergencyNumberTracker(
+                mPhone, mSimulatedCommands);
+        emergencyNumberTrackerMock.sendMessage(
+                emergencyNumberTrackerMock.obtainMessage(
+                        1 /* EVENT_UNSOL_EMERGENCY_NUMBER_LIST */,
+                        new AsyncResult(null, mEmergencyNumberListTestSample, null)));
+        sendEmergencyNumberPrefix(emergencyNumberTrackerMock);
+        emergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("us");
+        processAllMessages();
+
+        // case 1: check DB number with normal routing true and for mnc 05
+        EmergencyNumber emergencyNumber = new EmergencyNumber(
+                CONFIG_EMERGENCY_NUMBER_ADDRESS, CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                    "05", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                            CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                                    EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                                            EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
+
+        assertTrue(hasDbEmergencyNumber(emergencyNumber,
+                emergencyNumberTrackerMock.getEmergencyNumberList()));
+
+        // case 2: check DB number with normal routing true in multiple mnc 05, 45, 47
+        emergencyNumber = new EmergencyNumber(
+                "888", CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                    "05", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                            CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                                    EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                                            EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
+        assertTrue(hasDbEmergencyNumber(emergencyNumber,
+                emergencyNumberTrackerMock.getEmergencyNumberList()));
+
+        doReturn("47").when(mCellIdentity).getMncString();
+        emergencyNumber = new EmergencyNumber(
+                "888", CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                    "47", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                        CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                            EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                                EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
+        assertTrue(hasDbEmergencyNumber(emergencyNumber,
+                emergencyNumberTrackerMock.getEmergencyNumberList()));
+
+        emergencyNumber = new EmergencyNumber(
+                CONFIG_EMERGENCY_NUMBER_ADDRESS, CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                    "", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                            CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                                    EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                                            EmergencyNumber.EMERGENCY_CALL_ROUTING_EMERGENCY);
+        assertTrue(hasDbEmergencyNumber(emergencyNumber,
+                emergencyNumberTrackerMock.getEmergencyNumberList()));
+
+        /* case 3: check DB number with normal routing false and for mnc 05,
+            but current cell identity is 04 */
+        doReturn("04").when(mCellIdentity).getMncString();
+        emergencyNumber = new EmergencyNumber(
+                CONFIG_EMERGENCY_NUMBER_ADDRESS, CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                    "", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                            CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                                    EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                                            EmergencyNumber.EMERGENCY_CALL_ROUTING_EMERGENCY);
+        assertTrue(hasDbEmergencyNumber(emergencyNumber,
+                emergencyNumberTrackerMock.getEmergencyNumberList()));
+
+        // case 4: check DB number with normal routing false
+        emergencyNumber = new EmergencyNumber(
+                "654321", CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                    "", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                            CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                                    EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                                            EmergencyNumber.EMERGENCY_CALL_ROUTING_EMERGENCY);
+        assertTrue(hasDbEmergencyNumber(emergencyNumber,
+                emergencyNumberTrackerMock.getEmergencyNumberList()));
+
+        // case 5: check DB number with normal routing true & empty mnc
+        emergencyNumber = new EmergencyNumber(
+                "7654321", CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                    "", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                            CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                                    EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                                            EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
+        assertTrue(hasDbEmergencyNumber(emergencyNumber,
+                emergencyNumberTrackerMock.getEmergencyNumberList()));
+
+        /* case 6: check DB number with normal routing true & empty mnc. But same number exist
+            in radio list. In merge DB routing should be used */
+        emergencyNumber = new EmergencyNumber(
+                CONFIG_EMERGENCY_DUPLICATE_NUMBER, CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                "", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE
+                | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
+
+        assertTrue(hasDbEmergencyNumber(emergencyNumber,
+                emergencyNumberTrackerMock.getEmergencyNumberList()));
+    }
+
+    @Test
+    public void testUsingEmergencyNumberDatabaseWithRoutingInOOS() {
+        doReturn(mMockContext).when(mPhone).getContext();
+        doReturn(mContext.getAssets()).when(mMockContext).getAssets();
+        doReturn(mResources).when(mMockContext).getResources();
+        doReturn(false).when(mResources).getBoolean(
+                com.android.internal.R.bool.ignore_emergency_number_routing_from_db);
+
+        EmergencyNumberTracker emergencyNumberTrackerMock = new EmergencyNumberTracker(
+                mPhone, mSimulatedCommands);
+        emergencyNumberTrackerMock.sendMessage(
+                emergencyNumberTrackerMock.obtainMessage(
+                        1 /* EVENT_UNSOL_EMERGENCY_NUMBER_LIST */,
+                        new AsyncResult(null, mEmergencyNumberListTestSample, null)));
+        sendEmergencyNumberPrefix(emergencyNumberTrackerMock);
+        emergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("us");
+        processAllMessages();
+
+        // Check routing when cellidentity is null, which is oos
+        doReturn(null).when(mPhone).getCurrentCellIdentity();
+        EmergencyNumber emergencyNumber = new EmergencyNumber(
+                CONFIG_EMERGENCY_NUMBER_ADDRESS, CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                    "", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                            CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                                    EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                                            EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+        assertTrue(hasDbEmergencyNumber(emergencyNumber,
+                emergencyNumberTrackerMock.getEmergencyNumberList()));
+
+        // Check routing when cellidentity is 04, which is not part of normal routing mncs
+        doReturn(mCellIdentity).when(mPhone).getCurrentCellIdentity();
+        doReturn("04").when(mCellIdentity).getMncString();
+        emergencyNumber = new EmergencyNumber(
+                CONFIG_EMERGENCY_NUMBER_ADDRESS, CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                    "", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                            CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                                    EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                                            EmergencyNumber.EMERGENCY_CALL_ROUTING_EMERGENCY);
+        assertTrue(hasDbEmergencyNumber(emergencyNumber,
+                emergencyNumberTrackerMock.getEmergencyNumberList()));
+
+        // Check routing when cellidentity is 05, which is part of normal routing mncs
+        doReturn("05").when(mCellIdentity).getMncString();
+        emergencyNumber = new EmergencyNumber(
+                CONFIG_EMERGENCY_NUMBER_ADDRESS, CONFIG_EMERGENCY_NUMBER_COUNTRY,
+                    "05", CONFIG_EMERGENCY_NUMBER_SERVICE_CATEGORIES,
+                            CONFIG_EMERGENCY_NUMBER_SERVICE_URNS,
+                                    EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                                            EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
+        assertTrue(hasDbEmergencyNumber(emergencyNumber,
+                emergencyNumberTrackerMock.getEmergencyNumberList()));
     }
 
     /**
@@ -534,9 +769,6 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
      */
     @Test
     public void testOtaEmergencyNumberDatabase() {
-        // Set up the Hal version as 1.4 to apply emergency number database
-        doReturn(new HalVersion(1, 4)).when(mPhone).getHalVersion();
-
         sendEmergencyNumberPrefix(mEmergencyNumberTrackerMock);
         mEmergencyNumberTrackerMock.updateEmergencyCountryIsoAllPhones("");
         processAllMessages();
@@ -596,5 +828,43 @@ public class EmergencyNumberTrackerTest extends TelephonyTest {
         Collections.sort(resultFromRadio);
 
         assertEquals(resultToVerify, resultFromRadio);
+    }
+
+    @Test
+    public void testOverridingEmergencyNumberPrefixCarrierConfig() throws Exception {
+        // Capture CarrierConfigChangeListener to emulate the carrier config change notification
+        doReturn(mMockContext).when(mPhone).getContext();
+        doReturn(Context.CARRIER_CONFIG_SERVICE)
+                .when(mMockContext)
+                .getSystemService(CarrierConfigManager.class);
+        doReturn(mCarrierConfigManagerMock)
+                .when(mMockContext)
+                .getSystemService(eq(Context.CARRIER_CONFIG_SERVICE));
+        ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
+                ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
+        EmergencyNumberTracker localEmergencyNumberTracker =
+                new EmergencyNumberTracker(mPhone, mSimulatedCommands);
+        verify(mCarrierConfigManagerMock)
+                .registerCarrierConfigChangeListener(any(), listenerArgumentCaptor.capture());
+        CarrierConfigManager.CarrierConfigChangeListener carrierConfigChangeListener =
+                listenerArgumentCaptor.getAllValues().get(0);
+
+        assertFalse(localEmergencyNumberTracker.isEmergencyNumber("*272911"));
+
+        PersistableBundle bundle = new PersistableBundle();
+        bundle.putStringArray(
+                CarrierConfigManager.KEY_EMERGENCY_NUMBER_PREFIX_STRING_ARRAY,
+                new String[] {"*272"});
+        doReturn(bundle)
+                .when(mCarrierConfigManagerMock)
+                .getConfigForSubId(eq(SUB_ID_PHONE_1), any());
+        carrierConfigChangeListener.onCarrierConfigChanged(
+                mPhone.getPhoneId(),
+                mPhone.getSubId(),
+                TelephonyManager.UNKNOWN_CARRIER_ID,
+                TelephonyManager.UNKNOWN_CARRIER_ID);
+        processAllMessages();
+
+        assertTrue(localEmergencyNumberTracker.isEmergencyNumber("*272911"));
     }
 }
