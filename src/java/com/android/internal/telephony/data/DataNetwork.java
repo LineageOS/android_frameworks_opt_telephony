@@ -1321,6 +1321,10 @@ public class DataNetwork extends StateMachine {
                     mFailCause = DataFailCause.NO_RETRY_FAILURE;
                     transitionTo(mDisconnectedState);
                     break;
+                case EVENT_DEACTIVATE_DATA_NETWORK_RESPONSE:
+                    int responseCode = msg.arg1;
+                    onDeactivateResponse(responseCode);
+                    break;
                 default:
                     return NOT_HANDLED;
             }
