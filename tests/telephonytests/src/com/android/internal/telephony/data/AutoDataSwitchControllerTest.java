@@ -21,6 +21,7 @@ import static android.telephony.SubscriptionManager.DEFAULT_PHONE_INDEX;
 import static com.android.internal.telephony.data.AutoDataSwitchController.EVALUATION_REASON_DATA_SETTINGS_CHANGED;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
@@ -40,8 +41,11 @@ import android.os.Message;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
+import android.telephony.SignalStrength;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyDisplayInfo;
+import android.telephony.TelephonyManager;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -69,14 +73,24 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
     private static final int PHONE_2 = 1;
     private static final int SUB_2 = 2;
     private static final int MAX_RETRY = 5;
+    private static final int SCORE_TOLERANCE = 100;
+    private static final int GOOD_RAT_SIGNAL_SCORE = 200;
+    private static final int BAD_RAT_SIGNAL_SCORE = 50;
     // Mocked
     private AutoDataSwitchController.AutoDataSwitchControllerCallback mMockedPhoneSwitcherCallback;
 
+    // Real
+    private TelephonyDisplayInfo mGoodTelephonyDisplayInfo;
+    private TelephonyDisplayInfo mBadTelephonyDisplayInfo;
     private int mDefaultDataSub;
     private AutoDataSwitchController mAutoDataSwitchControllerUT;
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
+        mGoodTelephonyDisplayInfo = new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_NR,
+                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED, false /*roaming*/);
+        mBadTelephonyDisplayInfo = new TelephonyDisplayInfo(TelephonyManager.NETWORK_TYPE_UMTS,
+                TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NONE, false /*roaming*/);
         mMockedPhoneSwitcherCallback =
                 mock(AutoDataSwitchController.AutoDataSwitchControllerCallback.class);
 
@@ -95,11 +109,17 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
             doReturn(mDisplayInfoController).when(phone).getDisplayInfoController();
             doReturn(mSignalStrengthController).when(phone).getSignalStrengthController();
             doReturn(mSignalStrength).when(phone).getSignalStrength();
+            doReturn(mDataNetworkController).when(phone).getDataNetworkController();
+            doReturn(mDataConfigManager).when(mDataNetworkController).getDataConfigManager();
             doAnswer(invocation -> phone.getSubId() == mDefaultDataSub)
                     .when(phone).isUserDataEnabled();
         }
-        doReturn(new int[mPhones.length]).when(mSubscriptionManagerService)
+        doReturn(new int[]{SUB_1, SUB_2}).when(mSubscriptionManagerService)
                 .getActiveSubIdList(true);
+        doAnswer(invocation -> {
+            int subId = (int) invocation.getArguments()[0];
+            return subId == SUB_1 ? PHONE_1 : PHONE_2;
+        }).when(mSubscriptionManagerService).getPhoneId(anyInt());
         doAnswer(invocation -> {
             int subId = (int) invocation.getArguments()[0];
 
@@ -111,11 +131,22 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         }).when(mSubscriptionManagerService).getSubscriptionInfoInternal(anyInt());
         replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
 
-        // Change resource overlay
+        // Change data config
         doReturn(true).when(mDataConfigManager).isPingTestBeforeAutoDataSwitchRequired();
         doReturn(1L).when(mDataConfigManager)
                 .getAutoDataSwitchAvailabilityStabilityTimeThreshold();
         doReturn(MAX_RETRY).when(mDataConfigManager).getAutoDataSwitchValidationMaxRetry();
+        doReturn(SCORE_TOLERANCE).when(mDataConfigManager).getAutoDataSwitchScoreTolerance();
+        doAnswer(invocation -> {
+            TelephonyDisplayInfo displayInfo = (TelephonyDisplayInfo) invocation.getArguments()[0];
+            SignalStrength signalStrength = (SignalStrength) invocation.getArguments()[1];
+            if (displayInfo == mGoodTelephonyDisplayInfo
+                    || signalStrength.getLevel() > SignalStrength.SIGNAL_STRENGTH_MODERATE) {
+                return GOOD_RAT_SIGNAL_SCORE;
+            }
+            return BAD_RAT_SIGNAL_SCORE;
+        }).when(mDataConfigManager).getAutoDataSwitchScore(any(TelephonyDisplayInfo.class),
+                any(SignalStrength.class));
 
         setDefaultDataSubId(SUB_1);
         doReturn(PHONE_1).when(mPhoneSwitcher).getPreferredDataPhoneId();
@@ -139,8 +170,10 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         // Verify attempting to switch
         verify(mMockedPhoneSwitcherCallback).onRequireValidation(PHONE_2, true/*needValidation*/);
 
-        // 1. Service state becomes not ideal - primary is available again
-        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        // 1. Service state becomes not ideal - secondary lost its advantage score
+        clearInvocations(mMockedPhoneSwitcherCallback);
+        displayInfoChanged(PHONE_2, mBadTelephonyDisplayInfo);
+        signalStrengthChanged(PHONE_2, SignalStrength.SIGNAL_STRENGTH_POOR);
         processAllFutureMessages();
 
         verify(mMockedPhoneSwitcherCallback).onRequireCancelAnyPendingAutoSwitchValidation();
@@ -177,7 +210,41 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testCancelSwitch_onPrimary_rat_signalStrength() {
+        // 4.1 Display info and signal strength on secondary phone became bad
+        prepareIdealUsesNonDdsCondition();
+        processAllFutureMessages();
+        clearInvocations(mMockedPhoneSwitcherCallback);
+        displayInfoChanged(PHONE_2, mBadTelephonyDisplayInfo);
+        signalStrengthChanged(PHONE_2, SignalStrength.SIGNAL_STRENGTH_MODERATE);
+        processAllFutureMessages();
+        verify(mMockedPhoneSwitcherCallback).onRequireCancelAnyPendingAutoSwitchValidation();
+
+        // 4.2 Display info on default phone became good just as the secondary
+        prepareIdealUsesNonDdsCondition();
+        processAllFutureMessages();
+        clearInvocations(mMockedPhoneSwitcherCallback);
+        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        displayInfoChanged(PHONE_1, mGoodTelephonyDisplayInfo);
+        processAllFutureMessages();
+        verify(mMockedPhoneSwitcherCallback).onRequireCancelAnyPendingAutoSwitchValidation();
+
+        // 4.3 Signal strength on default phone became just as good as the secondary
+        prepareIdealUsesNonDdsCondition();
+        processAllFutureMessages();
+        clearInvocations(mMockedPhoneSwitcherCallback);
+        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        signalStrengthChanged(PHONE_1, SignalStrength.SIGNAL_STRENGTH_GREAT);
+        processAllFutureMessages();
+        verify(mMockedPhoneSwitcherCallback).onRequireCancelAnyPendingAutoSwitchValidation();
+    }
+
+    @Test
     public void testOnNonDdsSwitchBackToPrimary() {
+        // Disable Rat/SignalStrength based switch to test primary OOS based switch
+        doReturn(-1).when(mDataConfigManager).getAutoDataSwitchScoreTolerance();
+        mAutoDataSwitchControllerUT = new AutoDataSwitchController(mContext, Looper.myLooper(),
+                mPhoneSwitcher, mMockedPhoneSwitcherCallback);
         doReturn(PHONE_2).when(mPhoneSwitcher).getPreferredDataPhoneId();
 
         prepareIdealUsesNonDdsCondition();
@@ -232,6 +299,32 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testOnNonDdsSwitchBackToPrimary_rat_signalStrength() {
+        doReturn(PHONE_2).when(mPhoneSwitcher).getPreferredDataPhoneId();
+
+        prepareIdealUsesNonDdsCondition();
+        // 4.1 Display info and signal strength on secondary phone became bad just as the default
+        // Expect no switch since both phone has the same score.
+        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        displayInfoChanged(PHONE_2, mBadTelephonyDisplayInfo);
+        signalStrengthChanged(PHONE_2, SignalStrength.SIGNAL_STRENGTH_POOR);
+        processAllFutureMessages();
+        verify(mMockedPhoneSwitcherCallback, never()).onRequireValidation(anyInt(), anyBoolean());
+
+        clearInvocations(mMockedPhoneSwitcherCallback);
+        prepareIdealUsesNonDdsCondition();
+        // 4.2 Display info and signal strength on secondary phone became worse than the default.
+        // Expect to switch.
+        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        signalStrengthChanged(PHONE_1, SignalStrength.SIGNAL_STRENGTH_GREAT);
+        displayInfoChanged(PHONE_2, mBadTelephonyDisplayInfo);
+        signalStrengthChanged(PHONE_2, SignalStrength.SIGNAL_STRENGTH_POOR);
+        processAllFutureMessages();
+        verify(mMockedPhoneSwitcherCallback).onRequireValidation(DEFAULT_PHONE_INDEX,
+                true/*needValidation*/);
+    }
+
+    @Test
     public void testCancelSwitch_onSecondary() {
         doReturn(PHONE_2).when(mPhoneSwitcher).getPreferredDataPhoneId();
         prepareIdealUsesNonDdsCondition();
@@ -244,6 +337,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
                 false/*needValidation*/);
 
         // cancel the switch back attempt due to secondary back to HOME
+        clearInvocations(mMockedPhoneSwitcherCallback);
         serviceStateChanged(PHONE_2, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         processAllFutureMessages();
 
@@ -267,6 +361,8 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         // Change resource overlay
         doReturn(false).when(mDataConfigManager)
                 .isPingTestBeforeAutoDataSwitchRequired();
+        doReturn(-1 /*Disable signal based switch for easy mock*/).when(mDataConfigManager)
+                .getAutoDataSwitchScoreTolerance();
         mAutoDataSwitchControllerUT = new AutoDataSwitchController(mContext, Looper.myLooper(),
                 mPhoneSwitcher, mMockedPhoneSwitcherCallback);
 
@@ -327,13 +423,59 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
                 eq(EVENT_SERVICE_STATE_CHANGED), eq(PHONE_2));
     }
 
+    @Test
+    public void testSubscriptionChangedUnregister() {
+        // Test single SIM loaded
+        int modemCount = 2;
+        doReturn(new int[]{SUB_2}).when(mSubscriptionManagerService)
+                .getActiveSubIdList(true);
+        mAutoDataSwitchControllerUT.notifySubscriptionsChanged();
+        processAllMessages();
+
+        // Verify unregister from both slots since only 1 visible SIM is insufficient for switching
+        verify(mDisplayInfoController, times(modemCount))
+                .unregisterForTelephonyDisplayInfoChanged(any());
+        verify(mSignalStrengthController, times(modemCount))
+                .unregisterForSignalStrengthChanged(any());
+        verify(mSST, times(modemCount)).unregisterForServiceStateChanged(any());
+
+        // Test single -> Duel
+        clearInvocations(mDisplayInfoController, mSignalStrengthController, mSST);
+        doReturn(new int[]{SUB_1, SUB_2}).when(mSubscriptionManagerService)
+                .getActiveSubIdList(true);
+        mAutoDataSwitchControllerUT.notifySubscriptionsChanged();
+        processAllMessages();
+
+        // Verify register on both slots
+        for (int phoneId = 0; phoneId < modemCount; phoneId++) {
+            verify(mDisplayInfoController).registerForTelephonyDisplayInfoChanged(any(),
+                    eq(EVENT_DISPLAY_INFO_CHANGED), eq(phoneId));
+            verify(mSignalStrengthController).registerForSignalStrengthChanged(any(),
+                    eq(EVENT_SIGNAL_STRENGTH_CHANGED), eq(phoneId));
+            verify(mSST).registerForServiceStateChanged(any(),
+                    eq(EVENT_SERVICE_STATE_CHANGED), eq(phoneId));
+        }
+    }
+
+    @Test
+    public void testRatSignalStrengthSkipEvaluation() {
+        // Verify the secondary phone is OOS and its score(0) is too low to justify the evaluation
+        displayInfoChanged(PHONE_2, mBadTelephonyDisplayInfo);
+        processAllFutureMessages();
+        verify(mMockedPhoneSwitcherCallback, never())
+                .onRequireCancelAnyPendingAutoSwitchValidation();
+        verify(mMockedPhoneSwitcherCallback, never()).onRequireValidation(anyInt(), anyBoolean());
+    }
+
     /**
      * Trigger conditions
      * 1. service state changes
-     * 2. data setting changes
+     * 2. telephony display info changes
+     * 3. signal strength changes
+     * 4. data setting changes
      *      - user toggle data
      *      - user toggle auto switch feature
-     * 3. default network changes
+     * 5. default network changes
      *      - current network lost
      *      - network become active on non-cellular network
      */
@@ -343,16 +485,42 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         serviceStateChanged(PHONE_1, NetworkRegistrationInfo
                 .REGISTRATION_STATE_NOT_REGISTERED_OR_SEARCHING);
 
-        // 2.1 User data enabled on primary SIM
+        // 2. telephony display info changes
+        displayInfoChanged(PHONE_2, mGoodTelephonyDisplayInfo);
+        displayInfoChanged(PHONE_1, mBadTelephonyDisplayInfo);
+
+        // 3. signal strength changes
+        signalStrengthChanged(PHONE_2, SignalStrength.SIGNAL_STRENGTH_GREAT);
+        signalStrengthChanged(PHONE_1, SignalStrength.SIGNAL_STRENGTH_POOR);
+
+        // 4.1 User data enabled on primary SIM
         doReturn(true).when(mPhone).isUserDataEnabled();
 
-        // 2.2 Auto switch feature is enabled
+        // 4.2 Auto switch feature is enabled
         doReturn(true).when(mPhone2).isDataAllowed();
 
-        // 3.1 No default network
+        // 5. No default network
         mAutoDataSwitchControllerUT.updateDefaultNetworkCapabilities(null /*networkCapabilities*/);
     }
 
+    private void signalStrengthChanged(int phoneId, int level) {
+        SignalStrength ss = mock(SignalStrength.class);
+        doReturn(level).when(ss).getLevel();
+        doReturn(ss).when(mPhones[phoneId]).getSignalStrength();
+
+        Message msg = mAutoDataSwitchControllerUT.obtainMessage(EVENT_SIGNAL_STRENGTH_CHANGED);
+        msg.obj = new AsyncResult(phoneId, null, null);
+        mAutoDataSwitchControllerUT.sendMessage(msg);
+        processAllMessages();
+    }
+    private void displayInfoChanged(int phoneId, TelephonyDisplayInfo telephonyDisplayInfo) {
+        doReturn(telephonyDisplayInfo).when(mDisplayInfoController).getTelephonyDisplayInfo();
+
+        Message msg = mAutoDataSwitchControllerUT.obtainMessage(EVENT_DISPLAY_INFO_CHANGED);
+        msg.obj = new AsyncResult(phoneId, null, null);
+        mAutoDataSwitchControllerUT.sendMessage(msg);
+        processAllMessages();
+    }
     private void serviceStateChanged(int phoneId,
             @NetworkRegistrationInfo.RegistrationState int dataRegState) {
 

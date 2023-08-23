@@ -213,8 +213,8 @@ public class DataConfigManager extends Handler {
             "anomaly_network_handover_timeout";
     /** DeviceConfig key of anomaly report: True for enabling APN config invalidity detection */
     private static final String KEY_ANOMALY_APN_CONFIG_ENABLED = "anomaly_apn_config_enabled";
-    /** Invalid auto data switch score. */
-    private static final int INVALID_AUTO_DATA_SWITCH_SCORE = -1;
+    /** Placeholder indicating missing Auto data switch score config, meaning out of service. */
+    private static final int OUT_OF_SERVICE_AUTO_DATA_SWITCH_SCORE = 0;
     /** Anomaly report thresholds for frequent setup data call failure. */
     private EventFrequency mSetupDataCallAnomalyReportThreshold;
 
@@ -978,12 +978,14 @@ public class DataConfigManager extends Handler {
      * @param displayInfo The displayed network info.
      * @param signalStrength The signal strength.
      * @return Score base on network type and signal strength to inform auto data switch decision.
+     * The min score is {@link #OUT_OF_SERVICE_AUTO_DATA_SWITCH_SCORE} indicating missing config.
      */
     public int getAutoDataSwitchScore(@NonNull TelephonyDisplayInfo displayInfo,
             @NonNull SignalStrength signalStrength) {
         int[] scores = mAutoDataSwitchNetworkTypeSignalMap.get(
                 getDataConfigNetworkType(displayInfo));
-        return scores != null ? scores[signalStrength.getLevel()] : INVALID_AUTO_DATA_SWITCH_SCORE;
+        return scores != null ? scores[signalStrength.getLevel()]
+                : OUT_OF_SERVICE_AUTO_DATA_SWITCH_SCORE;
     }
 
     /**
