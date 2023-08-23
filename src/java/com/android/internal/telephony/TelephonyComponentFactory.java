@@ -40,6 +40,7 @@ import com.android.internal.telephony.data.DataSettingsManager;
 import com.android.internal.telephony.data.LinkBandwidthEstimator;
 import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.imsphone.ImsExternalCallTracker;
 import com.android.internal.telephony.imsphone.ImsNrSaModeHandler;
 import com.android.internal.telephony.imsphone.ImsPhone;
@@ -429,9 +430,10 @@ public class TelephonyComponentFactory {
 
     public Phone makePhone(Context context, CommandsInterface ci, PhoneNotifier notifier,
             int phoneId, int precisePhoneType,
-            TelephonyComponentFactory telephonyComponentFactory) {
+            TelephonyComponentFactory telephonyComponentFactory,
+            @NonNull FeatureFlags featureFlags) {
         return new GsmCdmaPhone(context, ci, notifier, phoneId, precisePhoneType,
-                telephonyComponentFactory);
+                telephonyComponentFactory, featureFlags);
     }
 
     public PhoneSwitcher makePhoneSwitcher(int maxDataAttachModemCount, Context context,
@@ -476,10 +478,12 @@ public class TelephonyComponentFactory {
      *
      * @param phone The phone object
      * @param looper The looper for event handling
+     * @param featureFlags The feature flag.
      * @return The data network controller instance
      */
-    public DataNetworkController makeDataNetworkController(Phone phone, Looper looper) {
-        return new DataNetworkController(phone, looper);
+    public DataNetworkController makeDataNetworkController(Phone phone, Looper looper,
+            @NonNull FeatureFlags featureFlags) {
+        return new DataNetworkController(phone, looper, featureFlags);
     }
 
     /**

@@ -89,6 +89,7 @@ import androidx.test.filters.FlakyTest;
 
 import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.emergency.EmergencyStateTracker;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
@@ -113,6 +114,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
+import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
@@ -138,6 +140,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     // app is not currently debuggable. For now, we use the real device config and ensure that
     // we reset the cellular_security namespace property to its pre-test value after every test.
     private DeviceConfig.Properties mPreTestProperties;
+    @Mock private FeatureFlags mFeatureFlags;
 
     private static final int EVENT_EMERGENCY_CALLBACK_MODE_EXIT = 1;
     private static final int EVENT_EMERGENCY_CALL_TOGGLE = 2;
@@ -176,7 +179,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         DomainSelectionResolver.setDomainSelectionResolver(mDomainSelectionResolver);
 
         mPhoneUT = new GsmCdmaPhone(mContext, mSimulatedCommands, mNotifier, true, 0,
-            PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory, (c, p) -> mImsManager);
+            PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory, (c, p) -> mImsManager,
+                mFeatureFlags);
         mPhoneUT.setVoiceCallSessionStats(mVoiceCallSessionStats);
         ArgumentCaptor<Integer> integerArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(mUiccController).registerForIccChanged(eq(mPhoneUT), integerArgumentCaptor.capture(),
@@ -1035,7 +1039,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         };
 
         Phone phone = new GsmCdmaPhone(mContext, sc, mNotifier, true, 0,
-                PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory, (c, p) -> mImsManager);
+                PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory, (c, p) -> mImsManager,
+                mFeatureFlags);
         phone.setVoiceCallSessionStats(mVoiceCallSessionStats);
         ArgumentCaptor<Integer> integerArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(mUiccController).registerForIccChanged(eq(phone), integerArgumentCaptor.capture(),
