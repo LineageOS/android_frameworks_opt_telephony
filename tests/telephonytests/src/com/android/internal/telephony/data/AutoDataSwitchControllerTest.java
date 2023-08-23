@@ -251,6 +251,28 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
     }
 
     @Test
+    public void testStabilityCheckOverride() {
+        // Starting stability check for switching to non-DDS
+        prepareIdealUsesNonDdsCondition();
+        processAllMessages();
+
+        // Switch success, but the previous stability check is still pending
+        doReturn(PHONE_2).when(mPhoneSwitcher).getPreferredDataPhoneId();
+
+        // The attempt to switch back should override the previous stability check
+        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
+        // process messages without touching the delayed message, allow it to be overridden.
+        processAllMessages();
+        // process all messages include the delayed message
+        processAllFutureMessages();
+
+        verify(mMockedPhoneSwitcherCallback).onRequireValidation(DEFAULT_PHONE_INDEX,
+                true/*needValidation*/);
+        verify(mMockedPhoneSwitcherCallback, never()).onRequireValidation(PHONE_2,
+                true/*needValidation*/);
+    }
+
+    @Test
     public void testValidationFailedRetry() {
         prepareIdealUsesNonDdsCondition();
 
