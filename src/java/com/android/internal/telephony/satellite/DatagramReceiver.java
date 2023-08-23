@@ -722,7 +722,7 @@ public class DatagramReceiver extends Handler {
     }
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
-    protected void onDeviceAlignedWithSatellite(boolean isAligned) {
+    protected void setDeviceAlignedWithSatellite(boolean isAligned) {
         if (mIsDemoMode) {
             synchronized (mLock) {
                 mIsAligned = isAligned;

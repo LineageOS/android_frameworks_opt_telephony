@@ -1811,8 +1811,8 @@ public class SatelliteController extends Handler {
      * @param subId The subId of the subscription.
      * @param isAligned {@true} means device is aligned with the satellite, otherwise {@false}.
      */
-    public void onDeviceAlignedWithSatellite(@NonNull int subId, @NonNull boolean isAligned) {
-        mDatagramController.onDeviceAlignedWithSatellite(isAligned);
+    public void setDeviceAlignedWithSatellite(@NonNull int subId, @NonNull boolean isAligned) {
+        mDatagramController.setDeviceAlignedWithSatellite(isAligned);
     }
 
     /**

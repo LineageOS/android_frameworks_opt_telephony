@@ -299,7 +299,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
     @Test
     public void testSendSatelliteDatagram_DemoMode_Align_Success() throws Exception {
         mTestDemoModeDatagramDispatcher.setDemoMode(true);
-        mTestDemoModeDatagramDispatcher.onDeviceAlignedWithSatellite(true);
+        mTestDemoModeDatagramDispatcher.setDeviceAlignedWithSatellite(true);
         doReturn(false).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
         replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone});
         doAnswer(invocation -> {
@@ -331,7 +331,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
                         eq(SatelliteManager.SATELLITE_ERROR_NONE));
         assertThat(mResultListener.peek()).isEqualTo(SatelliteManager.SATELLITE_ERROR_NONE);
         mTestDemoModeDatagramDispatcher.setDemoMode(false);
-        mTestDemoModeDatagramDispatcher.onDeviceAlignedWithSatellite(false);
+        mTestDemoModeDatagramDispatcher.setDeviceAlignedWithSatellite(false);
     }
 
     @Test
@@ -339,7 +339,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
         long previousTimer = mTestDemoModeDatagramDispatcher.getSatelliteAlignedTimeoutDuration();
         mTestDemoModeDatagramDispatcher.setDemoMode(true);
         mTestDemoModeDatagramDispatcher.setDuration(TEST_EXPIRE_TIMER_SATELLITE_ALIGN);
-        mTestDemoModeDatagramDispatcher.onDeviceAlignedWithSatellite(false);
+        mTestDemoModeDatagramDispatcher.setDeviceAlignedWithSatellite(false);
 
         doReturn(false).when(mMockSatelliteModemInterface).isSatelliteServiceSupported();
         replaceInstance(PhoneFactory.class, "sPhones", null, new Phone[] {mPhone});
@@ -371,7 +371,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
                         eq(SatelliteManager.SATELLITE_ERROR_NONE));
         assertThat(mResultListener.peek()).isEqualTo(SatelliteManager.SATELLITE_NOT_REACHABLE);
         mTestDemoModeDatagramDispatcher.setDemoMode(false);
-        mTestDemoModeDatagramDispatcher.onDeviceAlignedWithSatellite(false);
+        mTestDemoModeDatagramDispatcher.setDeviceAlignedWithSatellite(false);
         mTestDemoModeDatagramDispatcher.setDuration(previousTimer);
     }
 
@@ -413,7 +413,7 @@ public class DatagramDispatcherTest extends TelephonyTest {
                         eq(SatelliteManager.SATELLITE_ERROR_NONE));
 
         mTestDemoModeDatagramDispatcher.setDemoMode(false);
-        mTestDemoModeDatagramDispatcher.onDeviceAlignedWithSatellite(false);
+        mTestDemoModeDatagramDispatcher.setDeviceAlignedWithSatellite(false);
     }
 
     @Test
@@ -483,8 +483,8 @@ public class DatagramDispatcherTest extends TelephonyTest {
         }
 
         @Override
-        protected  void onDeviceAlignedWithSatellite(boolean isAligned) {
-            super.onDeviceAlignedWithSatellite(isAligned);
+        protected  void setDeviceAlignedWithSatellite(boolean isAligned) {
+            super.setDeviceAlignedWithSatellite(isAligned);
         }
 
         @Override
