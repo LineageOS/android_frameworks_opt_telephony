@@ -1373,8 +1373,25 @@ public class DataNetworkTest extends TelephonyTest {
 
     @Test
     public void testVcnPolicyTeardownRequested() throws Exception {
-        setupDataNetwork();
+        // 1. Tear down in Connecting state
+        doAnswer(invocation -> {
+            NetworkCapabilities nc = invocation.getArgument(0);
 
+            return new VcnNetworkPolicyResult(
+                    true /* isTearDownRequested */, nc);
+        }).when(mVcnManager).applyVcnNetworkPolicy(any(), any());
+        setupDataNetwork();
+        verify(mMockedWwanDataServiceManager).deactivateDataCall(anyInt(),
+                eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
+
+        // 2. Tear down in Connected state
+        doAnswer(invocation -> {
+            NetworkCapabilities nc = invocation.getArgument(0);
+
+            return new VcnNetworkPolicyResult(
+                    false /* isTearDownRequested */, nc);
+        }).when(mVcnManager).applyVcnNetworkPolicy(any(), any());
+        setupDataNetwork();
         doAnswer(invocation -> {
             NetworkCapabilities nc = invocation.getArgument(0);
 
