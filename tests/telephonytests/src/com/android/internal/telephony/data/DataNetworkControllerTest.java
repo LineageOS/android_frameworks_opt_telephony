@@ -158,7 +158,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
     private DataNetworkControllerCallback mMockedDataNetworkControllerCallback;
     private DataRetryManagerCallback mMockedDataRetryManagerCallback;
     private ImsResolver mMockedImsResolver;
-
+    private DataStallRecoveryManager mMockedDataStallRecoveryManager;
     private ImsManager mMockedImsManager;
     private ImsMmTelManager mMockedImsMmTelManager;
     private ImsRcsManager mMockedImsRcsManager;
@@ -744,6 +744,12 @@ public class DataNetworkControllerTest extends TelephonyTest {
                         .KEY_CAPABILITIES_EXEMPT_FROM_SINGLE_DC_CHECK_INT_ARRAY,
                 new int[]{NetworkCapabilities.NET_CAPABILITY_IMS});
 
+        mCarrierConfig.putLongArray(CarrierConfigManager.KEY_DATA_STALL_RECOVERY_TIMERS_LONG_ARRAY,
+                new long[] {100, 100, 100, 100});
+        mCarrierConfig.putBooleanArray(
+                CarrierConfigManager.KEY_DATA_STALL_RECOVERY_SHOULD_SKIP_BOOL_ARRAY,
+                new boolean[] {false, false, true, false, false});
+
         mContextFixture.putResource(com.android.internal.R.string.config_bandwidthEstimateSource,
                 "bandwidth_estimator");
 
@@ -765,6 +771,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         mMockedImsMmTelManager = Mockito.mock(ImsMmTelManager.class);
         mMockedImsRcsManager = Mockito.mock(ImsRcsManager.class);
         mMockedImsResolver = Mockito.mock(ImsResolver.class);
+        mMockedDataStallRecoveryManager = Mockito.mock(DataStallRecoveryManager.class);
         mMockedDataNetworkControllerCallback = Mockito.mock(DataNetworkControllerCallback.class);
         mMockedDataRetryManagerCallback = Mockito.mock(DataRetryManagerCallback.class);
         mMockSubInfo = Mockito.mock(SubscriptionInfo.class);
@@ -876,6 +883,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         replaceInstance(DataNetworkController.class, "mAccessNetworksManager",
                 mDataNetworkControllerUT, mAccessNetworksManager);
         replaceInstance(ImsResolver.class, "sInstance", null, mMockedImsResolver);
+        replaceInstance(DataNetworkController.class, "mDataStallRecoveryManager",
+                mDataNetworkControllerUT, mMockedDataStallRecoveryManager);
 
         ArgumentCaptor<AccessNetworksManagerCallback> callbackCaptor =
                 ArgumentCaptor.forClass(AccessNetworksManagerCallback.class);

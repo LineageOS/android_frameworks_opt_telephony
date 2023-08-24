@@ -96,6 +96,7 @@ import com.android.internal.telephony.data.DataEvaluation.DataAllowedReason;
 import com.android.internal.telephony.data.DataNetworkController.NetworkRequestList;
 import com.android.internal.telephony.data.DataRetryManager.DataHandoverRetryEntry;
 import com.android.internal.telephony.data.DataRetryManager.DataRetryEntry;
+import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
 import com.android.internal.telephony.data.LinkBandwidthEstimator.LinkBandwidthEstimatorCallback;
 import com.android.internal.telephony.data.TelephonyNetworkAgent.TelephonyNetworkAgentCallback;
 import com.android.internal.telephony.metrics.DataCallSessionStats;
@@ -558,6 +559,9 @@ public class DataNetwork extends StateMachine {
     /** Data network controller callback. */
     private final @NonNull DataNetworkController.DataNetworkControllerCallback
             mDataNetworkControllerCallback;
+
+    /** Data settings manager callback. */
+    private @NonNull DataSettingsManagerCallback mDataSettingsManagerCallback;
 
     /** Data config manager. */
     private final @NonNull DataConfigManager mDataConfigManager;
@@ -1072,6 +1076,34 @@ public class DataNetwork extends StateMachine {
             mRil.registerForPcoData(getHandler(), EVENT_PCO_DATA_RECEIVED, null);
 
             mDataConfigManager.registerCallback(mDataConfigManagerCallback);
+
+            mDataSettingsManagerCallback = new DataSettingsManagerCallback(getHandler()::post) {
+                @Override
+                public void onDataEnabledChanged(boolean enabled,
+                        @TelephonyManager.DataEnabledChangedReason int reason,
+                        @NonNull String callingPackage) {
+                    if (enabled) {
+                        // The NOT_RESTRICTED capability might be changed after data enabled. We
+                        // need to update the capabilities again.
+                        log("Data enabled. update network capabilities.");
+                        updateNetworkCapabilities();
+                    }
+                }
+
+                @Override
+                public void onDataRoamingEnabledChanged(boolean enabled) {
+                    if (enabled) {
+                        // The NOT_RESTRICTED capability might be changed after data roaming
+                        // enabled. We need to update the capabilities again.
+                        log("Data roaming enabled. update network capabilities.");
+                        updateNetworkCapabilities();
+                    }
+                }
+            };
+
+            mDataNetworkController.getDataSettingsManager()
+                    .registerCallback(mDataSettingsManagerCallback);
+
             mPhone.getDisplayInfoController().registerForTelephonyDisplayInfoChanged(
                     getHandler(), EVENT_DISPLAY_INFO_CHANGED, null);
             mPhone.getServiceStateTracker().registerForServiceStateChanged(getHandler(),
@@ -1140,6 +1172,8 @@ public class DataNetwork extends StateMachine {
             mPhone.getServiceStateTracker().unregisterForServiceStateChanged(getHandler());
             mPhone.getDisplayInfoController().unregisterForTelephonyDisplayInfoChanged(
                     getHandler());
+            mDataNetworkController.getDataSettingsManager()
+                    .unregisterCallback(mDataSettingsManagerCallback);
             mRil.unregisterForPcoData(getHandler());
             mDataConfigManager.unregisterCallback(mDataConfigManagerCallback);
         }
