@@ -380,7 +380,7 @@ public class AutoDataSwitchController extends Handler {
                 break;
             case EVENT_MEETS_AUTO_DATA_SWITCH_STATE:
                 int targetPhoneId = msg.arg1;
-                boolean needValidation = (boolean) msg.obj;
+                boolean needValidation = msg.arg2 == 1;
                 log("require validation on phone " + targetPhoneId
                         + (needValidation ? "" : " no") + " need to pass");
                 mPhoneSwitcherCallback.onRequireValidation(targetPhoneId, needValidation);
@@ -687,10 +687,12 @@ public class AutoDataSwitchController extends Handler {
     private void startStabilityCheck(int targetPhoneId, boolean needValidation) {
         log("startAutoDataSwitchStabilityCheck: targetPhoneId=" + targetPhoneId
                 + " needValidation=" + needValidation);
-        if (!hasMessages(EVENT_MEETS_AUTO_DATA_SWITCH_STATE, needValidation)) {
+        String combinationIdentifier = targetPhoneId + "" + needValidation;
+        if (!hasEqualMessages(EVENT_MEETS_AUTO_DATA_SWITCH_STATE, combinationIdentifier)) {
+            removeMessages(EVENT_MEETS_AUTO_DATA_SWITCH_STATE);
             sendMessageDelayed(obtainMessage(EVENT_MEETS_AUTO_DATA_SWITCH_STATE, targetPhoneId,
-                            0/*placeholder*/,
-                            needValidation),
+                            needValidation ? 1 : 0,
+                            combinationIdentifier),
                     mAutoDataSwitchAvailabilityStabilityTimeThreshold);
         }
     }
