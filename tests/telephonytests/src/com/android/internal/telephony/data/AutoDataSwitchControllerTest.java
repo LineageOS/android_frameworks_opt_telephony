@@ -133,7 +133,7 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
 
         // Change data config
         doReturn(true).when(mDataConfigManager).isPingTestBeforeAutoDataSwitchRequired();
-        doReturn(1L).when(mDataConfigManager)
+        doReturn(10000L).when(mDataConfigManager)
                 .getAutoDataSwitchAvailabilityStabilityTimeThreshold();
         doReturn(MAX_RETRY).when(mDataConfigManager).getAutoDataSwitchValidationMaxRetry();
         doReturn(SCORE_TOLERANCE).when(mDataConfigManager).getAutoDataSwitchScoreTolerance();
@@ -353,10 +353,12 @@ public class AutoDataSwitchControllerTest extends TelephonyTest {
         // Switch success, but the previous stability check is still pending
         doReturn(PHONE_2).when(mPhoneSwitcher).getPreferredDataPhoneId();
 
-        // The attempt to switch back should override the previous stability check
-        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_ROAMING);
-        // process messages without touching the delayed message, allow it to be overridden.
-        processAllMessages();
+        // Display info and signal strength on secondary phone became worse than the default.
+        // Expect to switch back, and it should override the previous stability check
+        serviceStateChanged(PHONE_1, NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        signalStrengthChanged(PHONE_1, SignalStrength.SIGNAL_STRENGTH_GREAT);
+        displayInfoChanged(PHONE_2, mBadTelephonyDisplayInfo);
+        signalStrengthChanged(PHONE_2, SignalStrength.SIGNAL_STRENGTH_POOR);
         // process all messages include the delayed message
         processAllFutureMessages();
 

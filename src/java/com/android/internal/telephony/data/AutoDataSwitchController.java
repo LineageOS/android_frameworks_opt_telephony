@@ -535,13 +535,13 @@ public class AutoDataSwitchController extends Handler {
         if (preferredPhoneId == defaultDataPhoneId) {
             // on default data sub
             int candidatePhoneId = getSwitchCandidatePhoneId(defaultDataPhoneId, debugMessage);
+            log(debugMessage.toString());
             if (candidatePhoneId != INVALID_PHONE_INDEX) {
                 mSelectedTargetPhoneId = candidatePhoneId;
                 startStabilityCheck(candidatePhoneId, mRequirePingTestBeforeSwitch);
             } else {
                 cancelAnyPendingSwitch();
             }
-            log(debugMessage.toString());
         } else {
             // on backup data sub
             Phone backupDataPhone = PhoneFactory.getPhone(preferredPhoneId);
@@ -663,10 +663,9 @@ public class AutoDataSwitchController extends Handler {
                         debugMessage.append(", but its data is not allowed");
                     }
                 }
-            } else {
-                debugMessage.append(", no candidate found in Home service");
             }
         }
+        debugMessage.append(", found no qualified candidate.");
         return INVALID_PHONE_INDEX;
     }
 
