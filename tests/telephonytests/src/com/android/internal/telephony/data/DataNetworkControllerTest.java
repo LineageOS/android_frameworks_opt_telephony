@@ -1117,7 +1117,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
     }
 
     private void verifyInternetConnected() throws Exception {
-        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkConnected(any());
+        verify(mMockedDataNetworkControllerCallback).onConnectedInternetDataNetworksChanged(any());
         verifyConnectedNetworkHasCapabilities(NetworkCapabilities.NET_CAPABILITY_INTERNET);
     }
 
@@ -1177,7 +1177,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 InetAddresses.parseNumericAddress(IPV4_ADDRESS),
                 InetAddresses.parseNumericAddress(IPV6_ADDRESS));
 
-        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkConnected(any());
+        verify(mMockedDataNetworkControllerCallback).onConnectedInternetDataNetworksChanged(any());
     }
 
     @Test
@@ -1195,7 +1195,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 InetAddresses.parseNumericAddress(IPV4_ADDRESS),
                 InetAddresses.parseNumericAddress(IPV6_ADDRESS));
 
-        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkConnected(any());
+        verify(mMockedDataNetworkControllerCallback).onConnectedInternetDataNetworksChanged(any());
 
         // database updated/reloaded, causing data profile id change
         List<DataProfile> profiles = List.of(mDuplicatedGeneralPurposeDataProfile);
@@ -1232,7 +1232,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 any(TelephonyNetworkRequest.class), anyInt(), anyBoolean());
 
         // verify the network still connects
-        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkConnected(any());
+        verify(mMockedDataNetworkControllerCallback).onConnectedInternetDataNetworksChanged(any());
 
         // A NOT_VCN_MANAGED request cannot be satisfied by the existing network, but will adopt the
         // same data profile
@@ -1243,7 +1243,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
 
         // verify the network still connects
-        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkConnected(any());
+        verify(mMockedDataNetworkControllerCallback).onConnectedInternetDataNetworksChanged(any());
         // verify we don't try to setup a separate network for the not_vcn_managed request
         dataNetworkList = getDataNetworks();
         assertThat(dataNetworkList).hasSize(1);
@@ -1306,7 +1306,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         mDataNetworkControllerUT.addNetworkRequest(request);
         processAllMessages();
         verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(true));
-        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkConnected(any());
+        verify(mMockedDataNetworkControllerCallback).onConnectedInternetDataNetworksChanged(any());
 
         int countOfCallbacks = dataNetworkControllerCallbacks.size();
 
@@ -1329,7 +1329,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
         verifyAllDataDisconnected();
         verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(false));
-        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkDisconnected();
+        verify(mMockedDataNetworkControllerCallback).onConnectedInternetDataNetworksChanged(
+                eq(Collections.emptySet()));
         verify(mMockedDataNetworkControllerCallback).onPhysicalLinkStatusChanged(
                 eq(DataCallResponse.LINK_STATUS_INACTIVE));
     }
@@ -1493,7 +1494,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
         verifyAllDataDisconnected();
         verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(false));
-        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkDisconnected();
+        verify(mMockedDataNetworkControllerCallback).onConnectedInternetDataNetworksChanged(
+                eq(Collections.emptySet()));
         verify(mMockedDataNetworkControllerCallback).onPhysicalLinkStatusChanged(
                 eq(DataCallResponse.LINK_STATUS_INACTIVE));
 
@@ -1649,7 +1651,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Verify data is restored.
         verifyInternetConnected();
-        Mockito.clearInvocations(mMockedDataNetworkControllerCallback);
 
         // Roaming data disabled
         mDataNetworkControllerUT.getDataSettingsManager().setDataRoamingEnabled(false);
@@ -1657,6 +1658,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
 
         // Verify data is torn down.
         verifyNoConnectedNetworkHasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        Mockito.clearInvocations(mMockedDataNetworkControllerCallback);
 
         // Registration is back to HOME.
         serviceStateChanged(TelephonyManager.NETWORK_TYPE_LTE,
@@ -3216,7 +3218,7 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
 
         verify(mMockedDataNetworkControllerCallback)
-                .onInternetDataNetworkConnected(any());
+                .onConnectedInternetDataNetworksChanged(any());
         List<DataNetwork> dataNetworks = getDataNetworks();
         assertThat(dataNetworks).hasSize(1);
         assertThat(dataNetworks.get(0).getNetworkCapabilities().hasCapability(
@@ -4463,7 +4465,8 @@ public class DataNetworkControllerTest extends TelephonyTest {
         processAllMessages();
         verifyAllDataDisconnected();
         verify(mMockedDataNetworkControllerCallback).onAnyDataNetworkExistingChanged(eq(false));
-        verify(mMockedDataNetworkControllerCallback).onInternetDataNetworkDisconnected();
+        verify(mMockedDataNetworkControllerCallback).onConnectedInternetDataNetworksChanged(
+                eq(Collections.emptySet()));
         verify(mMockedDataNetworkControllerCallback).onPhysicalLinkStatusChanged(
                 eq(DataCallResponse.LINK_STATUS_INACTIVE));
     }

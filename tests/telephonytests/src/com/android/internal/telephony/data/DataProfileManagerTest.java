@@ -65,6 +65,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -816,7 +817,8 @@ public class DataProfileManagerTest extends TelephonyTest {
         doReturn(dataProfile).when(internetNetwork).getDataProfile();
         doReturn(new DataNetworkController.NetworkRequestList(List.of(tnr)))
                 .when(internetNetwork).getAttachedNetworkRequestList();
-        mDataNetworkControllerCallback.onInternetDataNetworkConnected(List.of(internetNetwork));
+        mDataNetworkControllerCallback.onConnectedInternetDataNetworksChanged(
+                Set.of(internetNetwork));
         processAllMessages();
 
         // Test See if the same one can be returned.
@@ -833,7 +835,7 @@ public class DataProfileManagerTest extends TelephonyTest {
         doReturn(legacyRatDataProfile).when(legacyRatInternetNetwork).getDataProfile();
         doReturn(new DataNetworkController.NetworkRequestList(List.of(tnr)))
                 .when(legacyRatInternetNetwork).getAttachedNetworkRequestList();
-        mDataNetworkControllerCallback.onInternetDataNetworkConnected(List.of(
+        mDataNetworkControllerCallback.onConnectedInternetDataNetworksChanged(Set.of(
                 // Because internetNetwork is torn down due to network type mismatch
                 legacyRatInternetNetwork));
         processAllMessages();
@@ -852,7 +854,7 @@ public class DataProfileManagerTest extends TelephonyTest {
         doReturn(dunDataProfile).when(dunInternetNetwork).getDataProfile();
         doReturn(new DataNetworkController.NetworkRequestList(List.of(dunTnr)))
                 .when(dunInternetNetwork).getAttachedNetworkRequestList();
-        mDataNetworkControllerCallback.onInternetDataNetworkConnected(List.of(
+        mDataNetworkControllerCallback.onConnectedInternetDataNetworksChanged(Set.of(
                 legacyRatInternetNetwork, dunInternetNetwork));
         processAllMessages();
 
@@ -860,8 +862,15 @@ public class DataProfileManagerTest extends TelephonyTest {
 
         // Test a single dun default internet network temporarily connected. Verify preferred
         // doesn't change. Mock DUN | DEFAULT and enforced single connection.
-        mDataNetworkControllerCallback.onInternetDataNetworkConnected(List.of(dunInternetNetwork));
+        mDataNetworkControllerCallback.onConnectedInternetDataNetworksChanged(
+                Set.of(dunInternetNetwork));
         processAllMessages();
+
+        assertThat(mDataProfileManagerUT.isDataProfilePreferred(legacyRatDataProfile)).isTrue();
+
+        // Test all internet networks disconnected. Verify preferred doesn't change.
+        mDataNetworkControllerCallback.onConnectedInternetDataNetworksChanged(
+                Collections.emptySet());
 
         assertThat(mDataProfileManagerUT.isDataProfilePreferred(legacyRatDataProfile)).isTrue();
     }
@@ -1211,9 +1220,11 @@ public class DataProfileManagerTest extends TelephonyTest {
         dataProfile.setLastSetupTimestamp(SystemClock.elapsedRealtime());
         DataNetwork internetNetwork = Mockito.mock(DataNetwork.class);
         doReturn(dataProfile).when(internetNetwork).getDataProfile();
+
         doReturn(new DataNetworkController.NetworkRequestList(List.of(tnr)))
                 .when(internetNetwork).getAttachedNetworkRequestList();
-        mDataNetworkControllerCallback.onInternetDataNetworkConnected(List.of(internetNetwork));
+        mDataNetworkControllerCallback.onConnectedInternetDataNetworksChanged(
+                Set.of(internetNetwork));
         processAllMessages();
 
         // After internet connected, preferred APN should be set
@@ -1245,7 +1256,8 @@ public class DataProfileManagerTest extends TelephonyTest {
         assertThat(mDataProfileManagerUT.isDataProfilePreferred(dataProfile)).isTrue();
 
         // Test removed data profile(user created after reset) shouldn't show up
-        mDataNetworkControllerCallback.onInternetDataNetworkConnected(List.of(internetNetwork));
+        mDataNetworkControllerCallback.onConnectedInternetDataNetworksChanged(
+                Set.of(internetNetwork));
         processAllMessages();
         //APN reset and removed GENERAL_PURPOSE_APN from APN DB
         mPreferredApnId = -1;

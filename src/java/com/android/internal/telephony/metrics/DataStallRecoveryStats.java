@@ -42,7 +42,7 @@ import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.telephony.Rlog;
 
-import java.util.List;
+import java.util.Set;
 
 /**
  * Generates metrics related to data stall recovery events per phone ID for the pushed atom.
@@ -103,17 +103,13 @@ public class DataStallRecoveryStats {
         dataNetworkController.registerDataNetworkControllerCallback(
                 new DataNetworkControllerCallback(mHandler::post) {
                 @Override
-                public void onInternetDataNetworkConnected(
-                        @NonNull List<DataNetwork> internetNetworks) {
+                public void onConnectedInternetDataNetworksChanged(
+                        @NonNull Set<DataNetwork> internetNetworks) {
+                    mIfaceName = null;
                     for (DataNetwork dataNetwork : internetNetworks) {
                         mIfaceName = dataNetwork.getLinkProperties().getInterfaceName();
                         break;
                     }
-                }
-
-                @Override
-                public void onInternetDataNetworkDisconnected() {
-                    mIfaceName = null;
                 }
 
                 @Override
