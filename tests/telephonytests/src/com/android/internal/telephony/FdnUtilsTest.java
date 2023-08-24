@@ -163,4 +163,22 @@ public class FdnUtilsTest {
 
         assertFalse(FdnUtils.isFDN("6502910000", "", fdnList));
     }
+
+    @Test
+    public void smscAddrInTwoStringsFormat_returnsTrue() {
+        ArrayList<AdnRecord> fdnList = initializeFdnList();
+        AdnRecord adnRecord = new AdnRecord(null, "1234560000");
+        fdnList.add(7, adnRecord);
+
+        assertTrue(FdnUtils.isFDN("\"1234560000\",124", "US", fdnList));
+    }
+
+    @Test
+    public void smscAddrInEmailIdFormat_returnsTrue() {
+        ArrayList<AdnRecord> fdnList = initializeFdnList();
+        AdnRecord adnRecord = new AdnRecord(null, "1234560000");
+        fdnList.add(8, adnRecord);
+
+        assertTrue(FdnUtils.isFDN("1234560000@ims.mnc.org", "US", fdnList));
+    }
 }
