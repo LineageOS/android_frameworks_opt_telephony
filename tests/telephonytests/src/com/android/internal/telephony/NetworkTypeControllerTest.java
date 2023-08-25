@@ -578,7 +578,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
                 .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
                 .setPhysicalCellId(1)
                 .setCellConnectionStatus(CellInfo.CONNECTION_PRIMARY_SERVING)
-                .setCellBandwidthDownlinkKhz(20000)
+                .setCellBandwidthDownlinkKhz(19999)
                 .build();
         // Secondary serving NR PCC with cell ID = 2, band = 41, bandwidth = 10000
         PhysicalChannelConfig pcc2 = new PhysicalChannelConfig.Builder()
@@ -1376,7 +1376,7 @@ public class NetworkTypeControllerTest extends TelephonyTest {
                 .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
                 .setCellConnectionStatus(CellInfo.CONNECTION_PRIMARY_SERVING)
                 .setPhysicalCellId(1)
-                .setCellBandwidthDownlinkKhz(20000)
+                .setCellBandwidthDownlinkKhz(19999)
                 .build());
         lastPhysicalChannelConfigList.add(new PhysicalChannelConfig.Builder()
                 .setNetworkType(TelephonyManager.NETWORK_TYPE_LTE)
