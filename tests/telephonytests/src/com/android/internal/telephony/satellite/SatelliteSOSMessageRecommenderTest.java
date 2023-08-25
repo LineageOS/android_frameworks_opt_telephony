@@ -442,14 +442,14 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
         }
 
         @Override
-        @SatelliteManager.SatelliteError public int registerForSatelliteProvisionStateChanged(
+        @SatelliteManager.SatelliteResult public int registerForSatelliteProvisionStateChanged(
                 int subId, @NonNull ISatelliteProvisionStateCallback callback) {
             mRegisterForSatelliteProvisionStateChangedCalls++;
             Set<ISatelliteProvisionStateCallback> perSubscriptionCallbacks =
                     mProvisionStateChangedCallbacks.getOrDefault(subId, new HashSet<>());
             perSubscriptionCallbacks.add(callback);
             mProvisionStateChangedCallbacks.put(subId, perSubscriptionCallbacks);
-            return SatelliteManager.SATELLITE_ERROR_NONE;
+            return SatelliteManager.SATELLITE_RESULT_SUCCESS;
         }
 
         @Override
@@ -469,7 +469,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
             Bundle bundle = new Bundle();
             bundle.putBoolean(SatelliteManager.KEY_SATELLITE_COMMUNICATION_ALLOWED,
                     mIsSatelliteCommunicationAllowed);
-            result.send(SatelliteManager.SATELLITE_ERROR_NONE, bundle);
+            result.send(SatelliteManager.SATELLITE_RESULT_SUCCESS, bundle);
         }
 
         public void setIsSatelliteCommunicationAllowed(boolean allowed) {

@@ -36,8 +36,8 @@ import android.telephony.satellite.SatelliteCapabilities;
 import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
 import android.telephony.satellite.stub.NTRadioTechnology;
-import android.telephony.satellite.stub.SatelliteError;
 import android.telephony.satellite.stub.SatelliteModemState;
+import android.telephony.satellite.stub.SatelliteResult;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.Phone;
@@ -83,53 +83,51 @@ public class SatelliteServiceUtils {
     /**
      * Convert satellite error from service definition to framework definition.
      * @param error The SatelliteError from the satellite service.
-     * @return The converted SatelliteError for the framework.
+     * @return The converted SatelliteResult for the framework.
      */
-    @SatelliteManager.SatelliteError public static int fromSatelliteError(int error) {
+    @SatelliteManager.SatelliteResult public static int fromSatelliteError(int error) {
         switch (error) {
-            case SatelliteError.ERROR_NONE:
-                return SatelliteManager.SATELLITE_ERROR_NONE;
-            case SatelliteError.SATELLITE_ERROR:
-                return SatelliteManager.SATELLITE_ERROR;
-            case SatelliteError.SERVER_ERROR:
-                return SatelliteManager.SATELLITE_SERVER_ERROR;
-            case SatelliteError.SERVICE_ERROR:
-                return SatelliteManager.SATELLITE_SERVICE_ERROR;
-            case SatelliteError.MODEM_ERROR:
-                return SatelliteManager.SATELLITE_MODEM_ERROR;
-            case SatelliteError.NETWORK_ERROR:
-                return SatelliteManager.SATELLITE_NETWORK_ERROR;
-            case SatelliteError.INVALID_TELEPHONY_STATE:
-                return SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE;
-            case SatelliteError.INVALID_MODEM_STATE:
-                return SatelliteManager.SATELLITE_INVALID_MODEM_STATE;
-            case SatelliteError.INVALID_ARGUMENTS:
-                return SatelliteManager.SATELLITE_INVALID_ARGUMENTS;
-            case SatelliteError.REQUEST_FAILED:
-                return SatelliteManager.SATELLITE_REQUEST_FAILED;
-            case SatelliteError.RADIO_NOT_AVAILABLE:
-                return SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE;
-            case SatelliteError.REQUEST_NOT_SUPPORTED:
-                return SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED;
-            case SatelliteError.NO_RESOURCES:
-                return SatelliteManager.SATELLITE_NO_RESOURCES;
-            case SatelliteError.SERVICE_NOT_PROVISIONED:
-                return SatelliteManager.SATELLITE_SERVICE_NOT_PROVISIONED;
-            case SatelliteError.SERVICE_PROVISION_IN_PROGRESS:
-                return SatelliteManager.SATELLITE_SERVICE_PROVISION_IN_PROGRESS;
-            case SatelliteError.REQUEST_ABORTED:
-                return SatelliteManager.SATELLITE_REQUEST_ABORTED;
-            case SatelliteError.SATELLITE_ACCESS_BARRED:
-                return SatelliteManager.SATELLITE_ACCESS_BARRED;
-            case SatelliteError.NETWORK_TIMEOUT:
-                return SatelliteManager.SATELLITE_NETWORK_TIMEOUT;
-            case SatelliteError.SATELLITE_NOT_REACHABLE:
-                return SatelliteManager.SATELLITE_NOT_REACHABLE;
-            case SatelliteError.NOT_AUTHORIZED:
-                return SatelliteManager.SATELLITE_NOT_AUTHORIZED;
+            case SatelliteResult.SATELLITE_RESULT_SUCCESS:
+                return SatelliteManager.SATELLITE_RESULT_SUCCESS;
+            case SatelliteResult.SATELLITE_RESULT_ERROR:
+                return SatelliteManager.SATELLITE_RESULT_ERROR;
+            case SatelliteResult.SATELLITE_RESULT_SERVER_ERROR:
+                return SatelliteManager.SATELLITE_RESULT_SERVER_ERROR;
+            case SatelliteResult.SATELLITE_RESULT_SERVICE_ERROR:
+                return SatelliteManager.SATELLITE_RESULT_SERVICE_ERROR;
+            case SatelliteResult.SATELLITE_RESULT_MODEM_ERROR:
+                return SatelliteManager.SATELLITE_RESULT_MODEM_ERROR;
+            case SatelliteResult.SATELLITE_RESULT_NETWORK_ERROR:
+                return SatelliteManager.SATELLITE_RESULT_NETWORK_ERROR;
+            case SatelliteResult.SATELLITE_RESULT_INVALID_MODEM_STATE:
+                return SatelliteManager.SATELLITE_RESULT_INVALID_MODEM_STATE;
+            case SatelliteResult.SATELLITE_RESULT_INVALID_ARGUMENTS:
+                return SatelliteManager.SATELLITE_RESULT_INVALID_ARGUMENTS;
+            case SatelliteResult.SATELLITE_RESULT_REQUEST_FAILED:
+                return SatelliteManager.SATELLITE_RESULT_REQUEST_FAILED;
+            case SatelliteResult.SATELLITE_RESULT_RADIO_NOT_AVAILABLE:
+                return SatelliteManager.SATELLITE_RESULT_RADIO_NOT_AVAILABLE;
+            case SatelliteResult.SATELLITE_RESULT_REQUEST_NOT_SUPPORTED:
+                return SatelliteManager.SATELLITE_RESULT_REQUEST_NOT_SUPPORTED;
+            case SatelliteResult.SATELLITE_RESULT_NO_RESOURCES:
+                return SatelliteManager.SATELLITE_RESULT_NO_RESOURCES;
+            case SatelliteResult.SATELLITE_RESULT_SERVICE_NOT_PROVISIONED:
+                return SatelliteManager.SATELLITE_RESULT_SERVICE_NOT_PROVISIONED;
+            case SatelliteResult.SATELLITE_RESULT_SERVICE_PROVISION_IN_PROGRESS:
+                return SatelliteManager.SATELLITE_RESULT_SERVICE_PROVISION_IN_PROGRESS;
+            case SatelliteResult.SATELLITE_RESULT_REQUEST_ABORTED:
+                return SatelliteManager.SATELLITE_RESULT_REQUEST_ABORTED;
+            case SatelliteResult.SATELLITE_RESULT_ACCESS_BARRED:
+                return SatelliteManager.SATELLITE_RESULT_ACCESS_BARRED;
+            case SatelliteResult.SATELLITE_RESULT_NETWORK_TIMEOUT:
+                return SatelliteManager.SATELLITE_RESULT_NETWORK_TIMEOUT;
+            case SatelliteResult.SATELLITE_RESULT_NOT_REACHABLE:
+                return SatelliteManager.SATELLITE_RESULT_NOT_REACHABLE;
+            case SatelliteResult.SATELLITE_RESULT_NOT_AUTHORIZED:
+                return SatelliteManager.SATELLITE_RESULT_NOT_AUTHORIZED;
         }
         loge("Received invalid satellite service error: " + error);
-        return SatelliteManager.SATELLITE_SERVICE_ERROR;
+        return SatelliteManager.SATELLITE_RESULT_SERVICE_ERROR;
     }
 
     /**
@@ -224,20 +222,20 @@ public class SatelliteServiceUtils {
     }
 
     /**
-     * Get the {@link SatelliteManager.SatelliteError} from the provided result.
+     * Get the {@link SatelliteManager.SatelliteResult} from the provided result.
      *
      * @param ar AsyncResult used to determine the error code.
      * @param caller The satellite request.
      *
-     * @return The {@link SatelliteManager.SatelliteError} error code from the request.
+     * @return The {@link SatelliteManager.SatelliteResult} error code from the request.
      */
-    @SatelliteManager.SatelliteError public static int getSatelliteError(@NonNull AsyncResult ar,
+    @SatelliteManager.SatelliteResult public static int getSatelliteError(@NonNull AsyncResult ar,
             @NonNull String caller) {
         int errorCode;
         if (ar.exception == null) {
-            errorCode = SatelliteManager.SATELLITE_ERROR_NONE;
+            errorCode = SatelliteManager.SATELLITE_RESULT_SUCCESS;
         } else {
-            errorCode = SatelliteManager.SATELLITE_ERROR;
+            errorCode = SatelliteManager.SATELLITE_RESULT_ERROR;
             if (ar.exception instanceof CommandException) {
                 CommandException.Error error = ((CommandException) ar.exception).getCommandError();
                 errorCode = RILUtils.convertToSatelliteError(error);
