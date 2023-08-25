@@ -1012,6 +1012,263 @@ public class SignalStrengthControllerTest extends TelephonyTest {
         assertThat(msgCaptor.getValue().what).isEqualTo(ssChangedEvent);
     }
 
+    @Test
+    public void testInvalidCarrierConfig_GERAN_RSSI_arrayIsTooLong() {
+        mBundle.putIntArray(CarrierConfigManager.KEY_GSM_RSSI_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -109, /* SIGNAL_STRENGTH_POOR */
+                        -103, /* SIGNAL_STRENGTH_MODERATE */
+                        -97, /* SIGNAL_STRENGTH_GOOD */
+                        -89,  /* SIGNAL_STRENGTH_GREAT */
+                        -80, /* and extra value */
+                });
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_GERAN_RSSI_arrayIsTooShort() {
+        mBundle.putIntArray(CarrierConfigManager.KEY_GSM_RSSI_THRESHOLDS_INT_ARRAY,
+                new int[]{});
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_GERAN_RSSI_thresholdIsTooSmall() {
+        // 4 threshold integers must be within the boundaries [-113, -51]
+        mBundle.putIntArray(CarrierConfigManager.KEY_GSM_RSSI_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -114, /* SIGNAL_STRENGTH_POOR */
+                        -103, /* SIGNAL_STRENGTH_MODERATE */
+                        -97, /* SIGNAL_STRENGTH_GOOD */
+                        -89,  /* SIGNAL_STRENGTH_GREAT */
+                });
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_GERAN_RSSI_thresholdIsTooLarge() {
+        // 4 threshold integers must be within the boundaries [-113, -51]
+        mBundle.putIntArray(CarrierConfigManager.KEY_GSM_RSSI_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -109, /* SIGNAL_STRENGTH_POOR */
+                        -103, /* SIGNAL_STRENGTH_MODERATE */
+                        -97, /* SIGNAL_STRENGTH_GOOD */
+                        -89,  /* SIGNAL_STRENGTH_GREAT */
+                        -50, /* and extra value */
+                });
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_UTRAN_RSCP_thresholdIsTooSmall() {
+        // 4 threshold integers must be within the boundaries [-120, -24]
+        mBundle.putIntArray(CarrierConfigManager.KEY_WCDMA_RSCP_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -121, /* SIGNAL_STRENGTH_POOR */
+                        -104, /* SIGNAL_STRENGTH_MODERATE */
+                        -94,  /* SIGNAL_STRENGTH_GOOD */
+                        -84   /* SIGNAL_STRENGTH_GREAT */
+                });
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_UTRAN_RSCP_thresholdIsTooLarge() {
+        // 4 threshold integers must be within the boundaries [-120, -24]
+        mBundle.putIntArray(CarrierConfigManager.KEY_WCDMA_RSCP_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -114, /* SIGNAL_STRENGTH_POOR */
+                        -104, /* SIGNAL_STRENGTH_MODERATE */
+                        -94,  /* SIGNAL_STRENGTH_GOOD */
+                        -23   /* SIGNAL_STRENGTH_GREAT */
+                });
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_EUTRAN_RSRP_thresholdIsTooSmall() {
+        // 4 threshold integers must be within the boundaries [-140, -44]
+        mBundle.putIntArray(CarrierConfigManager.KEY_LTE_RSRP_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -141, /* SIGNAL_STRENGTH_POOR */
+                        -118, /* SIGNAL_STRENGTH_MODERATE */
+                        -108, /* SIGNAL_STRENGTH_GOOD */
+                        -98,  /* SIGNAL_STRENGTH_GREAT */
+                });
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_EUTRAN_RSRP_thresholdIsTooLarge() {
+        // 4 threshold integers must be within the boundaries [-140, -44]
+        mBundle.putIntArray(CarrierConfigManager.KEY_LTE_RSRP_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -128, /* SIGNAL_STRENGTH_POOR */
+                        -118, /* SIGNAL_STRENGTH_MODERATE */
+                        -108, /* SIGNAL_STRENGTH_GOOD */
+                        -43,  /* SIGNAL_STRENGTH_GREAT */
+                });
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_EUTRAN_RSRQ_thresholdIsTooSmall() {
+        // 4 threshold integers must be within the boundaries [-34, 3]
+        mBundle.putIntArray(CarrierConfigManager.KEY_LTE_RSRQ_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -35,  /* SIGNAL_STRENGTH_POOR */
+                        -17,  /* SIGNAL_STRENGTH_MODERATE */
+                        -14,  /* SIGNAL_STRENGTH_GOOD */
+                        -11   /* SIGNAL_STRENGTH_GREAT */
+                });
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_EUTRAN_RSRQ_thresholdIsTooLarge() {
+        // 4 threshold integers must be within the boundaries [-34, 3]
+        mBundle.putIntArray(CarrierConfigManager.KEY_LTE_RSRQ_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -20,  /* SIGNAL_STRENGTH_POOR */
+                        -17,  /* SIGNAL_STRENGTH_MODERATE */
+                        -14,  /* SIGNAL_STRENGTH_GOOD */
+                        4   /* SIGNAL_STRENGTH_GREAT */
+                });
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_EUTRAN_RSSNR_thresholdIsTooSmall() {
+        // 4 threshold integers must be within the boundaries [-20, 30]
+        mBundle.putIntArray(CarrierConfigManager.KEY_LTE_RSSNR_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -21,  /* SIGNAL_STRENGTH_POOR */
+                        1,   /* SIGNAL_STRENGTH_MODERATE */
+                        5,   /* SIGNAL_STRENGTH_GOOD */
+                        13   /* SIGNAL_STRENGTH_GREAT */
+                });
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_EUTRAN_RSSNR_thresholdIsTooLarge() {
+        // 4 threshold integers must be within the boundaries [-20, 30]
+        mBundle.putIntArray(CarrierConfigManager.KEY_LTE_RSSNR_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -3,  /* SIGNAL_STRENGTH_POOR */
+                        1,   /* SIGNAL_STRENGTH_MODERATE */
+                        5,   /* SIGNAL_STRENGTH_GOOD */
+                        31   /* SIGNAL_STRENGTH_GREAT */
+                });
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_NGRAN_SSRSRP_thresholdIsTooSmall() {
+        // 4 threshold integers must be within the boundaries [-140, -44]
+        mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSRSRP_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -141, /* SIGNAL_STRENGTH_POOR */
+                        -107, /* SIGNAL_STRENGTH_MODERATE */
+                        -100, /* SIGNAL_STRENGTH_GOOD */
+                        -95,  /* SIGNAL_STRENGTH_GREAT */
+                        -90, /* and extra value */
+                });
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_NGRAN_SSRSRP_thresholdIsTooLarge() {
+        // 4 threshold integers must be within the boundaries [-140, -44]
+        mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSRSRP_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -113, /* SIGNAL_STRENGTH_POOR */
+                        -107, /* SIGNAL_STRENGTH_MODERATE */
+                        -100, /* SIGNAL_STRENGTH_GOOD */
+                        -95,  /* SIGNAL_STRENGTH_GREAT */
+                        -45, /* and extra value */
+                });
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_NGRAN_SSRSRQ_thresholdIsTooSmall() {
+        // 4 threshold integers must be within the boundaries [-43, 20]
+        mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSRSRQ_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -44, /* SIGNAL_STRENGTH_POOR */
+                        -19, /* SIGNAL_STRENGTH_MODERATE */
+                        -7, /* SIGNAL_STRENGTH_GOOD */
+                        6  /* SIGNAL_STRENGTH_GREAT */
+                });
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_NGRAN_SSRSRQ_thresholdIsTooLarge() {
+        // 4 threshold integers must be within the boundaries [-43, 20]
+        mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSRSRQ_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -31, /* SIGNAL_STRENGTH_POOR */
+                        -19, /* SIGNAL_STRENGTH_MODERATE */
+                        -7, /* SIGNAL_STRENGTH_GOOD */
+                        21  /* SIGNAL_STRENGTH_GREAT */
+                });
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_NGRAN_SSSINR_thresholdIsTooSmall() {
+        // 4 threshold integers must be within the boundaries [-23, 40]
+        mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSSINR_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -24, /* SIGNAL_STRENGTH_POOR */
+                        5, /* SIGNAL_STRENGTH_MODERATE */
+                        15, /* SIGNAL_STRENGTH_GOOD */
+                        30  /* SIGNAL_STRENGTH_GREAT */
+                });
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_NGRAN_SSSINR_thresholdIsTooLarge() {
+        // 4 threshold integers must be within the boundaries [-24, 1]
+        mBundle.putIntArray(CarrierConfigManager.KEY_WCDMA_ECNO_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -25, /* SIGNAL_STRENGTH_POOR */
+                        -14, /* SIGNAL_STRENGTH_MODERATE */
+                        -6, /* SIGNAL_STRENGTH_GOOD */
+                        1  /* SIGNAL_STRENGTH_GREAT */
+                });
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_UTRAN_ECNO_thresholdIsTooSmall() {
+        // 4 threshold integers must be within the boundaries [-24, 1]
+        mBundle.putIntArray(CarrierConfigManager.KEY_WCDMA_ECNO_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -24, /* SIGNAL_STRENGTH_POOR */
+                        -14, /* SIGNAL_STRENGTH_MODERATE */
+                        -6, /* SIGNAL_STRENGTH_GOOD */
+                        2  /* SIGNAL_STRENGTH_GREAT */
+                });
+        sendCarrierConfigUpdate();
+    }
+
+    @Test
+    public void testInvalidCarrierConfig_UTRAN_ECNO_thresholdIsTooLarge() {
+        // 4 threshold integers must be within the boundaries [-23, 40]
+        mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSSINR_THRESHOLDS_INT_ARRAY,
+                new int[]{
+                        -5, /* SIGNAL_STRENGTH_POOR */
+                        5, /* SIGNAL_STRENGTH_MODERATE */
+                        15, /* SIGNAL_STRENGTH_GOOD */
+                        41  /* SIGNAL_STRENGTH_GREAT */
+                });
+        sendCarrierConfigUpdate();
+    }
+
     private void verifyAllEmptyThresholdAreDisabledWhenSetSignalStrengthReportingCriteria(
             int expectedNonEmptyThreshold) {
         ArgumentCaptor<List<SignalThresholdInfo>> signalThresholdInfoCaptor =
