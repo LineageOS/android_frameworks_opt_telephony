@@ -427,8 +427,8 @@ public class UiccCarrierPrivilegeRules extends Handler {
                 if (ar.exception == null && ar.result != null) {
                     mChannelId = ((int[]) ar.result)[0];
                     mUiccProfile.iccTransmitApduLogicalChannel(mChannelId, CLA, COMMAND, P1, P2, P3,
-                            DATA, obtainMessage(EVENT_TRANSMIT_LOGICAL_CHANNEL_DONE, mChannelId,
-                                    mAIDInUse));
+                            DATA, false /*isEs10Command*/, obtainMessage(
+                                    EVENT_TRANSMIT_LOGICAL_CHANNEL_DONE, mChannelId, mAIDInUse));
                 } else {
                     if (shouldRetry(ar, mRetryCount)) {
                         log("should retry");
@@ -484,7 +484,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
                                 }
                             } else {
                                 mUiccProfile.iccTransmitApduLogicalChannel(mChannelId, CLA, COMMAND,
-                                        P1, P2_EXTENDED_DATA, P3, DATA,
+                                        P1, P2_EXTENDED_DATA, P3, DATA, false /*isEs10Command*/,
                                         obtainMessage(EVENT_TRANSMIT_LOGICAL_CHANNEL_DONE,
                                                 mChannelId, mAIDInUse));
                                 break;
@@ -519,7 +519,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
                     }
                 }
 
-                mUiccProfile.iccCloseLogicalChannel(mChannelId, obtainMessage(
+                mUiccProfile.iccCloseLogicalChannel(mChannelId, false /*isEs10*/, obtainMessage(
                         EVENT_CLOSE_LOGICAL_CHANNEL_DONE, 0, mAIDInUse));
                 mChannelId = -1;
                 break;

@@ -37,6 +37,7 @@ import com.android.internal.telephony.uicc.IccConstants;
 import com.android.telephony.Rlog;
 
 import java.util.List;
+import java.util.Locale;
 
 /**
  * {@hide}
@@ -424,7 +425,7 @@ public class IccProvider extends ContentProvider {
 
     private MatrixCursor loadFromEf(int efType, int subId) {
         if (DBG) log("loadFromEf: efType=0x" +
-                Integer.toHexString(efType).toUpperCase() + ", subscription=" + subId);
+                Integer.toHexString(efType).toUpperCase(Locale.ROOT) + ", subscription=" + subId);
 
         List<AdnRecord> adnRecords = null;
         try {

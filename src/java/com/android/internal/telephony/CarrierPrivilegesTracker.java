@@ -78,6 +78,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -563,10 +564,10 @@ public class CarrierPrivilegesTracker extends Handler {
         List<Signature> signatures = UiccAccessRule.getSignatures(pkg);
         for (Signature signature : signatures) {
             byte[] sha1 = UiccAccessRule.getCertHash(signature, SHA_1);
-            certs.add(IccUtils.bytesToHexString(sha1).toUpperCase());
+            certs.add(IccUtils.bytesToHexString(sha1).toUpperCase(Locale.ROOT));
 
             byte[] sha256 = UiccAccessRule.getCertHash(signature, SHA_256);
-            certs.add(IccUtils.bytesToHexString(sha256).toUpperCase());
+            certs.add(IccUtils.bytesToHexString(sha256).toUpperCase(Locale.ROOT));
         }
 
         mInstalledPackageCerts.put(pkg.packageName, certs);

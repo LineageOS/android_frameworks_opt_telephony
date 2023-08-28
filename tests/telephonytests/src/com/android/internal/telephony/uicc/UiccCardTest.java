@@ -61,7 +61,7 @@ public class UiccCardTest extends TelephonyTest {
         mIccIoResult = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes("FF40"));
         mSimulatedCommands.setIccIoResultForApduLogicalChannel(mIccIoResult);
         mUiccCard = new UiccCard(mContext, mSimulatedCommands, mIccCardStatus, 0 /* phoneId */,
-            new Object(), false);
+            new Object(), IccSlotStatus.MultipleEnabledProfilesMode.NONE);
         processAllMessages();
         logd("create UiccCard");
     }
@@ -96,5 +96,11 @@ public class UiccCardTest extends TelephonyTest {
         assertEquals(1, mUiccCard.getUiccPortList().length);
         assertNull(mUiccCard.getUiccPort(INVALID_PORT_ID));
         assertNotNull(mUiccCard.getUiccPort(TelephonyManager.DEFAULT_PORT_INDEX));
+    }
+
+    @Test
+    @SmallTest
+    public void testGetCardId() {
+        assertNull(mUiccCard.getCardId());
     }
 }

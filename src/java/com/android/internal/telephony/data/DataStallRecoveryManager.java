@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.data;
 
+import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
+
 import android.annotation.CallbackExecutor;
 import android.annotation.ElapsedRealtimeLong;
 import android.annotation.IntDef;
@@ -32,7 +34,6 @@ import android.telephony.Annotation.ValidationStatus;
 import android.telephony.CellSignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
-import android.telephony.data.DataProfile;
 import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 
@@ -267,7 +268,7 @@ public class DataStallRecoveryManager extends Handler {
 
                     @Override
                     public void onInternetDataNetworkConnected(
-                            @NonNull List<DataProfile> dataProfiles) {
+                            @NonNull List<DataNetwork> internetNetworks) {
                         mIsInternetNetworkConnected = true;
                         logl("onInternetDataNetworkConnected");
                     }
@@ -489,7 +490,7 @@ public class DataStallRecoveryManager extends Handler {
         Intent intent = new Intent(TelephonyManager.ACTION_DATA_STALL_DETECTED);
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
         intent.putExtra(TelephonyManager.EXTRA_RECOVERY_ACTION, recoveryAction);
-        mPhone.getContext().sendBroadcast(intent);
+        mPhone.getContext().sendBroadcast(intent, READ_PRIVILEGED_PHONE_STATE);
     }
 
     /** Recovery Action: RECOVERY_ACTION_GET_DATA_CALL_LIST */
@@ -640,7 +641,10 @@ public class DataStallRecoveryManager extends Handler {
 
         if (isLogNeeded) {
             timeDurationOfCurrentAction =
-                (isFirstDataStall == true ? 0 : (int) getDurationOfCurrentRecoveryMs());
+                ((getRecoveryAction() > RECOVERY_ACTION_GET_DATA_CALL_LIST
+                   && !mIsAttemptedAllSteps)
+                 || mLastAction == RECOVERY_ACTION_RESET_MODEM)
+                 ? (int) getDurationOfCurrentRecoveryMs() : 0;
             DataStallRecoveryStats.onDataStallEvent(
                     mLastAction, mPhone, isValid, timeDuration, reason,
                     isFirstValidationAfterDoRecovery, timeDurationOfCurrentAction);

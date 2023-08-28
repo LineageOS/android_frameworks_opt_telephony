@@ -21,9 +21,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
-import android.telephony.AccessNetworkConstants;
 import android.telephony.AnomalyReporter;
-import android.telephony.NetworkRegistrationInfo;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager;
@@ -47,8 +45,6 @@ import javax.sip.InvalidArgumentException;
  * TelephonyDisplayInfo via {@link #getTelephonyDisplayInfo}.
  */
 public class DisplayInfoController extends Handler {
-    private static final String TAG = "DisplayInfoController";
-
     private final String mLogTag;
     private final LocalLog mLocalLog = new LocalLog(128);
 
@@ -106,12 +102,10 @@ public class DisplayInfoController extends Handler {
      * NetworkTypeController.
      */
     public void updateTelephonyDisplayInfo() {
-        NetworkRegistrationInfo nri =  mPhone.getServiceState().getNetworkRegistrationInfo(
-                NetworkRegistrationInfo.DOMAIN_PS, AccessNetworkConstants.TRANSPORT_TYPE_WWAN);
-        int dataNetworkType = nri == null ? TelephonyManager.NETWORK_TYPE_UNKNOWN
-                : nri.getAccessNetworkTechnology();
-        TelephonyDisplayInfo newDisplayInfo = new TelephonyDisplayInfo(dataNetworkType,
-                mNetworkTypeController.getOverrideNetworkType(), mServiceState.getRoaming());
+        TelephonyDisplayInfo newDisplayInfo = new TelephonyDisplayInfo(
+                mNetworkTypeController.getDataNetworkType(),
+                mNetworkTypeController.getOverrideNetworkType(),
+                mServiceState.getRoaming());
         if (!newDisplayInfo.equals(mTelephonyDisplayInfo)) {
             logl("TelephonyDisplayInfo changed from " + mTelephonyDisplayInfo + " to "
                     + newDisplayInfo);
@@ -149,7 +143,7 @@ public class DisplayInfoController extends Handler {
             }
         } catch (InvalidArgumentException e) {
             logel(e.getMessage());
-            AnomalyReporter.reportAnomaly(UUID.fromString("3aa92a2c-94ed-46a0-a744-d6b1dfec2a55"),
+            AnomalyReporter.reportAnomaly(UUID.fromString("3aa92a2c-94ed-46a0-a744-d6b1dfec2a56"),
                     e.getMessage(), mPhone.getCarrierId());
         }
     }

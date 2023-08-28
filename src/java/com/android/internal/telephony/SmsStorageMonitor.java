@@ -18,18 +18,22 @@ package com.android.internal.telephony;
 
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
+import android.os.UserHandle;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.SubscriptionManager;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
 /**
@@ -40,7 +44,7 @@ import com.android.telephony.Rlog;
  * dual-mode devices that require support for both 3GPP and 3GPP2 format messages.
  */
 public class SmsStorageMonitor extends Handler {
-    private static final String TAG = "SmsStorageMonitor";
+    private static final String TAG = "SmsStorageMonitor1";
 
     /** Maximum number of times to retry memory status reporting */
     private static final int MAX_RETRIES = 1;
@@ -83,6 +87,10 @@ public class SmsStorageMonitor extends Handler {
     final CommandsInterface mCi;
     boolean mStorageAvailable = true;
 
+    boolean mInitialStorageAvailableStatus = true;
+
+    private boolean mMemoryStatusOverrideFlag = false;
+
     /**
      * Hold the wake lock for 5 seconds, which should be enough time for
      * any receiver(s) to grab its own wake lock.
@@ -109,6 +117,31 @@ public class SmsStorageMonitor extends Handler {
         filter.addAction(Intent.ACTION_DEVICE_STORAGE_FULL);
         filter.addAction(Intent.ACTION_DEVICE_STORAGE_NOT_FULL);
         mContext.registerReceiver(mResultReceiver, filter);
+    }
+
+    /**
+     * Overriding of the Memory Status by the TestApi and send the event to Handler to test
+     * the RP-SMMA feature
+     * @param isStorageAvailable boolean value specifies the MemoryStatus to be
+     * sent to Handler
+     */
+    public void sendMemoryStatusOverride(boolean isStorageAvailable) {
+        if (!mMemoryStatusOverrideFlag) {
+            mInitialStorageAvailableStatus = mStorageAvailable;
+            mMemoryStatusOverrideFlag = true;
+        }
+        mStorageAvailable = isStorageAvailable;
+        if (isStorageAvailable) {
+            sendMessage(obtainMessage(EVENT_REPORT_MEMORY_STATUS));
+        }
+    }
+
+    /**
+     * reset Memory Status change made by {@link #sendMemoryStatusOverride}
+     */
+    public void clearMemoryStatusOverride() {
+        mStorageAvailable = mInitialStorageAvailableStatus;
+        mMemoryStatusOverrideFlag = false;
     }
 
     @VisibleForTesting
@@ -209,6 +242,18 @@ public class SmsStorageMonitor extends Handler {
 
     private void sendMemoryStatusReport(boolean isAvailable) {
         mIsWaitingResponse = true;
+        Resources r = mContext.getResources();
+        if (r.getBoolean(com.android.internal.R.bool.config_smma_notification_supported_over_ims)) {
+            IccSmsInterfaceManager smsIfcMngr = mPhone.getIccSmsInterfaceManager();
+            if (smsIfcMngr != null) {
+                Rlog.d(TAG, "sendMemoryStatusReport: smsIfcMngr is available");
+                if (smsIfcMngr.mDispatchersController.isIms() && isAvailable) {
+                    smsIfcMngr.mDispatchersController.reportSmsMemoryStatus(
+                            obtainMessage(EVENT_REPORT_MEMORY_STATUS_DONE));
+                    return;
+                }
+            }
+        }
         mCi.reportSmsMemoryStatus(isAvailable, obtainMessage(EVENT_REPORT_MEMORY_STATUS_DONE));
     }
 
@@ -223,9 +268,14 @@ public class SmsStorageMonitor extends Handler {
      * that SIM storage for SMS messages is full.
      */
     private void handleIccFull() {
+        UserHandle userHandle = TelephonyUtils.getSubscriptionUserHandle(mContext,
+                mPhone.getSubId());
+        ComponentName componentName = SmsApplication.getDefaultSimFullApplicationAsUser(mContext,
+                false, userHandle);
+
         // broadcast SIM_FULL intent
         Intent intent = new Intent(Intents.SIM_FULL_ACTION);
-        intent.setComponent(SmsApplication.getDefaultSimFullApplication(mContext, false));
+        intent.setComponent(componentName);
         mWakeLock.acquire(WAKE_LOCK_TIMEOUT);
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
         mContext.sendBroadcast(intent, android.Manifest.permission.RECEIVE_SMS);

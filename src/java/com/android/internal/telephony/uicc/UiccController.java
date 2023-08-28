@@ -34,12 +34,12 @@ import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
-import android.os.Registrant;
 import android.os.RegistrantList;
 import android.preference.PreferenceManager;
 import android.sysprop.TelephonyProperties;
 import android.telephony.AnomalyReporter;
 import android.telephony.CarrierConfigManager;
+import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.TelephonyManager.SimState;
@@ -48,6 +48,7 @@ import android.telephony.UiccPortInfo;
 import android.telephony.UiccSlotMapping;
 import android.telephony.data.ApnSetting;
 import android.text.TextUtils;
+import android.util.IndentingPrintWriter;
 import android.util.LocalLog;
 import android.util.Log;
 
@@ -62,11 +63,11 @@ import com.android.internal.telephony.PhoneConfigurationManager;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RadioConfig;
-import com.android.internal.telephony.SubscriptionInfoUpdater;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.euicc.EuiccCard;
+import com.android.internal.telephony.util.ArrayUtils;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
 
@@ -76,6 +77,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -741,38 +743,6 @@ public class UiccController extends Handler {
         }
     }
 
-    static void updateInternalIccStateForInactivePort(
-            Context context, int prevActivePhoneId, String iccId) {
-        if (SubscriptionManager.isValidPhoneId(prevActivePhoneId)) {
-            // Mark SIM state as ABSENT on previously phoneId.
-            TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(
-                    Context.TELEPHONY_SERVICE);
-            telephonyManager.setSimStateForPhone(prevActivePhoneId,
-                    IccCardConstants.State.ABSENT.toString());
-        }
-
-        SubscriptionInfoUpdater subInfoUpdator = PhoneFactory.getSubscriptionInfoUpdater();
-        if (subInfoUpdator != null) {
-            subInfoUpdator.updateInternalIccStateForInactivePort(prevActivePhoneId, iccId);
-        } else {
-            Rlog.e(LOG_TAG, "subInfoUpdate is null.");
-        }
-    }
-
-    static void updateInternalIccState(Context context, IccCardConstants.State state, String reason,
-            int phoneId) {
-        TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(
-                Context.TELEPHONY_SERVICE);
-        telephonyManager.setSimStateForPhone(phoneId, state.toString());
-
-        SubscriptionInfoUpdater subInfoUpdator = PhoneFactory.getSubscriptionInfoUpdater();
-        if (subInfoUpdator != null) {
-            subInfoUpdator.updateInternalIccState(getIccStateIntentString(state), reason, phoneId);
-        } else {
-            Rlog.e(LOG_TAG, "subInfoUpdate is null.");
-        }
-    }
-
     /**
      * Update SIM state for the inactive eSIM port.
      *
@@ -989,7 +959,7 @@ public class UiccController extends Handler {
             log("updateSimState: phoneId=" + phoneId + ", state=" + state + ", reason="
                     + reason);
             if (!SubscriptionManager.isValidPhoneId(phoneId)) {
-                Rlog.e(LOG_TAG, "updateInternalIccState: Invalid phone id " + phoneId);
+                Rlog.e(LOG_TAG, "updateSimState: Invalid phone id " + phoneId);
                 return;
             }
 
@@ -1061,10 +1031,10 @@ public class UiccController extends Handler {
 
         IccCardStatus status = (IccCardStatus)ar.result;
 
-        logWithLocalLog("onGetIccCardStatusDone: phoneId " + index + " IccCardStatus: " + status);
+        logWithLocalLog("onGetIccCardStatusDone: phoneId-" + index + " IccCardStatus: " + status);
 
         int slotId = status.mSlotPortMapping.mPhysicalSlotIndex;
-        if (VDBG) log("onGetIccCardStatusDone: phoneId " + index + " physicalSlotIndex " + slotId);
+        if (VDBG) log("onGetIccCardStatusDone: phoneId-" + index + " physicalSlotIndex " + slotId);
         if (slotId == INVALID_SLOT_ID) {
             slotId = index;
         }
@@ -1091,6 +1061,14 @@ public class UiccController extends Handler {
         UiccCard card = mUiccSlots[slotId].getUiccCard();
         if (card == null) {
             if (DBG) log("mUiccSlots[" + slotId + "] has no card. Notifying IccChangedRegistrants");
+            mIccChangedRegistrants.notifyRegistrants(new AsyncResult(null, index, null));
+            return;
+        }
+
+        UiccPort port = card.getUiccPort(status.mSlotPortMapping.mPortIndex);
+        if (port == null) {
+            if (DBG) log("mUiccSlots[" + slotId + "] has no UiccPort with index["
+                    + status.mSlotPortMapping.mPortIndex + "]. Notifying IccChangedRegistrants");
             mIccChangedRegistrants.notifyRegistrants(new AsyncResult(null, index, null));
             return;
         }
@@ -1756,6 +1734,18 @@ public class UiccController extends Handler {
         return mUseRemovableEsimAsDefault;
     }
 
+    /**
+     * Returns the MEP mode supported by the UiccSlot associated with slotIndex.
+     * @param slotIndex physical slot index
+     * @return MultipleEnabledProfilesMode supported by the slot
+     */
+    public IccSlotStatus.MultipleEnabledProfilesMode getSupportedMepMode(int slotIndex) {
+        synchronized (mLock) {
+            UiccSlot slot = getUiccSlot(slotIndex);
+            return slot != null ? slot.getSupportedMepMode()
+                    : IccSlotStatus.MultipleEnabledProfilesMode.NONE;
+        }
+    }
 
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     private void log(String string) {
@@ -1777,35 +1767,40 @@ public class UiccController extends Handler {
         sLocalLog.log(data);
     }
 
-    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        pw.println("UiccController: " + this);
-        pw.println(" mContext=" + mContext);
-        pw.println(" mInstance=" + mInstance);
-        pw.println(" mIccChangedRegistrants: size=" + mIccChangedRegistrants.size());
-        for (int i = 0; i < mIccChangedRegistrants.size(); i++) {
-            pw.println("  mIccChangedRegistrants[" + i + "]="
-                    + ((Registrant)mIccChangedRegistrants.get(i)).getHandler());
+    private List<String> getPrintableCardStrings() {
+        if (!ArrayUtils.isEmpty(mCardStrings)) {
+            return mCardStrings.stream().map(SubscriptionInfo::getPrintableId).collect(
+                    Collectors.toList());
         }
-        pw.println();
-        pw.flush();
-        pw.println(" mIsCdmaSupported=" + isCdmaSupported(mContext));
-        pw.println(" mHasBuiltInEuicc=" + mHasBuiltInEuicc);
-        pw.println(" mHasActiveBuiltInEuicc=" + mHasActiveBuiltInEuicc);
-        pw.println(" mCardStrings=" + mCardStrings);
-        pw.println(" mDefaultEuiccCardId=" + mDefaultEuiccCardId);
-        pw.println(" mPhoneIdToSlotId=" + Arrays.toString(mPhoneIdToSlotId));
-        pw.println(" mUseRemovableEsimAsDefault=" + mUseRemovableEsimAsDefault);
-        pw.println(" mUiccSlots: size=" + mUiccSlots.length);
+        return mCardStrings;
+    }
+
+    public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
+        IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
+        pw.println("mIsCdmaSupported=" + isCdmaSupported(mContext));
+        pw.println("mHasBuiltInEuicc=" + mHasBuiltInEuicc);
+        pw.println("mHasActiveBuiltInEuicc=" + mHasActiveBuiltInEuicc);
+        pw.println("mCardStrings=" + getPrintableCardStrings());
+        pw.println("mDefaultEuiccCardId=" + mDefaultEuiccCardId);
+        pw.println("mPhoneIdToSlotId=" + Arrays.toString(mPhoneIdToSlotId));
+        pw.println("mUseRemovableEsimAsDefault=" + mUseRemovableEsimAsDefault);
+        pw.println("mUiccSlots: size=" + mUiccSlots.length);
+        pw.increaseIndent();
         for (int i = 0; i < mUiccSlots.length; i++) {
             if (mUiccSlots[i] == null) {
-                pw.println("  mUiccSlots[" + i + "]=null");
+                pw.println("mUiccSlots[" + i + "]=null");
             } else {
-                pw.println("  mUiccSlots[" + i + "]=" + mUiccSlots[i]);
+                pw.println("mUiccSlots[" + i + "]:");
+                pw.increaseIndent();
                 mUiccSlots[i].dump(fd, pw, args);
+                pw.decreaseIndent();
             }
         }
-        pw.println(" sLocalLog= ");
-        sLocalLog.dump(fd, pw, args);
+        pw.decreaseIndent();
+        pw.println();
+        pw.println("sLocalLog= ");
+        pw.increaseIndent();
         mPinStorage.dump(fd, pw, args);
+        sLocalLog.dump(fd, pw, args);
     }
 }

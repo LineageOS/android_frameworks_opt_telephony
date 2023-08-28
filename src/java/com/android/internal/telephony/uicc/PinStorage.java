@@ -28,6 +28,7 @@ import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT
 import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_COUNT_NOT_MATCHING_AFTER_REBOOT;
 import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_DECRYPTION_ERROR;
 import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_ENCRYPTION_ERROR;
+import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_ENCRYPTION_KEY_MISSING;
 import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_REQUIRED_AFTER_REBOOT;
 import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_STORED_FOR_VERIFICATION;
 import static com.android.internal.telephony.TelephonyStatsLog.PIN_STORAGE_EVENT__EVENT__PIN_VERIFICATION_FAILURE;
@@ -722,7 +723,11 @@ public class PinStorage extends Handler {
      */
     @Nullable
     private StoredPin decryptStoredPin(byte[] blob, @Nullable SecretKey secretKey) {
-        if (secretKey != null) {
+        if (secretKey == null) {
+            TelephonyStatsLog.write(PIN_STORAGE_EVENT,
+                    PIN_STORAGE_EVENT__EVENT__PIN_ENCRYPTION_KEY_MISSING,
+                    /* number_of_pins= */ 1, /* package_name= */ "");
+        } else {
             try {
                 byte[] decryptedPin = decrypt(secretKey, blob);
                 if (decryptedPin.length > 0) {

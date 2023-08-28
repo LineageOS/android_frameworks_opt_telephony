@@ -240,26 +240,12 @@ public class MissedIncomingCallSmsFilter {
     private String[] splitCalls(String messageBody) {
         String[] messages = null;
         if (messageBody != null) {
-            messages = messageBody.split("\\n" + "\\n");
+            messages = messageBody.split("(\\n|\\s\\n)" + "(\\n|\\s\\n)");
             Rlog.d(TAG,
                     "splitTheMultipleCalls no of calls = " + ((messages != null) ? messages.length
                             : 0));
         }
         return messages;
-    }
-
-    // Create phone account. The logic is copied from PhoneUtils.makePstnPhoneAccountHandle.
-    private PhoneAccountHandle makePstnPhoneAccountHandle(Phone phone) {
-        SubscriptionManager subscriptionManager =
-                (SubscriptionManager) phone.getContext().getSystemService(
-                        Context.TELEPHONY_SUBSCRIPTION_SERVICE);
-        UserHandle userHandle = subscriptionManager.getSubscriptionUserHandle(phone.getSubId());
-        if (userHandle != null) {
-            return new PhoneAccountHandle(PSTN_CONNECTION_SERVICE_COMPONENT,
-                    String.valueOf(phone.getSubId()), userHandle);
-        }
-        return new PhoneAccountHandle(PSTN_CONNECTION_SERVICE_COMPONENT,
-                String.valueOf(phone.getSubId()));
     }
 
     /**
@@ -287,5 +273,19 @@ public class MissedIncomingCallSmsFilter {
             bundle.putLong(TelecomManager.EXTRA_CALL_CREATED_EPOCH_TIME_MILLIS, missedCallTime);
             tm.addNewIncomingCall(makePstnPhoneAccountHandle(mPhone), bundle);
         }
+    }
+
+    // Create phone account. The logic is copied from PhoneUtils.makePstnPhoneAccountHandle.
+    private PhoneAccountHandle makePstnPhoneAccountHandle(Phone phone) {
+        SubscriptionManager subscriptionManager =
+                (SubscriptionManager) phone.getContext().getSystemService(
+                        Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+        UserHandle userHandle = subscriptionManager.getSubscriptionUserHandle(phone.getSubId());
+        if (userHandle != null) {
+            return new PhoneAccountHandle(PSTN_CONNECTION_SERVICE_COMPONENT,
+                    String.valueOf(phone.getSubId()), userHandle);
+        }
+        return new PhoneAccountHandle(PSTN_CONNECTION_SERVICE_COMPONENT,
+                String.valueOf(phone.getSubId()));
     }
 }

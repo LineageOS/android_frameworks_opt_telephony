@@ -136,6 +136,7 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         mSubInfo[subId] = new SubscriptionInfoInternal.Builder(mSubInfo[subId])
                 .setSimSlotIndex(simSlotIndex).build();
     }
+
     private void sendCarrierConfigChanged(int phoneId, int subId) {
         mCarrierConfigChangeListener.onCarrierConfigChanged(phoneId, subId,
                 TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
@@ -144,7 +145,6 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
-        enableSubscriptionManagerService(true);
         initializeSubs();
         mPhoneMock1 = mock(Phone.class);
         mPhoneMock2 = mock(Phone.class);
@@ -155,6 +155,9 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         doReturn(mSubscriptionManagerService).when(mIBinder).queryLocalInterface(anyString());
         doReturn(mPhone).when(mPhone).getImsPhone();
         mServiceManagerMockedServices.put("isub", mIBinder);
+
+        doReturn(mSubscriptionManagerService).when(mIBinder)
+                .queryLocalInterface(anyString());
 
         // Default configuration:
         // DSDS device.
@@ -243,12 +246,10 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         }).when(mPhoneMock2).getSubId();
 
         replaceInstance(PhoneFactory.class, "sPhones", null, mPhones);
-
         // Capture listener to emulate the carrier config change notification used later
         ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
                 ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
-        mMultiSimSettingControllerUT = new MultiSimSettingController(mContext,
-                mSubscriptionController);
+        mMultiSimSettingControllerUT = new MultiSimSettingController(mContext);
         processAllMessages();
         verify(mCarrierConfigManager).registerCarrierConfigChangeListener(any(),
                 listenerArgumentCaptor.capture());
@@ -463,14 +464,14 @@ public class MultiSimSettingControllerTest extends TelephonyTest {
         markSubscriptionInactive(1);
         mMultiSimSettingControllerUT.notifySubscriptionInfoChanged();
         processAllMessages();
+        sendCarrierConfigChanged(1, SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        processAllMessages();
+
         verify(mSubscriptionManagerService).setDefaultDataSubId(
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID);
         verify(mSubscriptionManagerService).setDefaultSmsSubId(
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID);
         verify(mSubscriptionManagerService, never()).setDefaultVoiceSubId(anyInt());
-
-        sendCarrierConfigChanged(1, SubscriptionManager.INVALID_SUBSCRIPTION_ID);
-        processAllMessages();
 
         // Verify intent sent to select sub 2 as default for all types.
         Intent intent = captureBroadcastIntent();

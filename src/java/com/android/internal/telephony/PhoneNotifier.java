@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.annotation.NonNull;
 import android.compat.annotation.UnsupportedAppUsage;
+import android.telephony.Annotation;
 import android.telephony.Annotation.RadioPowerState;
 import android.telephony.Annotation.SrvccState;
 import android.telephony.BarringInfo;
@@ -31,8 +32,11 @@ import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyDisplayInfo;
 import android.telephony.TelephonyManager.DataEnabledReason;
+import android.telephony.TelephonyManager.EmergencyCallbackModeStopReason;
+import android.telephony.TelephonyManager.EmergencyCallbackModeType;
 import android.telephony.emergency.EmergencyNumber;
 import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.MediaQualityStatus;
 
 import java.util.List;
 
@@ -78,7 +82,10 @@ public interface PhoneNotifier {
 
     void notifyCellInfo(Phone sender, List<CellInfo> cellInfo);
 
-    void notifyPreciseCallState(Phone sender);
+    /** Send a notification that precise call state changed. */
+    void notifyPreciseCallState(Phone sender, String[] imsCallIds,
+            @Annotation.ImsCallServiceType int[] imsCallServiceTypes,
+            @Annotation.ImsCallType int[] imsCallTypes);
 
     void notifyDisconnectCause(Phone sender, int cause, int preciseCause);
 
@@ -113,6 +120,9 @@ public interface PhoneNotifier {
     /** Notify of a change to the call quality of an active foreground call. */
     void notifyCallQualityChanged(Phone sender, CallQuality callQuality, int callNetworkType);
 
+    /** Notify of a change to the media quality status of an active foreground call. */
+    void notifyMediaQualityStatusChanged(Phone sender, MediaQualityStatus status);
+
     /** Notify registration failed */
     void notifyRegistrationFailed(Phone sender, @NonNull CellIdentity cellIdentity,
             @NonNull String chosenPlmn, int domain, int causeCode, int additionalCauseCode);
@@ -132,4 +142,11 @@ public interface PhoneNotifier {
     /** Notify link capacity estimate has changed. */
     void notifyLinkCapacityEstimateChanged(Phone sender,
             List<LinkCapacityEstimate> linkCapacityEstimateList);
+
+    /** Notify callback mode started. */
+    void notifyCallbackModeStarted(Phone sender, @EmergencyCallbackModeType int type);
+
+    /** Notify callback mode stopped. */
+    void notifyCallbackModeStopped(Phone sender, @EmergencyCallbackModeType int type,
+            @EmergencyCallbackModeStopReason int reason);
 }

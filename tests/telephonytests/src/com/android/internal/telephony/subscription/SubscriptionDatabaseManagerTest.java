@@ -1226,6 +1226,8 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_ENHANCED_4G_MODE_ENABLED, 1);
         assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getEnhanced4GModeEnabled())
                 .isEqualTo(1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).isEnhanced4GModeEnabled())
+                .isTrue();
     }
 
     @Test
@@ -1247,6 +1249,8 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_VT_IMS_ENABLED, 1);
         assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getVideoTelephonyEnabled())
                 .isEqualTo(1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).isVideoTelephonyEnabled())
+                .isTrue();
     }
 
     @Test
@@ -1363,6 +1367,8 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_VOIMS_OPT_IN_STATUS, 1);
         assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
                 .getVoImsOptInEnabled()).isEqualTo(1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).isVoImsOptInEnabled())
+                .isTrue();
     }
 
 
@@ -1613,6 +1619,8 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_IMS_RCS_UCE_ENABLED, 1);
         assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getRcsUceEnabled())
                 .isEqualTo(1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).isRcsUceEnabled())
+                .isTrue();
     }
 
     @Test
@@ -1635,6 +1643,8 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
         mDatabaseManagerUT.setSubscriptionProperty(1, SimInfo.COLUMN_CROSS_SIM_CALLING_ENABLED, 1);
         assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).getCrossSimCallingEnabled())
                 .isEqualTo(1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1).isCrossSimCallingEnabled())
+                .isTrue();
     }
 
     @Test
@@ -1736,6 +1746,8 @@ public class SubscriptionDatabaseManagerTest extends TelephonyTest {
                 1, SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED, 1);
         assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
                 .getNrAdvancedCallingEnabled()).isEqualTo(1);
+        assertThat(mDatabaseManagerUT.getSubscriptionInfoInternal(1)
+                .isNrAdvancedCallingEnabled()).isTrue();
     }
 
     @Test

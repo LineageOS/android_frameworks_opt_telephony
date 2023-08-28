@@ -21,6 +21,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
+import android.os.Looper;
 import android.os.Message;
 import android.os.RemoteCallback;
 import android.os.SystemProperties;
@@ -77,8 +78,8 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
      * Create a new inbound SMS handler for CDMA.
      */
     private CdmaInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
-            Phone phone, CdmaSMSDispatcher smsDispatcher) {
-        super("CdmaInboundSmsHandler", context, storageMonitor, phone);
+            Phone phone, CdmaSMSDispatcher smsDispatcher, Looper looper) {
+        super("CdmaInboundSmsHandler", context, storageMonitor, phone, looper);
         mSmsDispatcher = smsDispatcher;
         phone.mCi.setOnNewCdmaSms(getHandler(), EVENT_NEW_SMS, null);
 
@@ -169,9 +170,10 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
      * Wait for state machine to enter startup state. We can't send any messages until then.
      */
     public static CdmaInboundSmsHandler makeInboundSmsHandler(Context context,
-            SmsStorageMonitor storageMonitor, Phone phone, CdmaSMSDispatcher smsDispatcher) {
+            SmsStorageMonitor storageMonitor, Phone phone, CdmaSMSDispatcher smsDispatcher,
+            Looper looper) {
         CdmaInboundSmsHandler handler = new CdmaInboundSmsHandler(context, storageMonitor,
-                phone, smsDispatcher);
+                phone, smsDispatcher, looper);
         handler.start();
         return handler;
     }
@@ -194,7 +196,8 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
      * @return true if the message was handled here; false to continue processing
      */
     @Override
-    protected int dispatchMessageRadioSpecific(SmsMessageBase smsb, @SmsSource int smsSource) {
+    protected int dispatchMessageRadioSpecific(SmsMessageBase smsb, @SmsSource int smsSource,
+            int token) {
         SmsMessage sms = (SmsMessage) smsb;
         boolean isBroadcastType = (SmsEnvelope.MESSAGE_TYPE_BROADCAST == sms.getMessageType());
 

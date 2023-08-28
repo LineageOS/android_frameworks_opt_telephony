@@ -30,6 +30,7 @@ import android.content.pm.ServiceInfo;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HandlerExecutor;
+import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
@@ -130,6 +131,7 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
 
     // Delay between dynamic ImsService queries.
     private static final int DELAY_DYNAMIC_QUERY_MS = 5000;
+    private static final HandlerThread sHandlerThread = new HandlerThread(TAG);
 
     private static ImsResolver sInstance;
 
@@ -139,9 +141,9 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     public static void make(Context context, String defaultMmTelPackageName,
             String defaultRcsPackageName, int numSlots, ImsFeatureBinderRepository repo) {
         if (sInstance == null) {
-            Looper looper = Looper.getMainLooper();
+            sHandlerThread.start();
             sInstance = new ImsResolver(context, defaultMmTelPackageName, defaultRcsPackageName,
-                    numSlots, repo, looper);
+                    numSlots, repo, sHandlerThread.getLooper());
         }
     }
 
@@ -630,8 +632,13 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
 
     /**
      * Needs to be called after the constructor to kick off the process of binding to ImsServices.
+     * Should be run on the handler thread of ImsResolver
      */
     public void initialize() {
+        mHandler.post(()-> initializeInternal());
+    }
+
+    private void initializeInternal() {
         mEventLog.log("Initializing");
         Log.i(TAG, "Initializing cache.");
         PhoneConfigurationManager.registerForMultiSimConfigChange(mHandler,
@@ -735,6 +742,15 @@ public class ImsResolver implements ImsServiceController.ImsServiceControllerCal
     public void disableIms(int slotId) {
         getImsServiceControllers(slotId).forEach(
                 (controller) -> controller.disableIms(slotId, getSubId(slotId)));
+    }
+
+    /**
+     * Notify ImsService to disable IMS for the framework.
+     * And notify ImsService back to enable IMS for the framework.
+     */
+    public void resetIms(int slotId) {
+        getImsServiceControllers(slotId).forEach(
+                (controller) -> controller.resetIms(slotId, getSubId(slotId)));
     }
 
     /**

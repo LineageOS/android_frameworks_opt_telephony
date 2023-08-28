@@ -562,6 +562,17 @@ public class PhoneNumberUtilsTest {
         assertEquals("800-GOOG-114", PhoneNumberUtils.formatNumber("800-GOOG-114", "US"));
     }
 
+    @Test
+    public void testFormatNumber_lowerCase() {
+        assertEquals("(650) 291-0000", PhoneNumberUtils.formatNumber("650 2910000", "us"));
+        assertEquals("223-4567", PhoneNumberUtils.formatNumber("2234567", "us"));
+        assertEquals("011 86 10 8888 0000",
+                PhoneNumberUtils.formatNumber("011861088880000", "us"));
+        assertEquals("010 8888 0000", PhoneNumberUtils.formatNumber("01088880000", "cn"));
+        // formatNumber doesn't format alpha numbers, but keep them as they are.
+        assertEquals("800-GOOG-114", PhoneNumberUtils.formatNumber("800-GOOG-114", "us"));
+    }
+
     /**
      * Tests ability to format phone numbers from Japan using the international format when the
      * current country is not Japan.
@@ -570,6 +581,9 @@ public class PhoneNumberUtilsTest {
     @Test
     public void testFormatJapanInternational() {
         assertEquals("+81 90-6657-1180", PhoneNumberUtils.formatNumber("+819066571180", "US"));
+
+        // Again with lower case country code
+        assertEquals("+81 90-6657-1180", PhoneNumberUtils.formatNumber("+819066571180", "us"));
     }
 
     /**
@@ -582,8 +596,15 @@ public class PhoneNumberUtilsTest {
         assertEquals("090-6657-0660", PhoneNumberUtils.formatNumber("09066570660", "JP"));
         assertEquals("090-6657-1180", PhoneNumberUtils.formatNumber("+819066571180", "JP"));
 
+        // Again with lower case country code
+        assertEquals("090-6657-0660", PhoneNumberUtils.formatNumber("09066570660", "jp"));
+        assertEquals("090-6657-1180", PhoneNumberUtils.formatNumber("+819066571180", "jp"));
+
+
         // US number should still be internationally formatted
         assertEquals("+1 650-555-1212", PhoneNumberUtils.formatNumber("+16505551212", "JP"));
+        // Again with lower case country code
+        assertEquals("+1 650-555-1212", PhoneNumberUtils.formatNumber("+16505551212", "jp"));
     }
 
     @SmallTest
@@ -598,6 +619,20 @@ public class PhoneNumberUtilsTest {
         assertEquals("#650*2910000", PhoneNumberUtils.formatNumber("#650*2910000", "US"));
         assertEquals("##650 2910000", PhoneNumberUtils.formatNumber("##650 2910000", "US"));
         assertEquals("**650 2910000", PhoneNumberUtils.formatNumber("**650 2910000", "US"));
+    }
+
+    // Same as testFormatNumber_LeadingStarAndHash but using lower case country code.
+    @Test
+    public void testFormatNumber_LeadingStarAndHash_countryCodeLowerCase() {
+        // Numbers with a leading '*' or '#' should be left unchanged.
+        assertEquals("*650 2910000", PhoneNumberUtils.formatNumber("*650 2910000", "us"));
+        assertEquals("#650 2910000", PhoneNumberUtils.formatNumber("#650 2910000", "us"));
+        assertEquals("*#650 2910000", PhoneNumberUtils.formatNumber("*#650 2910000", "us"));
+        assertEquals("#*650 2910000", PhoneNumberUtils.formatNumber("#*650 2910000", "us"));
+        assertEquals("#650*2910000", PhoneNumberUtils.formatNumber("#650*2910000", "us"));
+        assertEquals("#650*2910000", PhoneNumberUtils.formatNumber("#650*2910000", "us"));
+        assertEquals("##650 2910000", PhoneNumberUtils.formatNumber("##650 2910000", "us"));
+        assertEquals("**650 2910000", PhoneNumberUtils.formatNumber("**650 2910000", "us"));
     }
 
     @SmallTest
@@ -641,59 +676,63 @@ public class PhoneNumberUtilsTest {
                 PhoneNumberUtils.formatNumber("011861088880000", "", "GB"));
     }
 
+    // Same as testFormatDailabeNumber but using lower case country code.
+    @Test
+    public void testFormatDailabeNumber_countryCodeLowerCase() {
+        // Using the phoneNumberE164's country code
+        assertEquals("(650) 291-0000",
+                PhoneNumberUtils.formatNumber("6502910000", "+16502910000", "cn"));
+        // Using the default country code for a phone number containing the IDD
+        assertEquals("011 86 10 8888 0000",
+                PhoneNumberUtils.formatNumber("011861088880000", "+861088880000", "us"));
+        assertEquals("00 86 10 8888 0000",
+                PhoneNumberUtils.formatNumber("00861088880000", "+861088880000", "gb"));
+        assertEquals("+86 10 8888 0000",
+                PhoneNumberUtils.formatNumber("+861088880000", "+861088880000", "gb"));
+        // Wrong default country, so no formatting is done
+        assertEquals("011861088880000",
+                PhoneNumberUtils.formatNumber("011861088880000", "+861088880000", "gb"));
+        // The phoneNumberE164 is null
+        assertEquals("(650) 291-0000", PhoneNumberUtils.formatNumber("6502910000", null, "us"));
+        // The given number has a country code.
+        assertEquals("+1 650-291-0000", PhoneNumberUtils.formatNumber("+16502910000", null, "cn"));
+        // The given number was formatted.
+        assertEquals("650-291-0000", PhoneNumberUtils.formatNumber("650-291-0000", null, "us"));
+        // A valid Polish number should be formatted.
+        assertEquals("506 128 687", PhoneNumberUtils.formatNumber("506128687", null, "pl"));
+        // An invalid Polish number should be left as it is. Note Poland doesn't use '0' as a
+        // national prefix; therefore, the leading '0' makes the number invalid.
+        assertEquals("0506128687", PhoneNumberUtils.formatNumber("0506128687", null, "pl"));
+        // Wrong default country, so no formatting is done
+        assertEquals("011861088880000",
+                PhoneNumberUtils.formatNumber("011861088880000", "", "gb"));
+    }
+
     @FlakyTest
     @Test
     @Ignore
     public void testIsEmergencyNumber() {
-        // There are two parallel sets of tests here: one for the
-        // regular isEmergencyNumber() method, and the other for
-        // isPotentialEmergencyNumber().
-        //
         // (The difference is that isEmergencyNumber() will return true
         // only if the specified number exactly matches an actual
-        // emergency number, but isPotentialEmergencyNumber() will
-        // return true if the specified number simply starts with the
-        // same digits as any actual emergency number.)
+        // emergency number
 
         // Tests for isEmergencyNumber():
-        assertTrue(PhoneNumberUtils.isEmergencyNumber("911", "US"));
-        assertTrue(PhoneNumberUtils.isEmergencyNumber("112", "US"));
+        assertTrue(PhoneNumberUtils.isEmergencyNumber("911"));
+        assertTrue(PhoneNumberUtils.isEmergencyNumber("112"));
         // The next two numbers are not valid phone numbers in the US,
         // so do not count as emergency numbers (but they *are* "potential"
         // emergency numbers; see below.)
-        assertFalse(PhoneNumberUtils.isEmergencyNumber("91112345", "US"));
-        assertFalse(PhoneNumberUtils.isEmergencyNumber("11212345", "US"));
+        assertFalse(PhoneNumberUtils.isEmergencyNumber("91112345"));
+        assertFalse(PhoneNumberUtils.isEmergencyNumber("11212345"));
         // A valid mobile phone number from Singapore shouldn't be classified as an emergency number
         // in Singapore, as 911 is not an emergency number there.
-        assertFalse(PhoneNumberUtils.isEmergencyNumber("91121234", "SG"));
+        assertFalse(PhoneNumberUtils.isEmergencyNumber("91121234"));
         // A valid fixed-line phone number from Brazil shouldn't be classified as an emergency number
         // in Brazil, as 112 is not an emergency number there.
-        assertFalse(PhoneNumberUtils.isEmergencyNumber("1121234567", "BR"));
+        assertFalse(PhoneNumberUtils.isEmergencyNumber("1121234567"));
         // A valid local phone number from Brazil shouldn't be classified as an emergency number in
         // Brazil.
-        assertFalse(PhoneNumberUtils.isEmergencyNumber("91112345", "BR"));
-
-        // Tests for isPotentialEmergencyNumber():
-        // These first two are obviously emergency numbers:
-        assertTrue(PhoneNumberUtils.isPotentialEmergencyNumber("911", "US"));
-        assertTrue(PhoneNumberUtils.isPotentialEmergencyNumber("112", "US"));
-        // The next two numbers are not valid phone numbers in the US, but can be used to trick the
-        // system to dial 911 and 112, which are emergency numbers in the US. For the purpose of
-        // addressing that, they are also classified as "potential" emergency numbers in the US.
-        assertTrue(PhoneNumberUtils.isPotentialEmergencyNumber("91112345", "US"));
-        assertTrue(PhoneNumberUtils.isPotentialEmergencyNumber("11212345", "US"));
-
-        // A valid mobile phone number from Singapore shouldn't be classified as an emergency number
-        // in Singapore, as 911 is not an emergency number there.
-        // This test fails on devices that have ecclist property preloaded with 911.
-        // assertFalse(PhoneNumberUtils.isPotentialEmergencyNumber("91121234", "SG"));
-
-        // A valid fixed-line phone number from Brazil shouldn't be classified as an emergency number
-        // in Brazil, as 112 is not an emergency number there.
-        assertFalse(PhoneNumberUtils.isPotentialEmergencyNumber("1121234567", "BR"));
-        // A valid local phone number from Brazil shouldn't be classified as an emergency number in
-        // Brazil.
-        assertFalse(PhoneNumberUtils.isPotentialEmergencyNumber("91112345", "BR"));
+        assertFalse(PhoneNumberUtils.isEmergencyNumber("91112345"));
     }
 
     @SmallTest
@@ -766,6 +805,22 @@ public class PhoneNumberUtilsTest {
         assertTrue(PhoneNumberUtils.isInternationalNumber("01161396694916", "US"));
         assertTrue(PhoneNumberUtils.isInternationalNumber("011-613-966-94916", "US"));
         assertFalse(PhoneNumberUtils.isInternationalNumber("011-613-966-94916", "AU"));
+    }
+
+    // Same as testIsInternational but using lower case country code.
+    @Test
+    public void testIsInternational_countryCodeLowerCase() {
+        assertFalse(PhoneNumberUtils.isInternationalNumber("", "us"));
+        assertFalse(PhoneNumberUtils.isInternationalNumber(null, "us"));
+        assertFalse(PhoneNumberUtils.isInternationalNumber("+16505551212", "us"));
+        assertTrue(PhoneNumberUtils.isInternationalNumber("+16505551212", "uk"));
+        assertTrue(PhoneNumberUtils.isInternationalNumber("+16505551212", "jp"));
+        assertTrue(PhoneNumberUtils.isInternationalNumber("+86 10 8888 0000", "us"));
+        assertTrue(PhoneNumberUtils.isInternationalNumber("001-541-754-3010", "de"));
+        assertFalse(PhoneNumberUtils.isInternationalNumber("001-541-754-3010", "us"));
+        assertTrue(PhoneNumberUtils.isInternationalNumber("01161396694916", "us"));
+        assertTrue(PhoneNumberUtils.isInternationalNumber("011-613-966-94916", "us"));
+        assertFalse(PhoneNumberUtils.isInternationalNumber("011-613-966-94916", "au"));
     }
 
     @SmallTest

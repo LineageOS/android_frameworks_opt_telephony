@@ -323,7 +323,9 @@ public class DataEvaluation {
         /** Only one data network is allowed at one time. */
         ONLY_ALLOWED_SINGLE_NETWORK(true),
         /** Data enabled settings are not ready. */
-        DATA_SETTINGS_NOT_READY(true);
+        DATA_SETTINGS_NOT_READY(true),
+        /** Handover max retry stopped but network is not on the preferred transport. */
+        HANDOVER_RETRY_STOPPED(true);
 
         private final boolean mIsHardReason;
 
@@ -361,6 +363,10 @@ public class DataEvaluation {
          * The normal reason. This is the most common case.
          */
         NORMAL,
+        /**
+         * Data is allowed because an ongoing VoPS call depends on this network
+         */
+        IN_VOICE_CALL,
         /**
          * The network brought up by this network request is unmetered. Should allowed no matter
          * the user enables or disables data.

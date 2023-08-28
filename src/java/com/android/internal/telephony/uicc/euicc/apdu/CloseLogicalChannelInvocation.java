@@ -43,7 +43,10 @@ class CloseLogicalChannelInvocation extends AsyncMessageInvocation<Integer, Bool
     @Override
     protected void sendRequestMessage(Integer channel, Message msg) {
         Rlog.v(LOG_TAG, "Channel: " + channel);
-        mCi.iccCloseLogicalChannel(channel, msg);
+        // TODO: Currently CloseLogicalChannelInvocation is used from ApduSender for closing the
+        //  channel opened on ISD-R. Hence passing isEs10 as true by default.
+        //  Should modify the logic in future if the ApduSender is used with non ISD-R AID.
+        mCi.iccCloseLogicalChannel(channel, true /*isEs10*/, msg);
     }
 
     @Override

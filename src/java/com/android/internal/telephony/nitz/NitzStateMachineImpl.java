@@ -18,6 +18,7 @@ package com.android.internal.telephony.nitz;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.app.time.UnixEpochTime;
 import android.app.timedetector.TelephonyTimeSuggestion;
 import android.app.timezonedetector.TelephonyTimeZoneSuggestion;
 import android.content.Context;
@@ -372,7 +373,7 @@ public final class NitzStateMachineImpl implements NitzStateMachine {
                 builder.addDebugInfo("Clearing time suggestion"
                         + " reason=" + reason);
             } else {
-                TimestampedValue<Long> newNitzTime = nitzSignal.createTimeSignal();
+                UnixEpochTime newNitzTime = nitzSignal.createTimeSignal();
                 builder.setUnixEpochTime(newNitzTime);
                 builder.addDebugInfo("Sending new time suggestion"
                         + " nitzSignal=" + nitzSignal

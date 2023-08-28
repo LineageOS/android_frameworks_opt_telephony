@@ -956,7 +956,7 @@ public class ImsResolverTest extends ImsTestBase {
         carrierFeatures.add(new ImsFeatureConfiguration.FeatureSlotPair(1, ImsFeature.FEATURE_RCS));
         // Assume that there is a CarrierConfig change that kicks off query to carrier service.
         sendCarrierConfigChanged(1, 1);
-        setupDynamicQueryFeatures(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, 2);
+        setupDynamicQueryFeaturesMultiSim(TEST_CARRIER_DEFAULT_NAME, carrierFeatures, 2);
         verify(carrierController).changeImsServiceFeatures(eq(carrierFeatures),
                         any(SparseIntArray.class));
         deviceFeatureSet = convertToHashSet(deviceFeatures, 0);
@@ -2021,6 +2021,7 @@ public class ImsResolverTest extends ImsTestBase {
      */
     private void startBindCarrierConfigAlreadySet() {
         mTestImsResolver.initialize();
+        processAllMessages();
         ArgumentCaptor<BroadcastReceiver> receiversCaptor =
                 ArgumentCaptor.forClass(BroadcastReceiver.class);
         verify(mMockContext, times(3)).registerReceiver(receiversCaptor.capture(), any());
@@ -2042,6 +2043,7 @@ public class ImsResolverTest extends ImsTestBase {
      */
     private void startBindNoCarrierConfig(int numSlots) {
         mTestImsResolver.initialize();
+        processAllMessages();
         ArgumentCaptor<BroadcastReceiver> receiversCaptor =
                 ArgumentCaptor.forClass(BroadcastReceiver.class);
         verify(mMockContext, times(3)).registerReceiver(receiversCaptor.capture(), any());
@@ -2062,6 +2064,15 @@ public class ImsResolverTest extends ImsTestBase {
     private void setupDynamicQueryFeatures(ComponentName name,
             HashSet<ImsFeatureConfiguration.FeatureSlotPair> features, int times) {
         processAllMessages();
+        // ensure that startQuery was called
+        verify(mMockQueryManager, times(times)).startQuery(eq(name), any(String.class));
+        mDynamicQueryListener.onComplete(name, features);
+        processAllMessages();
+    }
+
+    private void setupDynamicQueryFeaturesMultiSim(ComponentName name,
+            HashSet<ImsFeatureConfiguration.FeatureSlotPair> features, int times) {
+        processAllFutureMessages();
         // ensure that startQuery was called
         verify(mMockQueryManager, times(times)).startQuery(eq(name), any(String.class));
         mDynamicQueryListener.onComplete(name, features);

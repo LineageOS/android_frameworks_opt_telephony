@@ -260,15 +260,8 @@ public class SmsBroadcastUndelivered {
      * Send tracker to appropriate (3GPP or 3GPP2) inbound SMS handler for broadcast.
      */
     private static void broadcastSms(InboundSmsTracker tracker) {
-        InboundSmsHandler handler;
         int subId = tracker.getSubId();
-        int phoneId;
-        if (PhoneFactory.isSubscriptionManagerServiceEnabled()) {
-            phoneId = SubscriptionManagerService.getInstance().getPhoneId(subId);
-        } else {
-            // TODO consider other subs in this subId's group as well
-            phoneId = SubscriptionController.getInstance().getPhoneId(subId);
-        }
+        int phoneId = SubscriptionManagerService.getInstance().getPhoneId(subId);
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {
             Rlog.e(TAG, "broadcastSms: ignoring message; no phone found for subId " + subId);
             return;
@@ -279,7 +272,7 @@ public class SmsBroadcastUndelivered {
                     + " phoneId " + phoneId);
             return;
         }
-        handler = phone.getInboundSmsHandler(tracker.is3gpp2());
+        InboundSmsHandler handler = phone.getInboundSmsHandler(tracker.is3gpp2());
         if (handler != null) {
             handler.sendMessage(InboundSmsHandler.EVENT_BROADCAST_SMS, tracker);
         } else {

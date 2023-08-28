@@ -171,8 +171,8 @@ public class DataProfileManager extends Handler {
                 new DataNetworkControllerCallback(this::post) {
                     @Override
                     public void onInternetDataNetworkConnected(
-                            @NonNull List<DataProfile> dataProfiles) {
-                        DataProfileManager.this.onInternetDataNetworkConnected(dataProfiles);
+                            @NonNull List<DataNetwork> internetNetworks) {
+                        DataProfileManager.this.onInternetDataNetworkConnected(internetNetworks);
                     }
 
                     @Override
@@ -413,24 +413,37 @@ public class DataProfileManager extends Handler {
     /**
      * Called when internet data is connected.
      *
-     * @param dataProfiles The connected internet data networks' profiles.
+     * @param internetNetworks The connected internet data networks.
      */
-    private void onInternetDataNetworkConnected(@NonNull List<DataProfile> dataProfiles) {
-        // Most of the cases there should be only one, but in case there are multiple, choose the
-        // one which has longest life cycle.
-        DataProfile dataProfile = dataProfiles.stream()
-                .max(Comparator.comparingLong(DataProfile::getLastSetupTimestamp).reversed())
-                .orElse(null);
+    private void onInternetDataNetworkConnected(@NonNull List<DataNetwork> internetNetworks) {
+        DataProfile defaultProfile = null;
+        if (internetNetworks.size() == 1) {
+            // Most of the cases there should be only one.
+            defaultProfile = internetNetworks.get(0).getDataProfile();
+        } else if (internetNetworks.size() > 1) {
+            // but in case there are multiple, find the default internet network, and choose the
+            // one which has longest life cycle.
+            logv("onInternetDataNetworkConnected: mPreferredDataProfile=" + mPreferredDataProfile
+                    + " internetNetworks=" + internetNetworks);
+            defaultProfile = internetNetworks.stream()
+                    .filter(network -> mPreferredDataProfile == null
+                            || canPreferredDataProfileSatisfy(
+                            network.getAttachedNetworkRequestList()))
+                    .map(DataNetwork::getDataProfile)
+                    .min(Comparator.comparingLong(DataProfile::getLastSetupTimestamp))
+                    .orElse(null);
+        }
 
         // Update a working internet data profile as a future candidate for preferred data profile
         // after APNs are reset to default
-        mLastInternetDataProfile = dataProfile;
+        mLastInternetDataProfile = defaultProfile;
 
-        // If there is no preferred data profile, then we should use one of the data profiles,
-        // which is good for internet, as the preferred data profile.
-        if (mPreferredDataProfile != null) return;
+        // If the live default internet network is not using the preferred data profile, since
+        // brought up a network means it passed sophisticated checks, update the preferred data
+        // profile so that this network won't be torn down in future network evaluations.
+        if (defaultProfile == null || defaultProfile.equals(mPreferredDataProfile)) return;
         // Save the preferred data profile into database.
-        setPreferredDataProfile(dataProfile);
+        setPreferredDataProfile(defaultProfile);
         updateDataProfiles(ONLY_UPDATE_IA_IF_CHANGED);
     }
 
@@ -484,7 +497,7 @@ public class DataProfileManager extends Handler {
      * the preferred data profile from database.
      */
     private void setPreferredDataProfile(@Nullable DataProfile dataProfile) {
-        log("setPreferredDataProfile: " + dataProfile);
+        logl("setPreferredDataProfile: " + dataProfile);
 
         String subId = Long.toString(mPhone.getSubId());
         Uri uri = Uri.withAppendedPath(Telephony.Carriers.PREFERRED_APN_URI, subId);
@@ -783,6 +796,18 @@ public class DataProfileManager extends Handler {
     }
 
     /**
+     * @param networkRequests The required network requests
+     * @return {@code true} if we currently have a preferred data profile that's capable of
+     * satisfying the required network requests; {@code false} if we have no preferred, or the
+     * preferred cannot satisfy the required requests.
+     */
+    public boolean canPreferredDataProfileSatisfy(
+            @NonNull DataNetworkController.NetworkRequestList networkRequests) {
+        return mPreferredDataProfile != null && networkRequests.stream()
+                .allMatch(request -> request.canBeSatisfiedBy(mPreferredDataProfile));
+    }
+
+    /**
      * Check if there is tethering data profile for certain network type.
      *
      * @param networkType The network type
@@ -801,18 +826,6 @@ public class DataProfileManager extends Handler {
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_DUN)
                         .build(), mPhone);
         return getDataProfileForNetworkRequest(networkRequest, networkType, true) != null;
-    }
-
-     /**
-     * Check if any preferred data profile exists.
-     *
-     * @return {@code true} if any preferred data profile exists
-     */
-    public boolean isAnyPreferredDataProfileExisting() {
-        for (DataProfile dataProfile : mAllDataProfiles) {
-            if (dataProfile.isPreferred()) return true;
-        }
-        return false;
     }
 
     /**
@@ -1130,6 +1143,7 @@ public class DataProfileManager extends Handler {
         pw.println("Preferred data profile from db=" + getPreferredDataProfileFromDb());
         pw.println("Preferred data profile from config=" + getPreferredDataProfileFromConfig());
         pw.println("Preferred data profile set id=" + mPreferredDataProfileSetId);
+        pw.println("Last internet data profile=" + mLastInternetDataProfile);
         pw.println("Initial attach data profile=" + mInitialAttachDataProfile);
         pw.println("isTetheringDataProfileExisting=" + isTetheringDataProfileExisting(
                 TelephonyManager.NETWORK_TYPE_LTE));

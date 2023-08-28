@@ -25,7 +25,9 @@ import static android.telephony.TelephonyManager.RADIO_POWER_ON;
 import static android.telephony.TelephonyManager.RADIO_POWER_UNAVAILABLE;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -35,9 +37,11 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import android.Manifest;
 import android.content.Intent;
 import android.content.pm.UserInfo;
 import android.net.LinkProperties;
+import android.os.Build;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.UserHandle;
@@ -108,6 +112,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
     private CellLocation mCellLocation;
     private List<CellInfo> mCellInfo;
     private BarringInfo mBarringInfo = null;
+    private CellIdentity mCellIdentityForRegiFail;
+    private int mRegistrationFailReason;
 
     // All events contribute to TelephonyRegistry#isPhoneStatePermissionRequired
     private static final Set<Integer> READ_PHONE_STATE_EVENTS;
@@ -151,6 +157,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
                 TelephonyCallback.EVENT_VOICE_ACTIVATION_STATE_CHANGED);
         READ_PRIVILEGED_PHONE_STATE_EVENTS.add(
                 TelephonyCallback.EVENT_ALLOWED_NETWORK_TYPE_LIST_CHANGED);
+        READ_PRIVILEGED_PHONE_STATE_EVENTS.add(
+                TelephonyCallback.EVENT_EMERGENCY_CALLBACK_MODE_CHANGED);
     }
 
     // All events contribute to TelephonyRegistry#isActiveEmergencySessionPermissionRequired
@@ -176,7 +184,8 @@ public class TelephonyRegistryTest extends TelephonyTest {
             TelephonyCallback.CellLocationListener,
             TelephonyCallback.ServiceStateListener,
             TelephonyCallback.CellInfoListener,
-            TelephonyCallback.BarringInfoListener {
+            TelephonyCallback.BarringInfoListener,
+            TelephonyCallback.RegistrationFailedListener {
         // This class isn't mockable to get invocation counts because the IBinder is null and
         // crashes the TelephonyRegistry. Make a cheesy verify(times()) alternative.
         public AtomicInteger invocationCount = new AtomicInteger(0);
@@ -249,6 +258,15 @@ public class TelephonyRegistryTest extends TelephonyTest {
         public void onBarringInfoChanged(BarringInfo barringInfo) {
             invocationCount.incrementAndGet();
             mBarringInfo = barringInfo;
+        }
+
+        public void onRegistrationFailed(@android.annotation.NonNull CellIdentity cellIdentity,
+                @android.annotation.NonNull String chosenPlmn,
+                @NetworkRegistrationInfo.Domain int domain,
+                int causeCode, int additionalCauseCode) {
+            invocationCount.incrementAndGet();
+            mCellIdentityForRegiFail = cellIdentity;
+            mRegistrationFailReason = causeCode;
         }
     }
 
@@ -897,24 +915,48 @@ public class TelephonyRegistryTest extends TelephonyTest {
     }
 
     @Test
-    public void testBarringInfoChanged() {
+    public void testBarringInfoChangedWithLocationFinePermission() throws Exception {
+        checkBarringInfoWithLocationPermission(Manifest.permission.ACCESS_FINE_LOCATION);
+    }
+
+    @Test
+    public void testBarringInfoChangedLocationCoarsePermission() throws Exception {
+        checkBarringInfoWithLocationPermission(Manifest.permission.ACCESS_COARSE_LOCATION);
+    }
+
+    @Test
+    public void testBarringInfoChangedWithoutLocationPermission() throws Exception {
+        checkBarringInfoWithLocationPermission(null);
+    }
+
+    private void checkBarringInfoWithLocationPermission(String permission) throws Exception {
         // Return a slotIndex / phoneId of 0 for all sub ids given.
         doReturn(mMockSubInfo).when(mSubscriptionManager).getActiveSubscriptionInfo(anyInt());
         doReturn(0/*slotIndex*/).when(mMockSubInfo).getSimSlotIndex();
         doReturn(true).when(mLocationManager).isLocationEnabledForUser(any(UserHandle.class));
 
+        mApplicationInfo.targetSdkVersion = Build.VERSION_CODES.TIRAMISU;
+        doReturn(mApplicationInfo).when(mPackageManager).getApplicationInfo(anyString(), anyInt());
+        mContextFixture.addCallingOrSelfPermission("");
+        mContextFixture.addCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE);
+        mContextFixture.addCallingOrSelfPermission(
+                android.Manifest.permission.READ_PRECISE_PHONE_STATE);
+        if (permission != null) {
+            mContextFixture.addCallingOrSelfPermission(permission);
+        }
+
         final int subId = 1;
         int[] events = {TelephonyCallback.EVENT_BARRING_INFO_CHANGED};
         SparseArray<BarringInfo.BarringServiceInfo> bsi = new SparseArray(1);
-        bsi.set(BarringInfo.BARRING_SERVICE_TYPE_MO_DATA,
+        bsi.set(BarringInfo.BARRING_SERVICE_TYPE_MMTEL_VOICE,
                 new BarringInfo.BarringServiceInfo(
                         BarringInfo.BarringServiceInfo.BARRING_TYPE_CONDITIONAL,
                         false /*isConditionallyBarred*/,
                         30 /*conditionalBarringFactor*/,
                         10 /*conditionalBarringTimeSeconds*/));
-        BarringInfo info = new BarringInfo(new CellIdentityLte(), bsi);
-
-        // Registering for info causes Barring Info to be sent to caller
+        BarringInfo info = new BarringInfo(
+                new CellIdentityLte(777, 333, 12345, 222, 13579), bsi);
+        // 1. Register listener which requires location access.
         mTelephonyRegistry.listenWithEventList(false, false, subId, mContext.getOpPackageName(),
                 mContext.getAttributionTag(), mTelephonyCallback.callback, events, true);
         processAllMessages();
@@ -925,12 +967,115 @@ public class TelephonyRegistryTest extends TelephonyTest {
         mTelephonyRegistry.notifyBarringInfoChanged(0, subId, info);
         processAllMessages();
         assertEquals(2, mTelephonyCallback.invocationCount.get());
-        assertEquals(mBarringInfo, info);
+        assertEquals(mBarringInfo
+                        .getBarringServiceInfo(BarringInfo.BARRING_SERVICE_TYPE_MMTEL_VOICE),
+                info.getBarringServiceInfo(BarringInfo.BARRING_SERVICE_TYPE_MMTEL_VOICE));
+        String log = mBarringInfo.toString();
+        assertTrue(log.contains("777"));
+        assertTrue(log.contains("333"));
+        if (permission != null && permission.equals(Manifest.permission.ACCESS_FINE_LOCATION)) {
+            assertTrue(log.contains("12345"));
+            assertTrue(log.contains("222"));
+            assertTrue(log.contains("13579"));
+        } else {
+            assertFalse(log.contains("12345"));
+            assertFalse(log.contains("222"));
+            assertFalse(log.contains("13579"));
+        }
 
         // Duplicate BarringInfo notifications do not trigger callback
         mTelephonyRegistry.notifyBarringInfoChanged(0, subId, info);
         processAllMessages();
         assertEquals(2, mTelephonyCallback.invocationCount.get());
+
+        mTelephonyRegistry.listenWithEventList(true, true, subId, mContext.getOpPackageName(),
+                mContext.getAttributionTag(), mTelephonyCallback.callback, new int[0], true);
+        // 2. Register listener renounces location access.
+        mTelephonyRegistry.listenWithEventList(true, true, subId, mContext.getOpPackageName(),
+                mContext.getAttributionTag(), mTelephonyCallback.callback, events, true);
+        processAllMessages();
+        // check receiving barring info without location info.
+        assertEquals(3, mTelephonyCallback.invocationCount.get());
+        assertNotNull(mBarringInfo);
+        assertEquals(mBarringInfo
+                        .getBarringServiceInfo(BarringInfo.BARRING_SERVICE_TYPE_MMTEL_VOICE),
+                info.getBarringServiceInfo(BarringInfo.BARRING_SERVICE_TYPE_MMTEL_VOICE));
+        log = mBarringInfo.toString();
+        assertTrue(log.contains("777"));
+        assertTrue(log.contains("333"));
+        assertFalse(log.contains("12345"));
+        assertFalse(log.contains("222"));
+        assertFalse(log.contains("13579"));
+    }
+
+    @Test
+    public void testRegistrationFailedEventWithLocationFinePermission() throws Exception {
+        checkRegistrationFailedEventWithLocationPermission(
+                Manifest.permission.ACCESS_FINE_LOCATION);
+    }
+    @Test
+    public void testRegistrationFailedEventWithLocationCoarsePermission() throws Exception {
+        checkRegistrationFailedEventWithLocationPermission(
+                Manifest.permission.ACCESS_COARSE_LOCATION);
+    }
+
+    @Test
+    public void testRegistrationFailedEventWithoutLocationPermission() throws Exception {
+        checkRegistrationFailedEventWithLocationPermission(null);
+    }
+
+    private void checkRegistrationFailedEventWithLocationPermission(String permission)
+            throws Exception {
+        // Return a slotIndex / phoneId of 0 for all sub ids given.
+        doReturn(mMockSubInfo).when(mSubscriptionManager).getActiveSubscriptionInfo(anyInt());
+        doReturn(0/*slotIndex*/).when(mMockSubInfo).getSimSlotIndex();
+        doReturn(true).when(mLocationManager).isLocationEnabledForUser(any(UserHandle.class));
+
+        mApplicationInfo.targetSdkVersion = Build.VERSION_CODES.TIRAMISU;
+        doReturn(mApplicationInfo).when(mPackageManager).getApplicationInfo(anyString(), anyInt());
+        mContextFixture.addCallingOrSelfPermission("");
+        mContextFixture.addCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE);
+        mContextFixture.addCallingOrSelfPermission(
+                android.Manifest.permission.READ_PRECISE_PHONE_STATE);
+        if (permission != null) {
+            mContextFixture.addCallingOrSelfPermission(permission);
+        }
+
+        final int subId = 1;
+        int[] events = {TelephonyCallback.EVENT_REGISTRATION_FAILURE};
+        CellIdentity cellIdentity =
+                new CellIdentityLte(777, 333, 12345, 227, 13579);
+
+        // 1. Register listener which requires location access.
+        mTelephonyRegistry.listenWithEventList(false, false, subId, mContext.getOpPackageName(),
+                mContext.getAttributionTag(), mTelephonyCallback.callback, events, true);
+        processAllMessages();
+        int invocationCount = mTelephonyCallback.invocationCount.get();
+        // Updating the RegistrationFailed info to be updated
+        mTelephonyRegistry.notifyRegistrationFailed(
+                0, subId, cellIdentity, "88888", 1, 333, 22);
+        processAllMessages();
+        assertEquals(invocationCount + 1, mTelephonyCallback.invocationCount.get());
+        if (permission != null && permission.equals(Manifest.permission.ACCESS_FINE_LOCATION)) {
+            assertEquals(cellIdentity, mCellIdentityForRegiFail);
+        } else {
+            assertEquals(cellIdentity.sanitizeLocationInfo(), mCellIdentityForRegiFail);
+        }
+        assertEquals(333, mRegistrationFailReason);
+        mTelephonyRegistry.listenWithEventList(true, true, subId, mContext.getOpPackageName(),
+                mContext.getAttributionTag(), mTelephonyCallback.callback, new int[0], true);
+
+        // 2. Register listener which renounces location access.
+        mTelephonyRegistry.listenWithEventList(true, true, subId, mContext.getOpPackageName(),
+                mContext.getAttributionTag(), mTelephonyCallback.callback, events, true);
+        invocationCount = mTelephonyCallback.invocationCount.get();
+        // Updating the RegistrationFailed info to be updated
+        mTelephonyRegistry.notifyRegistrationFailed(
+                0, subId, cellIdentity, "88888", 1, 555, 22);
+        processAllMessages();
+        assertEquals(invocationCount + 1, mTelephonyCallback.invocationCount.get());
+        assertEquals(cellIdentity.sanitizeLocationInfo(), mCellIdentityForRegiFail);
+        assertEquals(555, mRegistrationFailReason);
     }
 
     /**
@@ -1170,12 +1315,9 @@ public class TelephonyRegistryTest extends TelephonyTest {
         final int subId = 1;
 
         // Return a slotIndex / phoneId of 0 for subId 1.
-        doReturn(subId).when(mSubscriptionController).getSubId(phoneId);
+        doReturn(subId).when(mSubscriptionManagerService).getSubId(phoneId);
         doReturn(mMockSubInfo).when(mSubscriptionManager).getActiveSubscriptionInfo(subId);
         doReturn(phoneId).when(mMockSubInfo).getSimSlotIndex();
-        mServiceManagerMockedServices.put("isub", mSubscriptionController);
-        doReturn(mSubscriptionController).when(mSubscriptionController)
-                .queryLocalInterface(anyString());
 
         UserInfo userInfo = new UserInfo(UserHandle.myUserId(), "" /* name */, 0 /* flags */);
         doReturn(userInfo.id).when(mIActivityManager).getCurrentUserId();

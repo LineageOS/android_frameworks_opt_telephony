@@ -29,6 +29,7 @@ import android.os.AsyncResult;
 import android.os.PersistableBundle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ServiceState;
+import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
@@ -126,6 +127,7 @@ public class ImsPhoneMmiCodeTest extends TelephonyTest {
      * Ensure that when an operation is not supported that the correct message is returned.
      */
     @Test
+    @SmallTest
     public void testOperationNotSupported() {
         mImsPhoneMmiCode = ImsPhoneMmiCode.newNetworkInitiatedUssd(null, true, mImsPhoneUT);
 

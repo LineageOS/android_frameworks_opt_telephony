@@ -81,7 +81,7 @@ import java.util.stream.Collectors;
  * to the database should go through {@link SubscriptionManagerService}.
  */
 public class SubscriptionDatabaseManager extends Handler {
-    private static final String LOG_TAG = "SDM";
+    private static final String LOG_TAG = "SDMGR";
 
     /** Whether enabling verbose debugging message or not. */
     private static final boolean VDBG = false;
@@ -91,7 +91,6 @@ public class SubscriptionDatabaseManager extends Handler {
 
     /** The mapping from {@link SimInfo} table to {@link SubscriptionInfoInternal} get methods. */
     private static final Map<String, Function<SubscriptionInfoInternal, ?>>
-            // TODO: Support SimInfo.COLUMN_CB_XXX which are still used by wear.
             SUBSCRIPTION_GET_METHOD_MAP = Map.ofEntries(
             new AbstractMap.SimpleImmutableEntry<>(
                     SimInfo.COLUMN_UNIQUE_KEY_SUBSCRIPTION_ID,

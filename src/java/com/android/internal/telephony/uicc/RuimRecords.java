@@ -690,7 +690,7 @@ public class RuimRecords extends IccRecords {
                 mIccId = IccUtils.bcdToString(data, 0, data.length);
                 mFullIccId = IccUtils.bchToString(data, 0, data.length);
 
-                log("iccid: " + SubscriptionInfo.givePrintableIccid(mFullIccId));
+                log("iccid: " + SubscriptionInfo.getPrintableId(mFullIccId));
 
             break;
 
@@ -817,7 +817,6 @@ public class RuimRecords extends IccRecords {
         mLoaded.set(true);
         mRecordsLoadedRegistrants.notifyRegistrants(new AsyncResult(null, null, null));
 
-        // TODO: The below is hacky since the SubscriptionController may not be ready at this time.
         if (!TextUtils.isEmpty(mMdn)) {
             int phoneId = mParentApp.getUiccProfile().getPhoneId();
             int subId = SubscriptionManager.getSubscriptionId(phoneId);

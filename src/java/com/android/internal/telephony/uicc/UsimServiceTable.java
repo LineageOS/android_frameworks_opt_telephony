@@ -157,4 +157,8 @@ public final class UsimServiceTable extends IccServiceTable {
     protected Object[] getValues() {
         return UsimService.values();
     }
+
+    public byte[] getUSIMServiceTable() {
+        return mServiceTable;
+    }
 }

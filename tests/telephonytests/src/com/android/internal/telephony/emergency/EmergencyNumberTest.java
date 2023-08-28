@@ -261,7 +261,7 @@ public class EmergencyNumberTest extends TestCase {
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
 
-        assertFalse(EmergencyNumber.areSameEmergencyNumbers(num1, num2));
+        assertFalse(EmergencyNumber.areSameEmergencyNumbers(num1, num2, false));
     }
 
 
@@ -284,7 +284,7 @@ public class EmergencyNumberTest extends TestCase {
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
 
-        assertFalse(EmergencyNumber.areSameEmergencyNumbers(num1, num2));
+        assertFalse(EmergencyNumber.areSameEmergencyNumbers(num1, num2, false));
     }
 
     public void testSameEmergencyNumberDifferentMnc() throws Exception {
@@ -306,7 +306,7 @@ public class EmergencyNumberTest extends TestCase {
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
 
-        assertFalse(EmergencyNumber.areSameEmergencyNumbers(num1, num2));
+        assertFalse(EmergencyNumber.areSameEmergencyNumbers(num1, num2, false));
     }
 
     public void testSameEmergencyNumberDifferentCategories() throws Exception {
@@ -328,7 +328,7 @@ public class EmergencyNumberTest extends TestCase {
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
 
-        assertFalse(EmergencyNumber.areSameEmergencyNumbers(num1, num2));
+        assertFalse(EmergencyNumber.areSameEmergencyNumbers(num1, num2, false));
     }
 
     public void testSameEmergencyNumberDifferentUrns() throws Exception {
@@ -357,7 +357,7 @@ public class EmergencyNumberTest extends TestCase {
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
 
-        assertFalse(EmergencyNumber.areSameEmergencyNumbers(num1, num2));
+        assertFalse(EmergencyNumber.areSameEmergencyNumbers(num1, num2, false));
     }
 
     public void testSameEmergencyNumberCallRouting() throws Exception {
@@ -379,7 +379,36 @@ public class EmergencyNumberTest extends TestCase {
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
 
-        assertFalse(EmergencyNumber.areSameEmergencyNumbers(num1, num2));
+        /* case 1: Check routing is not checked when comparing the same numbers. As routing will
+        be unknown for all numbers apart from DB. Check merge when both are not from DB then
+        routing value is merged from first number. */
+        assertTrue(EmergencyNumber.areSameEmergencyNumbers(num1, num2, false));
+        assertEquals(num1, EmergencyNumber.mergeSameEmergencyNumbers(num1, num2));
+
+        num2 = new EmergencyNumber(
+                "911",
+                "jp",
+                "30",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
+                new ArrayList<String>(),
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
+
+        /* case 1: Check routing is not checked when comparing the same numbers. Check merge when
+        one of the number is from DB then routing value is merged from DB number. Along with
+        source value is masked with both*/
+        assertTrue(EmergencyNumber.areSameEmergencyNumbers(num1, num2, false));
+
+        num2 = new EmergencyNumber(
+                "911",
+                "jp",
+                "30",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
+                new ArrayList<String>(),
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING
+                | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
+        assertEquals(num2, EmergencyNumber.mergeSameEmergencyNumbers(num1, num2));
     }
 
     public void testSameEmergencyNumberDifferentSource() throws Exception {
@@ -401,7 +430,7 @@ public class EmergencyNumberTest extends TestCase {
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
 
-        assertTrue(EmergencyNumber.areSameEmergencyNumbers(num1, num2));
+        assertTrue(EmergencyNumber.areSameEmergencyNumbers(num1, num2, false));
     }
 
     public void testSameEmergencyNumberDifferentSourceTestOrNot() throws Exception {
@@ -423,7 +452,7 @@ public class EmergencyNumberTest extends TestCase {
                 EmergencyNumber.EMERGENCY_NUMBER_SOURCE_TEST,
                 EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
 
-        assertFalse(EmergencyNumber.areSameEmergencyNumbers(num1, num2));
+        assertFalse(EmergencyNumber.areSameEmergencyNumbers(num1, num2, false));
     }
 
     public void testMergeSameNumbersInEmergencyNumberListWithDifferentSources() throws Exception {
@@ -593,6 +622,248 @@ public class EmergencyNumberTest extends TestCase {
         outputNumberList.add(num6);
         Collections.sort(outputNumberList);
 
+        assertEquals(outputNumberList, inputNumberList);
+    }
+
+    public void testMergeSameNumbersEmergencyNumberListByDeterminingFields() throws Exception {
+        List<String> urn1 = new ArrayList<>();
+        urn1.add("sos");
+
+        List<String> urn2 = new ArrayList<>();
+        urn2.add("sos:ambulance");
+
+        List<EmergencyNumber> inputNumberList = new ArrayList<>();
+        EmergencyNumber num1 = new EmergencyNumber(
+                "110",
+                "jp",
+                "30",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
+                new ArrayList<String>(),
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
+
+        EmergencyNumber num2 = new EmergencyNumber(
+                "110",
+                "jp",
+                "30",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE,
+                urn1,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+
+        EmergencyNumber num3 = new EmergencyNumber(
+                "911",
+                "us",
+                "30",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
+                new ArrayList<String>(),
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+
+        EmergencyNumber num4 = new EmergencyNumber(
+                "911",
+                "us",
+                "30",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE,
+                urn2,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_EMERGENCY);
+
+        EmergencyNumber num5 = new EmergencyNumber(
+                "112",
+                "in",
+                "",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE,
+                urn2,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
+
+        EmergencyNumber num6 = new EmergencyNumber(
+                "112",
+                "in",
+                "",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
+                urn1,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_SIM,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+
+        EmergencyNumber num7 = new EmergencyNumber(
+                "108",
+                "in",
+                "",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE,
+                urn2,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_MODEM_CONFIG,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+
+        EmergencyNumber num8 = new EmergencyNumber(
+                "108",
+                "in",
+                "",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
+                new ArrayList<String>(),
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_SIM,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+
+        EmergencyNumber num9 = new EmergencyNumber(
+                "102",
+                "in",
+                "",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE,
+                urn2,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+
+        EmergencyNumber num10 = new EmergencyNumber(
+                "102",
+                "in",
+                "",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MOUNTAIN_RESCUE,
+                urn1,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_SIM,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+
+        EmergencyNumber num11 = new EmergencyNumber(
+                "100",
+                "in",
+                "",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_MIEC,
+                urn2,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_EMERGENCY);
+
+        EmergencyNumber num12 = new EmergencyNumber(
+                "100",
+                "in",
+                "",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE,
+                new ArrayList<String>(),
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_SIM,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+
+
+        EmergencyNumber num13 = new EmergencyNumber(
+                "200",
+                "in",
+                "",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_UNSPECIFIED,
+                new ArrayList<String>(),
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_EMERGENCY);
+
+        EmergencyNumber num14 = new EmergencyNumber(
+                "200",
+                "in",
+                "",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE,
+                new ArrayList<String>(),
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_MODEM_CONFIG,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+
+        inputNumberList.add(num1);
+        inputNumberList.add(num2);
+        inputNumberList.add(num3);
+        inputNumberList.add(num4);
+        inputNumberList.add(num5);
+        inputNumberList.add(num6);
+        inputNumberList.add(num7);
+        inputNumberList.add(num8);
+        inputNumberList.add(num9);
+        inputNumberList.add(num10);
+        inputNumberList.add(num11);
+        inputNumberList.add(num12);
+        inputNumberList.add(num13);
+        inputNumberList.add(num14);
+
+        EmergencyNumber mergeOfNum1AndNum2 = new EmergencyNumber(
+                "110",
+                "jp",
+                "30",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE,
+                urn1,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE
+                | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
+
+        EmergencyNumber mergeOfNum3AndNum4 = new EmergencyNumber(
+                "911",
+                "us",
+                "30",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_AMBULANCE,
+                urn2,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE
+                | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_EMERGENCY);
+
+        List<String> mergedUrns1And2 = new ArrayList<>();
+        mergedUrns1And2.add("sos");
+        mergedUrns1And2.add("sos:ambulance");
+
+        EmergencyNumber mergeOfNum5AndNum6 = new EmergencyNumber(
+                "112",
+                "in",
+                "",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE,
+                mergedUrns1And2,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE
+                | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_SIM,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_NORMAL);
+
+        EmergencyNumber mergeOfNum7AndNum8 = new EmergencyNumber(
+                "108",
+                "in",
+                "",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE,
+                urn2,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_MODEM_CONFIG
+                | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_SIM,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+
+        EmergencyNumber mergeOfNum11AndNum12 = new EmergencyNumber(
+                "100",
+                "in",
+                "",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE,
+                urn2,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_SIM
+                | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_EMERGENCY);
+
+        List<String> mergedUrns2And1 = new ArrayList<>();
+        mergedUrns2And1.add("sos:ambulance");
+        mergedUrns2And1.add("sos");
+
+        EmergencyNumber mergeOfNum9AndNum10 = new EmergencyNumber(
+                "102",
+                "in",
+                "",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_FIRE_BRIGADE,
+                mergedUrns2And1,
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_NETWORK_SIGNALING
+                | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_SIM,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_UNKNOWN);
+
+        EmergencyNumber mergeOfNum13AndNum14 = new EmergencyNumber(
+                "200",
+                "in",
+                "",
+                EmergencyNumber.EMERGENCY_SERVICE_CATEGORY_POLICE,
+                new ArrayList<String>(),
+                EmergencyNumber.EMERGENCY_NUMBER_SOURCE_MODEM_CONFIG
+                | EmergencyNumber.EMERGENCY_NUMBER_SOURCE_DATABASE,
+                EmergencyNumber.EMERGENCY_CALL_ROUTING_EMERGENCY);
+
+        List<EmergencyNumber> outputNumberList = new ArrayList<>();
+        outputNumberList.add(mergeOfNum1AndNum2);
+        outputNumberList.add(mergeOfNum3AndNum4);
+        outputNumberList.add(mergeOfNum5AndNum6);
+        outputNumberList.add(mergeOfNum7AndNum8);
+        outputNumberList.add(mergeOfNum9AndNum10);
+        outputNumberList.add(mergeOfNum11AndNum12);
+        outputNumberList.add(mergeOfNum13AndNum14);
+        Collections.sort(outputNumberList);
+
+        EmergencyNumber.mergeSameNumbersInEmergencyNumberList(inputNumberList, true);
         assertEquals(outputNumberList, inputNumberList);
     }
 }

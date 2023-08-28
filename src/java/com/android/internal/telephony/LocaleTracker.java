@@ -30,6 +30,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.UserHandle;
 import android.sysprop.TelephonyProperties;
 import android.telephony.CellInfo;
 import android.telephony.ServiceState;
@@ -558,7 +559,7 @@ public class LocaleTracker extends Handler {
             intent.putExtra(TelephonyManager.EXTRA_LAST_KNOWN_NETWORK_COUNTRY,
                     getLastKnownCountryIso());
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
-            mPhone.getContext().sendBroadcast(intent);
+            mPhone.getContext().sendBroadcastAsUser(intent, UserHandle.ALL);
         }
 
         // Pass the geographical country information to the telephony time zone detection code.
