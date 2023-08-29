@@ -150,6 +150,10 @@ public class SatelliteServiceUtils {
                 return SatelliteManager.SATELLITE_MODEM_STATE_OFF;
             case SatelliteModemState.SATELLITE_MODEM_STATE_UNAVAILABLE:
                 return SatelliteManager.SATELLITE_MODEM_STATE_UNAVAILABLE;
+            case SatelliteModemState.SATELLITE_MODEM_STATE_NOT_CONNECTED:
+                return SatelliteManager.SATELLITE_MODEM_STATE_NOT_CONNECTED;
+            case SatelliteModemState.SATELLITE_MODEM_STATE_CONNECTED:
+                return SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED;
             default:
                 loge("Received invalid modem state: " + modemState);
                 return SatelliteManager.SATELLITE_MODEM_STATE_UNKNOWN;
