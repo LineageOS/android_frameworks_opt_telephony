@@ -23,6 +23,7 @@ import static com.android.internal.telephony.PhoneConstants.PHONE_TYPE_CDMA_LTE;
 
 import static java.util.Arrays.copyOf;
 
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.ComponentName;
@@ -47,6 +48,7 @@ import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.data.TelephonyNetworkFactory;
 import com.android.internal.telephony.euicc.EuiccCardController;
 import com.android.internal.telephony.euicc.EuiccController;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneFactory;
 import com.android.internal.telephony.metrics.MetricsCollector;
@@ -105,8 +107,12 @@ public class PhoneFactory {
 
     //***** Class Methods
 
-    public static void makeDefaultPhones(Context context) {
-        makeDefaultPhone(context);
+    /**
+     * @param context The context.
+     * @param featureFlags The feature flag.
+     */
+    public static void makeDefaultPhones(Context context, @NonNull FeatureFlags featureFlags) {
+        makeDefaultPhone(context, featureFlags);
     }
 
     /**
@@ -114,7 +120,7 @@ public class PhoneFactory {
      * instances
      */
     @UnsupportedAppUsage
-    public static void makeDefaultPhone(Context context) {
+    public static void makeDefaultPhone(Context context, @NonNull FeatureFlags featureFlags) {
         synchronized (sLockProxyPhones) {
             if (!sMadeDefaults) {
                 sContext = context;
@@ -198,7 +204,7 @@ public class PhoneFactory {
 
                 Rlog.i(LOG_TAG, "Creating SubscriptionManagerService");
                 sSubscriptionManagerService = new SubscriptionManagerService(context,
-                        Looper.myLooper());
+                        Looper.myLooper(), featureFlags);
 
                 TelephonyComponentFactory.getInstance().inject(MultiSimSettingController.class.
                         getName()).initMultiSimSettingController(context);

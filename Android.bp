@@ -108,6 +108,7 @@ java_library {
         "telephony-protos",
         "modules-utils-build_system",
         "modules-utils-statemachine",
+        "telephony_flags-lib",
     ],
 
     optimize: {
