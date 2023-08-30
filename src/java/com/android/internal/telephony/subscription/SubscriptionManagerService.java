@@ -487,7 +487,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                     @Override
                     public void onInitialized() {
                         log("Subscription database has been initialized.");
-                        for (int phoneId = 0; phoneId < mTelephonyManager.getActiveModemCount()
+                        for (int phoneId = 0; phoneId < mTelephonyManager.getSupportedModemCount()
                                 ; phoneId++) {
                             markSubscriptionsInactive(phoneId);
                         }
