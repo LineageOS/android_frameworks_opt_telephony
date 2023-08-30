@@ -833,6 +833,8 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         doReturn(result).when(mEuiccController).blockingGetEuiccProfileInfoList(eq(2));
         doReturn(TelephonyManager.INVALID_PORT_INDEX).when(mUiccSlot)
                 .getPortIndexFromIccId(anyString());
+        doReturn(FAKE_ICCID1).when(mUiccController).convertToCardString(eq(1));
+        doReturn(FAKE_ICCID2).when(mUiccController).convertToCardString(eq(2));
 
         mSubscriptionManagerServiceUT.updateEmbeddedSubscriptions(List.of(1, 2), null);
         processAllMessages();
@@ -853,6 +855,9 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(subInfo.isEmbedded()).isTrue();
         assertThat(subInfo.isRemovableEmbedded()).isFalse();
         assertThat(subInfo.getNativeAccessRules()).isEqualTo(FAKE_NATIVE_ACCESS_RULES1);
+        // Downloaded esim profile should contain proper cardId
+        assertThat(subInfo.getCardId()).isEqualTo(1);
+        assertThat(subInfo.getCardString()).isEqualTo(FAKE_ICCID1);
 
         subInfo = mSubscriptionManagerServiceUT.getSubscriptionInfoInternal(2);
         assertThat(subInfo.getSubscriptionId()).isEqualTo(2);
@@ -869,6 +874,9 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(subInfo.isEmbedded()).isTrue();
         assertThat(subInfo.isRemovableEmbedded()).isFalse();
         assertThat(subInfo.getNativeAccessRules()).isEqualTo(FAKE_NATIVE_ACCESS_RULES2);
+        // Downloaded esim profile should contain proper cardId
+        assertThat(subInfo.getCardId()).isEqualTo(2);
+        assertThat(subInfo.getCardString()).isEqualTo(FAKE_ICCID2);
     }
 
     @Test
