@@ -571,6 +571,8 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         mBundle.putIntArray(CarrierConfigManager.KEY_ADDITIONAL_NR_ADVANCED_BANDS_INT_ARRAY,
                 new int[]{41, 77});
         mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT, 20000);
+        mBundle.putBoolean(CarrierConfigManager.KEY_RATCHET_NR_ADVANCED_BANDWIDTH_IF_RRC_IDLE_BOOL,
+                true);
         sendCarrierConfigChanged();
 
         // Primary serving NR PCC with cell ID = 1, band = none, bandwidth = 200000
@@ -626,6 +628,101 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         assertEquals("connected", getCurrentState().getName());
 
         physicalChannelConfigs.add(pcc2);
+        mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED */);
+        processAllMessages();
+        assertEquals("connected_mmwave", getCurrentState().getName());
+    }
+
+    @Test
+    public void testEventPhysicalChannelConfigChangedWithoutRatcheting() throws Exception {
+        testTransitionToCurrentStateNrConnected();
+        mBundle.putIntArray(CarrierConfigManager.KEY_ADDITIONAL_NR_ADVANCED_BANDS_INT_ARRAY,
+                new int[]{41, 77});
+        mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT, 20000);
+        sendCarrierConfigChanged();
+
+        // Primary serving NR PCC with cell ID = 1, band = none, bandwidth = 200000
+        PhysicalChannelConfig pcc1 = new PhysicalChannelConfig.Builder()
+                .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
+                .setPhysicalCellId(1)
+                .setCellConnectionStatus(CellInfo.CONNECTION_PRIMARY_SERVING)
+                .setCellBandwidthDownlinkKhz(19999)
+                .build();
+        // Secondary serving NR PCC with cell ID = 2, band = 41, bandwidth = 10000
+        PhysicalChannelConfig pcc2 = new PhysicalChannelConfig.Builder()
+                .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
+                .setPhysicalCellId(2)
+                .setCellConnectionStatus(CellInfo.CONNECTION_SECONDARY_SERVING)
+                .setCellBandwidthDownlinkKhz(10000)
+                .setBand(41)
+                .build();
+
+        List<PhysicalChannelConfig> physicalChannelConfigs = new ArrayList<>();
+        physicalChannelConfigs.add(pcc1);
+        physicalChannelConfigs.add(pcc2);
+        doReturn(physicalChannelConfigs).when(mSST).getPhysicalChannelConfigList();
+
+        mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED */);
+        processAllMessages();
+        assertEquals("connected_mmwave", getCurrentState().getName());
+
+        // bands and bandwidths should stay ratcheted even if an empty PCC list is sent
+        doReturn(new ArrayList<>()).when(mSST).getPhysicalChannelConfigList();
+        mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED */);
+        processAllMessages();
+        assertEquals("connected_mmwave", getCurrentState().getName());
+
+        // bands and bandwidths should change if PCC list changes
+        physicalChannelConfigs.remove(pcc2);
+        doReturn(physicalChannelConfigs).when(mSST).getPhysicalChannelConfigList();
+        mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED */);
+        processAllMessages();
+        assertEquals("connected", getCurrentState().getName());
+    }
+
+    @Test
+    public void testEventPhysicalChannelConfigChangedUsingUserDataForRrc() throws Exception {
+        testTransitionToCurrentStateNrConnected();
+        mBundle.putIntArray(CarrierConfigManager.KEY_ADDITIONAL_NR_ADVANCED_BANDS_INT_ARRAY,
+                new int[]{41, 77});
+        mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT, 20000);
+        mBundle.putBoolean(CarrierConfigManager.KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL,
+                true);
+        sendCarrierConfigChanged();
+
+        // Primary serving NR PCC with cell ID = 1, band = none, bandwidth = 200000
+        PhysicalChannelConfig pcc1 = new PhysicalChannelConfig.Builder()
+                .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
+                .setPhysicalCellId(1)
+                .setCellConnectionStatus(CellInfo.CONNECTION_PRIMARY_SERVING)
+                .setCellBandwidthDownlinkKhz(19999)
+                .build();
+        // Secondary serving NR PCC with cell ID = 2, band = 41, bandwidth = 10000
+        PhysicalChannelConfig pcc2 = new PhysicalChannelConfig.Builder()
+                .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
+                .setPhysicalCellId(2)
+                .setCellConnectionStatus(CellInfo.CONNECTION_SECONDARY_SERVING)
+                .setCellBandwidthDownlinkKhz(10000)
+                .setBand(41)
+                .build();
+
+        List<PhysicalChannelConfig> physicalChannelConfigs = new ArrayList<>();
+        physicalChannelConfigs.add(pcc1);
+        physicalChannelConfigs.add(pcc2);
+        doReturn(physicalChannelConfigs).when(mSST).getPhysicalChannelConfigList();
+
+        mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED */);
+        processAllMessages();
+        assertEquals("connected_mmwave", getCurrentState().getName());
+
+        // bands and bandwidths should not stay the same even if an empty PCC list is sent
+        doReturn(new ArrayList<>()).when(mSST).getPhysicalChannelConfigList();
+        mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED */);
+        processAllMessages();
+        assertEquals("connected", getCurrentState().getName());
+
+        // bands and bandwidths should change if PCC list changes
+        doReturn(physicalChannelConfigs).when(mSST).getPhysicalChannelConfigList();
         mNetworkTypeController.sendMessage(11 /* EVENT_PHYSICAL_CHANNEL_CONFIGS_CHANGED */);
         processAllMessages();
         assertEquals("connected_mmwave", getCurrentState().getName());
