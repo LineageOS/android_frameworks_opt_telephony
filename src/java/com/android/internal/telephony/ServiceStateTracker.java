@@ -180,7 +180,6 @@ public class ServiceStateTracker extends Handler {
     private long mLastCellInfoReqTime;
     private List<CellInfo> mLastCellInfoList = null;
     private List<PhysicalChannelConfig> mLastPhysicalChannelConfigList = null;
-    private int mLastAnchorNrCellId = PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN;
 
     private final Set<Integer> mRadioPowerOffReasons = new HashSet();
 
@@ -1661,18 +1660,6 @@ public class ServiceStateTracker extends Handler {
                         log("EVENT_PHYSICAL_CHANNEL_CONFIG: list=" + list
                                 + (list == null ? "" : ", list.size()=" + list.size()));
                     }
-                    if ((list == null || list.isEmpty())
-                            && mLastAnchorNrCellId != PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN
-                            && mPhone.getContext().getSystemService(TelephonyManager.class)
-                                    .isRadioInterfaceCapabilitySupported(TelephonyManager
-                                            .CAPABILITY_PHYSICAL_CHANNEL_CONFIG_1_6_SUPPORTED)
-                            && !mCarrierConfig.getBoolean(CarrierConfigManager
-                                    .KEY_LTE_ENDC_USING_USER_DATA_FOR_RRC_DETECTION_BOOL)
-                            && mCarrierConfig.getBoolean(CarrierConfigManager
-                                    .KEY_RATCHET_NR_ADVANCED_BANDWIDTH_IF_RRC_IDLE_BOOL)) {
-                        log("Ignore empty PCC list when RRC idle.");
-                        break;
-                    }
                     mLastPhysicalChannelConfigList = list;
                     boolean hasChanged = false;
                     if (updateNrStateFromPhysicalChannelConfigs(list, mSS)) {
@@ -1683,34 +1670,8 @@ public class ServiceStateTracker extends Handler {
                         mNrFrequencyChangedRegistrants.notifyRegistrants();
                         hasChanged = true;
                     }
-                    int anchorNrCellId = PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN;
-                    if (list != null) {
-                        anchorNrCellId = list
-                                .stream()
-                                .filter(config -> config.getNetworkType()
-                                        == TelephonyManager.NETWORK_TYPE_NR
-                                        && config.getConnectionStatus()
-                                        == PhysicalChannelConfig.CONNECTION_PRIMARY_SERVING)
-                                .map(PhysicalChannelConfig::getPhysicalCellId)
-                                .findFirst()
-                                .orElse(PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN);
-                    }
-                    int[] bandwidths = new int[0];
-                    if (list != null) {
-                        bandwidths = getBandwidthsFromLastPhysicalChannelConfigs();
-                    }
-                    if (anchorNrCellId == mLastAnchorNrCellId
-                            && anchorNrCellId != PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN) {
-                        log("Ratchet bandwidths since anchor NR cell is the same.");
-                        hasChanged |= RatRatcheter.updateBandwidths(bandwidths, mSS);
-                    } else {
-                        log("Do not ratchet bandwidths since anchor NR cell is different ("
-                                + mLastAnchorNrCellId + " -> " + anchorNrCellId
-                                + "). New bandwidths are " + Arrays.toString(bandwidths));
-                        mLastAnchorNrCellId = anchorNrCellId;
-                        hasChanged |= !Arrays.equals(mSS.getCellBandwidths(), bandwidths);
-                        mSS.setCellBandwidths(bandwidths);
-                    }
+                    hasChanged |= RatRatcheter
+                            .updateBandwidths(getBandwidthsFromConfigs(list), mSS);
 
                     mPhone.notifyPhysicalChannelConfig(list);
                     // Notify NR frequency, NR connection status or bandwidths changed.
@@ -1790,12 +1751,8 @@ public class ServiceStateTracker extends Handler {
         return simAbsent;
     }
 
-    private int[] getBandwidthsFromLastPhysicalChannelConfigs() {
-        boolean includeLte = mCarrierConfig.getBoolean(
-                CarrierConfigManager.KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL);
-        return mLastPhysicalChannelConfigList.stream()
-                .filter(config -> includeLte
-                        || config.getNetworkType() == TelephonyManager.NETWORK_TYPE_NR)
+    private static int[] getBandwidthsFromConfigs(List<PhysicalChannelConfig> list) {
+        return list.stream()
                 .map(PhysicalChannelConfig::getCellBandwidthDownlinkKhz)
                 .mapToInt(Integer::intValue)
                 .toArray();
@@ -2555,7 +2512,7 @@ public class ServiceStateTracker extends Handler {
             // Prioritize the PhysicalChannelConfig list because we might already be in carrier
             // aggregation by the time poll state is performed.
             if (primaryPcc != null) {
-                bandwidths = getBandwidthsFromLastPhysicalChannelConfigs();
+                bandwidths = getBandwidthsFromConfigs(mLastPhysicalChannelConfigList);
                 for (int bw : bandwidths) {
                     if (!isValidLteBandwidthKhz(bw)) {
                         loge("Invalid LTE Bandwidth in RegistrationState, " + bw);
@@ -2591,7 +2548,7 @@ public class ServiceStateTracker extends Handler {
             // Prioritize the PhysicalChannelConfig list because we might already be in carrier
             // aggregation by the time poll state is performed.
             if (primaryPcc != null) {
-                bandwidths = getBandwidthsFromLastPhysicalChannelConfigs();
+                bandwidths = getBandwidthsFromConfigs(mLastPhysicalChannelConfigList);
                 for (int bw : bandwidths) {
                     if (!isValidNrBandwidthKhz(bw)) {
                         loge("Invalid NR Bandwidth in RegistrationState, " + bw);

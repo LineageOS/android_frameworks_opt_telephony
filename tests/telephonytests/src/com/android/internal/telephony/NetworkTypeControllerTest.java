@@ -1274,7 +1274,12 @@ public class NetworkTypeControllerTest extends TelephonyTest {
         assertEquals("DefaultState", getCurrentState().getName());
         doReturn(NetworkRegistrationInfo.NR_STATE_CONNECTED).when(mServiceState).getNrState();
         doReturn(ServiceState.FREQUENCY_RANGE_MMWAVE).when(mServiceState).getNrFrequencyRange();
-        doReturn(new int[] {20001}).when(mServiceState).getCellBandwidths();
+        List<PhysicalChannelConfig> lastPhysicalChannelConfigList = new ArrayList<>();
+        lastPhysicalChannelConfigList.add(new PhysicalChannelConfig.Builder()
+                .setNetworkType(TelephonyManager.NETWORK_TYPE_NR)
+                .setCellBandwidthDownlinkKhz(20001)
+                .build());
+        doReturn(lastPhysicalChannelConfigList).when(mSST).getPhysicalChannelConfigList();
         mBundle.putInt(CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT, 20000);
         sendCarrierConfigChanged();
 
