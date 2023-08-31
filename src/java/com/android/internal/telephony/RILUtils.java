@@ -5760,7 +5760,7 @@ public class RILUtils {
      * @param error The satellite error.
      * @return The converted SatelliteServiceResult.
      */
-    @SatelliteManager.SatelliteError
+    @SatelliteManager.SatelliteResult
     public static int convertToSatelliteError(
             CommandException.Error error) {
         switch (error) {
@@ -5769,35 +5769,35 @@ public class RILUtils {
             case MODEM_ERR:
                 //fallthrough to SYSTEM_ERR
             case SYSTEM_ERR:
-                return SatelliteManager.SATELLITE_MODEM_ERROR;
+                return SatelliteManager.SATELLITE_RESULT_MODEM_ERROR;
             case INVALID_ARGUMENTS:
-                return SatelliteManager.SATELLITE_INVALID_ARGUMENTS;
+                return SatelliteManager.SATELLITE_RESULT_INVALID_ARGUMENTS;
             case INVALID_MODEM_STATE:
-                return SatelliteManager.SATELLITE_INVALID_MODEM_STATE;
+                return SatelliteManager.SATELLITE_RESULT_INVALID_MODEM_STATE;
             case RADIO_NOT_AVAILABLE:
-                return SatelliteManager.SATELLITE_RADIO_NOT_AVAILABLE;
+                return SatelliteManager.SATELLITE_RESULT_RADIO_NOT_AVAILABLE;
             case REQUEST_NOT_SUPPORTED:
-                return SatelliteManager.SATELLITE_REQUEST_NOT_SUPPORTED;
+                return SatelliteManager.SATELLITE_RESULT_REQUEST_NOT_SUPPORTED;
             case NO_MEMORY:
                 //fallthrough to NO_RESOURCES
             case NO_RESOURCES:
-                return SatelliteManager.SATELLITE_NO_RESOURCES;
+                return SatelliteManager.SATELLITE_RESULT_NO_RESOURCES;
             case NETWORK_ERR:
-                return SatelliteManager.SATELLITE_NETWORK_ERROR;
+                return SatelliteManager.SATELLITE_RESULT_NETWORK_ERROR;
             case NETWORK_TIMEOUT:
-                return SatelliteManager.SATELLITE_NETWORK_TIMEOUT;
+                return SatelliteManager.SATELLITE_RESULT_NETWORK_TIMEOUT;
             case NO_NETWORK_FOUND:
                 //fallthrough to NO_SATELLITE_SIGNAL
             case NO_SATELLITE_SIGNAL:
-                return SatelliteManager.SATELLITE_NOT_REACHABLE;
+                return SatelliteManager.SATELLITE_RESULT_NOT_REACHABLE;
             case ABORTED:
-                return SatelliteManager.SATELLITE_REQUEST_ABORTED;
+                return SatelliteManager.SATELLITE_RESULT_REQUEST_ABORTED;
             case ACCESS_BARRED:
-                return SatelliteManager.SATELLITE_ACCESS_BARRED;
+                return SatelliteManager.SATELLITE_RESULT_ACCESS_BARRED;
             case SUBSCRIBER_NOT_AUTHORIZED:
-                return SatelliteManager.SATELLITE_NOT_AUTHORIZED;
+                return SatelliteManager.SATELLITE_RESULT_NOT_AUTHORIZED;
             default:
-                return SatelliteManager.SATELLITE_ERROR;
+                return SatelliteManager.SATELLITE_RESULT_ERROR;
         }
     }
 

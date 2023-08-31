@@ -17,7 +17,7 @@
 package com.android.internal.telephony.satellite;
 
 import static android.telephony.satellite.SatelliteManager.KEY_SATELLITE_COMMUNICATION_ALLOWED;
-import static android.telephony.satellite.SatelliteManager.SATELLITE_ERROR_NONE;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SUCCESS;
 
 import android.annotation.NonNull;
 import android.os.AsyncResult;
@@ -148,7 +148,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
         mReceiverForRequestIsSatelliteAllowedForCurrentLocation = new ResultReceiver(this) {
             @Override
             protected void onReceiveResult(int resultCode, Bundle resultData) {
-                if (resultCode == SATELLITE_ERROR_NONE) {
+                if (resultCode == SATELLITE_RESULT_SUCCESS) {
                     if (resultData.containsKey(KEY_SATELLITE_COMMUNICATION_ALLOWED)) {
                         boolean isSatelliteCommunicationAllowed =
                                 resultData.getBoolean(KEY_SATELLITE_COMMUNICATION_ALLOWED);

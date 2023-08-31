@@ -59,7 +59,7 @@ public class DatagramController {
     @GuardedBy("mLock")
     private int mSendPendingCount = 0;
     @GuardedBy("mLock")
-    private int mSendErrorCode = SatelliteManager.SATELLITE_ERROR_NONE;
+    private int mSendErrorCode = SatelliteManager.SATELLITE_RESULT_SUCCESS;
     /** Variables used to update onReceiveDatagramStateChanged(). */
     @GuardedBy("mLock")
     private int mReceiveSubId;
@@ -69,7 +69,7 @@ public class DatagramController {
     @GuardedBy("mLock")
     private int mReceivePendingCount = 0;
     @GuardedBy("mLock")
-    private int mReceiveErrorCode = SatelliteManager.SATELLITE_ERROR_NONE;
+    private int mReceiveErrorCode = SatelliteManager.SATELLITE_RESULT_SUCCESS;
 
     private SatelliteDatagram mDemoModeDatagram;
     private boolean mIsDemoMode = false;
@@ -130,9 +130,9 @@ public class DatagramController {
      * @param subId The subId of the subscription to register for incoming satellite datagrams.
      * @param callback The callback to handle incoming datagrams over satellite.
      *
-     * @return The {@link SatelliteManager.SatelliteError} result of the operation.
+     * @return The {@link SatelliteManager.SatelliteResult} result of the operation.
      */
-    @SatelliteManager.SatelliteError public int registerForSatelliteDatagram(int subId,
+    @SatelliteManager.SatelliteResult public int registerForSatelliteDatagram(int subId,
             @NonNull ISatelliteDatagramCallback callback) {
         return mDatagramReceiver.registerForSatelliteDatagram(subId, callback);
     }
@@ -159,7 +159,7 @@ public class DatagramController {
      * long, SatelliteDatagram, int, Consumer)}
      *
      * @param subId The subId of the subscription used for receiving datagrams.
-     * @param callback The callback to get {@link SatelliteManager.SatelliteError} of the request.
+     * @param callback The callback to get {@link SatelliteManager.SatelliteResult} of the request.
      */
     public void pollPendingSatelliteDatagrams(int subId, @NonNull Consumer<Integer> callback) {
         mDatagramReceiver.pollPendingSatelliteDatagrams(subId, callback);
@@ -182,7 +182,7 @@ public class DatagramController {
      *                 Datagram will be passed down to modem without any encoding or encryption.
      * @param needFullScreenPointingUI this is used to indicate pointingUI app to open in
      *                                 full screen mode.
-     * @param callback The callback to get {@link SatelliteManager.SatelliteError} of the request.
+     * @param callback The callback to get {@link SatelliteManager.SatelliteResult} of the request.
      */
     public void sendSatelliteDatagram(int subId, @SatelliteManager.DatagramType int datagramType,
             @NonNull SatelliteDatagram datagram, boolean needFullScreenPointingUI,

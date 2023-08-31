@@ -196,7 +196,8 @@ public class SatelliteStatsTest extends TelephonyTest {
     public void onSatelliteProvisionMetrics_withAtoms() throws Exception {
         SatelliteStats.SatelliteProvisionParams param =
                 new SatelliteStats.SatelliteProvisionParams.Builder()
-                        .setResultCode(SatelliteProtoEnums.SATELLITE_SERVICE_PROVISION_IN_PROGRESS)
+                        .setResultCode(
+                                SatelliteProtoEnums.SATELLITE_SERVICE_PROVISION_IN_PROGRESS)
                         .setProvisioningTimeSec(5 * 1000)
                         .setIsProvisionRequest(true)
                         .setIsCanceled(false)

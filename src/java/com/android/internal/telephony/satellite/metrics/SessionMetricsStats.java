@@ -30,7 +30,7 @@ public class SessionMetricsStats {
     private static final boolean DBG = false;
 
     private static SessionMetricsStats sInstance = null;
-    private @SatelliteManager.SatelliteError int mInitializationResult;
+    private @SatelliteManager.SatelliteResult int mInitializationResult;
     private @SatelliteManager.NTRadioTechnology int mRadioTechnology;
 
     private SessionMetricsStats() {
@@ -54,7 +54,7 @@ public class SessionMetricsStats {
 
     /** Sets the satellite initialization result */
     public SessionMetricsStats setInitializationResult(
-            @SatelliteManager.SatelliteError int result) {
+            @SatelliteManager.SatelliteResult int result) {
         logd("setInitializationResult(" + result + ")");
         mInitializationResult = result;
         return this;
@@ -81,7 +81,7 @@ public class SessionMetricsStats {
     }
 
     private void initializeSessionMetricsParam() {
-        mInitializationResult = SatelliteManager.SATELLITE_ERROR_NONE;
+        mInitializationResult = SatelliteManager.SATELLITE_RESULT_SUCCESS;
         mRadioTechnology = SatelliteManager.NT_RADIO_TECHNOLOGY_UNKNOWN;
     }
 
