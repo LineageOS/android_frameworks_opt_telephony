@@ -830,6 +830,34 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testRecoverNormalInCellularWhenVoWiFiConnected() {
+        EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
+                /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
+        // Create test Phones
+        Phone testPhone = setupTestPhoneForEmergencyCall(/* isRoaming= */ true,
+                /* isRadioOn= */ true);
+        // Call startEmergencyCall() to set testPhone
+        CompletableFuture<Integer> unused = emergencyStateTracker.startEmergencyCall(testPhone,
+                TEST_CALL_ID, false);
+
+        // Set emergency transport
+        emergencyStateTracker.onEmergencyTransportChanged(
+                EmergencyStateTracker.EMERGENCY_TYPE_CALL, MODE_EMERGENCY_WLAN);
+
+        // Set call properties
+        emergencyStateTracker.onEmergencyCallPropertiesChanged(
+                android.telecom.Connection.PROPERTY_WIFI, TEST_CALL_ID);
+
+        verify(testPhone, times(0)).cancelEmergencyNetworkScan(anyBoolean(), any());
+
+        // Set call to ACTIVE
+        emergencyStateTracker.onEmergencyCallStateChanged(Call.State.ACTIVE, TEST_CALL_ID);
+
+        verify(testPhone, times(1)).cancelEmergencyNetworkScan(eq(true), any());
+    }
+
+    @Test
+    @SmallTest
     public void testStartEmergencySms() {
         EmergencyStateTracker emergencyStateTracker = setupEmergencyStateTracker(
                 /* isSuplDdsSwitchRequiredForEmergencyCall= */ true);
