@@ -3601,7 +3601,6 @@ public class SubscriptionManagerService extends ISub.Stub {
             }
 
             UserHandle userHandle = UserHandle.of(subInfo.getUserId());
-            logv("getSubscriptionUserHandle subId = " + subId + " userHandle = " + userHandle);
             if (userHandle.getIdentifier() == UserHandle.USER_NULL) {
                 return null;
             }
@@ -3985,15 +3984,6 @@ public class SubscriptionManagerService extends ISub.Stub {
     private void logl(@NonNull String s) {
         log(s);
         mLocalLog.log(s);
-    }
-
-    /**
-     * Log verbose messages.
-     *
-     * @param s verbose messages
-     */
-    private void logv(@NonNull String s) {
-        Rlog.v(LOG_TAG, s);
     }
 
     /**
