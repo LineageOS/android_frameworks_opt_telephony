@@ -99,6 +99,7 @@ import com.android.internal.telephony.data.DataRetryManager.DataSetupRetryEntry;
 import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
 import com.android.internal.telephony.data.DataStallRecoveryManager.DataStallRecoveryManagerCallback;
 import com.android.internal.telephony.data.LinkBandwidthEstimator.LinkBandwidthEstimatorCallback;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.ims.ImsResolver;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
@@ -382,6 +383,8 @@ public class DataNetworkController extends Handler {
 
     /** True after try to release an IMS network; False after try to request an IMS network. */
     private boolean mLastImsOperationIsRelease;
+
+    private final @NonNull FeatureFlags mFeatureFlags;
 
     /** The broadcast receiver. */
     private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
@@ -795,10 +798,13 @@ public class DataNetworkController extends Handler {
      * @param phone The phone instance.
      * @param looper The looper to be used by the handler. Currently the handler thread is the
      * phone process's main thread.
+     * @param featureFlags The feature flag.
      */
-    public DataNetworkController(@NonNull Phone phone, @NonNull Looper looper) {
+    public DataNetworkController(@NonNull Phone phone, @NonNull Looper looper,
+            @NonNull FeatureFlags featureFlags) {
         super(looper);
         mPhone = phone;
+        mFeatureFlags = featureFlags;
         mLogTag = "DNC-" + mPhone.getPhoneId();
         log("DataNetworkController created.");
 
@@ -3814,6 +3820,10 @@ public class DataNetworkController extends Handler {
      * while using satellite else {@code false}
      */
     private boolean isDataDisallowedDueToSatellite(@NetCapability int[] capabilities) {
+        if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
+            return false;
+        }
+
         if (!mServiceState.isUsingNonTerrestrialNetwork()) {
             // Device is not connected to satellite
             return false;

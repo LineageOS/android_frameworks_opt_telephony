@@ -49,6 +49,7 @@ import com.android.internal.telephony.data.TelephonyNetworkFactory;
 import com.android.internal.telephony.euicc.EuiccCardController;
 import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.flags.FeatureFlags;
+import com.android.internal.telephony.flags.FeatureFlagsImpl;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneFactory;
 import com.android.internal.telephony.metrics.MetricsCollector;
@@ -104,6 +105,7 @@ public class PhoneFactory {
     static private final HashMap<String, LocalLog>sLocalLogs = new HashMap<String, LocalLog>();
     private static MetricsCollector sMetricsCollector;
     private static RadioInterfaceCapabilityController sRadioHalCapabilities;
+    private static @NonNull FeatureFlags sFeatureFlags = new FeatureFlagsImpl();
 
     //***** Class Methods
 
@@ -112,6 +114,7 @@ public class PhoneFactory {
      * @param featureFlags The feature flag.
      */
     public static void makeDefaultPhones(Context context, @NonNull FeatureFlags featureFlags) {
+        sFeatureFlags = featureFlags;
         makeDefaultPhone(context, featureFlags);
     }
 
@@ -324,7 +327,7 @@ public class PhoneFactory {
 
         return injectedComponentFactory.makePhone(context,
                 sCommandsInterfaces[phoneId], sPhoneNotifier, phoneId, phoneType,
-                TelephonyComponentFactory.getInstance());
+                TelephonyComponentFactory.getInstance(), sFeatureFlags);
     }
 
     @UnsupportedAppUsage
