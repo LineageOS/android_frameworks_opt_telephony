@@ -36,10 +36,3 @@ java_aconfig_library {
     name: "telephony_flags-lib",
     aconfig_declarations: "telephony_flags"
 }
-
-// Create test version of java flag library to access flags using static approach
-java_aconfig_library {
-    name: "telephony_flags-lib-test",
-    aconfig_declarations: "telephony_flags",
-    test: true
-}
