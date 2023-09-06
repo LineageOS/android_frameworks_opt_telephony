@@ -104,7 +104,9 @@ public class SubscriptionInfoInternalTest {
                     .setSatelliteAttachEnabledForCarrier(
                             SubscriptionDatabaseManagerTest
                                     .FAKE_SATELLITE_ATTACH_FOR_CARRIER_ENABLED)
+                    .setNtn(SubscriptionDatabaseManagerTest.FAKE_SATELLITE_IS_NTN_ENABLED)
                     .setGroupDisabled(false)
+                    .setNtn(1)
                     .build();
 
     private final SubscriptionInfoInternal mSubInfoNull =
@@ -217,7 +219,10 @@ public class SubscriptionInfoInternalTest {
         assertThat(mSubInfo.getSatelliteAttachEnabledForCarrier())
                 .isEqualTo(SubscriptionDatabaseManagerTest
                         .FAKE_SATELLITE_ATTACH_FOR_CARRIER_ENABLED);
+        assertThat(mSubInfo.getNtn()).isEqualTo(
+                SubscriptionDatabaseManagerTest.FAKE_SATELLITE_IS_NTN_ENABLED);
         assertThat(mSubInfo.isGroupDisabled()).isFalse();
+        assertThat(mSubInfo.getNtn()).isEqualTo(1);
     }
 
     @Test
@@ -280,6 +285,7 @@ public class SubscriptionInfoInternalTest {
         assertThat(subInfo.getPortIndex()).isEqualTo(
                 SubscriptionManager.USAGE_SETTING_DEFAULT);
         assertThat(subInfo.isGroupDisabled()).isFalse();
+        assertThat(subInfo.isNtn()).isTrue();
     }
 
     @Test
