@@ -427,6 +427,8 @@ message ImsRegistrationStats {
     optional int64 video_available_millis = 10;
     optional int64 ut_capable_millis = 11;
     optional int64 ut_available_millis = 12;
+    optional int64 registering_millis = 13;
+    optional int64 unregistered_millis = 14;
 
     // Internal use only
     optional int64 last_used_millis = 10001;

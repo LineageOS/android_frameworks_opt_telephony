@@ -1077,7 +1077,9 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 roundAndConvertMillisToSeconds(stats.videoCapableMillis),
                 roundAndConvertMillisToSeconds(stats.videoAvailableMillis),
                 roundAndConvertMillisToSeconds(stats.utCapableMillis),
-                roundAndConvertMillisToSeconds(stats.utAvailableMillis));
+                roundAndConvertMillisToSeconds(stats.utAvailableMillis),
+                roundAndConvertMillisToSeconds(stats.registeringMillis),
+                roundAndConvertMillisToSeconds(stats.unregisteredMillis));
     }
 
     private static StatsEvent buildStatsEvent(ImsRegistrationTermination termination) {
