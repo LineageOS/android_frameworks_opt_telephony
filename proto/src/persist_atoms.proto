@@ -381,6 +381,7 @@ message CellularServiceState {
     optional bool is_internet_pdn_up = 11;
     optional int32 fold_state = 12;
     optional bool override_voice_service = 13;
+    optional bool isDataEnabled = 14;
 
     // Internal use only
     optional int64 last_used_millis = 10001;

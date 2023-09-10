@@ -1710,7 +1710,8 @@ public class PersistAtomsStorage {
                     && state.isEmergencyOnly == key.isEmergencyOnly
                     && state.isInternetPdnUp == key.isInternetPdnUp
                     && state.foldState == key.foldState
-                    && state.overrideVoiceService == key.overrideVoiceService) {
+                    && state.overrideVoiceService == key.overrideVoiceService
+                    && state.isDataEnabled == key.isDataEnabled) {
                 return state;
             }
         }

@@ -924,7 +924,8 @@ public class MetricsCollector implements StatsManager.StatsPullAtomCallback {
                 state.isEmergencyOnly,
                 state.isInternetPdnUp,
                 state.foldState,
-                state.overrideVoiceService);
+                state.overrideVoiceService,
+                state.isDataEnabled);
     }
 
     private static StatsEvent buildStatsEvent(VoiceCallRatUsage usage) {
