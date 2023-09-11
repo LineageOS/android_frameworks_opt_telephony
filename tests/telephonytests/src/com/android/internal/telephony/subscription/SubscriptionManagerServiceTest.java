@@ -105,7 +105,9 @@ import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.flags.FeatureFlags;
+import com.android.internal.telephony.subscription.SubscriptionDatabaseManager.SubscriptionDatabaseManagerCallback;
 import com.android.internal.telephony.subscription.SubscriptionDatabaseManagerTest.SubscriptionProvider;
+import com.android.internal.telephony.subscription.SubscriptionManagerService.BinderWrapper;
 import com.android.internal.telephony.subscription.SubscriptionManagerService.SubscriptionManagerServiceCallback;
 import com.android.internal.telephony.subscription.SubscriptionManagerService.SubscriptionMap;
 import com.android.internal.telephony.uicc.IccCardStatus;
@@ -155,6 +157,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     private SubscriptionManagerServiceCallback mMockedSubscriptionManagerServiceCallback;
     private EuiccController mEuiccController;
     private FeatureFlags mFlags;
+    private BinderWrapper mBinder;
     private Set<Integer> mActiveSubs = new ArraySet<>();
 
     @Rule
@@ -194,6 +197,10 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         doReturn(true).when(mUiccSlot).isActive();
         doReturn(FAKE_ICCID1).when(mUiccController).convertToCardString(eq(1));
         doReturn(FAKE_ICCID2).when(mUiccController).convertToCardString(eq(2));
+
+        mBinder = Mockito.mock(BinderWrapper.class);
+        doReturn(FAKE_USER_HANDLE).when(mBinder).getCallingUserHandle();
+        replaceInstance(SubscriptionManagerService.class, "BINDER_WRAPPER", null, mBinder);
 
         doReturn(new int[0]).when(mSubscriptionManager).getCompleteActiveSubscriptionIdList();
 
@@ -256,6 +263,12 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         return (SubscriptionDatabaseManager) field.get(mSubscriptionManagerServiceUT);
     }
 
+    private SubscriptionDatabaseManagerCallback getSubscriptionDatabaseCallback() throws Exception {
+        Field field = SubscriptionDatabaseManager.class.getDeclaredField("mCallback");
+        field.setAccessible(true);
+        return (SubscriptionDatabaseManagerCallback) field.get(getSubscriptionDatabaseManager());
+    }
+
     /**
      * Insert the subscription info to the database. This is an instant insertion method. For real
      * insertion sequence please use {@link #testInsertNewSim()}.
@@ -265,7 +278,6 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
      */
     private int insertSubscription(@NonNull SubscriptionInfoInternal subInfo) {
         try {
-            mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
             subInfo = new SubscriptionInfoInternal.Builder(subInfo)
                     .setId(SubscriptionManager.INVALID_SUBSCRIPTION_ID).build();
             int subId = getSubscriptionDatabaseManager().insertSubscriptionInfo(subInfo);
@@ -277,17 +289,12 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
             field.setAccessible(true);
             SubscriptionMap<Integer, Integer> map = (SubscriptionMap<Integer, Integer>)
                     field.get(mSubscriptionManagerServiceUT);
-            Class[] cArgs = new Class[2];
-            cArgs[0] = Object.class;
-            cArgs[1] = Object.class;
 
             if (subInfo.getSimSlotIndex() >= 0) {
                 // Change the slot -> subId mapping
                 map.put(subInfo.getSimSlotIndex(), subId);
             }
 
-            mContextFixture.removeCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
-            processAllMessages();
             verify(mMockedSubscriptionManagerServiceCallback).onSubscriptionChanged(eq(subId));
             Mockito.clearInvocations(mMockedSubscriptionManagerServiceCallback);
 
@@ -964,7 +971,7 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
     }
 
     @Test
-    public void testSetIconTint() throws Exception {
+    public void testSetIconTint() {
         insertSubscription(FAKE_SUBSCRIPTION_INFO1);
 
         // Should fail without MODIFY_PHONE_STATE
@@ -1147,6 +1154,299 @@ public class SubscriptionManagerServiceTest extends TelephonyTest {
         assertThat(associatedSubInfoList.size()).isEqualTo(0);
         assertThat(mSubscriptionManagerServiceUT.isSubscriptionAssociatedWithUser(1,
                 FAKE_MANAGED_PROFILE_USER_HANDLE)).isEqualTo(false);
+    }
+
+    @Test
+    @EnableCompatChanges({SubscriptionManagerService.REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID,
+            SubscriptionManagerService.FILTER_ACCESSIBLE_SUBS_BY_USER})
+    public void testIsSubscriptionAssociatedWithUserMultiSubs() {
+        doReturn(true).when(mFlags).workProfileApiSplit();
+        mContextFixture.addCallingOrSelfPermission(
+                Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
+        insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        mSubscriptionManagerServiceUT.setSubscriptionUserHandle(
+                UserHandle.of(UserHandle.USER_NULL), 1);
+
+        // Verify sub 1 unassociated is visible to all profiles
+        assertThat(mSubscriptionManagerServiceUT.isSubscriptionAssociatedWithUser(1,
+                FAKE_USER_HANDLE)).isEqualTo(true);
+        assertThat(mSubscriptionManagerServiceUT.isSubscriptionAssociatedWithUser(1,
+                FAKE_MANAGED_PROFILE_USER_HANDLE)).isEqualTo(true);
+
+        // Assign sub 2 to work profile
+        insertSubscription(FAKE_SUBSCRIPTION_INFO2);
+        mSubscriptionManagerServiceUT.setSubscriptionUserHandle(
+                FAKE_MANAGED_PROFILE_USER_HANDLE, 2);
+        processAllMessages();
+        // Verify work profile can only see its dedicated sub 2
+        assertThat(mSubscriptionManagerServiceUT.isSubscriptionAssociatedWithUser(2,
+                FAKE_MANAGED_PROFILE_USER_HANDLE)).isEqualTo(true);
+        assertThat(mSubscriptionManagerServiceUT.isSubscriptionAssociatedWithUser(1,
+                FAKE_MANAGED_PROFILE_USER_HANDLE)).isEqualTo(false);
+        // Verify personal profile can only see the unassigned sub 1
+        assertThat(mSubscriptionManagerServiceUT.isSubscriptionAssociatedWithUser(1,
+                FAKE_USER_HANDLE)).isEqualTo(true);
+        assertThat(mSubscriptionManagerServiceUT.isSubscriptionAssociatedWithUser(2,
+                FAKE_USER_HANDLE)).isEqualTo(false);
+
+        // Sub 2 is deactivated, but still on device, verify visibility doesn't change.
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        mSubscriptionManagerServiceUT.updateSimState(
+                1, TelephonyManager.SIM_STATE_NOT_READY, null, null);
+        processAllMessages();
+        // Verify work profile can only see its dedicated sub 2
+        assertThat(mSubscriptionManagerServiceUT.isSubscriptionAssociatedWithUser(2,
+                FAKE_MANAGED_PROFILE_USER_HANDLE)).isEqualTo(true);
+        assertThat(mSubscriptionManagerServiceUT.isSubscriptionAssociatedWithUser(1,
+                FAKE_MANAGED_PROFILE_USER_HANDLE)).isEqualTo(false);
+        // Verify personal profile can only see the unassigned sub 1
+        assertThat(mSubscriptionManagerServiceUT.isSubscriptionAssociatedWithUser(1,
+                FAKE_USER_HANDLE)).isEqualTo(true);
+        assertThat(mSubscriptionManagerServiceUT.isSubscriptionAssociatedWithUser(2,
+                FAKE_USER_HANDLE)).isEqualTo(false);
+
+        // Sub 2 is removed from the device.
+        mSubscriptionManagerServiceUT.updateSimState(
+                1, TelephonyManager.SIM_STATE_ABSENT, null, null);
+        processAllMessages();
+        // Verify the visibility of the unassigned sub 1 is restored to both profiles.
+        assertThat(mSubscriptionManagerServiceUT.isSubscriptionAssociatedWithUser(1,
+                FAKE_USER_HANDLE)).isEqualTo(true);
+        assertThat(mSubscriptionManagerServiceUT.isSubscriptionAssociatedWithUser(1,
+                FAKE_MANAGED_PROFILE_USER_HANDLE)).isEqualTo(true);
+    }
+
+    @Test
+    @EnableCompatChanges({SubscriptionManagerService.REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID,
+            SubscriptionManagerService.FILTER_ACCESSIBLE_SUBS_BY_USER})
+    public void testSubscriptionAssociationWorkProfileCallerVisibility() {
+        // Split mode is defined as when a profile owns a dedicated sub, it loses the visibility to
+        // the unassociated sub.
+        doReturn(true).when(mFlags).workProfileApiSplit();
+        mContextFixture.addCallingOrSelfPermission(
+                Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
+        // Sub 1 is associated with work profile; Sub 2 is unassociated.
+        int subId1 = insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        mSubscriptionManagerServiceUT.setSubscriptionUserHandle(
+                FAKE_MANAGED_PROFILE_USER_HANDLE, subId1);
+        int subId2 = insertSubscription(FAKE_SUBSCRIPTION_INFO2);
+        mSubscriptionManagerServiceUT.setSubscriptionUserHandle(
+                UserHandle.of(UserHandle.USER_NULL), subId2);
+        // Set Sub 1 default data sub
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        mSubscriptionManagerServiceUT.setDefaultDataSubId(subId1);
+        processAllMessages();
+
+        // Calling from work profile
+        doReturn(FAKE_MANAGED_PROFILE_USER_HANDLE).when(mBinder).getCallingUserHandle();
+
+        // Test getAccessibleSubscriptionInfoList
+        doReturn(true).when(mEuiccManager).isEnabled();
+        doReturn(true).when(mSubscriptionManager).canManageSubscription(
+                any(SubscriptionInfo.class), eq(CALLING_PACKAGE));
+        assertThat(mSubscriptionManagerServiceUT.getAccessibleSubscriptionInfoList(
+                CALLING_PACKAGE)).isEqualTo(List.of(FAKE_SUBSCRIPTION_INFO1.toSubscriptionInfo()));
+        // Test getActiveSubIdList, System
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false/*visible only*/))
+                .isEqualTo(new int[]{subId1, subId2});
+        // Test get getActiveSubInfoCount
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubInfoCount(
+                CALLING_PACKAGE, CALLING_FEATURE)).isEqualTo(1);
+        // Test getActiveSubscriptionInfo
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfo(
+                subId1, CALLING_PACKAGE, CALLING_FEATURE).getSubscriptionId()).isEqualTo(subId1);
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfo(
+                subId2, CALLING_PACKAGE, CALLING_FEATURE).getSubscriptionId()).isEqualTo(subId2);
+        // Test getActiveSubscriptionInfoForIccId
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoForIccId(
+                FAKE_ICCID1, CALLING_PACKAGE, CALLING_FEATURE).getSubscriptionId())
+                .isEqualTo(subId1);
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoForIccId(
+                FAKE_ICCID2, CALLING_PACKAGE, CALLING_FEATURE).getSubscriptionId())
+                .isEqualTo(subId2);
+        // Test getActiveSubscriptionInfoForSimSlotIndex
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoForSimSlotIndex(
+                0, CALLING_PACKAGE, CALLING_FEATURE).getSubscriptionId())
+                .isEqualTo(subId1);
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoForSimSlotIndex(
+                1, CALLING_PACKAGE, CALLING_FEATURE).getSubscriptionId())
+                .isEqualTo(subId2);
+        // Test getActiveSubscriptionInfoList
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
+                CALLING_PACKAGE, CALLING_FEATURE).stream().map(SubscriptionInfo::getSubscriptionId)
+                .toList()).isEqualTo(List.of(subId1));
+        // Test getAllSubInfoList
+        assertThat(mSubscriptionManagerServiceUT.getAllSubInfoList(CALLING_PACKAGE,
+                CALLING_FEATURE).stream().map(SubscriptionInfo::getSubscriptionId).toList())
+                .isEqualTo(List.of(subId1));
+        // Test getAvailableSubscriptionInfoList
+        assertThat(mSubscriptionManagerServiceUT.getAvailableSubscriptionInfoList(CALLING_PACKAGE,
+                CALLING_FEATURE).stream().map(SubscriptionInfo::getSubscriptionId).toList())
+                .isEqualTo(List.of(subId1, subId2));
+        // Test getDefaultDataSubId
+        assertThat(mSubscriptionManagerServiceUT.getDefaultDataSubId()).isEqualTo(subId1);
+        // Test getDefault<Sms/Voice>SubIdAsUser
+        assertThat(mSubscriptionManagerServiceUT.getDefaultSmsSubIdAsUser(
+                FAKE_MANAGED_PROFILE_USER_HANDLE.getIdentifier())).isEqualTo(subId1);
+        assertThat(mSubscriptionManagerServiceUT.getDefaultSubIdAsUser(
+                FAKE_MANAGED_PROFILE_USER_HANDLE.getIdentifier())).isEqualTo(subId1);
+        assertThat(mSubscriptionManagerServiceUT.getDefaultVoiceSubIdAsUser(
+                FAKE_MANAGED_PROFILE_USER_HANDLE.getIdentifier())).isEqualTo(subId1);
+        // Test getEnabledSubscriptionId
+        assertThat(mSubscriptionManagerServiceUT.getEnabledSubscriptionId(0)).isEqualTo(
+                subId1);
+        assertThat(mSubscriptionManagerServiceUT.getEnabledSubscriptionId(1)).isEqualTo(
+                subId2);
+        // Test getOpportunisticSubscriptions
+        mSubscriptionManagerServiceUT.setOpportunistic(true, subId1, CALLING_PACKAGE);
+        mSubscriptionManagerServiceUT.setOpportunistic(true, subId2, CALLING_PACKAGE);
+        processAllMessages();
+        assertThat(mSubscriptionManagerServiceUT.getOpportunisticSubscriptions(CALLING_PACKAGE,
+                CALLING_FEATURE).stream().map(SubscriptionInfo::getSubscriptionId).toList())
+                .isEqualTo(List.of(subId1, subId2));
+        // Test getSubscriptionInfo - can get both as it's an internal getter
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(subId1).getSubscriptionId())
+                .isEqualTo(subId1);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(subId2).getSubscriptionId())
+                .isEqualTo(subId2);
+        // Test getSubscriptionInfoListAssociatedWithUser
+        mContextFixture.addCallingOrSelfPermission(
+                Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoListAssociatedWithUser(
+                FAKE_MANAGED_PROFILE_USER_HANDLE).stream().map(SubscriptionInfo::getSubscriptionId)
+                .toList()).isEqualTo(List.of(subId1));
+        // Test getSubscriptionsInGroup
+        setCarrierPrivilegesForSubId(true, subId1);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionsInGroup(
+                ParcelUuid.fromString(FAKE_UUID1), CALLING_PACKAGE, CALLING_FEATURE)
+                .stream().map(SubscriptionInfo::getSubscriptionId).toList())
+                .isEqualTo(List.of(subId1));
+        // Test isActiveSubId
+        assertThat(mSubscriptionManagerServiceUT.isActiveSubId(subId1, CALLING_PACKAGE,
+                CALLING_FEATURE)).isTrue();
+        assertThat(mSubscriptionManagerServiceUT.isActiveSubId(subId2, CALLING_PACKAGE,
+                CALLING_FEATURE)).isTrue();
+        // Test isSubscriptionEnabled
+        assertThat(mSubscriptionManagerServiceUT.isSubscriptionEnabled(subId1)).isTrue();
+        assertThat(mSubscriptionManagerServiceUT.isSubscriptionEnabled(subId2)).isTrue();
+    }
+
+    @Test
+    @EnableCompatChanges({SubscriptionManagerService.REQUIRE_DEVICE_IDENTIFIERS_FOR_GROUP_UUID,
+            SubscriptionManagerService.FILTER_ACCESSIBLE_SUBS_BY_USER})
+    public void testSubscriptionAssociationPersonalCallerVisibility() {
+        // Split mode is defined as when a profile owns a dedicated sub, it loses the visibility to
+        // the unassociated sub.
+        doReturn(true).when(mFlags).workProfileApiSplit();
+        mContextFixture.addCallingOrSelfPermission(
+                Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
+        // Sub 1 is unassociated; Sub 2 is associated with work profile.
+        int subId1 = insertSubscription(FAKE_SUBSCRIPTION_INFO1);
+        mSubscriptionManagerServiceUT.setSubscriptionUserHandle(
+                UserHandle.of(UserHandle.USER_NULL), subId1);
+        int subId2 = insertSubscription(FAKE_SUBSCRIPTION_INFO2);
+        mSubscriptionManagerServiceUT.setSubscriptionUserHandle(
+                FAKE_MANAGED_PROFILE_USER_HANDLE, subId2);
+        // Set Sub 1 default data sub
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.MODIFY_PHONE_STATE);
+        mContextFixture.addCallingOrSelfPermission(Manifest.permission.READ_PRIVILEGED_PHONE_STATE);
+        mSubscriptionManagerServiceUT.setDefaultDataSubId(subId1);
+        processAllMessages();
+
+        // Calling from a profile that owns no dedicated subs.
+        doReturn(FAKE_USER_HANDLE).when(mBinder).getCallingUserHandle();
+
+        // Test getAccessibleSubscriptionInfoList
+        doReturn(true).when(mEuiccManager).isEnabled();
+        doReturn(true).when(mSubscriptionManager).canManageSubscription(
+                any(SubscriptionInfo.class), eq(CALLING_PACKAGE));
+        assertThat(mSubscriptionManagerServiceUT.getAccessibleSubscriptionInfoList(
+                CALLING_PACKAGE)).isEqualTo(List.of(FAKE_SUBSCRIPTION_INFO1.toSubscriptionInfo()));
+        // Test getActiveSubIdList, System
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubIdList(false/*visible only*/))
+                .isEqualTo(new int[]{subId1, subId2});
+        // Test get getActiveSubInfoCount
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubInfoCount(
+                CALLING_PACKAGE, CALLING_FEATURE)).isEqualTo(1);
+        // Test getActiveSubscriptionInfo
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfo(
+                subId1, CALLING_PACKAGE, CALLING_FEATURE).getSubscriptionId()).isEqualTo(subId1);
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfo(
+                subId2, CALLING_PACKAGE, CALLING_FEATURE).getSubscriptionId()).isEqualTo(subId2);
+        // Test getActiveSubscriptionInfoForIccId
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoForIccId(
+                FAKE_ICCID1, CALLING_PACKAGE, CALLING_FEATURE).getSubscriptionId())
+                .isEqualTo(subId1);
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoForIccId(
+                FAKE_ICCID2, CALLING_PACKAGE, CALLING_FEATURE).getSubscriptionId())
+                .isEqualTo(subId2);
+        // Test getActiveSubscriptionInfoForSimSlotIndex
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoForSimSlotIndex(
+                0, CALLING_PACKAGE, CALLING_FEATURE).getSubscriptionId())
+                .isEqualTo(subId1);
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoForSimSlotIndex(
+                1, CALLING_PACKAGE, CALLING_FEATURE).getSubscriptionId())
+                .isEqualTo(subId2);
+        // Test getActiveSubscriptionInfoList
+        assertThat(mSubscriptionManagerServiceUT.getActiveSubscriptionInfoList(
+                        CALLING_PACKAGE, CALLING_FEATURE).stream()
+                .map(SubscriptionInfo::getSubscriptionId)
+                .toList()).isEqualTo(List.of(subId1));
+        // Test getAllSubInfoList
+        assertThat(mSubscriptionManagerServiceUT.getAllSubInfoList(CALLING_PACKAGE,
+                CALLING_FEATURE).stream().map(SubscriptionInfo::getSubscriptionId).toList())
+                .isEqualTo(List.of(subId1));
+        // Test getAvailableSubscriptionInfoList
+        assertThat(mSubscriptionManagerServiceUT.getAvailableSubscriptionInfoList(CALLING_PACKAGE,
+                CALLING_FEATURE).stream().map(SubscriptionInfo::getSubscriptionId).toList())
+                .isEqualTo(List.of(subId1, subId2));
+        // Test getDefaultDataSubId
+        assertThat(mSubscriptionManagerServiceUT.getDefaultDataSubId()).isEqualTo(subId1);
+        // Test getDefault<Sms/Voice>SubIdAsUser
+        assertThat(mSubscriptionManagerServiceUT.getDefaultSmsSubIdAsUser(
+                FAKE_USER_HANDLE.getIdentifier())).isEqualTo(subId1);
+        assertThat(mSubscriptionManagerServiceUT.getDefaultSubIdAsUser(
+                FAKE_USER_HANDLE.getIdentifier())).isEqualTo(subId1);
+        assertThat(mSubscriptionManagerServiceUT.getDefaultVoiceSubIdAsUser(
+                FAKE_USER_HANDLE.getIdentifier())).isEqualTo(subId1);
+        // Test getEnabledSubscriptionId
+        assertThat(mSubscriptionManagerServiceUT.getEnabledSubscriptionId(0)).isEqualTo(
+                subId1);
+        assertThat(mSubscriptionManagerServiceUT.getEnabledSubscriptionId(1)).isEqualTo(
+                subId2);
+        // Test getOpportunisticSubscriptions
+        mSubscriptionManagerServiceUT.setOpportunistic(true, subId1, CALLING_PACKAGE);
+        mSubscriptionManagerServiceUT.setOpportunistic(true, subId2, CALLING_PACKAGE);
+        processAllMessages();
+        assertThat(mSubscriptionManagerServiceUT.getOpportunisticSubscriptions(CALLING_PACKAGE,
+                CALLING_FEATURE).stream().map(SubscriptionInfo::getSubscriptionId).toList())
+                .isEqualTo(List.of(subId1, subId2));
+        // Test getSubscriptionInfo - can get both as it's an internal getter
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(subId1).getSubscriptionId())
+                .isEqualTo(subId1);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfo(subId2).getSubscriptionId())
+                .isEqualTo(subId2);
+        // Test getSubscriptionInfoListAssociatedWithUser
+        mContextFixture.addCallingOrSelfPermission(
+                Manifest.permission.MANAGE_SUBSCRIPTION_USER_ASSOCIATION);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionInfoListAssociatedWithUser(
+                        FAKE_USER_HANDLE).stream().map(SubscriptionInfo::getSubscriptionId)
+                .toList()).isEqualTo(List.of(subId1));
+        // Test getSubscriptionsInGroup
+        setCarrierPrivilegesForSubId(true, subId1);
+        assertThat(mSubscriptionManagerServiceUT.getSubscriptionsInGroup(
+                        ParcelUuid.fromString(FAKE_UUID1), CALLING_PACKAGE, CALLING_FEATURE)
+                .stream().map(SubscriptionInfo::getSubscriptionId).toList())
+                .isEqualTo(List.of(subId1));
+        // Test isActiveSubId
+        assertThat(mSubscriptionManagerServiceUT.isActiveSubId(subId1, CALLING_PACKAGE,
+                CALLING_FEATURE)).isTrue();
+        assertThat(mSubscriptionManagerServiceUT.isActiveSubId(subId2, CALLING_PACKAGE,
+                CALLING_FEATURE)).isTrue();
+        // Test isSubscriptionEnabled
+        assertThat(mSubscriptionManagerServiceUT.isSubscriptionEnabled(subId1)).isTrue();
+        assertThat(mSubscriptionManagerServiceUT.isSubscriptionEnabled(subId2)).isTrue();
     }
 
     @Test
