@@ -3236,16 +3236,18 @@ public class DataNetworkController extends Handler {
             logl("Start handover " + dataNetwork + " to "
                     + AccessNetworkConstants.transportTypeToString(targetTransport));
             dataNetwork.startHandover(targetTransport, dataHandoverRetryEntry);
-        } else if (dataEvaluation.containsOnly(DataDisallowedReason.NOT_IN_SERVICE)
-                && dataNetwork.shouldDelayImsTearDownDueToInCall()) {
-            // We try to preserve voice call in the case of temporary preferred transport mismatch
+        } else if (dataNetwork.shouldDelayImsTearDownDueToInCall()
+                && dataEvaluation.containsOnly(
+                        DataDisallowedReason.NOT_IN_SERVICE,
+                        DataDisallowedReason.NOT_ALLOWED_BY_POLICY)) {
+            // We try our best to preserve the voice call by retrying later
             if (dataHandoverRetryEntry != null) {
                 dataHandoverRetryEntry.setState(DataRetryEntry.RETRY_STATE_FAILED);
             }
             mDataRetryManager.evaluateDataHandoverRetry(dataNetwork,
                     DataFailCause.HANDOVER_FAILED,
                     DataCallResponse.RETRY_DURATION_UNDEFINED /* retry mills */);
-            logl("tryHandoverDataNetwork: Scheduled retry due to in voice call and target OOS");
+            logl("tryHandoverDataNetwork: Scheduled retry due to in voice call");
         } else if (dataEvaluation.containsAny(DataDisallowedReason.NOT_ALLOWED_BY_POLICY,
                 DataDisallowedReason.NOT_IN_SERVICE,
                 DataDisallowedReason.VOPS_NOT_SUPPORTED)) {
@@ -3254,8 +3256,7 @@ public class DataNetworkController extends Handler {
                     + AccessNetworkConstants.transportTypeToString(targetTransport));
             tearDownGracefully(dataNetwork,
                     DataNetwork.TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED);
-        } else if (dataEvaluation.containsAny(DataDisallowedReason.ILLEGAL_STATE,
-                DataDisallowedReason.RETRY_SCHEDULED)) {
+        } else if (dataEvaluation.containsAny(DataDisallowedReason.ILLEGAL_STATE)) {
             logl("tryHandoverDataNetwork: Handover not allowed. " + dataNetwork
                     + " will remain on " + AccessNetworkConstants.transportTypeToString(
                     dataNetwork.getTransport()));
