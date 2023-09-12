@@ -31,8 +31,3 @@ aconfig_declarations {
       "satellite.aconfig",
     ],
 }
-
-java_aconfig_library {
-    name: "telephony_flags-lib",
-    aconfig_declarations: "telephony_flags"
-}
