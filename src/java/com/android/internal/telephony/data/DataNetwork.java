@@ -2239,7 +2239,11 @@ public class DataNetwork extends StateMachine {
 
         TrafficDescriptor trafficDescriptor = mDataProfile.getTrafficDescriptor();
         final boolean matchAllRuleAllowed = trafficDescriptor == null
-                || !TextUtils.isEmpty(trafficDescriptor.getDataNetworkName());
+                || !TextUtils.isEmpty(trafficDescriptor.getDataNetworkName())
+                // Both OsAppId and APN name are null. This helps for modem to handle when we
+                // are on 5G or LTE with URSP support in falling back to default network.
+                || (TextUtils.isEmpty(trafficDescriptor.getDataNetworkName())
+                && trafficDescriptor.getOsAppId() == null);
 
         int accessNetwork = DataUtils.networkTypeToAccessNetworkType(dataNetworkType);
 
