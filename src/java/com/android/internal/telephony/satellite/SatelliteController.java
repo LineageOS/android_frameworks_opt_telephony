@@ -71,6 +71,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IIntegerConsumer;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.satellite.metrics.ControllerMetricsStats;
 import com.android.internal.telephony.satellite.metrics.ProvisionMetricsStats;
 import com.android.internal.telephony.satellite.metrics.SessionMetricsStats;
@@ -242,6 +243,7 @@ public class SatelliteController extends Handler {
      * {@code true} for enabled and {@code false} for disabled. */
     @NonNull private final Map<Integer, Boolean> mIsSatelliteAttachEnabledForCarrierArrayPerSub =
             new HashMap<>();
+    @NonNull private final FeatureFlags mFeatureFlags;
     /**
      * @return The singleton instance of SatelliteController.
      */
@@ -255,12 +257,13 @@ public class SatelliteController extends Handler {
     /**
      * Create the SatelliteController singleton instance.
      * @param context The Context to use to create the SatelliteController.
+     * @param featureFlags The feature flag.
      */
-    public static void make(@NonNull Context context) {
+    public static void make(@NonNull Context context, @NonNull FeatureFlags featureFlags) {
         if (sInstance == null) {
             HandlerThread satelliteThread = new HandlerThread(TAG);
             satelliteThread.start();
-            sInstance = new SatelliteController(context, satelliteThread.getLooper());
+            sInstance = new SatelliteController(context, satelliteThread.getLooper(), featureFlags);
         }
     }
 
@@ -270,12 +273,15 @@ public class SatelliteController extends Handler {
      *
      * @param context The Context for the SatelliteController.
      * @param looper The looper for the handler. It does not run on main thread.
+     * @param featureFlags The feature flag.
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
-    public SatelliteController(@NonNull Context context, @NonNull Looper looper) {
+    public SatelliteController(
+            @NonNull Context context, @NonNull Looper looper, @NonNull FeatureFlags featureFlags) {
         super(looper);
 
         mContext = context;
+        mFeatureFlags = featureFlags;
         Phone phone = SatelliteServiceUtils.getPhone();
         mCi = phone.mCi;
         // Create the SatelliteModemInterface singleton, which is used to manage connections
@@ -2129,6 +2135,30 @@ public class SatelliteController extends Handler {
     }
 
     /**
+     * Check whether satellite modem has to attach to a satellite network before sending/receiving
+     * datagrams.
+     *
+     * @return {@code true} if satellite attach is required, {@code false} otherwise.
+     */
+    public boolean isSatelliteAttachRequired() {
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            return false;
+        }
+
+        synchronized (mSatelliteCapabilitiesLock) {
+            if (mSatelliteCapabilities == null) {
+                loge("isSatelliteAttachRequired: mSatelliteCapabilities is null");
+                return false;
+            }
+            if (mSatelliteCapabilities.getSupportedRadioTechnologies().contains(
+                    SatelliteManager.NT_RADIO_TECHNOLOGY_NB_IOT_NTN)) {
+                return true;
+            }
+            return false;
+        }
+    }
+
+    /**
      * If we have not successfully queried the satellite modem for its satellite service support,
      * we will retry the query one more time. Otherwise, we will return the cached result.
      */
@@ -2476,6 +2506,12 @@ public class SatelliteController extends Handler {
                             + ", mIsSatelliteEnabled=" + mIsSatelliteEnabled);
                 }
                 mWaitingForSatelliteModemOff = false;
+            }
+        } else {
+            if (mSatelliteSessionController != null) {
+                mSatelliteSessionController.onSatelliteModemStateChanged(state);
+            } else {
+                loge("handleEventSatelliteModemStateChanged: mSatelliteSessionController is null");
             }
         }
         mDatagramController.onSatelliteModemStateChanged(state);

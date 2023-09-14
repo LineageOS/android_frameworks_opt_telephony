@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony.satellite;
 
+import static android.telephony.satellite.SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING;
+
 import android.annotation.NonNull;
 import android.content.Context;
 import android.os.Build;
@@ -46,6 +49,8 @@ public class DatagramController {
     public static final long MAX_DATAGRAM_ID = (long) Math.pow(2, 16);
     public static final int ROUNDING_UNIT = 10;
     public static final long SATELLITE_ALIGN_TIMEOUT = TimeUnit.SECONDS.toMillis(30);
+    public static final long DATAGRAM_WAIT_FOR_CONNECTED_STATE_TIMEOUT =
+            TimeUnit.SECONDS.toMillis(60);
     private static final String ALLOW_MOCK_MODEM_PROPERTY = "persist.radio.allow_mock_modem";
     private static final boolean DEBUG = !"user".equals(Build.TYPE);
 
@@ -74,6 +79,10 @@ public class DatagramController {
     private SatelliteDatagram mDemoModeDatagram;
     private boolean mIsDemoMode = false;
     private long mAlignTimeoutDuration = SATELLITE_ALIGN_TIMEOUT;
+    private long mDatagramWaitTimeForConnectedState = DATAGRAM_WAIT_FOR_CONNECTED_STATE_TIMEOUT;
+    @GuardedBy("mLock")
+    @SatelliteManager.SatelliteModemState
+    private int mSatelltieModemState = SatelliteManager.SATELLITE_MODEM_STATE_UNKNOWN;
 
     /**
      * @return The singleton instance of DatagramController.
@@ -267,6 +276,9 @@ public class DatagramController {
      * @param state Current satellite modem state.
      */
     public void onSatelliteModemStateChanged(@SatelliteManager.SatelliteModemState int state) {
+        synchronized (mLock) {
+            mSatelltieModemState = state;
+        }
         mDatagramDispatcher.onSatelliteModemStateChanged(state);
         mDatagramReceiver.onSatelliteModemStateChanged(state);
     }
@@ -284,17 +296,35 @@ public class DatagramController {
         }
     }
 
+    /**
+     * Check if Telephony needs to wait for the modem satellite connected to a satellite network
+     * before transferring datagrams via satellite.
+     */
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
+    public boolean needsWaitingForSatelliteConnected() {
+        synchronized (mLock) {
+            if (SatelliteController.getInstance().isSatelliteAttachRequired()
+                    && mSatelltieModemState != SATELLITE_MODEM_STATE_CONNECTED
+                    && mSatelltieModemState != SATELLITE_MODEM_STATE_DATAGRAM_TRANSFERRING) {
+                return true;
+            }
+            return false;
+        }
+    }
+
     public boolean isSendingInIdleState() {
         synchronized (mLock) {
-            return mSendDatagramTransferState ==
-                    SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE;
+            return (mSendDatagramTransferState
+                    == SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE)
+                    && (mDatagramDispatcher.getPendingDatagramCount() == 0);
         }
     }
 
     public boolean isPollingInIdleState() {
         synchronized (mLock) {
-            return mReceiveDatagramTransferState ==
-                    SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE;
+            return (mReceiveDatagramTransferState
+                    == SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE)
+                    && !mDatagramReceiver.isPollingPending();
         }
     }
 
@@ -336,6 +366,11 @@ public class DatagramController {
         return mAlignTimeoutDuration;
     }
 
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
+    public long getDatagramWaitTimeForConnectedState() {
+        return mDatagramWaitTimeForConnectedState;
+    }
+
     /**
      * This API can be used by only CTS to update the timeout duration in milliseconds whether
      * the device is aligned with the satellite for demo mode
@@ -351,6 +386,7 @@ public class DatagramController {
 
         logd("setSatelliteDeviceAlignedTimeoutDuration: timeoutMillis=" + timeoutMillis);
         mAlignTimeoutDuration = timeoutMillis;
+        mDatagramWaitTimeForConnectedState = timeoutMillis;
         return true;
     }
 

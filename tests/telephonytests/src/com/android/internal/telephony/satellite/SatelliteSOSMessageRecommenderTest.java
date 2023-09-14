@@ -51,6 +51,7 @@ import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.flags.FeatureFlags;
 
 import org.junit.After;
 import org.junit.Before;
@@ -86,6 +87,8 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
     private Resources mResources;
     @Mock
     private ImsManager.MmTelFeatureConnectionFactory mMmTelFeatureConnectionFactory;
+    @Mock
+    private FeatureFlags mFeatureFlags;
     private TestConnection mTestConnection;
     private TestSOSMessageRecommender mTestSOSMessageRecommender;
 
@@ -110,8 +113,9 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
                 .thenReturn("ActivityManager");
         when(mMockContext.getSystemService(ActivityManager.class))
                 .thenReturn(mActivityManager);
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(true);
         mTestSatelliteController = new TestSatelliteController(mMockContext,
-                Looper.myLooper());
+                Looper.myLooper(), mFeatureFlags);
         mTestImsManager = new TestImsManager(
                 mMockContext, PHONE_ID, mMmTelFeatureConnectionFactory, null, null, null);
         mTestConnection = new TestConnection(CALL_ID);
@@ -330,7 +334,7 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
     @Test
     public void testOnEmergencyCallStarted() {
         SatelliteController satelliteController = new SatelliteController(
-                mMockContext, Looper.myLooper());
+                mMockContext, Looper.myLooper(), mFeatureFlags);
         TestSOSMessageRecommender testSOSMessageRecommender = new TestSOSMessageRecommender(
                 Looper.myLooper(),
                 satelliteController, mTestImsManager,
@@ -426,8 +430,9 @@ public class SatelliteSOSMessageRecommenderTest extends TelephonyTest {
          *
          * @param context The Context for the SatelliteController.
          */
-        protected TestSatelliteController(Context context, Looper looper) {
-            super(context, looper);
+        protected TestSatelliteController(
+                Context context, Looper looper, FeatureFlags featureFlags) {
+            super(context, looper, featureFlags);
             mProvisionStateChangedCallbacks = new HashMap<>();
         }
 

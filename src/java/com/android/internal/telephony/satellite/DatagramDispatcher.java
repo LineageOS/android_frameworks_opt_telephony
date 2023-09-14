@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.satellite;
 
+import static android.telephony.satellite.SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED;
+
 import static com.android.internal.telephony.satellite.DatagramController.ROUNDING_UNIT;
 
 import android.annotation.NonNull;
@@ -51,6 +53,7 @@ public class DatagramDispatcher extends Handler {
     private static final int CMD_SEND_SATELLITE_DATAGRAM = 1;
     private static final int EVENT_SEND_SATELLITE_DATAGRAM_DONE = 2;
     private static final int EVENT_WAIT_FOR_DEVICE_ALIGNMENT_IN_DEMO_MODE_TIMED_OUT = 3;
+    private static final int EVENT_DATAGRAM_WAIT_FOR_CONNECTED_STATE_TIMED_OUT = 4;
 
     @NonNull private static DatagramDispatcher sInstance;
     @NonNull private final Context mContext;
@@ -308,6 +311,10 @@ public class DatagramDispatcher extends Handler {
                 break;
             }
 
+            case EVENT_DATAGRAM_WAIT_FOR_CONNECTED_STATE_TIMED_OUT:
+                handleEventDatagramWaitForConnectedStateTimedOut();
+                break;
+
             default:
                 logw("DatagramDispatcherHandler: unexpected message code: " + msg.what);
                 break;
@@ -350,8 +357,13 @@ public class DatagramDispatcher extends Handler {
                 mPendingNonEmergencyDatagramsMap.put(datagramId, datagramArgs);
             }
 
-            // Modem can be busy receiving datagrams, so send datagram only when modem is not busy.
-            if (!mSendingDatagramInProgress && mDatagramController.isPollingInIdleState()) {
+            if (mDatagramController.needsWaitingForSatelliteConnected()) {
+                logd("sendSatelliteDatagram: wait for satellite connected");
+                SatelliteSessionController.getInstance().onSatelliteDatagramsTransferRequested();
+                startDatagramWaitForConnectedStateTimer();
+            } else if (!mSendingDatagramInProgress && mDatagramController.isPollingInIdleState()) {
+                // Modem can be busy receiving datagrams, so send datagram only when modem is
+                // not busy.
                 mSendingDatagramInProgress = true;
                 datagramArgs.setDatagramStartTime();
                 mDatagramController.updateSendStatus(subId,
@@ -525,9 +537,10 @@ public class DatagramDispatcher extends Handler {
      * Return pending datagram count
      * @return pending datagram count
      */
-    @GuardedBy("mLock")
-    private int getPendingDatagramCount() {
-        return mPendingEmergencyDatagramsMap.size() + mPendingNonEmergencyDatagramsMap.size();
+    public int getPendingDatagramCount() {
+        synchronized (mLock) {
+            return mPendingEmergencyDatagramsMap.size() + mPendingNonEmergencyDatagramsMap.size();
+        }
     }
 
     /**
@@ -579,6 +592,12 @@ public class DatagramDispatcher extends Handler {
             } else if (state == SatelliteManager.SATELLITE_MODEM_STATE_IDLE) {
                 sendPendingDatagrams();
             }
+
+            if (state == SATELLITE_MODEM_STATE_CONNECTED
+                    && isDatagramWaitForConnectedStateTimerStarted()) {
+                stopDatagramWaitForConnectedStateTimer();
+                sendPendingDatagrams();
+            }
         }
     }
 
@@ -598,9 +617,38 @@ public class DatagramDispatcher extends Handler {
                 SatelliteManager.SATELLITE_RESULT_REQUEST_ABORTED);
 
         stopSatelliteAlignedTimer();
+        stopDatagramWaitForConnectedStateTimer();
         mIsDemoMode = false;
         mSendSatelliteDatagramRequest = null;
         mIsAligned = false;
+    }
+
+    private void startDatagramWaitForConnectedStateTimer() {
+        if (isDatagramWaitForConnectedStateTimerStarted()) {
+            logd("DatagramWaitForConnectedStateTimer is already started");
+            return;
+        }
+        sendMessageDelayed(obtainMessage(
+                        EVENT_DATAGRAM_WAIT_FOR_CONNECTED_STATE_TIMED_OUT),
+                mDatagramController.getDatagramWaitTimeForConnectedState());
+    }
+
+    private void stopDatagramWaitForConnectedStateTimer() {
+        removeMessages(EVENT_DATAGRAM_WAIT_FOR_CONNECTED_STATE_TIMED_OUT);
+    }
+
+    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
+    public boolean isDatagramWaitForConnectedStateTimerStarted() {
+        return hasMessages(EVENT_DATAGRAM_WAIT_FOR_CONNECTED_STATE_TIMED_OUT);
+    }
+
+    private void handleEventDatagramWaitForConnectedStateTimedOut() {
+        logw("Timed out to wait for satellite connected before sending datagrams");
+        synchronized (mLock) {
+            abortSendingPendingDatagrams(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+                    SatelliteManager.SATELLITE_RESULT_NOT_REACHABLE);
+            SatelliteSessionController.getInstance().onDatagramWaitForConnectedStateTimerTimedOut();
+        }
     }
 
     private static void logd(@NonNull String log) {
