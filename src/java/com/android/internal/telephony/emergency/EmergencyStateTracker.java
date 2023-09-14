@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.emergency;
 
+import static android.telephony.CarrierConfigManager.ImsEmergency.KEY_EMERGENCY_CALLBACK_MODE_SUPPORTED_BOOL;
+
 import static com.android.internal.telephony.emergency.EmergencyConstants.MODE_EMERGENCY_CALLBACK;
 import static com.android.internal.telephony.emergency.EmergencyConstants.MODE_EMERGENCY_NONE;
 import static com.android.internal.telephony.emergency.EmergencyConstants.MODE_EMERGENCY_WWAN;
@@ -26,6 +28,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
@@ -33,6 +36,7 @@ import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.UserHandle;
+import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.sysprop.TelephonyProperties;
 import android.telephony.Annotation.DisconnectCauses;
@@ -94,6 +98,8 @@ public class EmergencyStateTracker {
     /** Indicates the emergency type is SMS. */
     public static final int EMERGENCY_TYPE_SMS = 2;
 
+    private static final String KEY_NO_SIM_ECBM_SUPPORT = "no_sim_ecbm_support";
+
     private static EmergencyStateTracker INSTANCE = null;
 
     private final Context mContext;
@@ -131,6 +137,12 @@ public class EmergencyStateTracker {
     private Phone mSmsPhone;
     private CompletableFuture<Integer> mSmsEmergencyModeFuture;
     private boolean mIsTestEmergencyNumberForSms;
+
+    private final android.util.ArrayMap<Integer, Boolean> mNoSimEcbmSupported =
+            new android.util.ArrayMap<>();
+    private final CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener =
+            (slotIndex, subId, carrierId, specificCarrierId) -> onCarrierConfigurationChanged(
+                    slotIndex, subId);
 
     /**
      * Listens for Emergency Callback Mode state change intents
@@ -356,6 +368,13 @@ public class EmergencyStateTracker {
         mWakeLock = (pm != null) ? pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
                 "telephony:" + TAG) : null;
         mConfigManager = context.getSystemService(CarrierConfigManager.class);
+        if (mConfigManager != null) {
+            // Carrier config changed callback should be executed in handler thread
+            mConfigManager.registerCarrierConfigChangeListener(mHandler::post,
+                    mCarrierConfigChangeListener);
+        } else {
+            Rlog.e(TAG, "CarrierConfigLoader is not available.");
+        }
 
         // Register receiver for ECM exit.
         IntentFilter filter = new IntentFilter();
@@ -392,6 +411,8 @@ public class EmergencyStateTracker {
         mEcmExitTimeoutMs = ecmExitTimeoutMs;
         mWakeLock = null; // Don't declare a wakelock in tests
         mConfigManager = context.getSystemService(CarrierConfigManager.class);
+        mConfigManager.registerCarrierConfigChangeListener(mHandler::post,
+                mCarrierConfigChangeListener);
         IntentFilter filter = new IntentFilter();
         filter.addAction(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
         context.registerReceiver(mEcmExitReceiver, filter, null, mHandler);
@@ -743,10 +764,32 @@ public class EmergencyStateTracker {
     /**
      * Returns {@code true} if device and carrier support emergency callback mode.
      */
-    private boolean isEmergencyCallbackModeSupported() {
-        return getConfig(mPhone.getSubId(),
-                CarrierConfigManager.ImsEmergency.KEY_EMERGENCY_CALLBACK_MODE_SUPPORTED_BOOL,
-                DEFAULT_EMERGENCY_CALLBACK_MODE_SUPPORTED);
+    @VisibleForTesting
+    public boolean isEmergencyCallbackModeSupported() {
+        int subId = mPhone.getSubId();
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+            // If there is no SIM, refer to the saved last carrier configuration with valid
+            // subscription.
+            int phoneId = mPhone.getPhoneId();
+            Boolean savedConfig = mNoSimEcbmSupported.get(Integer.valueOf(phoneId));
+            if (savedConfig == null) {
+                // Exceptional case such as with poor boot performance.
+                // Usually, the first carrier config change will update the cache.
+                // But with poor boot performance, the carrier config change
+                // can be delayed for a long time.
+                SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+                savedConfig = Boolean.valueOf(
+                        sp.getBoolean(KEY_NO_SIM_ECBM_SUPPORT + phoneId, false));
+                Rlog.i(TAG, "ECBM value not cached, load from preference");
+                mNoSimEcbmSupported.put(Integer.valueOf(phoneId), savedConfig);
+            }
+            Rlog.i(TAG, "isEmergencyCallbackModeSupported savedConfig=" + savedConfig);
+            return savedConfig;
+        } else {
+            return getConfig(subId,
+                    CarrierConfigManager.ImsEmergency.KEY_EMERGENCY_CALLBACK_MODE_SUPPORTED_BOOL,
+                    DEFAULT_EMERGENCY_CALLBACK_MODE_SUPPORTED);
+        }
     }
 
     /**
@@ -1204,5 +1247,61 @@ public class EmergencyStateTracker {
             case EMERGENCY_TYPE_SMS: return "SMS";
             default: return "UNKNOWN";
         }
+    }
+
+    private void onCarrierConfigurationChanged(int slotIndex, int subId) {
+        Rlog.i(TAG, "onCarrierConfigChanged slotIndex=" + slotIndex + ", subId=" + subId);
+
+        if (slotIndex < 0) {
+            return;
+        }
+
+        updateNoSimEcbmSupported(slotIndex, subId);
+    }
+
+    private void updateNoSimEcbmSupported(int slotIndex, int subId) {
+        SharedPreferences sp = null;
+        Boolean savedConfig = mNoSimEcbmSupported.get(Integer.valueOf(slotIndex));
+        if (savedConfig == null) {
+            sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+            savedConfig = Boolean.valueOf(
+                    sp.getBoolean(KEY_NO_SIM_ECBM_SUPPORT + slotIndex, false));
+            mNoSimEcbmSupported.put(Integer.valueOf(slotIndex), savedConfig);
+            Rlog.i(TAG, "updateNoSimEcbmSupported load from preference slotIndex=" + slotIndex
+                    + ", supported=" + savedConfig);
+        }
+
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+            // invalid subId
+            return;
+        }
+
+        PersistableBundle b = getConfigBundle(subId, KEY_EMERGENCY_CALLBACK_MODE_SUPPORTED_BOOL);
+        if (b.isEmpty()) {
+            Rlog.e(TAG, "updateNoSimEcbmSupported empty result");
+            return;
+        }
+
+        if (!CarrierConfigManager.isConfigForIdentifiedCarrier(b)) {
+            Rlog.i(TAG, "updateNoSimEcbmSupported not carrier specific configuration");
+            return;
+        }
+
+        boolean carrierConfig = b.getBoolean(KEY_EMERGENCY_CALLBACK_MODE_SUPPORTED_BOOL);
+        if (carrierConfig == savedConfig) {
+            return;
+        }
+
+        mNoSimEcbmSupported.put(Integer.valueOf(slotIndex), Boolean.valueOf(carrierConfig));
+
+        if (sp == null) {
+            sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        }
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putBoolean(KEY_NO_SIM_ECBM_SUPPORT + slotIndex, carrierConfig);
+        editor.apply();
+
+        Rlog.i(TAG, "updateNoSimEcbmSupported preference updated slotIndex=" + slotIndex
+                + ", supported=" + carrierConfig);
     }
 }

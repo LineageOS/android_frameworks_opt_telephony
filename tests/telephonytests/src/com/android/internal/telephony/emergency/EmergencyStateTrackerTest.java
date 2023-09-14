@@ -56,6 +56,7 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.EmergencyRegResult;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.testing.AndroidTestingRunner;
@@ -1519,6 +1520,88 @@ public class EmergencyStateTrackerTest extends TelephonyTest {
         assertFalse(emergencyStateTracker.isInEcm());
         assertFalse(emergencyStateTracker.isInEmergencyCall());
         verify(phone0).exitEmergencyMode(any(Message.class));
+    }
+
+    @Test
+    @SmallTest
+    public void testSaveKeyEmergencyCallbackModeSupportedBool() {
+        mContextFixture.getCarrierConfigBundle().putBoolean(
+                CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL, true);
+        Phone phone = setupTestPhoneForEmergencyCall(false /* isRoaming */,
+                false /* isRadioOn */);
+        when(phone.getSubId()).thenReturn(1);
+        setEcmSupportedConfig(phone, true);
+
+        EmergencyStateTracker testEst = setupEmergencyStateTracker(
+                false /* isSuplDdsSwitchRequiredForEmergencyCall */);
+
+        assertNotNull(testEst.startEmergencyCall(phone, TEST_CALL_ID, false));
+
+        ArgumentCaptor<CarrierConfigManager.CarrierConfigChangeListener> listenerArgumentCaptor =
+                ArgumentCaptor.forClass(CarrierConfigManager.CarrierConfigChangeListener.class);
+        CarrierConfigManager cfgManager = (CarrierConfigManager) mContext
+                .getSystemService(Context.CARRIER_CONFIG_SERVICE);
+
+        verify(cfgManager).registerCarrierConfigChangeListener(any(),
+                listenerArgumentCaptor.capture());
+
+        CarrierConfigManager.CarrierConfigChangeListener carrierConfigChangeListener =
+                listenerArgumentCaptor.getAllValues().get(0);
+
+        // Verify carrier config for valid subscription
+        assertTrue(testEst.isEmergencyCallbackModeSupported());
+
+        // SIM removed
+        when(phone.getSubId()).thenReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        setEcmSupportedConfig(phone, false);
+
+        // Verify default config for invalid subscription
+        assertFalse(testEst.isEmergencyCallbackModeSupported());
+
+        // Insert SIM again
+        when(phone.getSubId()).thenReturn(1);
+        setEcmSupportedConfig(phone, true);
+
+        // onCarrierConfigChanged with valid subscription
+        carrierConfigChangeListener.onCarrierConfigChanged(
+                phone.getPhoneId(), phone.getSubId(),
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
+
+        // SIM removed again
+        when(phone.getSubId()).thenReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        setEcmSupportedConfig(phone, false);
+
+        // onCarrierConfigChanged with invalid subscription
+        carrierConfigChangeListener.onCarrierConfigChanged(
+                phone.getPhoneId(), phone.getSubId(),
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
+
+        // Verify saved config for valid subscription
+        assertTrue(testEst.isEmergencyCallbackModeSupported());
+
+        // Insert SIM again, but emergency callback mode not supported
+        when(phone.getSubId()).thenReturn(1);
+        setEcmSupportedConfig(phone, false);
+
+        // onCarrierConfigChanged with valid subscription
+        carrierConfigChangeListener.onCarrierConfigChanged(
+                phone.getPhoneId(), phone.getSubId(),
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
+
+        // Verify carrier config for valid subscription
+        assertFalse(testEst.isEmergencyCallbackModeSupported());
+
+        // SIM removed again
+        when(phone.getSubId()).thenReturn(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        setEcmSupportedConfig(phone, false);
+
+        // onCarrierConfigChanged with invalid subscription
+        carrierConfigChangeListener.onCarrierConfigChanged(
+                phone.getPhoneId(), phone.getSubId(),
+                TelephonyManager.UNKNOWN_CARRIER_ID, TelephonyManager.UNKNOWN_CARRIER_ID);
+
+        // Verify saved config for valid subscription
+        assertFalse(testEst.isEmergencyCallbackModeSupported());
     }
 
     private EmergencyStateTracker setupEmergencyStateTracker(
