@@ -28,7 +28,6 @@ import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_VALIDATIO
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
-
 import static java.util.Arrays.copyOf;
 
 import android.annotation.NonNull;
@@ -73,6 +72,7 @@ import android.util.Log;
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.ISetOpportunisticDataCallback;
 import com.android.internal.telephony.IccCard;
@@ -1679,8 +1679,14 @@ public class PhoneSwitcher extends Handler {
         }
 
         // A phone in voice call might trigger data being switched to it.
+        // Exclude dialing to give modem time to process an EMC first before dealing with DDS switch
+        // Include alerting because modem RLF leads to delay in switch, so carrier required to
+        // switch in alerting phase.
+        // TODO: check ringing call for vDADA
         return (!phone.getBackgroundCall().isIdle()
-                || !phone.getForegroundCall().isIdle());
+                && phone.getBackgroundCall().getState() != Call.State.DIALING)
+                || (!phone.getForegroundCall().isIdle()
+                && phone.getForegroundCall().getState() != Call.State.DIALING);
     }
 
     private void updateHalCommandToUse() {
