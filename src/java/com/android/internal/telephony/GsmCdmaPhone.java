@@ -4501,6 +4501,12 @@ public class GsmCdmaPhone extends Phone {
             e.printStackTrace();
         }
         pw.flush();
+        try {
+            mCellBroadcastConfigTracker.dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
     }
 
     @Override
