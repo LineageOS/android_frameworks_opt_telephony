@@ -26,10 +26,8 @@ import static android.telephony.TelephonyManager.SIM_STATE_LOADED;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_LTE;
-
 import static com.android.internal.telephony.data.AutoDataSwitchController.EVALUATION_REASON_VOICE_CALL_END;
 import static com.android.internal.telephony.data.PhoneSwitcher.ECBM_DEFAULT_DATA_SWITCH_BASE_TIME_MS;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -121,6 +119,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
     private GsmCdmaCall mInactiveCall;
     private GsmCdmaCall mDialCall;
     private GsmCdmaCall mIncomingCall;
+    private GsmCdmaCall mAlertingCall;
     private ISetOpportunisticDataCallback mSetOpptDataCallback1;
     private ISetOpportunisticDataCallback mSetOpptDataCallback2;
     PhoneSwitcher.ImsRegTechProvider mMockImsRegTechProvider;
@@ -161,6 +160,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         mInactiveCall = mock(GsmCdmaCall.class);
         mDialCall = mock(GsmCdmaCall.class);
         mIncomingCall = mock(GsmCdmaCall.class);
+        mAlertingCall = mock(GsmCdmaCall.class);
         mSetOpptDataCallback1 = mock(ISetOpportunisticDataCallback.class);
         mSetOpptDataCallback2 = mock(ISetOpportunisticDataCallback.class);
         mMockImsRegTechProvider = mock(PhoneSwitcher.ImsRegTechProvider.class);
@@ -176,6 +176,7 @@ public class PhoneSwitcherTest extends TelephonyTest {
         doReturn(Call.State.HOLDING).when(mHoldingCall).getState();
         doReturn(Call.State.DIALING).when(mDialCall).getState();
         doReturn(Call.State.INCOMING).when(mIncomingCall).getState();
+        doReturn(Call.State.ALERTING).when(mAlertingCall).getState();
 
         doReturn(true).when(mInactiveCall).isIdle();
         doReturn(false).when(mActiveCall).isIdle();
@@ -878,12 +879,18 @@ public class PhoneSwitcherTest extends TelephonyTest {
         // Phone 0 should be the default data phoneId.
         assertEquals(0, mPhoneSwitcherUT.getPreferredDataPhoneId());
 
-        // Phone2 has active IMS call on LTE. And data of DEFAULT apn is enabled. This should
-        // trigger data switch.
+        // Dialing shouldn't trigger switch because we give modem time to deal with the dialing call
+        // first. Phone2 has active IMS call on LTE. And data of DEFAULT apn is enabled.
         doReturn(mImsPhone).when(mPhone2).getImsPhone();
         doReturn(true).when(mPhone2).isDataAllowed();
         mockImsRegTech(1, REGISTRATION_TECH_LTE);
         notifyPhoneAsInDial(mImsPhone);
+
+        // Phone1 should remain as the preferred data phone
+        assertEquals(0, mPhoneSwitcherUT.getPreferredDataPhoneId());
+
+        // Dialing -> Alert, should trigger phone switch
+        notifyPhoneAsAlerting(mImsPhone);
 
         // Phone2 should be preferred data phone
         assertEquals(1, mPhoneSwitcherUT.getPreferredDataPhoneId());
@@ -1705,6 +1712,12 @@ public class PhoneSwitcherTest extends TelephonyTest {
 
     private void notifyPhoneAsInDial(Phone phone) {
         doReturn(mDialCall).when(phone).getForegroundCall();
+        mPhoneSwitcherUT.sendEmptyMessage(EVENT_PRECISE_CALL_STATE_CHANGED);
+        processAllMessages();
+    }
+
+    private void notifyPhoneAsAlerting(Phone phone) {
+        doReturn(mAlertingCall).when(phone).getForegroundCall();
         mPhoneSwitcherUT.sendEmptyMessage(EVENT_PRECISE_CALL_STATE_CHANGED);
         processAllMessages();
     }
