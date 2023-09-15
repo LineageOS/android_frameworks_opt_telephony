@@ -1,1 +1,9 @@
 package: "com.android.internal.telephony.flags"
+
+flag {
+  name: "do_not_override_precise_label"
+  namespace: "telephony"
+  description: "When set, Telecom will not override the precise label for certain disconnect causes."
+  bug: "296968778"
+  is_fixed_read_only: true
+}
