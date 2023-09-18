@@ -268,6 +268,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
                 "com.android.phone");
         mContextFixture.putResource(R.string.config_wlan_network_service_package,
                 "com.xyz.iwlan.networkservice");
+
         doReturn(mIwlanNetworkServiceStub).when(mIwlanNetworkServiceStub).asBinder();
         addNetworkService();
 
@@ -302,6 +303,10 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(true).when(mPackageManager)
                 .hasSystemFeature(PackageManager.FEATURE_TELEPHONY_CDMA);
 
+        // Set cellular radio on after boot by default
+        mContextFixture.putBooleanResource(
+                R.bool.config_enable_cellular_on_boot_default, true);
+
         mSSTTestHandler = new ServiceStateTrackerTestHandler(getClass().getSimpleName());
         mSSTTestHandler.start();
         waitUntilReady();
@@ -326,6 +331,10 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // Start with power off delay disabled.
         mContextFixture.putIntResource(
                 com.android.internal.R.integer.config_delay_for_ims_dereg_millis, 0);
+
+        // Set 1 as default behavior for enable_cellular_on_boot
+        mContextFixture.putBooleanResource(
+                com.android.internal.R.bool.config_enable_cellular_on_boot_default, true);
 
         mBundle.putBoolean(
                 CarrierConfigManager.KEY_ENABLE_CARRIER_DISPLAY_NAME_RESOLVER_BOOL, true);
