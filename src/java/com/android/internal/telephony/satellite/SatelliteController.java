@@ -2514,7 +2514,6 @@ public class SatelliteController extends Handler {
                 loge("handleEventSatelliteModemStateChanged: mSatelliteSessionController is null");
             }
         }
-        mDatagramController.onSatelliteModemStateChanged(state);
     }
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)

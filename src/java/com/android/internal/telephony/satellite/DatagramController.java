@@ -315,16 +315,14 @@ public class DatagramController {
     public boolean isSendingInIdleState() {
         synchronized (mLock) {
             return (mSendDatagramTransferState
-                    == SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE)
-                    && (mDatagramDispatcher.getPendingDatagramCount() == 0);
+                    == SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE);
         }
     }
 
     public boolean isPollingInIdleState() {
         synchronized (mLock) {
             return (mReceiveDatagramTransferState
-                    == SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE)
-                    && !mDatagramReceiver.isPollingPending();
+                    == SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE);
         }
     }
 
