@@ -591,7 +591,7 @@ public abstract class TelephonyTest {
         doReturn(mIccPhoneBookIntManager).when(mTelephonyComponentFactory)
                 .makeIccPhoneBookInterfaceManager(nullable(Phone.class));
         doReturn(mDisplayInfoController).when(mTelephonyComponentFactory)
-                .makeDisplayInfoController(nullable(Phone.class));
+                .makeDisplayInfoController(nullable(Phone.class), any(FeatureFlags.class));
         doReturn(mWspTypeDecoder).when(mTelephonyComponentFactory)
                 .makeWspTypeDecoder(nullable(byte[].class));
         doReturn(mImsCT).when(mTelephonyComponentFactory)
