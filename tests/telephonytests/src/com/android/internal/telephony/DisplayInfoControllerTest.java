@@ -54,7 +54,6 @@ import java.util.concurrent.Executor;
 @RunWith(AndroidTestingRunner.class)
 @TestableLooper.RunWithLooper
 public class DisplayInfoControllerTest extends TelephonyTest {
-
     private static final int PHONE_ID = 0;
     private static final String MCC = "600";
     private static final String MNC = "01";
@@ -64,7 +63,6 @@ public class DisplayInfoControllerTest extends TelephonyTest {
     private DisplayInfoController mDic;
     private ServiceStateTracker mSst;
     private ServiceStateTrackerTestHandler mSstHandler;
-    private SignalStrengthController mSsc;
     private PersistableBundle mBundle;
     private CarrierConfigManager.CarrierConfigChangeListener mCarrierConfigChangeListener;
 
@@ -75,8 +73,8 @@ public class DisplayInfoControllerTest extends TelephonyTest {
 
         @Override
         public void onLooperPrepared() {
-            mSsc = new SignalStrengthController(mPhone);
-            doReturn(mSsc).when(mPhone).getSignalStrengthController();
+            SignalStrengthController ssc = new SignalStrengthController(mPhone);
+            doReturn(ssc).when(mPhone).getSignalStrengthController();
             doReturn(new ServiceState()).when(mPhone).getServiceState();
             doReturn(NUMERIC).when(mTelephonyManager).getSimOperatorNumericForPhone(eq(PHONE_ID));
             doReturn(NETWORK).when(mTelephonyManager).getSimOperatorNameForPhone(eq(PHONE_ID));
@@ -103,6 +101,7 @@ public class DisplayInfoControllerTest extends TelephonyTest {
 
         doReturn((Executor) Runnable::run).when(mContext).getMainExecutor();
         mBundle = mContextFixture.getCarrierConfigBundle();
+        mBundle.putBoolean(CarrierConfigManager.KEY_SHOW_ROAMING_INDICATOR_BOOL, true);
         mSstHandler = new ServiceStateTrackerTestHandler(getClass().getSimpleName());
         mSstHandler.start();
         waitUntilReady();
@@ -280,5 +279,26 @@ public class DisplayInfoControllerTest extends TelephonyTest {
         TelephonyDisplayInfo tdi = mDic.getTelephonyDisplayInfo();
 
         assertTrue(tdi.isRoaming());
+    }
+
+    @Test
+    public void testIsRoamingOverride_HideRoamingIndicator() {
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+        mBundle.putStringArray(
+                CarrierConfigManager.KEY_GSM_ROAMING_NETWORKS_STRING_ARRAY, new String[] {NUMERIC});
+        mBundle.putBoolean(CarrierConfigManager.KEY_SHOW_ROAMING_INDICATOR_BOOL, false);
+        sendCarrierConfigUpdate();
+
+        changeRegState(NetworkRegistrationInfo.REGISTRATION_STATE_HOME);
+        ServiceState ss1 = mSst.getServiceState();
+
+        assertTrue(ss1.getRoaming()); // roam
+
+        doReturn(mSst).when(mPhone).getServiceStateTracker();
+        mDic = new DisplayInfoController(mPhone);
+        mDic.updateTelephonyDisplayInfo();
+        TelephonyDisplayInfo tdi = mDic.getTelephonyDisplayInfo();
+
+        assertFalse(tdi.isRoaming()); // display override
     }
 }
