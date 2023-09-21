@@ -42,6 +42,7 @@ import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Looper;
 import android.os.Message;
+import android.telephony.SubscriptionManager;
 import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
 import android.testing.AndroidTestingRunner;
@@ -149,8 +150,10 @@ public class DatagramDispatcherTest extends TelephonyTest {
                 true, mResultListener::offer);
         processAllMessages();
         mInOrder.verify(mMockDatagramController).needsWaitingForSatelliteConnected();
+        mInOrder.verify(mMockDatagramController).updateSendStatus(eq(SUB_ID),
+                eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_WAITING_TO_CONNECT), eq(1),
+                eq(SatelliteManager.SATELLITE_RESULT_SUCCESS));
         mInOrder.verify(mMockDatagramController).getDatagramWaitTimeForConnectedState();
-        verify(mMockSatelliteSessionController).onSatelliteDatagramsTransferRequested();
         verifyZeroInteractions(mMockSatelliteModemInterface);
         assertTrue(mDatagramDispatcherUT.isDatagramWaitForConnectedStateTimerStarted());
 
@@ -196,7 +199,14 @@ public class DatagramDispatcherTest extends TelephonyTest {
         moveTimeForward(DatagramController.DATAGRAM_WAIT_FOR_CONNECTED_STATE_TIMEOUT);
         processAllMessages();
         verifyZeroInteractions(mMockSatelliteModemInterface);
-        verifyZeroInteractions(mMockDatagramController);
+        mInOrder.verify(mMockDatagramController)
+                .updateSendStatus(eq(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID),
+                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_FAILED), eq(1),
+                        eq(SatelliteManager.SATELLITE_RESULT_NOT_REACHABLE));
+        mInOrder.verify(mMockDatagramController)
+                .updateSendStatus(eq(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID),
+                        eq(SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE), eq(0),
+                        eq(SatelliteManager.SATELLITE_RESULT_SUCCESS));
         assertEquals(1, mResultListener.size());
         assertThat(mResultListener.peek()).isEqualTo(
                 SatelliteManager.SATELLITE_RESULT_NOT_REACHABLE);

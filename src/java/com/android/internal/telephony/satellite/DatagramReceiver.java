@@ -602,16 +602,6 @@ public class DatagramReceiver extends Handler {
         pollPendingSatelliteDatagramsInternal(subId, callback);
     }
 
-    /**
-     * Check if DatagramReceiver is waiting for satellite modem connected to a satellite network
-     * before pushing down the poll request to modem.
-     */
-    public boolean isPollingPending() {
-        synchronized (mLock) {
-            return (mPendingPollSatelliteDatagramsRequest != null);
-        }
-    }
-
     private void handleSatelliteConnectedEvent() {
         synchronized (mLock) {
             if (isDatagramWaitForConnectedStateTimerStarted()) {
@@ -645,7 +635,10 @@ public class DatagramReceiver extends Handler {
             synchronized (mLock) {
                 mPendingPollSatelliteDatagramsRequest = new DatagramReceiverHandlerRequest(
                         callback, SatelliteServiceUtils.getPhone(), subId);
-                SatelliteSessionController.getInstance().onSatelliteDatagramsTransferRequested();
+                mDatagramController.updateReceiveStatus(subId,
+                        SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_WAITING_TO_CONNECT,
+                        mDatagramController.getReceivePendingCount(),
+                        SatelliteManager.SATELLITE_RESULT_SUCCESS);
                 startDatagramWaitForConnectedStateTimer();
             }
             return;
@@ -874,11 +867,24 @@ public class DatagramReceiver extends Handler {
             }
 
             logw("Timed out to wait for satellite connected before polling datagrams");
+            mDatagramController.updateReceiveStatus(mPendingPollSatelliteDatagramsRequest.subId,
+                    SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_FAILED,
+                    mDatagramController.getReceivePendingCount(),
+                    SatelliteManager.SATELLITE_RESULT_NOT_REACHABLE);
+
+            mDatagramController.updateReceiveStatus(mPendingPollSatelliteDatagramsRequest.subId,
+                    SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE,
+                    mDatagramController.getReceivePendingCount(),
+                    SatelliteManager.SATELLITE_RESULT_SUCCESS);
+
+            reportMetrics(null, SatelliteManager.SATELLITE_RESULT_NOT_REACHABLE);
+            mControllerMetricsStats.reportIncomingDatagramCount(
+                    SatelliteManager.SATELLITE_RESULT_NOT_REACHABLE);
+
             Consumer<Integer> callback =
                     (Consumer<Integer>) mPendingPollSatelliteDatagramsRequest.argument;
             callback.accept(SatelliteManager.SATELLITE_RESULT_NOT_REACHABLE);
             mPendingPollSatelliteDatagramsRequest = null;
-            SatelliteSessionController.getInstance().onDatagramWaitForConnectedStateTimerTimedOut();
         }
     }
 

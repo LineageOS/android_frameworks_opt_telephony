@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.satellite;
 
+import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_FAILED;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_NONE;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_RECEIVE_SUCCESS;
@@ -23,6 +24,7 @@ import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TR
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SENDING;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_FAILED;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_SEND_SUCCESS;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_DATAGRAM_TRANSFER_STATE_WAITING_TO_CONNECT;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -97,10 +99,8 @@ public class SatelliteSessionController extends StateMachine {
     private static final int EVENT_LISTENING_TIMER_TIMEOUT = 2;
     private static final int EVENT_SATELLITE_ENABLED_STATE_CHANGED = 3;
     private static final int EVENT_SATELLITE_MODEM_STATE_CHANGED = 4;
-    private static final int EVENT_SATELLITE_DATAGRAMS_TRANSFER_REQUESTED = 5;
-    private static final int EVENT_DISABLE_CELLULAR_MODEM_WHILE_SATELLITE_MODE_IS_ON_DONE = 6;
-    protected static final int EVENT_NB_IOT_INACTIVITY_TIMER_TIMED_OUT = 7;
-    private static final int EVENT_DATAGRAM_WAIT_FOR_CONNECTED_STATE_TIMER_TIMED_OUT = 8;
+    private static final int EVENT_DISABLE_CELLULAR_MODEM_WHILE_SATELLITE_MODE_IS_ON_DONE = 5;
+    protected static final int EVENT_NB_IOT_INACTIVITY_TIMER_TIMED_OUT = 6;
 
     private static final long REBIND_INITIAL_DELAY = 2 * 1000; // 2 seconds
     private static final long REBIND_MAXIMUM_DELAY = 64 * 1000; // 1 minute
@@ -137,6 +137,7 @@ public class SatelliteSessionController extends StateMachine {
     @GuardedBy("mLock")
     @NonNull private boolean mIsDisableCellularModemInProgress = false;
     @NonNull private final SatelliteController mSatelliteController;
+    @NonNull private final DatagramController mDatagramController;
 
     /**
      * @return The singleton instance of SatelliteSessionController.
@@ -188,6 +189,7 @@ public class SatelliteSessionController extends StateMachine {
         mContext = context;
         mSatelliteModemInterface = satelliteModemInterface;
         mSatelliteController = SatelliteController.getInstance();
+        mDatagramController = DatagramController.getInstance();
         mSatelliteStayAtListeningFromSendingMillis = getSatelliteStayAtListeningFromSendingMillis();
         mSatelliteStayAtListeningFromReceivingMillis =
                 getSatelliteStayAtListeningFromReceivingMillis();
@@ -252,26 +254,6 @@ public class SatelliteSessionController extends StateMachine {
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
     public void onSatelliteEnabledStateChanged(boolean enabled) {
         sendMessage(EVENT_SATELLITE_ENABLED_STATE_CHANGED, enabled);
-    }
-
-    /**
-     * {@link DatagramDispatcher} and {@link DatagramReceiver} use this function to notify
-     * {@link SatelliteSessionController} that it has received a request to send satellite
-     * datagrams or poll pending satellite datagrams.
-     */
-    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
-    public void onSatelliteDatagramsTransferRequested() {
-        sendMessage(EVENT_SATELLITE_DATAGRAMS_TRANSFER_REQUESTED);
-    }
-
-    /**
-     * {@link DatagramDispatcher} and {@link DatagramReceiver} use this function to notify
-     * {@link SatelliteSessionController} that the datagram wait for connected state timer has
-     * timed out.
-     */
-    @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
-    public void onDatagramWaitForConnectedStateTimerTimedOut() {
-        sendMessage(EVENT_DATAGRAM_WAIT_FOR_CONNECTED_STATE_TIMER_TIMED_OUT);
     }
 
     /**
@@ -407,6 +389,7 @@ public class SatelliteSessionController extends StateMachine {
         public void enter() {
             if (DBG) logd("Entering UnavailableState");
             mCurrentState = SatelliteManager.SATELLITE_MODEM_STATE_UNAVAILABLE;
+            notifyStateChangedEvent(SatelliteManager.SATELLITE_MODEM_STATE_UNAVAILABLE);
         }
 
         @Override
@@ -483,9 +466,6 @@ public class SatelliteSessionController extends StateMachine {
                 case EVENT_SATELLITE_ENABLED_STATE_CHANGED:
                     handleSatelliteEnabledStateChanged(!(boolean) msg.obj, "IdleState");
                     break;
-                case EVENT_SATELLITE_DATAGRAMS_TRANSFER_REQUESTED:
-                    disableCellularModemWhileSatelliteModeIsOn();
-                    break;
                 case EVENT_DISABLE_CELLULAR_MODEM_WHILE_SATELLITE_MODE_IS_ON_DONE:
                     handleEventDisableCellularModemWhileSatelliteModeIsOnDone(
                             (AsyncResult) msg.obj);
@@ -504,6 +484,15 @@ public class SatelliteSessionController extends StateMachine {
                     loge("Unexpected transferring state received for NB-IOT NTN");
                 } else {
                     transitionTo(mTransferringState);
+                }
+            } else if ((datagramTransferState.sendState
+                    == SATELLITE_DATAGRAM_TRANSFER_STATE_WAITING_TO_CONNECT)
+                    || (datagramTransferState.receiveState
+                    == SATELLITE_DATAGRAM_TRANSFER_STATE_WAITING_TO_CONNECT)) {
+                if (mSatelliteController.isSatelliteAttachRequired()) {
+                    disableCellularModemWhileSatelliteModeIsOn();
+                } else {
+                    loge("Unexpected transferring state received for non-NB-IOT NTN");
                 }
             }
         }
@@ -694,11 +683,8 @@ public class SatelliteSessionController extends StateMachine {
                 case EVENT_NB_IOT_INACTIVITY_TIMER_TIMED_OUT:
                     transitionTo(mIdleState);
                     break;
-                case EVENT_SATELLITE_DATAGRAMS_TRANSFER_REQUESTED:
-                    stopNbIotInactivityTimer();
-                    break;
-                case EVENT_DATAGRAM_WAIT_FOR_CONNECTED_STATE_TIMER_TIMED_OUT:
-                    startNbIotInactivityTimer();
+                case EVENT_DATAGRAM_TRANSFER_STATE_CHANGED:
+                    handleEventDatagramTransferStateChanged((DatagramTransferState) msg.obj);
                     break;
             }
             // Ignore all unexpected events.
@@ -709,6 +695,20 @@ public class SatelliteSessionController extends StateMachine {
                 @SatelliteManager.SatelliteModemState int state) {
             if (state == SatelliteManager.SATELLITE_MODEM_STATE_CONNECTED) {
                 transitionTo(mConnectedState);
+            }
+        }
+
+        private void handleEventDatagramTransferStateChanged(
+                @NonNull DatagramTransferState datagramTransferState) {
+            if (datagramTransferState.sendState
+                    == SATELLITE_DATAGRAM_TRANSFER_STATE_WAITING_TO_CONNECT
+                    || datagramTransferState.receiveState
+                    == SATELLITE_DATAGRAM_TRANSFER_STATE_WAITING_TO_CONNECT) {
+                stopNbIotInactivityTimer();
+            } else if (datagramTransferState.sendState == SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE
+                    && datagramTransferState.receiveState
+                    == SATELLITE_DATAGRAM_TRANSFER_STATE_IDLE) {
+                startNbIotInactivityTimer();
             }
         }
     }
@@ -786,17 +786,11 @@ public class SatelliteSessionController extends StateMachine {
             case EVENT_DISABLE_CELLULAR_MODEM_WHILE_SATELLITE_MODE_IS_ON_DONE:
                 whatString = "EVENT_DISABLE_CELLULAR_MODEM_WHILE_SATELLITE_MODE_IS_ON_DONE";
                 break;
-            case EVENT_SATELLITE_DATAGRAMS_TRANSFER_REQUESTED:
-                whatString = "EVENT_SATELLITE_DATAGRAMS_TRANSFER_REQUESTED";
-                break;
             case EVENT_SATELLITE_MODEM_STATE_CHANGED:
                 whatString = "EVENT_SATELLITE_MODEM_STATE_CHANGED";
                 break;
             case EVENT_NB_IOT_INACTIVITY_TIMER_TIMED_OUT:
                 whatString = "EVENT_NB_IOT_INACTIVITY_TIMER_TIMED_OUT";
-                break;
-            case EVENT_DATAGRAM_WAIT_FOR_CONNECTED_STATE_TIMER_TIMED_OUT:
-                whatString = "EVENT_DATAGRAM_WAIT_FOR_CONNECTED_STATE_TIMER_TIMED_OUT";
                 break;
             default:
                 whatString = "UNKNOWN EVENT " + what;
@@ -813,6 +807,8 @@ public class SatelliteSessionController extends StateMachine {
     }
 
     private void notifyStateChangedEvent(@SatelliteManager.SatelliteModemState int state) {
+        mDatagramController.onSatelliteModemStateChanged(state);
+
         List<ISatelliteStateCallback> toBeRemoved = new ArrayList<>();
         mListeners.values().forEach(listener -> {
             try {
