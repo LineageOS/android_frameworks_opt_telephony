@@ -107,6 +107,7 @@ import com.android.internal.telephony.data.LinkBandwidthEstimator;
 import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.emergency.EmergencyStateTracker;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.gsm.SsData;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
@@ -299,23 +300,26 @@ public class GsmCdmaPhone extends Phone {
     // Constructors
 
     public GsmCdmaPhone(Context context, CommandsInterface ci, PhoneNotifier notifier, int phoneId,
-                        int precisePhoneType, TelephonyComponentFactory telephonyComponentFactory) {
-        this(context, ci, notifier, false, phoneId, precisePhoneType, telephonyComponentFactory);
+                        int precisePhoneType, TelephonyComponentFactory telephonyComponentFactory,
+            @NonNull FeatureFlags featureFlags) {
+        this(context, ci, notifier, false, phoneId, precisePhoneType, telephonyComponentFactory,
+                featureFlags);
     }
 
     public GsmCdmaPhone(Context context, CommandsInterface ci, PhoneNotifier notifier,
                         boolean unitTestMode, int phoneId, int precisePhoneType,
-                        TelephonyComponentFactory telephonyComponentFactory) {
+                        TelephonyComponentFactory telephonyComponentFactory,
+            @NonNull FeatureFlags featureFlags) {
         this(context, ci, notifier,
                 unitTestMode, phoneId, precisePhoneType,
                 telephonyComponentFactory,
-                ImsManager::getInstance);
+                ImsManager::getInstance, featureFlags);
     }
 
     public GsmCdmaPhone(Context context, CommandsInterface ci, PhoneNotifier notifier,
             boolean unitTestMode, int phoneId, int precisePhoneType,
             TelephonyComponentFactory telephonyComponentFactory,
-            ImsManagerFactory imsManagerFactory) {
+            ImsManagerFactory imsManagerFactory, @NonNull FeatureFlags featureFlags) {
         super(precisePhoneType == PhoneConstants.PHONE_TYPE_GSM ? "GSM" : "CDMA",
                 notifier, context, ci, unitTestMode, phoneId, telephonyComponentFactory);
 
@@ -352,7 +356,7 @@ public class GsmCdmaPhone extends Phone {
 
         mDataNetworkController = mTelephonyComponentFactory.inject(
                 DataNetworkController.class.getName())
-                .makeDataNetworkController(this, getLooper());
+                .makeDataNetworkController(this, getLooper(), featureFlags);
 
         mCarrierResolver = mTelephonyComponentFactory.inject(CarrierResolver.class.getName())
                 .makeCarrierResolver(this);
@@ -4493,6 +4497,12 @@ public class GsmCdmaPhone extends Phone {
         pw.flush();
         try {
             mCallWaitingController.dump(pw);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
+        try {
+            mCellBroadcastConfigTracker.dump(fd, pw, args);
         } catch (Exception e) {
             e.printStackTrace();
         }

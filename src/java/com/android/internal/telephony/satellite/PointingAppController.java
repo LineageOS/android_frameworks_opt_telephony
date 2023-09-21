@@ -320,7 +320,7 @@ public class PointingAppController {
         if (handler != null) {
             handler.removeListener(callback);
             if (handler.hasListeners()) {
-                result.accept(SatelliteManager.SATELLITE_ERROR_NONE);
+                result.accept(SatelliteManager.SATELLITE_RESULT_SUCCESS);
                 return;
             }
 
@@ -332,7 +332,7 @@ public class PointingAppController {
                         handler);
             } else {
                 if (phone == null) {
-                    result.accept(SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE);
+                    result.accept(SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE);
                     return;
                 }
                 phone.unregisterForSatellitePositionInfoChanged(handler);
@@ -352,7 +352,7 @@ public class PointingAppController {
         if (mStartedSatelliteTransmissionUpdates) {
             logd("startSatelliteTransmissionUpdates: already started");
             AsyncResult.forMessage(message, null, new SatelliteManager.SatelliteException(
-                    SatelliteManager.SATELLITE_ERROR_NONE));
+                    SatelliteManager.SATELLITE_RESULT_SUCCESS));
             message.sendToTarget();
             return;
         }
@@ -367,7 +367,7 @@ public class PointingAppController {
         } else {
             loge("startSatelliteTransmissionUpdates: No phone object");
             AsyncResult.forMessage(message, null, new SatelliteManager.SatelliteException(
-                    SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE));
+                    SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE));
             message.sendToTarget();
         }
     }
@@ -388,7 +388,7 @@ public class PointingAppController {
         } else {
             loge("startSatelliteTransmissionUpdates: No phone object");
             AsyncResult.forMessage(message, null, new SatelliteManager.SatelliteException(
-                    SatelliteManager.SATELLITE_INVALID_TELEPHONY_STATE));
+                    SatelliteManager.SATELLITE_RESULT_INVALID_TELEPHONY_STATE));
             message.sendToTarget();
         }
     }

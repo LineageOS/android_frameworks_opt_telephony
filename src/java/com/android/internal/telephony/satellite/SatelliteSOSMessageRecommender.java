@@ -17,7 +17,7 @@
 package com.android.internal.telephony.satellite;
 
 import static android.telephony.satellite.SatelliteManager.KEY_SATELLITE_COMMUNICATION_ALLOWED;
-import static android.telephony.satellite.SatelliteManager.SATELLITE_ERROR_NONE;
+import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SUCCESS;
 
 import android.annotation.NonNull;
 import android.os.AsyncResult;
@@ -27,11 +27,11 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.ResultReceiver;
 import android.provider.DeviceConfig;
-import android.telecom.Call;
 import android.telecom.Connection;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsRegistrationAttributes;
 import android.telephony.ims.RegistrationManager;
@@ -148,7 +148,7 @@ public class SatelliteSOSMessageRecommender extends Handler {
         mReceiverForRequestIsSatelliteAllowedForCurrentLocation = new ResultReceiver(this) {
             @Override
             protected void onReceiveResult(int resultCode, Bundle resultData) {
-                if (resultCode == SATELLITE_ERROR_NONE) {
+                if (resultCode == SATELLITE_RESULT_SUCCESS) {
                     if (resultData.containsKey(KEY_SATELLITE_COMMUNICATION_ALLOWED)) {
                         boolean isSatelliteCommunicationAllowed =
                                 resultData.getBoolean(KEY_SATELLITE_COMMUNICATION_ALLOWED);
@@ -259,7 +259,8 @@ public class SatelliteSOSMessageRecommender extends Handler {
                 && mSatelliteController.isSatelliteProvisioned()
                 && shouldTrackCall(mEmergencyConnection.getState())) {
             logd("handleTimeoutEvent: Sending EVENT_DISPLAY_SOS_MESSAGE to Dialer...");
-            mEmergencyConnection.sendConnectionEvent(Call.EVENT_DISPLAY_SOS_MESSAGE, null);
+            mEmergencyConnection.sendConnectionEvent(TelephonyManager.EVENT_DISPLAY_SOS_MESSAGE,
+                    null);
             isDialerNotified = true;
         }
         reportEsosRecommenderDecision(isDialerNotified);

@@ -95,6 +95,7 @@ import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyPermissions;
 import com.android.internal.telephony.data.PhoneSwitcher;
 import com.android.internal.telephony.euicc.EuiccController;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.subscription.SubscriptionDatabaseManager.SubscriptionDatabaseManagerCallback;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
@@ -193,6 +194,10 @@ public class SubscriptionManagerService extends ISub.Stub {
     /** The context */
     @NonNull
     private final Context mContext;
+
+    /** Feature flags */
+    @NonNull
+    private final FeatureFlags mFeatureFlags;
 
     /** App Ops manager instance. */
     @NonNull
@@ -406,10 +411,12 @@ public class SubscriptionManagerService extends ISub.Stub {
      * @param context The context
      * @param looper The looper for the handler.
      */
-    public SubscriptionManagerService(@NonNull Context context, @NonNull Looper looper) {
+    public SubscriptionManagerService(@NonNull Context context, @NonNull Looper looper,
+            @NonNull FeatureFlags featureFlags) {
         logl("Created SubscriptionManagerService");
         sInstance = this;
         mContext = context;
+        mFeatureFlags = featureFlags;
         mTelephonyManager = context.getSystemService(TelephonyManager.class);
         mSubscriptionManager = context.getSystemService(SubscriptionManager.class);
         mEuiccManager = context.getSystemService(EuiccManager.class);
@@ -488,7 +495,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                     @Override
                     public void onInitialized() {
                         log("Subscription database has been initialized.");
-                        for (int phoneId = 0; phoneId < mTelephonyManager.getActiveModemCount()
+                        for (int phoneId = 0; phoneId < mTelephonyManager.getSupportedModemCount()
                                 ; phoneId++) {
                             markSubscriptionsInactive(phoneId);
                         }
@@ -1119,6 +1126,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                     // CARD_ID field should not contain the EID
                     if (cardId >= 0 && mUiccController.getCardIdForDefaultEuicc()
                             != TelephonyManager.UNSUPPORTED_CARD_ID) {
+                        builder.setCardId(cardId);
                         builder.setCardString(mUiccController.convertToCardString(cardId));
                     }
 
@@ -3593,7 +3601,6 @@ public class SubscriptionManagerService extends ISub.Stub {
             }
 
             UserHandle userHandle = UserHandle.of(subInfo.getUserId());
-            logv("getSubscriptionUserHandle subId = " + subId + " userHandle = " + userHandle);
             if (userHandle.getIdentifier() == UserHandle.USER_NULL) {
                 return null;
             }
@@ -3977,15 +3984,6 @@ public class SubscriptionManagerService extends ISub.Stub {
     private void logl(@NonNull String s) {
         log(s);
         mLocalLog.log(s);
-    }
-
-    /**
-     * Log verbose messages.
-     *
-     * @param s verbose messages
-     */
-    private void logv(@NonNull String s) {
-        Rlog.v(LOG_TAG, s);
     }
 
     /**

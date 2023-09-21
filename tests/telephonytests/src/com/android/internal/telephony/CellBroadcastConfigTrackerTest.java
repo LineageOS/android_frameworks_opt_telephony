@@ -42,6 +42,7 @@ import android.testing.AndroidTestingRunner;
 import android.testing.TestableLooper;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 
 import org.junit.After;
@@ -49,6 +50,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,13 +62,15 @@ public final class CellBroadcastConfigTrackerTest extends TelephonyTest {
 
     private CommandsInterface mSpyCi;
     private CellBroadcastConfigTracker mTracker;
+    @Mock private FeatureFlags mFeatureFlags;
 
     @Before
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         mSpyCi = spy(mSimulatedCommands);
         mPhone = new GsmCdmaPhone(mContext, mSpyCi, mNotifier, true, 0,
-            PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory, (c, p) -> mImsManager);
+            PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory, (c, p) -> mImsManager,
+                mFeatureFlags);
         mTracker = CellBroadcastConfigTracker.make(mPhone, mPhone, true);
         mPhone.mCellBroadcastConfigTracker = mTracker;
         processAllMessages();

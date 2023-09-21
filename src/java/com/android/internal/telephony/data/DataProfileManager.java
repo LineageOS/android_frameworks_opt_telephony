@@ -163,8 +163,9 @@ public class DataProfileManager extends Handler {
         mDataNetworkController.registerDataNetworkControllerCallback(
                 new DataNetworkControllerCallback(this::post) {
                     @Override
-                    public void onInternetDataNetworkConnected(
-                            @NonNull List<DataNetwork> internetNetworks) {
+                    public void onConnectedInternetDataNetworksChanged(
+                            @NonNull Set<DataNetwork> internetNetworks) {
+                        if (internetNetworks.isEmpty()) return;
                         DataProfileManager.this.onInternetDataNetworkConnected(internetNetworks);
                     }
 
@@ -405,11 +406,11 @@ public class DataProfileManager extends Handler {
     }
 
     /**
-     * Called when internet data is connected.
+     * Called when new internet data connect.
      *
      * @param internetNetworks The connected internet data networks.
      */
-    private void onInternetDataNetworkConnected(@NonNull List<DataNetwork> internetNetworks) {
+    private void onInternetDataNetworkConnected(@NonNull Set<DataNetwork> internetNetworks) {
         // Most of the cases there should be only one.
         // but in case there are multiple, find the default internet network, and choose the
         // one which has longest life cycle.

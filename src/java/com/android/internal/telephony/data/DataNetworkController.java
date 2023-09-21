@@ -99,6 +99,7 @@ import com.android.internal.telephony.data.DataRetryManager.DataSetupRetryEntry;
 import com.android.internal.telephony.data.DataSettingsManager.DataSettingsManagerCallback;
 import com.android.internal.telephony.data.DataStallRecoveryManager.DataStallRecoveryManagerCallback;
 import com.android.internal.telephony.data.LinkBandwidthEstimator.LinkBandwidthEstimatorCallback;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.ims.ImsResolver;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.telephony.Rlog;
@@ -112,6 +113,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -296,6 +298,9 @@ public class DataNetworkController extends Handler {
      */
     private @DataState int mInternetDataNetworkState = TelephonyManager.DATA_DISCONNECTED;
 
+    /** All the current connected/handover internet networks.  */
+    @NonNull private Set<DataNetwork> mConnectedInternetNetworks = new HashSet<>();
+
     /**
      * The IMS data network state. For now this is just for debugging purposes.
      */
@@ -378,6 +383,8 @@ public class DataNetworkController extends Handler {
 
     /** True after try to release an IMS network; False after try to request an IMS network. */
     private boolean mLastImsOperationIsRelease;
+
+    private final @NonNull FeatureFlags mFeatureFlags;
 
     /** The broadcast receiver. */
     private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
@@ -559,12 +566,13 @@ public class DataNetworkController extends Handler {
                 @ValidationStatus int validationStatus) {}
 
         /**
-         * Called when internet data network is connected.
+         * Called when a network that's capable of internet is newly connected or disconnected.
          *
          * @param internetNetworks The connected internet data network. It should be only one in
          *                         most of the cases.
          */
-        public void onInternetDataNetworkConnected(@NonNull List<DataNetwork> internetNetworks) {}
+        public void onConnectedInternetDataNetworksChanged(@NonNull Set<DataNetwork>
+                internetNetworks) {}
 
         /**
          * Called when data network is connected.
@@ -574,9 +582,6 @@ public class DataNetworkController extends Handler {
          */
         public void onDataNetworkConnected(@TransportType int transport,
                 @NonNull DataProfile dataProfile) {}
-
-        /** Called when internet data network is disconnected. */
-        public void onInternetDataNetworkDisconnected() {}
 
         /**
          * Called when any data network existing status changed.
@@ -793,10 +798,13 @@ public class DataNetworkController extends Handler {
      * @param phone The phone instance.
      * @param looper The looper to be used by the handler. Currently the handler thread is the
      * phone process's main thread.
+     * @param featureFlags The feature flag.
      */
-    public DataNetworkController(@NonNull Phone phone, @NonNull Looper looper) {
+    public DataNetworkController(@NonNull Phone phone, @NonNull Looper looper,
+            @NonNull FeatureFlags featureFlags) {
         super(looper);
         mPhone = phone;
+        mFeatureFlags = featureFlags;
         mLogTag = "DNC-" + mPhone.getPhoneId();
         log("DataNetworkController created.");
 
@@ -2147,8 +2155,7 @@ public class DataNetworkController extends Handler {
         for (DataNetwork dataNetwork : mDataNetworkList) {
             if (dataNetwork.getId() == cid
                     && dataNetwork.isConnected()
-                    && dataNetwork.getNetworkCapabilities()
-                    .hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                    && dataNetwork.isInternetSupported()) {
                 return true;
             }
         }
@@ -2244,7 +2251,8 @@ public class DataNetworkController extends Handler {
     @Nullable
     public DataNetwork getDataNetworkByInterface(@NonNull String interfaceName) {
         return mDataNetworkList.stream()
-                .filter(dataNetwork -> !dataNetwork.isDisconnecting())
+                .filter(dataNetwork -> !(dataNetwork.isDisconnecting()
+                        || dataNetwork.isDisconnected()))
                 .filter(dataNetwork -> interfaceName.equals(
                         dataNetwork.getLinkProperties().getInterfaceName()))
                 .findFirst()
@@ -2737,7 +2745,7 @@ public class DataNetworkController extends Handler {
             mPreviousConnectedDataNetworkList.remove(MAX_HISTORICAL_CONNECTED_DATA_NETWORKS);
         }
 
-        updateOverallInternetDataState();
+        if (dataNetwork.isInternetSupported()) updateOverallInternetDataState();
 
         if (dataNetwork.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_IMS)) {
@@ -2929,7 +2937,7 @@ public class DataNetworkController extends Handler {
      */
     private void onDataNetworkSuspendedStateChanged(@NonNull DataNetwork dataNetwork,
             boolean suspended) {
-        updateOverallInternetDataState();
+        if (dataNetwork.isInternetSupported()) updateOverallInternetDataState();
 
         if (dataNetwork.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_IMS)) {
@@ -2956,7 +2964,7 @@ public class DataNetworkController extends Handler {
         mDataNetworkList.remove(dataNetwork);
         mPendingImsDeregDataNetworks.remove(dataNetwork);
         mDataRetryManager.cancelPendingHandoverRetry(dataNetwork);
-        updateOverallInternetDataState();
+        if (dataNetwork.isInternetSupported()) updateOverallInternetDataState();
 
         if (dataNetwork.getNetworkCapabilities().hasCapability(
                 NetworkCapabilities.NET_CAPABILITY_IMS)) {
@@ -3228,16 +3236,18 @@ public class DataNetworkController extends Handler {
             logl("Start handover " + dataNetwork + " to "
                     + AccessNetworkConstants.transportTypeToString(targetTransport));
             dataNetwork.startHandover(targetTransport, dataHandoverRetryEntry);
-        } else if (dataEvaluation.containsOnly(DataDisallowedReason.NOT_IN_SERVICE)
-                && dataNetwork.shouldDelayImsTearDownDueToInCall()) {
-            // We try to preserve voice call in the case of temporary preferred transport mismatch
+        } else if (dataNetwork.shouldDelayImsTearDownDueToInCall()
+                && dataEvaluation.containsOnly(
+                        DataDisallowedReason.NOT_IN_SERVICE,
+                        DataDisallowedReason.NOT_ALLOWED_BY_POLICY)) {
+            // We try our best to preserve the voice call by retrying later
             if (dataHandoverRetryEntry != null) {
                 dataHandoverRetryEntry.setState(DataRetryEntry.RETRY_STATE_FAILED);
             }
             mDataRetryManager.evaluateDataHandoverRetry(dataNetwork,
                     DataFailCause.HANDOVER_FAILED,
                     DataCallResponse.RETRY_DURATION_UNDEFINED /* retry mills */);
-            logl("tryHandoverDataNetwork: Scheduled retry due to in voice call and target OOS");
+            logl("tryHandoverDataNetwork: Scheduled retry due to in voice call");
         } else if (dataEvaluation.containsAny(DataDisallowedReason.NOT_ALLOWED_BY_POLICY,
                 DataDisallowedReason.NOT_IN_SERVICE,
                 DataDisallowedReason.VOPS_NOT_SUPPORTED)) {
@@ -3246,8 +3256,7 @@ public class DataNetworkController extends Handler {
                     + AccessNetworkConstants.transportTypeToString(targetTransport));
             tearDownGracefully(dataNetwork,
                     DataNetwork.TEAR_DOWN_REASON_HANDOVER_NOT_ALLOWED);
-        } else if (dataEvaluation.containsAny(DataDisallowedReason.ILLEGAL_STATE,
-                DataDisallowedReason.RETRY_SCHEDULED)) {
+        } else if (dataEvaluation.containsAny(DataDisallowedReason.ILLEGAL_STATE)) {
             logl("tryHandoverDataNetwork: Handover not allowed. " + dataNetwork
                     + " will remain on " + AccessNetworkConstants.transportTypeToString(
                     dataNetwork.getTransport()));
@@ -3352,8 +3361,7 @@ public class DataNetworkController extends Handler {
             dataNetwork.attachNetworkRequests(networkRequestList);
         }
 
-        if (dataNetwork.getNetworkCapabilities().hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+        if (dataNetwork.isInternetSupported()) {
             // Update because DataNetwork#isInternetSupported might have changed with capabilities.
             updateOverallInternetDataState();
         }
@@ -3530,11 +3538,11 @@ public class DataNetworkController extends Handler {
                 .anyMatch(dataNetwork -> dataNetwork.isInternetSupported()
                         && (dataNetwork.isConnected() || dataNetwork.isHandoverInProgress()));
         // If any one is not suspended, then the overall is not suspended.
-        List<DataNetwork> allConnectedInternetDataNetworks = mDataNetworkList.stream()
+        Set<DataNetwork> allConnectedInternetDataNetworks = mDataNetworkList.stream()
                 .filter(DataNetwork::isInternetSupported)
                 .filter(dataNetwork -> dataNetwork.isConnected()
                         || dataNetwork.isHandoverInProgress())
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
         boolean isSuspended = !allConnectedInternetDataNetworks.isEmpty()
                 && allConnectedInternetDataNetworks.stream().allMatch(DataNetwork::isSuspended);
         logv("isSuspended=" + isSuspended + ", anyInternetConnected=" + anyInternetConnected
@@ -3551,18 +3559,14 @@ public class DataNetworkController extends Handler {
             logl("Internet data state changed from "
                     + TelephonyUtils.dataStateToString(mInternetDataNetworkState) + " to "
                     + TelephonyUtils.dataStateToString(dataNetworkState) + ".");
-            // TODO: Create a new route to notify TelephonyRegistry.
-            if (dataNetworkState == TelephonyManager.DATA_CONNECTED
-                    && mInternetDataNetworkState == TelephonyManager.DATA_DISCONNECTED) {
-                mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
-                        () -> callback.onInternetDataNetworkConnected(
-                                allConnectedInternetDataNetworks)));
-            } else if (dataNetworkState == TelephonyManager.DATA_DISCONNECTED
-                    && mInternetDataNetworkState == TelephonyManager.DATA_CONNECTED) {
-                mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
-                        callback::onInternetDataNetworkDisconnected));
-            } // TODO: Add suspended callback if needed.
             mInternetDataNetworkState = dataNetworkState;
+        }
+        // Check data network reference equality to update current connected internet networks.
+        if (!mConnectedInternetNetworks.equals(allConnectedInternetDataNetworks)) {
+            mConnectedInternetNetworks = allConnectedInternetDataNetworks;
+            mDataNetworkControllerCallbacks.forEach(callback -> callback.invokeFromExecutor(
+                    () -> callback.onConnectedInternetDataNetworksChanged(
+                            allConnectedInternetDataNetworks)));
         }
     }
 
@@ -3817,6 +3821,10 @@ public class DataNetworkController extends Handler {
      * while using satellite else {@code false}
      */
     private boolean isDataDisallowedDueToSatellite(@NetCapability int[] capabilities) {
+        if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
+            return false;
+        }
+
         if (!mServiceState.isUsingNonTerrestrialNetwork()) {
             // Device is not connected to satellite
             return false;

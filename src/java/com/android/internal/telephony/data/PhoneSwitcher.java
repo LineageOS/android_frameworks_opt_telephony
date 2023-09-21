@@ -28,7 +28,6 @@ import static android.telephony.TelephonyManager.SET_OPPORTUNISTIC_SUB_VALIDATIO
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_CROSS_SIM;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_IWLAN;
 import static android.telephony.ims.stub.ImsRegistrationImplBase.REGISTRATION_TECH_NONE;
-
 import static java.util.Arrays.copyOf;
 
 import android.annotation.NonNull;
@@ -73,6 +72,7 @@ import android.util.Log;
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.ISetOpportunisticDataCallback;
 import com.android.internal.telephony.IccCard;
@@ -194,8 +194,6 @@ public class PhoneSwitcher extends Handler {
     private int mPendingSwitchSubId = INVALID_SUBSCRIPTION_ID;
     /** The reason for the last time changing preferred data sub **/
     private int mLastSwitchPreferredDataReason = -1;
-    /** {@code true} if we've displayed the notification the first time auto switch occurs **/
-    private boolean mDisplayedAutoSwitchNotification = false;
     private boolean mPendingSwitchNeedValidation;
     @VisibleForTesting
     public final CellularNetworkValidator.ValidationCallback mValidationCallback =
@@ -312,14 +310,16 @@ public class PhoneSwitcher extends Handler {
     // Default timeout value of network validation in millisecond.
     private final static int DEFAULT_VALIDATION_EXPIRATION_TIME = 2000;
 
+    /** Controller that tracks {@link TelephonyManager#MOBILE_DATA_POLICY_AUTO_DATA_SWITCH} */
+    @NonNull private final AutoDataSwitchController mAutoDataSwitchController;
+    /** Callback to deal with requests made by the auto data switch controller. */
+    @NonNull private final AutoDataSwitchController.AutoDataSwitchControllerCallback
+            mAutoDataSwitchCallback;
+
     private ConnectivityManager mConnectivityManager;
     private int mImsRegistrationTech = REGISTRATION_TECH_NONE;
 
     private List<Set<CommandException.Error>> mCurrentDdsSwitchFailure;
-
-    private AutoDataSwitchController mAutoDataSwitchController;
-    private AutoDataSwitchController.AutoDataSwitchControllerCallback
-            mAutoDataSwitchCallback;
 
     /** Data settings manager callback. Key is the phone id. */
     private final @NonNull Map<Integer, DataSettingsManagerCallback> mDataSettingsManagerCallbacks =
@@ -647,6 +647,7 @@ public class PhoneSwitcher extends Handler {
     public void handleMessage(Message msg) {
         switch (msg.what) {
             case EVENT_SUBSCRIPTION_CHANGED: {
+                mAutoDataSwitchController.notifySubscriptionsChanged();
                 onEvaluate(REQUESTS_UNCHANGED, "subscription changed");
                 break;
             }
@@ -1678,8 +1679,14 @@ public class PhoneSwitcher extends Handler {
         }
 
         // A phone in voice call might trigger data being switched to it.
+        // Exclude dialing to give modem time to process an EMC first before dealing with DDS switch
+        // Include alerting because modem RLF leads to delay in switch, so carrier required to
+        // switch in alerting phase.
+        // TODO: check ringing call for vDADA
         return (!phone.getBackgroundCall().isIdle()
-                || !phone.getForegroundCall().isIdle());
+                && phone.getBackgroundCall().getState() != Call.State.DIALING)
+                || (!phone.getForegroundCall().isIdle()
+                && phone.getForegroundCall().getState() != Call.State.DIALING);
     }
 
     private void updateHalCommandToUse() {
@@ -1832,7 +1839,6 @@ public class PhoneSwitcher extends Handler {
         pw.println("mCurrentDdsSwitchFailure=" + mCurrentDdsSwitchFailure);
         pw.println("mLastSwitchPreferredDataReason="
                 + switchReasonToString(mLastSwitchPreferredDataReason));
-        pw.println("mDisplayedAutoSwitchNotification=" + mDisplayedAutoSwitchNotification);
         pw.println("Local logs:");
         pw.increaseIndent();
         mLocalLog.dump(fd, pw, args);

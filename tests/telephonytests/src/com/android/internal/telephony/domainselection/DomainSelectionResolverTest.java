@@ -137,12 +137,37 @@ public class DomainSelectionResolverTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testGetDomainSelectionConnectionWhenImsPhoneNull() throws Exception {
+        setUpResolver(true, RADIO_HAL_VERSION_2_1);
+        mDsResolver.initialize(mDsService);
+        when(mPhone.getImsPhone()).thenReturn(null);
+
+        assertNull(mDsResolver.getDomainSelectionConnection(mPhone, SELECTOR_TYPE_CALLING, true));
+    }
+
+    @Test
+    @SmallTest
     public void testGetDomainSelectionConnectionWhenImsNotAvailable() throws Exception {
         setUpResolver(true, RADIO_HAL_VERSION_2_1);
         mDsResolver.initialize(mDsService);
         when(mPhone.isImsAvailable()).thenReturn(false);
+        when(mPhone.getImsPhone()).thenReturn(mImsPhone);
 
-        assertNull(mDsResolver.getDomainSelectionConnection(mPhone, SELECTOR_TYPE_CALLING, true));
+        assertNull(mDsResolver.getDomainSelectionConnection(mPhone, SELECTOR_TYPE_CALLING, false));
+    }
+
+    @Test
+    @SmallTest
+    public void testGetDomainSelectionConnectionWhenImsNotAvailableForEmergencyCall()
+            throws Exception {
+        setUpResolver(true, RADIO_HAL_VERSION_2_1);
+        setUpController();
+        mDsResolver.initialize(mDsService);
+        when(mPhone.isImsAvailable()).thenReturn(false);
+        when(mPhone.getImsPhone()).thenReturn(mImsPhone);
+
+        assertNotNull(mDsResolver.getDomainSelectionConnection(mPhone,
+                SELECTOR_TYPE_CALLING, true));
     }
 
     @Test
@@ -152,6 +177,7 @@ public class DomainSelectionResolverTest extends TelephonyTest {
         setUpController();
         mDsResolver.initialize(mDsService);
         when(mPhone.isImsAvailable()).thenReturn(true);
+        when(mPhone.getImsPhone()).thenReturn(mImsPhone);
 
         assertNotNull(mDsResolver.getDomainSelectionConnection(
                 mPhone, SELECTOR_TYPE_CALLING, true));

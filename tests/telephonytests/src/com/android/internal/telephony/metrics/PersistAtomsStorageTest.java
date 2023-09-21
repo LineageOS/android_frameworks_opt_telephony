@@ -1017,7 +1017,8 @@ public class PersistAtomsStorageTest extends TelephonyTest {
         mSatelliteProvision1.isCanceled = false;
 
         mSatelliteProvision2 = new SatelliteProvision();
-        mSatelliteProvision2.resultCode = SatelliteProtoEnums.SATELLITE_SERVICE_NOT_PROVISIONED;
+        mSatelliteProvision2.resultCode =
+                SatelliteProtoEnums.SATELLITE_SERVICE_NOT_PROVISIONED;
         mSatelliteProvision2.provisioningTimeSec = 0;
         mSatelliteProvision2.isProvisionRequest = false;
         mSatelliteProvision2.isCanceled = true;

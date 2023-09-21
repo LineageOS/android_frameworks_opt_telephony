@@ -165,6 +165,7 @@ public class NetworkTypeController extends StateMachine {
     private int mLtePlusThresholdBandwidth;
     private int mNrAdvancedThresholdBandwidth;
     private boolean mIncludeLteForNrAdvancedThresholdBandwidth;
+    private boolean mRatchetPccFieldsForSameAnchorNrCell;
     @NonNull private final Set<Integer> mAdditionalNrAdvancedBands = new HashSet<>();
     @NonNull private String mPrimaryTimerState;
     @NonNull private String mSecondaryTimerState;
@@ -300,6 +301,8 @@ public class NetworkTypeController extends StateMachine {
                 CarrierConfigManager.KEY_NR_ADVANCED_THRESHOLD_BANDWIDTH_KHZ_INT);
         mIncludeLteForNrAdvancedThresholdBandwidth = config.getBoolean(
                 CarrierConfigManager.KEY_INCLUDE_LTE_FOR_NR_ADVANCED_THRESHOLD_BANDWIDTH_BOOL);
+        mRatchetPccFieldsForSameAnchorNrCell = config.getBoolean(
+                CarrierConfigManager.KEY_RATCHET_NR_ADVANCED_BANDWIDTH_IF_RRC_IDLE_BOOL);
         mEnableNrAdvancedWhileRoaming = config.getBoolean(
                 CarrierConfigManager.KEY_ENABLE_NR_ADVANCED_WHILE_ROAMING_BOOL);
         mAdditionalNrAdvancedBands.clear();
@@ -565,9 +568,9 @@ public class NetworkTypeController extends StateMachine {
                     quit();
                     break;
                 case EVENT_INITIALIZE:
-                    // The reason that we do it here is because some of the works below requires
-                    // other modules (e.g. DataNetworkController, ServiceStateTracker), which is not
-                    // created yet when NetworkTypeController is created.
+                    // The reason that we do it here is that the work below requires other modules
+                    // (e.g. DataNetworkController, ServiceStateTracker), which are not created
+                    // when NetworkTypeController is created.
                     registerForAllEvents();
                     parseCarrierConfigs();
                     break;
@@ -1056,55 +1059,63 @@ public class NetworkTypeController extends StateMachine {
     private void updatePhysicalChannelConfigs() {
         List<PhysicalChannelConfig> physicalChannelConfigs =
                 mPhone.getServiceStateTracker().getPhysicalChannelConfigList();
+        boolean isPccListEmpty = physicalChannelConfigs == null || physicalChannelConfigs.isEmpty();
+        if (isPccListEmpty && isUsingPhysicalChannelConfigForRrcDetection()) {
+            log("Physical channel configs updated: not updating PCC fields for empty PCC list "
+                    + "indicating RRC idle.");
+            mPhysicalChannelConfigs = physicalChannelConfigs;
+            return;
+        }
 
         int anchorNrCellId = PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN;
-        boolean anchorNrCellFound = false;
+        int anchorLteCellId = PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN;
         int nrBandwidths = 0;
         Set<Integer> nrBands = new HashSet<>();
         if (physicalChannelConfigs != null) {
             for (PhysicalChannelConfig config : physicalChannelConfigs) {
                 if (config.getNetworkType() == TelephonyManager.NETWORK_TYPE_NR) {
-                    if (!anchorNrCellFound && config.getConnectionStatus()
-                            == CellInfo.CONNECTION_PRIMARY_SERVING) {
-                        // Make sure the anchor NR cell is the first one we find in the list
+                    if (config.getConnectionStatus() == CellInfo.CONNECTION_PRIMARY_SERVING
+                            && anchorNrCellId == PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN) {
                         anchorNrCellId = config.getPhysicalCellId();
-                        anchorNrCellFound = true;
                     }
                     nrBandwidths += config.getCellBandwidthDownlinkKhz();
                     nrBands.add(config.getBand());
-                } else if (mIncludeLteForNrAdvancedThresholdBandwidth) {
-                    nrBandwidths += config.getCellBandwidthDownlinkKhz();
+                } else if (config.getNetworkType() == TelephonyManager.NETWORK_TYPE_LTE) {
+                    if (config.getConnectionStatus() == CellInfo.CONNECTION_PRIMARY_SERVING
+                            && anchorLteCellId == PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN) {
+                        anchorLteCellId = config.getPhysicalCellId();
+                    }
+                    if (mIncludeLteForNrAdvancedThresholdBandwidth) {
+                        nrBandwidths += config.getCellBandwidthDownlinkKhz();
+                    }
                 }
             }
         }
 
-        boolean wasLastAnchorNrCellIdValid =
-                mLastAnchorNrCellId != PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN;
-        if ((physicalChannelConfigs == null || physicalChannelConfigs.isEmpty())
-                && wasLastAnchorNrCellIdValid && isUsingPhysicalChannelConfigForRrcDetection()) {
-            log("Keep same anchor NR cell and PCC fields for empty PCC list indicating RRC idle.");
-            // Set to mLastAnchorNrCellId since it will be UNKNOWN if the PCC list is empty
-            anchorNrCellId = mLastAnchorNrCellId;
+        // Update anchor NR cell from anchor LTE cell for NR NSA
+        if (anchorNrCellId == PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN
+                && anchorLteCellId != PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN) {
+            anchorNrCellId = anchorLteCellId;
         }
-        if (mLastAnchorNrCellId == anchorNrCellId && wasLastAnchorNrCellIdValid) {
+
+        if (anchorNrCellId == PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN) {
+            if (!isPccListEmpty) {
+                log("Ignoring physical channel config fields without an anchor NR cell, "
+                        + "either due to LTE-only configs or an unspecified cell ID.");
+            }
+            mRatchetedNrBandwidths = 0;
+            mRatchetedNrBands.clear();
+        } else if (anchorNrCellId == mLastAnchorNrCellId && mRatchetPccFieldsForSameAnchorNrCell) {
             log("Ratchet physical channel config fields since anchor NR cell is the same.");
             mRatchetedNrBandwidths = Math.max(mRatchetedNrBandwidths, nrBandwidths);
             mRatchetedNrBands.addAll(nrBands);
         } else {
-            if (anchorNrCellId == PhysicalChannelConfig.PHYSICAL_CELL_ID_UNKNOWN) {
-                if (wasLastAnchorNrCellIdValid) {
-                    // Only log when the previous anchor NR cell was valid to prevent log spam
-                    log("Clearing physical channel config fields without an anchor NR cell, "
-                            + "either due to LTE-only configs or an unspecified cell ID.");
-                }
-                mRatchetedNrBandwidths = 0;
-                mRatchetedNrBands.clear();
-            } else {
-                log("Not ratcheting physical channel config fields since anchor NR cell changed "
+            if (mRatchetPccFieldsForSameAnchorNrCell) {
+                log("Not ratcheting physical channel config fields since anchor NR cell changed: "
                         + mLastAnchorNrCellId + " -> " + anchorNrCellId);
-                mRatchetedNrBandwidths = nrBandwidths;
-                mRatchetedNrBands = nrBands;
             }
+            mRatchetedNrBandwidths = nrBandwidths;
+            mRatchetedNrBands = nrBands;
         }
 
         mLastAnchorNrCellId = anchorNrCellId;
@@ -1341,7 +1352,7 @@ public class NetworkTypeController extends StateMachine {
         // Check PCO requirement. For carriers using PCO to indicate whether the data connection is
         // NR advanced capable, mNrAdvancedCapablePcoId should be configured to non-zero.
         if (mNrAdvancedCapablePcoId > 0 && !mIsNrAdvancedAllowedByPco) {
-            if (DBG) log("isNrAdvanced: false because PCO ID " + mNrAdvancedCapablePcoId + " <= 0");
+            if (DBG) log("isNrAdvanced: not allowed by PCO for PCO ID " + mNrAdvancedCapablePcoId);
             return false;
         }
 
@@ -1355,7 +1366,7 @@ public class NetworkTypeController extends StateMachine {
         // Check if meeting minimum bandwidth requirement. For most carriers, there is no minimum
         // bandwidth requirement and mNrAdvancedThresholdBandwidth is 0.
         if (mNrAdvancedThresholdBandwidth > 0
-                && mRatchetedNrBandwidths <= mNrAdvancedThresholdBandwidth) {
+                && mRatchetedNrBandwidths < mNrAdvancedThresholdBandwidth) {
             if (DBG) {
                 log("isNrAdvanced: false because bandwidths=" + mRatchetedNrBandwidths
                         + " does not meet the threshold=" + mNrAdvancedThresholdBandwidth);
@@ -1450,6 +1461,9 @@ public class NetworkTypeController extends StateMachine {
                 + mIsTimerResetEnabledForLegacyStateRrcIdle);
         pw.println("mLtePlusThresholdBandwidth=" + mLtePlusThresholdBandwidth);
         pw.println("mNrAdvancedThresholdBandwidth=" + mNrAdvancedThresholdBandwidth);
+        pw.println("mIncludeLteForNrAdvancedThresholdBandwidth="
+                + mIncludeLteForNrAdvancedThresholdBandwidth);
+        pw.println("mRatchetPccFieldsForSameAnchorNrCell=" + mRatchetPccFieldsForSameAnchorNrCell);
         pw.println("mRatchetedNrBandwidths=" + mRatchetedNrBandwidths);
         pw.println("mAdditionalNrAdvancedBandsList=" + mAdditionalNrAdvancedBands);
         pw.println("mRatchetedNrBands=" + mRatchetedNrBands);
