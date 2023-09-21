@@ -48,6 +48,7 @@ import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -278,61 +279,6 @@ public class SatelliteServiceUtils {
     }
 
     /**
-     * Expected format of each input string in the array: "PLMN_1:service_1,service_2,..."
-     *
-     * @return The map of supported services with key: PLMN, value: set of services supported by
-     * the PLMN.
-     */
-    @NonNull
-    @NetworkRegistrationInfo.ServiceType
-    public static Map<String, Set<Integer>> parseSupportedSatelliteServices(
-            String[] supportedSatelliteServicesStrArray) {
-        Map<String, Set<Integer>> supportedServicesMap = new HashMap<>();
-        if (supportedSatelliteServicesStrArray == null
-                || supportedSatelliteServicesStrArray.length == 0) {
-            return supportedServicesMap;
-        }
-
-        for (String supportedServicesPerPlmnStr : supportedSatelliteServicesStrArray) {
-            String[] pairOfPlmnAndsupportedServicesStr =
-                    supportedServicesPerPlmnStr.split(":");
-            if (pairOfPlmnAndsupportedServicesStr != null
-                    && (pairOfPlmnAndsupportedServicesStr.length == 1
-                    || pairOfPlmnAndsupportedServicesStr.length == 2)) {
-                String plmn = pairOfPlmnAndsupportedServicesStr[0];
-                Set<Integer> supportedServicesSet = new HashSet<>();
-                if (pairOfPlmnAndsupportedServicesStr.length == 2) {
-                    String[] supportedServicesStrArray =
-                            pairOfPlmnAndsupportedServicesStr[1].split(",");
-                    for (String service : supportedServicesStrArray) {
-                        try {
-                            int serviceType = Integer.parseInt(service);
-                            if (isServiceTypeValid(serviceType)) {
-                                supportedServicesSet.add(serviceType);
-                            } else {
-                                loge("parseSupportedSatelliteServices: invalid serviceType="
-                                        + serviceType);
-                            }
-                        } catch (NumberFormatException e) {
-                            loge("parseSupportedSatelliteServices: supportedServicesPerPlmnStr="
-                                    + supportedServicesPerPlmnStr + ", service=" + service
-                                    + ", e=" + e);
-                        }
-                    }
-                }
-                logd("parseSupportedSatelliteServices: plmn=" + plmn + ", supportedServicesSet="
-                        + supportedServicesSet.stream().map(String::valueOf).collect(
-                                joining(",")));
-                supportedServicesMap.put(plmn, supportedServicesSet);
-            } else {
-                loge("parseSupportedSatelliteServices: invalid format input, "
-                        + "supportedServicesPerPlmnStr=" + supportedServicesPerPlmnStr);
-            }
-        }
-        return supportedServicesMap;
-    }
-
-    /**
      * Expected format of the input dictionary bundle is:
      * <ul>
      *     <li>Key: PLMN string.</li>
@@ -369,36 +315,14 @@ public class SatelliteServiceUtils {
     }
 
     /**
-     * For the PLMN that exists in {@code carrierSupportedServices}, the carrier supported services
-     * will be used. For the PLMN that is present in {@code providerSupportedServices} but not in
-     * {@code carrierSupportedServices}, the provider supported services will be used.
-     *
-     * @param providerSupportedServices Satellite provider supported satellite services.
-     * @param carrierSupportedServices Carrier supported satellite services.
-     * @return The supported satellite services by the device for the corresponding carrier and the
-     * satellite provider.
+     * Merge two string lists into one such that the result list does not have any duplicate items.
      */
     @NonNull
-    @NetworkRegistrationInfo.ServiceType
-    public static Map<String, Set<Integer>> mergeSupportedSatelliteServices(
-            @NonNull @NetworkRegistrationInfo.ServiceType Map<String, Set<Integer>>
-                    providerSupportedServices,
-            @NonNull @NetworkRegistrationInfo.ServiceType Map<String, Set<Integer>>
-                    carrierSupportedServices) {
-        Map<String, Set<Integer>> supportedServicesMap = new HashMap<>();
-        for (Map.Entry<String, Set<Integer>> entry : providerSupportedServices.entrySet()) {
-            if (!entry.getValue().isEmpty()) {
-                supportedServicesMap.put(entry.getKey(), entry.getValue());
-            }
-        }
-        for (Map.Entry<String, Set<Integer>> entry : carrierSupportedServices.entrySet()) {
-            if (entry.getValue().isEmpty()) {
-                supportedServicesMap.remove(entry.getKey());
-            } else {
-                supportedServicesMap.put(entry.getKey(), entry.getValue());
-            }
-        }
-        return supportedServicesMap;
+    public static List<String> mergeStrLists(List<String> strList1, List<String> strList2) {
+        Set<String> mergedStrSet = new HashSet<>();
+        mergedStrSet.addAll(strList1);
+        mergedStrSet.addAll(strList2);
+        return mergedStrSet.stream().toList();
     }
 
     private static boolean isServiceTypeValid(int serviceType) {
