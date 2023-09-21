@@ -175,7 +175,8 @@ public class SubscriptionManagerService extends ISub.Stub {
             SimInfo.COLUMN_D2D_STATUS_SHARING_SELECTED_CONTACTS,
             SimInfo.COLUMN_NR_ADVANCED_CALLING_ENABLED,
             SimInfo.COLUMN_SATELLITE_ENABLED,
-            SimInfo.COLUMN_SATELLITE_ATTACH_ENABLED_FOR_CARRIER
+            SimInfo.COLUMN_SATELLITE_ATTACH_ENABLED_FOR_CARRIER,
+            SimInfo.COLUMN_IS_NTN
     );
 
     /**
@@ -488,7 +489,8 @@ public class SubscriptionManagerService extends ISub.Stub {
         HandlerThread handlerThread = new HandlerThread(LOG_TAG);
         handlerThread.start();
         mSubscriptionDatabaseManager = new SubscriptionDatabaseManager(context,
-                handlerThread.getLooper(), new SubscriptionDatabaseManagerCallback(mHandler::post) {
+                handlerThread.getLooper(), mFeatureFlags,
+                new SubscriptionDatabaseManagerCallback(mHandler::post) {
                     /**
                      * Called when database has been loaded into the cache.
                      */
@@ -826,6 +828,26 @@ public class SubscriptionManagerService extends ISub.Stub {
     }
 
     /**
+     * Set whether the subscription ID supports oem satellite or not.
+     *
+     * @param subId The subscription ID.
+     * @param isNtn {@code true} Requested subscription ID supports oem satellite service,
+     * {@code false} otherwise.
+     */
+    public void setNtn(int subId, boolean isNtn) {
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            return;
+        }
+
+        // This can throw IllegalArgumentException if the subscription does not exist.
+        try {
+            mSubscriptionDatabaseManager.setNtn(subId, (isNtn ? 1 : 0));
+        } catch (IllegalArgumentException e) {
+            loge("setNtn: invalid subId=" + subId);
+        }
+    }
+
+    /**
      * Set ISO country code by subscription id.
      *
      * @param iso ISO country code associated with the subscription.
@@ -1120,6 +1142,9 @@ public class SubscriptionManagerService extends ISub.Stub {
                         String mnc = cid.getMnc();
                         builder.setMcc(mcc);
                         builder.setMnc(mnc);
+                        if (mFeatureFlags.oemEnabledSatelliteFlag()) {
+                            builder.setNtn(isSatellitePlmn(mcc + mnc) ? 1 : 0);
+                        }
                     }
                     // If cardId = unsupported or un-initialized, we have no reason to update DB.
                     // Additionally, if the device does not support cardId for default eUICC, the
@@ -1391,6 +1416,7 @@ public class SubscriptionManagerService extends ISub.Stub {
                             MccTable.updateMccMncConfiguration(mContext, mccMnc);
                         }
                         setMccMnc(subId, mccMnc);
+                        setNtn(subId, isSatellitePlmn(mccMnc));
                     } else {
                         loge("updateSubscription: mcc/mnc is empty");
                     }
@@ -3956,6 +3982,30 @@ public class SubscriptionManagerService extends ISub.Stub {
         return "[" + mSlotIndexToSubId.entrySet().stream()
                 .map(e -> "slot " + e.getKey() + ": subId=" + e.getValue())
                 .collect(Collectors.joining(", ")) + "]";
+    }
+
+    /**
+     * @param mccMnc MccMnc value to check whether it supports non-terrestrial network or not.
+     * @return {@code true} if MCC/MNC is matched with in the device overlay key
+     * "config_satellite_esim_identifier", {@code false} otherwise.
+     */
+    private boolean isSatellitePlmn(@NonNull String mccMnc) {
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            return false;
+        }
+
+        final int id = R.string.config_satellite_esim_identifier;
+        String overlayMccMnc = null;
+        try {
+            overlayMccMnc = mContext.getResources().getString(id);
+        } catch (Resources.NotFoundException ex) {
+            loge("isSatellitePlmn: id= " + id + ", ex=" + ex);
+        }
+        if (overlayMccMnc == null) {
+            return false;
+        } else {
+            return mccMnc.equals(overlayMccMnc);
+        }
     }
 
     /**
