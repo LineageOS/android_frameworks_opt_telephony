@@ -252,8 +252,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE = 66;
     protected static final int EVENT_GET_DEVICE_IMEI_DONE = 67;
     protected static final int EVENT_TRIGGER_NOTIFY_ANBR = 68;
+    protected static final int EVENT_GET_N1_MODE_ENABLED_DONE = 69;
+    protected static final int EVENT_SET_N1_MODE_ENABLED_DONE = 70;
 
-    protected static final int EVENT_LAST = EVENT_TRIGGER_NOTIFY_ANBR;
+    protected static final int EVENT_LAST = EVENT_SET_N1_MODE_ENABLED_DONE;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
@@ -868,7 +870,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 }
                 break;
             default:
-                throw new RuntimeException("unexpected event not handled");
+                throw new RuntimeException("unexpected event not handled, msgId=" + msg.what);
         }
     }
 

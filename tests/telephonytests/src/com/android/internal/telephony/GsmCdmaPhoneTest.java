@@ -173,6 +173,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mMockCi = Mockito.mock(CommandsInterface.class);
         adnRecordCache = Mockito.mock(AdnRecordCache.class);
         mDomainSelectionResolver = Mockito.mock(DomainSelectionResolver.class);
+        mFeatureFlags = Mockito.mock(FeatureFlags.class);
+
         doReturn(false).when(mSST).isDeviceShuttingDown();
         doReturn(true).when(mImsManager).isVolteEnabledByPlatform();
         doReturn(false).when(mDomainSelectionResolver).isDomainSelectionSupported();
@@ -1480,6 +1482,143 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
         verify(mMockCi).getRadioCapability(captor.capture());
         assertEquals(captor.getValue().what, Phone.EVENT_GET_RADIO_CAPABILITY);
+    }
+
+    @Test
+    public void testNrCapabilityChanged_firstRequest_noChangeNeeded() {
+        when(mFeatureFlags.enableCarrierConfigN1Control()).thenReturn(true);
+
+        mPhoneUT.mCi = mMockCi;
+        PersistableBundle bundle = mContextFixture.getCarrierConfigBundle();
+        bundle.putIntArray(CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY,
+                new int[]{
+                    CarrierConfigManager.CARRIER_NR_AVAILABILITY_NSA,
+                    CarrierConfigManager.CARRIER_NR_AVAILABILITY_SA});
+
+        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(Phone.EVENT_CARRIER_CONFIG_CHANGED));
+        processAllMessages();
+
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mMockCi, times(1)).isN1ModeEnabled(messageCaptor.capture());
+        AsyncResult.forMessage(messageCaptor.getValue(), Boolean.TRUE, null);
+        messageCaptor.getValue().sendToTarget();
+        processAllMessages();
+
+        verify(mMockCi, never()).setN1ModeEnabled(anyBoolean(), any());
+    }
+
+    @Test
+    public void testNrCapabilityChanged_firstRequest_needsChange() {
+        when(mFeatureFlags.enableCarrierConfigN1Control()).thenReturn(true);
+
+        mPhoneUT.mCi = mMockCi;
+        PersistableBundle bundle = mContextFixture.getCarrierConfigBundle();
+        bundle.putIntArray(CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY,
+                new int[]{
+                    CarrierConfigManager.CARRIER_NR_AVAILABILITY_NSA,
+                    CarrierConfigManager.CARRIER_NR_AVAILABILITY_SA});
+
+        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(Phone.EVENT_CARRIER_CONFIG_CHANGED));
+        processAllMessages();
+
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mMockCi, times(1)).isN1ModeEnabled(messageCaptor.capture());
+        AsyncResult.forMessage(messageCaptor.getValue(), Boolean.FALSE, null);
+        messageCaptor.getValue().sendToTarget();
+        processAllMessages();
+
+        verify(mMockCi, times(1)).setN1ModeEnabled(eq(true), messageCaptor.capture());
+        AsyncResult.forMessage(messageCaptor.getValue(), Boolean.TRUE, null);
+        messageCaptor.getValue().sendToTarget();
+        processAllMessages();
+    }
+
+    @Test
+    public void testNrCapabilityChanged_CarrierConfigChanges() {
+        when(mFeatureFlags.enableCarrierConfigN1Control()).thenReturn(true);
+
+        // Initialize the inner cache and set the modem to N1 mode = enabled/true
+        testNrCapabilityChanged_firstRequest_needsChange();
+
+        PersistableBundle bundle = mContextFixture.getCarrierConfigBundle();
+        // Remove SA support and send an additional carrier config change
+        bundle.putIntArray(
+                CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY,
+                new int[]{CarrierConfigManager.CARRIER_NR_AVAILABILITY_NSA});
+
+        mPhoneUT.sendMessage(mPhoneUT.obtainMessage(Phone.EVENT_CARRIER_CONFIG_CHANGED));
+        processAllMessages();
+
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mMockCi, times(1)).isN1ModeEnabled(any()); // not called again
+        verify(mMockCi, times(1)).setN1ModeEnabled(eq(false), messageCaptor.capture());
+        AsyncResult.forMessage(messageCaptor.getValue(), null, null);
+        messageCaptor.getValue().sendToTarget();
+        processAllMessages();
+    }
+
+    @Test
+    public void testNrCapabilityChanged_CarrierConfigChanges_ErrorResponse() {
+        when(mFeatureFlags.enableCarrierConfigN1Control()).thenReturn(true);
+
+        mPhoneUT.mCi = mMockCi;
+        for (int i = 0; i < 2; i++) {
+            PersistableBundle bundle = mContextFixture.getCarrierConfigBundle();
+            bundle.putIntArray(CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY,
+                    new int[]{
+                        CarrierConfigManager.CARRIER_NR_AVAILABILITY_NSA,
+                        CarrierConfigManager.CARRIER_NR_AVAILABILITY_SA});
+
+            mPhoneUT.sendMessage(mPhoneUT.obtainMessage(Phone.EVENT_CARRIER_CONFIG_CHANGED));
+            processAllMessages();
+
+            ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+            verify(mMockCi, times(i + 1)).isN1ModeEnabled(messageCaptor.capture());
+            AsyncResult.forMessage(messageCaptor.getValue(), null, new RuntimeException());
+            messageCaptor.getValue().sendToTarget();
+            processAllMessages();
+
+            verify(mMockCi, never()).setN1ModeEnabled(anyBoolean(), any());
+        }
+    }
+
+    @Test
+    public void testNrCapabilityChanged_firstRequest_ImsChanges() {
+        when(mFeatureFlags.enableCarrierConfigN1Control()).thenReturn(true);
+
+        mPhoneUT.mCi = mMockCi;
+        Message passthroughMessage = mTestHandler.obtainMessage(0xC0FFEE);
+
+        mPhoneUT.setN1ModeEnabled(false, passthroughMessage);
+        processAllMessages();
+
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mMockCi, times(1)).isN1ModeEnabled(messageCaptor.capture());
+        assertEquals(messageCaptor.getValue().obj, passthroughMessage);
+        AsyncResult.forMessage(messageCaptor.getValue(), Boolean.TRUE, null);
+        messageCaptor.getValue().sendToTarget();
+        processAllMessages();
+
+        verify(mMockCi, times(1)).setN1ModeEnabled(eq(false), messageCaptor.capture());
+        assertEquals(messageCaptor.getValue().obj, passthroughMessage);
+        AsyncResult.forMessage(messageCaptor.getValue(), null, null);
+        messageCaptor.getValue().sendToTarget();
+        processAllMessages();
+
+        // Verify the return message was received
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mTestHandler, times(1)).sendMessageAtTime(messageArgumentCaptor.capture(),
+                anyLong());
+        assertEquals(messageArgumentCaptor.getValue(), passthroughMessage);
+
+        mPhoneUT.setN1ModeEnabled(true, null);
+        processAllMessages();
+
+        verify(mMockCi, times(1)).isN1ModeEnabled(any()); // not called again
+        verify(mMockCi, times(1)).setN1ModeEnabled(eq(true), messageCaptor.capture());
+        AsyncResult.forMessage(messageCaptor.getValue(), null, null);
+        messageCaptor.getValue().sendToTarget();
+        processAllMessages();
     }
 
     private void setupForWpsCallTest() throws Exception {
