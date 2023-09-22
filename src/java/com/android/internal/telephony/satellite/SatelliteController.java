@@ -18,6 +18,8 @@ package com.android.internal.telephony.satellite;
 
 import static android.telephony.SubscriptionManager.SATELLITE_ATTACH_ENABLED_FOR_CARRIER;
 import static android.telephony.SubscriptionManager.isValidSubscriptionId;
+import static android.telephony.satellite.NtnSignalStrength.NTN_SIGNAL_STRENGTH_NONE;
+import static android.telephony.satellite.SatelliteManager.KEY_NTN_SIGNAL_STRENGTH;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_COMMUNICATION_RESTRICTION_REASON_USER;
 import static android.telephony.satellite.SatelliteManager.SATELLITE_RESULT_SUCCESS;
 
@@ -55,10 +57,12 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.satellite.INtnSignalStrengthCallback;
 import android.telephony.satellite.ISatelliteDatagramCallback;
 import android.telephony.satellite.ISatelliteProvisionStateCallback;
 import android.telephony.satellite.ISatelliteStateCallback;
 import android.telephony.satellite.ISatelliteTransmissionUpdateCallback;
+import android.telephony.satellite.NtnSignalStrength;
 import android.telephony.satellite.SatelliteCapabilities;
 import android.telephony.satellite.SatelliteDatagram;
 import android.telephony.satellite.SatelliteManager;
@@ -138,6 +142,11 @@ public class SatelliteController extends Handler {
     private static final int EVENT_SET_SATELLITE_PLMN_INFO_DONE = 29;
     private static final int CMD_EVALUATE_SATELLITE_ATTACH_RESTRICTION_CHANGE = 30;
     private static final int EVENT_EVALUATE_SATELLITE_ATTACH_RESTRICTION_CHANGE_DONE = 31;
+    private static final int CMD_REQUEST_NTN_SIGNAL_STRENGTH = 32;
+    private static final int EVENT_REQUEST_NTN_SIGNAL_STRENGTH_DONE = 33;
+    private static final int EVENT_NTN_SIGNAL_STRENGTH_CHANGED = 34;
+    private static final int CMD_START_SENDING_NTN_SIGNAL_STRENGTH = 35;
+    private static final int EVENT_START_SENDING_NTN_SIGNAL_STRENGTH_DONE = 36;
 
     @NonNull private static SatelliteController sInstance;
     @NonNull private final Context mContext;
@@ -187,6 +196,7 @@ public class SatelliteController extends Handler {
             new AtomicBoolean(false);
     private final AtomicBoolean mRegisteredForSatelliteModemStateChangedWithSatelliteService =
             new AtomicBoolean(false);
+    private final AtomicBoolean mRegisteredForNtnSignalStrengthChanged = new AtomicBoolean(false);
     /**
      * Map key: subId, value: callback to get error code of the provision request.
      */
@@ -198,6 +208,12 @@ public class SatelliteController extends Handler {
      */
     private final ConcurrentHashMap<IBinder, ISatelliteProvisionStateCallback>
             mSatelliteProvisionStateChangedListeners = new ConcurrentHashMap<>();
+    /**
+     * Map key: binder of the callback, value: callback to receive non-terrestrial signal strength
+     * state changed events.
+     */
+    private final ConcurrentHashMap<IBinder, INtnSignalStrengthCallback>
+            mNtnSignalStrengthChangedListeners = new ConcurrentHashMap<>();
     private final Object mIsSatelliteSupportedLock = new Object();
     @GuardedBy("mIsSatelliteSupportedLock")
     private Boolean mIsSatelliteSupported = null;
@@ -215,6 +231,10 @@ public class SatelliteController extends Handler {
     private final Object mNeedsSatellitePointingLock = new Object();
     @GuardedBy("mNeedsSatellitePointingLock")
     private boolean mNeedsSatellitePointing = false;
+    private final Object mNtnSignalsStrengthLock = new Object();
+    @GuardedBy("mNtnSignalsStrengthLock")
+    private NtnSignalStrength mNtnSignalStrength =
+            new NtnSignalStrength(NTN_SIGNAL_STRENGTH_NONE);
     /** Key: subId, value: (key: PLMN, value: set of
      * {@link android.telephony.NetworkRegistrationInfo.ServiceType})
      */
@@ -1054,6 +1074,88 @@ public class SatelliteController extends Handler {
                 break;
             }
 
+            case CMD_REQUEST_NTN_SIGNAL_STRENGTH: {
+                logd("CMD_REQUEST_NTN_SIGNAL_STRENGTH");
+                request = (SatelliteControllerHandlerRequest) msg.obj;
+                onCompleted = obtainMessage(EVENT_REQUEST_NTN_SIGNAL_STRENGTH_DONE, request);
+                mSatelliteModemInterface.requestNtnSignalStrength(onCompleted);
+                break;
+            }
+
+            case EVENT_REQUEST_NTN_SIGNAL_STRENGTH_DONE: {
+                ar = (AsyncResult) msg.obj;
+                request = (SatelliteControllerHandlerRequest) ar.userObj;
+                ResultReceiver result = (ResultReceiver) request.argument;
+                int errorCode =  SatelliteServiceUtils.getSatelliteError(ar,
+                        "requestNtnSignalStrength");
+                if (errorCode == SATELLITE_RESULT_SUCCESS) {
+                    NtnSignalStrength ntnSignalStrength = (NtnSignalStrength) ar.result;
+                    if (ntnSignalStrength != null) {
+                        synchronized (mNtnSignalsStrengthLock) {
+                            mNtnSignalStrength = ntnSignalStrength;
+                        }
+                        Bundle bundle = new Bundle();
+                        bundle.putParcelable(KEY_NTN_SIGNAL_STRENGTH, ntnSignalStrength);
+                        result.send(SATELLITE_RESULT_SUCCESS, bundle);
+                    } else {
+                        synchronized (mNtnSignalsStrengthLock) {
+                            if (mNtnSignalStrength.getLevel() != NTN_SIGNAL_STRENGTH_NONE) {
+                                mNtnSignalStrength = new NtnSignalStrength(
+                                        NTN_SIGNAL_STRENGTH_NONE);
+                            }
+                        }
+                        loge("EVENT_REQUEST_NTN_SIGNAL_STRENGTH_DONE: ntnSignalStrength is null");
+                        result.send(SatelliteManager.SATELLITE_RESULT_REQUEST_FAILED, null);
+                    }
+                } else {
+                    synchronized (mNtnSignalsStrengthLock) {
+                        if (mNtnSignalStrength.getLevel() != NTN_SIGNAL_STRENGTH_NONE) {
+                            mNtnSignalStrength = new NtnSignalStrength(NTN_SIGNAL_STRENGTH_NONE);
+                        }
+                    }
+                    result.send(errorCode, null);
+                }
+                break;
+            }
+
+            case EVENT_NTN_SIGNAL_STRENGTH_CHANGED: {
+                ar = (AsyncResult) msg.obj;
+                if (ar.result == null) {
+                    loge("EVENT_NTN_SIGNAL_STRENGTH_CHANGED: result is null");
+                } else {
+                    handleEventNtnSignalStrengthChanged((NtnSignalStrength) ar.result);
+                }
+                break;
+            }
+
+            case CMD_START_SENDING_NTN_SIGNAL_STRENGTH: {
+                logd("CMD_START_SENDING_NTN_SIGNAL_STRENGTH");
+                request = (SatelliteControllerHandlerRequest) msg.obj;
+                boolean startSendingNtnSignalStrength =  (boolean) request.argument;
+                if (mSatelliteModemInterface.isSatelliteServiceSupported()) {
+                    onCompleted = obtainMessage(EVENT_START_SENDING_NTN_SIGNAL_STRENGTH_DONE,
+                            request);
+                    if (startSendingNtnSignalStrength) {
+                        mSatelliteModemInterface.startSendingNtnSignalStrength(onCompleted);
+                    } else {
+                        mSatelliteModemInterface.stopSendingNtnSignalStrength(onCompleted);
+                    }
+                }
+                break;
+            }
+
+            case EVENT_START_SENDING_NTN_SIGNAL_STRENGTH_DONE: {
+                ar = (AsyncResult) msg.obj;
+                request = (SatelliteControllerHandlerRequest) ar.userObj;
+                int errorCode =  SatelliteServiceUtils.getSatelliteError(ar,
+                        "EVENT_START_SENDING_NTN_SIGNAL_STRENGTH_DONE");
+                if (errorCode != SATELLITE_RESULT_SUCCESS) {
+                    loge(((boolean) request.argument ? "startSendingNtnSignalStrength"
+                            : "stopSendingNtnSignalStrength") + "returns " + errorCode);
+                }
+                break;
+            }
+
             default:
                 Log.w(TAG, "SatelliteControllerHandler: unexpected message code: " +
                         msg.what);
@@ -1686,6 +1788,8 @@ public class SatelliteController extends Handler {
         Consumer<Integer> result = FunctionalUtils.ignoreRemoteException(callback::accept);
         if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
             result.accept(SatelliteManager.SATELLITE_RESULT_REQUEST_NOT_SUPPORTED);
+            logd("addSatelliteAttachRestrictionForCarrier: carrierEnabledSatelliteFlag is "
+                    + "disabled");
             return;
         }
 
@@ -1723,6 +1827,8 @@ public class SatelliteController extends Handler {
         Consumer<Integer> result = FunctionalUtils.ignoreRemoteException(callback::accept);
         if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
             result.accept(SatelliteManager.SATELLITE_RESULT_REQUEST_NOT_SUPPORTED);
+            logd("removeSatelliteAttachRestrictionForCarrier: carrierEnabledSatelliteFlag is "
+                    + "disabled");
             return;
         }
 
@@ -1761,6 +1867,75 @@ public class SatelliteController extends Handler {
                 return new HashSet<>();
             }
             return new HashSet<>(resultSet);
+        }
+    }
+
+    /**
+     * Request to get the signal strength of the satellite connection.
+     *
+     * @param subId The subId of the subscription to request for.
+     * @param result Result receiver to get the error code of the request and the current signal
+     * strength of the satellite connection.
+     */
+    public void requestNtnSignalStrength(int subId, @NonNull ResultReceiver result) {
+        if (DBG) logd("requestNtnSignalStrength()");
+
+        int error = evaluateOemSatelliteRequestAllowed(true);
+        if (error != SATELLITE_RESULT_SUCCESS) {
+            result.send(error, null);
+            return;
+        }
+
+        /* In case cache is available, it is not needed to request non-terrestrial signal strength
+        to modem */
+        synchronized (mNtnSignalsStrengthLock) {
+            if (mNtnSignalStrength.getLevel() != NTN_SIGNAL_STRENGTH_NONE) {
+                Bundle bundle = new Bundle();
+                bundle.putParcelable(KEY_NTN_SIGNAL_STRENGTH, mNtnSignalStrength);
+                result.send(SATELLITE_RESULT_SUCCESS, bundle);
+                return;
+            }
+        }
+
+        Phone phone = SatelliteServiceUtils.getPhone();
+        sendRequestAsync(CMD_REQUEST_NTN_SIGNAL_STRENGTH, result, phone);
+    }
+
+    /**
+     * Registers for NTN signal strength changed from satellite modem.
+     *
+     * @param subId The subId of the subscription to request for.
+     * @param callback The callback to handle the non-terrestrial network signal strength changed
+     * event.
+     *
+     * @return The {@link SatelliteManager.SatelliteResult} result of the operation.
+     */
+    @SatelliteManager.SatelliteResult public int registerForNtnSignalStrengthChanged(
+            int subId, @NonNull INtnSignalStrengthCallback callback) {
+        if (DBG) logd("registerForNtnSignalStrengthChanged()");
+
+        int error = evaluateOemSatelliteRequestAllowed(true);
+        if (error != SATELLITE_RESULT_SUCCESS) return error;
+
+        mNtnSignalStrengthChangedListeners.put(callback.asBinder(), callback);
+        return SATELLITE_RESULT_SUCCESS;
+    }
+
+    /**
+     * Unregisters for NTN signal strength changed from satellite modem.
+     * If callback was not registered before, the request will be ignored.
+     *
+     * @param subId The subId of the subscription to unregister for provision state changed.
+     * @param callback The callback that was passed to
+     * {@link #registerForNtnSignalStrengthChanged(int, INtnSignalStrengthCallback)}
+     */
+    public void unregisterForNtnSignalStrengthChanged(
+            int subId, @NonNull INtnSignalStrengthCallback callback) {
+        if (DBG) logd("unregisterForNtnSignalStrengthChanged()");
+
+        int error = evaluateOemSatelliteRequestAllowed(true);
+        if (error == SATELLITE_RESULT_SUCCESS) {
+            mNtnSignalStrengthChangedListeners.remove(callback.asBinder());
         }
     }
 
@@ -1907,6 +2082,7 @@ public class SatelliteController extends Handler {
      */
     public void onCellularRadioPowerOffRequested() {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("onCellularRadioPowerOffRequested: oemEnabledSatelliteFlag is disabled");
             return;
         }
 
@@ -1987,6 +2163,7 @@ public class SatelliteController extends Handler {
      */
     public boolean isSatelliteAttachRequired() {
         if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("isSatelliteAttachRequired: oemEnabledSatelliteFlag is disabled");
             return false;
         }
 
@@ -2195,6 +2372,7 @@ public class SatelliteController extends Handler {
             registerForSatelliteProvisionStateChanged();
             registerForPendingDatagramCount();
             registerForSatelliteModemStateChanged();
+            registerForNtnSignalStrengthChanged();
 
             requestIsSatelliteProvisioned(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
                     new ResultReceiver(this) {
@@ -2263,6 +2441,21 @@ public class SatelliteController extends Handler {
         }
     }
 
+    private void registerForNtnSignalStrengthChanged() {
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("registerForNtnSignalStrengthChanged: oemEnabledSatelliteFlag is disabled");
+            return;
+        }
+
+        if (mSatelliteModemInterface.isSatelliteServiceSupported()) {
+            if (!mRegisteredForNtnSignalStrengthChanged.get()) {
+                mSatelliteModemInterface.registerForNtnSignalStrengthChanged(
+                        this, EVENT_NTN_SIGNAL_STRENGTH_CHANGED, null);
+                mRegisteredForNtnSignalStrengthChanged.set(true);
+            }
+        }
+    }
+
     private void handleEventSatelliteProvisionStateChanged(boolean provisioned) {
         logd("handleSatelliteProvisionStateChangedEvent: provisioned=" + provisioned);
 
@@ -2270,16 +2463,16 @@ public class SatelliteController extends Handler {
             mIsSatelliteProvisioned = provisioned;
         }
 
-        List<ISatelliteProvisionStateCallback> toBeRemoved = new ArrayList<>();
+        List<ISatelliteProvisionStateCallback> deadCallersList = new ArrayList<>();
         mSatelliteProvisionStateChangedListeners.values().forEach(listener -> {
             try {
                 listener.onSatelliteProvisionStateChanged(provisioned);
             } catch (RemoteException e) {
                 logd("handleSatelliteProvisionStateChangedEvent RemoteException: " + e);
-                toBeRemoved.add(listener);
+                deadCallersList.add(listener);
             }
         });
-        toBeRemoved.forEach(listener -> {
+        deadCallersList.forEach(listener -> {
             mSatelliteProvisionStateChangedListeners.remove(listener.asBinder());
         });
     }
@@ -2318,6 +2511,31 @@ public class SatelliteController extends Handler {
                 loge("handleEventSatelliteModemStateChanged: mSatelliteSessionController is null");
             }
         }
+    }
+
+    private void handleEventNtnSignalStrengthChanged(NtnSignalStrength ntnSignalStrength) {
+        logd("handleEventNtnSignalStrengthChanged: ntnSignalStrength=" + ntnSignalStrength);
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            logd("handleEventNtnSignalStrengthChanged: oemEnabledSatelliteFlag is disabled");
+            return;
+        }
+
+        synchronized (mNtnSignalsStrengthLock) {
+            mNtnSignalStrength = ntnSignalStrength;
+        }
+
+        List<INtnSignalStrengthCallback> deadCallersList = new ArrayList<>();
+        mNtnSignalStrengthChangedListeners.values().forEach(listener -> {
+            try {
+                listener.onNtnSignalStrengthChanged(ntnSignalStrength);
+            } catch (RemoteException e) {
+                logd("handleEventNtnSignalStrengthChanged RemoteException: " + e);
+                deadCallersList.add(listener);
+            }
+        });
+        deadCallersList.forEach(listener -> {
+            mNtnSignalStrengthChangedListeners.remove(listener.asBinder());
+        });
     }
 
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PRIVATE)
@@ -2396,6 +2614,7 @@ public class SatelliteController extends Handler {
     private void configureSatellitePlmnForCarrier(int subId) {
         logd("configureSatellitePlmnForCarrier");
         if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
+            logd("configureSatellitePlmnForCarrier: carrierEnabledSatelliteFlag is disabled");
             return;
         }
         synchronized (mSupportedSatelliteServicesLock) {
@@ -2421,6 +2640,8 @@ public class SatelliteController extends Handler {
 
     private void updateSupportedSatelliteServicesForActiveSubscriptions() {
         if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
+            logd("updateSupportedSatelliteServicesForActiveSubscriptions: "
+                    + "carrierEnabledSatelliteFlag is disabled");
             return;
         }
 
@@ -2448,6 +2669,7 @@ public class SatelliteController extends Handler {
     @NonNull
     private List<String> readSatellitePlmnsFromOverlayConfig() {
         if (!mFeatureFlags.carrierEnabledSatelliteFlag()) {
+            logd("readSatellitePlmnsFromOverlayConfig: carrierEnabledSatelliteFlag is disabled");
             return new ArrayList<>();
         }
 
