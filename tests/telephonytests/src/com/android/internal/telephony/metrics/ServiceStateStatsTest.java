@@ -153,6 +153,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(100L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -325,6 +326,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(100L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         state = captor.getAllValues().get(1);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.voiceRat);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.dataRat);
@@ -337,6 +339,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(100L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -374,6 +377,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(100L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         state = captor.getAllValues().get(1);
         assertEquals(TelephonyManager.NETWORK_TYPE_IWLAN, state.voiceRat);
         assertEquals(TelephonyManager.NETWORK_TYPE_UNKNOWN, state.dataRat);
@@ -386,6 +390,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(200L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -417,6 +422,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(100L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         state = captor.getAllValues().get(1);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.voiceRat);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.dataRat);
@@ -458,6 +464,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(100L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -496,6 +503,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(100L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         state = serviceStateCaptor.getAllValues().get(1);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.voiceRat);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.dataRat);
@@ -508,6 +516,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(100L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         CellularDataServiceSwitch serviceSwitch = serviceSwitchCaptor.getAllValues().get(0);
         assertEquals(TelephonyManager.NETWORK_TYPE_UNKNOWN, serviceSwitch.ratFrom);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, serviceSwitch.ratTo);
@@ -549,6 +558,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(CARRIER1_ID, state.carrierId);
         assertEquals(100L, state.totalTimeMillis);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         state = captor.getAllValues().get(1);
         assertEquals(TelephonyManager.NETWORK_TYPE_IWLAN, state.voiceRat);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.dataRat);
@@ -560,6 +570,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(CARRIER1_ID, state.carrierId);
         assertEquals(100L, state.totalTimeMillis);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -589,6 +600,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(0L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -630,6 +642,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(100L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         state = captor.getAllValues().get(1);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.voiceRat);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.dataRat);
@@ -642,6 +655,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(200L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         state = captor.getAllValues().get(2);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.voiceRat);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.dataRat);
@@ -654,6 +668,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(400L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         state = captor.getAllValues().get(3);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.voiceRat);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.dataRat);
@@ -666,6 +681,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(800L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -711,6 +727,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(100L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         state = captor.getAllValues().get(1);
         assertEquals(TelephonyManager.NETWORK_TYPE_UNKNOWN, state.voiceRat);
         assertEquals(TelephonyManager.NETWORK_TYPE_UNKNOWN, state.dataRat);
@@ -723,6 +740,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(5000L, state.totalTimeMillis);
         assertEquals(true, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         state = captor.getAllValues().get(2);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.voiceRat);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.dataRat);
@@ -735,6 +753,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(200L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -800,6 +819,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(100L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         state = serviceStateCaptor.getAllValues().get(1);
         assertEquals(TelephonyManager.NETWORK_TYPE_UMTS, state.voiceRat);
         assertEquals(TelephonyManager.NETWORK_TYPE_UMTS, state.dataRat);
@@ -812,6 +832,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(200L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         state = serviceStateCaptor.getAllValues().get(2);
         assertEquals(TelephonyManager.NETWORK_TYPE_UMTS, state.voiceRat);
         assertEquals(TelephonyManager.NETWORK_TYPE_UMTS, state.dataRat);
@@ -824,6 +845,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(400L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         CellularDataServiceSwitch serviceSwitch = serviceSwitchCaptor.getAllValues().get(0);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, serviceSwitch.ratFrom);
         assertEquals(TelephonyManager.NETWORK_TYPE_UMTS, serviceSwitch.ratTo);
@@ -880,6 +902,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(100L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         state = serviceStateCaptor.getAllValues().get(1);
         assertEquals(TelephonyManager.NETWORK_TYPE_UMTS, state.voiceRat);
         assertEquals(TelephonyManager.NETWORK_TYPE_UMTS, state.dataRat);
@@ -893,6 +916,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(400L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         CellularDataServiceSwitch serviceSwitch = serviceSwitchCaptor.getAllValues().get(0);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, serviceSwitch.ratFrom);
         assertEquals(TelephonyManager.NETWORK_TYPE_UMTS, serviceSwitch.ratTo);
@@ -949,6 +973,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(100L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         state = serviceStateCaptor.getAllValues().get(1);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.voiceRat);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.dataRat);
@@ -961,6 +986,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(100L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         state = serviceStateCaptor.getAllValues().get(2);
         assertEquals(TelephonyManager.NETWORK_TYPE_UMTS, state.voiceRat);
         assertEquals(TelephonyManager.NETWORK_TYPE_UMTS, state.dataRat);
@@ -973,6 +999,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(200L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         state = serviceStateCaptor.getAllValues().get(3);
         assertEquals(TelephonyManager.NETWORK_TYPE_UMTS, state.voiceRat);
         assertEquals(TelephonyManager.NETWORK_TYPE_UMTS, state.dataRat);
@@ -985,6 +1012,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(200L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         CellularDataServiceSwitch serviceSwitch = serviceSwitchCaptor.getAllValues().get(0);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, serviceSwitch.ratFrom);
         assertEquals(TelephonyManager.NETWORK_TYPE_UMTS, serviceSwitch.ratTo);
@@ -1046,6 +1074,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(100L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         state = captor.getAllValues().get(1);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.voiceRat);
         assertEquals(TelephonyManager.NETWORK_TYPE_LTE, state.dataRat);
@@ -1058,6 +1087,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         assertEquals(200L, state.totalTimeMillis);
         assertEquals(false, state.isEmergencyOnly);
         assertEquals(true, state.isInternetPdnUp);
+        assertEquals(true, state.isDataEnabled);
         verifyNoMoreInteractions(mPersistAtomsStorage);
     }
 
@@ -1312,6 +1342,7 @@ public class ServiceStateStatsTest extends TelephonyTest {
         doReturn(1).when(mSecondPhone).getPhoneId();
         doReturn(1).when(mUiccController).getSlotIdFromPhoneId(1);
         doReturn(carrierId).when(mSecondPhone).getCarrierId();
+        doReturn(mDataSettingsManager).when(mSecondPhone).getDataSettingsManager();
 
         doReturn(true).when(mPhysicalSlot1).isActive();
         doReturn(CardState.CARDSTATE_PRESENT).when(mPhysicalSlot1).getCardState();
