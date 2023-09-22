@@ -24,6 +24,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.os.Handler;
 import android.os.HandlerExecutor;
@@ -153,7 +154,11 @@ public class CarrierServiceStateTracker extends Handler {
                     }
                 });
 
-        registerNotificationTypes();
+        if (!mPhone.getContext().getPackageManager().hasSystemFeature(
+                PackageManager.FEATURE_WATCH)) {
+            registerNotificationTypes();
+        }
+
         mAllowedNetworkType = RadioAccessFamily.getNetworkTypeFromRaf(
                 (int) mPhone.getAllowedNetworkTypes(
                         TelephonyManager.ALLOWED_NETWORK_TYPES_REASON_USER));
