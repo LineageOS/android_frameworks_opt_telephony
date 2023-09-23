@@ -452,7 +452,7 @@ public class SubscriptionInfoInternal {
      * Whether this subscription is used for communicating with non-terrestrial networks.
      * By default, its disabled. It is intended to use integer to fit the database format.
      */
-    private final int mIsNtn;
+    private final int mIsOnlyNonTerrestrialNetwork;
 
     // Below are the fields that do not exist in the SimInfo table.
     /**
@@ -538,7 +538,7 @@ public class SubscriptionInfoInternal {
         this.mIsSatelliteEnabled = builder.mIsSatelliteEnabled;
         this.mIsSatelliteAttachEnabledForCarrier =
                 builder.mIsSatelliteAttachEnabledForCarrier;
-        this.mIsNtn = builder.mIsNtn;
+        this.mIsOnlyNonTerrestrialNetwork = builder.mIsOnlyNonTerrestrialNetwork;
 
         // Below are the fields that do not exist in the SimInfo table.
         this.mCardId = builder.mCardId;
@@ -1155,8 +1155,8 @@ public class SubscriptionInfoInternal {
      *
      * @return {@code 1} if the subscription is for non-terrestrial networks. {@code 0} otherwise.
      */
-    public int getNtn() {
-        return mIsNtn;
+    public int getOnlyNonTerrestrialNetwork() {
+        return mIsOnlyNonTerrestrialNetwork;
     }
 
     // Below are the fields that do not exist in SimInfo table.
@@ -1228,7 +1228,7 @@ public class SubscriptionInfoInternal {
                 .setUiccApplicationsEnabled(mAreUiccApplicationsEnabled != 0)
                 .setPortIndex(mPortIndex)
                 .setUsageSetting(mUsageSetting)
-                .setNtn(mIsNtn == 1)
+                .setOnlyNonTerrestrialNetwork(mIsOnlyNonTerrestrialNetwork == 1)
                 .build();
     }
 
@@ -1286,7 +1286,7 @@ public class SubscriptionInfoInternal {
                 + " userId=" + mUserId
                 + " isSatelliteEnabled=" + mIsSatelliteEnabled
                 + " satellite_attach_enabled_for_carrier=" + mIsSatelliteAttachEnabledForCarrier
-                + " getNtn=" + mIsNtn
+                + " getOnlyNonTerrestrialNetwork=" + mIsOnlyNonTerrestrialNetwork
                 + " isGroupDisabled=" + mIsGroupDisabled
                 + "]";
     }
@@ -1344,7 +1344,7 @@ public class SubscriptionInfoInternal {
                 that.mDeviceToDeviceStatusSharingContacts) && mNumberFromCarrier.equals(
                 that.mNumberFromCarrier) && mNumberFromIms.equals(that.mNumberFromIms)
                 && mIsSatelliteAttachEnabledForCarrier == that.mIsSatelliteAttachEnabledForCarrier
-                && mIsNtn == that.mIsNtn;
+                && mIsOnlyNonTerrestrialNetwork == that.mIsOnlyNonTerrestrialNetwork;
     }
 
     @Override
@@ -1366,7 +1366,7 @@ public class SubscriptionInfoInternal {
                 mNumberFromCarrier,
                 mNumberFromIms, mPortIndex, mUsageSetting, mLastUsedTPMessageReference, mUserId,
                 mIsSatelliteEnabled, mCardId, mIsGroupDisabled,
-                mIsSatelliteAttachEnabledForCarrier, mIsNtn);
+                mIsSatelliteAttachEnabledForCarrier, mIsOnlyNonTerrestrialNetwork);
         result = 31 * result + Arrays.hashCode(mNativeAccessRules);
         result = 31 * result + Arrays.hashCode(mCarrierConfigAccessRules);
         result = 31 * result + Arrays.hashCode(mRcsConfig);
@@ -1737,7 +1737,7 @@ public class SubscriptionInfoInternal {
         /**
          * Whether this subscription is used for communicating with non-terrestrial network or not.
          */
-        private int mIsNtn = 0;
+        private int mIsOnlyNonTerrestrialNetwork = 0;
 
         // The following fields do not exist in the SimInfo table.
         /**
@@ -1827,7 +1827,7 @@ public class SubscriptionInfoInternal {
             mUserId = info.mUserId;
             mIsSatelliteEnabled = info.mIsSatelliteEnabled;
             mIsSatelliteAttachEnabledForCarrier = info.mIsSatelliteAttachEnabledForCarrier;
-            mIsNtn = info.mIsNtn;
+            mIsOnlyNonTerrestrialNetwork = info.mIsOnlyNonTerrestrialNetwork;
             // Below are the fields that do not exist in the SimInfo table.
             mCardId = info.mCardId;
             mIsGroupDisabled = info.mIsGroupDisabled;
@@ -2714,12 +2714,13 @@ public class SubscriptionInfoInternal {
         /**
          * Set whether the subscription is for NTN or not.
          *
-         * @param isNtn {@code 1} if the subscription is for NTN, {@code 0} otherwise.
+         * @param isOnlyNonTerrestrialNetwork {@code 1} if the subscription is for NTN, {@code 0}
+         * otherwise.
          * @return The builder.
          */
         @NonNull
-        public Builder setNtn(int isNtn) {
-            mIsNtn = isNtn;
+        public Builder setOnlyNonTerrestrialNetwork(int isOnlyNonTerrestrialNetwork) {
+            mIsOnlyNonTerrestrialNetwork = isOnlyNonTerrestrialNetwork;
             return this;
         }
 

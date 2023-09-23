@@ -843,7 +843,7 @@ public class SubscriptionManagerService extends ISub.Stub {
         try {
             mSubscriptionDatabaseManager.setNtn(subId, (isNtn ? 1 : 0));
         } catch (IllegalArgumentException e) {
-            loge("setNtn: invalid subId=" + subId);
+            loge("setOnlyNonTerrestrialNetwork: invalid subId=" + subId);
         }
     }
 
@@ -1143,7 +1143,8 @@ public class SubscriptionManagerService extends ISub.Stub {
                         builder.setMcc(mcc);
                         builder.setMnc(mnc);
                         if (mFeatureFlags.oemEnabledSatelliteFlag()) {
-                            builder.setNtn(isSatellitePlmn(mcc + mnc) ? 1 : 0);
+                            builder.setOnlyNonTerrestrialNetwork(
+                                    isSatellitePlmn(mcc + mnc) ? 1 : 0);
                         }
                     }
                     // If cardId = unsupported or un-initialized, we have no reason to update DB.
