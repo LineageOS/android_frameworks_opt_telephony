@@ -130,6 +130,7 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
             newState.isInternetPdnUp = isInternetPdnUp(mPhone);
             newState.foldState = mDeviceStateHelper.getFoldState();
             newState.overrideVoiceService = mOverrideVoiceService.get();
+            newState.isDataEnabled = mPhone.getDataSettingsManager().isDataEnabled();
             TimestampedServiceState prevState =
                     mLastState.getAndSet(new TimestampedServiceState(newState, now));
             addServiceStateAndSwitch(
@@ -299,6 +300,7 @@ public class ServiceStateStats extends DataNetworkControllerCallback {
         copy.isInternetPdnUp = state.isInternetPdnUp;
         copy.foldState = state.foldState;
         copy.overrideVoiceService = state.overrideVoiceService;
+        copy.isDataEnabled = state.isDataEnabled;
         return copy;
     }
 
