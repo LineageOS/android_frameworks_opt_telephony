@@ -39,14 +39,18 @@ import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.sysprop.TelephonyProperties;
+import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation.DisconnectCauses;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.EmergencyRegResult;
 import android.telephony.NetworkRegistrationInfo;
+import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyCallback;
 import android.telephony.TelephonyManager;
+import android.telephony.data.ApnSetting;
 import android.util.ArraySet;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -65,6 +69,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 
 /**
@@ -83,6 +88,7 @@ public class EmergencyStateTracker {
     private static final boolean DEFAULT_EMERGENCY_CALLBACK_MODE_SUPPORTED = true;
     /** Default Emergency Callback Mode exit timeout value. */
     private static final long DEFAULT_ECM_EXIT_TIMEOUT_MS = 300000;
+    private static final int DEFAULT_EPDN_DISCONNECTION_TIMEOUT_MS = 500;
 
     /** The emergency types used when setting the emergency mode on modem. */
     @Retention(RetentionPolicy.SOURCE)
@@ -120,6 +126,9 @@ public class EmergencyStateTracker {
     private final Runnable mExitEcmRunnable = this::exitEmergencyCallbackMode;
     // Tracks emergency calls by callId that have reached {@link Call.State#ACTIVE}.
     private final Set<String> mActiveEmergencyCalls = new ArraySet<>();
+    private Phone mPhoneToExit;
+    private int mPdnDisconnectionTimeoutMs = DEFAULT_EPDN_DISCONNECTION_TIMEOUT_MS;
+    private final Object mLock = new Object();
     private Phone mPhone;
     // Tracks ongoing emergency callId to handle a second emergency call
     private String mOngoingCallId;
@@ -165,6 +174,29 @@ public class EmergencyStateTracker {
         }
     };
 
+    /**
+     * TelephonyCallback used to monitor whether ePDN on cellular network is disconnected or not.
+     */
+    private final class PreciseDataConnectionStateListener extends TelephonyCallback implements
+            TelephonyCallback.PreciseDataConnectionStateListener {
+        @Override
+        public void onPreciseDataConnectionStateChanged(
+                @NonNull PreciseDataConnectionState dataConnectionState) {
+            ApnSetting apnSetting = dataConnectionState.getApnSetting();
+            if ((apnSetting == null)
+                    || ((apnSetting.getApnTypeBitmask() | ApnSetting.TYPE_EMERGENCY) == 0)
+                    || (dataConnectionState.getTransportType()
+                            != AccessNetworkConstants.TRANSPORT_TYPE_WWAN)) {
+                return;
+            }
+            int state = dataConnectionState.getState();
+            Rlog.d(TAG, "onPreciseDataConnectionStateChanged ePDN state=" + state);
+            if (state == TelephonyManager.DATA_DISCONNECTED) exitEmergencyModeIfDelayed();
+        }
+    }
+
+    private PreciseDataConnectionStateListener mDataConnectionStateListener;
+
     /** PhoneFactory Dependencies for testing. */
     @VisibleForTesting
     public interface PhoneFactoryProxy {
@@ -188,13 +220,14 @@ public class EmergencyStateTracker {
     @VisibleForTesting
     public interface TelephonyManagerProxy {
         int getPhoneCount();
+        void registerTelephonyCallback(int subId, Executor executor, TelephonyCallback callback);
+        void unregisterTelephonyCallback(TelephonyCallback callback);
     }
 
     private final TelephonyManagerProxy mTelephonyManagerProxy;
 
     private static class TelephonyManagerProxyImpl implements TelephonyManagerProxy {
         private final TelephonyManager mTelephonyManager;
-
 
         TelephonyManagerProxyImpl(Context context) {
             mTelephonyManager = new TelephonyManager(context);
@@ -203,6 +236,18 @@ public class EmergencyStateTracker {
         @Override
         public int getPhoneCount() {
             return mTelephonyManager.getActiveModemCount();
+        }
+
+        @Override
+        public void registerTelephonyCallback(int subId,
+                Executor executor, TelephonyCallback callback) {
+            TelephonyManager tm = mTelephonyManager.createForSubscriptionId(subId);
+            tm.registerTelephonyCallback(executor, callback);
+        }
+
+        @Override
+        public void unregisterTelephonyCallback(TelephonyCallback callback) {
+            mTelephonyManager.unregisterTelephonyCallback(callback);
         }
     }
 
@@ -215,11 +260,15 @@ public class EmergencyStateTracker {
     }
 
     @VisibleForTesting
-    public static final int MSG_SET_EMERGENCY_MODE_DONE = 1;
+    public static final int MSG_SET_EMERGENCY_MODE = 1;
     @VisibleForTesting
-    public static final int MSG_EXIT_EMERGENCY_MODE_DONE = 2;
+    public static final int MSG_EXIT_EMERGENCY_MODE = 2;
     @VisibleForTesting
-    public static final int MSG_SET_EMERGENCY_CALLBACK_MODE_DONE = 3;
+    public static final int MSG_SET_EMERGENCY_MODE_DONE = 3;
+    @VisibleForTesting
+    public static final int MSG_EXIT_EMERGENCY_MODE_DONE = 4;
+    @VisibleForTesting
+    public static final int MSG_SET_EMERGENCY_CALLBACK_MODE_DONE = 5;
 
     private class MyHandler extends Handler {
 
@@ -263,7 +312,7 @@ public class EmergencyStateTracker {
                             if (mIsEmergencyCallStartedDuringEmergencySms) {
                                 Phone phone = mPhone;
                                 mPhone = null;
-                                exitEmergencyMode(mSmsPhone, emergencyType);
+                                exitEmergencyMode(mSmsPhone, emergencyType, false);
                                 // Restore call phone for further use.
                                 mPhone = phone;
 
@@ -319,6 +368,27 @@ public class EmergencyStateTracker {
                     // started, it needs to be completed here for the emergency SMS.
                     if (mSmsPhone != null) {
                         completeEmergencyMode(EMERGENCY_TYPE_SMS);
+                    }
+                    break;
+                }
+                case MSG_EXIT_EMERGENCY_MODE: {
+                    Rlog.v(TAG, "MSG_EXIT_EMERGENCY_MODE");
+                    exitEmergencyModeIfDelayed();
+                    break;
+                }
+                case MSG_SET_EMERGENCY_MODE: {
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    Integer emergencyType = (Integer) ar.userObj;
+                    Rlog.v(TAG, "MSG_SET_EMERGENCY_MODE for "
+                            + emergencyTypeToString(emergencyType) + ", " + mEmergencyMode);
+                    // Should be reached here only when starting a new emergency service
+                    // while exiting emergency callback mode on the other slot.
+                    if (mEmergencyMode != MODE_EMERGENCY_WWAN) return;
+                    final Phone phone = (mPhone != null) ? mPhone : mSmsPhone;
+                    if (phone != null) {
+                        mWasEmergencyModeSetOnModem = true;
+                        phone.setEmergencyMode(MODE_EMERGENCY_WWAN,
+                                mHandler.obtainMessage(MSG_SET_EMERGENCY_MODE_DONE, emergencyType));
                     }
                     break;
                 }
@@ -459,7 +529,7 @@ public class EmergencyStateTracker {
             // exit the emergency mode when receiving the result of setting the emergency mode and
             // the emergency mode for this call will be restarted after the exit complete.
             if (isInEmergencyMode() && !isEmergencyModeInProgress()) {
-                exitEmergencyMode(mSmsPhone, EMERGENCY_TYPE_SMS);
+                exitEmergencyMode(mSmsPhone, EMERGENCY_TYPE_SMS, false);
             }
 
             mPhone = phone;
@@ -511,7 +581,7 @@ public class EmergencyStateTracker {
                             MSG_SET_EMERGENCY_CALLBACK_MODE_DONE);
                 }
             } else {
-                exitEmergencyMode(mPhone, EMERGENCY_TYPE_CALL);
+                exitEmergencyMode(mPhone, EMERGENCY_TYPE_CALL, false);
                 clearEmergencyCallInfo();
             }
         }
@@ -576,8 +646,27 @@ public class EmergencyStateTracker {
             return;
         }
 
-        mWasEmergencyModeSetOnModem = true;
-        phone.setEmergencyMode(mode, m);
+        synchronized (mLock) {
+            unregisterForDataConnectionStateChanges();
+            if (mPhoneToExit != null) {
+                if (emergencyType != EMERGENCY_TYPE_CALL) {
+                    setIsInEmergencyCall(false);
+                }
+                mOnEcmExitCompleteRunnable = null;
+                if (mPhoneToExit != phone) {
+                    // Exit emergency mode on the other phone first,
+                    // then set emergency mode on the given phone.
+                    mPhoneToExit.exitEmergencyMode(
+                            mHandler.obtainMessage(MSG_SET_EMERGENCY_MODE,
+                            Integer.valueOf(emergencyType)));
+                    mPhoneToExit = null;
+                    return;
+                }
+                mPhoneToExit = null;
+            }
+            mWasEmergencyModeSetOnModem = true;
+            phone.setEmergencyMode(mode, m);
+        }
     }
 
     private void completeEmergencyMode(@EmergencyType int emergencyType) {
@@ -650,8 +739,10 @@ public class EmergencyStateTracker {
      *
      * @param phone the {@code Phone} to exit the emergency mode.
      * @param emergencyType the emergency type to identify an emergency call or SMS.
+     * @param waitForPdnDisconnect indicates whether it shall wait for the disconnection of ePDN.
      */
-    private void exitEmergencyMode(Phone phone, @EmergencyType int emergencyType) {
+    private void exitEmergencyMode(Phone phone, @EmergencyType int emergencyType,
+            boolean waitForPdnDisconnect) {
         Rlog.i(TAG, "exitEmergencyMode for " + emergencyTypeToString(emergencyType));
 
         if (emergencyType == EMERGENCY_TYPE_CALL) {
@@ -687,8 +778,23 @@ public class EmergencyStateTracker {
             return;
         }
 
-        mWasEmergencyModeSetOnModem = false;
-        phone.exitEmergencyMode(m);
+        synchronized (mLock) {
+            mWasEmergencyModeSetOnModem = false;
+            if (waitForPdnDisconnect) {
+                registerForDataConnectionStateChanges(phone);
+                mPhoneToExit = phone;
+                if (mPdnDisconnectionTimeoutMs > 0) {
+                    // To avoid waiting for the disconnection indefinitely.
+                    mHandler.sendEmptyMessageDelayed(MSG_EXIT_EMERGENCY_MODE,
+                            mPdnDisconnectionTimeoutMs);
+                }
+                return;
+            } else {
+                unregisterForDataConnectionStateChanges();
+                mPhoneToExit = null;
+            }
+            phone.exitEmergencyMode(m);
+        }
     }
 
     /** Returns last {@link EmergencyRegResult} as set by {@code setEmergencyMode()}. */
@@ -887,7 +993,9 @@ public class EmergencyStateTracker {
             gsmCdmaPhone.notifyEmergencyCallRegistrants(false);
 
             // Exit emergency mode on modem.
-            exitEmergencyMode(gsmCdmaPhone, EMERGENCY_TYPE_CALL);
+            // b/299866883: Wait for the disconnection of ePDN before calling exitEmergencyMode.
+            exitEmergencyMode(gsmCdmaPhone, EMERGENCY_TYPE_CALL,
+                    mEmergencyCallDomain == NetworkRegistrationInfo.DOMAIN_PS);
         }
 
         mEmergencyCallDomain = NetworkRegistrationInfo.DOMAIN_UNKNOWN;
@@ -1026,7 +1134,7 @@ public class EmergencyStateTracker {
                             MSG_SET_EMERGENCY_CALLBACK_MODE_DONE);
                 }
             } else {
-                exitEmergencyMode(mSmsPhone, EMERGENCY_TYPE_SMS);
+                exitEmergencyMode(mSmsPhone, EMERGENCY_TYPE_SMS, false);
             }
 
             clearEmergencySmsInfo();
@@ -1333,5 +1441,50 @@ public class EmergencyStateTracker {
 
         Rlog.i(TAG, "updateNoSimEcbmSupported preference updated slotIndex=" + slotIndex
                 + ", supported=" + carrierConfig);
+    }
+
+    /** For test purpose only */
+    @VisibleForTesting
+    public void setPdnDisconnectionTimeoutMs(int timeout) {
+        mPdnDisconnectionTimeoutMs = timeout;
+    }
+
+    private void exitEmergencyModeIfDelayed() {
+        synchronized (mLock) {
+            if (mPhoneToExit != null) {
+                unregisterForDataConnectionStateChanges();
+                mPhoneToExit.exitEmergencyMode(
+                        mHandler.obtainMessage(MSG_EXIT_EMERGENCY_MODE_DONE,
+                                Integer.valueOf(EMERGENCY_TYPE_CALL)));
+                mPhoneToExit = null;
+            }
+        }
+    }
+
+    /**
+     * Registers for changes to data connection state.
+     */
+    private void registerForDataConnectionStateChanges(Phone phone) {
+        if ((mDataConnectionStateListener != null) || (phone == null)) {
+            return;
+        }
+        Rlog.i(TAG, "registerForDataConnectionStateChanges");
+
+        mDataConnectionStateListener = new PreciseDataConnectionStateListener();
+        mTelephonyManagerProxy.registerTelephonyCallback(phone.getSubId(),
+                mHandler::post, mDataConnectionStateListener);
+    }
+
+    /**
+     * Unregisters for changes to data connection state.
+     */
+    private void unregisterForDataConnectionStateChanges() {
+        if (mDataConnectionStateListener == null) {
+            return;
+        }
+        Rlog.i(TAG, "unregisterForDataConnectionStateChanges");
+
+        mTelephonyManagerProxy.unregisterTelephonyCallback(mDataConnectionStateListener);
+        mDataConnectionStateListener = null;
     }
 }
