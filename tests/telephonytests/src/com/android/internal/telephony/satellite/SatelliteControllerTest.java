@@ -668,6 +668,7 @@ public class SatelliteControllerTest extends TelephonyTest {
         mSatelliteControllerUT.setSettingsKeyForSatelliteModeCalled = false;
         setUpResponseForRequestSatelliteEnabled(false, false, SATELLITE_RESULT_SUCCESS);
         setRadioPower(false);
+        mSatelliteControllerUT.onCellularRadioPowerOffRequested();
         processAllMessages();
         sendSatelliteModemStateChangedEvent(SATELLITE_MODEM_STATE_OFF, null);
         processAllMessages();
@@ -844,6 +845,14 @@ public class SatelliteControllerTest extends TelephonyTest {
         assertEquals(SATELLITE_RESULT_SUCCESS, (long) mIIntegerConsumerResults.get(0));
         assertEquals(SATELLITE_RESULT_NO_RESOURCES, (long) mIIntegerConsumerResults.get(1));
         mSatelliteControllerUT.allRadiosDisabled = true;
+
+        resetSatelliteControllerUTToOnAndProvisionedState();
+        when(mFeatureFlags.oemEnabledSatelliteFlag()).thenReturn(false);
+        mSatelliteControllerUT.onCellularRadioPowerOffRequested();
+        processAllMessages();
+        // Satellite should not be powered off since the feature flag oemEnabledSatelliteFlag is
+        // disabled
+        verifySatelliteEnabled(true, SATELLITE_RESULT_SUCCESS);
     }
 
     @Test

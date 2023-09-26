@@ -1038,29 +1038,7 @@ public class SatelliteController extends Handler {
             }
 
             case EVENT_RADIO_STATE_CHANGED: {
-                if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_OFF
-                        || mCi.getRadioState() == TelephonyManager.RADIO_POWER_UNAVAILABLE) {
-                    mIsRadioOn = false;
-                    logd("Radio State Changed to " + mCi.getRadioState());
-                    if (isSatelliteEnabled()) {
-                        IIntegerConsumer errorCallback = new IIntegerConsumer.Stub() {
-                            @Override
-                            public void accept(int result) {
-                                logd("RequestSatelliteEnabled: result=" + result);
-                            }
-                        };
-                        Phone phone = SatelliteServiceUtils.getPhone();
-                        Consumer<Integer> result = FunctionalUtils
-                                .ignoreRemoteException(errorCallback::accept);
-                        RequestSatelliteEnabledArgument message =
-                                new RequestSatelliteEnabledArgument(false, false, result);
-                        request = new SatelliteControllerHandlerRequest(message, phone);
-                        handleSatelliteEnabled(request);
-                    } else {
-                        logd("EVENT_RADIO_STATE_CHANGED: Satellite modem is currently disabled."
-                                + " Ignored the event");
-                    }
-                } else {
+                if (mCi.getRadioState() == TelephonyManager.RADIO_POWER_ON) {
                     mIsRadioOn = true;
                     if (!mSatelliteModemInterface.isSatelliteServiceSupported()) {
                         synchronized (mIsSatelliteSupportedLock) {
@@ -2083,6 +2061,27 @@ public class SatelliteController extends Handler {
             logd("onSatelliteServiceConnected: Satellite vendor service is not supported."
                     + " Ignored the event");
         }
+    }
+
+    /**
+     * This function is used by {@link com.android.internal.telephony.ServiceStateTracker} to notify
+     * {@link SatelliteController} that it has received a request to power off the cellular radio
+     * modem. {@link SatelliteController} will then power off the satellite modem.
+     */
+    public void onCellularRadioPowerOffRequested() {
+        if (!mFeatureFlags.oemEnabledSatelliteFlag()) {
+            return;
+        }
+
+        mIsRadioOn = false;
+        requestSatelliteEnabled(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+                false /* enableSatellite */, false /* enableDemoMode */,
+                new IIntegerConsumer.Stub() {
+                    @Override
+                    public void accept(int result) {
+                        logd("onRadioPowerOffRequested: requestSatelliteEnabled result=" + result);
+                    }
+                });
     }
 
     /**
