@@ -30,6 +30,7 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
+import android.os.UserManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.SubscriptionManager;
@@ -108,6 +109,7 @@ public class CarrierKeyDownloadManager extends Handler {
     private boolean mAllowedOverMeteredNetwork = false;
     private boolean mDeleteOldKeyAfterDownload = false;
     private TelephonyManager mTelephonyManager;
+    private UserManager mUserManager;
 
     @VisibleForTesting
     public String mMccMncForDownload;
@@ -125,17 +127,34 @@ public class CarrierKeyDownloadManager extends Handler {
         mDownloadManager = (DownloadManager) mContext.getSystemService(Context.DOWNLOAD_SERVICE);
         mTelephonyManager = mContext.getSystemService(TelephonyManager.class)
                 .createForSubscriptionId(mPhone.getSubId());
+        mUserManager = mContext.getSystemService(UserManager.class);
         CarrierConfigManager carrierConfigManager = mContext.getSystemService(
                 CarrierConfigManager.class);
         // Callback which directly handle config change should be executed on handler thread
         carrierConfigManager.registerCarrierConfigChangeListener(this::post,
                 (slotIndex, subId, carrierId, specificCarrierId) -> {
-                    if (slotIndex == mPhone.getPhoneId()) {
+                    boolean isUserUnlocked = mUserManager.isUserUnlocked();
+
+                    if (isUserUnlocked && slotIndex == mPhone.getPhoneId()) {
                         Log.d(LOG_TAG, "Carrier Config changed: slotIndex=" + slotIndex);
                         handleAlarmOrConfigChange();
+                    } else {
+                        Log.d(LOG_TAG, "User is locked");
+                        mContext.registerReceiver(mUserUnlockedReceiver, new IntentFilter(
+                                Intent.ACTION_USER_UNLOCKED));
                     }
                 });
     }
+
+    private final BroadcastReceiver mUserUnlockedReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (Intent.ACTION_USER_UNLOCKED.equals(intent.getAction())) {
+                Log.d(LOG_TAG, "Received UserUnlockedReceiver");
+                handleAlarmOrConfigChange();
+            }
+        }
+    };
 
     private final BroadcastReceiver mDownloadReceiver = new BroadcastReceiver() {
         @Override
