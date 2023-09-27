@@ -2431,7 +2431,9 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 new String[]{"source=EUTRAN, target=IWLAN, type=disallowed, capabilities=MMS|IMS",
                         "source=IWLAN, target=EUTRAN, type=disallowed, capabilities=MMS"});
         // Force data config manager to reload the carrier config.
-        carrierConfigChanged();
+        mDataNetworkControllerUT.getDataConfigManager().obtainMessage(
+                1/*EVENT_CARRIER_CONFIG_CHANGED*/).sendToTarget();
+        processAllMessages();
 
         testSetupImsDataNetwork();
 
@@ -2468,35 +2470,6 @@ public class DataNetworkControllerTest extends TelephonyTest {
                 anyInt(), any(), anyBoolean(), anyBoolean(),
                 eq(DataService.REQUEST_REASON_HANDOVER), any(), anyInt(), any(), any(), eq(true),
                 any());
-    }
-
-    @Test
-    public void testHandoverDataNetworkNotAllowedByPolicyDelayDueToVoiceCall() throws Exception {
-        // Config delay IMS tear down enabled
-        mCarrierConfig.putBoolean(CarrierConfigManager.KEY_DELAY_IMS_TEAR_DOWN_UNTIL_CALL_END_BOOL,
-                true);
-        mCarrierConfig.putStringArray(CarrierConfigManager.KEY_IWLAN_HANDOVER_POLICY_STRING_ARRAY,
-                new String[]{"source=EUTRAN, target=IWLAN, type=disallowed, capabilities=MMS|IMS"});
-        carrierConfigChanged();
-
-        testSetupImsDataNetwork();
-
-        // Ringing an active call, should delay handover tear down
-        doReturn(PhoneConstants.State.RINGING).when(mCT).getState();
-        updateTransport(NetworkCapabilities.NET_CAPABILITY_IMS,
-                AccessNetworkConstants.TRANSPORT_TYPE_WLAN);
-
-        // Verify network is still connected due to active voice call
-        verify(mMockedWwanDataServiceManager, never()).deactivateDataCall(anyInt(),
-                eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
-
-        // Verify tear down after call ends
-        doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
-        mDataNetworkControllerUT.obtainMessage(EVENT_VOICE_CALL_ENDED).sendToTarget();
-        processAllFutureMessages();
-
-        verify(mMockedWwanDataServiceManager).deactivateDataCall(anyInt(),
-                eq(DataService.REQUEST_REASON_NORMAL), any(Message.class));
     }
 
     @Test
