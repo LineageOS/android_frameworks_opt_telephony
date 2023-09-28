@@ -3994,7 +3994,7 @@ public class SubscriptionManagerService extends ISub.Stub {
             return false;
         }
 
-        final int id = R.string.config_satellite_esim_identifier;
+        final int id = R.string.config_satellite_sim_identifier;
         String overlayMccMnc = null;
         try {
             overlayMccMnc = mContext.getResources().getString(id);
