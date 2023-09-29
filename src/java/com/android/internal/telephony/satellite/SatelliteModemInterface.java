@@ -1039,15 +1039,19 @@ public class SatelliteModemInterface {
      *
      * @param simSlot Indicates the SIM slot to which this API will be applied. The modem will use
      *                this information to determine the relevant carrier.
-     * @param plmnList The list of roaming PLMN used for connecting to satellite networks.
+     * @param carrierPlmnList The list of roaming PLMN used for connecting to satellite networks
+     *                        supported by user subscription.
+     * @param allSatellitePlmnList Modem should use the allSatellitePlmnList to identify satellite
+     *                             PLMNs that are not supported by the carrier and make sure not to
+     *                             attach to them.
      * @param message The result receiver that returns whether the modem has
-     *               successfully set the satellite PLMN
+     *                successfully set the satellite PLMN
      */
-    public void setSatellitePlmn(@NonNull int simSlot, @NonNull List<String> plmnList,
-            @NonNull Message message) {
+    public void setSatellitePlmn(@NonNull int simSlot, @NonNull List<String> carrierPlmnList,
+            @NonNull List<String> allSatellitePlmnList, @NonNull Message message) {
         if (mSatelliteService != null) {
             try {
-                mSatelliteService.setSatellitePlmn(simSlot, plmnList,
+                mSatelliteService.setSatellitePlmn(simSlot, carrierPlmnList, allSatellitePlmnList,
                         new IIntegerConsumer.Stub() {
                             @Override
                             public void accept(int result) {
