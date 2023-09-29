@@ -26,6 +26,7 @@ aconfig_declarations {
       "ims.aconfig",
       "messaging.aconfig",
       "misc.aconfig",
+      "network.aconfig",
       "subscription.aconfig",
       "uicc.aconfig",
       "satellite.aconfig",
