@@ -321,7 +321,8 @@ public class GsmCdmaPhone extends Phone {
             TelephonyComponentFactory telephonyComponentFactory,
             ImsManagerFactory imsManagerFactory, @NonNull FeatureFlags featureFlags) {
         super(precisePhoneType == PhoneConstants.PHONE_TYPE_GSM ? "GSM" : "CDMA",
-                notifier, context, ci, unitTestMode, phoneId, telephonyComponentFactory);
+                notifier, context, ci, unitTestMode, phoneId, telephonyComponentFactory,
+                featureFlags);
 
         // phone type needs to be set before other initialization as other objects rely on it
         mPrecisePhoneType = precisePhoneType;

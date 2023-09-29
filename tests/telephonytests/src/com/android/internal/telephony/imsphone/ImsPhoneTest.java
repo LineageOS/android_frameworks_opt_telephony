@@ -97,6 +97,7 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.domainselection.DomainSelectionResolver;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.imsphone.ImsPhone.SS;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
@@ -125,6 +126,7 @@ public class ImsPhoneTest extends TelephonyTest {
     private DomainSelectionResolver mDomainSelectionResolver;
     Connection mConnection;
     ImsUtInterface mImsUtInterface;
+    private FeatureFlags mFeatureFlags;
 
     private final Executor mExecutor = Runnable::run;
 
@@ -149,6 +151,7 @@ public class ImsPhoneTest extends TelephonyTest {
         mConnection = mock(Connection.class);
         mImsUtInterface = mock(ImsUtInterface.class);
         mDomainSelectionResolver = mock(DomainSelectionResolver.class);
+        mFeatureFlags = mock(FeatureFlags.class);
         doReturn(false).when(mDomainSelectionResolver).isDomainSelectionSupported();
         DomainSelectionResolver.setDomainSelectionResolver(mDomainSelectionResolver);
 
@@ -162,7 +165,8 @@ public class ImsPhoneTest extends TelephonyTest {
 
         doReturn(true).when(mTelephonyManager).isVoiceCapable();
 
-        mImsPhoneUT = new ImsPhone(mContext, mNotifier, mPhone, (c, p) -> mImsManager, true);
+        mImsPhoneUT = new ImsPhone(mContext, mNotifier, mPhone, (c, p) -> mImsManager, true,
+                mFeatureFlags);
 
         mDoesRilSendMultipleCallRing = TelephonyProperties.ril_sends_multiple_call_ring()
                 .orElse(true);
