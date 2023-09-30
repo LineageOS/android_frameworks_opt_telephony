@@ -99,6 +99,7 @@ import com.android.internal.telephony.metrics.RadioPowerStateStats;
 import com.android.internal.telephony.metrics.ServiceStateStats;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.satellite.NtnCapabilityResolver;
+import com.android.internal.telephony.satellite.SatelliteController;
 import com.android.internal.telephony.subscription.SubscriptionInfoInternal;
 import com.android.internal.telephony.subscription.SubscriptionManagerService;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
@@ -4971,6 +4972,7 @@ public class ServiceStateTracker extends Handler {
      */
     public void powerOffRadioSafely() {
         synchronized (this) {
+            SatelliteController.getInstance().onCellularRadioPowerOffRequested();
             if (!mPendingRadioPowerOffAfterDataOff) {
                 // hang up all active voice calls first
                 if (mPhone.isPhoneTypeGsm() && mPhone.isInCall()) {
@@ -5056,7 +5058,6 @@ public class ServiceStateTracker extends Handler {
         }
 
         mCi.setRadioPower(false, obtainMessage(EVENT_RADIO_POWER_OFF_DONE));
-
     }
 
     /** Cancel a pending (if any) pollState() operation */
