@@ -1,1 +1,8 @@
 package: "com.android.internal.telephony.flags"
+
+flag {
+  name: "relax_ho_teardown"
+  namespace: "telephony"
+  description: "Relax handover tear down if the device is currently in voice call."
+  bug: "270895912"
+}
