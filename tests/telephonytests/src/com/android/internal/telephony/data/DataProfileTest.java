@@ -179,6 +179,7 @@ public class DataProfileTest {
         assertThat(dp.canSatisfy(NetworkCapabilities.NET_CAPABILITY_MMS)).isFalse();
         assertThat(dp.canSatisfy(new int[]{NetworkCapabilities.NET_CAPABILITY_INTERNET,
                 NetworkCapabilities.NET_CAPABILITY_MMS})).isFalse();
+        assertThat(dp.canSatisfy(new int[]{NetworkCapabilities.NET_CAPABILITY_RCS})).isFalse();
     }
 
     @Test
