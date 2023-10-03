@@ -2361,8 +2361,7 @@ public class GsmCdmaPhone extends Phone {
         return false;
     }
 
-    private void updateSsOverCdmaSupported(PersistableBundle b) {
-        if (b == null) return;
+    private void updateSsOverCdmaSupported(@NonNull PersistableBundle b) {
         mSsOverCdmaSupported = b.getBoolean(CarrierConfigManager.KEY_SUPPORT_SS_OVER_CDMA_BOOL);
     }
 
@@ -2417,11 +2416,8 @@ public class GsmCdmaPhone extends Phone {
     }
 
     /** Only called on the handler thread. */
-    private void updateCarrierN1ModeSupported(@Nullable PersistableBundle b) {
+    private void updateCarrierN1ModeSupported(@NonNull PersistableBundle b) {
         if (!mFeatureFlags.enableCarrierConfigN1Control()) return;
-
-        if (b == null) return;
-
 
         final int[] supportedNrModes = b.getIntArray(
                 CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY);
@@ -3298,16 +3294,17 @@ public class GsmCdmaPhone extends Phone {
 
                 CarrierConfigManager configMgr = (CarrierConfigManager)
                         getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
-                PersistableBundle b = configMgr.getConfigForSubId(getSubId());
-
-                updateBroadcastEmergencyCallStateChangesAfterCarrierConfigChanged(b);
-
-                updateCdmaRoamingSettingsAfterCarrierConfigChanged(b);
-
-                updateNrSettingsAfterCarrierConfigChanged(b);
-                updateVoNrSettings(b);
-                updateSsOverCdmaSupported(b);
-                updateCarrierN1ModeSupported(b);
+                final PersistableBundle b = configMgr.getConfigForSubId(getSubId());
+                if (b != null) {
+                    updateBroadcastEmergencyCallStateChangesAfterCarrierConfigChanged(b);
+                    updateCdmaRoamingSettingsAfterCarrierConfigChanged(b);
+                    updateNrSettingsAfterCarrierConfigChanged(b);
+                    updateVoNrSettings(b);
+                    updateSsOverCdmaSupported(b);
+                    updateCarrierN1ModeSupported(b);
+                } else {
+                    loge("Failed to retrieve a carrier config bundle for subId=" + getSubId());
+                }
                 loadAllowedNetworksFromSubscriptionDatabase();
                 // Obtain new radio capabilities from the modem, since some are SIM-dependent
                 mCi.getRadioCapability(obtainMessage(EVENT_GET_RADIO_CAPABILITY));
@@ -5110,12 +5107,7 @@ public class GsmCdmaPhone extends Phone {
     }
 
     private void updateBroadcastEmergencyCallStateChangesAfterCarrierConfigChanged(
-            PersistableBundle config) {
-        if (config == null) {
-            loge("didn't get broadcastEmergencyCallStateChanges from carrier config");
-            return;
-        }
-
+            @NonNull PersistableBundle config) {
         // get broadcastEmergencyCallStateChanges
         boolean broadcastEmergencyCallStateChanges = config.getBoolean(
                 CarrierConfigManager.KEY_BROADCAST_EMERGENCY_CALL_STATE_CHANGES_BOOL);
@@ -5123,26 +5115,17 @@ public class GsmCdmaPhone extends Phone {
         setBroadcastEmergencyCallStateChanges(broadcastEmergencyCallStateChanges);
     }
 
-    private void updateNrSettingsAfterCarrierConfigChanged(PersistableBundle config) {
-        if (config == null) {
-            loge("didn't get the carrier_nr_availability_int from the carrier config.");
-            return;
-        }
+    private void updateNrSettingsAfterCarrierConfigChanged(@NonNull PersistableBundle config) {
         int[] nrAvailabilities = config.getIntArray(
                 CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY);
         mIsCarrierNrSupported = !ArrayUtils.isEmpty(nrAvailabilities);
     }
 
-    private void updateVoNrSettings(PersistableBundle config) {
+    private void updateVoNrSettings(@NonNull PersistableBundle config) {
         UiccSlot slot = mUiccController.getUiccSlotForPhone(mPhoneId);
 
         // If no card is present, do nothing.
         if (slot == null || slot.getCardState() != IccCardStatus.CardState.CARDSTATE_PRESENT) {
-            return;
-        }
-
-        if (config == null) {
-            loge("didn't get the vonr_enabled_bool from the carrier config.");
             return;
         }
 
@@ -5170,12 +5153,8 @@ public class GsmCdmaPhone extends Phone {
         mCi.setVoNrEnabled(enbleVonr, obtainMessage(EVENT_SET_VONR_ENABLED_DONE), null);
     }
 
-    private void updateCdmaRoamingSettingsAfterCarrierConfigChanged(PersistableBundle config) {
-        if (config == null) {
-            loge("didn't get the cdma_roaming_mode changes from the carrier config.");
-            return;
-        }
-
+    private void updateCdmaRoamingSettingsAfterCarrierConfigChanged(
+            @NonNull PersistableBundle config) {
         // Changing the cdma roaming settings based carrier config.
         int config_cdma_roaming_mode = config.getInt(
                 CarrierConfigManager.KEY_CDMA_ROAMING_MODE_INT);
