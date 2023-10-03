@@ -1,0 +1,8 @@
+package: "com.android.internal.telephony.flags"
+
+flag {
+    name: "enable_carrier_config_n1_control"
+    namespace: "telephony"
+    description: "enabling this flag allows KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY to control N1 mode enablement"
+    bug:"302033535"
+}

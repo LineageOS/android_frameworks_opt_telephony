@@ -455,7 +455,7 @@ public class PhoneFactory {
      * @return the {@code ImsPhone} object or null if the exception occured
      */
     public static Phone makeImsPhone(PhoneNotifier phoneNotifier, Phone defaultPhone) {
-        return ImsPhoneFactory.makePhone(sContext, phoneNotifier, defaultPhone);
+        return ImsPhoneFactory.makePhone(sContext, phoneNotifier, defaultPhone, sFeatureFlags);
     }
 
     /**
