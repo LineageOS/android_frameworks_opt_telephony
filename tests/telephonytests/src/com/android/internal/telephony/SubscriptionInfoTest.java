@@ -54,7 +54,7 @@ public class SubscriptionInfoTest {
                 .setEhplmns(EHPLMNS)
                 .setHplmns(HPLMNS)
                 .setCountryIso("us")
-                .setNtn(true)
+                .setOnlyNonTerrestrialNetwork(true)
                 .build();
     }
 
@@ -75,7 +75,7 @@ public class SubscriptionInfoTest {
         assertThat(mSubscriptionInfoUT.getSimSlotIndex()).isEqualTo(0);
         assertThat(mSubscriptionInfoUT.getIccId()).isEqualTo("890126042XXXXXXXXXXX");
         if (Flags.oemEnabledSatelliteFlag()) {
-            assertThat(mSubscriptionInfoUT.isNtn()).isTrue();
+            assertThat(mSubscriptionInfoUT.isOnlyNonTerrestrialNetwork()).isTrue();
         }
     }
 
