@@ -93,6 +93,7 @@ import com.android.internal.telephony.domainselection.DomainSelectionResolver;
 import com.android.internal.telephony.emergency.EmergencyConstants;
 import com.android.internal.telephony.emergency.EmergencyNumberTracker;
 import com.android.internal.telephony.emergency.EmergencyStateTracker;
+import com.android.internal.telephony.flags.FeatureFlags;
 import com.android.internal.telephony.imsphone.ImsCallInfo;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneCall;
@@ -251,8 +252,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_SET_NULL_CIPHER_AND_INTEGRITY_DONE = 66;
     protected static final int EVENT_GET_DEVICE_IMEI_DONE = 67;
     protected static final int EVENT_TRIGGER_NOTIFY_ANBR = 68;
+    protected static final int EVENT_GET_N1_MODE_ENABLED_DONE = 69;
+    protected static final int EVENT_SET_N1_MODE_ENABLED_DONE = 70;
 
-    protected static final int EVENT_LAST = EVENT_TRIGGER_NOTIFY_ANBR;
+    protected static final int EVENT_LAST = EVENT_SET_N1_MODE_ENABLED_DONE;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
@@ -282,6 +285,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public static final String PREF_NULL_CIPHER_AND_INTEGRITY_ENABLED =
             "pref_null_cipher_and_integrity_enabled";
     private final TelephonyAdminReceiver m2gAdminUpdater;
+
+    protected final FeatureFlags mFeatureFlags;
 
     /**
      * This method is invoked when the Phone exits Emergency Callback Mode.
@@ -548,22 +553,25 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /**
      * Constructs a Phone in normal (non-unit test) mode.
      *
+     * @param name a name for this phone object
      * @param notifier An instance of DefaultPhoneNotifier,
      * @param context Context object from hosting application
      * unless unit testing.
      * @param ci is CommandsInterface
      * @param unitTestMode when true, prevents notifications
      * of state change events
+     * @param featureFlags an instance of the FeatureFlags set
      */
     protected Phone(String name, PhoneNotifier notifier, Context context, CommandsInterface ci,
-                    boolean unitTestMode) {
+                    boolean unitTestMode, FeatureFlags featureFlags) {
         this(name, notifier, context, ci, unitTestMode, SubscriptionManager.DEFAULT_PHONE_INDEX,
-                TelephonyComponentFactory.getInstance());
+                TelephonyComponentFactory.getInstance(), featureFlags);
     }
 
     /**
      * Constructs a Phone in normal (non-unit test) mode.
      *
+     * @param name a name for this phone object
      * @param notifier An instance of DefaultPhoneNotifier,
      * @param context Context object from hosting application
      * unless unit testing.
@@ -571,10 +579,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param unitTestMode when true, prevents notifications
      * of state change events
      * @param phoneId the phone-id of this phone.
+     * @param telephonyComponentFactory a factory for injecting telephony components
+     * @param featureFlags an instance of the FeatureFlags set
      */
     protected Phone(String name, PhoneNotifier notifier, Context context, CommandsInterface ci,
                     boolean unitTestMode, int phoneId,
-                    TelephonyComponentFactory telephonyComponentFactory) {
+                    TelephonyComponentFactory telephonyComponentFactory,
+                    FeatureFlags featureFlags) {
         mPhoneId = phoneId;
         mName = name;
         mNotifier = notifier;
@@ -586,6 +597,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mAppSmsManager = telephonyComponentFactory.inject(AppSmsManager.class.getName())
                 .makeAppSmsManager(context);
         mLocalLog = new LocalLog(64);
+
+        mFeatureFlags = featureFlags;
 
         setUnitTestMode(unitTestMode);
 
@@ -857,7 +870,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 }
                 break;
             default:
-                throw new RuntimeException("unexpected event not handled");
+                throw new RuntimeException("unexpected event not handled, msgId=" + msg.what);
         }
     }
 
